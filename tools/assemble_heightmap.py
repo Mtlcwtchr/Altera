@@ -2,7 +2,7 @@
 """Lays several height pictures out on one world and writes it as an
 authoring package (doc/world_authoring_import_export_spec.docx, D158).
 
-    python3 tools/assemble_heightmap.py doc/references/heights/layout.json [--fit]
+    python3 tools/assemble_heightmap.py doc/OldWorld/layout.json [--fit]
 
 With --fit, and a "guide" in the layout (a coloured map of the whole
 continent: warm land, cool sea) and a "segment" box on each sheet (in the
@@ -304,7 +304,7 @@ def fit(layout, base):
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    layout_file = Path(args[0] if args else "doc/references/heights/layout.json")
+    layout_file = Path(args[0] if args else "doc/OldWorld/layout.json")
     base = layout_file.parent
     layout = json.loads(layout_file.read_text())
     if "--fit" in sys.argv:

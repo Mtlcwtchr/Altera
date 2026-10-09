@@ -2,7 +2,7 @@
 """Control maps for an assembled world, read off hand-drawn region maps
 (doc/references/maps, their colours as legend.md describes them).
 
-    python3 tools/assemble_controls.py doc/references/heights/layout.json
+    python3 tools/assemble_controls.py doc/OldWorld/layout.json
 
 Run after tools/assemble_heightmap.py: it reads the same layout, and each
 sheet that has a "controls" entry gets its hand map laid over it:
@@ -380,7 +380,7 @@ def place(img, sheet, nx, ny, resample):
 
 def main():
     args = [a for a in sys.argv[1:] if not a.startswith("--")]
-    layout_file = Path(args[0] if args else "doc/references/heights/layout.json")
+    layout_file = Path(args[0] if args else "doc/OldWorld/layout.json")
     base = layout_file.parent
     layout = json.loads(layout_file.read_text())
     if "--fit" in sys.argv:
