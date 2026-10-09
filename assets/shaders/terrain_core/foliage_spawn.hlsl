@@ -24,10 +24,13 @@ struct Instance {
 
 Texture2DArray<float4> clipmap : register(t0, space0);
 Texture2D<float> biomeMap : register(t1, space0);
-StructuredBuffer<float4> modelInfo : register(t2, space0);   // radius, height, texture layer, -
-StructuredBuffer<uint4> modelSlots : register(t3, space0);   // instance offset, capacity, first index, index count
+Texture2D<float4> waterMap : register(t2, space0);
+StructuredBuffer<float4> modelInfo : register(t3, space0);   // radius, height, texture layer, -
+StructuredBuffer<uint4> modelSlots : register(t4, space0);   // instance offset, capacity, first index, index count
 SamplerState clipSampler : register(s0, space0);
 SamplerState biomeSampler : register(s1, space0);
+SamplerState waterSampler : register(s2, space0);
+#include "water_map.hlsli"
 RWStructuredBuffer<Instance> instances : register(u0, space1);
 RWStructuredBuffer<uint> counters : register(u1, space1);
 
@@ -58,7 +61,8 @@ cbuffer Spawn : register(b0, space2) {
     int tileLog2;
     float heightLow;           // lowest and highest ground there can be, eye-relative
     float heightHigh;
-    float3 spawnPad;
+    float waterMapSize;
+    float2 spawnPad;
     float4 biomeRules[32];     // density, log2 cluster cell (level-0 texels, 0 = even), cover, -
 };
 
@@ -128,6 +132,10 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     if (ground.x < shoreHeight) return;
     const float normalZ = rsqrt(1.0 + dot(ground.yz, ground.yz));
     if (normalZ < minNormalZ) return;
+    // Nothing grows under water: a lake, a river, its wet bank.
+    float wet;
+    if (waterAt(waterMap, waterSampler, (float2(p.base) + p.sub) * spacing0, worldSize, waterMapSize, wet).x > ground.x - 0.3)
+        return;
 
     BiomeMapInfo info;
     info.size = biomeSize;

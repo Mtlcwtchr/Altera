@@ -531,6 +531,8 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/post.cpp
             src/terrain_core/lighting.cpp
             src/terrain_core/sky.cpp
+            src/terrain_core/hydrology.cpp
+            src/terrain_core/water.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(campfire_terrain_core PUBLIC src)
@@ -540,6 +542,7 @@ if(ASR_BUILD_CLIENT)
     add_executable(terrain_lab tools/terrain_lab/main.cpp)
     target_link_libraries(terrain_lab PRIVATE campfire_terrain_core asr_warnings)
     target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS)
+    campfire_configure_dlss(campfire_terrain_core terrain_lab)
 
     add_executable(asr_shader_check tools/shader_check.cpp)
     target_link_libraries(asr_shader_check PRIVATE SDL3::SDL3-static
@@ -653,6 +656,10 @@ endif()
 # tests
 # ---------------------------------------------------------------------------
 if(ASR_BUILD_TESTS)
+    add_executable(asr_dlss_math_tests tests/main.cpp tests/test_dlss_math.cpp)
+    target_include_directories(asr_dlss_math_tests PRIVATE src tests)
+    target_link_libraries(asr_dlss_math_tests PRIVATE asr_warnings)
+    add_test(NAME dlss_math COMMAND asr_dlss_math_tests)
     enable_testing()
     if(TARGET asr_engine_gui)
         # The interface layer on a software renderer: the face, typing, sliders.

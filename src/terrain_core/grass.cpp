@@ -19,8 +19,8 @@ struct SpawnUniforms {
     std::uint32_t gridSide, clipSize, levels, capacity;
     std::uint32_t seed;
     float heightLow, heightHigh, flowerChance;
-    float sunDirection[3], pad0;
-    float skyColour[3], pad1;
+    float sunDirection[3], waterMapSize;
+    float skyColour[3], worldSize;
 };
 static_assert(sizeof(SpawnUniforms) == 224);
 
@@ -92,7 +92,8 @@ bool Grass::open(engine::Device& device, const Params& params, const GrassSettin
 
 void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
                   SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
-                  SDL_GPUTexture* properties, const GroundUniforms& ground, const LightUniforms& light) {
+                  SDL_GPUTexture* properties, SDL_GPUTexture* water, std::uint32_t waterSize,
+                  const GroundUniforms& ground, const LightUniforms& light) {
     if (frame_ >= 3) {
         if (const auto* n = static_cast<const std::uint32_t*>(
                     SDL_MapGPUTransferBuffer(device_->handle(), readback_[frame_ % 3], false))) {
@@ -112,10 +113,10 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
         SDL_GPUStorageBufferReadWriteBinding rw[2] = {{tufts_.get(), false, {}}, {count_.get(), false, {}}};
         auto* pass = SDL_BeginGPUComputePass(commands, nullptr, 0, rw, 2);
         SDL_BindGPUComputePipeline(pass, spawn_.get());
-        const SDL_GPUTextureSamplerBinding samplers[5] = {
+        const SDL_GPUTextureSamplerBinding samplers[6] = {
                 {clipmap, nearest_.get()}, {biomeMap, nearest_.get()}, {materials, repeat_.get()},
-                {normals, repeat_.get()}, {properties, repeat_.get()}};
-        SDL_BindGPUComputeSamplers(pass, 0, samplers, 5);
+                {normals, repeat_.get()}, {properties, repeat_.get()}, {water, nearest_.get()}};
+        SDL_BindGPUComputeSamplers(pass, 0, samplers, 6);
         SDL_PushGPUComputeUniformData(commands, 1, &ground, sizeof(ground));
         SDL_PushGPUComputeUniformData(commands, 2, &light, sizeof(light));
         const double range = params_.macroHeightRange, sea = params_.macroSeaLevel;
@@ -151,6 +152,8 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
             u.heightLow = float(-sea * range - params_.detailBound() - frame.eye.z);
             u.heightHigh = float((1.0 - sea) * range + params_.detailBound() - frame.eye.z);
             u.flowerChance = settings_.flowerChance;
+            u.waterMapSize = float(waterSize);
+            u.worldSize = float(params_.worldSize);
             for (int i = 0; i < 3; ++i) {
                 u.sunDirection[i] = frame.sunDirection[i];
                 u.skyColour[i] = frame.skyColour[i];

@@ -66,6 +66,9 @@ public:
     bool uploadShadow(SDL_GPUCommandBuffer* commands, const Selection& selection);
     // Inside the shadow atlas pass, one cascade: `light` carries its matrix.
     void drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const ViewUniforms& light);
+    // The view's patches with whatever pipeline is bound: the water draws its
+    // surface over the very same grid.
+    void drawPatches(SDL_GPURenderPass* pass) { drawSet(pass, view_); }
 
     std::uint32_t trianglesDrawn() const { return triangles_; }
     std::uint64_t gpuBytes() const { return gpuBytes_; }

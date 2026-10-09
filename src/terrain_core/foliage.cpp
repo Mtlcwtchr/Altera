@@ -26,7 +26,7 @@ struct SpawnUniforms {
     float biomeSize, worldSize;
     std::int32_t tileLog2;
     float heightLow;
-    float heightHigh, pad[3];
+    float heightHigh, waterMapSize, pad[2];
     float biomeRules[kMaxBiomes][4];
 };
 static_assert(sizeof(SpawnUniforms) == 736);
@@ -204,7 +204,8 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
 }
 
 void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, SDL_GPUTexture* clipmap,
-                    SDL_GPUTexture* biomeMap, std::uint32_t biomeSize) {
+                    SDL_GPUTexture* biomeMap, std::uint32_t biomeSize, SDL_GPUTexture* water,
+                    std::uint32_t waterSize) {
     // Counts from two frames ago (the ring slot about to be reused).
     if (frame_ >= 3) {
         auto* b = readback_[frame_ % 3];
@@ -236,8 +237,9 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
         SDL_GPUStorageBufferReadWriteBinding rw[2] = {{instances_.get(), false, {}}, {counters_.get(), false, {}}};
         auto* pass = SDL_BeginGPUComputePass(commands, nullptr, 0, rw, 2);
         SDL_BindGPUComputePipeline(pass, spawn_.get());
-        const SDL_GPUTextureSamplerBinding samplers[2] = {{clipmap, nearest_.get()}, {biomeMap, nearest_.get()}};
-        SDL_BindGPUComputeSamplers(pass, 0, samplers, 2);
+        const SDL_GPUTextureSamplerBinding samplers[3] = {
+                {clipmap, nearest_.get()}, {biomeMap, nearest_.get()}, {water, nearest_.get()}};
+        SDL_BindGPUComputeSamplers(pass, 0, samplers, 3);
         SDL_GPUBuffer* reads[2] = {modelInfo_.get(), modelSlots_.get()};
         SDL_BindGPUComputeStorageBuffers(pass, 0, reads, 2);
         const double spacing0 = params_.spacing;
@@ -276,6 +278,7 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
             u.shoreHeight = 1.5f;
             u.biomeSize = float(biomeSize);
             u.worldSize = float(params_.worldSize);
+            u.waterMapSize = float(waterSize);
             u.tileLog2 = std::int32_t(tileLog2_);
             u.heightLow = float(-sea * range - params_.detailBound() - frame.eye.z);
             u.heightHigh = float((1.0 - sea) * range + params_.detailBound() - frame.eye.z);

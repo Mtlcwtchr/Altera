@@ -23,6 +23,9 @@ SamplerState clipSampler : register(s0, space0);
 #define SHADOW_TEXTURE register(t6, space0)
 #define SHADOW_SAMPLER register(s6, space0)
 #include "lighting.hlsli"
+Texture2D<float4> waterMap : register(t5, space0);
+SamplerState waterSampler : register(s5, space0);
+#include "water_map.hlsli"
 
 struct Tuft {
     float4 positionYaw;   // eye-relative foot (m), yaw
@@ -55,9 +58,9 @@ cbuffer GrassSpawn : register(b0, space2) {
     float heightHigh;
     float flowerChance;
     float3 spawnUnusedSun;
-    float spawnPad0;
+    float spawnWaterMapSize;
     float3 spawnUnusedSky;
-    float spawnPad1;
+    float spawnWorldSize;
 };
 
 uint hashCell(int2 c, uint s) {
@@ -125,6 +128,10 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     // colour the ground is painted here and not a sharper one.
     p.footprint = max(distance / pixelScale, cellSize) / spacing0;
     const float4 hg = heightAt(p.base, p.sub, distance);
+    float wet;
+    if (waterAt(waterMap, waterSampler, (float2(p.base) + p.sub) * spacing0, spawnWorldSize, spawnWaterMapSize, wet).x >
+        hg.x - 0.1)
+        return;   // under water
     const float normalZ = rsqrt(1.0 + dot(hg.yz, hg.yz));
     const float4 ground = groundSample(p, hg.x, normalZ, false);
     const uint h2 = hashCell(cell, seed + 101u);

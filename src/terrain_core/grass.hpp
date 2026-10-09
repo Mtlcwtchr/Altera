@@ -45,7 +45,8 @@ public:
     // map and the material array the ground draws with, and its uniforms.
     void spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
                SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
-               SDL_GPUTexture* properties, const GroundUniforms& ground, const LightUniforms& light);
+               SDL_GPUTexture* properties, SDL_GPUTexture* water, std::uint32_t waterSize, const GroundUniforms& ground,
+               const LightUniforms& light);
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
               const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler);
 
