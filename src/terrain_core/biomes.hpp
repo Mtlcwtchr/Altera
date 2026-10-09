@@ -40,6 +40,8 @@ struct GroundUniforms {
     float shoreMaterial, shoreHeight, seaFloorMaterial, tileLog2;   // tile: log2(level-0 texels)
     std::uint32_t biomeSize, pad0, pad1, pad2;
     float worldSize, spacing, pad3, pad4;
+    // Per material layer: how much of it is grass (the grass cover grows there).
+    float materialGrass[kMaxBiomes];
 };
 
 class BiomeTable {

@@ -1,5 +1,5 @@
 {
- "comment": "Foliage of the terrain core (stage 3). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover].",
+ "comment": "Trees and bushes of the terrain core (the 'trees' module; the grass cover is its own module, terrain_core::Grass). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover].",
  "models": {
   "grass01": {
    "source": "retro_nature_pack/models/glTF/grass/grass01.glb",
@@ -284,28 +284,6 @@
  },
  "layers": [
   {
-   "name": "grass",
-   "spacing_m": 0.9,
-   "range_m": 70,
-   "models": [
-    "grass01",
-    "grass02",
-    "grass03",
-    "grass04",
-    "grass05",
-    "grass06",
-    "grass07",
-    "grass08",
-    "grass09"
-   ],
-   "scale": [
-    1.0,
-    1.9
-   ],
-   "min_normal_z": 0.75,
-   "max_count": 220000
-  },
-  {
    "name": "shrubs",
    "spacing_m": 3.5,
    "range_m": 260,
@@ -460,11 +438,6 @@
  ],
  "biomes": {
   "1": {
-   "grass": [
-    0.85,
-    0,
-    0
-   ],
    "shrubs": [
     0.25,
     0,
@@ -492,11 +465,6 @@
     700,
     0.8
    ],
-   "grass": [
-    0.35,
-    0,
-    0
-   ],
    "shrubs": [
     0.18,
     0,
@@ -509,11 +477,6 @@
    ]
   },
   "3": {
-   "grass": [
-    0.45,
-    0,
-    0
-   ],
    "shrubs": [
     0.06,
     0,
@@ -533,11 +496,6 @@
    ]
   },
   "5": {
-   "grass": [
-    0.6,
-    0,
-    0
-   ],
    "autumn": [
     0.35,
     500,
@@ -550,11 +508,6 @@
    ]
   },
   "6": {
-   "grass": [
-    0.9,
-    0,
-    0
-   ],
    "broadleaf": [
     0.18,
     500,
@@ -577,11 +530,6 @@
    ]
   },
   "7": {
-   "grass": [
-    0.95,
-    0,
-    0
-   ],
    "autumn": [
     0.12,
     400,
@@ -599,11 +547,6 @@
     600,
     0.5
    ],
-   "grass": [
-    0.3,
-    0,
-    0
-   ],
    "saplings": [
     0.15,
     0,
@@ -611,11 +554,6 @@
    ]
   },
   "9": {
-   "grass": [
-    0.85,
-    0,
-    0
-   ],
    "broadleaf": [
     0.5,
     600,
@@ -655,11 +593,6 @@
    ]
   },
   "12": {
-   "grass": [
-    0.9,
-    0,
-    0
-   ],
    "broadleaf": [
     0.6,
     500,
@@ -687,11 +620,6 @@
     500,
     0.5
    ],
-   "grass": [
-    0.4,
-    0,
-    0
-   ],
    "saplings": [
     0.175,
     0,
@@ -699,11 +627,6 @@
    ]
   },
   "14": {
-   "grass": [
-    0.7,
-    0,
-    0
-   ],
    "autumn": [
     0.3,
     500,
@@ -721,11 +644,6 @@
    ]
   },
   "15": {
-   "grass": [
-    0.7,
-    0,
-    0
-   ],
    "broadleaf": [
     0.3,
     600,

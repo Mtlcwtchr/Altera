@@ -45,12 +45,16 @@ bool BiomeTable::load(const std::filesystem::path& json, const Params& params, s
     nlohmann::json config;
     try { config = nlohmann::json::parse(in); } catch (const std::exception& e) { if (why) *why = e.what(); return false; }
 
+    uniforms_ = {};
     // The materials, in the order the config lists them: that order is the array.
     const std::filesystem::path root = json.parent_path().parent_path().parent_path().parent_path();
     std::map<std::string, float> layer;
     files_.clear();
     for (const auto& [name, spec] : config["materials"].items()) {
-        (void)spec;
+        // Grass unless said otherwise: every grass_* material, and whatever
+        // carries "grass": 0..1.
+        if (files_.size() < kMaxBiomes)
+            uniforms_.materialGrass[files_.size()] = spec.value("grass", name.rfind("grass", 0) == 0 ? 1.0f : 0.0f);
         layer[name] = float(files_.size());
         files_.push_back(root / "assets" / "terrain_core" / "materials" / (name + ".png"));
     }
@@ -61,7 +65,6 @@ bool BiomeTable::load(const std::filesystem::path& json, const Params& params, s
     };
     auto log2Texels = [&](double metres) { return float(std::round(std::log2(std::max(metres / params.spacing, 1.0)))); };
 
-    uniforms_ = {};
     for (auto& b : uniforms_.biomes) {
         b = {{-1, -1, -1, -1}, {0, 0, 0, 0}, {2, 2, 0, 0}, {1e9f, 1e9f, 0, 0}, {1, 1, 1, 1}};
     }

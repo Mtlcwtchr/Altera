@@ -63,6 +63,7 @@ public:
     std::uint64_t gpuBytes() const { return gpuBytes_; }
     SDL_GPUTexture* clipmap() const { return clipmap_.get(); }
     SDL_GPUTexture* biomeMap() const { return biomeMap_.get(); }
+    SDL_GPUTexture* materials() const { return materials_.get(); }
     std::uint32_t biomeSize() const { return ground_.biomeSize; }
     const GroundUniforms& ground() const { return ground_; }
 

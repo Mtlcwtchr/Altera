@@ -26,6 +26,8 @@
 #include "terrain_core/drainage.hpp"
 #include "terrain_core/erosion.hpp"
 #include "terrain_core/foliage.hpp"
+#include "terrain_core/grass.hpp"
+#include "terrain_core/post.hpp"
 #include "engine/world_source/png_io.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -90,9 +92,11 @@ struct Options {
     fs::path erodeOut;        // --erode: weather the macro map, write it here, exit
     ErosionSettings erosion;
     // Modules: each can be left out from the command line or toggled live
-    // (F2 ground materials, F3 foliage, 1..9 a foliage layer).
+    // (F2 ground materials, F3 trees, 1..9 a tree layer, F4 grass, F5 style).
     bool groundMaterials = true;
-    bool foliage = true;
+    bool foliage = true;          // the trees module (trees and bushes)
+    bool grass = true;            // the grass cover
+    std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
     std::string foliageLayers;   // comma list of layers to keep; empty: all
     float foliageMinPixels = 1.5f;
     DrainageSettings drainage;
@@ -161,7 +165,9 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--debug") o.debugLevels = std::atoi(next());
         else if (a == "--map") o.map = true;
         else if (a == "--no-ground") o.groundMaterials = false;
-        else if (a == "--no-foliage") o.foliage = false;
+        else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
+        else if (a == "--no-grass") o.grass = false;
+        else if (a == "--post") o.post = std::uint32_t(std::atoi(next())) % Post::kStyles;
         else if (a == "--foliage-layers") o.foliageLayers = next();
         else if (a == "--foliage-min-pixels") o.foliageMinPixels = float(std::atof(next()));
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
@@ -252,6 +258,7 @@ struct FrameStats {
     std::uint32_t patches = 0, triangles = 0, rects = 0, misses = 0, nodes = 0;
     std::uint64_t texels = 0;
     std::uint64_t foliageInstances = 0, foliageTriangles = 0, foliageCandidates = 0;
+    std::uint64_t grassTufts = 0, grassCandidates = 0;
     double x = 0, y = 0, z = 0, ground = 0;
 };
 
@@ -265,6 +272,11 @@ struct Lab {
     Renderer renderer;
     Foliage foliage;
     bool foliageReady = false;
+    Grass grass;
+    bool grassReady = false;
+    Post post;
+    bool postReady = false;
+    std::uint64_t frames = 0;
     Clipmap clipmap{options.params};
     GroundProbe probe;
     Camera camera;
@@ -327,6 +339,10 @@ struct Lab {
             const auto foliageStart = Clock::now();
             const fs::path foliageFile = assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "foliage.json";
             foliageReady = foliage.open(device, options.params, foliageFile, renderer.ground(), &why);
+            const fs::path spriteDir = assets.parent_path() / "terrain_core" / "grass";
+            grassReady = grass.open(device, options.params, GrassSettings{}, spriteDir, &why);
+            if (!grassReady) std::fprintf(stderr, "grass off: %s\n", why.c_str());
+            postReady = post.open(device);
             if (!foliageReady) std::fprintf(stderr, "foliage off: %s\n", why.c_str());
             else {
                 if (!options.foliageLayers.empty())
@@ -449,6 +465,20 @@ struct Lab {
             s.foliageTriangles = foliage.drawnTriangles();
             s.foliageCandidates = foliage.candidates();
         }
+        if (grassReady && options.grass) {
+            GrassFrame g;
+            g.eye = camera.eye;
+            g.frustum = frustumFrom(view.viewProjection);
+            g.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
+            const double sunDir[3] = {-0.45, -0.35, 0.6};
+            const double sunLen = std::sqrt(sunDir[0] * sunDir[0] + sunDir[1] * sunDir[1] + sunDir[2] * sunDir[2]);
+            for (int i = 0; i < 3; ++i) g.sunDirection[i] = float(sunDir[i] / sunLen);
+            g.skyColour[0] = 0.62f; g.skyColour[1] = 0.72f; g.skyColour[2] = 0.82f;
+            GroundUniforms ground = renderer.ground();
+            grass.spawn(commands, g, renderer.clipmap(), renderer.biomeMap(), renderer.materials(), ground);
+            s.grassTufts = grass.tufts();
+            s.grassCandidates = grass.candidates();
+        }
         SDL_GPUTexture* swapchain = nullptr;
         Uint32 sw = 0, sh = 0;
         if (window && !SDL_WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain, &sw, &sh)) swapchain = nullptr;
@@ -487,8 +517,10 @@ struct Lab {
         look.flags = options.groundMaterials ? 0u : kLookPlainGround;
         renderer.draw(commands, pass, view, look);
         if (foliageReady && options.foliage) foliage.draw(commands, pass, view.viewProjection, &look, sizeof(look));
+        if (grassReady && options.grass) grass.draw(commands, pass, view.viewProjection, &look, sizeof(look));
         SDL_EndGPURenderPass(pass);
 
+        if (postReady) post.apply(commands, targets, options.post, float(frames++) / 60.0f);
         probe.record(commands, renderer.clipmap(), p, camera.eye);
         if (swapchain) {
             SDL_GPUBlitInfo blit{};
@@ -714,6 +746,8 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_F1) lab.options.debugLevels = (lab.options.debugLevels + 1) % 6;
                 if (e.key.key == SDLK_F2) lab.options.groundMaterials = !lab.options.groundMaterials;
                 if (e.key.key == SDLK_F3) lab.options.foliage = !lab.options.foliage;
+                if (e.key.key == SDLK_F4) lab.options.grass = !lab.options.grass;
+                if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
                 if (e.key.key >= SDLK_1 && e.key.key <= SDLK_9 && lab.foliageReady) {
                     const std::size_t i = std::size_t(e.key.key - SDLK_1);
                     if (i < lab.foliage.layers().size()) lab.foliage.layers()[i].enabled = !lab.foliage.layers()[i].enabled;
@@ -823,15 +857,17 @@ int runInteractive(Lab& lab, SDL_Window* window) {
             else
                 std::snprintf(where, sizeof where, "x %.0f y %.0f agl %.0f, speed %.0f m/s (M: map)", s.x, s.y, agl, speed);
             // Which modules are on: G ground materials, F foliage and its layers (1..9).
-            std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.foliage ? " F:" : " f:");
+            std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.grass ? " Gr" : " gr") +
+                                  (lab.options.foliage ? " T:" : " t:");
             if (lab.foliageReady)
                 for (std::size_t i = 0; i < lab.foliage.layers().size(); ++i)
                     modules += lab.foliage.layers()[i].enabled ? char('1' + i) : '-';
             char title[640];
             std::snprintf(title, sizeof title,
-                          "terrain_lab | %.0f fps %.2f ms | terrain %.2fM tris | foliage %llu inst %.2fM tris | [%s] | %s %s",
-                          1000.0 / mean, mean, s.triangles / 1e6, (unsigned long long)s.foliageInstances,
-                          double(s.foliageTriangles) / 1e6, modules.c_str(), where, s.misses ? "| COVERAGE MISS" : "");
+                          "terrain_lab | %.0f fps %.2f ms | grass %llu | trees %llu %.2fM tris | [%s] style %s | %s %s",
+                          1000.0 / mean, mean, (unsigned long long)s.grassTufts, (unsigned long long)s.foliageInstances,
+                          double(s.foliageTriangles) / 1e6, modules.c_str(), Post::name(lab.options.post), where,
+                          s.misses ? "| COVERAGE MISS" : "");
             SDL_SetWindowTitle(window, title);
             window_ms.clear();
             titleAt = Clock::now();
