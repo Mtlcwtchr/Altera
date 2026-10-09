@@ -102,7 +102,8 @@ cbuffer Look : register(b0, space3) {
     // The vertex stage's View is not visible here: each stage has its own uniforms.
     uint lookClipSize;
     uint lookLevels;
-    float2 lookPad;
+    uint lookFlags;      // 1: plain ground (the materials module off)
+    float lookPad;
 };
 
 float3 levelTint(uint level) {
@@ -122,7 +123,18 @@ float4 terrainPs(VsOut input) : SV_Target0 {
     p.base = input.origin << input.level;
     p.sub = input.local * float(1u << input.level);
     p.footprint = max(length(ddx(p.sub)), length(ddy(p.sub)));
-    float3 colour = groundColour(p, height, normal.z, debugLevels == 5);
+    float3 colour;
+    if ((lookFlags & 1u) != 0 && debugLevels != 5) {
+        // The ground module off: colour by height and slope only.
+        const float slope = 1.0 - normal.z;
+        if (height < 0.0) colour = lerp(float3(0.06, 0.14, 0.26), float3(0.16, 0.34, 0.42), saturate(1.0 + height / 60.0));
+        else {
+            colour = lerp(float3(0.30, 0.42, 0.18), float3(0.52, 0.50, 0.48), saturate(height / 2500.0));
+            colour = lerp(colour, float3(0.40, 0.36, 0.32), saturate((slope - 0.15) * 5.0));
+        }
+    } else {
+        colour = groundColour(p, height, normal.z, debugLevels == 5);
+    }
     if (debugLevels == 5) return float4(colour, 1);
     if (debugLevels == 1) colour = lerp(colour, levelTint(input.level), 0.45);
     if (debugLevels == 2) return float4(normal * 0.5 + 0.5, 1);

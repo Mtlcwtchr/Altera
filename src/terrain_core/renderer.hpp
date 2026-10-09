@@ -36,8 +36,11 @@ struct LookUniforms {
     std::uint32_t debugLevels;
     std::uint32_t clipSize;
     std::uint32_t levels;
-    float pad[2];
+    std::uint32_t flags;      // kLookPlainGround: colour by height and slope, no materials
+    float pad;
 };
+
+constexpr std::uint32_t kLookPlainGround = 1;
 
 class Renderer {
 public:
@@ -59,6 +62,9 @@ public:
     std::uint32_t trianglesDrawn() const { return triangles_; }
     std::uint64_t gpuBytes() const { return gpuBytes_; }
     SDL_GPUTexture* clipmap() const { return clipmap_.get(); }
+    SDL_GPUTexture* biomeMap() const { return biomeMap_.get(); }
+    std::uint32_t biomeSize() const { return ground_.biomeSize; }
+    const GroundUniforms& ground() const { return ground_; }
 
 private:
     engine::Device* device_ = nullptr;

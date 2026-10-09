@@ -25,6 +25,7 @@
 #include "terrain_core/biomes.hpp"
 #include "terrain_core/drainage.hpp"
 #include "terrain_core/erosion.hpp"
+#include "terrain_core/foliage.hpp"
 #include "engine/world_source/png_io.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -88,8 +89,14 @@ struct Options {
     fs::path heightmap;
     fs::path erodeOut;        // --erode: weather the macro map, write it here, exit
     ErosionSettings erosion;
+    // Modules: each can be left out from the command line or toggled live
+    // (F2 ground materials, F3 foliage, 1..9 a foliage layer).
+    bool groundMaterials = true;
+    bool foliage = true;
+    std::string foliageLayers;   // comma list of layers to keep; empty: all
+    float foliageMinPixels = 1.5f;
     DrainageSettings drainage;
-    bool drainGenerated = true;   // run the generator's map through the drainage erosion
+    bool drainGenerated = false;  // run the generator's map through the drainage erosion (--drain-generator)
     fs::path biomes;          // 8-bit biome ids; empty: generated
     fs::path ground;          // biome table; empty: content/config/terrain_core/biomes.json
     std::uint32_t generateSize = 0;
@@ -135,7 +142,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--drainage-k") o.drainage.incision = std::atof(next());
         else if (a == "--drainage-hold") o.drainage.hold = std::atof(next());
         else if (a == "--drainage-talus") o.drainage.talusDegrees = std::atof(next());
-        else if (a == "--raw-generator") o.drainGenerated = false;
+        else if (a == "--drain-generator") { o.drainGenerated = true; if (!o.drainage.iterations) o.drainage.iterations = 100; }
         else if (a == "--biomes") o.biomes = next();
         else if (a == "--ground") o.ground = next();
         else if (a == "--generate") o.generateSize = std::uint32_t(std::atoi(next()));
@@ -153,6 +160,10 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--debug-levels") o.debugLevels = 1;
         else if (a == "--debug") o.debugLevels = std::atoi(next());
         else if (a == "--map") o.map = true;
+        else if (a == "--no-ground") o.groundMaterials = false;
+        else if (a == "--no-foliage") o.foliage = false;
+        else if (a == "--foliage-layers") o.foliageLayers = next();
+        else if (a == "--foliage-min-pixels") o.foliageMinPixels = float(std::atof(next()));
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
     }
     Params& p = o.params;
@@ -240,6 +251,7 @@ struct FrameStats {
     double frameMs = 0, selectMs = 0, recordMs = 0, waitMs = 0;
     std::uint32_t patches = 0, triangles = 0, rects = 0, misses = 0, nodes = 0;
     std::uint64_t texels = 0;
+    std::uint64_t foliageInstances = 0, foliageTriangles = 0, foliageCandidates = 0;
     double x = 0, y = 0, z = 0, ground = 0;
 };
 
@@ -251,6 +263,8 @@ struct Lab {
     BiomeTable table;
     BiomeMap biomes;
     Renderer renderer;
+    Foliage foliage;
+    bool foliageReady = false;
     Clipmap clipmap{options.params};
     GroundProbe probe;
     Camera camera;
@@ -309,6 +323,19 @@ struct Lab {
         std::printf("biome map %u^2 (%s) in %.0f ms, %zu materials\n", biomes.size(),
                     options.biomes.empty() ? "generated" : "imported", msSince(biomeStart), table.materialFiles().size());
         if (!renderer.open(device, options.params, macro, table, biomes)) { std::fprintf(stderr, "renderer: %s\n", device.error().c_str()); return false; }
+        {
+            const auto foliageStart = Clock::now();
+            const fs::path foliageFile = assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "foliage.json";
+            foliageReady = foliage.open(device, options.params, foliageFile, renderer.ground(), &why);
+            if (!foliageReady) std::fprintf(stderr, "foliage off: %s\n", why.c_str());
+            else {
+                if (!options.foliageLayers.empty())
+                    for (auto& layer : foliage.layers())
+                        layer.enabled = ("," + options.foliageLayers + ",").find("," + layer.name + ",") != std::string::npos;
+                std::printf("foliage: %zu layers, %u models, %.1f MB, in %.0f ms\n", foliage.layers().size(), foliage.modelCount(),
+                            double(foliage.gpuBytes()) / (1 << 20), msSince(foliageStart));
+            }
+        }
         if (!probe.open(device)) return false;
         std::printf("renderer ready in %.0f ms (shaders), GPU %.1f MB\n", msSince(gpuStart),
                     double(renderer.gpuBytes()) / (1 << 20));
@@ -410,6 +437,18 @@ struct Lab {
         auto* commands = SDL_AcquireGPUCommandBuffer(device.handle());
         renderer.upload(commands, selection);
         s.texels = renderer.generate(commands, rects);
+        if (foliageReady && options.foliage) {
+            FoliageFrame f;
+            f.eye = camera.eye;
+            f.frustum = frustumFrom(view.viewProjection);
+            std::memcpy(f.viewProjection, view.viewProjection, sizeof(f.viewProjection));
+            f.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
+            f.minPixels = options.foliageMinPixels;
+            foliage.spawn(commands, f, renderer.clipmap(), renderer.biomeMap(), renderer.biomeSize());
+            s.foliageInstances = foliage.drawnInstances();
+            s.foliageTriangles = foliage.drawnTriangles();
+            s.foliageCandidates = foliage.candidates();
+        }
         SDL_GPUTexture* swapchain = nullptr;
         Uint32 sw = 0, sh = 0;
         if (window && !SDL_WaitAndAcquireGPUSwapchainTexture(commands, window, &swapchain, &sw, &sh)) swapchain = nullptr;
@@ -445,7 +484,9 @@ struct Lab {
         look.debugLevels = std::uint32_t(options.debugLevels);
         look.clipSize = p.clipSize;
         look.levels = p.levels;
+        look.flags = options.groundMaterials ? 0u : kLookPlainGround;
         renderer.draw(commands, pass, view, look);
+        if (foliageReady && options.foliage) foliage.draw(commands, pass, view.viewProjection, &look, sizeof(look));
         SDL_EndGPURenderPass(pass);
 
         probe.record(commands, renderer.clipmap(), p, camera.eye);
@@ -524,8 +565,8 @@ int runBench(Lab& lab, SDL_Window* window) {
                   lab.targets.width(), lab.targets.height(), sx, sy);
     summary += buf;
 
-    std::printf("%-9s %7s %7s %7s %7s %7s | %6s %6s | %7s %9s %9s %6s\n", "scenario", "mean", "p50", "p95", "p99", "max",
-                "selCPU", "recCPU", "patches", "tris", "texels/f", "misses");
+    std::printf("%-9s %7s %7s %7s %7s %7s | %6s %6s | %7s %9s %9s %6s | %8s %9s\n", "scenario", "mean", "p50", "p95", "p99", "max",
+                "selCPU", "recCPU", "patches", "tris", "texels/f", "misses", "fol.inst", "fol.tris");
     bool first = true;
     for (const Scenario& sc : kScenarios) {
         if (o.bench != "all" && o.bench != sc.name) continue;
@@ -567,14 +608,16 @@ int runBench(Lab& lab, SDL_Window* window) {
 
         const fs::path csv = o.out / (std::string(sc.name) + ".csv");
         std::ofstream out(csv);
-        out << "frame,frame_ms,select_ms,record_ms,wait_ms,patches,triangles,rects,texels,misses,nodes,x,y,z,ground\n";
+        out << "frame,frame_ms,select_ms,record_ms,wait_ms,patches,triangles,rects,texels,misses,nodes,x,y,z,ground,foliage_instances,foliage_triangles,foliage_candidates\n";
         std::vector<double> ms, sel, rec;
-        double texelSum = 0, texelMax = 0, patchMax = 0, triMax = 0, misses = 0;
+        double texelSum = 0, texelMax = 0, patchMax = 0, triMax = 0, misses = 0, foliageMax = 0, foliageTriMax = 0;
         for (std::size_t i = 0; i < frames.size(); ++i) {
             const FrameStats& s = frames[i];
-            std::snprintf(buf, sizeof buf, "%zu,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%llu,%u,%u,%.2f,%.2f,%.2f,%.2f\n", i, s.frameMs,
+            std::snprintf(buf, sizeof buf, "%zu,%.3f,%.3f,%.3f,%.3f,%u,%u,%u,%llu,%u,%u,%.2f,%.2f,%.2f,%.2f,%llu,%llu,%llu\n", i, s.frameMs,
                           s.selectMs, s.recordMs, s.waitMs, s.patches, s.triangles, s.rects,
-                          (unsigned long long)s.texels, s.misses, s.nodes, s.x, s.y, s.z, s.ground);
+                          (unsigned long long)s.texels, s.misses, s.nodes, s.x, s.y, s.z, s.ground,
+                          (unsigned long long)s.foliageInstances, (unsigned long long)s.foliageTriangles,
+                          (unsigned long long)s.foliageCandidates);
             out << buf;
             ms.push_back(s.frameMs);
             sel.push_back(s.selectMs);
@@ -582,6 +625,8 @@ int runBench(Lab& lab, SDL_Window* window) {
             texelSum += double(s.texels);
             texelMax = std::max(texelMax, double(s.texels));
             patchMax = std::max(patchMax, double(s.patches));
+            foliageMax = std::max(foliageMax, double(s.foliageInstances));
+            foliageTriMax = std::max(foliageTriMax, double(s.foliageTriangles));
             triMax = std::max(triMax, double(s.triangles));
             misses += s.misses;
         }
@@ -593,17 +638,17 @@ int runBench(Lab& lab, SDL_Window* window) {
         for (double v : rec) recMean += v;
         selMean /= double(sel.size());
         recMean /= double(rec.size());
-        std::printf("%-9s %7.2f %7.2f %7.2f %7.2f %7.2f | %6.2f %6.2f | %7.0f %9.0f %9.0f %6.0f   cold %.1f ms\n", sc.name,
+        std::printf("%-9s %7.2f %7.2f %7.2f %7.2f %7.2f | %6.2f %6.2f | %7.0f %9.0f %9.0f %6.0f | %8.0f %9.0f   cold %.1f ms\n", sc.name,
                     mean, percentile(ms, 0.5), percentile(ms, 0.95), percentile(ms, 0.99), percentile(ms, 1.0), selMean,
-                    recMean, patchMax, triMax, texelSum / double(frames.size()), misses, coldMs);
+                    recMean, patchMax, triMax, texelSum / double(frames.size()), misses, foliageMax, foliageTriMax, coldMs);
         std::snprintf(buf, sizeof buf,
                       "%s    {\"name\": \"%s\", \"frames\": %zu, \"meanMs\": %.3f, \"p50Ms\": %.3f, \"p95Ms\": %.3f, "
                       "\"p99Ms\": %.3f, \"maxMs\": %.3f, \"selectMs\": %.3f, \"recordMs\": %.3f, \"coldMs\": %.3f, "
                       "\"patchesMax\": %.0f, \"trianglesMax\": %.0f, \"texelsPerFrame\": %.0f, \"texelsMax\": %.0f, "
-                      "\"coverageMisses\": %.0f}",
+                      "\"coverageMisses\": %.0f, \"foliageInstancesMax\": %.0f, \"foliageTrianglesMax\": %.0f}",
                       first ? "" : ",\n", sc.name, frames.size(), mean, percentile(ms, 0.5), percentile(ms, 0.95),
                       percentile(ms, 0.99), percentile(ms, 1.0), selMean, recMean, coldMs, patchMax, triMax,
-                      texelSum / double(frames.size()), texelMax, misses);
+                      texelSum / double(frames.size()), texelMax, misses, foliageMax, foliageTriMax);
         summary += buf;
         first = false;
     }
@@ -667,6 +712,12 @@ int runInteractive(Lab& lab, SDL_Window* window) {
             if (e.type == SDL_EVENT_KEY_DOWN) {
                 if (e.key.key == SDLK_ESCAPE) return 0;
                 if (e.key.key == SDLK_F1) lab.options.debugLevels = (lab.options.debugLevels + 1) % 6;
+                if (e.key.key == SDLK_F2) lab.options.groundMaterials = !lab.options.groundMaterials;
+                if (e.key.key == SDLK_F3) lab.options.foliage = !lab.options.foliage;
+                if (e.key.key >= SDLK_1 && e.key.key <= SDLK_9 && lab.foliageReady) {
+                    const std::size_t i = std::size_t(e.key.key - SDLK_1);
+                    if (i < lab.foliage.layers().size()) lab.foliage.layers()[i].enabled = !lab.foliage.layers()[i].enabled;
+                }
                 if (e.key.key == SDLK_M) {
                     map = !map;
                     if (map) {
@@ -771,11 +822,16 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                               strategic.x / 1000, strategic.y / 1000, strategic.distance / 1000);
             else
                 std::snprintf(where, sizeof where, "x %.0f y %.0f agl %.0f, speed %.0f m/s (M: map)", s.x, s.y, agl, speed);
-            char title[512];
+            // Which modules are on: G ground materials, F foliage and its layers (1..9).
+            std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.foliage ? " F:" : " f:");
+            if (lab.foliageReady)
+                for (std::size_t i = 0; i < lab.foliage.layers().size(); ++i)
+                    modules += lab.foliage.layers()[i].enabled ? char('1' + i) : '-';
+            char title[640];
             std::snprintf(title, sizeof title,
-                          "terrain_lab | %.0f fps %.2f ms (sel %.2f rec %.2f) | patches %u tris %.2fM | gen %llu tx | %s %s",
-                          1000.0 / mean, mean, s.selectMs, s.recordMs, s.patches, s.triangles / 1e6,
-                          (unsigned long long)s.texels, where, s.misses ? "| COVERAGE MISS" : "");
+                          "terrain_lab | %.0f fps %.2f ms | terrain %.2fM tris | foliage %llu inst %.2fM tris | [%s] | %s %s",
+                          1000.0 / mean, mean, s.triangles / 1e6, (unsigned long long)s.foliageInstances,
+                          double(s.foliageTriangles) / 1e6, modules.c_str(), where, s.misses ? "| COVERAGE MISS" : "");
             SDL_SetWindowTitle(window, title);
             window_ms.clear();
             titleAt = Clock::now();

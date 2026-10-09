@@ -28,7 +28,9 @@ namespace terrain_core {
 
 struct DrainageSettings {
     std::uint32_t resolution = 2048;   // work grid, at most this many texels a side
-    std::uint32_t iterations = 100;
+    // Off unless asked for: the water's own pass (rivers, lakes) will run it.
+    // Recommended when on: 100.
+    std::uint32_t iterations = 0;
     double incision = 0.2;             // K * dt: how hard a catchment cuts
     double channelCells = 64;          // catchment (in cells) where a channel starts; above it slopes only slide
     double hold = 0.03;                // pull back towards the original per iteration

@@ -1,0 +1,746 @@
+{
+ "comment": "Foliage of the terrain core (stage 3). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover].",
+ "models": {
+  "grass01": {
+   "source": "retro_nature_pack/models/glTF/grass/grass01.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass02": {
+   "source": "retro_nature_pack/models/glTF/grass/grass02.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass03": {
+   "source": "retro_nature_pack/models/glTF/grass/grass03.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass04": {
+   "source": "retro_nature_pack/models/glTF/grass/grass04.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass05": {
+   "source": "retro_nature_pack/models/glTF/grass/grass05.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass06": {
+   "source": "retro_nature_pack/models/glTF/grass/grass06.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass07": {
+   "source": "retro_nature_pack/models/glTF/grass/grass07.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass08": {
+   "source": "retro_nature_pack/models/glTF/grass/grass08.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass09": {
+   "source": "retro_nature_pack/models/glTF/grass/grass09.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_summer.png"
+  },
+  "grass_bush": {
+   "source": "retro_nature_pack/models/glTF/grass/grass_bush.glb",
+   "texture": "retro_nature_pack/textures/grass/grass_bush_summer.png"
+  },
+  "shrub01": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush01.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush1_summer.png"
+  },
+  "shrub02": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush02.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush2_summer.png"
+  },
+  "shrub03": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush03.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush3_summer.png"
+  },
+  "shrub04": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush04.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush4_summer.png"
+  },
+  "shrub05": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush05.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush5_summer.png"
+  },
+  "shrub06": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush06.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush6_summer.png"
+  },
+  "shrub07": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush07.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush7_summer.png"
+  },
+  "shrub08": {
+   "source": "retro_nature_pack/models/glTF/bushes/bush08.glb",
+   "texture": "retro_nature_pack/textures/bushes/bush8_summer.png"
+  },
+  "sapling01": {
+   "source": "retro_nature_pack/models/glTF/trees/tree01.glb",
+   "texture": "retro_nature_pack/textures/trees/tree01_summer.png"
+  },
+  "sapling02": {
+   "source": "retro_nature_pack/models/glTF/trees/tree02.glb",
+   "texture": "retro_nature_pack/textures/trees/tree02_summer.png"
+  },
+  "sapling03": {
+   "source": "retro_nature_pack/models/glTF/trees/tree03.glb",
+   "texture": "retro_nature_pack/textures/trees/tree03_summer.png"
+  },
+  "sapling04": {
+   "source": "retro_nature_pack/models/glTF/trees/tree04.glb",
+   "texture": "retro_nature_pack/textures/trees/tree04_summer.png"
+  },
+  "sapling05": {
+   "source": "retro_nature_pack/models/glTF/trees/tree05.glb",
+   "texture": "retro_nature_pack/textures/trees/tree05_summer.png"
+  },
+  "sapling06": {
+   "source": "retro_nature_pack/models/glTF/trees/tree06.glb",
+   "texture": "retro_nature_pack/textures/trees/tree06_summer.png"
+  },
+  "sapling07": {
+   "source": "retro_nature_pack/models/glTF/trees/tree07.glb",
+   "texture": "retro_nature_pack/textures/trees/tree07_summer.png"
+  },
+  "sapling08": {
+   "source": "retro_nature_pack/models/glTF/trees/tree08.glb",
+   "texture": "retro_nature_pack/textures/trees/tree08_summer.png"
+  },
+  "bush01": {
+   "source": "tree_pack_1.1/models/bush01.fbx",
+   "texture": "tree_pack_1.1/textures/bush01.png"
+  },
+  "bush02": {
+   "source": "tree_pack_1.1/models/bush02.fbx",
+   "texture": "tree_pack_1.1/textures/bush02.png"
+  },
+  "bush03": {
+   "source": "tree_pack_1.1/models/bush03.fbx",
+   "texture": "tree_pack_1.1/textures/bush03.png"
+  },
+  "bush04": {
+   "source": "tree_pack_1.1/models/bush04.fbx",
+   "texture": "tree_pack_1.1/textures/bush04.png"
+  },
+  "bush05": {
+   "source": "tree_pack_1.1/models/bush05.fbx",
+   "texture": "tree_pack_1.1/textures/bush05.png"
+  },
+  "bush06": {
+   "source": "tree_pack_1.1/models/bush06.fbx",
+   "texture": "tree_pack_1.1/textures/bush06.png"
+  },
+  "bush07": {
+   "source": "tree_pack_1.1/models/bush07.fbx",
+   "texture": "tree_pack_1.1/textures/bush07.png"
+  },
+  "bush08": {
+   "source": "tree_pack_1.1/models/bush08.fbx",
+   "texture": "tree_pack_1.1/textures/bush08.png"
+  },
+  "tree01": {
+   "source": "tree_pack_1.1/models/tree01.fbx",
+   "texture": "tree_pack_1.1/textures/tree01.png"
+  },
+  "tree02": {
+   "source": "tree_pack_1.1/models/tree02.fbx",
+   "texture": "tree_pack_1.1/textures/tree02.png"
+  },
+  "tree03": {
+   "source": "tree_pack_1.1/models/tree03.fbx",
+   "texture": "tree_pack_1.1/textures/tree03.png"
+  },
+  "tree04": {
+   "source": "tree_pack_1.1/models/tree04.fbx",
+   "texture": "tree_pack_1.1/textures/tree04.png"
+  },
+  "tree05": {
+   "source": "tree_pack_1.1/models/tree05.fbx",
+   "texture": "tree_pack_1.1/textures/tree05.png"
+  },
+  "tree06": {
+   "source": "tree_pack_1.1/models/tree06.fbx",
+   "texture": "tree_pack_1.1/textures/tree06.png"
+  },
+  "tree07": {
+   "source": "tree_pack_1.1/models/tree07.fbx",
+   "texture": "tree_pack_1.1/textures/tree07.png"
+  },
+  "tree08": {
+   "source": "tree_pack_1.1/models/tree08.fbx",
+   "texture": "tree_pack_1.1/textures/tree08.png"
+  },
+  "tree09": {
+   "source": "tree_pack_1.1/models/tree09.fbx",
+   "texture": "tree_pack_1.1/textures/tree09.png"
+  },
+  "tree10": {
+   "source": "tree_pack_1.1/models/tree10.fbx",
+   "texture": "tree_pack_1.1/textures/tree10.png"
+  },
+  "tree11": {
+   "source": "tree_pack_1.1/models/tree11.fbx",
+   "texture": "tree_pack_1.1/textures/tree11.png"
+  },
+  "tree12": {
+   "source": "tree_pack_1.1/models/tree12.fbx",
+   "texture": "tree_pack_1.1/textures/tree12.png"
+  },
+  "tree13": {
+   "source": "tree_pack_1.1/models/tree13.fbx",
+   "texture": "tree_pack_1.1/textures/tree13.png"
+  },
+  "tree14": {
+   "source": "tree_pack_1.1/models/tree14.fbx",
+   "texture": "tree_pack_1.1/textures/tree14.png"
+  },
+  "tree15": {
+   "source": "tree_pack_1.1/models/tree15.fbx",
+   "texture": "tree_pack_1.1/textures/tree15.png"
+  },
+  "tree16": {
+   "source": "tree_pack_1.1/models/tree16.fbx",
+   "texture": "tree_pack_1.1/textures/tree16.png"
+  },
+  "tree17": {
+   "source": "tree_pack_1.1/models/tree17.fbx",
+   "texture": "tree_pack_1.1/textures/tree17.png"
+  },
+  "tree18": {
+   "source": "tree_pack_1.1/models/tree18.fbx",
+   "texture": "tree_pack_1.1/textures/tree18.png"
+  },
+  "tree19": {
+   "source": "tree_pack_1.1/models/tree19.fbx",
+   "texture": "tree_pack_1.1/textures/tree19.png"
+  },
+  "tree20": {
+   "source": "tree_pack_1.1/models/tree20.fbx",
+   "texture": "tree_pack_1.1/textures/tree20.png"
+  },
+  "tree21": {
+   "source": "tree_pack_1.1/models/tree21.fbx",
+   "texture": "tree_pack_1.1/textures/tree21.png"
+  },
+  "tree22": {
+   "source": "tree_pack_1.1/models/tree22.fbx",
+   "texture": "tree_pack_1.1/textures/tree22.png"
+  },
+  "tree23": {
+   "source": "tree_pack_1.1/models/tree23.fbx",
+   "texture": "tree_pack_1.1/textures/tree23.png"
+  },
+  "tree24": {
+   "source": "tree_pack_1.1/models/tree24.fbx",
+   "texture": "tree_pack_1.1/textures/tree24.png"
+  },
+  "tree25": {
+   "source": "tree_pack_1.1/models/tree25.fbx",
+   "texture": "tree_pack_1.1/textures/tree25.png"
+  },
+  "tree26": {
+   "source": "tree_pack_1.1/models/tree26.fbx",
+   "texture": "tree_pack_1.1/textures/tree26.png"
+  },
+  "tree27": {
+   "source": "tree_pack_1.1/models/tree27.fbx",
+   "texture": "tree_pack_1.1/textures/tree27.png"
+  },
+  "tree28": {
+   "source": "tree_pack_1.1/models/tree28.fbx",
+   "texture": "tree_pack_1.1/textures/tree28.png"
+  },
+  "tree29": {
+   "source": "tree_pack_1.1/models/tree29.fbx",
+   "texture": "tree_pack_1.1/textures/tree29.png"
+  },
+  "tree30": {
+   "source": "tree_pack_1.1/models/tree30.fbx",
+   "texture": "tree_pack_1.1/textures/tree30.png"
+  },
+  "tree31": {
+   "source": "tree_pack_1.1/models/tree31.fbx",
+   "texture": "tree_pack_1.1/textures/tree31.png"
+  },
+  "tree32": {
+   "source": "tree_pack_1.1/models/tree32.fbx",
+   "texture": "tree_pack_1.1/textures/tree32.png"
+  },
+  "tree33": {
+   "source": "tree_pack_1.1/models/tree33.fbx",
+   "texture": "tree_pack_1.1/textures/tree33.png"
+  },
+  "tree34": {
+   "source": "tree_pack_1.1/models/tree34.fbx",
+   "texture": "tree_pack_1.1/textures/tree34.png"
+  },
+  "tree35": {
+   "source": "tree_pack_1.1/models/tree35.fbx",
+   "texture": "tree_pack_1.1/textures/tree35.png"
+  },
+  "tree36": {
+   "source": "tree_pack_1.1/models/tree36.fbx",
+   "texture": "tree_pack_1.1/textures/tree36.png"
+  }
+ },
+ "layers": [
+  {
+   "name": "grass",
+   "spacing_m": 0.9,
+   "range_m": 70,
+   "models": [
+    "grass01",
+    "grass02",
+    "grass03",
+    "grass04",
+    "grass05",
+    "grass06",
+    "grass07",
+    "grass08",
+    "grass09"
+   ],
+   "scale": [
+    1.0,
+    1.9
+   ],
+   "min_normal_z": 0.75,
+   "max_count": 220000
+  },
+  {
+   "name": "shrubs",
+   "spacing_m": 3.5,
+   "range_m": 260,
+   "models": [
+    "shrub01",
+    "shrub02",
+    "shrub03",
+    "shrub04",
+    "shrub05",
+    "shrub06",
+    "shrub07",
+    "shrub08",
+    "grass_bush"
+   ],
+   "scale": [
+    0.9,
+    1.7
+   ],
+   "min_normal_z": 0.75,
+   "max_count": 90000
+  },
+  {
+   "name": "bushes",
+   "spacing_m": 9,
+   "range_m": 700,
+   "models": [
+    "bush02",
+    "bush04",
+    "bush06",
+    "bush08"
+   ],
+   "scale": [
+    0.22,
+    0.38
+   ],
+   "min_normal_z": 0.8,
+   "max_count": 40000
+  },
+  {
+   "name": "autumn_bushes",
+   "spacing_m": 9,
+   "range_m": 700,
+   "models": [
+    "bush01",
+    "bush03",
+    "bush05",
+    "bush07"
+   ],
+   "scale": [
+    0.22,
+    0.38
+   ],
+   "min_normal_z": 0.8,
+   "max_count": 30000
+  },
+  {
+   "name": "saplings",
+   "spacing_m": 10,
+   "range_m": 400,
+   "models": [
+    "sapling01",
+    "sapling02",
+    "sapling03",
+    "sapling04",
+    "sapling05",
+    "sapling06",
+    "sapling07",
+    "sapling08"
+   ],
+   "scale": [
+    1.0,
+    1.8
+   ],
+   "min_normal_z": 0.8,
+   "max_count": 20000
+  },
+  {
+   "name": "conifers",
+   "spacing_m": 7,
+   "range_m": 3500,
+   "models": [
+    "tree01",
+    "tree03",
+    "tree04",
+    "tree05",
+    "tree06",
+    "tree07",
+    "tree08",
+    "tree09",
+    "tree10",
+    "tree11",
+    "tree12"
+   ],
+   "scale": [
+    0.8,
+    1.5
+   ],
+   "min_normal_z": 0.78,
+   "max_count": 200000
+  },
+  {
+   "name": "broadleaf",
+   "spacing_m": 8,
+   "range_m": 3500,
+   "models": [
+    "tree02",
+    "tree13",
+    "tree14",
+    "tree15",
+    "tree16",
+    "tree17",
+    "tree18",
+    "tree19",
+    "tree20",
+    "tree21",
+    "tree22",
+    "tree23",
+    "tree24",
+    "tree25",
+    "tree26",
+    "tree27"
+   ],
+   "scale": [
+    0.7,
+    1.3
+   ],
+   "min_normal_z": 0.82,
+   "max_count": 200000
+  },
+  {
+   "name": "autumn",
+   "spacing_m": 9,
+   "range_m": 3500,
+   "models": [
+    "tree28",
+    "tree29",
+    "tree30",
+    "tree31",
+    "tree32",
+    "tree33",
+    "tree34",
+    "tree35",
+    "tree36"
+   ],
+   "scale": [
+    0.7,
+    1.3
+   ],
+   "min_normal_z": 0.82,
+   "max_count": 120000
+  }
+ ],
+ "biomes": {
+  "1": {
+   "grass": [
+    0.85,
+    0,
+    0
+   ],
+   "shrubs": [
+    0.25,
+    0,
+    0
+   ],
+   "bushes": [
+    0.08,
+    0,
+    0
+   ],
+   "broadleaf": [
+    0.06,
+    300,
+    0.35
+   ],
+   "saplings": [
+    0.03,
+    0,
+    0
+   ]
+  },
+  "2": {
+   "conifers": [
+    0.85,
+    700,
+    0.8
+   ],
+   "grass": [
+    0.35,
+    0,
+    0
+   ],
+   "shrubs": [
+    0.18,
+    0,
+    0
+   ],
+   "saplings": [
+    0.425,
+    0,
+    0
+   ]
+  },
+  "3": {
+   "grass": [
+    0.45,
+    0,
+    0
+   ],
+   "shrubs": [
+    0.06,
+    0,
+    0
+   ],
+   "autumn_bushes": [
+    0.04,
+    500,
+    0.4
+   ]
+  },
+  "4": {
+   "shrubs": [
+    0.015,
+    0,
+    0
+   ]
+  },
+  "5": {
+   "grass": [
+    0.6,
+    0,
+    0
+   ],
+   "autumn": [
+    0.35,
+    500,
+    0.55
+   ],
+   "autumn_bushes": [
+    0.12,
+    0,
+    0
+   ]
+  },
+  "6": {
+   "grass": [
+    0.9,
+    0,
+    0
+   ],
+   "broadleaf": [
+    0.18,
+    500,
+    0.35
+   ],
+   "shrubs": [
+    0.08,
+    0,
+    0
+   ],
+   "bushes": [
+    0.05,
+    0,
+    0
+   ],
+   "saplings": [
+    0.09,
+    0,
+    0
+   ]
+  },
+  "7": {
+   "grass": [
+    0.95,
+    0,
+    0
+   ],
+   "autumn": [
+    0.12,
+    400,
+    0.4
+   ],
+   "shrubs": [
+    0.2,
+    0,
+    0
+   ]
+  },
+  "8": {
+   "conifers": [
+    0.3,
+    600,
+    0.5
+   ],
+   "grass": [
+    0.3,
+    0,
+    0
+   ],
+   "saplings": [
+    0.15,
+    0,
+    0
+   ]
+  },
+  "9": {
+   "grass": [
+    0.85,
+    0,
+    0
+   ],
+   "broadleaf": [
+    0.5,
+    600,
+    0.6
+   ],
+   "conifers": [
+    0.15,
+    600,
+    0.5
+   ],
+   "shrubs": [
+    0.15,
+    0,
+    0
+   ],
+   "bushes": [
+    0.06,
+    0,
+    0
+   ],
+   "saplings": [
+    0.25,
+    0,
+    0
+   ]
+  },
+  "10": {
+   "shrubs": [
+    0.04,
+    0,
+    0
+   ],
+   "autumn_bushes": [
+    0.03,
+    0,
+    0
+   ]
+  },
+  "12": {
+   "grass": [
+    0.9,
+    0,
+    0
+   ],
+   "broadleaf": [
+    0.6,
+    500,
+    0.7
+   ],
+   "shrubs": [
+    0.3,
+    0,
+    0
+   ],
+   "bushes": [
+    0.1,
+    0,
+    0
+   ],
+   "saplings": [
+    0.3,
+    0,
+    0
+   ]
+  },
+  "13": {
+   "conifers": [
+    0.35,
+    500,
+    0.5
+   ],
+   "grass": [
+    0.4,
+    0,
+    0
+   ],
+   "saplings": [
+    0.175,
+    0,
+    0
+   ]
+  },
+  "14": {
+   "grass": [
+    0.7,
+    0,
+    0
+   ],
+   "autumn": [
+    0.3,
+    500,
+    0.5
+   ],
+   "broadleaf": [
+    0.1,
+    500,
+    0.4
+   ],
+   "saplings": [
+    0.05,
+    0,
+    0
+   ]
+  },
+  "15": {
+   "grass": [
+    0.7,
+    0,
+    0
+   ],
+   "broadleaf": [
+    0.3,
+    600,
+    0.5
+   ],
+   "shrubs": [
+    0.1,
+    0,
+    0
+   ],
+   "saplings": [
+    0.15,
+    0,
+    0
+   ]
+  }
+ }
+}
