@@ -7,6 +7,7 @@
 #include <cmath>
 #include <limits>
 #include <queue>
+#include <unordered_map>
 #include <thread>
 
 namespace terrain_core {
@@ -67,11 +68,12 @@ struct Node {
     float area = 0;                 // km^2
     float surface = 0, width = 0, depth = 0;
     bool terminal = false;          // where a river meets the sea or a lake
+    bool main = false;              // on the framework
 };
 
 } // namespace
 
-Hydrology buildHydrology(const MacroMap& macro, const Params& params, const HydrologySettings& s) {
+Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologySettings& s) {
     const auto start = std::chrono::steady_clock::now();
     const double range = params.macroHeightRange, sea = params.macroSeaLevel * range;
     const std::uint32_t n = macro.size();
@@ -420,11 +422,11 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
         if (closed[i] == 2) receiver[i] = i;
         else if (closed[i] == 1) receiver[i] = steepest(i, route, i);
 
-    // Catchment again, now that closed hollows keep theirs: in dependency
-    // order (Kahn), which is also upstream-before-downstream for the graph.
-    std::fill(area.begin(), area.end(), float(cellKm2));
-    order.clear();
-    {
+    // Catchment in dependency order (Kahn), which is also upstream-before-
+    // downstream for the graph.
+    auto accumulate = [&] {
+        std::fill(area.begin(), area.end(), float(cellKm2));
+        order.clear();
         std::vector<std::uint8_t> pending(cells, 0);
         for (std::uint32_t i = 0; i < cells; ++i)
             if (receiver[i] != i) ++pending[receiver[i]];
@@ -436,7 +438,245 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
             area[r] += area[i];
             if (--pending[r] == 0) order.push_back(r);
         }
+    };
+    accumulate();
+
+    // ---- The framework: the main lakes and rivers ---------------------------
+    // Painted, or picked from the pass above. Everything else then drains
+    // to it (below): no other hollow keeps water.
+    std::vector<std::uint8_t> skel(cells, 0);          // 1 river, 2 lake
+    std::vector<float> skelLevel(cells, WaterMap::kNoWater);
+    std::vector<std::uint32_t> skelDown(cells, kNone);  // the next cell downstream along it
+    out.closedLakes = 0;                                // counted again, of the framework's
+    auto lakeParts = [&](const std::vector<std::uint8_t>& isLake, std::vector<std::vector<std::uint32_t>>& parts) {
+        std::vector<std::uint8_t> seen(cells, 0);
+        for (std::uint32_t first = 0; first < cells; ++first) {
+            if (!isLake[first] || seen[first]) continue;
+            parts.emplace_back();
+            std::vector<std::uint32_t> stack(1, first);
+            seen[first] = 1;
+            while (!stack.empty()) {
+                const std::uint32_t i = stack.back();
+                stack.pop_back();
+                parts.back().push_back(i);
+                for (int k = 0; k < 8; ++k) {
+                    const std::uint32_t c = neighbour(i, k);
+                    if (c != kNone && isLake[c] && !seen[c]) { seen[c] = 1; stack.push_back(c); }
+                }
+            }
+        }
+    };
+    if (s.skeleton && s.skeleton->width && s.skeleton->height) {
+        // Painted. Each work cell takes a river if any of its pixels is one
+        // (a line must not break), a lake by its middle pixel.
+        const WaterSkeleton& paint = *s.skeleton;
+        std::vector<std::uint8_t> river(cells, 0), wet(cells, 0);
+        for (std::uint32_t y = 0; y < side; ++y)
+            for (std::uint32_t x = 0; x < side; ++x) {
+                const std::uint32_t i = y * side + x;
+                if (ocean[i]) continue;
+                const std::uint32_t px0 = x * paint.width / side, px1 = std::max(px0 + 1, (x + 1) * paint.width / side);
+                // Row 0 of the picture is the north edge, the work grid's last row.
+                const std::uint32_t row0 = (side - 1 - y) * paint.height / side;
+                const std::uint32_t row1 = std::max(row0 + 1, (side - y) * paint.height / side);
+                for (std::uint32_t py = row0; py < row1 && !river[i]; ++py)
+                    for (std::uint32_t px = px0; px < px1; ++px)
+                        if (paint.cells[std::size_t(py) * paint.width + px] == 1) { river[i] = 1; break; }
+                const std::uint32_t mx = (px0 + px1) / 2, my = (row0 + row1) / 2;
+                wet[i] = paint.cells[std::size_t(my) * paint.width + mx] == 2;
+            }
+        // A drawn line is several cells thick here and there: thinned to one
+        // (Zhang-Suen), so a river is a path, not a band.
+        for (bool changed = true; changed;) {
+            changed = false;
+            for (int step = 0; step < 2; ++step) {
+                std::vector<std::uint32_t> drop;
+                for (std::uint32_t y = 1; y + 1 < side; ++y)
+                    for (std::uint32_t x = 1; x + 1 < side; ++x) {
+                        const std::uint32_t i = y * side + x;
+                        if (!river[i]) continue;
+                        // p2..p9 clockwise from north.
+                        const std::uint8_t p[8] = {river[i + side], river[i + side + 1], river[i + 1], river[i - side + 1],
+                                                   river[i - side], river[i - side - 1], river[i - 1], river[i + side - 1]};
+                        int count = 0, turns = 0;
+                        for (int k = 0; k < 8; ++k) { count += p[k]; turns += (!p[k] && p[(k + 1) % 8]); }
+                        if (count < 2 || count > 6 || turns != 1) continue;
+                        if (step == 0 ? (p[0] && p[2] && p[4]) || (p[2] && p[4] && p[6])
+                                      : (p[0] && p[2] && p[6]) || (p[0] && p[4] && p[6]))
+                            continue;
+                        drop.push_back(i);
+                    }
+                for (const std::uint32_t i : drop) river[i] = 0;
+                changed = changed || !drop.empty();
+            }
+        }
+        // Each lake's level: its shore's lowest ground (where it spills),
+        // and a bed cut under it so the water shows - into the macro map as
+        // well, deeper away from the shore.
+        std::vector<std::vector<std::uint32_t>> parts;
+        lakeParts(wet, parts);
+        std::vector<float> bed(cells, std::numeric_limits<float>::max());
+        for (const auto& part : parts) {
+            float rim = std::numeric_limits<float>::max();
+            for (const std::uint32_t i : part)
+                for (int k = 0; k < 8; ++k) {
+                    const std::uint32_t c = neighbour(i, k);
+                    if (c != kNone && !wet[c]) rim = std::min(rim, ocean[c] ? 0.0f : h[c]);
+                }
+            const float level = std::max(rim - 0.5f, 0.5f);
+            // Distance from the shore, in cells, by rings.
+            std::vector<std::uint32_t> ring;
+            std::unordered_map<std::uint32_t, int> from;
+            for (const std::uint32_t i : part) {
+                bool shore = false;
+                for (int k = 0; k < 8 && !shore; ++k) {
+                    const std::uint32_t c = neighbour(i, k);
+                    shore = c == kNone || !wet[c];
+                }
+                if (shore) { from[i] = 0; ring.push_back(i); }
+            }
+            for (int d = 1; !ring.empty(); ++d) {
+                std::vector<std::uint32_t> next;
+                for (const std::uint32_t i : ring)
+                    for (int k = 0; k < 8; ++k) {
+                        const std::uint32_t c = neighbour(i, k);
+                        if (c != kNone && wet[c] && !from.count(c)) { from[c] = d; next.push_back(c); }
+                    }
+                ring.swap(next);
+            }
+            for (const std::uint32_t i : part) {
+                skel[i] = 2;
+                skelLevel[i] = level;
+                bed[i] = level - std::min(2.0f + 6.0f * float(from[i]), 60.0f);
+                h[i] = std::min(h[i], bed[i]);
+                route[i] = std::min(route[i], bed[i]);
+            }
+            ++out.mainLakeCount;
+        }
+        if (!parts.empty()) {
+            std::vector<std::uint16_t> texels(macro.texels());
+            for (std::uint32_t y = 0; y < n; ++y)
+                for (std::uint32_t x = 0; x < n; ++x) {
+                    const float b = bed[std::size_t(y / f) * side + x / f];
+                    if (b == std::numeric_limits<float>::max()) continue;
+                    const double v = (double(b) + sea) / range * 65535.0;
+                    std::uint16_t& t = texels[std::size_t(y) * n + x];
+                    t = std::uint16_t(std::clamp(std::min(double(t), v), 0.0, 65535.0));
+                }
+            macro.assign(n, std::move(texels));
+        }
+        for (std::uint32_t i = 0; i < cells; ++i)
+            if (river[i] && !skel[i]) skel[i] = 1;
+        // Which way along it: from where it meets the sea, back up; a river
+        // that never reaches the sea runs to its lowest end.
+        std::vector<int> dist(cells, -1);
+        std::vector<std::uint32_t> queue;
+        for (std::uint32_t i = 0; i < cells; ++i) {
+            if (!skel[i]) continue;
+            for (int k = 0; k < 8; ++k) {
+                const std::uint32_t c = neighbour(i, k);
+                if (c != kNone && ocean[c]) { dist[i] = 0; skelDown[i] = c; queue.push_back(i); break; }
+            }
+        }
+        auto spread = [&](std::vector<std::uint32_t>& q) {
+            for (std::size_t head = 0; head < q.size(); ++head) {
+                const std::uint32_t i = q[head];
+                for (int k = 0; k < 8; ++k) {
+                    const std::uint32_t c = neighbour(i, k);
+                    if (c == kNone || !skel[c] || dist[c] >= 0) continue;
+                    dist[c] = dist[i] + 1;
+                    skelDown[c] = i;
+                    q.push_back(c);
+                }
+            }
+        };
+        spread(queue);
+        for (bool left = true; left;) {
+            left = false;
+            std::uint32_t lowest = kNone;
+            for (std::uint32_t i = 0; i < cells; ++i)
+                if (skel[i] && dist[i] < 0 && (lowest == kNone || h[i] < h[lowest])) lowest = i;
+            if (lowest == kNone) break;
+            left = true;
+            dist[lowest] = 0;
+            skelDown[lowest] = lowest;
+            queue.assign(1, lowest);
+            spread(queue);
+        }
+    } else {
+        // Generated: the biggest lakes of the pass above. The main rivers are
+        // picked after the drain pass below, from the catchment as it is once
+        // no other hollow keeps water - so they run on to the sea or a main
+        // lake instead of ending in a hollow that is no longer a lake.
+        std::vector<std::vector<std::uint32_t>> parts;
+        lakeParts(lake, parts);
+        std::sort(parts.begin(), parts.end(), [](const auto& a, const auto& b) { return a.size() > b.size(); });
+        for (const auto& part : parts) {
+            if (out.mainLakeCount >= s.mainLakes || double(part.size()) * cellKm2 < s.mainLakeArea) break;
+            for (const std::uint32_t i : part) {
+                skel[i] = 2;
+                skelLevel[i] = lakeLevel[i];
+                // A lake with no outlet is where its water ends; one that
+                // spills is just a filled hollow the flood drains through.
+                skelDown[i] = closed[i] == 2 ? i : kNone;
+            }
+            out.closedLakes += closed[part.front()] == 2 ? 1 : 0;
+            ++out.mainLakeCount;
+        }
     }
+    const bool painted = s.skeleton && s.skeleton->width && s.skeleton->height;
+    // Seeds of the drain flood: every painted cell; of the generated ones
+    // only the closed lakes (open ones drain on through their outlet).
+    auto seed = [&](std::uint32_t i) { return skel[i] && (painted || skelDown[i] != kNone); };
+
+    // ---- Everything else drains to it -----------------------------------------
+    // A flood from the sea and the framework both: every other hollow is
+    // filled to where it spills, so its water runs on - down to a main river,
+    // a main lake or the sea - and keeps none.
+    std::fill(lake.begin(), lake.end(), std::uint8_t(0));
+    std::fill(lakeLevel.begin(), lakeLevel.end(), WaterMap::kNoWater);
+    {
+        filled = route;
+        using Item = std::pair<float, std::uint32_t>;
+        std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
+        std::vector<std::uint8_t> done(cells, 0);
+        for (std::uint32_t i = 0; i < cells; ++i) {
+            const std::uint32_t x = i % side, y = i / side;
+            const bool edge = x == 0 || y == 0 || x == side - 1 || y == side - 1;
+            if (edge || ocean[i] || seed(i)) {
+                done[i] = 1;
+                receiver[i] = ocean[i] || !seed(i) ? i : skelDown[i];
+                if (skel[i] == 2) filled[i] = std::min(filled[i], skelLevel[i]);
+                open.push({filled[i], i});
+            }
+        }
+        while (!open.empty()) {
+            const auto [level, i] = open.top();
+            open.pop();
+            for (int k = 0; k < 8; ++k) {
+                const std::uint32_t c = neighbour(i, k);
+                if (c == kNone || done[c]) continue;
+                done[c] = 1;
+                receiver[c] = i;
+                filled[c] = std::max(filled[c], level + 1e-3f);
+                open.push({filled[c], c});
+            }
+        }
+        for (std::uint32_t i = 0; i < cells; ++i)
+            if (!seed(i) && !ocean[i] && receiver[i] != i) receiver[i] = steepest(i, filled, receiver[i]);
+        for (std::uint32_t i = 0; i < cells; ++i)
+            if (skel[i] == 2) { lake[i] = 1; lakeLevel[i] = skelLevel[i]; }
+    }
+    accumulate();
+    if (!painted)
+        for (std::uint32_t i = 0; i < cells; ++i)
+            if (!ocean[i] && !skel[i] && area[i] >= s.mainRiverArea) skel[i] = 1;
+    for (std::uint32_t i = 0; i < cells; ++i) out.mainRiverCells += skel[i] == 1 ? 1 : 0;
+    out.skeletonSize = side;
+    out.skeleton = skel;
+    out.lakes = out.mainLakeCount;
+    out.water.lakeCells = 0;
+    for (std::uint32_t i = 0; i < cells; ++i) out.water.lakeCells += lake[i];
 
     // The water map: the sea and the lakes. Each wet cell's level spread one
     // cell onto its dry neighbours, kept just under their ground: the
@@ -466,11 +706,12 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
     std::vector<Node> nodes;
     std::vector<std::uint32_t> nodeOf(cells, kNone);
     for (const std::uint32_t i : order)
-        if (!ocean[i] && !lake[i] && area[i] >= s.streamArea) {
+        if (!ocean[i] && !lake[i] && (area[i] >= s.streamArea || skel[i] == 1)) {
             nodeOf[i] = std::uint32_t(nodes.size());
             Node node;
             node.cell = i;
             node.area = area[i];
+            node.main = skel[i] == 1;
             nodes.push_back(node);
         }
     const std::size_t inland = nodes.size();
@@ -501,6 +742,7 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
     for (Node& node : nodes) {
         biggest = std::max(biggest, double(node.area));
         node.width = float(s.widthScale * std::pow(node.area, s.widthExponent));
+        if (node.main) node.width = std::max(node.width, float(s.mainMinWidth));
         node.depth = float(s.depthScale * std::pow(node.area, 0.33) + 0.3);
         if (node.upMain == kNone && !node.terminal) ++out.sources;
         if (node.down == kNone) ++out.mouths;
@@ -626,88 +868,203 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
         return a.depth + ((main ? b.depth : a.depth) - a.depth) * float(t);
     };
 
-    // The drawn ground along each piece: the lowest of it across the water
-    // (the middle and both edges, every few tens of metres) - what the water
-    // must stay under, or it stands on a bank of its own - and the highest
-    // along the middle, how deep the river has to cut.
-    constexpr double kAlong = 60.0;        // metres between samples along a piece
+    // The drawn ground along each edge, sample by sample: every `kAlong`
+    // metres, and finer where the ground between two samples steps by more
+    // than `kStep` (a cliff, a ledge) - so a fall is found where it is, not
+    // smeared over a whole piece. Per sample the ground under the middle and
+    // the lowest across the water (the middle and both edges): what the
+    // water must stay under, or it stands on a bank of its own.
+    constexpr double kAlong = 60.0;        // metres between samples
     constexpr double kFinest = 8.0;        // detail shorter than this does not matter to a river
-    std::vector<float> lowest(pointX.size(), 0.0f), highest(pointX.size(), 0.0f);
+    constexpr float kStep = 4.0f;          // metres of ground between two samples that call for finer ones
+    constexpr int kRefine = 8;
+    struct Sample {
+        double x, y;
+        int piece;
+        float local;                       // along the piece, 0..1
+        float t;                           // along the edge, 0..1
+        float mid, low, surface;
+        bool keep;                         // a point the segments must not drop
+    };
+    std::vector<std::vector<Sample>> profile(nodes.size());
     parallelFor(nodes.size(), [&](std::size_t k) {
         const Edge& e = edges[k];
-        for (int j = 0; j < e.pieces; ++j) {
+        if (!e.pieces) return;
+        auto at = [&](int j, double local) {
             const std::size_t p = e.first + std::size_t(j);
             const double x0 = pointX[p], y0 = pointY[p], x1 = pointX[p + 1], y1 = pointY[p + 1];
             const double len = std::hypot(x1 - x0, y1 - y0);
             const double nx = len > 1e-3 ? -(y1 - y0) / len : 0.0, ny = len > 1e-3 ? (x1 - x0) / len : 0.0;
-            const double side = widthAt(k, (j + 0.5) / e.pieces) * 0.5 + 1.0;
+            const double t = (j + local) / e.pieces;
+            const double side = widthAt(k, t) * 0.5 + 1.0;
+            Sample q{x0 + (x1 - x0) * local, y0 + (y1 - y0) * local, j, float(local), float(t), 0, 0, 0, local == 0.0};
+            q.mid = ground.at(q.x, q.y, kFinest);
+            q.low = std::min({q.mid, ground.at(q.x + nx * side, q.y + ny * side, kFinest),
+                              ground.at(q.x - nx * side, q.y - ny * side, kFinest)});
+            return q;
+        };
+        std::vector<Sample> coarse;
+        for (int j = 0; j < e.pieces; ++j) {
+            const std::size_t p = e.first + std::size_t(j);
+            const double len = std::hypot(pointX[p + 1] - pointX[p], pointY[p + 1] - pointY[p]);
             const int steps = std::max(2, int(std::ceil(len / kAlong)));
-            float low = std::numeric_limits<float>::max(), high = std::numeric_limits<float>::lowest();
-            for (int i = 0; i <= steps; ++i) {
-                const double t = double(i) / steps, cx = x0 + (x1 - x0) * t, cy = y0 + (y1 - y0) * t;
-                const float middle = ground.at(cx, cy, kFinest);
-                high = std::max(high, middle);
-                low = std::min({low, middle, ground.at(cx + nx * side, cy + ny * side, kFinest),
-                                ground.at(cx - nx * side, cy - ny * side, kFinest)});
-            }
-            lowest[p] = low;
-            highest[p] = high;
+            for (int i = 0; i < steps; ++i) coarse.push_back(at(j, double(i) / steps));
         }
+        coarse.push_back(at(e.pieces - 1, 1.0));
+        coarse.back().keep = true;
+        std::vector<Sample>& samples = profile[k];
+        samples.reserve(coarse.size());
+        for (std::size_t i = 0; i + 1 < coarse.size(); ++i) {
+            const Sample& a = coarse[i];
+            const Sample& b = coarse[i + 1];
+            samples.push_back(a);
+            if (std::abs(a.mid - b.mid) <= kStep) continue;
+            const double end = b.piece == a.piece ? b.local : 1.0;
+            for (int m = 1; m < kRefine; ++m) samples.push_back(at(a.piece, a.local + (end - a.local) * m / kRefine));
+        }
+        samples.push_back(coarse.back());
     });
 
-    // The surface at every point: under the ground of the pieces either side
-    // of it, and never rising downstream - through a junction too. Upstream
-    // first (the nodes are in that order), so everything flowing into a node
-    // is known before its own river goes on.
-    std::vector<float> surface(pointX.size(), 0.0f);
+    // The surface at every sample: under the ground there, and never rising
+    // downstream. Upstream first (the nodes are in that order). A junction
+    // takes the level of its main stem - the biggest river into it - so a
+    // brook coming in from a hanging valley does not drag the river down;
+    // the brook falls into it instead (below).
     std::vector<float> into(nodes.size(), std::numeric_limits<float>::max());
     for (std::size_t k = 0; k < nodes.size(); ++k)
         if (nodes[k].terminal) into[k] = nodes[k].surface;
     for (std::size_t k = 0; k < nodes.size(); ++k) {
-        const Edge& e = edges[k];
-        if (!e.pieces) continue;
+        if (!edges[k].pieces) continue;
         const Node& b = nodes[nodes[k].down];
-        auto under = [&](int j) {
-            if (j < 0 || j >= e.pieces) return std::numeric_limits<float>::max();
-            return lowest[e.first + std::size_t(j)] - (0.15f * depthAt(k, (j + 0.5) / e.pieces) + 0.3f);
-        };
         float level = into[k];
-        for (int j = 0; j <= e.pieces; ++j) {
-            level = std::min({level, under(j - 1), under(j)});
+        for (Sample& q : profile[k]) {
+            level = std::min(level, q.low - (0.15f * depthAt(k, q.t) + 0.3f));
             // Into the sea or a lake: no lower than its water.
-            surface[e.first + std::size_t(j)] = b.terminal ? std::max(level, b.surface) : level;
+            q.surface = b.terminal ? std::max(level, b.surface) : level;
         }
-        if (!b.terminal) into[nodes[k].down] = std::min(into[nodes[k].down], level);
+        // ...and at its water: a river arriving high falls into it at the
+        // shore (the step the samples found), not out over the lake.
+        if (b.terminal) profile[k].back().surface = b.surface;
+        else if (b.upMain == k) into[nodes[k].down] = level;
     }
+    // A tributary meets the river at that river's level. Coming in higher it
+    // falls at the river's edge: flat to the lip, then down.
+    for (std::size_t k = 0; k < nodes.size(); ++k) {
+        if (!edges[k].pieces) continue;
+        const Node& b = nodes[nodes[k].down];
+        if (b.terminal || b.upMain == k) continue;
+        const float join = into[nodes[k].down];
+        std::vector<Sample>& samples = profile[k];
+        // Never under it - unless the brook comes in through a dip lower than
+        // the river (a hollow it drains through): there it stays under its
+        // own ground rather than standing as a pond up to the river's level.
+        for (Sample& q : samples)
+            q.surface = std::max(q.surface, std::min(join, q.low - (0.15f * depthAt(k, q.t) + 0.3f)));
+        const double jx = samples.back().x, jy = samples.back().y;
+        const double edge = b.width * 0.5 + 0.5;
+        auto from = [&](const Sample& q) { return std::hypot(q.x - jx, q.y - jy); };
+        std::size_t outer = samples.size() - 1;
+        while (outer > 0 && from(samples[outer]) <= edge) --outer;
+        if (outer + 1 >= samples.size() || samples[outer].surface - join < 0.5f || from(samples[outer]) <= edge) {
+            samples.back().surface = join;
+            continue;
+        }
+        for (std::size_t i = outer + 1; i < samples.size(); ++i) samples[i].surface = join;
+        // The lip, where the water leaves the brook, and the foot just past it.
+        const Sample& a = samples[outer];
+        const Sample& c = samples[outer + 1];
+        const double da = from(a), dc = from(c);
+        const double f = std::clamp((da - edge) / std::max(da - dc, 1e-3), 0.0, 1.0);
+        const double len = std::max(std::hypot(c.x - a.x, c.y - a.y), 1e-3);
+        const double f2 = std::min(1.0, f + 0.5 / len);
+        auto between = [&](double g, float surface) {
+            Sample q = a;
+            q.x = a.x + (c.x - a.x) * g;
+            q.y = a.y + (c.y - a.y) * g;
+            const float cl = c.piece == a.piece ? c.local : 1.0f;
+            q.local = float(a.local + (cl - a.local) * g);
+            q.t = float(a.t + (c.t - a.t) * g);
+            q.mid = float(a.mid + (c.mid - a.mid) * g);
+            q.low = float(a.low + (c.low - a.low) * g);
+            q.surface = surface;
+            q.keep = true;
+            return q;
+        };
+        const Sample lip = between(f, a.surface), foot = between(f2, join);
+        samples.insert(samples.begin() + std::ptrdiff_t(outer + 1), {lip, foot});
+    }
+    // Each node's own level, where its edge starts (a delta forks there).
+    for (std::size_t k = 0; k < nodes.size(); ++k)
+        if (edges[k].pieces && !nodes[k].terminal) nodes[k].surface = profile[k].front().surface;
 
-    // Segments. A tributary ends at the level the river it joins has there.
-    // The banks reach as far as the cut is deep, three to one: a river that
-    // has to cut through a rise makes a valley through it, not a slot.
+    // Segments: the samples thinned to what the surface needs - a run at an
+    // even slope is one segment, a fall keeps its lip and foot - never
+    // letting the water rise more than a quarter metre over a sample's level
+    // (inside the margin it keeps under the ground there). The banks reach as far as
+    // the cut is deep, three to one: a river that has to cut through a rise
+    // makes a valley through it, not a slot; the cut is the ground over the
+    // water at the same place, so a fall does not open a valley the height
+    // of its cliff.
     const double logBiggest = std::log(std::max(biggest / s.streamArea, 2.0));
     for (std::size_t k = 0; k < nodes.size(); ++k) {
-        const Edge& e = edges[k];
-        if (!e.pieces) continue;
+        if (!edges[k].pieces) continue;
         const Node& a = nodes[k];
-        const Node& b = nodes[a.down];
-        if (!b.terminal) surface[e.first + std::size_t(e.pieces)] = into[a.down];
+        const std::vector<Sample>& samples = profile[k];
+        const std::size_t count = samples.size();
+        std::vector<double> along(count, 0.0);
+        for (std::size_t i = 1; i < count; ++i)
+            along[i] = along[i - 1] + std::hypot(samples[i].x - samples[i - 1].x, samples[i].y - samples[i - 1].y);
+        std::vector<std::uint8_t> keep(count, 0);
+        keep.front() = keep.back() = 1;
+        for (std::size_t i = 0; i < count; ++i) keep[i] |= samples[i].keep ? 1 : 0;
+        std::vector<std::pair<std::size_t, std::size_t>> spans;
+        for (std::size_t i = 0, last = 0; i < count; ++i)
+            if (keep[i] && i > last) { spans.push_back({last, i}); last = i; }
+        while (!spans.empty()) {
+            const auto [i0, i1] = spans.back();
+            spans.pop_back();
+            const double span = std::max(along[i1] - along[i0], 1e-6);
+            double worst = 1.0;
+            std::size_t split = 0;
+            for (std::size_t i = i0 + 1; i < i1; ++i) {
+                const double u = (along[i] - along[i0]) / span;
+                const double over = samples[i0].surface + (samples[i1].surface - samples[i0].surface) * u - samples[i].surface;
+                const double score = over > 0 ? over / 0.25 : -over / 2.0;
+                if (score > worst) { worst = score; split = i; }
+            }
+            if (!split) continue;
+            keep[split] = 1;
+            spans.push_back({i0, split});
+            spans.push_back({split, i1});
+        }
         const float flow = float(std::clamp(std::log(double(a.area) / s.streamArea) / logBiggest, 0.0, 1.0));
-        for (int j = 0; j < e.pieces; ++j) {
-            const std::size_t p = e.first + std::size_t(j);
-            const double t0 = double(j) / e.pieces, t1 = double(j + 1) / e.pieces;
+        for (std::size_t i0 = 0; i0 + 1 < count;) {
+            std::size_t i1 = i0 + 1;
+            while (!keep[i1]) ++i1;
+            const Sample &p0 = samples[i0], &p1 = samples[i1];
             RiverSegment seg{};
-            seg.x0 = float(pointX[p]); seg.y0 = float(pointY[p]);
-            seg.x1 = float(pointX[p + 1]); seg.y1 = float(pointY[p + 1]);
-            seg.surface0 = surface[p];
-            seg.surface1 = surface[p + 1];
-            seg.width0 = widthAt(k, t0);
-            seg.width1 = widthAt(k, t1);
-            seg.depth0 = depthAt(k, t0);
-            seg.depth1 = depthAt(k, t1);
+            seg.x0 = float(p0.x); seg.y0 = float(p0.y);
+            seg.x1 = float(p1.x); seg.y1 = float(p1.y);
+            seg.surface0 = p0.surface;
+            seg.surface1 = p1.surface;
+            seg.width0 = widthAt(k, p0.t);
+            seg.width1 = widthAt(k, p1.t);
+            seg.depth0 = depthAt(k, p0.t);
+            seg.depth1 = depthAt(k, p1.t);
             seg.flow = flow;
-            const float cut = std::max(0.0f, highest[p] - std::min(seg.surface0, seg.surface1));
+            float cut = 0;
+            for (std::size_t i = i0; i <= i1; ++i) cut = std::max(cut, samples[i].mid - samples[i].surface);
             const float bank = std::max(6.0f, std::max(seg.width0, seg.width1)) + 4.0f * std::max(seg.depth0, seg.depth1);
             seg.bank = std::max(bank, std::min(3.0f * cut, 400.0f));
-            out.rivers.push_back(seg);
+            if (std::hypot(seg.x1 - seg.x0, seg.y1 - seg.y0) > 1e-3f) {
+                const float drop = seg.surface0 - seg.surface1;
+                if (drop > 3.0f && drop > 0.3f * std::hypot(seg.x1 - seg.x0, seg.y1 - seg.y0)) {
+                    ++out.falls;
+                    if (drop > out.biggestFall[2]) out.biggestFall = {seg.x0, seg.y0, drop};
+                }
+                out.rivers.push_back(seg);
+            }
+            i0 = i1;
         }
     }
     // Deltas: a big river reaching the sea over low, flat ground splits a
@@ -721,7 +1078,7 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
     };
     for (std::size_t k = 0; k < nodes.size(); ++k) {
         const Node& last = nodes[k];
-        if (last.down == kNone || !nodes[last.down].terminal || last.area < s.deltaArea) continue;
+        if (last.down == kNone || !nodes[last.down].terminal || last.area < s.deltaArea || !last.main) continue;
         if (!ocean[nodes[last.down].cell]) continue;   // into a lake: no delta (yet)
         const Node& mouth = nodes[last.down];
         // Up the main line to the head of the delta.

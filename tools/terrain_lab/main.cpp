@@ -19,6 +19,9 @@
 //         --range F  --morph F  --heightmap PNG | --generate SIZE  --seed S
 //         --height-range M  --sea F  --detail F
 // Shots:  --shot PNG --at X,Y,AGL,YAWDEG,PITCHDEG (X, Y as fractions of the world)
+// Water:  --water-skeleton PNG (red rivers, blue lakes: the main framework, painted)
+//         --water-skeleton-out PNG (the framework used, over the relief, to edit)
+//         --main-river-area KM2  --main-lakes N  --main-lake-area KM2 (generated framework)
 
 #include "engine/render/device.hpp"
 #include "engine/render/targets.hpp"
@@ -107,6 +110,8 @@ struct Options {
     int dlssQuality = 0;          // 0 Quality, 1 Balanced, 2 Performance
     HydrologySettings hydrology;
     fs::path waterPreview;        // --water-preview: the water map as a picture
+    fs::path waterSkeleton;       // --water-skeleton: the main lakes and rivers, painted (red rivers, blue lakes)
+    fs::path waterSkeletonOut;    // --water-skeleton-out: the framework used, as such a picture, to edit
     LightSettings light;          // time of day, clouds, wind; shadows/clouds/wind modules (F7 F8 F9, F10 time)
     std::string foliageLayers;   // comma list of layers to keep; empty: all
     float foliageMinPixels = 1.5f;
@@ -190,6 +195,11 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-grass") o.grass = false;
         else if (a == "--no-water") o.water = false;
         else if (a == "--water-preview") o.waterPreview = next();
+        else if (a == "--water-skeleton") o.waterSkeleton = next();
+        else if (a == "--water-skeleton-out") o.waterSkeletonOut = next();
+        else if (a == "--main-river-area") o.hydrology.mainRiverArea = std::atof(next());
+        else if (a == "--main-lakes") o.hydrology.mainLakes = std::uint32_t(std::atoi(next()));
+        else if (a == "--main-lake-area") o.hydrology.mainLakeArea = std::atof(next());
         else if (a == "--stream-area") o.hydrology.streamArea = std::atof(next());
         else if (a == "--humidity") o.hydrology.humidity = std::atof(next());
         else if (a == "--time") o.light.timeOfDay = std::atof(next());
@@ -376,7 +386,57 @@ struct Lab {
         if (!options.erodeOut.empty()) return erodeAndSave();
         options.params.macroTexel = macro.texelMetres(options.params.worldSize);
         if (options.water) {
+            // A painted framework: saturated red is a river, saturated blue a
+            // lake; anything else (a grey relief under it, say) is ignored.
+            WaterSkeleton painted;
+            if (!options.waterSkeleton.empty()) {
+                if (auto image = engine::world_source::readPng(options.waterSkeleton, &why); image && image->channels >= 3) {
+                    painted.width = image->width;
+                    painted.height = image->height;
+                    painted.cells.assign(std::size_t(painted.width) * painted.height, 0);
+                    const double top = image->maximum();
+                    for (std::uint32_t y = 0; y < painted.height; ++y)
+                        for (std::uint32_t x = 0; x < painted.width; ++x) {
+                            const double r = image->at(x, y, 0) / top, g = image->at(x, y, 1) / top, b = image->at(x, y, 2) / top;
+                            painted.cells[std::size_t(y) * painted.width + x] =
+                                    r > 0.7 && g < 0.35 && b < 0.35 ? 1 : b > 0.7 && r < 0.35 ? 2 : 0;
+                        }
+                    options.hydrology.skeleton = &painted;
+                    std::printf("water skeleton %ux%u from %s\n", painted.width, painted.height, options.waterSkeleton.string().c_str());
+                } else {
+                    std::fprintf(stderr, "water skeleton %s: %s\n", options.waterSkeleton.string().c_str(),
+                                 image ? "needs an RGB picture" : why.c_str());
+                }
+            }
             Hydrology hydro = buildHydrology(macro, options.params, options.hydrology);
+            options.hydrology.skeleton = nullptr;
+            std::printf("framework: %u main lakes, %u main river cells (%s)\n", hydro.mainLakeCount, hydro.mainRiverCells,
+                        painted.cells.empty() ? "generated" : "painted");
+            if (!options.waterSkeletonOut.empty()) {
+                // The relief in grey, the framework over it: open it, paint,
+                // and load it back with --water-skeleton.
+                engine::world_source::Image picture;
+                picture.width = picture.height = hydro.skeletonSize;
+                picture.channels = 3;
+                picture.bits = 8;
+                picture.allocate();
+                const std::uint32_t n = hydro.skeletonSize, step = macro.size() / n;
+                for (std::uint32_t y = 0; y < n; ++y)
+                    for (std::uint32_t x = 0; x < n; ++x) {
+                        const double hm = double(macro.texels()[std::size_t(y * step) * macro.size() + x * step]) / 65535.0;
+                        const double ground = (hm - options.params.macroSeaLevel) * options.params.macroHeightRange;
+                        const auto grey = std::uint16_t(ground <= 0 ? 30 : std::clamp(70.0 + ground / 25.0, 70.0, 230.0));
+                        const std::uint8_t kind = hydro.skeleton[std::size_t(y) * n + x];
+                        const std::uint32_t py = n - 1 - y;
+                        picture.set(x, py, 0, kind == 1 ? 255 : kind == 2 ? 20 : grey);
+                        picture.set(x, py, 1, kind == 1 ? 0 : kind == 2 ? 60 : grey);
+                        picture.set(x, py, 2, kind == 1 ? 0 : kind == 2 ? 255 : grey);
+                    }
+                if (engine::world_source::writePng(options.waterSkeletonOut, picture, &why))
+                    std::printf("framework written to %s\n", options.waterSkeletonOut.string().c_str());
+                else
+                    std::fprintf(stderr, "framework: %s\n", why.c_str());
+            }
             std::printf("hydrology: %u^2, %u lakes (%u closed, %u cells), river graph %u nodes, %u sources, %u mouths, %u deltas, "
                         "%zu segments, biggest %.0f km^2, %.0f ms\n", hydro.water.size, hydro.lakes, hydro.closedLakes,
                         hydro.water.lakeCells, hydro.nodes, hydro.sources, hydro.mouths, hydro.deltas, hydro.rivers.size(), hydro.biggestKm2,
@@ -385,6 +445,9 @@ struct Lab {
             for (std::size_t i = 0; i < std::min<std::size_t>(5, hydro.deltaHeads.size()); ++i)
                 std::printf("  delta at %.4f,%.4f (%.0f km^2)\n", hydro.deltaHeads[i][0] / options.params.worldSize,
                             hydro.deltaHeads[i][1] / options.params.worldSize, hydro.deltaHeads[i][2]);
+            if (hydro.falls)
+                std::printf("  %u fall segments, biggest %.0f m at %.4f,%.4f\n", hydro.falls, hydro.biggestFall[2],
+                            hydro.biggestFall[0] / options.params.worldSize, hydro.biggestFall[1] / options.params.worldSize);
             waterMap = std::move(hydro.water);
             riverSegments = std::move(hydro.rivers);
             if (!options.waterPreview.empty()) {

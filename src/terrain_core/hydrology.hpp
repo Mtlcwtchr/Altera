@@ -11,6 +11,11 @@
 //     area is `humidity` times the area draining into it, or to its brim, and
 //     then it spills. A hollow that never spills keeps its water: the rivers
 //     below it do not get its catchment (endorheic);
+//   - that pass only proposes: the framework - the main lakes and rivers -
+//     is painted (`skeleton`) or the biggest of its lakes and the rivers
+//     draining most. A second flood, from the sea and the framework, then
+//     drains every other hollow into it: off the framework nothing holds
+//     water, the brooks and tributaries just run down to it;
 //   - rivers are a graph, not cells: a node per cell draining more than
 //     `streamArea`, joined downstream, smoothed, meandering where the ground
 //     is flat, each with its discharge, width, depth and a surface that only
@@ -30,6 +35,13 @@
 
 namespace terrain_core {
 
+// The main lakes and rivers, as painted: per pixel 0 nothing, 1 river (a
+// line, any thickness), 2 lake. Row 0 is the north edge, like the heightmap.
+struct WaterSkeleton {
+    std::uint32_t width = 0, height = 0;
+    std::vector<std::uint8_t> cells;
+};
+
 struct HydrologySettings {
     std::uint32_t resolution = 2048;   // work grid, at most this many texels a side
     double streamArea = 2.0;           // km^2 a cell must drain to be on the river graph
@@ -47,6 +59,15 @@ struct HydrologySettings {
     double deltaArea = 300.0;          // km^2: a river this big reaching the sea over low ground splits
     double deltaHeight = 150.0;        // metres: ...if the ground where it would split is no higher
     double meander = 1.0;              // multiplies how far big rivers on the flat swing
+    // The framework: the main lakes and rivers everything else drains to.
+    // Painted (`skeleton`), or picked by the generator: rivers draining more
+    // than `mainRiverArea`, the `mainLakes` biggest lakes over `mainLakeArea`.
+    // Nothing outside it holds water: every other hollow drains.
+    const WaterSkeleton* skeleton = nullptr;
+    double mainRiverArea = 1000.0;     // km^2
+    double mainLakeArea = 15.0;        // km^2
+    std::uint32_t mainLakes = 24;
+    double mainMinWidth = 12.0;        // metres: a painted river is at least this wide              // multiplies how far big rivers on the flat swing
 };
 
 struct WaterMap {
@@ -74,11 +95,18 @@ struct Hydrology {
     WaterMap water;
     std::vector<RiverSegment> rivers;
     std::uint32_t nodes = 0, sources = 0, mouths = 0, lakes = 0, closedLakes = 0, deltas = 0;
+    // The framework as used, on the work grid (row 0 south): 0, 1 river, 2 lake.
+    std::uint32_t skeletonSize = 0;
+    std::vector<std::uint8_t> skeleton;
+    std::uint32_t mainLakeCount = 0, mainRiverCells = 0;
     std::vector<std::array<float, 3>> deltaHeads;   // x, y (m), catchment km^2 of each delta
+    std::uint32_t falls = 0;                        // segments dropping steeply (a waterfall's face)
+    std::array<float, 3> biggestFall{};             // x, y (m) of its lip, and its drop (m)
     double biggestKm2 = 0;
     double ms = 0;
 };
 
-Hydrology buildHydrology(const MacroMap& macro, const Params& params, const HydrologySettings& settings);
+// May cut the beds of painted lakes into `macro`.
+Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologySettings& settings);
 
 } // namespace terrain_core

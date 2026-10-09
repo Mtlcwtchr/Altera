@@ -45,6 +45,7 @@ struct VsOut {
     nointerpolation uint clipLevel : TEXCOORD5;
     float wet : TEXCOORD6;                 // 1 where there is water
     nointerpolation float ocean : TEXCOORD7;   // 1: the open ocean beyond the world
+    float2 river : TEXCOORD8;              // the river's fall (m per m); how far past its water's edge (m)
 };
 
 int2 wrapSlot(int2 t, uint size) { const int n = int(size); return ((t % n) + n) % n; }
@@ -69,8 +70,13 @@ VsOut waterVs(PatchIn input) {
     // the channel's banks, not the whole valley - the banks rise above it,
     // so the water shows only over the bed.
     const RiverHit river = nearestRiver(metres);
+    float2 riverInfo = float2(0, -1);
     if (river.found && river.distance < river.halfWidth + channelBank(river) && riverResolved(river, levelSpacing) > 0 &&
         (wet < 0.999 || river.surface > w.x)) {   // a lake's partial edge texel blends towards dry
+        // Over dry ground past the water's edge the sheet only fills the
+        // mesh under the banks; the pixel shader drops it wherever the
+        // ground there is lower (beside a fall).
+        riverInfo = float2(river.fall, wet > 0.5 ? -1.0 : river.distance - river.halfWidth);
         w = float4(river.surface, river.flow, river.along);
         wet = 1;
     }
@@ -84,6 +90,7 @@ VsOut waterVs(PatchIn input) {
     o.clipLevel = level;
     o.wet = wet;
     o.ocean = 0;
+    o.river = riverInfo;
     return o;
 }
 
@@ -107,6 +114,7 @@ VsOut oceanVs(uint id : SV_VertexID) {
     o.clipLevel = 0;
     o.wet = 1;
     o.ocean = 1;
+    o.river = float2(0, -1);
     return o;
 }
 
@@ -185,9 +193,16 @@ float4 waterPs(VsOut input) : SV_Target0 {
     }
     const float distance = length(input.view);
     const float depth = input.ocean > 0.5 ? 200.0 : max(input.level - groundUnder(input.slot, input.local, input.clipLevel), 0.0);
+    // A river's sheet past its water's edge, over ground lower than its
+    // surface: beside a fall, where the banks drop away. Not water.
+    if (input.ocean < 0.5 && input.river.y > 0.0 && depth > 0.25) discard;
     const float2 place = input.view.xy + lookEyeWrapped;
     float patch;
-    const float2 slope = waveSlope(place, input.flow, distance, patch);
+    float2 slope = waveSlope(place, input.flow, distance, patch);
+    // The river's own slope: a waterfall is a steep sheet, lit as one.
+    const float fall = input.river.x;
+    const float2 downstream = input.flow.xy / max(length(input.flow.xy), 1e-4);
+    slope -= downstream * min(fall, 4.0);
     const float3 n = normalize(float3(-slope, 1));
     const float3 toEye = -input.view / max(distance, 1e-3);
 
@@ -209,9 +224,24 @@ float4 waterPs(VsOut input) : SV_Target0 {
     const float near = 1.0 - saturate(distance / 1500.0);
     // A river is shallow all across: only its very edge foams.
     const float shore = saturate((1.0 - depth / (input.flow.z > 0 ? 0.2 : 0.6)) * 1.6 - (1.0 - churn) * 1.2);
-    const float foam = (shore * 0.7 + input.flow.z * 0.3 * smoothstep(0.55, 0.85, churn)) * (0.3 + 0.7 * near);
+    float foam = (shore * 0.7 + input.flow.z * 0.3 * smoothstep(0.55, 0.85, churn)) * (0.3 + 0.7 * near);
+    // White water: rapids where the river steepens, and a fall all white -
+    // streaks running down it, faster the steeper. Along the fall's own
+    // length (its drop counts, not just the ground it spans), so a sheet
+    // nearly vertical still streams rather than smearing into a band.
+    const float rapids = smoothstep(0.02, 0.1, fall);
+    const float plunge = smoothstep(0.3, 0.8, fall);
+    if (rapids > 0) {
+        const float across = dot(place, float2(-downstream.y, downstream.x));
+        const float down = dot(place, downstream) + fmod(-input.level, 512.0);
+        const float speed = 2.5 + 9.0 * plunge;
+        const float streak = noiseD(float2(across / 0.8, (down - lookTime * speed) / 3.5)).x * 0.65 +
+                             noiseD(float2(across / 0.3, (down - lookTime * speed * 1.3) / 1.2) + 31.0).x * 0.35;
+        const float white = max(rapids * smoothstep(0.4, 0.75, churn) * 0.85, plunge * (0.55 + 0.45 * streak));
+        foam = max(foam, white * (0.5 + 0.5 * near));
+    }
     float3 colour = body * opacity * (1.0 - fresnel) + reflection * fresnel;
-    float alpha = saturate(opacity * (1.0 - fresnel) + fresnel);
+    float alpha = saturate(max(opacity, plunge * 0.9) * (1.0 - fresnel) + fresnel);
     colour = lerp(colour, float3(0.92, 0.95, 0.96) * (lightSunColour * sunLight * 0.6 + lightZenith * 0.6), foam * 0.8);
     alpha = max(alpha, foam * 0.8);
     colour = applyFog(colour / max(alpha, 1e-3), input.view);

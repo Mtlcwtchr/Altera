@@ -20,6 +20,7 @@ struct RiverHit {
     float depth;       // at the middle
     float bank;        // how far past the water the banks are shaped
     float flow;        // 0 a brook .. 1 the biggest river
+    float fall;        // how fast the surface drops downstream (m per m): rapids, a waterfall
     float2 along;      // downstream, unit
     float2 away;       // from the centre line towards the point, unit
 };
@@ -35,6 +36,7 @@ RiverHit nearestRiver(float2 p) {
     r.depth = 0;
     r.bank = 0;
     r.flow = 0;
+    r.fall = 0;
     r.along = float2(1, 0);
     r.away = float2(0, 1);
     const uint2 header = riverTiles[0];
@@ -62,6 +64,7 @@ RiverHit nearestRiver(float2 p) {
         r.depth = lerp(c.x, c.y, u);
         r.bank = c.w;
         r.flow = c.z;
+        r.fall = max(b.x - b.y, 0.0) / max(length(e), 1e-3);
         r.along = e / max(length(e), 1e-4);
         r.away = d > 1e-4 ? (p - q) / d : float2(-r.along.y, r.along.x);
     }
