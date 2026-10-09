@@ -43,7 +43,8 @@ public:
     // Compute: reset, spawn every ring, arguments. Reads the clipmap, the biome
     // map and the material array the ground draws with, and its uniforms.
     void spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
-               SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, const GroundUniforms& ground);
+               SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
+               SDL_GPUTexture* properties, const GroundUniforms& ground);
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],
               const void* look, std::size_t lookBytes);
 

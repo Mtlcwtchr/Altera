@@ -1,0 +1,1086 @@
+{
+  "archive": "new_assets/Free.zip",
+  "archive_sha256": "98b87f0f4b2ffd10c9e49f364d7b613b6535d1898ad95a6cdc97c495d3450f1f",
+  "normal_convention": "OpenGL (+Y)",
+  "source_normal_convention": "DirectX (-Y)",
+  "normal_convention_evidence": "Normal Y negatively correlates with downward image-row height gradient; green inverted for Blender.",
+  "properties_channels": {
+    "r": "ao",
+    "g": "roughness",
+    "b": "height",
+    "a": "unused (255)"
+  },
+  "renderer_connected": true,
+  "materials": {
+    "grass_lush": {
+      "source": "Grass_01",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_lush_ao.png",
+          "source": "Free/Grass/Grass_01/Grass_01_ambientocclusion.png",
+          "source_sha256": "1aa5def34412fda67c017e2b72d8a1b918c9237312eb5ebbf898bdb4fee19857",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_lush_roughness.png",
+          "source": "Free/Grass/Grass_01/Grass_01_roughness.png",
+          "source_sha256": "3bc477ef9ff2b61159ea37afb4772706ef31cf26b5301d086793f0764aad4774"
+        },
+        "height": {
+          "file": "grass_lush_height.png",
+          "source": "Free/Grass/Grass_01/Grass_01_height.png",
+          "source_sha256": "8ab0da4648f2df0ca7c8b14fc2b94b738ea63186404680c7b335b08caaaaf411"
+        },
+        "normal": {
+          "file": "grass_lush_normal.png",
+          "source": "Free/Grass/Grass_01/Grass_01_normal.png",
+          "source_sha256": "840b58395feadd6ec38407af71adfa7571efcfb6132da614a0806cbea8dda388",
+          "derived": "source normal + normal from the height map, strength 4.1"
+        }
+      },
+      "properties": "grass_lush_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_stony": {
+      "source": "Grass_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_stony_ao.png",
+          "source": "Free/Grass/Grass_02/Grass_02_ambientocclusion.png",
+          "source_sha256": "59dbf95c220e8f065ac80b66ac89ebb3e95de66cc159a70d4dbc47fd1bb974e6",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_stony_roughness.png",
+          "source": "Free/Grass/Grass_02/Grass_02_roughness.png",
+          "source_sha256": "0a4a53fecbd7cf2d7861c112fb81e4b411e8589434b344dcb17b1d808575b11d"
+        },
+        "height": {
+          "file": "grass_stony_height.png",
+          "source": "Free/Grass/Grass_02/Grass_02_height.png",
+          "source_sha256": "5c6365dc62233f8801d9dd662e8a1ff3f16a46646365b4235b8e62e2c37e8c2f"
+        },
+        "normal": {
+          "file": "grass_stony_normal.png",
+          "source": "Free/Grass/Grass_02/Grass_02_normal.png",
+          "source_sha256": "322c5276c1f41ede84a215df12adc6f957a6203abaa5795205e5ac3ac9733571",
+          "derived": "source normal + normal from the height map, strength 4.3"
+        }
+      },
+      "properties": "grass_stony_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_leaves": {
+      "source": "Grass_03",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_leaves_ao.png",
+          "source": "Free/Grass/Grass_03/Grass_03_ambientocclusion.png",
+          "source_sha256": "bac757369273008497f9b249d44566987dd9699fcb37da6ce13a24e633669dca",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_leaves_roughness.png",
+          "source": "Free/Grass/Grass_03/Grass_03_roughness.png",
+          "source_sha256": "85a62f6e297b957875ed1e0930c018d0a8b64cde29970690dfb90546e26968d1"
+        },
+        "height": {
+          "file": "grass_leaves_height.png",
+          "source": "Free/Grass/Grass_03/Grass_03_height.png",
+          "source_sha256": "ca2991aca9b601b826018f6c87d284f2f8d73b5383bd247c0c475bafb3fa342c"
+        },
+        "normal": {
+          "file": "grass_leaves_normal.png",
+          "source": "Free/Grass/Grass_03/Grass_03_normal.png",
+          "source_sha256": "f51ae43705dd26c0ea240d0feba918c9a44a46c64651b65dec126011fd35e1a9",
+          "derived": "source normal + normal from the height map, strength 5.0"
+        }
+      },
+      "properties": "grass_leaves_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_meadow": {
+      "source": "Grass_04",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_meadow_ao.png",
+          "source": "Free/Grass/Grass_04/Grass_04_ambientocclusion.png",
+          "source_sha256": "62821cad84cbf4c5d9ef424dcac600fbf611f69f8fb00992da8383a3e0d4c153",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_meadow_roughness.png",
+          "source": "Free/Grass/Grass_04/Grass_04_roughness.png",
+          "source_sha256": "653a954a83282943cfe5f6394d7416aac59c5cb56c44e63e47f7ad4967ca71f6"
+        },
+        "height": {
+          "file": "grass_meadow_height.png",
+          "source": "Free/Grass/Grass_04/Grass_04_height.png",
+          "source_sha256": "66b2ca6dbf24883b684e4be937f374573d88a87406cd09f30b748c7b6503cf03"
+        },
+        "normal": {
+          "file": "grass_meadow_normal.png",
+          "source": "Free/Grass/Grass_04/Grass_04_normal.png",
+          "source_sha256": "3dfbf4baa20643a8033bcb53a1d03b21480c43afde94228df1ef196248b94c67",
+          "derived": "source normal + normal from the height map, strength 4.4"
+        }
+      },
+      "properties": "grass_meadow_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_dark": {
+      "source": "Grass_05",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_dark_ao.png",
+          "source": "Free/Grass/Grass_05/Grass_05_ambientocclusion.png",
+          "source_sha256": "7548d438276e9a237960c6cbed951210098b6c4711ae97637af6a1c6172c0daa",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_dark_roughness.png",
+          "source": "Free/Grass/Grass_05/Grass_05_roughness.png",
+          "source_sha256": "d633316342ae0e9f1f39dded94885443f59309dce21cf97a26a88c1b044ed52d"
+        },
+        "height": {
+          "file": "grass_dark_height.png",
+          "source": "Free/Grass/Grass_05/Grass_05_height.png",
+          "source_sha256": "a4bb284e0d0c85d00935fd0f385c1871f869918cb581f1a0541cabbf89619c8b"
+        },
+        "normal": {
+          "file": "grass_dark_normal.png",
+          "source": "Free/Grass/Grass_05/Grass_05_normal.png",
+          "source_sha256": "ea49a08087a9ee6f1b2542ff330b88f1457080fe8fc960c245b48550b2eb8a83",
+          "derived": "source normal + normal from the height map, strength 5.2"
+        }
+      },
+      "properties": "grass_dark_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_olive": {
+      "source": "Grass_06",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_olive_ao.png",
+          "source": "Free/Grass/Grass_06/Grass_06_ambientocclusion.png",
+          "source_sha256": "4fbf5f854d9c1641a9fcd91f819f03441ddf42dff87d8ab2fa824310e419a4aa",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_olive_roughness.png",
+          "source": "Free/Grass/Grass_06/Grass_06_roughness.png",
+          "source_sha256": "8564c1c70d22b45a32615779a22020bf3f568ce800a0da66b61ed193eb2b1c03"
+        },
+        "height": {
+          "file": "grass_olive_height.png",
+          "source": "Free/Grass/Grass_06/Grass_06_height.png",
+          "source_sha256": "1c3a9b1d41b1a4ba953ce4855fbe9d26e9e56c0ae1c1e616acb820fe7f955417"
+        },
+        "normal": {
+          "file": "grass_olive_normal.png",
+          "source": "Free/Grass/Grass_06/Grass_06_normal.png",
+          "source_sha256": "f7b9b8afece6d324f771d979f3fc577538b109123e41a25375434311ada2b63b",
+          "derived": "source normal + normal from the height map, strength 4.1"
+        }
+      },
+      "properties": "grass_olive_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_flowers": {
+      "source": "Grass_07",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_flowers_ao.png",
+          "source": "Free/Grass/Grass_07/Grass_07_ambientocclusion.png",
+          "source_sha256": "c8adf4c208acdb73247bd138429e1ff54aa2404fe73c6e5e0139e65a7bc322b6",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_flowers_roughness.png",
+          "source": "Free/Grass/Grass_07/Grass_07_roughness.png",
+          "source_sha256": "ce596f5f14fda68e559915e8a2e2b0c32555e6848dbd65e901156f1089ac8019"
+        },
+        "height": {
+          "file": "grass_flowers_height.png",
+          "source": "Free/Grass/Grass_07/Grass_07_height.png",
+          "source_sha256": "8502df445a2388e31d7152c42b2046cd6570b556042da2073855ddd49ef6266b"
+        },
+        "normal": {
+          "file": "grass_flowers_normal.png",
+          "source": "Free/Grass/Grass_07/Grass_07_normal.png",
+          "source_sha256": "2ae8289302db572cf0580388f7311ae21b4a66120ca45a30653c7309486afb2f",
+          "derived": "source normal + normal from the height map, strength 4.6"
+        }
+      },
+      "properties": "grass_flowers_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "grass_dry": {
+      "source": "Grass_08",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "grass_dry_ao.png",
+          "source": "Free/Grass/Grass_08/Grass_08_ambientocclusion.png",
+          "source_sha256": "a654137309ab15fdae3c79c81f5261e5a2a6d0b7552f5dc9e1b0a218619e45af",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "grass_dry_roughness.png",
+          "source": "Free/Grass/Grass_08/Grass_08_roughness.png",
+          "source_sha256": "f1ae6c6d801b4826e591f537829a8bc663917f5b07354d93150f426000e9a74b"
+        },
+        "height": {
+          "file": "grass_dry_height.png",
+          "source": "Free/Grass/Grass_08/Grass_08_height.png",
+          "source_sha256": "90a6444058e09c69dad9df173d8ab872aaaf67f794d27baf9be4661802e7f023"
+        },
+        "normal": {
+          "file": "grass_dry_normal.png",
+          "source": "Free/Grass/Grass_08/Grass_08_normal.png",
+          "source_sha256": "59733a1a4fbf0d6c8708c3a3de9cd013058d3134e7c891a2a481c4c69bb9cafc",
+          "derived": "source normal + normal from the height map, strength 4.5"
+        }
+      },
+      "properties": "grass_dry_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "dirt_brown": {
+      "source": "Dirt_01",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "dirt_brown_ao.png",
+          "source": "Free/Dirt/Dirt_01/Dirt_01_ambientocclusion.png",
+          "source_sha256": "0de65ae80a3cec4801903e79ecea207c7a381b9a31d97b115cba0fc9f99ee37d",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "dirt_brown_roughness.png",
+          "source": "Free/Dirt/Dirt_01/Dirt_01_roughness.png",
+          "source_sha256": "c6d6769ba939f367fe2a89a548ef1107a8120bf7e37ea160013d0b318b03add0"
+        },
+        "height": {
+          "file": "dirt_brown_height.png",
+          "source": "Free/Dirt/Dirt_01/Dirt_01_height.png",
+          "source_sha256": "d41dab2e2c7e9f599582eaa366f6531af5677c2d4fde198e32f4044e9ca3945c"
+        },
+        "normal": {
+          "file": "dirt_brown_normal.png",
+          "source": "Free/Dirt/Dirt_01/Dirt_01_normal.png",
+          "source_sha256": "e0d67bcc3ac5348260612bdb2b585260ecc95ec2fe3d50233163d9998c1653f3",
+          "derived": "source normal + normal from the height map, strength 8.3"
+        }
+      },
+      "properties": "dirt_brown_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "dirt_dark": {
+      "source": "Dirt_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "dirt_dark_ao.png",
+          "source": "Free/Dirt/Dirt_02/Dirt_02_ambientocclusion.png",
+          "source_sha256": "07536bafcf27147c65e66918caaa67efd79a0aefc678f43ab01e49cdf65bddc4",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "dirt_dark_roughness.png",
+          "source": "Free/Dirt/Dirt_02/Dirt_02_roughness.png",
+          "source_sha256": "cc077c14a02364783b34d205ae2543fcd8daeba425ca600130eb242afd8ffd5a"
+        },
+        "height": {
+          "file": "dirt_dark_height.png",
+          "source": "Free/Dirt/Dirt_02/Dirt_02_height.png",
+          "source_sha256": "a77d5aaa452483c0e79c7d4db2ee81c071d08059f0eda1e58fc5c549a75452c0"
+        },
+        "normal": {
+          "file": "dirt_dark_normal.png",
+          "source": "Free/Dirt/Dirt_02/Dirt_02_normal.png",
+          "source_sha256": "e26496fb91b3df4adede56c7ba82bb93ca05a002b8f18255724d4d0f92ef60ae",
+          "derived": "source normal + normal from the height map, strength 10.5"
+        }
+      },
+      "properties": "dirt_dark_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "dirt_red": {
+      "source": "Dirt_03",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "dirt_red_ao.png",
+          "source": "Free/Dirt/Dirt_03/Dirt_03_ambientocclusion.png",
+          "source_sha256": "55b9dc87ed3b6abc0024c1879635e6f001fe128cbbb5b7c175d473989def3d34",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "dirt_red_roughness.png",
+          "source": "Free/Dirt/Dirt_03/Dirt_03_roughness.png",
+          "source_sha256": "3ed3d714e465b5876c6421184fffc20ae6670954c958a83478d7985a219f9cfd"
+        },
+        "height": {
+          "file": "dirt_red_height.png",
+          "source": "Free/Dirt/Dirt_03/Dirt_03_height.png",
+          "source_sha256": "b422b8306ad24694f9bc1d9a7be8cd6a14b7846819a8d52569cf6f95ee2443b8"
+        },
+        "normal": {
+          "file": "dirt_red_normal.png",
+          "source": "Free/Dirt/Dirt_03/Dirt_03_normal.png",
+          "source_sha256": "7f9d5da90f378f1d4b1a4f0a1b928aa41b39d6d148d13068d12eaadbfe85581c",
+          "derived": "source normal + normal from the height map, strength 10.2"
+        }
+      },
+      "properties": "dirt_red_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "dirt_pebbles": {
+      "source": "Dirt_05",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "dirt_pebbles_ao.png",
+          "source": "Free/Dirt/Dirt_05/Dirt_05_ambientocclusion.png",
+          "source_sha256": "a56e8becb48dc3d616313ba9250827e819ff992e85acb6e9fd68c033d3196fa2",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "dirt_pebbles_roughness.png",
+          "source": "Free/Dirt/Dirt_05/Dirt_05_roughness.png",
+          "source_sha256": "384aeb2110a5385387f783683cfbf220f2b0a6b63dadfd00b22838c5c58a6bca"
+        },
+        "height": {
+          "file": "dirt_pebbles_height.png",
+          "source": "Free/Dirt/Dirt_05/Dirt_05_height.png",
+          "source_sha256": "890e39b71ba32cb3a33130e165b9e59eb870234f742c976fdfeb0b417cadc07b"
+        },
+        "normal": {
+          "file": "dirt_pebbles_normal.png",
+          "source": "Free/Dirt/Dirt_05/Dirt_05_normal.png",
+          "source_sha256": "4d5ecf6a4b5b97482960885656f0a47c41b9806f8b4b178adf3c42b513ddc66f",
+          "derived": "source normal + normal from the height map, strength 7.9"
+        }
+      },
+      "properties": "dirt_pebbles_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "dirt_mud": {
+      "source": "Dirt_07",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "dirt_mud_ao.png",
+          "source": "Free/Dirt/Dirt_07/Dirt_07_ambientocclusion.png",
+          "source_sha256": "53e6b8e7ed6e6408f5b44c4421c561dfd4d373813083d4eae4fd830b2b18e9bb",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "dirt_mud_roughness.png",
+          "source": "Free/Dirt/Dirt_07/Dirt_07_roughness.png",
+          "source_sha256": "e58a73972f4ec23b3759415c41f34b765e9465fbec2e7df9f3eabb3e58646de8"
+        },
+        "height": {
+          "file": "dirt_mud_height.png",
+          "source": "Free/Dirt/Dirt_07/Dirt_07_height.png",
+          "source_sha256": "b47091bfc9980ccaf3befff3bc6ba35e82c261c1a2c02e92fe4595e8b7f3407a"
+        },
+        "normal": {
+          "file": "dirt_mud_normal.png",
+          "source": "Free/Dirt/Dirt_07/Dirt_07_normal.png",
+          "source_sha256": "68f9d6d1b1adbf312bda63aabce6ea9f3685461a7501c4db51cbcc984fdde611",
+          "derived": "source normal + normal from the height map, strength 8.3"
+        }
+      },
+      "properties": "dirt_mud_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "gravel_grey": {
+      "source": "Gravel_01",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "gravel_grey_ao.png",
+          "source": "Free/Gravel/Gravel_01/Gravel_01_ambientocclusion.png",
+          "source_sha256": "f5a2fdb6166e22da0e7c3d6559e9648ef53043b79cb21481fb28d405f3ed3da5",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "gravel_grey_roughness.png",
+          "source": "Free/Gravel/Gravel_01/Gravel_01_roughness.png",
+          "source_sha256": "b961ffe8deb3d7fa84250c68ad4eb8fcf900c34163a9896f6f2f46905900628f"
+        },
+        "height": {
+          "file": "gravel_grey_height.png",
+          "source": "Free/Gravel/Gravel_01/Gravel_01_height.png",
+          "source_sha256": "d5716d3abb25d28be0bd0adf9040d78405aa211ed66f3b52f8ded2ee36a04989"
+        },
+        "normal": {
+          "file": "gravel_grey_normal.png",
+          "source": "Free/Gravel/Gravel_01/Gravel_01_normal.png",
+          "source_sha256": "a47853ad81b802fe1b58354994b9ad11ae312cc7aab03148b5accfe3d0608a76",
+          "derived": "source normal + normal from the height map, strength 40.0"
+        }
+      },
+      "properties": "gravel_grey_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "gravel_black": {
+      "source": "Gravel_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "gravel_black_ao.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_ambientocclusion.png",
+          "source_sha256": "22b8caf2dced48f011c2524963102c388fac8880da049c5e56d56d54c412c53d",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "gravel_black_roughness.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_roughness.png",
+          "source_sha256": "398d5e9c9e6c73c1cde0bfc3b539dabe0e724b064719ed6971b7c5e521d8328d"
+        },
+        "height": {
+          "file": "gravel_black_height.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_height.png",
+          "source_sha256": "26cdccf15d782300759fc3dce6ac2339575cc00241682cf626fed23dbe2aa3af"
+        },
+        "normal": {
+          "file": "gravel_black_normal.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_normal.png",
+          "source_sha256": "92a54c961a8d88652d84187c386217e0dc47d40b3b5a68df15896d1800c47aea",
+          "derived": "source normal + normal from the height map, strength 2.1"
+        }
+      },
+      "properties": "gravel_black_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "gravel_pale": {
+      "source": "Gravel_04",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "gravel_pale_ao.png",
+          "source": "Free/Gravel/Gravel_04/Gravel_04_ambientocclusion.png",
+          "source_sha256": "019537d358dd8f910f1aa5d4cef7f6e7f6a0e7c918ae385a121bd45271b14ad3",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "gravel_pale_roughness.png",
+          "source": "Free/Gravel/Gravel_04/Gravel_04_roughness.png",
+          "source_sha256": "0eaed227ee855b7f8eae89bba6e3c4531f0a41a561e0ea545a6965afc7a716f2"
+        },
+        "height": {
+          "file": "gravel_pale_height.png",
+          "source": "Free/Gravel/Gravel_04/Gravel_04_height.png",
+          "source_sha256": "ee3ec5f59b42f3c87c9fccd522f5dff5e5382f970b6482f927394a3f848b85e8"
+        },
+        "normal": {
+          "file": "gravel_pale_normal.png",
+          "source": "Free/Gravel/Gravel_04/Gravel_04_normal.png",
+          "source_sha256": "7fa4d12f8d891e6fc23890ab8e8600936fc7e6906dcd2a6847ddeeb448f62473",
+          "derived": "source normal + normal from the height map, strength 2.0"
+        }
+      },
+      "properties": "gravel_pale_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rock_grey": {
+      "source": "Rock_01",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rock_grey_ao.png",
+          "source": "Free/Rock/Rock_01/Rock_01_ambientocclusion.png",
+          "source_sha256": "9fea98b6dd3242ae9e99f58feafa48a1c49f8d3053873b140b100d67482a734f",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rock_grey_roughness.png",
+          "source": "Free/Rock/Rock_01/Rock_01_roughness.png",
+          "source_sha256": "7a6273ddbc4454c72c720a67bc8b114cea9b7a35f0e766ad0e96e83a62a57419"
+        },
+        "height": {
+          "file": "rock_grey_height.png",
+          "source": "Free/Rock/Rock_01/Rock_01_height.png",
+          "source_sha256": "4e201061df7b7b38a38956caf31a141af05596606fb1ff4a06e1148409acacb5"
+        },
+        "normal": {
+          "file": "rock_grey_normal.png",
+          "source": "Free/Rock/Rock_01/Rock_01_normal.png",
+          "source_sha256": "db7ab3b3aa759dea63f3579e37bac4235c44d6328b5b61111bf8c477840f47b0",
+          "derived": "source normal + normal from the height map, strength 6.9"
+        }
+      },
+      "properties": "rock_grey_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rock_mossy": {
+      "source": "Rock_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rock_mossy_ao.png",
+          "source": "Free/Rock/Rock_02/Rock_02_ambientocclusion.png",
+          "source_sha256": "d30d75f31b6b2904933dbb2e23ab809d03478d36065f11a08db4ac31b7cedf74",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rock_mossy_roughness.png",
+          "source": "Free/Rock/Rock_02/Rock_02_roughness.png",
+          "source_sha256": "7107df4ad64665bdd6498795c6a6df660caecd443eec807f21fd78cd242175cc"
+        },
+        "height": {
+          "file": "rock_mossy_height.png",
+          "source": "Free/Rock/Rock_02/Rock_02_height.png",
+          "source_sha256": "b8b6f55e9d3c8346022e8bf27f4a05896f84a5387b579b83eb9883a75e4ff866"
+        },
+        "normal": {
+          "file": "rock_mossy_normal.png",
+          "source": "Free/Rock/Rock_02/Rock_02_normal.png",
+          "source_sha256": "a76a12e5c0c769866717c5d8bcb7dc2d2c8e38ac2e889c90af1bf8de0db19253",
+          "derived": "source normal + normal from the height map, strength 4.1"
+        }
+      },
+      "properties": "rock_mossy_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rock_pale": {
+      "source": "Rock_05",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rock_pale_ao.png",
+          "source": "Free/Rock/Rock_05/Rock_05_ambientocclusion.png",
+          "source_sha256": "87e8f6881fd8aa38661fb8f264c0c57086e6cbba388f38f84630b31a57b89166",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rock_pale_roughness.png",
+          "source": "Free/Rock/Rock_05/Rock_05_roughness.png",
+          "source_sha256": "1946df9c7e8dbbcebc1630b7aec929522f97c3895e2bd4a6c2a44adb5abf9f10"
+        },
+        "height": {
+          "file": "rock_pale_height.png",
+          "source": "Free/Rock/Rock_05/Rock_05_height.png",
+          "source_sha256": "4636528f3d6fc0fb2b96422cf88e92e691661c88bf172810d708064694deb089"
+        },
+        "normal": {
+          "file": "rock_pale_normal.png",
+          "source": "Free/Rock/Rock_05/Rock_05_normal.png",
+          "source_sha256": "b911a029f1ab0f5597ee960a02f4575c6275f3f1600d81335af08305988b985d",
+          "derived": "source normal + normal from the height map, strength 9.4"
+        }
+      },
+      "properties": "rock_pale_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rock_ochre": {
+      "source": "Rock_06",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rock_ochre_ao.png",
+          "source": "Free/Rock/Rock_06/Rock_06_ambientocclusion.png",
+          "source_sha256": "73aac85706c0029bc742209c2c061e5133d8cffad1e3550ffdf2a09dfafce9cf",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rock_ochre_roughness.png",
+          "source": "Free/Rock/Rock_06/Rock_06_roughness.png",
+          "source_sha256": "c41c18c34e66a71a9d58520040ad4def13325106089d9dde59af0b545854178e"
+        },
+        "height": {
+          "file": "rock_ochre_height.png",
+          "source": "Free/Rock/Rock_06/Rock_06_height.png",
+          "source_sha256": "eadc171c295170b7947c5297f988e1d7eb87ccf7c664972786d4c5175709dbc6"
+        },
+        "normal": {
+          "file": "rock_ochre_normal.png",
+          "source": "Free/Rock/Rock_06/Rock_06_normal.png",
+          "source_sha256": "21fbf96c9f0cc5e52a5e9e04b094aaacee137b4f702a3663842af6674df2d1aa",
+          "derived": "source normal + normal from the height map, strength 4.8"
+        }
+      },
+      "properties": "rock_ochre_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rock_dark": {
+      "source": "Rock_07",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rock_dark_ao.png",
+          "source": "Free/Rock/Rock_07/Rock_07_ambientocclusion.png",
+          "source_sha256": "abe6aba377f1b702df8b068ff702753bb35bf819a992ecdaa052a52b59d44d6c",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rock_dark_roughness.png",
+          "source": "Free/Rock/Rock_07/Rock_07_roughness.png",
+          "source_sha256": "ea5324f3e4fbac9da7822c51ad38c2075f8f62197e04ea1df382eed48681cd33"
+        },
+        "height": {
+          "file": "rock_dark_height.png",
+          "source": "Free/Rock/Rock_07/Rock_07_height.png",
+          "source_sha256": "b469b10a3579c9e0bfebea0f2b9a85d625e10fec881fb657591637fa54924a72"
+        },
+        "normal": {
+          "file": "rock_dark_normal.png",
+          "source": "Free/Rock/Rock_07/Rock_07_normal.png",
+          "source_sha256": "3417fdd33c9904d84414ca4376d4512fc52f2f224c289f617489abd6e7acbe94",
+          "derived": "source normal + normal from the height map, strength 4.5"
+        }
+      },
+      "properties": "rock_dark_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rocky_grey": {
+      "source": "Rocky_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rocky_grey_ao.png",
+          "source": "Free/Rocky/Rocky_02/Rocky_02_ambientocclusion.png",
+          "source_sha256": "aa776a070c258043f8ee2040dcded2c91950bc46ffde6b6cec0c24e8f3689ddb",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rocky_grey_roughness.png",
+          "source": "Free/Rocky/Rocky_02/Rocky_02_roughness.png",
+          "source_sha256": "8adb99f00a7a0f1f843706e2657cfef5e670bf0f1fcc363d9757bb963b697eb5"
+        },
+        "height": {
+          "file": "rocky_grey_height.png",
+          "source": "Free/Rocky/Rocky_02/Rocky_02_height.png",
+          "source_sha256": "7cd35241f5d7c791ee3bdbb6ea1d0da363f6c417376d63d46a8bed5b90d0fa85"
+        },
+        "normal": {
+          "file": "rocky_grey_normal.png",
+          "source": "Free/Rocky/Rocky_02/Rocky_02_normal.png",
+          "source_sha256": "0c513b93f8a338596710cedcc93262cea6cd737a7a11cf10cef1ea110c3a1bb6",
+          "derived": "source normal + normal from the height map, strength 3.9"
+        }
+      },
+      "properties": "rocky_grey_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rocky_dark": {
+      "source": "Rocky_04",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rocky_dark_ao.png",
+          "source": "Free/Rocky/Rocky_04/Rocky_04_ambientocclusion.png",
+          "source_sha256": "307ee89c7877578ebd58abb43fc58a02b4075d2411b214286595dc9d02cb1737",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rocky_dark_roughness.png",
+          "source": "Free/Rocky/Rocky_04/Rocky_04_roughness.png",
+          "source_sha256": "72e4fab5ec3cd4195a3b064cfca9fb9402e47607dfc3f76d174a845117554bf6"
+        },
+        "height": {
+          "file": "rocky_dark_height.png",
+          "source": "Free/Rocky/Rocky_04/Rocky_04_height.png",
+          "source_sha256": "2fc0d65af0b397859c5a9c6c06ff0165f419f59002db0ee0ec8722ed01efe542"
+        },
+        "normal": {
+          "file": "rocky_dark_normal.png",
+          "source": "Free/Rocky/Rocky_04/Rocky_04_normal.png",
+          "source_sha256": "87f1acff9a68bcd6e01445502745ea0e5b8b8d9b956771f73f1ae53b96ec24aa",
+          "derived": "source normal + normal from the height map, strength 4.2"
+        }
+      },
+      "properties": "rocky_dark_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rocky_slabs": {
+      "source": "Rocky_05",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rocky_slabs_ao.png",
+          "source": "Free/Rocky/Rocky_05/Rocky_05_ambientocclusion.png",
+          "source_sha256": "01efa585cc8cad11e2e41c34a27a4c8c0a4ee06c46cb7bc8d2c5891aee79c0f7",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rocky_slabs_roughness.png",
+          "source": "Free/Rocky/Rocky_05/Rocky_05_roughness.png",
+          "source_sha256": "cc986f93d7f2f603d77fd9085b14002461211cd71f0adced5c154fd3790b567e"
+        },
+        "height": {
+          "file": "rocky_slabs_height.png",
+          "source": "Free/Rocky/Rocky_05/Rocky_05_height.png",
+          "source_sha256": "1fcac98a77a2667dcbcc5d3e48f9c2995c55708170de4d0e07a2213b780ca032"
+        },
+        "normal": {
+          "file": "rocky_slabs_normal.png",
+          "source": "Free/Rocky/Rocky_05/Rocky_05_normal.png",
+          "source_sha256": "6282fac84411992b01c3c94964aaf1454de4131a054cbe50e5244b7f49d6ea92",
+          "derived": "source normal + normal from the height map, strength 5.2"
+        }
+      },
+      "properties": "rocky_slabs_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "rocky_meadow": {
+      "source": "Rocky_01",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "rocky_meadow_ao.png",
+          "source": "Free/Rocky/Rocky_01/Rocky_01_ambientocclusion.png",
+          "source_sha256": "dc601c22f2e30e350d780da135670bbf11f1c0ea7e4d49abd2ff1993c6609dbb",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "rocky_meadow_roughness.png",
+          "source": "Free/Rocky/Rocky_01/Rocky_01_roughness.png",
+          "source_sha256": "af4a15006bc0f4b26440f8ec023756ad4301479bb6d418d3aed6dd202ac2b741"
+        },
+        "height": {
+          "file": "rocky_meadow_height.png",
+          "source": "Free/Rocky/Rocky_01/Rocky_01_height.png",
+          "source_sha256": "730c576d8c49ecb20a4a98aa0274ab5d0bce04b4b7d9a28a5c4e868488126648"
+        },
+        "normal": {
+          "file": "rocky_meadow_normal.png",
+          "source": "Free/Rocky/Rocky_01/Rocky_01_normal.png",
+          "source_sha256": "74bfa9d0b3bff4d6798743c77aabe3793ffae90e66dcb6208431e121f3b14c7f",
+          "derived": "source normal + normal from the height map, strength 4.7"
+        }
+      },
+      "properties": "rocky_meadow_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "sand_gold": {
+      "source": "Sand_01",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "sand_gold_ao.png",
+          "source": "Free/Sand/Sand_01/Sand_01_ambientocclusion.png",
+          "source_sha256": "dc3da8175704e0da6e13f063f4eb21e9a67e32b2750d277625e06acdac7a2aca",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "sand_gold_roughness.png",
+          "source": "Free/Sand/Sand_01/Sand_01_roughness.png",
+          "source_sha256": "a3dc862bfa9d4664984ceb973301e41a9847224ccf9319d8afe484c93de1581b"
+        },
+        "height": {
+          "file": "sand_gold_height.png",
+          "source": "Free/Sand/Sand_01/Sand_01_height.png",
+          "source_sha256": "bb1585ac9fe51748945474a5e4948cdef2f33f9af582ba719314459c6df4f919"
+        },
+        "normal": {
+          "file": "sand_gold_normal.png",
+          "source": "Free/Sand/Sand_01/Sand_01_normal.png",
+          "source_sha256": "e8563437ee7f27fcd1b066f85371d630ad02ebf153f25223a3c18c90f0c2b329",
+          "derived": "source normal + normal from the height map, strength 5.5"
+        }
+      },
+      "properties": "sand_gold_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "sand_grey": {
+      "source": "Sand_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "sand_grey_ao.png",
+          "source": "Free/Sand/Sand_02/Sand_02_ambientocclusion.png",
+          "source_sha256": "5609d1376a646810500137c13c07f37d37748095dfad7c8847af81ca05cf1788",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "sand_grey_roughness.png",
+          "source": "Free/Sand/Sand_02/Sand_02_roughness.png",
+          "source_sha256": "f8ce371d123ef44ce5a09a67fcbd53de003cee7ef7e4f66a199c34ddfbec6cef"
+        },
+        "height": {
+          "file": "sand_grey_height.png",
+          "source": "Free/Sand/Sand_02/Sand_02_height.png",
+          "source_sha256": "3eb92d95ce70e4b29abd3b85499049cf5d6eb441b4a2c477513aaa5b3c60d35c"
+        },
+        "normal": {
+          "file": "sand_grey_normal.png",
+          "source": "Free/Sand/Sand_02/Sand_02_normal.png",
+          "source_sha256": "1517388a284334423d1b37bb32984bbee3a441f3f7c746229747249b12f43b23",
+          "derived": "source normal + normal from the height map, strength 7.0"
+        }
+      },
+      "properties": "sand_grey_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "sand_beach": {
+      "source": "Sand_03",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "sand_beach_ao.png",
+          "source": "Free/Sand/Sand_03/Sand_03_ambientocclusion.png",
+          "source_sha256": "cb10f8ec03185bd6ec7c96ade067938fb31e32566bcc5e42a9e8ba9ae9eb7b2c",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "sand_beach_roughness.png",
+          "source": "Free/Sand/Sand_03/Sand_03_roughness.png",
+          "source_sha256": "bca0f7dcd7955510165d1c02e6bb17ab52d5236286ae15a9270783580b237525"
+        },
+        "height": {
+          "file": "sand_beach_height.png",
+          "source": "Free/Sand/Sand_03/Sand_03_height.png",
+          "source_sha256": "2576bad1e458bdb1d08ac645ae90f717017f55c0e9060b150b57c2024b9f9556"
+        },
+        "normal": {
+          "file": "sand_beach_normal.png",
+          "source": "Free/Sand/Sand_03/Sand_03_normal.png",
+          "source_sha256": "aeef31b81cda8fbf63b0c50c6dfd983f15fb2c349038080788130c50d21a8c73",
+          "derived": "source normal + normal from the height map, strength 6.8"
+        }
+      },
+      "properties": "sand_beach_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "sand_dune": {
+      "source": "Sand_07",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "sand_dune_ao.png",
+          "source": "Free/Sand/Sand_07/Sand_07_ambientocclusion.png",
+          "source_sha256": "a84408b7693c4845fd8fb581d0f215ea231470e9b870c51a7333b923d26c3861",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "sand_dune_roughness.png",
+          "source": "Free/Sand/Sand_07/Sand_07_roughness.png",
+          "source_sha256": "ba745481a9e394ef52480b4325396586db071102251769fb42653b3c66902b5b"
+        },
+        "height": {
+          "file": "sand_dune_height.png",
+          "source": "Free/Sand/Sand_07/Sand_07_height.png",
+          "source_sha256": "4058633e02750b54f280f8618ab612e1aad04b8bf4a79648fdb6fc2511f4ee78"
+        },
+        "normal": {
+          "file": "sand_dune_normal.png",
+          "source": "Free/Sand/Sand_07/Sand_07_normal.png",
+          "source_sha256": "d651ee487dbc22554a51ba9adf7e5743f79981f5167f63faa5a4dd3ec4ab3df8",
+          "derived": "source normal + normal from the height map, strength 7.4"
+        }
+      },
+      "properties": "sand_dune_properties.png",
+      "recolour": null,
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "snow": {
+      "source": "Sand_05",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "snow_ao.png",
+          "source": "Free/Sand/Sand_05/Sand_05_ambientocclusion.png",
+          "source_sha256": "41c8f2dbf348717e6efc2c8463f2e302ca98ed006f6e2b53b3533d604d802d7b",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "snow_roughness.png",
+          "source": "Free/Sand/Sand_05/Sand_05_roughness.png",
+          "source_sha256": "fc4812e2a450daae1fbe0bc634cc69bb9337535d23f3a77e975c8d65993268b1"
+        },
+        "height": {
+          "file": "snow_height.png",
+          "source": "Free/Sand/Sand_05/Sand_05_height.png",
+          "source_sha256": "d6d86e10f27ad15533dd11b0c28ef76c71baebdfee2d144b9250d6fa62478c2a"
+        },
+        "normal": {
+          "file": "snow_normal.png",
+          "source": "Free/Sand/Sand_05/Sand_05_normal.png",
+          "source_sha256": "839ac46e0b6225d5abaaf71d9aaff6b41bf439f7cbb60f734e93b841532329af",
+          "derived": "source normal + normal from the height map, strength 3.9"
+        }
+      },
+      "properties": "snow_properties.png",
+      "recolour": {
+        "saturation": 0.0,
+        "brightness": 1.18,
+        "tint": [
+          0.93,
+          0.96,
+          1.0
+        ]
+      },
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "ash_black": {
+      "source": "Gravel_02",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "ash_black_ao.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_ambientocclusion.png",
+          "source_sha256": "22b8caf2dced48f011c2524963102c388fac8880da049c5e56d56d54c412c53d",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "ash_black_roughness.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_roughness.png",
+          "source_sha256": "398d5e9c9e6c73c1cde0bfc3b539dabe0e724b064719ed6971b7c5e521d8328d"
+        },
+        "height": {
+          "file": "ash_black_height.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_height.png",
+          "source_sha256": "26cdccf15d782300759fc3dce6ac2339575cc00241682cf626fed23dbe2aa3af"
+        },
+        "normal": {
+          "file": "ash_black_normal.png",
+          "source": "Free/Gravel/Gravel_02/Gravel_02_normal.png",
+          "source_sha256": "92a54c961a8d88652d84187c386217e0dc47d40b3b5a68df15896d1800c47aea",
+          "derived": "source normal + normal from the height map, strength 2.1"
+        }
+      },
+      "properties": "ash_black_properties.png",
+      "recolour": {
+        "saturation": 0.4,
+        "brightness": 0.55,
+        "tint": [
+          1.0,
+          0.85,
+          0.85
+        ]
+      },
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    }
+  }
+}

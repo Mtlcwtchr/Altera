@@ -128,7 +128,23 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     for (const auto& file : table.materialFiles()) layers.push_back({file});
     materials_ = device.loadArrayMipped(layers, true);
     if (!materials_) return false;
-    gpuBytes_ += std::uint64_t(layers.size()) * 128 * 128 * 4 * 4 / 3;
+    // Their surfaces, in the same order (tools/terrain_lab/build_materials.py
+    // writes materials/pbr/<name>_normal.png and <name>_properties.png:
+    // AO, roughness, height). Mipped like the colour; the shader renormalises.
+    std::vector<std::vector<std::filesystem::path>> normals, properties;
+    for (const auto& file : table.materialFiles()) {
+        const auto pbr = file.parent_path() / "pbr";
+        const auto name = file.stem().string();
+        normals.push_back({pbr / (name + "_normal.png")});
+        properties.push_back({pbr / (name + "_properties.png")});
+    }
+    materialNormals_ = device.loadArrayMipped(normals, true);
+    materialProperties_ = device.loadArrayMipped(properties, true);
+    if (!materialNormals_ || !materialProperties_) {
+        device.fail("material normal/property maps missing (run tools/terrain_lab/build_materials.py): " + device.error());
+        return false;
+    }
+    gpuBytes_ += std::uint64_t(layers.size()) * 128 * 128 * 4 * 4 / 3 * 3;
     ground_ = table.uniforms();
     ground_.biomeSize = biomes.size();
 
@@ -258,9 +274,10 @@ void Renderer::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, con
     SDL_PushGPUFragmentUniformData(commands, 1, &ground_, sizeof(ground_));
     const SDL_GPUTextureSamplerBinding clip{clipmap_.get(), nearest_.get()};
     SDL_BindGPUVertexSamplers(pass, 0, &clip, 1);
-    const SDL_GPUTextureSamplerBinding fragment[3] = {
-            clip, {biomeMap_.get(), nearest_.get()}, {materials_.get(), repeat_.get()}};
-    SDL_BindGPUFragmentSamplers(pass, 0, fragment, 3);
+    const SDL_GPUTextureSamplerBinding fragment[5] = {
+            clip, {biomeMap_.get(), nearest_.get()}, {materials_.get(), repeat_.get()},
+            {materialNormals_.get(), repeat_.get()}, {materialProperties_.get(), repeat_.get()}};
+    SDL_BindGPUFragmentSamplers(pass, 0, fragment, 5);
     const SDL_GPUBufferBinding index{indices_.get(), 0};
     SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
     for (std::uint32_t q = 0; q < 4; ++q) {

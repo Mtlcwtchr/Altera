@@ -41,6 +41,7 @@ struct LookUniforms {
 };
 
 constexpr std::uint32_t kLookPlainGround = 1;
+constexpr std::uint32_t kLookNoSurfaceMaps = 2;   // materials without their normal and AO maps
 
 class Renderer {
 public:
@@ -64,6 +65,8 @@ public:
     SDL_GPUTexture* clipmap() const { return clipmap_.get(); }
     SDL_GPUTexture* biomeMap() const { return biomeMap_.get(); }
     SDL_GPUTexture* materials() const { return materials_.get(); }
+    SDL_GPUTexture* materialNormals() const { return materialNormals_.get(); }
+    SDL_GPUTexture* materialProperties() const { return materialProperties_.get(); }
     std::uint32_t biomeSize() const { return ground_.biomeSize; }
     const GroundUniforms& ground() const { return ground_; }
 
@@ -74,7 +77,7 @@ private:
     std::uint32_t macroMips_ = 1;
     engine::Texture macro_, clipmap_;
     engine::Sampler nearest_, repeat_;
-    engine::Texture biomeMap_, materials_;
+    engine::Texture biomeMap_, materials_, materialNormals_, materialProperties_;
     GroundUniforms ground_{};
     engine::ComputePipeline generate_;
     engine::GraphicsPipeline terrain_;

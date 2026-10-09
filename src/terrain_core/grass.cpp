@@ -91,7 +91,8 @@ bool Grass::open(engine::Device& device, const Params& params, const GrassSettin
 }
 
 void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
-                  SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, const GroundUniforms& ground) {
+                  SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
+                  SDL_GPUTexture* properties, const GroundUniforms& ground) {
     if (frame_ >= 3) {
         if (const auto* n = static_cast<const std::uint32_t*>(
                     SDL_MapGPUTransferBuffer(device_->handle(), readback_[frame_ % 3], false))) {
@@ -111,9 +112,10 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
         SDL_GPUStorageBufferReadWriteBinding rw[2] = {{tufts_.get(), false, {}}, {count_.get(), false, {}}};
         auto* pass = SDL_BeginGPUComputePass(commands, nullptr, 0, rw, 2);
         SDL_BindGPUComputePipeline(pass, spawn_.get());
-        const SDL_GPUTextureSamplerBinding samplers[3] = {
-                {clipmap, nearest_.get()}, {biomeMap, nearest_.get()}, {materials, repeat_.get()}};
-        SDL_BindGPUComputeSamplers(pass, 0, samplers, 3);
+        const SDL_GPUTextureSamplerBinding samplers[5] = {
+                {clipmap, nearest_.get()}, {biomeMap, nearest_.get()}, {materials, repeat_.get()},
+                {normals, repeat_.get()}, {properties, repeat_.get()}};
+        SDL_BindGPUComputeSamplers(pass, 0, samplers, 5);
         SDL_PushGPUComputeUniformData(commands, 1, &ground, sizeof(ground));
         const double range = params_.macroHeightRange, sea = params_.macroSeaLevel;
         candidates_ = 0;

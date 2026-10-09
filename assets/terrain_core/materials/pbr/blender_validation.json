@@ -1,0 +1,440 @@
+{
+  "blender": "5.2.2 LTS",
+  "method": "original author maps imported; no rebake",
+  "materials": {
+    "grass_lush": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.0042510032653809,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_stony": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9955766201019287,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_leaves": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9954530596733093,
+      "normal_length_max": 1.0044348239898682,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_meadow": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.004128336906433,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_dark": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.004128336906433,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_olive": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.0044347047805786,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_flowers": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.004128336906433,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "grass_dry": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9952058792114258,
+      "normal_length_max": 1.004618525505066,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "dirt_brown": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9962560534477234,
+      "normal_length_max": 1.0034542083740234,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "dirt_dark": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.004005789756775,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "dirt_red": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9958855509757996,
+      "normal_length_max": 1.0037606954574585,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "dirt_pebbles": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9958854913711548,
+      "normal_length_max": 1.0037606954574585,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "dirt_mud": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953912496566772,
+      "normal_length_max": 1.004128336906433,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "gravel_grey": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9959473013877869,
+      "normal_length_max": 1.0040059089660645,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "gravel_black": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953912496566772,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "gravel_pale": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953912496566772,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rock_grey": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.0043734312057495,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rock_mossy": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9956384301185608,
+      "normal_length_max": 1.004373550415039,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rock_pale": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957619905471802,
+      "normal_length_max": 1.004128336906433,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rock_ochre": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953912496566772,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rock_dark": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9954530596733093,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rocky_grey": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.995205819606781,
+      "normal_length_max": 1.0051082372665405,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rocky_dark": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953294396400452,
+      "normal_length_max": 1.0048633813858032,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rocky_slabs": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9952058792114258,
+      "normal_length_max": 1.0045572519302368,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "rocky_meadow": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953294992446899,
+      "normal_length_max": 1.0046796798706055,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "sand_gold": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9957002401351929,
+      "normal_length_max": 1.0037606954574585,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "sand_grey": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9958854913711548,
+      "normal_length_max": 1.004067063331604,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "sand_beach": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9961326122283936,
+      "normal_length_max": 1.0037606954574585,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "sand_dune": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9959473013877869,
+      "normal_length_max": 1.0037606954574585,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "snow": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9952058792114258,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    },
+    "ash_black": {
+      "size": [
+        128,
+        128
+      ],
+      "normal_length_min": 0.9953912496566772,
+      "normal_length_max": 1.0044959783554077,
+      "maps_loaded": [
+        "ao",
+        "roughness",
+        "height",
+        "normal"
+      ]
+    }
+  }
+}

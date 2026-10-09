@@ -117,7 +117,7 @@ float4 terrainPs(VsOut input) : SV_Target0 {
     if (input.morph > 0 && input.level + 1 < lookLevels)
         s = lerp(s, bilinear(clipPs, clipPsSampler, lookClipSize, input.slots.zw, input.local * 0.5, input.level + 1), input.morph);
     const float height = s.x;
-    const float3 normal = normalize(float3(-s.y, -s.z, 1));
+    float3 normal = normalize(float3(-s.y, -s.z, 1));
 
     GroundPoint p;
     p.base = input.origin << input.level;
@@ -133,7 +133,14 @@ float4 terrainPs(VsOut input) : SV_Target0 {
             colour = lerp(colour, float3(0.40, 0.36, 0.32), saturate((slope - 0.15) * 5.0));
         }
     } else {
-        colour = groundColour(p, height, normal.z, debugLevels == 5);
+        const Surface surface = groundSurface(p, height, normal.z, debugLevels == 5);
+        // Surface maps (the material's normal and AO) unless switched off (flag 2).
+        const bool maps = (lookFlags & 2u) == 0;
+        colour = surface.colour * (maps ? lerp(1.0, surface.ao, 0.8) : 1.0);
+        // The material's own relief on the terrain's: slopes add. Faded out
+        // where a texel of it is smaller than a pixel (the mips flatten it anyway).
+        const float relief = maps ? 1.0 - saturate(p.footprint / 24.0) : 0.0;
+        normal = normalize(float3(-s.y + surface.slope.x * relief, -s.z + surface.slope.y * relief, 1));
     }
     if (debugLevels == 5) return float4(colour, 1);
     if (debugLevels == 1) colour = lerp(colour, levelTint(input.level), 0.45);

@@ -94,6 +94,7 @@ struct Options {
     // Modules: each can be left out from the command line or toggled live
     // (F2 ground materials, F3 trees, 1..9 a tree layer, F4 grass, F5 style).
     bool groundMaterials = true;
+    bool surfaceMaps = true;      // the materials' normal and AO maps (F6)
     bool foliage = true;          // the trees module (trees and bushes)
     bool grass = true;            // the grass cover
     std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
@@ -165,6 +166,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--debug") o.debugLevels = std::atoi(next());
         else if (a == "--map") o.map = true;
         else if (a == "--no-ground") o.groundMaterials = false;
+        else if (a == "--no-surface") o.surfaceMaps = false;
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
         else if (a == "--no-grass") o.grass = false;
         else if (a == "--post") o.post = std::uint32_t(std::atoi(next())) % Post::kStyles;
@@ -475,7 +477,8 @@ struct Lab {
             for (int i = 0; i < 3; ++i) g.sunDirection[i] = float(sunDir[i] / sunLen);
             g.skyColour[0] = 0.62f; g.skyColour[1] = 0.72f; g.skyColour[2] = 0.82f;
             GroundUniforms ground = renderer.ground();
-            grass.spawn(commands, g, renderer.clipmap(), renderer.biomeMap(), renderer.materials(), ground);
+            grass.spawn(commands, g, renderer.clipmap(), renderer.biomeMap(), renderer.materials(),
+                        renderer.materialNormals(), renderer.materialProperties(), ground);
             s.grassTufts = grass.tufts();
             s.grassCandidates = grass.candidates();
         }
@@ -514,7 +517,7 @@ struct Lab {
         look.debugLevels = std::uint32_t(options.debugLevels);
         look.clipSize = p.clipSize;
         look.levels = p.levels;
-        look.flags = options.groundMaterials ? 0u : kLookPlainGround;
+        look.flags = (options.groundMaterials ? 0u : kLookPlainGround) | (options.surfaceMaps ? 0u : kLookNoSurfaceMaps);
         renderer.draw(commands, pass, view, look);
         if (foliageReady && options.foliage) foliage.draw(commands, pass, view.viewProjection, &look, sizeof(look));
         if (grassReady && options.grass) grass.draw(commands, pass, view.viewProjection, &look, sizeof(look));
@@ -748,6 +751,7 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_F3) lab.options.foliage = !lab.options.foliage;
                 if (e.key.key == SDLK_F4) lab.options.grass = !lab.options.grass;
                 if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
+                if (e.key.key == SDLK_F6) lab.options.surfaceMaps = !lab.options.surfaceMaps;
                 if (e.key.key >= SDLK_1 && e.key.key <= SDLK_9 && lab.foliageReady) {
                     const std::size_t i = std::size_t(e.key.key - SDLK_1);
                     if (i < lab.foliage.layers().size()) lab.foliage.layers()[i].enabled = !lab.foliage.layers()[i].enabled;
@@ -857,7 +861,8 @@ int runInteractive(Lab& lab, SDL_Window* window) {
             else
                 std::snprintf(where, sizeof where, "x %.0f y %.0f agl %.0f, speed %.0f m/s (M: map)", s.x, s.y, agl, speed);
             // Which modules are on: G ground materials, F foliage and its layers (1..9).
-            std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.grass ? " Gr" : " gr") +
+            std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.surfaceMaps ? "S" : "s") +
+                                  (lab.options.grass ? " Gr" : " gr") +
                                   (lab.options.foliage ? " T:" : " t:");
             if (lab.foliageReady)
                 for (std::size_t i = 0; i < lab.foliage.layers().size(); ++i)
