@@ -185,7 +185,12 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
                          {3, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
                          {4, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16}};
     draw_ = device.makePipeline(wanted);
-    if (!vertices_ || !indices_ || !instances_ || !counters_ || !args_ || !textures_ || !spawn_ || !reset_ ||
+    wanted.fragmentEntry = "foliageShadowPs";
+    wanted.depthOnly = true;
+    wanted.depthBiasConstant = -2.0f;
+    wanted.depthBiasSlope = -2.5f;
+    shadow_ = device.makePipeline(wanted);
+    if (!shadow_ || !vertices_ || !indices_ || !instances_ || !counters_ || !args_ || !textures_ || !spawn_ || !reset_ ||
         !argsPass_ || !draw_ || !nearest_ || !linear_)
         return fail("foliage GPU objects: " + device.error());
 
@@ -302,14 +307,29 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
     ++frame_;
 }
 
-void Foliage::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],
-                   const void* look, std::size_t lookBytes) {
+void Foliage::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
+                   const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler) {
     bool any = false;
     for (const auto& l : layers_) any = any || l.enabled;
     if (!any) return;
     SDL_BindGPUGraphicsPipeline(pass, draw_.get());
-    SDL_PushGPUVertexUniformData(commands, 0, viewProjection, 64);
-    SDL_PushGPUFragmentUniformData(commands, 0, look, std::uint32_t(lookBytes));
+    SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
+    SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
+    const SDL_GPUBufferBinding buffers[2] = {{vertices_.get(), 0}, {instances_.get(), 0}};
+    SDL_BindGPUVertexBuffers(pass, 0, buffers, 2);
+    const SDL_GPUBufferBinding index{indices_.get(), 0};
+    SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+    const SDL_GPUTextureSamplerBinding textures[2] = {{textures_.get(), linear_.get()}, {shadowAtlas, shadowSampler}};
+    SDL_BindGPUFragmentSamplers(pass, 0, textures, 2);
+    SDL_DrawGPUIndexedPrimitivesIndirect(pass, args_.get(), 0, std::uint32_t(models_.size()));
+}
+
+void Foliage::drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view) {
+    bool any = false;
+    for (const auto& l : layers_) any = any || l.enabled;
+    if (!any || !shadow_) return;
+    SDL_BindGPUGraphicsPipeline(pass, shadow_.get());
+    SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
     const SDL_GPUBufferBinding buffers[2] = {{vertices_.get(), 0}, {instances_.get(), 0}};
     SDL_BindGPUVertexBuffers(pass, 0, buffers, 2);
     const SDL_GPUBufferBinding index{indices_.get(), 0};

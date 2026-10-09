@@ -17,10 +17,16 @@
 Texture2DArray<float4> clipmap : register(t0, space0);
 SamplerState clipSampler : register(s0, space0);
 #include "ground.hlsli"
+// For the clouds' shadow, worked out once a tuft here rather than on every
+// pixel of it: a cloud is a kilometre across, a tuft a few centimetres.
+#define LIGHT_UNIFORMS register(b2, space2)
+#define SHADOW_TEXTURE register(t6, space0)
+#define SHADOW_SAMPLER register(s6, space0)
+#include "lighting.hlsli"
 
 struct Tuft {
     float4 positionYaw;   // eye-relative foot (m), yaw
-    float4 shape;         // width, height, sprite, colour (RGBA8 as bits, lit colour / 2)
+    float4 shape;         // width, height, sprite | normal x, y (8 bits each), colour + cloud shadow (RGBA8 as bits)
 };
 
 RWStructuredBuffer<Tuft> tufts : register(u0, space1);
@@ -48,9 +54,9 @@ cbuffer GrassSpawn : register(b0, space2) {
     float heightLow;
     float heightHigh;
     float flowerChance;
-    float3 sunDirection;
+    float3 spawnUnusedSun;
     float spawnPad0;
-    float3 skyColour;
+    float3 spawnUnusedSky;
     float spawnPad1;
 };
 
@@ -89,9 +95,9 @@ bool boxOutside(float3 lo, float3 hi) {
     return false;
 }
 
-uint packColour(float3 c) {
+uint packColour(float3 c, float a) {
     const uint3 u = uint3(saturate(c) * 255.0 + 0.5);
-    return u.r | (u.g << 8) | (u.b << 16) | 0xff000000u;
+    return u.r | (u.g << 8) | (u.b << 16) | (uint(saturate(a) * 255.0 + 0.5) << 24);
 }
 
 [numthreads(8, 8, 1)]
@@ -124,19 +130,21 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     const uint h2 = hashCell(cell, seed + 101u);
     if (unit(h2) >= ground.a * 1.15 - 0.1) return;
 
+    // The ground's colour unlit and its normal: the draw lights both exactly
+    // as the ground is lit, shadows and all.
     const float3 normal = normalize(float3(-hg.y, -hg.z, 1));
-    const float sun = saturate(dot(normal, sunDirection));
-    const float3 lit = ground.rgb * (sun * float3(1.0, 0.95, 0.85) * 1.1 + (0.35 + 0.15 * normal.z) * skyColour);
+    const uint packedNormal = uint(saturate(normal.x * 0.5 + 0.5) * 255.0 + 0.5) |
+                              (uint(saturate(normal.y * 0.5 + 0.5) * 255.0 + 0.5) << 8);
 
     const uint h3 = hashCell(cell, seed + 202u);
     const bool flower = unit(h3 >> 4) < flowerChance;
-    const float sprite = flower ? 14.0 + float(h3 % 4u) : float(h3 % 14u);
+    const uint sprite = flower ? 14u + (h3 % 4u) : (h3 % 14u);
     uint slot;
     InterlockedAdd(tuftCount[0], 1u, slot);
     if (slot >= capacity) return;
     Tuft o;
     o.positionYaw = float4(rel, hg.x - eyeZ, unit(h2 >> 16) * 3.14159265);
     o.shape = float4(reach * lerp(0.8, 1.2, unit(h3 >> 12)) * size, tuftHeight * lerp(0.7, 1.3, unit(h3 >> 20)) * size,
-                     sprite, asfloat(packColour(lit * 0.5)));
+                     asfloat(sprite | (packedNormal << 8)), asfloat(packColour(ground.rgb, cloudShadow(float3(rel, hg.x - eyeZ)))));
     tufts[slot] = o;
 }

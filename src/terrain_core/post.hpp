@@ -19,7 +19,9 @@ public:
     // After the scene's render pass: reads targets.colour(), writes the styled
     // picture back into it (through a scratch target), so whatever comes after
     // - the window, a screenshot - sees the styled frame.
-    void apply(SDL_GPUCommandBuffer* commands, engine::Targets& targets, std::uint32_t style, float time);
+    // `clouds`: the cloud texture to lay over the frame first, or null.
+    void apply(SDL_GPUCommandBuffer* commands, engine::Targets& targets, std::uint32_t style, float time,
+               SDL_GPUTexture* clouds = nullptr);
 
 private:
     engine::Device* device_ = nullptr;

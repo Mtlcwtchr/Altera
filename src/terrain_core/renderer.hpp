@@ -8,6 +8,7 @@
 
 #include "engine/render/device.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
@@ -58,7 +59,13 @@ public:
     ~Renderer();
     // Inside a render pass.
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const ViewUniforms& view,
-              const LookUniforms& look);
+              const LookUniforms& look, const LightUniforms& light, SDL_GPUTexture* shadowAtlas,
+              SDL_GPUSampler* shadowSampler);
+    // The patches the sun's shadows are drawn from: chosen without the eye's
+    // frustum (a mountain behind the eye still shades what it sees).
+    bool uploadShadow(SDL_GPUCommandBuffer* commands, const Selection& selection);
+    // Inside the shadow atlas pass, one cascade: `light` carries its matrix.
+    void drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const ViewUniforms& light);
 
     std::uint32_t trianglesDrawn() const { return triangles_; }
     std::uint64_t gpuBytes() const { return gpuBytes_; }
@@ -81,14 +88,22 @@ private:
     GroundUniforms ground_{};
     engine::ComputePipeline generate_;
     engine::GraphicsPipeline terrain_;
-    engine::Buffer indices_, patches_;
-    SDL_GPUTransferBuffer* patchStaging_ = nullptr;
-    std::uint32_t patchCapacity_ = 0;
+    engine::Buffer indices_;
+    // One selection's patches on the card: for the view and for the shadows.
+    struct PatchSet {
+        engine::Buffer buffer;
+        SDL_GPUTransferBuffer* transfer = nullptr;
+        std::uint32_t capacity = 0;
+        std::uint32_t counts[4] = {}, firsts[4] = {};
+        std::vector<Patch> staging;
+    };
+    bool uploadSet(SDL_GPUCommandBuffer* commands, const Selection& selection, PatchSet& set);
+    void drawSet(SDL_GPURenderPass* pass, const PatchSet& set);
+    PatchSet view_, shadow_;
+    engine::GraphicsPipeline shadowPipeline_;
     std::uint32_t quarterIndices_ = 0;
-    std::uint32_t counts_[4] = {}, firsts_[4] = {};
     std::uint32_t triangles_ = 0;
     std::uint64_t gpuBytes_ = 0;
-    std::vector<Patch> staging_;
 };
 
 } // namespace terrain_core

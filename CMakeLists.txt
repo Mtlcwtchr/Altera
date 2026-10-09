@@ -529,6 +529,8 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/foliage.cpp
             src/terrain_core/grass.cpp
             src/terrain_core/post.cpp
+            src/terrain_core/lighting.cpp
+            src/terrain_core/sky.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(campfire_terrain_core PUBLIC src)

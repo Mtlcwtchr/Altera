@@ -4,8 +4,9 @@
 // onto the next level's grid and takes that level's height (CDLOD morph), so a
 // patch meets its coarser neighbour exactly and nothing pops.
 //
-// Plain lighting - a sun, a sky term, haze; the ground's colour is the
-// biome's materials (ground.hlsli).
+// Lit by lighting.hlsli (sun, sky, shadows, cloud shadows, fog); the ground's
+// colour is the biome's materials (ground.hlsli). shadowPs: the depth-only
+// pass into the sun's shadow atlas - the same vertices, the light's matrix.
 
 cbuffer View : register(b0, space1) {
     row_major float4x4 viewProjection;   // eye-relative: no translation
@@ -94,10 +95,15 @@ SamplerState clipPsSampler : register(s0, space2);
 
 #include "ground.hlsli"
 
+#define LIGHT_UNIFORMS register(b2, space3)
+#define SHADOW_TEXTURE register(t5, space2)
+#define SHADOW_SAMPLER register(s5, space2)
+#include "lighting.hlsli"
+
 cbuffer Look : register(b0, space3) {
-    float3 sunDirection;
-    float hazeDistance;
-    float3 skyColour;
+    float3 lookUnusedSun;      // the light is lighting.hlsli's now
+    float lookUnusedHaze;
+    float3 lookUnusedSky;
     uint debugLevels;
     // The vertex stage's View is not visible here: each stage has its own uniforms.
     uint lookClipSize;
@@ -118,6 +124,7 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         s = lerp(s, bilinear(clipPs, clipPsSampler, lookClipSize, input.slots.zw, input.local * 0.5, input.level + 1), input.morph);
     const float height = s.x;
     float3 normal = normalize(float3(-s.y, -s.z, 1));
+    const float3 surfaceNormal = normal;
 
     GroundPoint p;
     p.base = input.origin << input.level;
@@ -148,8 +155,10 @@ float4 terrainPs(VsOut input) : SV_Target0 {
     if (debugLevels == 3) return float4(input.morph, frac(float(input.level) * 0.37), 1.0 - input.morph, 1);
     if (debugLevels == 4) return float4(frac(height / 50.0), frac(height / 500.0), saturate(height / 3000.0), 1);
 
-    const float sun = saturate(dot(normal, sunDirection));
-    const float3 lit = colour * (sun * float3(1.0, 0.95, 0.85) * 1.1 + (0.35 + 0.15 * normal.z) * skyColour);
-    const float haze = 1.0 - exp(-length(input.view) / hazeDistance);
-    return float4(lerp(lit, skyColour, haze), 1);
+    const float sunLight = sunShadow(input.view, surfaceNormal) * cloudShadow(input.view);
+    const float3 lit = shadeSurface(colour, normal, input.view, sunLight, 1.0, 0.0);
+    return float4(applyFog(lit, input.view), 1);
 }
+
+// Depth only, into the shadow atlas.
+void shadowPs(VsOut input) {}

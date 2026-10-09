@@ -5,6 +5,8 @@
 
 cbuffer View : register(b0, space1) {
     row_major float4x4 viewProjection;   // eye-relative
+    float4 wind;                         // direction x, y; strength; seconds
+    float4 eyeWrapped;                   // the eye's x, y modulo 4096 m
 };
 
 struct TuftIn {
@@ -17,8 +19,9 @@ struct VsOut {
     float4 position : SV_Position;
     float2 uv : TEXCOORD0;
     nointerpolation float sprite : TEXCOORD1;
-    nointerpolation float3 colour : TEXCOORD2;
+    nointerpolation float4 colour : TEXCOORD2;   // rgb, a: the clouds' shadow here
     float3 view : TEXCOORD3;
+    nointerpolation float3 normal : TEXCOORD4;
 };
 
 VsOut grassVs(TuftIn input) {
@@ -35,29 +38,33 @@ VsOut grassVs(TuftIn input) {
     // there is.
     const float down = saturate(-normalize(input.positionYaw.xyz).z);
     const float height = input.shape.y * (1.0 - smoothstep(0.45, 0.8, down));
+    // Wind: the tips swing with gusts rolling across the field, along the wind.
+    const float2 place = input.positionYaw.xy + eyeWrapped.xy;
+    const float wave = sin(dot(place, wind.xy) * 0.32 - wind.w * 3.1) * 0.5 + 0.5;
+    const float ripple = sin(dot(place, float2(-wind.y, wind.x)) * 0.9 + wind.w * 4.7 + input.positionYaw.w * 7.0);
+    const float swing = wind.z * (0.25 + 0.75 * wave) + ripple * 0.12 * wind.z;
+    const float2 tip = wind.xy * swing * height * 0.75 * c.y * c.y;
     VsOut o;
-    o.view = input.positionYaw.xyz + float3(across, c.y * height);
+    o.view = input.positionYaw.xyz + float3(across + tip, c.y * height * (1.0 - 0.25 * swing * swing));
     o.position = mul(viewProjection, float4(o.view, 1));
     o.uv = float2(c.x, 1.0 - c.y);
-    o.sprite = input.shape.z;
+    const uint bits = asuint(input.shape.z);
+    o.sprite = float(bits & 255u);
+    const float2 nxy = float2((bits >> 8) & 255u, (bits >> 16) & 255u) / 255.0 * 2.0 - 1.0;
+    o.normal = float3(nxy, sqrt(saturate(1.0 - dot(nxy, nxy))));
     const uint packed = asuint(input.shape.w);
-    o.colour = float3(packed & 255u, (packed >> 8) & 255u, (packed >> 16) & 255u) / 255.0 * 2.0;
+    o.colour = float4(packed & 255u, (packed >> 8) & 255u, (packed >> 16) & 255u, packed >> 24) / 255.0;
     return o;
 }
 
 Texture2DArray<float4> sprites : register(t0, space2);
 SamplerState spriteSampler : register(s0, space2);
 
-cbuffer Look : register(b0, space3) {
-    float3 sunDirection;
-    float hazeDistance;
-    float3 skyColour;
-    uint debugLevels;
-    uint lookClipSize;
-    uint lookLevels;
-    uint lookFlags;
-    float lookPad;
-};
+#define LIGHT_UNIFORMS register(b0, space3)
+#define SHADOW_TEXTURE register(t1, space2)
+#define SHADOW_SAMPLER register(s1, space2)
+#include "lighting.hlsli"
+
 
 float4 grassPs(VsOut input) : SV_Target0 {
     const float4 s = sprites.Sample(spriteSampler, float3(input.uv, input.sprite));
@@ -67,7 +74,12 @@ float4 grassPs(VsOut input) : SV_Target0 {
     // the ground goes on in the same colour and there is no edge to find.
     const float up = 1.0 - input.uv.y;
     const float shade = lerp(0.72, 1.12, up) * lerp(0.85, 1.05, s.r) * 1.12;
-    const float3 colour = input.colour * lerp(shade, 1.0, saturate(length(input.view) / 70.0));
-    const float haze = 1.0 - exp(-length(input.view) / hazeDistance);
-    return float4(lerp(colour, skyColour, haze), 1);
+    const float3 albedo = input.colour.rgb * lerp(shade, 1.0, saturate(length(input.view) / 70.0));
+    // Lit with the ground's own normal - the ground under it gets the same
+    // light - and a little sun through the blades from behind, fading with
+    // distance so the far grass is the ground's colour exactly.
+    const float sunLight = sunShadow(input.view, input.normal) * input.colour.a;
+    const float through = 0.3 * (1.0 - saturate(length(input.view) / 70.0)) * up;
+    const float3 lit = shadeSurface(albedo, input.normal, input.view, sunLight, 1.0, through);
+    return float4(applyFog(lit, input.view), 1);
 }

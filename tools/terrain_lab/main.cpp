@@ -28,6 +28,8 @@
 #include "terrain_core/foliage.hpp"
 #include "terrain_core/grass.hpp"
 #include "terrain_core/post.hpp"
+#include "terrain_core/lighting.hpp"
+#include "terrain_core/sky.hpp"
 #include "engine/world_source/png_io.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -98,6 +100,7 @@ struct Options {
     bool foliage = true;          // the trees module (trees and bushes)
     bool grass = true;            // the grass cover
     std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
+    LightSettings light;          // time of day, clouds, wind; shadows/clouds/wind modules (F7 F8 F9, F10 time)
     std::string foliageLayers;   // comma list of layers to keep; empty: all
     float foliageMinPixels = 1.5f;
     DrainageSettings drainage;
@@ -169,6 +172,12 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-surface") o.surfaceMaps = false;
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
         else if (a == "--no-grass") o.grass = false;
+        else if (a == "--time") o.light.timeOfDay = std::atof(next());
+        else if (a == "--clouds") o.light.cloudCover = std::atof(next());
+        else if (a == "--no-clouds") o.light.clouds = false;
+        else if (a == "--no-shadows") o.light.shadows = false;
+        else if (a == "--wind") o.light.wind = std::atof(next());
+        else if (a == "--no-wind") o.light.windOn = false;
         else if (a == "--post") o.post = std::uint32_t(std::atoi(next())) % Post::kStyles;
         else if (a == "--foliage-layers") o.foliageLayers = next();
         else if (a == "--foliage-min-pixels") o.foliageMinPixels = float(std::atof(next()));
@@ -279,6 +288,13 @@ struct Lab {
     Post post;
     bool postReady = false;
     std::uint64_t frames = 0;
+    Lighting lighting;
+    ShadowAtlas shadows;
+    Sky sky;
+    Clouds clouds;
+    bool lightReady = false;
+    double seconds = 0;           // the world's clock: wind, clouds
+    Clock::time_point lastFrame = Clock::now();
     Clipmap clipmap{options.params};
     GroundProbe probe;
     Camera camera;
@@ -345,6 +361,8 @@ struct Lab {
             grassReady = grass.open(device, options.params, GrassSettings{}, spriteDir, &why);
             if (!grassReady) std::fprintf(stderr, "grass off: %s\n", why.c_str());
             postReady = post.open(device);
+            lightReady = shadows.open(device) && sky.open(device) && clouds.open(device);
+            if (!lightReady) std::fprintf(stderr, "light off: %s\n", device.error().c_str());
             if (!foliageReady) std::fprintf(stderr, "foliage off: %s\n", why.c_str());
             else {
                 if (!options.foliageLayers.empty())
@@ -451,9 +469,41 @@ struct Lab {
         const Selection selection = select(p, macro, clipmap, camera.eye, frustumFrom(view.viewProjection));
         s.selectMs = msSince(selectStart);
 
+        // The world's clock: a fixed sixtieth a frame when measuring (so a run is
+        // the same run every time), the real time otherwise.
+        const double dt = options.sync ? 1.0 / 60.0 : std::min(0.1, msSince(lastFrame) / 1000.0);
+        lastFrame = Clock::now();
+        seconds += dt;
+        double forward[3];
+        camera.forward(forward);
+        lighting.update(options.light, camera.eye, forward, camera.fovY, aspect, seconds);
+        const LightUniforms& light = lighting.uniforms();
+        view.eyeZ = float(camera.eye.z);
+        view.spacing = float(p.spacing);
+        view.clipSize = p.clipSize;
+        view.grid = p.grid;
+        view.levels = p.levels;
+        view.rangeFactor = float(p.rangeFactor);
+        view.morphStart = float(p.morphStart);
+        PlantView plants{};
+        std::memcpy(plants.viewProjection, view.viewProjection, sizeof(plants.viewProjection));
+        plants.wind[0] = light.windDirection[0];
+        plants.wind[1] = light.windDirection[1];
+        plants.wind[2] = light.wind;
+        plants.wind[3] = light.time;
+        plants.eyeWrapped[0] = float(std::fmod(camera.eye.x, 4096.0));
+        plants.eyeWrapped[1] = float(std::fmod(camera.eye.y, 4096.0));
+        const bool shadowsOn = lightReady && options.light.shadows;
+
         const auto recordStart = Clock::now();
         auto* commands = SDL_AcquireGPUCommandBuffer(device.handle());
         renderer.upload(commands, selection);
+        if (shadowsOn) {
+            // The shadow casters: every patch near enough, whichever way the eye looks.
+            Params near = p;
+            near.levels = std::min<std::uint32_t>(p.levels, 7);
+            renderer.uploadShadow(commands, select(near, macro, clipmap, camera.eye, Frustum{}));
+        }
         s.texels = renderer.generate(commands, rects);
         if (foliageReady && options.foliage) {
             FoliageFrame f;
@@ -472,15 +522,31 @@ struct Lab {
             g.eye = camera.eye;
             g.frustum = frustumFrom(view.viewProjection);
             g.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
-            const double sunDir[3] = {-0.45, -0.35, 0.6};
-            const double sunLen = std::sqrt(sunDir[0] * sunDir[0] + sunDir[1] * sunDir[1] + sunDir[2] * sunDir[2]);
-            for (int i = 0; i < 3; ++i) g.sunDirection[i] = float(sunDir[i] / sunLen);
-            g.skyColour[0] = 0.62f; g.skyColour[1] = 0.72f; g.skyColour[2] = 0.82f;
+            for (int i = 0; i < 3; ++i) {
+                g.sunDirection[i] = light.sun[i];
+                g.skyColour[i] = light.zenith[i];
+            }
             GroundUniforms ground = renderer.ground();
             grass.spawn(commands, g, renderer.clipmap(), renderer.biomeMap(), renderer.materials(),
-                        renderer.materialNormals(), renderer.materialProperties(), ground);
+                        renderer.materialNormals(), renderer.materialProperties(), ground, light);
             s.grassTufts = grass.tufts();
             s.grassCandidates = grass.candidates();
+        }
+        if (shadowsOn) {
+            // The sun's shadow atlas: the ground and the trees, three cascades.
+            auto* shadowPass = shadows.begin(commands);
+            for (std::uint32_t c = 0; c < Lighting::kCascades; ++c) {
+                shadows.viewport(shadowPass, c);
+                ViewUniforms lightView = view;
+                std::memcpy(lightView.viewProjection, lighting.cascadeMatrix(c), sizeof(lightView.viewProjection));
+                renderer.drawShadow(commands, shadowPass, lightView);
+                if (foliageReady && options.foliage) {
+                    PlantView lightPlants = plants;
+                    std::memcpy(lightPlants.viewProjection, lighting.cascadeMatrix(c), sizeof(lightPlants.viewProjection));
+                    foliage.drawShadow(commands, shadowPass, lightPlants);
+                }
+            }
+            SDL_EndGPURenderPass(shadowPass);
         }
         SDL_GPUTexture* swapchain = nullptr;
         Uint32 sw = 0, sh = 0;
@@ -490,40 +556,31 @@ struct Lab {
         colour.texture = targets.colour();
         colour.load_op = SDL_GPU_LOADOP_CLEAR;
         colour.store_op = SDL_GPU_STOREOP_STORE;
-        colour.clear_color = {0.62f, 0.72f, 0.82f, 1};
+        colour.clear_color = {light.horizon[0], light.horizon[1], light.horizon[2], 1};
         SDL_GPUDepthStencilTargetInfo depth{};
         depth.texture = targets.depth();
         depth.clear_depth = 0;
         depth.load_op = SDL_GPU_LOADOP_CLEAR;
-        depth.store_op = SDL_GPU_STOREOP_DONT_CARE;
+        depth.store_op = SDL_GPU_STOREOP_STORE;   // the clouds read it
         depth.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
         depth.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
         auto* pass = SDL_BeginGPURenderPass(commands, &colour, 1, &depth);
-        view.eyeZ = float(camera.eye.z);
-        view.spacing = float(p.spacing);
-        view.clipSize = p.clipSize;
-        view.grid = p.grid;
-        view.levels = p.levels;
-        view.rangeFactor = float(p.rangeFactor);
-        view.morphStart = float(p.morphStart);
+        const RayCamera rays = rayCamera(forward, camera.fovY, aspect);
+        if (lightReady) sky.draw(commands, pass, light, rays);
         LookUniforms look{};
-        const double sun[3] = {-0.45, -0.35, 0.6};
-        const double sl = std::sqrt(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
-        for (int i = 0; i < 3; ++i) look.sunDirection[i] = float(sun[i] / sl);
-        // Haze by height above the ground, not by the levels there are: from the
-        // ground ~14 km as before, from a map view hundreds of kilometres.
-        look.hazeDistance = float(14350.0 + 6.0 * std::max(0.0, camera.eye.z - ground));
-        look.skyColour[0] = 0.62f; look.skyColour[1] = 0.72f; look.skyColour[2] = 0.82f;
         look.debugLevels = std::uint32_t(options.debugLevels);
         look.clipSize = p.clipSize;
         look.levels = p.levels;
         look.flags = (options.groundMaterials ? 0u : kLookPlainGround) | (options.surfaceMaps ? 0u : kLookNoSurfaceMaps);
-        renderer.draw(commands, pass, view, look);
-        if (foliageReady && options.foliage) foliage.draw(commands, pass, view.viewProjection, &look, sizeof(look));
-        if (grassReady && options.grass) grass.draw(commands, pass, view.viewProjection, &look, sizeof(look));
+        renderer.draw(commands, pass, view, look, light, shadows.texture(), shadows.sampler());
+        if (foliageReady && options.foliage) foliage.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
+        if (grassReady && options.grass) grass.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
         SDL_EndGPURenderPass(pass);
 
-        if (postReady) post.apply(commands, targets, options.post, float(frames++) / 60.0f);
+        const bool cloudsDrawn = lightReady && clouds.march(commands, targets, light, rays, float(camera.nearPlane),
+                                                            std::uint32_t(frames));
+        if (postReady) post.apply(commands, targets, options.post, float(seconds), cloudsDrawn ? clouds.texture() : nullptr);
+        ++frames;
         probe.record(commands, renderer.clipmap(), p, camera.eye);
         if (swapchain) {
             SDL_GPUBlitInfo blit{};
@@ -752,6 +809,15 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_F4) lab.options.grass = !lab.options.grass;
                 if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
                 if (e.key.key == SDLK_F6) lab.options.surfaceMaps = !lab.options.surfaceMaps;
+                if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;
+                if (e.key.key == SDLK_F8) lab.options.light.clouds = !lab.options.light.clouds;
+                if (e.key.key == SDLK_F9) lab.options.light.windOn = !lab.options.light.windOn;
+                if (e.key.key == SDLK_F10) {
+                    const double times[] = {7.0, 9.5, 13.0, 16.5, 18.8, 20.2};
+                    std::size_t next = 0;
+                    while (next < 6 && times[next] <= lab.options.light.timeOfDay + 0.01) ++next;
+                    lab.options.light.timeOfDay = times[next % 6];
+                }
                 if (e.key.key >= SDLK_1 && e.key.key <= SDLK_9 && lab.foliageReady) {
                     const std::size_t i = std::size_t(e.key.key - SDLK_1);
                     if (i < lab.foliage.layers().size()) lab.foliage.layers()[i].enabled = !lab.foliage.layers()[i].enabled;
@@ -862,15 +928,18 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 std::snprintf(where, sizeof where, "x %.0f y %.0f agl %.0f, speed %.0f m/s (M: map)", s.x, s.y, agl, speed);
             // Which modules are on: G ground materials, F foliage and its layers (1..9).
             std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.surfaceMaps ? "S" : "s") +
-                                  (lab.options.grass ? " Gr" : " gr") +
+                                  (lab.options.grass ? " Gr" : " gr") + (lab.options.light.shadows ? " Sh" : " sh") +
+                                  (lab.options.light.clouds ? " Cl" : " cl") + (lab.options.light.windOn ? " W" : " w") +
                                   (lab.options.foliage ? " T:" : " t:");
             if (lab.foliageReady)
                 for (std::size_t i = 0; i < lab.foliage.layers().size(); ++i)
                     modules += lab.foliage.layers()[i].enabled ? char('1' + i) : '-';
             char title[640];
             std::snprintf(title, sizeof title,
-                          "terrain_lab | %.0f fps %.2f ms | grass %llu | trees %llu %.2fM tris | [%s] style %s | %s %s",
-                          1000.0 / mean, mean, (unsigned long long)s.grassTufts, (unsigned long long)s.foliageInstances,
+                          "terrain_lab | %.0f fps %.2f ms | %02d:%02d | grass %llu | trees %llu %.2fM tris | [%s] style %s | %s %s",
+                          1000.0 / mean, mean, int(lab.options.light.timeOfDay),
+                          int(std::fmod(lab.options.light.timeOfDay, 1.0) * 60.0), (unsigned long long)s.grassTufts,
+                          (unsigned long long)s.foliageInstances,
                           double(s.foliageTriangles) / 1e6, modules.c_str(), Post::name(lab.options.post), where,
                           s.misses ? "| COVERAGE MISS" : "");
             SDL_SetWindowTitle(window, title);

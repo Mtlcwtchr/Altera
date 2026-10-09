@@ -163,6 +163,13 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     wanted.attributes = {{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_INT4, 0},
                          {1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16}};
     terrain_ = device.makePipeline(wanted);
+    // The same ground into the sun's shadow atlas: depth only, pushed back a
+    // little from the light (reversed depth: towards nought) against acne.
+    wanted.fragmentEntry = "shadowPs";
+    wanted.depthOnly = true;
+    wanted.depthBiasConstant = -2.0f;
+    wanted.depthBiasSlope = -2.5f;
+    shadowPipeline_ = device.makePipeline(wanted);
     if (!nearest_ || !generate_ || !terrain_) return false;
 
     // The grid's index buffer, quarter by quarter, so that each quarter is one
@@ -227,65 +234,93 @@ std::uint64_t Renderer::generate(SDL_GPUCommandBuffer* commands, const std::vect
 }
 
 Renderer::~Renderer() {
-    if (device_ && patchStaging_) SDL_ReleaseGPUTransferBuffer(device_->handle(), patchStaging_);
+    if (device_) {
+        if (view_.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), view_.transfer);
+        if (shadow_.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), shadow_.transfer);
+    }
 }
 
-bool Renderer::upload(SDL_GPUCommandBuffer* commands, const Selection& selection) {
-    staging_.clear();
+bool Renderer::uploadSet(SDL_GPUCommandBuffer* commands, const Selection& selection, PatchSet& set) {
+    set.staging.clear();
     for (std::uint32_t q = 0; q < 4; ++q) {
-        firsts_[q] = std::uint32_t(staging_.size());
-        counts_[q] = std::uint32_t(selection.byQuarter[q].size());
-        staging_.insert(staging_.end(), selection.byQuarter[q].begin(), selection.byQuarter[q].end());
+        set.firsts[q] = std::uint32_t(set.staging.size());
+        set.counts[q] = std::uint32_t(selection.byQuarter[q].size());
+        set.staging.insert(set.staging.end(), selection.byQuarter[q].begin(), selection.byQuarter[q].end());
     }
-    triangles_ = std::uint32_t(staging_.size()) * quarterIndices_ / 3;
-    if (staging_.empty()) return true;
-    if (staging_.size() > patchCapacity_) {
-        patchCapacity_ = std::max<std::uint32_t>(1024, std::uint32_t(staging_.size()) * 2);
-        const auto bytes = std::uint32_t(std::size_t(patchCapacity_) * sizeof(Patch));
-        patches_ = device_->makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, bytes);
-        if (patchStaging_) SDL_ReleaseGPUTransferBuffer(device_->handle(), patchStaging_);
+    if (set.staging.empty()) return true;
+    if (set.staging.size() > set.capacity) {
+        set.capacity = std::max<std::uint32_t>(1024, std::uint32_t(set.staging.size()) * 2);
+        const auto bytes = std::uint32_t(std::size_t(set.capacity) * sizeof(Patch));
+        set.buffer = device_->makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, bytes);
+        if (set.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), set.transfer);
         SDL_GPUTransferBufferCreateInfo info{};
         info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         info.size = bytes;
-        patchStaging_ = SDL_CreateGPUTransferBuffer(device_->handle(), &info);
-        if (!patches_ || !patchStaging_) return false;
+        set.transfer = SDL_CreateGPUTransferBuffer(device_->handle(), &info);
+        if (!set.buffer || !set.transfer) return false;
     }
-    const auto bytes = std::uint32_t(staging_.size() * sizeof(Patch));
+    const auto bytes = std::uint32_t(set.staging.size() * sizeof(Patch));
     // Cycling: while the card still reads last frame's copy SDL hands out
     // another, so this never waits and never allocates in steady state.
-    void* mapped = SDL_MapGPUTransferBuffer(device_->handle(), patchStaging_, true);
+    void* mapped = SDL_MapGPUTransferBuffer(device_->handle(), set.transfer, true);
     if (!mapped) return false;
-    std::memcpy(mapped, staging_.data(), bytes);
-    SDL_UnmapGPUTransferBuffer(device_->handle(), patchStaging_);
+    std::memcpy(mapped, set.staging.data(), bytes);
+    SDL_UnmapGPUTransferBuffer(device_->handle(), set.transfer);
     auto* copy = SDL_BeginGPUCopyPass(commands);
-    const SDL_GPUTransferBufferLocation from{patchStaging_, 0};
-    const SDL_GPUBufferRegion to{patches_.get(), 0, bytes};
+    const SDL_GPUTransferBufferLocation from{set.transfer, 0};
+    const SDL_GPUBufferRegion to{set.buffer.get(), 0, bytes};
     SDL_UploadToGPUBuffer(copy, &from, &to, true);
     SDL_EndGPUCopyPass(copy);
     return true;
 }
 
+bool Renderer::upload(SDL_GPUCommandBuffer* commands, const Selection& selection) {
+    const bool ok = uploadSet(commands, selection, view_);
+    triangles_ = std::uint32_t(view_.staging.size()) * quarterIndices_ / 3;
+    return ok;
+}
+
+bool Renderer::uploadShadow(SDL_GPUCommandBuffer* commands, const Selection& selection) {
+    return uploadSet(commands, selection, shadow_);
+}
+
+void Renderer::drawSet(SDL_GPURenderPass* pass, const PatchSet& set) {
+    const SDL_GPUBufferBinding index{indices_.get(), 0};
+    SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+    for (std::uint32_t q = 0; q < 4; ++q) {
+        if (!set.counts[q]) continue;
+        const SDL_GPUBufferBinding instances{set.buffer.get(), set.firsts[q] * std::uint32_t(sizeof(Patch))};
+        SDL_BindGPUVertexBuffers(pass, 0, &instances, 1);
+        SDL_DrawGPUIndexedPrimitives(pass, quarterIndices_, set.counts[q], q * quarterIndices_, 0, 0);
+    }
+}
+
 void Renderer::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const ViewUniforms& view,
-                    const LookUniforms& look) {
-    if (staging_.empty()) return;
+                    const LookUniforms& look, const LightUniforms& light, SDL_GPUTexture* shadowAtlas,
+                    SDL_GPUSampler* shadowSampler) {
+    if (view_.staging.empty()) return;
     SDL_BindGPUGraphicsPipeline(pass, terrain_.get());
     SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
     SDL_PushGPUFragmentUniformData(commands, 0, &look, sizeof(look));
     SDL_PushGPUFragmentUniformData(commands, 1, &ground_, sizeof(ground_));
+    SDL_PushGPUFragmentUniformData(commands, 2, &light, sizeof(light));
     const SDL_GPUTextureSamplerBinding clip{clipmap_.get(), nearest_.get()};
     SDL_BindGPUVertexSamplers(pass, 0, &clip, 1);
-    const SDL_GPUTextureSamplerBinding fragment[5] = {
+    const SDL_GPUTextureSamplerBinding fragment[6] = {
             clip, {biomeMap_.get(), nearest_.get()}, {materials_.get(), repeat_.get()},
-            {materialNormals_.get(), repeat_.get()}, {materialProperties_.get(), repeat_.get()}};
-    SDL_BindGPUFragmentSamplers(pass, 0, fragment, 5);
-    const SDL_GPUBufferBinding index{indices_.get(), 0};
-    SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-    for (std::uint32_t q = 0; q < 4; ++q) {
-        if (!counts_[q]) continue;
-        const SDL_GPUBufferBinding instances{patches_.get(), firsts_[q] * std::uint32_t(sizeof(Patch))};
-        SDL_BindGPUVertexBuffers(pass, 0, &instances, 1);
-        SDL_DrawGPUIndexedPrimitives(pass, quarterIndices_, counts_[q], q * quarterIndices_, 0, 0);
-    }
+            {materialNormals_.get(), repeat_.get()}, {materialProperties_.get(), repeat_.get()},
+            {shadowAtlas, shadowSampler}};
+    SDL_BindGPUFragmentSamplers(pass, 0, fragment, 6);
+    drawSet(pass, view_);
+}
+
+void Renderer::drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const ViewUniforms& light) {
+    if (shadow_.staging.empty() || !shadowPipeline_) return;
+    SDL_BindGPUGraphicsPipeline(pass, shadowPipeline_.get());
+    SDL_PushGPUVertexUniformData(commands, 0, &light, sizeof(light));
+    const SDL_GPUTextureSamplerBinding clip{clipmap_.get(), nearest_.get()};
+    SDL_BindGPUVertexSamplers(pass, 0, &clip, 1);
+    drawSet(pass, shadow_);
 }
 
 } // namespace terrain_core

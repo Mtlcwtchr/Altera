@@ -13,6 +13,7 @@
 
 #include "engine/render/device.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/params.hpp"
 
@@ -52,8 +53,10 @@ public:
     void spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, SDL_GPUTexture* clipmap,
                SDL_GPUTexture* biomeMap, std::uint32_t biomeSize);
     // Inside the render pass, after the terrain. `look` is the terrain's.
-    void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],
-              const void* look, std::size_t lookBytes);
+    void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
+              const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler);
+    // Into the shadow atlas, one cascade (`view` carries its matrix).
+    void drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view);
 
     std::vector<FoliageLayer>& layers() { return layers_; }
     std::uint32_t modelCount() const { return std::uint32_t(models_.size()); }
@@ -73,7 +76,7 @@ private:
     engine::Texture textures_;
     engine::Sampler nearest_, linear_;
     engine::ComputePipeline spawn_, reset_, argsPass_;
-    engine::GraphicsPipeline draw_;
+    engine::GraphicsPipeline draw_, shadow_;
     SDL_GPUTransferBuffer* readback_[3] = {};
     std::uint64_t frame_ = 0;
     std::vector<std::uint32_t> lastCounts_;

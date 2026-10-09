@@ -497,9 +497,9 @@ GraphicsPipeline Device::makePipeline(const PipelineWanted& wanted) {
         return {};
     }
 
-    const bool offscreen = !wanted.colourFormats.empty();
+    const bool offscreen = !wanted.colourFormats.empty() || wanted.depthOnly;
     SDL_GPUColorTargetDescription colour{};
-    colour.format = offscreen ? wanted.colourFormats.front() : kColourFormat;
+    colour.format = !wanted.colourFormats.empty() ? wanted.colourFormats.front() : kColourFormat;
     if (wanted.blend) {
         colour.blend_state.enable_blend = true;
         colour.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
@@ -543,12 +543,13 @@ GraphicsPipeline Device::makePipeline(const PipelineWanted& wanted) {
     info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_GREATER_OR_EQUAL;   // reversed depth (Camera::viewProjection)
     // Every target blends alike; an offscreen bake has one description a format.
     std::vector<SDL_GPUColorTargetDescription> colours(offscreen ? wanted.colourFormats.size() : 1, colour);
+    if (wanted.depthOnly) colours.clear();
     for (std::size_t i = 0; offscreen && i < colours.size(); ++i) colours[i].format = wanted.colourFormats[i];
-    const bool depth = offscreen ? wanted.offscreenDepth : true;
+    const bool depth = offscreen ? (wanted.offscreenDepth || wanted.depthOnly) : true;
     info.depth_stencil_state.enable_depth_test = depth && wanted.depthTest;
     info.depth_stencil_state.enable_depth_write = depth && wanted.depthWrite;
     info.multisample_state.sample_count = offscreen ? SDL_GPU_SAMPLECOUNT_1 : samples_;
-    info.target_info.color_target_descriptions = colours.data();
+    info.target_info.color_target_descriptions = colours.empty() ? nullptr : colours.data();
     info.target_info.num_color_targets = static_cast<Uint32>(colours.size());
     info.target_info.has_depth_stencil_target = depth;
     info.target_info.depth_stencil_format = kDepthFormat;

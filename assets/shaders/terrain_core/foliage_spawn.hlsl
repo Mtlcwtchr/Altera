@@ -17,7 +17,7 @@
 
 struct Instance {
     float4 positionYaw;   // eye-relative position (m), yaw
-    float4 extra;         // scale, texture layer, fade, model
+    float4 extra;         // scale, texture layer, fade, height (m)
 };
 
 // ---- spawning -------------------------------------------------------------
@@ -162,6 +162,6 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     if (slot >= slots.y) return;
     Instance o;
     o.positionYaw = float4(base3, unit(h2 >> 16) * 6.2831853);
-    o.extra = float4(scale, info4.z, fade, float(model));
+    o.extra = float4(scale, info4.z, fade, height);   // height: the draw lights the crown by it
     instances[slots.x + slot] = o;
 }

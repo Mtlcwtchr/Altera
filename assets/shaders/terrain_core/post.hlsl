@@ -1,5 +1,5 @@
-// Picture styles over the finished frame (terrain_core::Post), one full-screen
-// triangle. Three looks, for judging the world as the game will show it rather
+// The final pass over the frame (terrain_core::Post), one full-screen
+// triangle: the clouds laid over it, then a picture style. Three looks, for judging the world as the game will show it rather
 // than as a render:
 //
 //   1  dark fantasy   drained, heavy, cold in the shadows, film grain, a vignette
@@ -13,11 +13,15 @@
 
 Texture2D<float4> frame : register(t0, space2);
 SamplerState frameSampler : register(s0, space2);
+Texture2D<float4> clouds : register(t1, space2);      // clouds.hlsl, half resolution
+SamplerState cloudSampler : register(s1, space2);
 
 cbuffer Post : register(b0, space3) {
     uint mode;
     float time;
     float2 resolution;
+    float cloudsOn;
+    float3 postPad;
 };
 
 struct VsOut {
@@ -32,7 +36,15 @@ VsOut postVs(uint id : SV_VertexID) {
     return o;
 }
 
-float3 at(float2 uv) { return frame.SampleLevel(frameSampler, uv, 0).rgb; }
+// The frame with the clouds over it: what every style starts from.
+float3 at(float2 uv) {
+    float3 c = frame.SampleLevel(frameSampler, uv, 0).rgb;
+    if (cloudsOn > 0.5) {
+        const float4 cloud = clouds.SampleLevel(cloudSampler, uv, 0);
+        c = c * cloud.a + cloud.rgb;
+    }
+    return c;
+}
 float luma(float3 c) { return dot(c, float3(0.299, 0.587, 0.114)); }
 
 float hash(float2 p) {

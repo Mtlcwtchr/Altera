@@ -122,6 +122,8 @@ struct PipelineWanted {
     // with depth only if `offscreenDepth` - a bake into an atlas, say.
     std::vector<SDL_GPUTextureFormat> colourFormats;
     bool offscreenDepth = false;
+    // Offscreen with no colour at all, depth only: a shadow map.
+    bool depthOnly = false;
 };
 
 // What a compute shader is, which is much less than a graphics pipeline: no

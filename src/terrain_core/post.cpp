@@ -27,8 +27,9 @@ bool Post::open(engine::Device& device) {
     return pipeline_ && sampler_;
 }
 
-void Post::apply(SDL_GPUCommandBuffer* commands, engine::Targets& targets, std::uint32_t style, float time) {
-    if (style == 0 || style >= kStyles || !pipeline_) return;
+void Post::apply(SDL_GPUCommandBuffer* commands, engine::Targets& targets, std::uint32_t style, float time,
+                 SDL_GPUTexture* clouds) {
+    if (style >= kStyles || !pipeline_ || (style == 0 && !clouds)) return;
     if (!scratch_ || width_ != targets.width() || height_ != targets.height()) {
         SDL_GPUTextureCreateInfo info{};
         info.type = SDL_GPU_TEXTURETYPE_2D;
@@ -49,10 +50,12 @@ void Post::apply(SDL_GPUCommandBuffer* commands, engine::Targets& targets, std::
     colour.store_op = SDL_GPU_STOREOP_STORE;
     auto* pass = SDL_BeginGPURenderPass(commands, &colour, 1, nullptr);
     SDL_BindGPUGraphicsPipeline(pass, pipeline_.get());
-    const SDL_GPUTextureSamplerBinding source{targets.resolved(), sampler_.get()};
-    SDL_BindGPUFragmentSamplers(pass, 0, &source, 1);
-    const struct { std::uint32_t mode; float time; float resolution[2]; } u{
-            style, time, {float(width_), float(height_)}};
+    // Without clouds the cloud slot still needs a texture: the frame itself, unread.
+    const SDL_GPUTextureSamplerBinding sources[2] = {{targets.resolved(), sampler_.get()},
+                                                     {clouds ? clouds : targets.resolved(), sampler_.get()}};
+    SDL_BindGPUFragmentSamplers(pass, 0, sources, 2);
+    const struct { std::uint32_t mode; float time; float resolution[2]; float cloudsOn, pad[3]; } u{
+            style, time, {float(width_), float(height_)}, clouds ? 1.0f : 0.0f, {}};
     SDL_PushGPUFragmentUniformData(commands, 0, &u, sizeof(u));
     SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
     SDL_EndGPURenderPass(pass);

@@ -9,6 +9,7 @@
 
 #include "engine/render/device.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/params.hpp"
 
@@ -44,9 +45,9 @@ public:
     // map and the material array the ground draws with, and its uniforms.
     void spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
                SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
-               SDL_GPUTexture* properties, const GroundUniforms& ground);
-    void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],
-              const void* look, std::size_t lookBytes);
+               SDL_GPUTexture* properties, const GroundUniforms& ground, const LightUniforms& light);
+    void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
+              const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler);
 
     std::uint32_t tufts() const { return lastCount_; }   // two frames late
     std::uint64_t candidates() const { return candidates_; }

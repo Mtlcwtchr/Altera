@@ -92,7 +92,7 @@ bool Grass::open(engine::Device& device, const Params& params, const GrassSettin
 
 void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
                   SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
-                  SDL_GPUTexture* properties, const GroundUniforms& ground) {
+                  SDL_GPUTexture* properties, const GroundUniforms& ground, const LightUniforms& light) {
     if (frame_ >= 3) {
         if (const auto* n = static_cast<const std::uint32_t*>(
                     SDL_MapGPUTransferBuffer(device_->handle(), readback_[frame_ % 3], false))) {
@@ -117,6 +117,7 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
                 {normals, repeat_.get()}, {properties, repeat_.get()}};
         SDL_BindGPUComputeSamplers(pass, 0, samplers, 5);
         SDL_PushGPUComputeUniformData(commands, 1, &ground, sizeof(ground));
+        SDL_PushGPUComputeUniformData(commands, 2, &light, sizeof(light));
         const double range = params_.macroHeightRange, sea = params_.macroSeaLevel;
         candidates_ = 0;
         double radius = settings_.firstRadius, spacing = settings_.firstSpacing, inner = 0;
@@ -181,15 +182,15 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
     ++frame_;
 }
 
-void Grass::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],
-                 const void* look, std::size_t lookBytes) {
+void Grass::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
+                 const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler) {
     SDL_BindGPUGraphicsPipeline(pass, draw_.get());
-    SDL_PushGPUVertexUniformData(commands, 0, viewProjection, 64);
-    SDL_PushGPUFragmentUniformData(commands, 0, look, std::uint32_t(lookBytes));
+    SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
+    SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
     const SDL_GPUBufferBinding instances{tufts_.get(), 0};
     SDL_BindGPUVertexBuffers(pass, 0, &instances, 1);
-    const SDL_GPUTextureSamplerBinding sprite{sprites_.get(), linear_.get()};
-    SDL_BindGPUFragmentSamplers(pass, 0, &sprite, 1);
+    const SDL_GPUTextureSamplerBinding textures[2] = {{sprites_.get(), linear_.get()}, {shadowAtlas, shadowSampler}};
+    SDL_BindGPUFragmentSamplers(pass, 0, textures, 2);
     SDL_DrawGPUPrimitivesIndirect(pass, args_.get(), 0, 1);
 }
 
