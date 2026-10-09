@@ -1,3 +1,4 @@
+#include "engine/pipeline/pass_clock.hpp"
 #include "engine/pipeline/runner.hpp"
 
 #include <chrono>
@@ -157,6 +158,7 @@ bool Runner::frame(Device& device, Scene scene) {
 #if ASR_ENABLE_PROFILING
         const auto at = std::chrono::steady_clock::now();
 #endif
+        const PassClock::Scope clock(PassClock::get().on() ? "pipeline " + std::to_string(int(pipeline->id())) : std::string());
         if (!pipeline->run(frame)) {
             SDL_CancelGPUCommandBuffer(commands);
             return false;
@@ -184,6 +186,8 @@ bool Runner::frame(Device& device, Scene scene) {
 
     if (!device.submitFrame(commands)) return false;
     frameTiming_.submit = ms(submitAt, std::chrono::steady_clock::now());
+    PassClock::get().add("frame pipelines", frameTiming_.pipelines);
+    PassClock::get().frameDone();
     last_ = frame;
     last_.commands = nullptr;   // it is gone; keeping it would be a dangling invitation
 #if ASR_ENABLE_PROFILING

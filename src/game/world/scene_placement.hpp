@@ -89,6 +89,9 @@ public:
     void updateRegions(std::span<const decor::ScatterBounds> regions, bool enabled);
     std::shared_ptr<const ScenePlacementSnapshot> read() const { return published_.read().value; }
     bool busy() const { return !jobs_.empty() || missing_ != 0; }
+    // Nothing in flight, nothing missing or stale, nothing left to publish: an
+    // update with the same demand would only confirm it.
+    bool settled() const { return jobs_.empty() && missing_ == 0 && stale_ == 0 && !dirty_; }
     const std::string& error() const { return error_; }
     const Limits& limits() const { return limits_; }
     const Stats& stats() const { return stats_; }

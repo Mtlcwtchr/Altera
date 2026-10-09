@@ -30,6 +30,23 @@ FetchContent_Declare(zstd
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(zstd)
 
+# zlib is used by engine/world_source/png_io for PNG inflate/deflate. Fetch a
+# pinned static copy so Windows builds do not depend on a separately installed
+# SDK package being present for FindZLIB.
+set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
+set(ZLIB_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+FetchContent_Declare(zlib
+        GIT_REPOSITORY https://github.com/madler/zlib.git
+        GIT_TAG v1.3.1
+        GIT_SHALLOW TRUE
+        EXCLUDE_FROM_ALL)
+FetchContent_MakeAvailable(zlib)
+if(TARGET zlibstatic AND NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS zlibstatic)
+elseif(TARGET zlib AND NOT TARGET ZLIB::ZLIB)
+    add_library(ZLIB::ZLIB ALIAS zlib)
+endif()
+
 # meshoptimizer - offline only: tools/model_simplify reduces the multi-million
 # triangle source plants and rocks (assets/models/polyhaven) to import budgets.
 # Nothing in the engine links it.
@@ -95,7 +112,14 @@ endif()
 
 add_library(asr_warnings INTERFACE)
 target_compile_options(asr_warnings INTERFACE
-        $<$<CXX_COMPILER_ID:AppleClang,Clang,GNU>:-Wall -Wextra -Wpedantic -Wno-unused-parameter>)
+        $<$<AND:$<CXX_COMPILER_ID:AppleClang,Clang,GNU>,$<CXX_COMPILER_FRONTEND_VARIANT:GNU>>:-Wall -Wextra -Wpedantic -Wno-unused-parameter>
+        # clang-cl reads -Wall as -Weverything: a gigabyte of C++98-compat noise per build.
+        $<$<AND:$<CXX_COMPILER_ID:Clang>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/W3 -Wno-unused-parameter>
+        # MSVC: Allow multiple processes to write to the same .PDB file during parallel compilation
+        $<$<CXX_COMPILER_ID:MSVC>:/FS>
+        # CMake's MSVC-style RelWithDebInfo is /O2 /Ob1: only functions marked inline
+        # get inlined. clang/gcc RelWithDebInfo (-O2 -g) inline freely; match that.
+        $<$<AND:$<CONFIG:RelWithDebInfo>,$<CXX_COMPILER_FRONTEND_VARIANT:MSVC>>:/Ob2>)
 
 # Vendored single-header JSON (content is declarative text data, GDD 11).
 add_library(nlohmann_json INTERFACE)
@@ -111,6 +135,17 @@ add_library(asr_core STATIC
         src/engine/core/profiler.cpp)
 target_include_directories(asr_core PUBLIC src)
 target_link_libraries(asr_core PRIVATE asr_warnings)
+# Fixed divides __int128. clang-cl lowers that to __divti3, which the MSVC
+# runtime does not have; it lives in clang's own builtins library.
+if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_COMPILER_FRONTEND_VARIANT STREQUAL "MSVC")
+    get_filename_component(ASR_CLANG_BIN "${CMAKE_CXX_COMPILER}" DIRECTORY)
+    file(GLOB ASR_CLANG_BUILTINS "${ASR_CLANG_BIN}/../lib/clang/*/lib/windows/clang_rt.builtins-x86_64.lib")
+    if(NOT ASR_CLANG_BUILTINS)
+        message(FATAL_ERROR "clang_rt.builtins-x86_64.lib not found next to ${CMAKE_CXX_COMPILER}")
+    endif()
+    list(GET ASR_CLANG_BUILTINS 0 ASR_CLANG_BUILTINS)
+    target_link_libraries(asr_core PUBLIC "${ASR_CLANG_BUILTINS}")
+endif()
 include(src/engine/modules.cmake)
 
 # The entity system itself, and nothing else: registry, spatial cells, the
@@ -365,6 +400,11 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     set(BUILD_SHARED_LIBS OFF CACHE BOOL "" FORCE)
     set(SDLIMAGE_TESTS OFF CACHE BOOL "" FORCE)
     set(SDLIMAGE_SAMPLES OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_AVIF OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_AVIF_SAVE OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_JXL OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_LIBTIFF OFF CACHE BOOL "" FORCE)
+    set(SDLIMAGE_WEBP OFF CACHE BOOL "" FORCE)
     # Packed RG16 depth must bypass platform premultiplication/color management.
     set(SDLIMAGE_BACKEND_STB ON CACHE BOOL "" FORCE)
     FetchContent_Declare(SDL3_image
@@ -399,10 +439,10 @@ endif()
 if(ASR_BUILD_CLIENT)
     # The editor is its own program: it opens no world and ticks nothing, so it
     # starts in a second rather than after a continent has been generated.
-    add_executable(asr_editor
+    add_executable(campfire_editor
             src/game/editor/main.cpp
             src/game/ui/editor.cpp)
-    target_link_libraries(asr_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
+    target_link_libraries(campfire_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
             SDL3_image::SDL3_image-static asr_warnings)
 
     # This game's passes. They know what ground is made of and what grass is; the
@@ -431,6 +471,7 @@ if(ASR_BUILD_CLIENT)
             src/game/render/height_page_atlas.cpp
             src/game/render/height_page_stream.cpp
             src/game/render/gpu_terrain.cpp
+            src/game/render/terrain_material_cache.cpp
             src/game/render/calc/sprite_queue.cpp)
     target_include_directories(asr_game_render PUBLIC src)
     target_sources(asr_game_render PRIVATE src/game/render/passes/scene_models_pass.cpp
@@ -445,7 +486,7 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(asr_game_render PUBLIC asr_engine_render asr_world asr_camera asr_animation asr_virtual_geometry_gpu
             asr_impostors_gpu asr_world_source PRIVATE nlohmann_json asr_warnings)
 
-    add_executable(asr_client
+    add_executable(campfire_client
             src/game/client/main.cpp
             src/engine/core/profiler_alloc.cpp
             src/game/client/renderer.cpp
@@ -464,11 +505,11 @@ if(ASR_BUILD_CLIENT)
             src/game/ui/editor.cpp
             src/game/ui/overlay.cpp
             src/game/ui/info_panel.cpp)
-    target_link_libraries(asr_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
+    target_link_libraries(campfire_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
             SDL3::SDL3-static SDL3_image::SDL3_image-static
             SDL3_shadercross::SDL3_shadercross-static nlohmann_json asr_warnings)
     if(ASR_ENABLE_PROFILING)
-        target_sources(asr_client PRIVATE src/game/client/explore_diagnostics.cpp)
+        target_sources(campfire_client PRIVATE src/game/client/explore_diagnostics.cpp)
     endif()
 
     # asr_mesh_lab - UE Nanite's bake against our cluster DAG on the same meshes,
@@ -487,24 +528,58 @@ if(ASR_BUILD_CLIENT)
     add_executable(water_edge_probe tools/water_edge_probe.cpp)
     target_link_libraries(water_edge_probe PRIVATE asr_game_render asr_world asr_warnings)
 
-    # Public branding changes without breaking existing CLion targets/scripts.
-    function(campfire_binary target output)
-        set_target_properties(${target} PROPERTIES OUTPUT_NAME "${output}")
+    # The GPU profiler (tools/gpu_profile.py): a Vulkan layer that times any
+    # Vulkan program from outside it. Nothing in the engine knows it exists.
+    # Vulkan headers come with SDL; Metal has Instruments instead.
+    if(NOT APPLE)
+        add_library(campfire_gpu_layer SHARED tools/gpu_profiler/campfire_gpu_layer.cpp)
+        target_include_directories(campfire_gpu_layer PRIVATE "${sdl3_SOURCE_DIR}/src/video/khronos")
+        set_target_properties(campfire_gpu_layer PROPERTIES PREFIX "")
+        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:campfire_gpu_layer>/VK_LAYER_CAMPFIRE_gpu_profile.json" CONTENT
+"{
+    \"file_format_version\": \"1.2.0\",
+    \"layer\": {
+        \"name\": \"VK_LAYER_CAMPFIRE_gpu_profile\",
+        \"type\": \"GLOBAL\",
+        \"library_path\": \"./$<TARGET_FILE_NAME:campfire_gpu_layer>\",
+        \"api_version\": \"1.3.0\",
+        \"implementation_version\": \"1\",
+        \"description\": \"Campfire GPU profile: timestamps around every piece of GPU work, named after its shaders\"
+    }
+}
+")
+    endif()
+
+    # Public campfire_* target names, with backward-compatible asr_* executable
+    # shims for older scripts and local habits.
+    function(campfire_binary target legacy)
         if(UNIX)
             add_custom_command(TARGET ${target} POST_BUILD
-                    COMMAND "${CMAKE_COMMAND}" -E rm -f "$<TARGET_FILE_DIR:${target}>/${target}"
+                    COMMAND "${CMAKE_COMMAND}" -E rm -f "$<TARGET_FILE_DIR:${target}>/${legacy}"
                     COMMAND "${CMAKE_COMMAND}" -E create_symlink "$<TARGET_FILE_NAME:${target}>"
-                            "$<TARGET_FILE_DIR:${target}>/${target}"
+                            "$<TARGET_FILE_DIR:${target}>/${legacy}"
                     VERBATIM)
         else()
             add_custom_command(TARGET ${target} POST_BUILD
                     COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${target}>"
-                            "$<TARGET_FILE_DIR:${target}>/${target}${CMAKE_EXECUTABLE_SUFFIX}"
+                            "$<TARGET_FILE_DIR:${target}>/${legacy}${CMAKE_EXECUTABLE_SUFFIX}"
                     VERBATIM)
         endif()
     endfunction()
-    campfire_binary(asr_client campfire_client)
-    campfire_binary(asr_editor campfire_editor)
+    campfire_binary(campfire_client asr_client)
+    campfire_binary(campfire_editor asr_editor)
+
+    # Windows has no rpath: the vendored shader compiler's DLLs must sit next to
+    # the exe. dxil.dll is not linked, DXC loads it at runtime to sign DXIL.
+    if(WIN32)
+        add_custom_command(TARGET campfire_client POST_BUILD
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        $<TARGET_RUNTIME_DLLS:campfire_client> "$<TARGET_FILE_DIR:campfire_client>"
+                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                        "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:campfire_client>"
+                COMMAND_EXPAND_LISTS
+                VERBATIM)
+    endif()
 
     option(ASR_PREPARE_SCENE_MODELS "Prepare instanced nature models and impostors offline" ON)
     if(ASR_PREPARE_SCENE_MODELS)
@@ -548,7 +623,7 @@ if(ASR_BUILD_CLIENT)
                 COMMENT "Building per-model geometry DAGs and instance canopy sidecars"
                 VERBATIM)
         add_custom_target(asr_scene_geometry DEPENDS "${SCENE_CLUSTER_STAMP}")
-        add_dependencies(asr_client asr_scene_geometry)
+        add_dependencies(campfire_client asr_scene_geometry)
     endif()
 endif()
 

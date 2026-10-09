@@ -1,4 +1,5 @@
 #include "game/world/surface_reconstruction.hpp"
+#include <algorithm>
 #include <cstdlib>
 
 namespace world {
@@ -6,6 +7,9 @@ void SurfaceReconstruction::configure(const terrain::TerrainConfig& config) {
     auto policy = std::getenv("ASR_TERRAIN_STABLE_FEATURES") ? terrain::kCameraFeatureDataLodPolicy :
         terrain::kRegionalDataLodPolicy;
     policy.chunkCells = config.chunkCells;
+    // A coarser floor from the config (finest_data_metres): 16 m is level 2, 64 m level 4.
+    const int floor = config.finestDataMetres >= 64 ? 4 : config.finestDataMetres >= 16 ? 2 : 1;
+    policy.finestLevel = std::max(policy.finestLevel, floor);
     policy.chunkMetres = config.chunkMetres;
     const auto& map = world_->worldMap();
     constexpr int rootLevel = int(terrain::kGeometryLevels) - 1;

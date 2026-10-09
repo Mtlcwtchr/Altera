@@ -10,3 +10,6 @@ assets/**/*.jpeg filter=lfs diff=lfs merge=lfs -text
 assets/**/*.psd filter=lfs diff=lfs merge=lfs -text
 doc/references/campfireWorld/**/*.png filter=lfs diff=lfs merge=lfs -text
 doc/references/campfireWorld/**/*.zip filter=lfs diff=lfs merge=lfs -text
+doc/NewRef/**/*.png filter=lfs diff=lfs merge=lfs -text
+doc/NewRef/**/*.jpg filter=lfs diff=lfs merge=lfs -text
+new_assets/**/*.zip filter=lfs diff=lfs merge=lfs -text

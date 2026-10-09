@@ -42,7 +42,12 @@ float3 sunDisk(float3 d)
     return sunlight * (smoothstep(0.99985, 0.99995, c) * 1.4 + pow(c, 600.0) * 0.25) * (1.0 - overcast * 0.9);
 }
 
-float skyHash(float2 p) { return frac(sin(dot(p, float2(12.9898, 78.233))) * 43758.5453); }
+// Where along the ray the cloud march starts. White noise left a few marches
+// per pixel landing past a thin cloud's edge and the rest inside it: bright
+// salt over every sunlit gap in an overcast deck. Interleaved gradient noise
+// spreads the offsets evenly over each small block of pixels, so the same
+// steps dither into a smooth tone.
+float skyHash(float2 p) { return frac(52.9829189 * frac(dot(floor(p), float2(0.06711056, 0.00583715)))); }
 
 float3 skyColour(float3 d, float2 pixel, bool dome)
 {

@@ -288,13 +288,15 @@ bool FeaturePlanner::clearOfEarlier(std::uint32_t recipe, double x, double y) co
         const auto x0 = floorDiv(x - reach, cell), x1 = floorDiv(x + reach, cell);
         const auto y0 = floorDiv(y - reach, cell), y1 = floorDiv(y + reach, cell);
         for (auto cy = y0; cy <= y1; ++cy)
-            for (auto cx = x0; cx <= x1; ++cx)
-                for (const auto& in : *this->cell(other, cx, cy)) {
+            for (auto cx = x0; cx <= x1; ++cx) {
+                const auto held = this->cell(other, cx, cy); // see instancesIn
+                for (const auto& in : *held) {
                     const auto& b = in.bounds;
                     if (x >= b.min.x.toDouble() - clearance && x <= b.max.x.toDouble() + clearance &&
                         y >= b.min.y.toDouble() - clearance && y <= b.max.y.toDouble() + clearance)
                         return false;
                 }
+            }
     }
     return true;
 }
@@ -400,9 +402,13 @@ void FeaturePlanner::instancesIn(const core::WorldRect& area, std::vector<Featur
         const auto x0 = floorDiv(ax0 - reach, size), x1 = floorDiv(ax1 + reach, size);
         const auto y0 = floorDiv(ay0 - reach, size), y1 = floorDiv(ay1 + reach, size);
         for (auto cy = y0; cy <= y1; ++cy)
-            for (auto cx = x0; cx <= x1; ++cx)
-                for (const auto& in : *cell(recipe, cx, cy))
+            for (auto cx = x0; cx <= x1; ++cx) {
+                // Held for the loop: a range over `*cell(...)` outlives the
+                // pointer, and another thread's put() may evict the cell.
+                const auto held = cell(recipe, cx, cy);
+                for (const auto& in : *held)
                     if (in.bounds.overlaps(area)) out.push_back(in);
+            }
     }
 }
 

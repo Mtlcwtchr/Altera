@@ -572,6 +572,118 @@
     0.55,
     0.8
    ]
+  },
+  {
+   "name": "conifer_tall",
+   "model": "Conifer_Tall",
+   "height": [
+    0.85,
+    1.15
+   ]
+  },
+  {
+   "name": "conifer_broad",
+   "model": "Conifer_Broad",
+   "height": [
+    0.8,
+    1.1
+   ]
+  },
+  {
+   "name": "dead_pine",
+   "model": "Dead_Pine",
+   "height": [
+    0.7,
+    1.0
+   ]
+  },
+  {
+   "name": "cherry",
+   "model": "Cherry_Tree",
+   "height": [
+    0.8,
+    1.1
+   ]
+  },
+  {
+   "name": "plum",
+   "model": "Plum_Tree",
+   "height": [
+    0.8,
+    1.1
+   ]
+  },
+  {
+   "name": "twisted_tree",
+   "model": "Twisted_Tree",
+   "height": [
+    0.8,
+    1.2
+   ]
+  },
+  {
+   "name": "gnarled_tree",
+   "model": "Old_Gnarled_Tree",
+   "height": [
+    0.8,
+    1.1
+   ]
+  },
+  {
+   "name": "snow_pine",
+   "model": "Snow_Pine",
+   "height": [
+    0.8,
+    1.2
+   ]
+  },
+  {
+   "name": "dead_spire",
+   "model": "Dead_Tree_Spire",
+   "height": [
+    0.8,
+    1.1
+   ]
+  },
+  {
+   "name": "dead_bent",
+   "model": "Dead_Tree_Bent",
+   "height": [
+    0.8,
+    1.1
+   ]
+  },
+  {
+   "name": "holly",
+   "model": "Holly_Bush",
+   "height": [
+    0.8,
+    1.2
+   ]
+  },
+  {
+   "name": "raspberry",
+   "model": "Raspberry_Bush",
+   "height": [
+    0.8,
+    1.2
+   ]
+  },
+  {
+   "name": "pink_leaf",
+   "model": "Pink_Leaf_Plant",
+   "height": [
+    0.8,
+    1.3
+   ]
+  },
+  {
+   "name": "aloe",
+   "model": "Aloe",
+   "height": [
+    0.7,
+    1.2
+   ]
   }
  ]
 }

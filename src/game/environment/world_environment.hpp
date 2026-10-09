@@ -29,7 +29,7 @@ namespace env = engine::environment;
 
 // Bumped whenever WorldFields or NaturalZones change what they answer: baked
 // pages are filed under it (Environment::fingerprint).
-inline constexpr std::uint64_t kGameEnvironmentVersion = 2;   // 2: the natural zones
+inline constexpr std::uint64_t kGameEnvironmentVersion = 3;   // 2: the natural zones; 3: planner heights off a 4 m lattice
 
 class WorldFields final : public env::FieldSource {
 public:

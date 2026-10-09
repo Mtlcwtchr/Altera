@@ -30,9 +30,10 @@ class ExternalProfilerTests(unittest.TestCase):
         self.assertEqual(command[command.index("--output") + 1], "trace file.trace")
 
     def test_launch_keeps_argv_without_shell_interpolation(self):
+        executable = Path("/tmp/engine with spaces")
         command = profiler.recording_command("memory", 5, Path("capture.trace"),
-                                             launch=Path("/tmp/engine with spaces"), arguments=["--seed", "x; touch nothing"])
-        self.assertEqual(command[-5:], ["--launch", "--", "/tmp/engine with spaces", "--seed", "x; touch nothing"])
+                                             launch=executable, arguments=["--seed", "x; touch nothing"])
+        self.assertEqual(command[-5:], ["--launch", "--", str(executable), "--seed", "x; touch nothing"])
         for mode in profiler.TEMPLATES:
             self.assertIn(profiler.TEMPLATES[mode], profiler.recording_command(mode, 1, Path("x"), pid=1))
 

@@ -148,4 +148,12 @@ Published publishParts(engine::ecs::Registry& registry, std::span<const ScatterB
     return result;
 }
 
+void visitPublishedRegions(const engine::ecs::Registry& registry,
+    const std::function<void(const ScatterBounds&, const std::shared_ptr<const Scatter>&,
+                             std::span<const engine::render::Entity>)>& visit) {
+    if (!registry.ctx().contains<RegionIndex>()) return;
+    for (const auto& [bounds, entry] : registry.ctx().get<RegionIndex>().regions)
+        visit(bounds, entry.part, entry.entities);
+}
+
 } // namespace world::decor

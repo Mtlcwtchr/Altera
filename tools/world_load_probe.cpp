@@ -8,7 +8,7 @@
 // frame of ground can be drawn.
 //
 //   world_load_probe [--regions N] [--preset NAME] [--seed S] [--no-prebake] [--disk]
-//   world_load_probe --import <height.png | package dir> WxH [--drain | --water] [--rivers]
+//   world_load_probe --import <height.png | package dir> WxH [--sample 64|128|256] [--north DEGREES] [--drain | --water] [--rivers]
 //       an empty world of W x H regions, the picture (black -100 m, white
 //       3000 m) or package imported over all of it, and the world built on it
 //   world_load_probe --generate WxH [--drain | --water] [--rivers] [--seed S]
@@ -25,8 +25,17 @@
 #include <string>
 #include <thread>
 
+#if defined(_WIN32)
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <psapi.h>
+#else
 #include <sys/resource.h>
+#endif
+#if defined(__APPLE__)
 #include <mach/mach.h>
+#endif
 
 #include "game/generation/world_layout.hpp"
 #include "game/generation/terrain_foundation.hpp"
@@ -55,11 +64,36 @@ std::filesystem::path contentDirectory() {
 
 // What the process holds now, in megabytes.
 std::size_t residentMb() {
+#if defined(__APPLE__)
     mach_task_basic_info info{};
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) != KERN_SUCCESS)
         return 0;
     return std::size_t(info.resident_size / (1024 * 1024));
+#elif defined(_WIN32)
+    PROCESS_MEMORY_COUNTERS info{};
+    if (!GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info))) return 0;
+    return std::size_t(info.WorkingSetSize / (1024 * 1024));
+#else
+    return 0;
+#endif
+}
+
+// The most the process has held, in megabytes.
+std::size_t peakMb() {
+#if defined(_WIN32)
+    PROCESS_MEMORY_COUNTERS info{};
+    if (!GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof(info))) return 0;
+    return std::size_t(info.PeakWorkingSetSize / (1024 * 1024));
+#else
+    rusage use{};
+    getrusage(RUSAGE_SELF, &use);
+#if defined(__APPLE__)
+    return std::size_t(use.ru_maxrss / (1024 * 1024)); // bytes
+#else
+    return std::size_t(use.ru_maxrss / 1024); // kilobytes
+#endif
+#endif
 }
 
 int main(int argc, char** argv) {
@@ -70,6 +104,8 @@ int main(int argc, char** argv) {
     int empty = 0, emptyHigh = 0;
     std::string importFrom;
     bool water = false, rivers = false, drain = false, generate = false;
+    int sampleMetres = 256;
+    double northDegrees = 55.0;
     std::string saveTo;
     for (int i = 1; i < argc; ++i) {
         const std::string a = argv[i];
@@ -100,6 +136,11 @@ int main(int argc, char** argv) {
             const auto cross = size.find('x');
             emptyHigh = cross == std::string::npos ? empty : std::max(1, std::atoi(size.c_str() + cross + 1));
         }
+        // The source's sample spacing, 64, 128 or 256 m: a 4096 px package
+        // over a 2 x 2 world goes in one pixel a sample at 64.
+        else if (a == "--sample") sampleMetres = std::atoi(next().c_str());
+        // Where the world lies on its planet: the latitude of its north edge.
+        else if (a == "--north") northDegrees = std::atof(next().c_str());
         else if (a == "--water") water = true;
         else if (a == "--drain") drain = true;
         else if (a == "--rivers") rivers = true;
@@ -110,7 +151,7 @@ int main(int argc, char** argv) {
         namespace ws = engine::world_source;
         auto layout = generation::emptyLayout(empty, emptyHigh, seed);
         layout.latitude.fixed = true;
-        layout.latitude.northDegrees = 55;
+        layout.latitude.northDegrees = northDegrees;
         layout.latitude.kmPerDegree = 111;   // the Earth's: a continent spans ten degrees, not two hundred
         // Into a world of its own when asked (--save worlds/name.json: the
         // layout written there and the source in its history root, as the
@@ -120,7 +161,8 @@ int main(int argc, char** argv) {
                                                    std::filesystem::path(saveTo).stem() / "source";
         std::filesystem::remove_all(root.parent_path());
         ws::ImportTarget target;
-        target.world = ws::WorldExtent{double(layout.widthMetres()), double(layout.heightMetres()), 256, 32768};
+        target.world = ws::WorldExtent{double(layout.widthMetres()), double(layout.heightMetres()), double(sampleMetres),
+                                       32768};
         target.rect = std::array<double, 4>{0, 0, double(layout.widthMetres()), double(layout.heightMetres())};
         target.rastersOnly = true;
         // The categorical layers onto the engine's numbering, by name.
@@ -389,9 +431,7 @@ int main(int argc, char** argv) {
         step("  water");
         generation::dab(layout, generation::LayerId::Continents, land, 3.8 * R, 7.2 * R, nullptr);
         step("  a stroke on the second");
-        rusage use{};
-        getrusage(RUSAGE_SELF, &use);
-        std::cout << "  peak memory " << use.ru_maxrss / (1024 * 1024) << " MB\n";
+        std::cout << "  peak memory " << peakMb() << " MB\n";
         return 0;
     }
     if (reference) {
@@ -417,9 +457,7 @@ int main(int argc, char** argv) {
         world::WorldSnapshot snapshot(std::move(map), config);
         std::cout << "  snapshot " << ms(t1, Clock::now()) << " ms (graph " << snapshot.timings().graph << ", climate "
                   << snapshot.timings().climate << "), holding " << residentMb() << " MB\n";
-        rusage use{};
-        getrusage(RUSAGE_SELF, &use);
-        std::cout << "  peak memory " << use.ru_maxrss / (1024 * 1024) << " MB\n";
+        std::cout << "  peak memory " << peakMb() << " MB\n";
         return 0;
     }
     if (empty > 0) {
@@ -495,9 +533,7 @@ int main(int argc, char** argv) {
                   << snapshot.timings().climate << ", climate step " << snapshot.climate().metres() << " m), holding "
                   << residentMb() << " MB\n";
         while (snapshot.pages().prebakeProgress().running) std::this_thread::sleep_for(std::chrono::milliseconds(10));
-        rusage use{};
-        getrusage(RUSAGE_SELF, &use);
-        std::cout << "  prebaked " << ms(t2, Clock::now()) << " ms; peak memory " << use.ru_maxrss / (1024 * 1024)
+        std::cout << "  prebaked " << ms(t2, Clock::now()) << " ms; peak memory " << peakMb()
                   << " MB\n";
         return 0;
     }

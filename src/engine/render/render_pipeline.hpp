@@ -1,4 +1,6 @@
 #pragma once
+#include <string>
+#include <unordered_map>
 // Drawing, centralised.
 //
 // This owns every graphics pipeline and every binding set in the frame, holds

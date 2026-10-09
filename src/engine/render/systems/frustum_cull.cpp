@@ -1,3 +1,4 @@
+#include "engine/core/frame_jobs.hpp"
 #include "engine/render/systems/frustum_cull.hpp"
 
 #include <cmath>
@@ -142,7 +143,11 @@ CulledInstances cullToFrustum(const GatheredInstances& gathered,
     if (index && index->source == gathered.instances.data() && index->count == gathered.instances.size()) {
         removed.resize(index->count, 0);
         const double eyeExtent = eye.extent();
-        for (const auto& group : index->groups) {
+        // Groups on the frame's threads too: each instance is in one group,
+        // so no two write the same verdict.
+        FrameJobs::get().run(index->groups.size(), 256, [&](std::size_t g0, std::size_t g1, std::size_t) {
+        for (std::size_t g = g0; g < g1; ++g) {
+            const auto& group = index->groups[g];
             unsigned char reason = 0;
             const double depth = eye.at(group.centre), eyeRadius = group.radius * eyeExtent;
             if (depth + eyeRadius <= 0) reason = 1;
@@ -158,54 +163,57 @@ CulledInstances cullToFrustum(const GatheredInstances& gathered,
             if (reason) for (std::uint32_t i = 0; i < group.count; ++i)
                 removed[index->members[group.first + i]] = reason;
         }
+        });
     }
 
     result.kept.invisible = gathered.invisible;
     result.kept.rejected = gathered.rejected;
+
+    // Each instance's verdict first, on the frame's threads (FrameJobs): the
+    // three tests read only the frame's planes and the horizon. The keeping
+    // is a copy in order after, so the result is the same as one thread's.
+    if (removed.empty()) removed.assign(gathered.instances.size(), 0);
+    FrameJobs::get().run(gathered.batches.size(), 8, [&](std::size_t b0, std::size_t b1, std::size_t) {
+        for (std::size_t b = b0; b < b1; ++b) {
+            const InstanceBatch& batch = gathered.batches[b];
+            const MeshBounds shape =
+                    batch.mesh < assets.size() ? assets[batch.mesh].bounds : MeshBounds{};
+            for (std::uint32_t i = 0; i < batch.count; ++i) {
+                const std::uint32_t at = batch.first + i;
+                if (removed[at]) continue;
+                const GatheredInstance& instance = gathered.instances[at];
+                const double centre[3]{instance.position[0], instance.position[1],
+                                       instance.position[2] + shape.rise * instance.scale};
+                const double radius = shape.radius * instance.scale;
+                // The near plane on the centre alone, not on the sphere. Keeping a
+                // model the eye sits inside would only hand the selection a depth
+                // it is about to divide by and reject.
+                if (eye.at(centre) <= 0) { removed[at] = 1; continue; }
+                bool out = false;
+                for (int p = 0; p < 4 && !out; ++p) out = sides[p].at(centre) + radius * reach[p] < 0;
+                if (out) { removed[at] = 2; continue; }
+                // In the view and in front of the eye - and possibly behind a
+                // hill. Asked last: the only one that has to look anything up.
+                if (horizon != nullptr &&
+                    horizon->hides(float(centre[0]), float(centre[1]), float(centre[2]), float(radius)))
+                    removed[at] = 3;
+            }
+        }
+    });
+
     result.kept.instances.reserve(gathered.instances.size());
     result.kept.owners.reserve(gathered.instances.size());
-
     for (const InstanceBatch& batch : gathered.batches) {
-        const MeshBounds shape =
-                batch.mesh < assets.size() ? assets[batch.mesh].bounds : MeshBounds{};
         const std::uint32_t begin = std::uint32_t(result.kept.instances.size());
         for (std::uint32_t i = 0; i < batch.count; ++i) {
             const std::uint32_t at = batch.first + i;
-            if (!removed.empty() && removed[at]) {
-                if (removed[at] == 1) ++result.behind;
-                else if (removed[at] == 2) ++result.outside;
+            if (const unsigned char why = removed[at]) {
+                if (why == 1) ++result.behind;
+                else if (why == 2) ++result.outside;
                 else ++result.hidden;
                 continue;
             }
-            const GatheredInstance& instance = gathered.instances[at];
-            const double centre[3]{instance.position[0], instance.position[1],
-                                   instance.position[2] + shape.rise * instance.scale};
-            const double radius = shape.radius * instance.scale;
-
-            // The near plane on the centre alone, not on the sphere. Keeping a
-            // model the eye sits inside would only hand the selection a depth
-            // it is about to divide by and reject, and counting it here says
-            // something truer about the frame than counting it there.
-            if (eye.at(centre) <= 0) {
-                ++result.behind;
-                continue;
-            }
-            bool out = false;
-            for (int p = 0; p < 4 && !out; ++p) out = sides[p].at(centre) + radius * reach[p] < 0;
-            if (out) {
-                ++result.outside;
-                continue;
-            }
-            // In the view and in front of the eye - and possibly behind a hill.
-            // Asked last because it is the only one of the three that has to
-            // look anything up.
-            if (horizon != nullptr &&
-                horizon->hides(float(centre[0]), float(centre[1]), float(centre[2]),
-                               float(radius))) {
-                ++result.hidden;
-                continue;
-            }
-            result.kept.instances.push_back(instance);
+            result.kept.instances.push_back(gathered.instances[at]);
             result.kept.owners.push_back(gathered.owners[at]);
         }
         const std::uint32_t count = std::uint32_t(result.kept.instances.size()) - begin;

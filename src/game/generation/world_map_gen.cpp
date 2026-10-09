@@ -2164,8 +2164,17 @@ WorldMapData generateWorldMap(const WorldMapParams& params) {
                                                              std::int64_t(i % std::size_t(params.width)) * kMetresPerCell,
                                                              std::int64_t(i / std::size_t(params.width)) * kMetresPerCell, 128)) /
                               256;
-                const std::int32_t annual =
+                std::int32_t annual =
                         std::clamp(ranked * std::clamp(wetness, 20, 250) / 100, 0, 255);
+                // And where the source holds a place to an authored rain
+                // (moisture_target / moisture_hold), drawn toward it.
+                if (params.imported && !params.imported->moistureHold.empty()) {
+                    const std::int64_t mx = std::int64_t(i % std::size_t(params.width)) * kMetresPerCell;
+                    const std::int64_t my = std::int64_t(i / std::size_t(params.width)) * kMetresPerCell;
+                    const std::int32_t hold = params.imported->maskAt(params.imported->moistureHold, mx, my, 0);
+                    const std::int32_t target = params.imported->maskAt(params.imported->moistureTarget, mx, my, annual);
+                    annual = std::clamp(annual + (target - annual) * hold / 255, 0, 255);
+                }
                 world.annualRainfallField[i] = annual;
                 world.humidityField[i] = std::clamp((annual * 3 + world.airMoistureField[i]) / 4, 0, 255);
                 world.seasonalityField[i] = std::clamp(

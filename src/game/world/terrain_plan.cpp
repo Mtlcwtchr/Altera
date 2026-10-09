@@ -1,5 +1,6 @@
 #include "game/world/terrain_plan.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
@@ -16,6 +17,7 @@
 
 namespace world::terrain {
 namespace {
+std::atomic<bool> gStageDiagnostics{false};
 using Key = streaming::TileKey;
 using Keys = std::unordered_set<Key>;
 using Clock = std::chrono::steady_clock;
@@ -391,7 +393,7 @@ struct Geometry {
         }
         auto result = makeAdaptiveMesh(int(side/step),step,tolerance,sample,target,
             dataPolicy.targeted && !baseOnly ? 0.25 : 0.001,precision,prior,priorTarget,criteria);
-        if (world.terrainFoundation) {
+        if (world.terrainFoundation && gStageDiagnostics.load(std::memory_order_relaxed)) {
             auto annotated=std::make_shared<AdaptiveMesh>(*result);
             const auto& f=*world.terrainFoundation;
             const auto previous=generation::TerrainStage(std::max(0,int(view.stageTo)-1));
@@ -1051,5 +1053,7 @@ bool TerrainPlanner::busy() const {
     std::lock_guard lock(impl_->mutex);
     return bool(impl_->job) || bool(impl_->done);
 }
+
+void setStageDiagnostics(bool on) { gStageDiagnostics.store(on, std::memory_order_relaxed); }
 
 } // namespace world::terrain

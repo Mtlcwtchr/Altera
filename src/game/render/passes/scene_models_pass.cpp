@@ -1,3 +1,5 @@
+#include "engine/core/frame_jobs.hpp"
+#include "engine/pipeline/pass_clock.hpp"
 #include "game/render/passes/scene_models_pass.hpp"
 #include "engine/render/frame.hpp"
 #include "engine/render/render_pipeline.hpp"
@@ -93,7 +95,7 @@ void SceneModelsPass::view(engine::camera::ViewState state) {
 void SceneModelsPass::reset() {
     forestProxies_.clear();
     farForest_.clear();
-    placement_.reset();failed_=false;
+    placement_.reset();failed_=false;placementView_.valid=false;
     detailBlend_=0;detailWanted_=true;
     wantedRegions_.clear();
     regionQuery_={};
@@ -109,6 +111,36 @@ void SceneModelsPass::reset() {
 void SceneModelsPass::updatePlacement(const engine::Scene& scene,double viewportWidth) {
     // Every decision here is the cull camera's (the scene view may be flying elsewhere).
     const float* eye=engine::cullEye(scene);
+    const float* matrix=engine::cullMatrix(scene);
+    const bool drawing=scene.extra[2]>0.01f;
+    const auto now=std::chrono::steady_clock::now();
+    if (placementView_.valid && source_.settled() && drawing==placementView_.drawing &&
+        viewportWidth==placementView_.viewportWidth && now-placementView_.at<std::chrono::milliseconds(250)) {
+        const auto& was=placementView_;
+        const auto row=[](const float* m,int r){return std::array<double,3>{m[4*r],m[4*r+1],m[4*r+2]};};
+        // Rows of the matrix as directions (the depth row is the view axis,
+        // the first the screen's x): equal within half a degree, and the same
+        // length within a thousandth (a zoom or a field of view change).
+        const auto alike=[&](int r) {
+            const auto a=row(matrix,r),b=row(was.matrix,r);
+            const double la=std::hypot(a[0],a[1],a[2]),lb=std::hypot(b[0],b[1],b[2]);
+            if (!(la>0) || !(lb>0)) return la==lb;
+            return std::abs(la-lb)<=1e-3*lb && (a[0]*b[0]+a[1]*b[1]+a[2]*b[2])/(la*lb)>=0.99996;
+        };
+        const double moved=std::hypot(double(eye[0])-was.eye[0],double(eye[1])-was.eye[1],double(eye[2])-was.eye[2]);
+        if (moved<0.5 && std::abs(double(eye[3])-was.eye[3])<=1e-3*std::abs(double(was.eye[3])) &&
+            alike(0) && alike(1) && alike(3)) {
+            failed_=!source_.error().empty();
+            placement_=source_.read();
+            return;
+        }
+    }
+    std::copy_n(matrix,16,placementView_.matrix);
+    std::copy_n(eye,4,placementView_.eye);
+    placementView_.viewportWidth=viewportWidth;
+    placementView_.drawing=drawing;
+    placementView_.valid=true;
+    placementView_.at=now;
     world::decor::SceneView view;
     std::copy_n(engine::cullMatrix(scene),16,view.matrix.begin());
     view.world=worldBounds_;view.viewportWidth=viewportWidth;
@@ -224,7 +256,7 @@ engine::PassPlace SceneModelsPass::setup(engine::Device& device,engine::RenderPi
         std::vector<std::filesystem::path> colourPaths,normalPaths,depthPaths;
         for (const auto& p:content.at("colours")) colourPaths.push_back(safePath(p.get<std::string>()));
         for (const auto& p:content.at("normals")) normalPaths.push_back(safePath(p.get<std::string>()));
-        require(!colourPaths.empty() && colourPaths.size()==normalPaths.size() && colourPaths.size()<=1280,"invalid model layers");
+        require(!colourPaths.empty() && colourPaths.size()==normalPaths.size() && colourPaths.size()<=2048,"invalid model layers");
         std::vector<std::vector<std::filesystem::path>> colourMips,normalMips;
         for (const auto& p:colourPaths) colourMips.push_back({p});
         for (const auto& p:normalPaths) normalMips.push_back({p});
@@ -796,12 +828,169 @@ engine::PassPlace SceneModelsPass::setup(engine::Device& device,engine::RenderPi
         // The mass pool lives in the shared buffers reserved above, so there is
         // nothing to create here: it is ready exactly when they are.
         massReady_=bool(shared_.vertices) && bool(shared_.indices) && !massSlots_.empty();
+        {
+            auto clear=device.makeCompute({"scene_impostor_args.hlsl","ClearCS"});
+            auto pool=device.makeCompute({"scene_impostor_pool.hlsl","PoolCS"});
+            auto clamp=device.makeCompute({"scene_impostor_args.hlsl","ClampCS"});
+            poolInstances_=device.makeBuffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE|SDL_GPU_BUFFERUSAGE_VERTEX,
+                                             kPoolInstances*sizeof(Instance));
+            poolArguments_=device.makeBuffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE|
+                                             SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ|SDL_GPU_BUFFERUSAGE_INDIRECT,
+                                             sizeof(engine::DrawArguments));
+            poolModels_=device.makeBuffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ,
+                                          std::max<std::size_t>(1,models_.size())*8*sizeof(float));
+            poolSources_=device.makeBuffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ,
+                                           kPoolChunk*kPoolChunks*sizeof(PoolSource));
+            poolCapacity_=poolSources_?kPoolChunk*kPoolChunks:0;
+            poolFree_.clear();
+            for (std::uint32_t c=std::uint32_t(kPoolChunks);c-->0;) poolFree_.push_back(c);
+            if (clear && pool && clamp && poolInstances_ && poolArguments_ && poolModels_ && poolSources_) {
+                poolClear_=into.take(std::move(clear));
+                poolCompute_=into.take(std::move(pool));
+                poolClamp_=into.take(std::move(clamp));
+                poolReady_=true;
+            } else std::cerr<<"Scene impostor pool unavailable: the processor draws every object\n";
+        }
         enabled_=true;
         ASR_DIAGNOSTIC(std::cout<<"Scene models: "<<models_.size()<<" meshes, 8-view impostors, "<<geometryBytes_<<" shared geometry bytes\n");
         return place;
     } catch (const std::exception& e) { device.fail(std::string("scene models: ")+e.what());return {}; }
 }
 bool SceneModelsPass::anything(const engine::Frame& frame) const { return enabled_ && frame.scene.extra[2]>0.01f; }
+void SceneModelsPass::syncPool() {
+    if (!poolReady_ || !device_ || !poolSources_) return;
+    if (modelMaxScale_.size()!=models_.size()) modelMaxScale_.assign(models_.size(),0.0f);
+    std::vector<PoolSource> chunk(kPoolChunk);
+    engine::Device::Uploader upload(*device_);
+    bool any=false;
+    const auto hide=[&](std::uint32_t c) {
+        std::fill(chunk.begin(),chunk.end(),PoolSource{});
+        upload.rewriteAt(poolSources_.get(),std::size_t(c)*kPoolChunk*sizeof(PoolSource),chunk.data(),
+                         kPoolChunk*sizeof(PoolSource));
+        poolFree_.push_back(c);
+        any=true;
+    };
+    std::set<world::decor::ScatterBounds> seen;
+    world::decor::visitPublishedRegions(entities_,[&](const world::decor::ScatterBounds& bounds,
+            const std::shared_ptr<const world::decor::Scatter>& part,std::span<const engine::render::Entity>) {
+        seen.insert(bounds);
+        auto& region=poolRegions_[bounds];
+        if (region.part==part) return;
+        for (const auto c:region.chunks) hide(c);
+        region.chunks.clear();
+        region.part=part;
+        if (!part) return;
+        std::size_t filled=0;
+        const auto flush=[&]() {
+            if (!filled) return;
+            if (poolFree_.empty()) { filled=0; return; }   // full: the rest of this region is not drawn
+            const auto c=poolFree_.back();poolFree_.pop_back();
+            std::fill(chunk.begin()+std::ptrdiff_t(filled),chunk.end(),PoolSource{});
+            upload.rewriteAt(poolSources_.get(),std::size_t(c)*kPoolChunk*sizeof(PoolSource),chunk.data(),
+                             kPoolChunk*sizeof(PoolSource));
+            region.chunks.push_back(c);
+            poolHigh_=std::max(poolHigh_,c+1);
+            filled=0;any=true;
+        };
+        for (const auto& object:part->objects) {
+            if (object.model>=models_.size()) continue;
+            modelMaxScale_[object.model]=std::max(modelMaxScale_[object.model],object.scale);
+            chunk[filled++]={{float(object.x),float(object.y),float(object.z)},object.scale,object.yaw,object.phase,
+                             object.tint,object.moss,object.model,{0,0,0}};
+            if (filled==kPoolChunk) flush();
+        }
+        flush();
+    });
+    for (auto it=poolRegions_.begin();it!=poolRegions_.end();) {
+        if (seen.contains(it->first)) { ++it; continue; }
+        for (const auto c:it->second.chunks) hide(c);
+        it=poolRegions_.erase(it);
+    }
+    if (any) upload.finish();
+    poolCount_=std::size_t(poolHigh_)*kPoolChunk;
+}
+void SceneModelsPass::poolRadii(const engine::render::ScreenScale& screen) {
+    poolRadius_.assign(models_.size(),-1.0f);
+    std::vector<float> table(models_.size()*8,0.0f);
+    const bool perspective=screen.focal>0;
+    for (std::size_t m=0;m<models_.size();++m) {
+        const auto& model=models_[m];
+        // The pixel size past which this model may be a mesh: vegetation by the
+        // setting (a ground plant's priority lowers it, collect's meshPriority);
+        // anything else from the mesh floor, under where a representation by
+        // error would choose a mesh.
+        const double priority=(world::decor::groundCoverModel(std::uint32_t(m)) || m==world::decor::kDenseShrub)
+            ?std::max(1.0,double(vegetationMeshPixels_)/60.0):1.0;
+        const double threshold=model.vegetation ? vegetationMeshPixels_/priority*0.9 : world::decor::kMeshFloorPixels;
+        const double largest=model.extent()*double(m<modelMaxScale_.size()?modelMaxScale_[m]:0.0f);
+        double radius=-1;
+        if (largest>0 && threshold>0) {
+            // Twice the depth at which the largest of them reaches it: a point
+            // at the side of the view is nearer in depth than on the ground.
+            if (perspective) radius=2.0*largest*screen.focal/threshold;
+            else radius=largest*screen.scale>=threshold*0.9 ? 1e9 : -1;
+        }
+        poolRadius_[m]=float(radius);
+        table[m*8+0]=model.width;table[m*8+1]=model.height;table[m*8+2]=float(model.extent());
+        table[m*8+3]=float(model.impostor);
+        table[m*8+4]=model.vegetation?1.0f:0.0f;table[m*8+5]=model.depthImpostor?1.0f:0.0f;
+        table[m*8+6]=float(model.hemisphereImpostor);table[m*8+7]=float(radius);
+    }
+    if (!table.empty() && device_) {
+        engine::Device::Uploader upload(*device_);
+        upload.rewriteAt(poolModels_.get(),0,table.data(),table.size()*sizeof(float));
+        upload.finish();
+    }
+}
+void SceneModelsPass::nearSubset(const float* eye) {
+    near_.instances.clear();near_.owners.clear();near_.batches.clear();
+    near_.invisible=near_.rejected=0;
+    double farthest=0;
+    for (const float r:poolRadius_) farthest=std::max(farthest,double(r));
+    if (farthest<=0) return;
+    struct Near { engine::render::Entity owner; std::uint32_t mesh,material; engine::render::GatheredInstance instance; };
+    std::vector<Near> found;
+    const auto& transforms=entities_.storage<engine::render::WorldTransform>();
+    const auto& meshes=entities_.storage<engine::render::SmartMeshRef>();
+    const auto& tints=entities_.storage<engine::render::RenderTint>();
+    world::decor::visitPublishedRegions(entities_,[&](const world::decor::ScatterBounds& bounds,
+            const std::shared_ptr<const world::decor::Scatter>&,std::span<const engine::render::Entity> members) {
+        const double dx=std::max({double(bounds.minX)-eye[0],0.0,eye[0]-double(bounds.maxX)});
+        const double dy=std::max({double(bounds.minY)-eye[1],0.0,eye[1]-double(bounds.maxY)});
+        if (dx*dx+dy*dy>farthest*farthest) return;
+        for (const auto entity:members) {
+            if (!transforms.contains(entity) || !meshes.contains(entity)) continue;
+            const auto& transform=transforms.get(entity);
+            const auto& reference=meshes.get(entity);
+            if (reference.mesh>=poolRadius_.size()) continue;
+            const double r=poolRadius_[reference.mesh];
+            const double ox=transform.position[0]-eye[0],oy=transform.position[1]-eye[1];
+            if (!(r>0) || ox*ox+oy*oy>=r*r) continue;
+            Near n{entity,reference.mesh,reference.material,{}};
+            std::copy_n(transform.position,3,n.instance.position);
+            n.instance.scale=transform.scale;n.instance.yaw=transform.yaw;n.instance.variant=reference.variant;
+            if (tints.contains(entity)) {
+                const auto& tint=tints.get(entity);
+                n.instance.tint=tint.tint;n.instance.phase=tint.phase;n.instance.surface=tint.surface;
+            }
+            found.push_back(n);
+        }
+    });
+    // As gatherInstances orders them: by asset, material, then identity, so a
+    // batch is the same run from one frame to the next.
+    std::sort(found.begin(),found.end(),[](const Near& a,const Near& b) {
+        if (a.mesh!=b.mesh) return a.mesh<b.mesh;
+        if (a.material!=b.material) return a.material<b.material;
+        return entt::to_integral(a.owner)<entt::to_integral(b.owner);
+    });
+    for (const auto& n:found) {
+        if (near_.batches.empty() || near_.batches.back().mesh!=n.mesh || near_.batches.back().material!=n.material)
+            near_.batches.push_back({n.mesh,n.material,std::uint32_t(near_.instances.size()),0});
+        ++near_.batches.back().count;
+        near_.instances.push_back(n.instance);
+        near_.owners.push_back(n.owner);
+    }
+}
 
 int SceneModelsPass::massSlotOf(const world::decor::ScatterBounds& region) const {
     for (std::size_t slot=0;slot<massSlots_.size();++slot)
@@ -1093,15 +1282,30 @@ void SceneModelsPass::prepareDensity(const engine::Scene& input, double viewport
     // This is the same residency demand the draw pass uses, but it runs before
     // Runner uploads Scene. The density path must never lag one frame behind
     // the geometry cut it describes.
+    auto& passClock=engine::PassClock::get();
+    PhaseClock prepareClock;
     updatePlacement(input,viewportWidth);
+    if (passClock.on()) passClock.add("  density: placement",prepareClock.lap());
     if (input.extra[2]<=0.01f) return;
     if (placement_.get()!=published_ && (!placement_ || placement_->objectsVersion!=publishedObjectsVersion_)) {
         publishPlacement();
+        if (passClock.on()) passClock.add("  density: publish",prepareClock.lap());
         published_=placement_.get();
         publishedObjectsVersion_=placement_?placement_->objectsVersion:0;
-        gathered_=engine::render::gatherInstances(entities_);
-        cullIndex_=engine::render::buildInstanceCullIndex(gathered_,assets_);
         representationHistory_.clear(); // registry identities can be reused on publication
+        // The pool follows the publication region by region; the whole
+        // placement gathered again (every object, every publication - tens of
+        // milliseconds while regions stream in) only for the path without it.
+        if (poolActive()) {
+            syncPool();
+            gatheredStale_=true;
+            if (passClock.on()) passClock.add("  density: pool sync",prepareClock.lap());
+        } else {
+            gathered_=engine::render::gatherInstances(entities_);
+            cullIndex_=engine::render::buildInstanceCullIndex(gathered_,assets_);
+            gatheredStale_=false;
+            if (passClock.on()) passClock.add("  density: gather",prepareClock.lap());
+        }
     } else if (placement_ && placement_.get()!=published_) {
         // A new snapshot with the same objects (regions or flags moved on):
         // already published. Without this the draw pass below saw a snapshot
@@ -1132,6 +1336,7 @@ void SceneModelsPass::prepareDensity(const engine::Scene& input, double viewport
     // spatial structure over static objects must never do.
     updateRegionMembers();
     densityCullMs_=clock.lap();
+    if (passClock.on()) passClock.add("  density: region members",densityCullMs_);
     densitySelectMs_=0;
     struct Candidate { float x=0,y=0,radius=0,weight=0; };
     std::vector<Candidate> candidates;
@@ -1232,11 +1437,24 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
         if (!placement_ || placement_->objectsVersion!=publishedObjectsVersion_) {
             publishPlacement();
             publishedObjectsVersion_=placement_?placement_->objectsVersion:0;
-            gathered_=engine::render::gatherInstances(entities_);
-            cullIndex_=engine::render::buildInstanceCullIndex(gathered_,assets_);
             representationHistory_.clear();
+            if (poolActive()) { syncPool(); gatheredStale_=true; }
+            else {
+                gathered_=engine::render::gatherInstances(entities_);
+                cullIndex_=engine::render::buildInstanceCullIndex(gathered_,assets_);
+                gatheredStale_=false;
+            }
         }
         published_=placement_.get();
+    }
+    // The pool turned on after running without it: fill it once from what is published.
+    if (poolActive() && poolCount_==0 && published_) syncPool();
+    // The pool turned off (a group stand-in switched on): the processor needs
+    // the whole placement gathered again, once.
+    if (!poolActive() && gatheredStale_) {
+        gathered_=engine::render::gatherInstances(entities_);
+        cullIndex_=engine::render::buildInstanceCullIndex(gathered_,assets_);
+        gatheredStale_=false;
     }
     engine::render::ScreenScale screen;
     for (int i=0;i<4;++i) { screen.rowX[i]=m[i];screen.rowY[i]=m[4+i];screen.rowW[i]=m[12+i]; }
@@ -1259,6 +1477,14 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
         if (const auto residency=pages_->residency()) {
             horizon_.eyeX=float(eye[0]);horizon_.eyeY=float(eye[1]);horizon_.eyeZ=float(eye[2]);
             constexpr double kPageMetres=512;
+            // The bins on the frame's threads (engine::FrameJobs), each with
+            // its own page in hand; the highest sample of each bin goes into
+            // the horizon after, in bin order - what raising every sample did.
+            constexpr int kBins=engine::render::Horizon::kBins;
+            std::array<std::array<double,3>,kBins> best;
+            std::array<char,kBins> found{};
+            const double eyeZ=eye[2];
+            engine::FrameJobs::get().run(kBins,16,[&](std::size_t b0,std::size_t b1,std::size_t) {
             const engine::SurfacePage* page=nullptr;
             std::int32_t pageX=0,pageY=0;
             const auto groundAt=[&](double wx,double wy,double& out) {
@@ -1284,22 +1510,35 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
                               double(page->bed[std::size_t(j1)*page->side+i1])});
                 return true;
             };
-            for (int bin=0;bin<engine::render::Horizon::kBins;++bin) {
-                const double angle=(double(bin)+0.5)/engine::render::Horizon::kBins*6.283185307179586-3.141592653589793;
+            for (std::size_t bin=b0;bin<b1;++bin) {
+                const double angle=(double(bin)+0.5)/kBins*6.283185307179586-3.141592653589793;
                 const double dx=std::cos(angle),dy=std::sin(angle);
+                double slope=-std::numeric_limits<double>::infinity();
                 // Geometric steps: near ground decides the horizon over most of
                 // the sky, and far ground only needs to be sampled coarsely.
                 for (double distance=24;distance<6000;distance*=1.18) {
                     double ground=0;
                     if (!groundAt(eye[0]+dx*distance,eye[1]+dy*distance,ground)) break;
-                    horizon_.raise(dx*distance,dy*distance,ground);
+                    const double here=(ground-eyeZ)/distance;
+                    if (here>slope) { slope=here; best[bin]={dx*distance,dy*distance,ground}; found[bin]=1; }
                 }
             }
+            });
+            for (int bin=0;bin<kBins;++bin)
+                if (found[bin]) horizon_.raise(best[bin][0],best[bin][1],best[bin][2]);
             if (horizon_.active) horizon=&horizon_;
         }
     }
     collectHorizonMs_=clock.lap();
-    const auto culled=engine::render::cullToFrustum(gathered_,assets_,screen,horizon,&cullIndex_);
+    // With the pool on, the processor sees only the objects near enough to be
+    // meshes; the pool on the card takes every other one (below).
+    const bool pooled=poolActive() && poolCount_>0;
+    if (pooled) {
+        poolRadii(screen);
+        nearSubset(engine::cullEye(s));
+    }
+    const auto culled=pooled ? engine::render::cullToFrustum(near_,assets_,screen,horizon)
+                             : engine::render::cullToFrustum(gathered_,assets_,screen,horizon,&cullIndex_);
     collectCullMs_=clock.lap();
     // Culled before selected, so the triangle budget below is computed over
     // what is drawn: a forest behind the camera must not decide how coarsely
@@ -1337,10 +1576,32 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
             return farForest_.covered(double(entry.first.minX)+1,double(entry.first.minY)+1);
         });
     collectMassMs_=clock.lap();
+    // ASR_PASS_TIMES: the phases this pass already times, beside the passes.
+    if (engine::PassClock::get().on()) {
+        auto& pc=engine::PassClock::get();
+        pc.add("  models: horizon",collectHorizonMs_);pc.add("  models: cull",collectCullMs_);
+        pc.add("  models: select",collectSelectMs_);pc.add("  models: mass",collectMassMs_);
+    }
 
     // How large each survivor is on screen, kept rather than recomputed: the
     // budget needs it once and the emission needs it again.
     const auto selectedCount=selected.instances.size();
+    // The object budget: in when over it, out again (slowly, and only with
+    // room for a step's worth more) when well under it.
+    {
+        const double full=farTreesStart_>0 ? std::min(drawDistance_,farTreesStart_) : drawDistance_;
+        const double least=full>0 ? std::min(1.0,kMinReach/full) : 1.0;
+        ++reachCalm_;
+        // The pool draws every impostor on the card: the processor's work no
+        // longer grows with the view, and the reach stays the setting.
+        if (pooled) reachScale_=1.0;
+        else if (selectedCount>kObjectBudget && reachScale_>least && reachCalm_>8) {
+            reachScale_=std::max(least,reachScale_*kReachStep);reachCalm_=0;
+        } else if (reachScale_<1.0 && reachCalm_>90 &&
+                   double(selectedCount)<double(kObjectBudget)*kReachStep*kReachStep*0.7) {
+            reachScale_=std::min(1.0,reachScale_/kReachStep);reachCalm_=0;
+        }
+    }
     auto& pixels=scratch_.pixels;pixels.assign(selectedCount,0.0);
     auto& meshWeights=scratch_.meshWeights;meshWeights.assign(selectedCount,1.0f);
     auto& hemisphereAllowed=scratch_.hemisphereAllowed;hemisphereAllowed.assign(selectedCount,false);
@@ -1348,30 +1609,47 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
     auto& detail=scratch_.detail;detail.assign(selectedCount,0.0f);
     auto& keep=scratch_.keep;keep.assign(selectedCount,0);
     // One pass to size everything, so the batch's own allowance is known before
-    // the budget is asked what a batch costs.
-    for (const auto& batch:selected.batches) {
-        const auto& model=models_[batch.mesh];
-        const auto slot=batch.mesh*levels_+batch.level;
-        for (std::uint32_t i=0;i<batch.count;++i) {
-            const auto at=batch.first+i;
-            const auto& instance=selected.instances[at];
-            double depth=0;
-            const float centre[3]{instance.position[0],instance.position[1],
-                instance.position[2]+float(model.height*0.5*instance.scale)};
-            pixels[at]=model.extent()*instance.scale*screen.pixelsPerMetreAt(centre,depth);
-            detail[at]=float(detailBlend_);
-            keep[at]=world::decor::objectLod(pixels[at],0).coverage*detail[at]>0;
-            // Past the draw distance the fog is opaque: an object there is
-            // drawn for nobody. Regions are admitted at 128 m, this is exact.
-            if (keep[at] && perspective) {
-                const float* eyeAt=engine::cullEye(s);
-                const double ox=instance.position[0]-eyeAt[0],oy=instance.position[1]-eyeAt[1];
-                const double reach=objectReach();
-                if (ox*ox+oy*oy>reach*reach) keep[at]=0;
+    // the budget is asked what a batch costs. On the frame's threads
+    // (engine::FrameJobs): every instance's numbers are its own; the batches'
+    // largest are merged after, in order.
+    auto& batchLargest=scratch_.batchLargest;batchLargest.assign(selected.batches.size(),0.0);
+    {
+        const float* eyeAt=engine::cullEye(s);
+        const double reach=objectReach();
+        const double blend=detailBlend_;
+        engine::FrameJobs::get().run(selected.batches.size(),4,[&](std::size_t b0,std::size_t b1,std::size_t) {
+            for (std::size_t b=b0;b<b1;++b) {
+                const auto& batch=selected.batches[b];
+                const auto& model=models_[batch.mesh];
+                double largest=0;
+                for (std::uint32_t i=0;i<batch.count;++i) {
+                    const auto at=batch.first+i;
+                    const auto& instance=selected.instances[at];
+                    double depth=0;
+                    const float centre[3]{instance.position[0],instance.position[1],
+                        instance.position[2]+float(model.height*0.5*instance.scale)};
+                    pixels[at]=model.extent()*instance.scale*screen.pixelsPerMetreAt(centre,depth);
+                    detail[at]=float(blend);
+                    keep[at]=world::decor::objectLod(pixels[at],0).coverage*detail[at]>0;
+                    // Past the draw distance the fog is opaque: an object there is
+                    // drawn for nobody. Regions are admitted at 128 m, this is exact.
+                    if (keep[at] && perspective) {
+                        const double ox=instance.position[0]-eyeAt[0],oy=instance.position[1]-eyeAt[1];
+                        if (ox*ox+oy*oy>reach*reach) keep[at]=0;
+                    }
+                    if (keep[at]) largest=std::max(largest,pixels[at]);
+                }
+                batchLargest[b]=largest;
             }
-            if (!keep[at]) { ASR_DIAGNOSTIC(++culled_;++faded_);continue; }
-            batchPixels[slot]=std::max(batchPixels[slot],pixels[at]);
-        }
+        });
+    }
+    for (std::size_t b=0;b<selected.batches.size();++b) {
+        const auto& batch=selected.batches[b];
+        const auto slot=batch.mesh*levels_+batch.level;
+        batchPixels[slot]=std::max(batchPixels[slot],batchLargest[b]);
+#if ASR_ENABLE_DIAGNOSTICS
+        for (std::uint32_t i=0;i<batch.count;++i) if (!keep[batch.first+i]) { ++culled_;++faded_; }
+#endif
     }
     // Vegetation has a second hierarchy around the object DAG. Near nodes keep
     // their individual model. Until a spatial node owns geometry baked from its
@@ -1460,8 +1738,10 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
     // once per batch: one number for every instance of a batch charges distant
     // trees what the nearest one costs. Each bucket is rounded DOWN to its finer
     // edge, so a memoised answer is an upper bound on the instance that reads it.
+    // Kept from frame to frame: a model's clusters never change after setup,
+    // so neither does its cut at a given allowance (re-cutting every frame was
+    // a tenth of the main thread).
     auto& cutCost=scratch_.cutCost;
-    for (auto& costs:cutCost) costs.clear();
     cutCost.resize(models_.size());
     auto& cutClusters=scratch_.cutClusters;cutClusters.clear();
     const auto sourceTriangles=[&](std::uint32_t mesh,double allowance) {
@@ -1501,7 +1781,10 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
         return (world::decor::groundCoverModel(model) || model==world::decor::kDenseShrub)
             ?std::max(1.0,double(vegetationMeshPixels_)/60.0):1.0;
     };
-    if (vegetationMeshPixels_>0) {
+    // With the pool the line is the setting, every frame: whether a tree is a
+    // mesh is a matter of its own size, not of how many others are in view.
+    if (pooled) vegetationMeshFloor_=vegetationMeshPixels_;
+    else if (vegetationMeshPixels_>0) {
         vegetationDemand_.clear();
         for (const auto& batch:selected.batches) {
             const auto& model=models_[batch.mesh];
@@ -1576,7 +1859,7 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
                         candidates[1].estimatedCost=16.0+pixels[at]*pixels[at]*0.08;
                     }
                 }
-                auto& history=representationHistory_[std::uint32_t(selected.owners[at])];
+                auto& history=historyFor(std::uint32_t(entt::to_entity(selected.owners[at])));
                 const auto choice=engine::render::selectRepresentation(view_,bounds,candidates,history.candidate);
                 history.candidate=choice.candidate;history.lastUse=selectionTime_;
                 float target=choice.kind==engine::render::RepresentationKind::Impostor?0.0f:1.0f;
@@ -1599,9 +1882,6 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
             }
         }
     }
-    std::erase_if(representationHistory_,[&](const auto& entry) {
-        return selectionTime_-entry.second.lastUse>view_.quality.residencySeconds;
-    });
     collectBudgetMs_=clock.lap();
     auto& sourceDrawn=scratch_.drawn;sourceDrawn.clear();
     auto& sourceInstances=scratch_.sourceInstances;
@@ -1647,7 +1927,7 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
             if (farTreesStart_>0 && lod.coverage>0) {
                 const float* eyeAt=engine::cullEye(s);
                 const double d=std::hypot(source.position[0]-eyeAt[0],source.position[1]-eyeAt[1]);
-                lod.coverage*=float(1.0-fade(farTreesStart_-farTreesBand_,farTreesStart_,d));
+                lod.coverage*=float(1.0-fade(handover()-farTreesBand_,handover(),d));
             }
             if (complement[at]>0) lod.coverage=-complement[at]; // the pixels the proxy has not taken yet
             double objectRightAngle=rightAngle;
@@ -1816,6 +2096,46 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
         item.vertexOffset[1]=frame.instances->add(std::span<const Instance>(instances));
         item.index=shared_.indices.get();item.indexSize=SDL_GPU_INDEXELEMENTSIZE_32BIT;
         item.firstIndex=cardRange_.first;item.indexCount=cardRange_.count;item.instances=std::uint32_t(instances.size());
+        queue.push(item);
+    }
+    if (pooled && submitDraws) {
+        const float* eyeAt=engine::cullEye(s);
+        const auto bits=[](std::uint32_t v){float f;std::memcpy(&f,&v,sizeof f);return f;};
+        const auto signedBits=[](std::int32_t v){float f;std::memcpy(&f,&v,sizeof f);return f;};
+        float block[32]{};
+        std::copy_n(screen.rowX,4,block);std::copy_n(screen.rowY,4,block+4);std::copy_n(screen.rowW,4,block+8);
+        block[12]=eyeAt[0];block[13]=eyeAt[1];block[14]=eyeAt[2];block[15]=perspective?float(screen.focal):0.0f;
+        block[16]=float(screen.scale);block[17]=bits(std::uint32_t(poolCount_));
+        block[18]=float(farTreesStart_>0?handover():drawDistance_);block[19]=float(farTreesStart_>0?farTreesBand_:0.0);
+        block[20]=float(detailBlend_);block[21]=bits(std::uint32_t(kPoolInstances));block[22]=float(rightAngle);
+        if (viewReady_) {
+            const auto toward=view_.directionFrom({0,0,0});
+            block[24]=float(toward[0]);block[25]=float(toward[1]);block[26]=float(toward[2]);
+        } else block[26]=1;
+        block[28]=bits(cardRange_.count);block[29]=bits(cardRange_.first);block[30]=signedBits(cardVertexBase_);
+        engine::ComputeDispatch clear;
+        clear.pipeline=poolClear_;clear.writes={poolArguments_.get()};
+        std::copy(std::begin(block),std::end(block),clear.own);
+        engine::ComputeDispatch pool=clear;
+        pool.pipeline=poolCompute_;
+        pool.groupsX=std::uint32_t((poolCount_+63)/64);
+        pool.reads={poolSources_.get(),poolModels_.get()};
+        pool.writes={poolInstances_.get(),poolArguments_.get()};
+        engine::ComputeDispatch clamp=clear;
+        clamp.pipeline=poolClamp_;
+        pipeline_->dispatch(std::move(clear));
+        pipeline_->dispatch(std::move(pool));
+        pipeline_->dispatch(std::move(clamp));
+        engine::DrawItem item;
+        item.author=5;
+        (wireframe_?wireframeRenderer_:renderer_).material.apply(item);
+        item.vertex[0]=shared_.vertices.get();
+        item.vertex[1]=poolInstances_.get();
+        item.vertexStreams=2;
+        item.index=shared_.indices.get();
+        item.indexSize=SDL_GPU_INDEXELEMENTSIZE_32BIT;
+        item.indirect=poolArguments_.get();
+        item.indirectDraws=1;
         queue.push(item);
     }
     // Pooled: resized, never shrunk, so steady frames do not reallocate.
@@ -2018,6 +2338,15 @@ void SceneModelsPass::collect(const engine::Frame& frame,engine::DrawQueue& queu
     }
     if (!gpuSource && !gpuHierarchySource && regularPlan.draws.empty() &&
         sourcePlan.plan.draws.empty()) return;
+    if (std::getenv("ASR_SCENE_DEBUG") && frame.index%120==0)
+    {
+        engine::DrawArguments drawnArgs{};
+        if (pooled && device_) device_->readBuffer(poolArguments_.get(),&drawnArgs,sizeof drawnArgs);
+        std::cerr<<"impostor-pool "<<(pooled?"on":"off")<<" objects="<<poolCount_<<" processor="
+                 <<(pooled?near_.instances.size():gathered_.instances.size())<<" drawn="<<drawnArgs.instanceCount
+                 <<" indices="<<drawnArgs.indexCount<<" first="<<drawnArgs.firstIndex<<" base="<<drawnArgs.vertexOffset
+                 <<" radius0="<<(poolRadius_.empty()?0.0f:poolRadius_[0])<<'\n';
+    }
     if (std::getenv("ASR_SCENE_DEBUG") && frame.index%120==0) {
         std::cerr<<"forest-proxy bakes="<<forestProxies_.bakes()<<" uploaded-views="<<forestProxies_.uploads()
                  <<" drawn="<<forestProxies_.draws().size()<<" drawn-total="<<forestProxies_.drawnTotal()<<'\n';

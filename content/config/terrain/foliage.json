@@ -115,6 +115,34 @@
     0.95,
     0.75
    ]
+  },
+  {
+   "name": "poppy_white_grass",
+   "_comment": "The flower lake valley (doc/BIOMES_RU.md 07): pale, glossy grass - nearly white - and its drifts all scarlet poppies.",
+   "density": 1.25,
+   "height": 1.0,
+   "dryness": 0.0,
+   "tint": [
+    1.55,
+    1.55,
+    1.4
+   ],
+   "flowers": 4.0,
+   "flower_hue": 0.85
+  },
+  {
+   "name": "poppy_meadow",
+   "_comment": "The flower lake's poppy fields (doc/BIOMES_RU.md 07): a carpet of scarlet poppies over short green grass - the flowers themselves, standing by the thousand, not a red ground.",
+   "density": 1.5,
+   "height": 0.9,
+   "dryness": 0.0,
+   "tint": [
+    1.0,
+    1.0,
+    0.95
+   ],
+   "flowers": 10.0,
+   "flower_hue": 0.85
   }
  ]
 }

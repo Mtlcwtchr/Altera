@@ -10,8 +10,10 @@ class GrassCuller {
 public:
     static constexpr std::size_t kCapacity = world::kGrassCandidateBudget * 2;
     bool setup(engine::Device& device, engine::RenderPipeline& into);
+    // The candidates are the first `count` of `source`, a buffer the caller
+    // keeps on the card (FoliagePass::rootsBuffer_).
     bool dispatch(const engine::Frame& frame, engine::RenderPipeline& into,
-                  std::uint32_t arenaOffset, std::size_t count);
+                  SDL_GPUBuffer* source, std::size_t count);
     SDL_GPUBuffer* instances() const { return compacted_.get(); }
     SDL_GPUBuffer* arguments() const { return culler_.arguments(); }
     // The same survivors drawn with another mesh (the grass blades): their own

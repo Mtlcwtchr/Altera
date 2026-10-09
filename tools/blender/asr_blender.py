@@ -38,7 +38,9 @@ def reset():
 
 
 def select_only(obj):
-    for o in bpy.context.scene.objects:
+    # Asset packs can contain ten thousand objects. Clearing only the current
+    # selection avoids a quadratic scene walk when reducing each mesh.
+    for o in tuple(bpy.context.selected_objects):
         o.select_set(False)
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj

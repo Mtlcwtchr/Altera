@@ -7,6 +7,8 @@
 // stay in sync. Floats do not guarantee that; int64 does.
 
 #include <cstdint>
+#include <type_traits>
+#include <cstdint>
 #include <compare>
 #include <string>
 
@@ -39,6 +41,10 @@ namespace core {
 
 struct Fixed {
     using Raw = std::int64_t;
+#if !defined(__SIZEOF_INT128__)
+    // Products of two raws need 128 bits. On Windows build with clang-cl.
+#error "Fixed needs __int128: use Clang/GCC (clang-cl on Windows), not MSVC cl"
+#endif
     using Wide = __int128;
 
     static constexpr int kFracBits = 32;
@@ -47,12 +53,37 @@ struct Fixed {
 
     Raw raw = 0;
 
+    // A wide numerator over a 64-bit divisor, truncated as `Raw(n / d)` is,
+    // bit for bit. A 128-bit division is a library call (__divti3), and it
+    // was half of what a height in the world cost: most numerators fit 64
+    // bits, and nearly every quotient does, which one hardware divide does.
+    // Anything else - a quotient that would not fit, d of -1 or 0 - goes the
+    // wide way and wraps exactly as before.
+    ASR_ALWAYS_INLINE static constexpr Raw divide(Wide n, Raw d) {
+        if (!std::is_constant_evaluated() && d != 0 && d != -1) {
+            if (n >= Wide(INT64_MIN) && n <= Wide(INT64_MAX)) return Raw(n) / d;
+#if defined(__x86_64__) || defined(_M_X64)
+            using U = unsigned __int128;
+            const bool negative = (n < 0) != (d < 0);
+            const U an = n < 0 ? U(0) - U(n) : U(n);
+            const std::uint64_t ad = d < 0 ? std::uint64_t(0) - std::uint64_t(d) : std::uint64_t(d);
+            // The quotient fits 63 bits exactly when an < ad * 2^63.
+            if ((an >> 63) < U(ad)) {
+                std::uint64_t q, r;
+                __asm__("divq %4" : "=a"(q), "=d"(r) : "a"(std::uint64_t(an)), "d"(std::uint64_t(an >> 64)), "rm"(ad));
+                return negative ? -Raw(q) : Raw(q);
+            }
+#endif
+        }
+        return static_cast<Raw>(n / d);
+    }
+
     constexpr Fixed() = default;
     ASR_ALWAYS_INLINE static constexpr Fixed fromRaw(Raw r) { Fixed f; f.raw = r; return f; }
     ASR_ALWAYS_INLINE static constexpr Fixed fromInt(std::int64_t v) { return fromRaw(v << kFracBits); }
     // Exact ratio, e.g. ratio(1, 3) is the closest representable third.
     static constexpr Fixed ratio(std::int64_t num, std::int64_t den) {
-        return fromRaw(static_cast<Raw>((Wide(num) << kFracBits) / den));
+        return fromRaw(divide(Wide(num) << kFracBits, den));
     }
     // Only for reading authored content and for the renderer. Never call from
     // simulation code paths that feed a decision.
@@ -72,7 +103,7 @@ struct Fixed {
         return *this;
     }
     ASR_ALWAYS_INLINE constexpr Fixed& operator/=(Fixed o) {
-        raw = static_cast<Raw>((Wide(raw) << kFracBits) / Wide(o.raw));
+        raw = divide(Wide(raw) << kFracBits, o.raw);
         return *this;
     }
 

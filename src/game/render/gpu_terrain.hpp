@@ -1,5 +1,6 @@
 #pragma once
 // The active GPU terrain path: pages + a quadtree cut + one immutable grid.
+#include <chrono>
 #include "engine/render/geometry/range_pool.hpp"
 #include <cstdlib>
 #include <deque>
@@ -38,10 +39,18 @@ public:
     // The terrain categories (engine/biomes): the category plane and the
     // biome table, for a fragment stage after its own textures.
     std::vector<SDL_GPUTextureSamplerBinding> biomeBindings() const { return biomes_.bindings(); }
+    // The climate planes as one array (the ground material bake's pixel stage).
+    SDL_GPUTextureSamplerBinding climateArray() const { return climate_.arrayBinding(); }
     std::array<float, 16> parameters(const Block& block) const;
     // The same layout for a draw that is no square of the cut - the open-sea
     // sheet - and reads the page atlas at whatever level is resident: the
     // table size and the height window, no tile, no morph, no grid overlay.
+    // Where page data arrived or changed in the last update, in metres
+    // (minX, minY, maxX, maxY): what anything baked from the pages - the
+    // ground material cache - has to draw again.
+    // Rectangles of ground whose pages arrived this update, in metres, and the
+    // dataset of the page (0 H4 ... 3 H64, 4/5 coarser): what read it may change.
+    const std::vector<std::array<double, 5>>& changedThisUpdate() const { return changed_; }
     std::array<float, 16> sheetParameters() const {
         return {0, 2, 0, 4, 0, 0, low_, range_, 0, 0, 0, 14,
                 float(tableWidth_), float(tableHeight_), 0, 1};
@@ -103,6 +112,8 @@ public:
     double radius() const { return radius_; }
     const world::terrain::StreamingProgress& progress() const { return progress_; }
     bool settled() const { return settled_; }
+    // Which of settled()'s conditions failed last frame (diagnostics).
+    const std::string& unsettled() const { return unsettled_; }
     // A plan has been made for this world: "nothing missing" means something.
     bool planned() const { return plan_ != nullptr; }
     void frozen(bool value) { frozen_ = value; }
@@ -128,6 +139,7 @@ private:
     std::shared_ptr<world::WorldPreparation> preparation_;
     world::WorldBuilder::Snapshot world_;
     bool frozen_ = false, settled_ = false;
+    std::string unsettled_;
     world::terrain::TerrainConfig config_;
 public:
     // Read once where a pipeline is built, which is why it is not a live value.
@@ -173,6 +185,18 @@ private:
     std::vector<std::array<float, 4>> tableMirror_;
     std::unordered_map<std::uint64_t, Key> tableOwner_;   // texel -> the page written there
     bool tableUploaded_ = false;
+    // The table kept by what changed (publishTable): every resident page by
+    // the texel it wants, and the pages that arrived and left since the last
+    // publication. Walking every resident page each frame a page arrived was
+    // most of a frame while zooming out - tens of thousands of them.
+    std::unordered_map<std::uint64_t, std::vector<Key>> texelKeys_;
+    std::vector<Key> tableAdded_, tableRemoved_;
+    bool tableIndexed_ = false;
+    // The residency snapshot the plans read, rebuilt at most every so often
+    // while pages stream in (it copies every resident page) and at once when
+    // they stop.
+    bool residencyDirty_ = false;
+    std::chrono::steady_clock::time_point residencyAt_{};
     ClimateTextures climate_;
     BiomeTextures biomes_;
     engine::Texture table_;
@@ -239,6 +263,7 @@ private:
     bool restream_ = false;
     std::vector<PackedHeightPage> staged_;
     float low_ = 0, range_ = 1;
+    std::vector<std::array<double, 5>> changed_;
     std::size_t missing_ = 0, coarse_ = 0;
     int target_ = -1;
     double radius_ = 0, lastX_ = 0, lastY_ = 0;

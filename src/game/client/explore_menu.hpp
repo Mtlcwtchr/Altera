@@ -18,6 +18,7 @@
 
 #include <algorithm>
 #include <cstdint>
+#include <cstdio>
 #include <array>
 #include <filesystem>
 #include <memory>
@@ -102,6 +103,15 @@ public:
     void viewReadout(const std::string& name) {
         if (viewName_ == name) return;
         viewName_ = name;
+        dirty_ = true;
+    }
+    // Frame rate in the corner of the status strip. Fed once per FrameRate
+    // revision, so the strip is redrawn twice a second, not every frame.
+    void fpsReadout(double fps, double millis) {
+        char said[32];
+        std::snprintf(said, sizeof(said), "%.0f fps  %.1f ms", fps, millis);
+        if (fpsText_ == said) return;
+        fpsText_ = said;
         dirty_ = true;
     }
     void stagesAvailable(bool value) {
@@ -284,6 +294,7 @@ private:
     world::weather::Sample localWeather_{};
     std::vector<std::string> inspectionLines_;
     std::string viewName_ = "map / ortho";
+    std::string fpsText_;
     std::string note_;
     game::GraphicsSettings graphics_;
     GraphicsPanel panel_;

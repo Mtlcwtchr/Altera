@@ -170,7 +170,7 @@ core::Fixed sampleShifted(const TerrainFoundation& self, Fixed x, Fixed y, Terra
         const auto sum=before.raw+after.raw;
         if (sum==0) return core::kZero;
         const auto product=Fixed::Wide(before.raw)*Fixed::Wide(after.raw)*2;
-        return Fixed::fromRaw(Fixed::Raw(product/Fixed::Wide(sum)));
+        return Fixed::fromRaw(Fixed::divide(product,sum));
     };
     const auto row=[&](int cy,Fixed t) {
         const auto a=at(ix,cy),b=at(ix+1,cy);
@@ -187,7 +187,9 @@ core::Fixed sampleShifted(const TerrainFoundation& self, Fixed x, Fixed y, Terra
 }
 
 core::Fixed TerrainFoundation::sample(Fixed x,Fixed y,TerrainStage stage) const {
+    // 128 m: the authored worlds (a 4096 px map over 262 km) are founded at it.
     return stepShift==6 ? sampleShifted<6>(*this,x,y,stage)
+         : stepShift==7 ? sampleShifted<7>(*this,x,y,stage)
                         : sampleShifted<-1>(*this,x,y,stage);
 }
 

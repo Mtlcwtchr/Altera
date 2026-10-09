@@ -1,4 +1,7 @@
+#include "engine/pipeline/pass_clock.hpp"
+#include "engine/pipeline/pass_name.hpp"
 #include "engine/render/render_pipeline.hpp"
+#include <cstdlib>
 
 #include <algorithm>
 
@@ -6,6 +9,9 @@
 
 #include "engine/render/frame.hpp"
 #include "engine/render/geometry/instances.hpp"
+#include <chrono>
+#include <cstdio>
+#include "engine/pipeline/pass_name.hpp"
 
 namespace engine {
 
@@ -31,8 +37,14 @@ BindingSet RenderPipeline::takeVertex(std::vector<SDL_GPUTextureSamplerBinding> 
 
 bool RenderPipeline::build(Device& device) {
     if (stages_.empty()) stages_.push_back(StageInfo{});
+    std::size_t index = 0;
     for (std::unique_ptr<DrawPass>& pass : passes_) {
+        const std::string name = passName(*pass);
+        device.beginStep(name, index++, passes_.size());
+        const auto began = std::chrono::steady_clock::now();
         pass->place = pass->setup(device, *this);
+        const double took = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - began).count();
+        if (took > 250.0) std::fprintf(stderr, "renderer: %s prepared in %.0f ms\n", name.c_str(), took);
         if (pass->place.id == kNoPass) return false;
         if (pass->place.stage >= stages_.size()) {
             device.fail("a pass asked for a stage that was never declared");
@@ -127,13 +139,34 @@ bool RenderPipeline::run(Frame& frame) {
 #endif
 
     // Every pass, into one queue. Nothing is drawn yet and nothing is bound.
+#if ASR_ENABLE_PROFILING
+    // ASR_SKIP_PASSES=3,5: those pass ids neither collect nor draw. With the
+    // frame waiting on the card, the frame time a pass's absence saves is its
+    // cost on the card - a GPU profile where the API offers no timestamps.
+    static const std::vector<PassId> skipped = [] {
+        std::vector<PassId> out;
+        if (const char* list = std::getenv("ASR_SKIP_PASSES"))
+            for (const char* at = list; *at;) {
+                char* end = nullptr;
+                const long id = std::strtol(at, &end, 10);
+                if (end == at) break;
+                out.push_back(static_cast<PassId>(id));
+                at = *end ? end + 1 : end;
+            }
+        return out;
+    }();
+#endif
     for (std::unique_ptr<DrawPass>& pass : passes_) {
         if (!pass->enabled || !pass->anything(frame)) continue;
 #if ASR_ENABLE_PROFILING
+        if (std::find(skipped.begin(), skipped.end(), pass->place.id) != skipped.end()) continue;
         const auto at = std::chrono::steady_clock::now();
 #endif
         queue_.openFor(pass->place);
-        pass->collect(frame, queue_);
+        {
+            const PassClock::Scope clock(PassClock::get().on() ? "collect " + passName(*pass) : std::string());
+            pass->collect(frame, queue_);
+        }
 #if ASR_ENABLE_PROFILING
         passMillis_.emplace_back(
                 pass->place.id,

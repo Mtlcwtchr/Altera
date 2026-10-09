@@ -203,12 +203,105 @@ def portal_tower(rng, seed):
     return ab.ground(stone(o, GREY, seed, metres=3.0, weathering=(0.3, 0.35, 0.3)))
 
 
+def cut_through(obj, cutters):
+    """Boolean difference of every cutter, then the cutters removed."""
+    for c in cutters:
+        m = obj.modifiers.new("cut", "BOOLEAN")
+        m.operation = "DIFFERENCE"
+        m.object = c
+        m.solver = "EXACT"
+        ab.apply_all(obj)
+        bpy.data.objects.remove(c, do_unlink=True)
+    return obj
+
+
+def marsh_panel(rng, seed):
+    """The Great Marshes' standing panel (doc/BIOMES_RU.md 01): a long flat slab
+    with rounded ends, its base pinched in sharply, now and then a round hole
+    through it - a weathered plate of some ancient armour or blade, not a
+    stalagmite."""
+    w, d, h = rng.uniform(2.6, 3.8), rng.uniform(0.55, 0.85), rng.uniform(6.0, 10.0)
+    o = ab.block("panel", (w, d, h), (0, 0, h / 2), (0, rng.uniform(-0.12, 0.12), 0), taper=0.0,
+                 round_edges=0.45, subdivisions=4)
+    for v in o.data.vertices:
+        t = max(0.0, min(1.0, v.co.z / h))
+        # Pinched at the foot: the slab stands on a neck a third of its width.
+        pinch = 0.35 + 0.65 * min(1.0, t / 0.22) ** 0.7
+        v.co.x *= pinch
+        v.co.y *= 0.7 + 0.3 * pinch
+    holes = []
+    for k in range(rng.choice((0, 1, 1, 2))):
+        r = rng.uniform(0.3, 0.55)
+        bpy.ops.mesh.primitive_cylinder_add(vertices=24, radius=r, depth=d * 4,
+                                            location=(rng.uniform(-w * 0.2, w * 0.2), 0, h * rng.uniform(0.45, 0.8)),
+                                            rotation=(math.pi / 2, 0, 0))
+        holes.append(bpy.context.active_object)
+    cut_through(o, holes)
+    return ab.ground(stone(o, GREY, seed, metres=2.5, tint=(0.82, 0.9, 0.84), weathering=(0.3, 0.45, 0.25)), sink=0.4)
+
+
+def mirror_monument(rng, seed):
+    """The Golden Desert's monument (doc/BIOMES_RU.md 04): a pale smooth volume
+    curving in to a narrow crown, a narrow black doorway running nearly to its
+    top. A building with thickness, not a plane; smooth, no stone grain."""
+    w, d, h = rng.uniform(10.0, 14.0), rng.uniform(6.0, 8.0), rng.uniform(24.0, 34.0)
+    o = ab.block("monument", (w, d, h), (0, 0, h / 2), round_edges=0.04, subdivisions=5)
+    for v in o.data.vertices:
+        t = max(0.0, min(1.0, v.co.z / h))
+        # An arc: full width at the foot, curving in to a fifth of it.
+        k = 0.2 + 0.8 * math.cos(t * math.pi / 2) ** 0.8
+        v.co.x *= k
+        v.co.y *= 0.45 + 0.55 * k
+    door = ab.block("door", (w * 0.07, d * 3, h * 0.86), (0, -d * 1.2, h * 0.43), round_edges=0.0, subdivisions=0)
+    cut_through(o, [door])
+    return ab.ground(stone(o, WARM, seed, metres=8.0, tint=(1.35, 1.3, 1.2), moss=False,
+                           weathering=(0.02, 0.03, 0.02)), sink=0.3)
+
+
+def iron_defender(rng, seed):
+    """A fallen iron defender of the green plateau (doc/BIOMES_RU.md 06): a
+    giant's armour lying where it fell - helm, breastplate and an arm - rusted
+    and grown over. One soft mass, the helm's visor cut in."""
+    s = rng.uniform(7.0, 11.0)
+    balls = [{"co": (0, 0, 0.32 * s), "radius": 0.5 * s, "size": (1.0, 1.7, 0.6)},                 # breastplate
+             {"co": (0, 0.95 * s, 0.3 * s), "radius": 0.33 * s, "size": (1.0, 1.0, 1.05)},          # helm
+             {"co": (0, 1.25 * s, 0.33 * s), "radius": 0.12 * s, "size": (1.8, 0.4, 0.35), "negative": True},  # visor
+             {"co": (0.55 * s, 0.35 * s, 0.25 * s), "radius": 0.22 * s, "size": (1.0, 1.0, 1.0)},  # pauldron
+             limb((0.6 * s, 0.25 * s, 0.2 * s), (1.2 * s, -0.5 * s, 0.12 * s), 0.14 * s),          # arm
+             limb((1.2 * s, -0.5 * s, 0.12 * s), (1.0 * s, -1.3 * s, 0.1 * s), 0.12 * s),          # forearm
+             limb((-0.4 * s, -0.8 * s, 0.15 * s), (-0.5 * s, -1.9 * s, 0.1 * s), 0.18 * s)]         # a leg
+    o = ab.keep_largest(ab.metaball_mass("defender", balls, resolution=0.03 * s, threshold=0.5))
+    o.rotation_euler = (rng.uniform(-0.1, 0.1), rng.uniform(-0.15, 0.15), rng.uniform(0, math.pi * 2))
+    ab.select_only(o)
+    bpy.ops.object.transform_apply(rotation=True)
+    ab.cut_below(o, 0.05 * s)
+    o = ab.ground(o)
+    return stone(o, DARK, seed, metres=3.0, tint=(0.62, 0.42, 0.32), weathering=(0.35, 0.3, 0.3))
+
+
 ARCHETYPES = {
+    "marsh_panel": (marsh_panel, 3000), "mirror_monument": (mirror_monument, 4000),
+    "iron_defender": (iron_defender, 8000),
     "menhir": (menhir, 3000), "fallen_menhir": (fallen_menhir, 3000), "lintel": (lintel, 2500),
     "capstone": (capstone, 3000), "cyclopean_block": (cyclopean_block, 2500), "giant_stair": (giant_stair, 6000),
     "colossus_head": (colossus_head, 9000), "colossus_hand": (colossus_hand, 8000), "needle": (needle, 6000),
     "portal_tower": (portal_tower, 6000),
 }
+
+
+def host_python():
+    """A Python outside Blender with PIL: python3 where there is one; on
+    Windows "python3" is the Store's stub and the stylizing silently did not
+    run, so the first real python on the path."""
+    import shutil
+    for name in ("python3", "python", "py"):
+        found = shutil.which(name)
+        if found and "WindowsApps" not in found:
+            return found
+    return "python3"
+
+
+HOST_PYTHON = host_python()
 
 
 def build(kind, variants, seed, bake=True, size=1024, preview=None):
@@ -235,7 +328,7 @@ def build(kind, variants, seed, bake=True, size=1024, preview=None):
             # Painted towards the references (tools/stylize_textures.py, preset
             # megalith_painted): outside Blender, whose Python has no PIL.
             for kind in ("albedo", "normal"):
-                subprocess.run(["python3", str(ab.ROOT / "tools" / "stylize_textures.py"), "--preset", "megalith_painted",
+                subprocess.run([HOST_PYTHON, str(ab.ROOT / "tools" / "stylize_textures.py"), "--preset", "megalith_painted",
                                 "--kind", kind, str(maps[kind]), str(maps[kind])], check=False)
     # Each variant back to the origin: one node a variant, foot at z = 0.
     for obj in made:

@@ -4,24 +4,36 @@
 #include "page_levels.hlsli"
 // Fragment-only page fields. t0 belongs to the material/water texture.
 // Geometry and pixel shading share data residency, not a sampling lattice.
-Texture2D<float> detailHeight4 : register(t1, space2);
-SamplerState detailHeight4Sampler : register(s1, space2);
-Texture2D<float> detailHeight8 : register(t2, space2);
-SamplerState detailHeight8Sampler : register(s2, space2);
-Texture2D<float> detailHeight16 : register(t3, space2);
-SamplerState detailHeight16Sampler : register(s3, space2);
-Texture2D<float> detailHeight64 : register(t4, space2);
-SamplerState detailHeight64Sampler : register(s4, space2);
-Texture2DArray<float4> detailTable : register(t5, space2);
-SamplerState detailTableSampler : register(s5, space2);
-Texture2DArray<float4> detailFields4 : register(t6, space2);
-SamplerState detailFields4Sampler : register(s6, space2);
-Texture2DArray<float4> detailFields8 : register(t7, space2);
-SamplerState detailFields8Sampler : register(s7, space2);
-Texture2DArray<float4> detailFields16 : register(t8, space2);
-SamplerState detailFields16Sampler : register(s8, space2);
-Texture2DArray<float4> detailFields64 : register(t9, space2);
-SamplerState detailFields64Sampler : register(s9, space2);
+//
+// The cached ground's pixel stage (terrain_cached.hlsl) reads none of them and
+// keeps t0..t3 for its own; there they sit above, at t4..t12. SDL binds a
+// stage's samplers as slots 0..count-1 of what the shader still uses, so a
+// field the compiler drops must never sit below a slot that stays.
+#ifdef TERRAIN_MATERIAL_CACHED
+#define PAGE_FIELD_T(page, cached) register(t##cached, space2)
+#define PAGE_FIELD_S(page, cached) register(s##cached, space2)
+#else
+#define PAGE_FIELD_T(page, cached) register(t##page, space2)
+#define PAGE_FIELD_S(page, cached) register(s##page, space2)
+#endif
+Texture2D<float> detailHeight4 : PAGE_FIELD_T(1, 4);
+SamplerState detailHeight4Sampler : PAGE_FIELD_S(1, 4);
+Texture2D<float> detailHeight8 : PAGE_FIELD_T(2, 5);
+SamplerState detailHeight8Sampler : PAGE_FIELD_S(2, 5);
+Texture2D<float> detailHeight16 : PAGE_FIELD_T(3, 6);
+SamplerState detailHeight16Sampler : PAGE_FIELD_S(3, 6);
+Texture2D<float> detailHeight64 : PAGE_FIELD_T(4, 7);
+SamplerState detailHeight64Sampler : PAGE_FIELD_S(4, 7);
+Texture2DArray<float4> detailTable : PAGE_FIELD_T(5, 8);
+SamplerState detailTableSampler : PAGE_FIELD_S(5, 8);
+Texture2DArray<float4> detailFields4 : PAGE_FIELD_T(6, 9);
+SamplerState detailFields4Sampler : PAGE_FIELD_S(6, 9);
+Texture2DArray<float4> detailFields8 : PAGE_FIELD_T(7, 10);
+SamplerState detailFields8Sampler : PAGE_FIELD_S(7, 10);
+Texture2DArray<float4> detailFields16 : PAGE_FIELD_T(8, 11);
+SamplerState detailFields16Sampler : PAGE_FIELD_S(8, 11);
+Texture2DArray<float4> detailFields64 : PAGE_FIELD_T(9, 12);
+SamplerState detailFields64Sampler : PAGE_FIELD_S(9, 12);
 
 struct PageDetail {
     float bed;
@@ -98,11 +110,10 @@ float4 detailFieldsLoad(float2 uv, int level, int plane)
     detailFields64.GetDimensions(w, h, layers);
     return detailFields64.Load(int4(int2(uv * float2(w, h)), plane, 0));
 }
-EnvironmentPoint pageEnvironment(float2 p)
+EnvironmentPoint pageEnvironmentAt(float2 p, int level)
 {
     EnvironmentPoint e = (EnvironmentPoint)0;
     if (envSwitchesPS.x < 0.5) return e;
-    const int level = (int)ringState.z;
     float2 origin;
     const float4 entry = detailEntryAt(p, level, origin);
     if (entry.z == 0.0) return e;
@@ -116,6 +127,7 @@ EnvironmentPoint pageEnvironment(float2 p)
     e.cover = zones.w * 2.0;
     return e;
 }
+EnvironmentPoint pageEnvironment(float2 p) { return pageEnvironmentAt(p, (int)ringState.z); }
 // Only the two material planes, for the blur below.
 void pageWeightsAt(float2 p, int level, out float4 weights0, out float2 weights1)
 {

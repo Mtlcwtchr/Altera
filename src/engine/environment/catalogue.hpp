@@ -14,6 +14,7 @@
 // channels, models - and says what it could not. An unresolved name is a
 // problem, not a crash: the recipe still loads, and whatever named the
 // missing thing is left out.
+#include <algorithm>
 #include <array>
 #include <cstdint>
 #include <filesystem>
@@ -77,6 +78,15 @@ public:
     // field at that spacing does not ask for them (a level of detail leaves
     // out what it cannot carry, as it leaves out narrow valleys).
     [[nodiscard]] double widestGround() const { return widestGround_; }
+    // The coarsest sample spacing at which features move the ground: the
+    // widest feature, and never past 32 m. Pages coarser than that are the
+    // distance - kilometres out, where a gully is a pixel - and planning the
+    // features of every 512 m block they cover took a 64 m page from 5 ms to
+    // half a second, and a fresh view minutes to load. The masks stop at the
+    // same spacing (Environment::masks). Now 8 m (D193): the ground's shape
+    // stops at coarser data, and a feature's own relief went with it - what
+    // the features keep is their meshes, masks and scatter.
+    [[nodiscard]] double groundStride() const { return std::min(widestGround_, 8.0); }
     // The recipes of one scale, in catalogue order.
     [[nodiscard]] const std::vector<std::uint32_t>& ofScale(FeatureScale s) const { return byScale_[int(s)]; }
 

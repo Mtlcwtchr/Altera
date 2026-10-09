@@ -116,9 +116,9 @@ ShadowClipmap::Result ShadowClipmap::compile(world::WorldBuilder::Snapshot world
                         tile.ellipsoid(root+Vec{std::cos(angle)*radial,std::sin(angle)*radial,z},
                             {r,r,h*(conifer?0.22:0.30)},profile.density);
                     }
-                } else if (object.model==2 || object.model==3 || (object.model>=22 && object.model<=24) ||
-                           (object.model>=world::decor::kFirstRock2 && object.model<=world::decor::kLastRock2)) {
-                    const bool solid=object.model==3 || (object.model>=world::decor::kFirstRock2 && object.model<=world::decor::kLastRock2);
+                } else if ((world::decor::shrubModel(object.model) && !world::decor::groundCoverModel(object.model) &&
+                            object.model!=world::decor::kDenseShrub) || world::decor::boulderModel(object.model)) {
+                    const bool solid=world::decor::boulderModel(object.model);
                     tile.ellipsoid(root+Vec{0,0,h*0.5},{w*0.5,w*0.5,h*0.5},solid?-1:profile.density);
                 }
             }

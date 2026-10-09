@@ -1,0 +1,2016 @@
+{
+  "comment": "The world of fallen gods (doc/BIOMES_RU.md): where each biome lies, as requirements and not as a drawing. tools/biome_layout.py reads it with a height map and writes the biome map, the ground categories and the control maps. Every biome is a template: on which landmasses it may stand, where on its landmass it wants to be (x, y in the landmass's own box, 0..1, north at y 0), and what ground it wants - each term a curve over a field, 0..1, weighted. The layout takes, at every point, the biome that wants it most, after a seeded wander of the borders, then balances the areas to `share` and checks `borders` (the spec's transitions). `ground` turns a biome into terrain categories (content/config/terrain/categories.json) by the ground inside it; `terrain` is what the biome asks of the terrain generator - read today as control maps, later as the shaping generator's constraints.",
+  "fields": {
+    "elevation": "height over the landmass's land, 0 at its lowest, 1 at its highest (percentile 99)",
+    "slope": "steepness, 0 flat .. 1 at 45 degrees",
+    "rugged": "spread of heights within 1.5 km, 0..1",
+    "basin": "how much lower than its surroundings (8 km), 0 ridge .. 1 hollow",
+    "coast": "distance to the sea, km",
+    "lake": "distance to an inland lake, km",
+    "x": "west 0 .. east 1 within the landmass box",
+    "y": "north 0 .. south 1 within the landmass box"
+  },
+  "seed": 7,
+  "wander": {
+    "km": 9.0,
+    "amplitude": 0.35
+  },
+  "smooth_km": 1.5,
+  "min_patch_km2": 6.0,
+  "landmasses": [
+    {
+      "name": "main",
+      "rank": 0
+    },
+    {
+      "name": "south",
+      "rank": 1
+    },
+    {
+      "name": "crescent",
+      "box": [
+        0.0,
+        0.2,
+        0.25,
+        0.6
+      ]
+    },
+    {
+      "name": "north_shards",
+      "box": [
+        0.1,
+        0.0,
+        0.9,
+        0.24
+      ]
+    },
+    {
+      "name": "isles",
+      "box": [
+        0.72,
+        0.68,
+        1.0,
+        1.0
+      ]
+    }
+  ],
+  "biomes": [
+    {
+      "id": 1,
+      "name": "great_marshes",
+      "title": "Великие топи",
+      "colour": [
+        86,
+        140,
+        120
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.11
+      },
+      "want": [
+        {
+          "field": "shape:marsh_coast",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              12,
+              1.0
+            ],
+            [
+              35,
+              0.0
+            ]
+          ],
+          "weight": 2.5,
+          "require": true
+        },
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              0.3,
+              0.6
+            ],
+            [
+              0.5,
+              0
+            ]
+          ],
+          "weight": 1.0
+        },
+        {
+          "field": "slope",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              0.2,
+              0.3
+            ],
+            [
+              0.35,
+              0
+            ]
+          ],
+          "weight": 0.6
+        }
+      ],
+      "ground": [
+        {
+          "category": "river_fen",
+          "when": {
+            "basin": [
+              0.45,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "moor_marsh",
+          "when": {
+            "elevation": [
+              0.3,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "river_fen"
+        }
+      ],
+      "terrain": {
+        "relief": "flat_channels",
+        "moisture": 1.0,
+        "moisture_hold": 0.8,
+        "forest": 0.25,
+        "mountain": 0.0,
+        "erosion": 0.2,
+        "temperature": 0.5
+      },
+      "sites": [
+        {
+          "painted": "menhir_alley",
+          "per_1000km2": 8
+        },
+        {
+          "painted": "stone_circle",
+          "per_1000km2": 4
+        },
+        {
+          "painted": "marsh_panel",
+          "per_1000km2": 14
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "name": "dark_forest",
+      "title": "Тёмный мицелиальный лес",
+      "colour": [
+        30,
+        60,
+        70
+      ],
+      "landmasses": [
+        "main",
+        "south"
+      ],
+      "share": {
+        "main": 0.12,
+        "south": 0.22
+      },
+      "want": [
+        {
+          "field": "shape:dark_strip",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ],
+            [
+              22,
+              0.0
+            ]
+          ],
+          "weight": 3.0
+        },
+        {
+          "field": "shape:north_ridge",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              10,
+              1.0
+            ],
+            [
+              30,
+              0.0
+            ]
+          ],
+          "weight": 0.8
+        },
+        {
+          "field": "shape:south_ridge",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ],
+            [
+              22,
+              0.0
+            ]
+          ],
+          "weight": 0.6
+        },
+        {
+          "field": "shape:east_ridge",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ],
+            [
+              22,
+              0.0
+            ]
+          ],
+          "weight": 0.8
+        },
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0.15,
+              0.0
+            ],
+            [
+              0.3,
+              1.0
+            ],
+            [
+              0.55,
+              1.0
+            ],
+            [
+              0.7,
+              0.0
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "conifer",
+          "when": {
+            "elevation": [
+              0.6,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "kagar_fertile",
+          "when": {
+            "elevation": [
+              0.45,
+              0.6
+            ]
+          }
+        },
+        {
+          "category": "dark_wood"
+        }
+      ],
+      "terrain": {
+        "relief": "rolling_roots",
+        "moisture": 0.95,
+        "moisture_hold": 0.7,
+        "forest": 0.98,
+        "mountain": 0.15,
+        "erosion": 0.4,
+        "temperature": 0.5
+      }
+    },
+    {
+      "id": 3,
+      "name": "canyon_steppe",
+      "title": "Степные острова и охровые каньоны",
+      "colour": [
+        200,
+        120,
+        60
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.1
+      },
+      "want": [
+        {
+          "field": "shape:canyon",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              14,
+              1.0
+            ],
+            [
+              30,
+              0.0
+            ]
+          ],
+          "weight": 3.0,
+          "require": true
+        },
+        {
+          "field": "rugged",
+          "curve": [
+            [
+              0,
+              0.4
+            ],
+            [
+              0.3,
+              1
+            ]
+          ],
+          "weight": 0.4
+        }
+      ],
+      "ground": [
+        {
+          "category": "warm_rock",
+          "when": {
+            "slope": [
+              0.35,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "atrod_valley",
+          "when": {
+            "basin": [
+              0.6,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "rough"
+        }
+      ],
+      "terrain": {
+        "relief": "canyons_spires_bridges",
+        "moisture": 0.15,
+        "moisture_hold": 0.8,
+        "forest": 0.08,
+        "mountain": 0.55,
+        "erosion": 0.85,
+        "temperature": 0.72
+      },
+      "sites": [
+        {
+          "painted": "needle_field",
+          "per_1000km2": 12
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "name": "golden_desert",
+      "title": "Золотая пустыня",
+      "colour": [
+        235,
+        190,
+        80
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.11
+      },
+      "want": [
+        {
+          "field": "shape:desert",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              12,
+              1
+            ],
+            [
+              20,
+              0
+            ]
+          ],
+          "weight": 3.0,
+          "require": true
+        },
+        {
+          "field": "slope",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              0.3,
+              0.2
+            ]
+          ],
+          "weight": 0.3
+        }
+      ],
+      "ground": [
+        {
+          "category": "beach",
+          "when": {
+            "coast": [
+              0.0,
+              2.0
+            ]
+          }
+        },
+        {
+          "category": "warm_rock",
+          "when": {
+            "slope": [
+              0.4,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "fg_golden_dunes"
+        }
+      ],
+      "terrain": {
+        "relief": "dunes_buried_ruins",
+        "moisture": 0.0,
+        "moisture_hold": 0.9,
+        "forest": 0.0,
+        "mountain": 0.1,
+        "erosion": 0.3,
+        "temperature": 0.8
+      },
+      "sites": [
+        {
+          "painted": "cyclopean_ruin",
+          "per_1000km2": 8
+        },
+        {
+          "painted": "mirror_monument",
+          "per_1000km2": 3
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "name": "dragon_cliff",
+      "title": "Утёс за стеной драконьих деревьев",
+      "colour": [
+        150,
+        110,
+        190
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.06
+      },
+      "want": [
+        {
+          "field": "shape:west_coast",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              8,
+              1
+            ],
+            [
+              14,
+              0
+            ]
+          ],
+          "weight": 1.0,
+          "require": true
+        },
+        {
+          "field": "coast",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              7,
+              1
+            ],
+            [
+              11,
+              0
+            ]
+          ],
+          "weight": 1.0,
+          "require": true
+        }
+      ],
+      "ground": [
+        {
+          "category": "atrod_rock",
+          "when": {
+            "slope": [
+              0.65,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "kagar_fertile"
+        }
+      ],
+      "terrain": {
+        "relief": "sea_cliffs_ledges",
+        "moisture": 0.85,
+        "moisture_hold": 0.8,
+        "forest": 0.98,
+        "mountain": 0.5,
+        "erosion": 0.4,
+        "temperature": 0.6
+      }
+    },
+    {
+      "id": 6,
+      "name": "green_plateau",
+      "title": "Равнина павших защитников",
+      "colour": [
+        120,
+        200,
+        70
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.16
+      },
+      "want": [
+        {
+          "field": "shape:plain",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              30,
+              1.0
+            ],
+            [
+              60,
+              0.0
+            ]
+          ],
+          "weight": 2.5,
+          "require": true
+        },
+        {
+          "field": "slope",
+          "curve": [
+            [
+              0,
+              0.8
+            ],
+            [
+              0.15,
+              1
+            ],
+            [
+              0.35,
+              0
+            ]
+          ],
+          "weight": 0.6
+        }
+      ],
+      "ground": [
+        {
+          "category": "rock",
+          "when": {
+            "slope": [
+              0.55,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "glade",
+          "when": {
+            "rugged": [
+              0.0,
+              0.15
+            ]
+          }
+        },
+        {
+          "category": "fertile"
+        }
+      ],
+      "terrain": {
+        "relief": "tilted_plateau_scarp",
+        "moisture": 0.9,
+        "moisture_hold": 0.85,
+        "forest": 0.22,
+        "mountain": 0.2,
+        "erosion": 0.35,
+        "temperature": 0.5
+      },
+      "sites": [
+        {
+          "painted": "colossus_head",
+          "per_1000km2": 5
+        },
+        {
+          "painted": "stone_circle",
+          "per_1000km2": 3
+        },
+        {
+          "painted": "iron_defender",
+          "per_1000km2": 6
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "name": "flower_lake",
+      "title": "Цветущая озёрная долина",
+      "colour": [
+        230,
+        70,
+        70
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.04
+      },
+      "want": [
+        {
+          "field": "lake",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              4,
+              1
+            ],
+            [
+              8,
+              0
+            ]
+          ],
+          "weight": 1.0,
+          "require": true
+        },
+        {
+          "field": "slope",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              0.3,
+              0.5
+            ],
+            [
+              0.5,
+              0
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "conifer",
+          "when": {
+            "slope": [
+              0.3,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "fg_poppy_field",
+          "when": {
+            "patch": [
+              0.58,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "fg_flower_valley"
+        }
+      ],
+      "terrain": {
+        "relief": "bowl_to_lake",
+        "moisture": 0.85,
+        "moisture_hold": 0.8,
+        "forest": 0.35,
+        "mountain": 0.3,
+        "erosion": 0.3,
+        "temperature": 0.35
+      }
+    },
+    {
+      "id": 8,
+      "name": "white_mountains",
+      "title": "Белые горы",
+      "colour": [
+        240,
+        240,
+        250
+      ],
+      "landmasses": [
+        "main",
+        "south"
+      ],
+      "share": {
+        "main": 0.14,
+        "south": 0.2
+      },
+      "want": [
+        {
+          "field": "shape:south_ridge",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              6,
+              1.0
+            ],
+            [
+              16,
+              0.0
+            ]
+          ],
+          "weight": 2.0
+        },
+        {
+          "field": "shape:lake_ring",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              4,
+              1.0
+            ],
+            [
+              12,
+              0.0
+            ]
+          ],
+          "weight": 2.5
+        },
+        {
+          "field": "shape:east_ridge",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              8,
+              1.0
+            ],
+            [
+              20,
+              0.0
+            ]
+          ],
+          "weight": 2.5
+        },
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0.3,
+              0
+            ],
+            [
+              0.55,
+              1
+            ]
+          ],
+          "weight": 1.5,
+          "landmass": "main"
+        },
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0.45,
+              0
+            ],
+            [
+              0.65,
+              1
+            ]
+          ],
+          "weight": 1.6,
+          "landmass": "south"
+        },
+        {
+          "field": "rugged",
+          "curve": [
+            [
+              0.1,
+              0
+            ],
+            [
+              0.35,
+              1
+            ]
+          ],
+          "weight": 0.8,
+          "landmass": "south"
+        },
+        {
+          "field": "shape:white_ridges",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              10,
+              1
+            ],
+            [
+              22,
+              0
+            ]
+          ],
+          "weight": 1.0,
+          "require": true,
+          "landmass": "main"
+        }
+      ],
+      "ground": [
+        {
+          "category": "conifer",
+          "when": {
+            "elevation": [
+              0.0,
+              0.2
+            ]
+          }
+        },
+        {
+          "category": "fg_white_jagged",
+          "when": {
+            "slope": [
+              0.8,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "rock",
+          "when": {
+            "elevation": [
+              0.2,
+              0.3
+            ]
+          }
+        },
+        {
+          "category": "fg_white_peaks"
+        }
+      ],
+      "terrain": {
+        "relief": "alpine_ridge_gnome_holes",
+        "moisture": 0.7,
+        "moisture_hold": 0.5,
+        "forest": 0.4,
+        "mountain": 1.0,
+        "erosion": 0.7,
+        "temperature": 0.12
+      }
+    },
+    {
+      "id": 9,
+      "name": "river_valley",
+      "title": "Дождливая речная долина",
+      "colour": [
+        60,
+        150,
+        200
+      ],
+      "landmasses": [
+        "main",
+        "south"
+      ],
+      "share": {
+        "main": 0.1,
+        "south": 0.16
+      },
+      "want": [
+        {
+          "field": "shape:valley_axis",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              14,
+              1.0
+            ],
+            [
+              28,
+              0.0
+            ]
+          ],
+          "weight": 3.0,
+          "require": true,
+          "landmass": "main"
+        },
+        {
+          "field": "basin",
+          "curve": [
+            [
+              0.3,
+              0
+            ],
+            [
+              0.7,
+              1
+            ]
+          ],
+          "weight": 0.8,
+          "landmass": "south"
+        },
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0,
+              0.6
+            ],
+            [
+              0.3,
+              1
+            ],
+            [
+              0.5,
+              0
+            ]
+          ],
+          "weight": 0.5
+        }
+      ],
+      "ground": [
+        {
+          "category": "conifer",
+          "when": {
+            "slope": [
+              0.35,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "elnor_fertile",
+          "when": {
+            "elevation": [
+              0.35,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "glade"
+        }
+      ],
+      "terrain": {
+        "relief": "long_valley_one_river",
+        "moisture": 0.95,
+        "moisture_hold": 0.85,
+        "forest": 0.3,
+        "mountain": 0.35,
+        "erosion": 0.55,
+        "temperature": 0.5
+      }
+    },
+    {
+      "id": 10,
+      "name": "black_lands",
+      "title": "Чёрные земли",
+      "colour": [
+        60,
+        20,
+        30
+      ],
+      "landmasses": [
+        "main"
+      ],
+      "share": {
+        "main": 0.1
+      },
+      "want": [
+        {
+          "field": "shape:north_ridge",
+          "curve": [
+            [
+              0.0,
+              1.0
+            ],
+            [
+              12,
+              1.0
+            ],
+            [
+              30,
+              0.0
+            ]
+          ],
+          "weight": 3.0,
+          "require": true
+        },
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0.3,
+              0
+            ],
+            [
+              0.55,
+              1
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "fg_black_rock"
+        }
+      ],
+      "terrain": {
+        "relief": "black_spires_rifts",
+        "moisture": 0.2,
+        "moisture_hold": 0.8,
+        "forest": 0.03,
+        "mountain": 0.9,
+        "erosion": 0.8,
+        "temperature": 0.45
+      },
+      "sites": [
+        {
+          "painted": "portal_tower",
+          "per_1000km2": 6
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "name": "volcanic_paradise",
+      "title": "Вулканические райские острова",
+      "colour": [
+        80,
+        220,
+        200
+      ],
+      "landmasses": [
+        "isles"
+      ],
+      "share": {
+        "isles": 1.0
+      },
+      "want": [
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "pearl_coast",
+          "when": {
+            "coast": [
+              0.0,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "volcanic_rock",
+          "when": {
+            "elevation": [
+              0.75,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "volcanic_rock",
+          "when": {
+            "slope": [
+              0.55,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "tropical_forest"
+        }
+      ],
+      "terrain": {
+        "relief": "lush_hills_lagoons",
+        "moisture": 0.8,
+        "moisture_hold": 0.7,
+        "forest": 0.65,
+        "mountain": 0.5,
+        "erosion": 0.4,
+        "temperature": 0.85
+      }
+    },
+    {
+      "id": 13,
+      "name": "northern_isles",
+      "title": "Скальные острова северян",
+      "colour": [
+        150,
+        170,
+        180
+      ],
+      "landmasses": [
+        "north_shards"
+      ],
+      "share": {
+        "north_shards": 1.0
+      },
+      "want": [
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "jagged",
+          "when": {
+            "slope": [
+              0.55,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "fg_white_peaks",
+          "when": {
+            "elevation": [
+              0.7,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "rock",
+          "when": {
+            "elevation": [
+              0.45,
+              0.7
+            ]
+          }
+        },
+        {
+          "category": "moor_marsh"
+        }
+      ],
+      "terrain": {
+        "relief": "sea_cliffs_ledges",
+        "moisture": 0.75,
+        "moisture_hold": 0.6,
+        "forest": 0.15,
+        "mountain": 0.8,
+        "erosion": 0.6,
+        "temperature": 0.15
+      }
+    },
+    {
+      "id": 14,
+      "name": "sky_shards",
+      "title": "Расколотый остров эльфов-атлантов",
+      "colour": [
+        190,
+        150,
+        240
+      ],
+      "landmasses": [
+        "crescent"
+      ],
+      "share": {
+        "crescent": 1.0
+      },
+      "want": [
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              1,
+              1
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "atrod_rock",
+          "when": {
+            "slope": [
+              0.6,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "pearl_coast",
+          "when": {
+            "coast": [
+              0.0,
+              0.6
+            ]
+          }
+        },
+        {
+          "category": "blossom_grove",
+          "when": {
+            "elevation": [
+              0.5,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "isle_green"
+        }
+      ],
+      "terrain": {
+        "relief": "sea_cliffs_ledges",
+        "moisture": 0.75,
+        "moisture_hold": 0.6,
+        "forest": 0.6,
+        "mountain": 0.5,
+        "erosion": 0.4,
+        "temperature": 0.6
+      },
+      "sites": [
+        {
+          "painted": "portal_tower",
+          "per_1000km2": 4
+        }
+      ]
+    },
+    {
+      "id": 15,
+      "name": "south_unassigned",
+      "title": "Южный материк (не задан)",
+      "colour": [
+        170,
+        170,
+        140
+      ],
+      "landmasses": [
+        "south"
+      ],
+      "share": {
+        "south": 0.42
+      },
+      "want": [
+        {
+          "field": "elevation",
+          "curve": [
+            [
+              0,
+              1
+            ],
+            [
+              0.5,
+              0.6
+            ],
+            [
+              0.7,
+              0
+            ]
+          ],
+          "weight": 1.0
+        }
+      ],
+      "ground": [
+        {
+          "category": "rock",
+          "when": {
+            "slope": [
+              0.55,
+              1.0
+            ]
+          }
+        },
+        {
+          "category": "fertile"
+        }
+      ],
+      "terrain": {
+        "relief": "rolling_roots",
+        "moisture": 0.6,
+        "moisture_hold": 0.3,
+        "forest": 0.5,
+        "mountain": 0.3,
+        "erosion": 0.5,
+        "temperature": 0.5
+      }
+    }
+  ],
+  "underground": [
+    {
+      "id": 11,
+      "name": "fungal_underground",
+      "title": "Подземные грибные земли",
+      "under": [
+        "dark_forest"
+      ],
+      "comment": "No surface of its own: lies under the dark forest, reached through its cracks."
+    }
+  ],
+  "borders": {
+    "comment": "The spec's and the author's transitions. must: these two meet somewhere; never: a third biome between.",
+    "must": [
+      [
+        "great_marshes",
+        "dark_forest"
+      ],
+      [
+        "dark_forest",
+        "white_mountains"
+      ],
+      [
+        "canyon_steppe",
+        "golden_desert"
+      ],
+      [
+        "golden_desert",
+        "dragon_cliff"
+      ],
+      [
+        "green_plateau",
+        "white_mountains"
+      ],
+      [
+        "white_mountains",
+        "river_valley"
+      ],
+      [
+        "river_valley",
+        "black_lands"
+      ],
+      [
+        "flower_lake",
+        "white_mountains"
+      ],
+      [
+        "green_plateau",
+        "canyon_steppe"
+      ]
+    ],
+    "never": [
+      [
+        "golden_desert",
+        "great_marshes"
+      ],
+      [
+        "flower_lake",
+        "black_lands"
+      ],
+      [
+        "green_plateau",
+        "black_lands"
+      ],
+      [
+        "golden_desert",
+        "white_mountains"
+      ]
+    ]
+  },
+  "shapes": {
+    "_comment": "Lines through points of the 1024 map (x east, y south): the author's sketch of the main continent (2026-10-07). Biomes want to be near them (field shape:NAME, km).",
+    "north_ridge": [
+      [
+        250,
+        165
+      ],
+      [
+        330,
+        185
+      ],
+      [
+        400,
+        195
+      ],
+      [
+        460,
+        215
+      ],
+      [
+        520,
+        245
+      ],
+      [
+        570,
+        265
+      ],
+      [
+        610,
+        290
+      ]
+    ],
+    "south_ridge": [
+      [
+        420,
+        440
+      ],
+      [
+        470,
+        420
+      ],
+      [
+        520,
+        430
+      ],
+      [
+        560,
+        450
+      ],
+      [
+        610,
+        440
+      ],
+      [
+        650,
+        430
+      ],
+      [
+        680,
+        440
+      ]
+    ],
+    "lake_ring": [
+      [
+        728,
+        385
+      ],
+      [
+        726,
+        396
+      ],
+      [
+        722,
+        407
+      ],
+      [
+        714,
+        416
+      ],
+      [
+        704,
+        423
+      ],
+      [
+        692,
+        428
+      ],
+      [
+        680,
+        429
+      ],
+      [
+        668,
+        428
+      ],
+      [
+        656,
+        423
+      ],
+      [
+        646,
+        416
+      ],
+      [
+        638,
+        407
+      ],
+      [
+        634,
+        396
+      ],
+      [
+        632,
+        385
+      ],
+      [
+        634,
+        374
+      ],
+      [
+        638,
+        363
+      ],
+      [
+        646,
+        354
+      ],
+      [
+        656,
+        347
+      ],
+      [
+        668,
+        342
+      ],
+      [
+        680,
+        341
+      ],
+      [
+        692,
+        342
+      ],
+      [
+        704,
+        347
+      ],
+      [
+        714,
+        354
+      ],
+      [
+        722,
+        363
+      ],
+      [
+        726,
+        374
+      ],
+      [
+        728,
+        385
+      ]
+    ],
+    "east_ridge": [
+      [
+        700,
+        260
+      ],
+      [
+        720,
+        300
+      ],
+      [
+        750,
+        350
+      ],
+      [
+        770,
+        400
+      ],
+      [
+        760,
+        450
+      ],
+      [
+        740,
+        490
+      ],
+      [
+        760,
+        540
+      ],
+      [
+        780,
+        600
+      ],
+      [
+        770,
+        650
+      ]
+    ],
+    "valley_axis": [
+      [
+        330,
+        300
+      ],
+      [
+        400,
+        320
+      ],
+      [
+        480,
+        340
+      ],
+      [
+        560,
+        350
+      ],
+      [
+        630,
+        365
+      ],
+      [
+        660,
+        380
+      ]
+    ],
+    "plain": [
+      [
+        330,
+        520
+      ],
+      [
+        420,
+        510
+      ],
+      [
+        500,
+        520
+      ],
+      [
+        580,
+        540
+      ],
+      [
+        650,
+        520
+      ]
+    ],
+    "canyon": [
+      [
+        340,
+        330
+      ],
+      [
+        335,
+        410
+      ],
+      [
+        330,
+        490
+      ],
+      [
+        340,
+        560
+      ]
+    ],
+    "desert": [
+      [
+        275,
+        290
+      ],
+      [
+        268,
+        380
+      ],
+      [
+        265,
+        470
+      ],
+      [
+        272,
+        560
+      ]
+    ],
+    "west_coast": [
+      [
+        230,
+        240
+      ],
+      [
+        222,
+        320
+      ],
+      [
+        220,
+        400
+      ],
+      [
+        222,
+        480
+      ],
+      [
+        230,
+        560
+      ],
+      [
+        215,
+        600
+      ]
+    ],
+    "marsh_coast": [
+      [
+        470,
+        610
+      ],
+      [
+        540,
+        590
+      ],
+      [
+        600,
+        580
+      ],
+      [
+        650,
+        600
+      ],
+      [
+        700,
+        620
+      ],
+      [
+        740,
+        640
+      ]
+    ],
+    "dark_strip": [
+      [
+        620,
+        600
+      ],
+      [
+        660,
+        570
+      ],
+      [
+        700,
+        545
+      ],
+      [
+        730,
+        515
+      ],
+      [
+        745,
+        490
+      ]
+    ],
+    "white_ridges": [
+      [
+        [
+          420,
+          440
+        ],
+        [
+          470,
+          420
+        ],
+        [
+          520,
+          430
+        ],
+        [
+          560,
+          450
+        ],
+        [
+          610,
+          440
+        ],
+        [
+          650,
+          430
+        ],
+        [
+          680,
+          440
+        ]
+      ],
+      [
+        [
+          728,
+          385
+        ],
+        [
+          726,
+          396
+        ],
+        [
+          722,
+          407
+        ],
+        [
+          714,
+          416
+        ],
+        [
+          704,
+          423
+        ],
+        [
+          692,
+          428
+        ],
+        [
+          680,
+          429
+        ],
+        [
+          668,
+          428
+        ],
+        [
+          656,
+          423
+        ],
+        [
+          646,
+          416
+        ],
+        [
+          638,
+          407
+        ],
+        [
+          634,
+          396
+        ],
+        [
+          632,
+          385
+        ],
+        [
+          634,
+          374
+        ],
+        [
+          638,
+          363
+        ],
+        [
+          646,
+          354
+        ],
+        [
+          656,
+          347
+        ],
+        [
+          668,
+          342
+        ],
+        [
+          680,
+          341
+        ],
+        [
+          692,
+          342
+        ],
+        [
+          704,
+          347
+        ],
+        [
+          714,
+          354
+        ],
+        [
+          722,
+          363
+        ],
+        [
+          726,
+          374
+        ],
+        [
+          728,
+          385
+        ]
+      ],
+      [
+        [
+          700,
+          260
+        ],
+        [
+          720,
+          300
+        ],
+        [
+          750,
+          350
+        ],
+        [
+          770,
+          400
+        ],
+        [
+          760,
+          450
+        ],
+        [
+          740,
+          490
+        ],
+        [
+          760,
+          540
+        ],
+        [
+          780,
+          600
+        ],
+        [
+          770,
+          650
+        ]
+      ]
+    ]
+  }
+}

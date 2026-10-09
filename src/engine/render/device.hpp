@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <deque>
 #include <string>
+#include <string_view>
 #include <unordered_map>
 #include <vector>
 
@@ -115,6 +116,12 @@ struct PipelineWanted {
     float depthBiasConstant = 0.0f;
     float depthBiasSlope = 0.0f;
     float depthBiasClamp = 0.0f;
+    // Where it draws. Empty: the frame's colour target, its depth and its
+    // sample count, as every pass of the frame has. Given: offscreen targets of
+    // these formats (several for multiple render targets), single-sampled,
+    // with depth only if `offscreenDepth` - a bake into an atlas, say.
+    std::vector<SDL_GPUTextureFormat> colourFormats;
+    bool offscreenDepth = false;
 };
 
 // What a compute shader is, which is much less than a graphics pipeline: no
@@ -159,6 +166,20 @@ public:
     SDL_GPUDevice* handle() const { return device_; }
     SDL_Window* window() const { return window_; }
     const std::filesystem::path& assets() const { return assets_; }
+
+    // What a long setup is doing, for a loading screen: building the passes is
+    // seconds of work before the first frame (shaders, texture arrays), and on
+    // every world change. The owner of the window sets the callback; the
+    // pipelines name each step (beginStep) and the loaders say how far into it
+    // they are (stepProgress). Called on the building thread between steps,
+    // never while a frame is being recorded, and at most ~30 times a second.
+    using Progress = std::function<void(const std::string& step, double fraction, const std::string& detail)>;
+    void onProgress(Progress progress) { progress_ = std::move(progress); }
+    void beginStep(std::string step, std::size_t index, std::size_t count);
+    void stepProgress(double within, std::string_view detail = {});
+    // A CPU picture straight onto the window, outside any frame: the loading
+    // screen while the passes that would draw one are still being built.
+    bool present(SDL_Surface* picture);
     const std::string& error() const { return error_; }
     void fail(std::string why) { error_ = std::move(why); }
 
@@ -247,10 +268,23 @@ public:
         bool finish();
 
     private:
+        // Everything added is staged here and goes to the card in finish(),
+        // through one mapping of one transfer buffer. A transfer buffer per
+        // call was an allocation and a release in the driver per upload, every
+        // frame: free on unified memory, a kernel call on a discrete card.
+        struct Copy {
+            enum Kind { BufferCopy, TextureCopy } kind;
+            std::size_t offset;
+            std::uint32_t bytes;
+            SDL_GPUBufferRegion buffer;
+            SDL_GPUTextureRegion texture;
+            std::uint32_t width, height;
+            bool cycle;
+        };
+        std::size_t stage(const void* data, std::size_t bytes);
         Device& device_;
-        SDL_GPUCommandBuffer* commands_ = nullptr;
-        SDL_GPUCopyPass* copy_ = nullptr;
-        std::vector<SDL_GPUTransferBuffer*> transfers_;
+        std::vector<std::uint8_t> staged_;
+        std::vector<Copy> copies_;
         bool textureUploadsOk_ = true;
     };
 
@@ -326,8 +360,23 @@ private:
 
     std::uint32_t headlessWidth_ = 0, headlessHeight_ = 0;
     SDL_GPUDevice* device_ = nullptr;
+    // The Uploaders' shared staging buffer, mapped with cycling: while the card
+    // still reads one copy SDL hands out another, so steady-state uploads
+    // allocate nothing. Grows to the largest batch below kStagingKeep; bigger
+    // batches (loading a world) get a transfer buffer of their own.
+    SDL_GPUTransferBuffer* staging_ = nullptr;
+    std::uint32_t stagingBytes_ = 0;
+    // The bytes an Uploader stages, lent to it and given back: their capacity
+    // outlives the uploader, so a frame's uploads do not grow a vector afresh.
+    std::vector<std::uint8_t> stagingScratch_;
     std::filesystem::path assets_;
     std::string error_;
+    Progress progress_;
+    std::string step_;
+    std::size_t stepIndex_ = 0, stepCount_ = 1;
+    std::uint64_t lastProgressNs_ = 0;
+    SDL_GPUTexture* presentTexture_ = nullptr;
+    int presentWidth_ = 0, presentHeight_ = 0;
     bool shaderCross_ = false;
     SDL_GPUSampleCount samples_ = SDL_GPU_SAMPLECOUNT_1;
     struct Submission { std::uint64_t serial; SDL_GPUFence* fence; };

@@ -19,6 +19,7 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
+import platform
 
 import numpy as np
 from PIL import Image
@@ -31,6 +32,17 @@ import prepare_scene_models as scene
 ROOT = Path(__file__).resolve().parents[1]
 CONFIG = ROOT / "content/config/environment_models.json"
 HEADER = ROOT / "src/game/world/environment_models.gen.hpp"
+# The scene material atlas: one 2D array texture, so the card's array-layer
+# limit (2048 on Vulkan, D3D12 and Metal) is the ceiling.
+LAYER_BUDGET = 2048
+# What the renderer and the scatter ask of a model, by kind. The C++ enum in the
+# generated header follows this order.
+KINDS = ["tree_broadleaf", "tree_conifer", "shrub", "rock", "mushroom", "deadwood", "cliff", "ground_cover",
+         "undergrowth"]
+
+
+def niced(command):
+    return (["nice", "-n", "15"] if platform.system() != "Windows" else []) + command
 
 
 def canonical_face(v, ind):
@@ -136,6 +148,9 @@ def prepare(catalogue, binary, clusters):
     config = json.loads(CONFIG.read_text())
     manifest = json.loads((catalogue / "manifest.json").read_text())
     base = config["base_models"]
+    base_kinds = config["base_kinds"]
+    if len(base_kinds) != len(base) or any(k not in KINDS for k in base_kinds):
+        raise ValueError("base_kinds must give one known kind per base model")
     if [m["name"] for m in manifest["models"][:len(base)]] != base:
         raise ValueError("Base catalogue order disagrees with environment configuration")
     old_extension = manifest.get("environment")
@@ -170,6 +185,8 @@ def prepare(catalogue, binary, clusters):
 
         for selection in config["models"]:
             name, asset = selection["name"], selection["asset"]
+            if selection["kind"] not in KINDS:
+                raise ValueError(name + ": unknown kind " + selection["kind"])
             folder = bake.MODELS / asset
             variants, colours = bake.variants(folder)
             if selection.get("recolour"):
@@ -198,6 +215,13 @@ def prepare(catalogue, binary, clusters):
             grown, coarse = mesh_lod.build_levels(v, ind, scene.LOD_RATIOS)
             buffer = np.concatenate((v, grown)).astype("<f4") if len(grown) else v
             levels = [{"indices": ind, "triangles": len(ind) // 3, "cards": -1, "error": (0., 0., 0.)}] + coarse
+            # The renderer stops at the first level too coarse for the screen, so
+            # the chain's errors must not fall: a tiny mesh can measure its last
+            # level a hair better than the one before.
+            rising = 0.0
+            for level in levels:
+                rising = max(rising, level["error"][1])
+                level["error"] = (level["error"][0], rising, level["error"][2])
             with (stage / (name + ".mesh")).open("wb") as output:
                 output.write(struct.pack("<4sII", b"SCM2", len(buffer), len(levels)))
                 output.write(struct.pack("<%dI" % len(levels), *[len(l["indices"]) for l in levels]))
@@ -205,6 +229,13 @@ def prepare(catalogue, binary, clusters):
                 for level in levels:
                     output.write(level["indices"].astype("<u4").tobytes())
             first = len(manifest["colours"])
+            # "hemisphere": false - the eight side views alone, without the
+            # twenty-one of the hemisphere: a landmark seen rarely and big is a
+            # mesh most of the time, and the views are most of a model's layers
+            # in the atlas (eight instead of twenty-nine).
+            hemisphere = selection.get("hemisphere", True)
+            if not hemisphere:
+                views = views[:8]
             for view, (colour, normal, depth) in enumerate(views):
                 layer(name + "-view-" + str(view), colour, normal, depth)
             model = {"name": name, "source_asset": selection.get("url", "https://polyhaven.com/a/" + asset),
@@ -215,13 +246,14 @@ def prepare(catalogue, binary, clusters):
                      "impostor": first, "depth_impostor": True,
                      "vertices": len(buffer), "triangles": len(ind) // 3,
                      "support_front_m": front,
-                     "hemisphere_impostor": {"first": first + 8, "views": hemi.VIEW_COUNT,
-                         "layout": hemi.LAYOUT, "side": side, "center_z": height * .5, "resolution": bake.SIZE},
+                     **({"hemisphere_impostor": {"first": first + 8, "views": hemi.VIEW_COUNT,
+                         "layout": hemi.LAYOUT, "side": side, "center_z": height * .5, "resolution": bake.SIZE}}
+                        if hemisphere else {}),
                      "levels": [{"triangles": l["triangles"], "cards": l["cards"],
                          "error_m": l["error"][1], "error_max_m": l["error"][0], "error_rms_m": l["error"][2]}
                                 for l in levels]}
             manifest["models"].append(model)
-            bounds.append((name, width, height, front))
+            bounds.append((name, width, height, front, selection["kind"]))
             bake.sheet(stage, [v[0] for v in views])
             (stage / "sheet.png").rename(stage / (name + "-sheet.png"))
             print(f"{name}: {len(ind)//3} triangles, {width:.2f} x {height:.2f} m, {len(levels)} LODs", flush=True)
@@ -235,19 +267,31 @@ def prepare(catalogue, binary, clusters):
         normal = bake.load_image(Path(str(stem) + "_normal.png"))
         moss = layer("moss-surface", colour, normal)
         manifest["environment"]["moss_layer"] = moss
-        if len(manifest["colours"]) > 1280:
-            raise ValueError("Scene material atlas exceeds the 1280-layer budget")
+        if len(manifest["colours"]) > LAYER_BUDGET:
+            raise ValueError("Scene material atlas exceeds the %d-layer budget (%d)" % (LAYER_BUDGET, len(manifest["colours"])))
         # Cluster only the additions, preserving the base catalogue's sidecars.
         additions = copy.deepcopy(manifest)
         additions["models"] = additions["models"][len(base):]
         additions["groves"] = []
         (stage / "manifest.json").write_text(json.dumps(additions, indent=2) + "\n")
-        subprocess.run(["nice", "-n", "15", str(clusters), str(stage)], check=True)
-        header = ["#pragma once", "// Generated by tools/prepare_environment_models.py; physical catalogue bounds.",
-                  "#include <array>", "namespace world::decor {",
-                  "struct EnvironmentModelBounds { double width, height, front; };",
-                  "inline constexpr std::array<EnvironmentModelBounds, %d> kEnvironmentBounds{{" % len(bounds)]
-        header += ["    {%.9f, %.9f, %.9f}, // %s" % (w, h, front, name) for name, w, h, front in bounds]
+        subprocess.run(niced([str(clusters), str(stage)]), check=True)
+        names = list(base) + [b[0] for b in bounds]
+        kinds = list(base_kinds) + [b[4] for b in bounds]
+        camel = lambda kind: "".join(part.capitalize() for part in kind.split("_"))
+        header = ["#pragma once",
+                  "// Generated by tools/prepare_environment_models.py from content/config/environment_models.json:",
+                  "// the scene catalogue in manifest order, what each model is, and the physical bounds",
+                  "// of the environment extension (index = model - base model count).",
+                  "#include <array>", "#include <cstdint>", "namespace world::decor {",
+                  "enum class ModelKind : std::uint8_t { " + ", ".join(camel(k) for k in KINDS) + " };",
+                  "inline constexpr std::array<const char*, %d> kCatalogueModels{" % len(names)]
+        header += ["    \"%s\"," % n for n in names]
+        header += ["};", "inline constexpr std::array<ModelKind, %d> kCatalogueKinds{" % len(kinds)]
+        header += ["    ModelKind::%s, // %s" % (camel(k), n) for n, k in zip(names, kinds)]
+        header += ["};", "inline constexpr std::size_t kCatalogueBaseCount = %d;" % len(base),
+                   "struct EnvironmentModelBounds { double width, height, front; };",
+                   "inline constexpr std::array<EnvironmentModelBounds, %d> kEnvironmentBounds{{" % len(bounds)]
+        header += ["    {%.9f, %.9f, %.9f}, // %s" % (w, h, front, name) for name, w, h, front, _ in bounds]
         header += ["}};", "} // namespace world::decor", ""]
         for file in stage.iterdir():
             if file.name != "manifest.json":
@@ -271,5 +315,6 @@ if __name__ == "__main__":
     parser.add_argument("--clusters", type=Path)
     args = parser.parse_args()
     binary = bake.find_binary(args.binary).resolve()
-    clusters = args.clusters.resolve() if args.clusters else binary.parent / "scene_model_clusters"
+    clusters = args.clusters.resolve() if args.clusters else binary.parent / (
+        "scene_model_clusters" + (".exe" if platform.system() == "Windows" else ""))
     prepare(args.catalogue.resolve(), binary, clusters)

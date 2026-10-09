@@ -1,0 +1,674 @@
+{
+  "comment": "Landmarks of the world of fallen gods (doc/BIOMES_RU.md), set where tools/biome_layout.py paints their sites (the painted 'features' layer, content/config/environment/painted.json). Taken from pending/megaliths.json, cut to the six megalith models the scene atlas has room for (2048 layers). Scaled x1.9 from the pending set: the fallen gods' landmarks dwarf a person (doc/BIOMES_RU.md).",
+  "recipes": [
+    {
+      "name": "stone_circle_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "stone_circle"
+        ],
+        "density_per_km2": 6,
+        "min_spacing": 500,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            0.45
+          ]
+        }
+      },
+      "comment": "A ring of standing stones on levelled ground, a few fallen, the grass worn inside.",
+      "terrain": [
+        {
+          "op": "smooth_to",
+          "radius": [
+            49.4,
+            49.4
+          ],
+          "exponent": 4,
+          "blend": 12
+        }
+      ],
+      "masks": [
+        {
+          "channel": "suppress",
+          "shape": "footprint",
+          "radius": 34.2,
+          "value": 0.5
+        },
+        {
+          "channel": "scar",
+          "shape": "ring",
+          "radius": 30.4,
+          "falloff": 4,
+          "value": 0.5
+        }
+      ],
+      "scatter": [
+        {
+          "primitive": "ring",
+          "models": [
+            [
+              "Megalith_Menhir_A",
+              3
+            ]
+          ],
+          "count": [
+            9,
+            15
+          ],
+          "radius": 30.4,
+          "scale": [
+            1.52,
+            2.18
+          ],
+          "min_spacing": 7.6,
+          "tag": "megalith"
+        },
+        {
+          "primitive": "cluster",
+          "models": [
+            [
+              "Megalith_Fallen_A",
+              1
+            ]
+          ],
+          "count": [
+            1,
+            3
+          ],
+          "radius": 34.2,
+          "min_spacing": 9.5,
+          "tag": "megalith",
+          "scale": [
+            1.9,
+            1.9
+          ]
+        }
+      ],
+      "composition": {
+        "negative_space": 45.6,
+        "reveal_width": 10,
+        "reveal_length": 60
+      }
+    },
+    {
+      "name": "menhir_alley_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "menhir_alley"
+        ],
+        "density_per_km2": 6,
+        "min_spacing": 500,
+        "align": "contour",
+        "fields": {
+          "slope": [
+            0,
+            0.45
+          ]
+        }
+      },
+      "comment": "An avenue of stones marching along the hillside.",
+      "scatter": [
+        {
+          "primitive": "line",
+          "models": [
+            [
+              "Megalith_Menhir_A",
+              3
+            ]
+          ],
+          "count": [
+            10,
+            18
+          ],
+          "radius": 266.0,
+          "spread": 0.6,
+          "scale": [
+            1.33,
+            2.09
+          ],
+          "min_spacing": 13.3,
+          "tag": "megalith"
+        },
+        {
+          "primitive": "line",
+          "models": [
+            [
+              "Megalith_Menhir_A",
+              3
+            ]
+          ],
+          "count": [
+            8,
+            14
+          ],
+          "radius": 266.0,
+          "spread": 0.6,
+          "scale": [
+            1.14,
+            1.9
+          ],
+          "min_spacing": 13.3,
+          "tag": "megalith"
+        }
+      ],
+      "composition": {
+        "elongation": 4,
+        "negative_space": 15.2
+      }
+    },
+    {
+      "name": "cyclopean_ruin_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "cyclopean_ruin"
+        ],
+        "density_per_km2": 6,
+        "min_spacing": 500,
+        "align": "contour",
+        "fields": {
+          "slope": [
+            0,
+            0.8
+          ]
+        }
+      },
+      "comment": "Terraces walled with stones no people could lift, and a stair between them.",
+      "terrain": [
+        {
+          "op": "terrace",
+          "radius": [
+            114.0,
+            85.5
+          ],
+          "exponent": 6,
+          "terrace_step": 4,
+          "terrace_sharpness": 0.75,
+          "blend": 15
+        }
+      ],
+      "masks": [
+        {
+          "channel": "rock",
+          "shape": "footprint",
+          "radius": 19.0,
+          "value": 0.5
+        },
+        {
+          "channel": "moss",
+          "shape": "footprint",
+          "value": 0.4
+        }
+      ],
+      "scatter": [
+        {
+          "primitive": "edge",
+          "models": [
+            [
+              "Megalith_Cyclopean_A",
+              2
+            ]
+          ],
+          "count": [
+            10,
+            20
+          ],
+          "radius": 114.0,
+          "min_spacing": 7.6,
+          "tag": "megalith",
+          "scale": [
+            1.9,
+            1.9
+          ]
+        },
+        {
+          "primitive": "cluster",
+          "models": [
+            [
+              "Megalith_Cyclopean_A",
+              2
+            ]
+          ],
+          "count": [
+            6,
+            12
+          ],
+          "radius": 95.0,
+          "min_spacing": 7.6,
+          "tag": "megalith",
+          "scale": [
+            1.9,
+            1.9
+          ]
+        }
+      ]
+    },
+    {
+      "name": "colossus_head_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "colossus_head"
+        ],
+        "density_per_km2": 6,
+        "min_spacing": 500,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            0.6
+          ]
+        }
+      },
+      "comment": "A carved head the ground has half taken back, looking out over its country.",
+      "terrain": [
+        {
+          "op": "smooth_to",
+          "radius": [
+            26.6,
+            26.6
+          ],
+          "exponent": 3,
+          "blend": 10
+        }
+      ],
+      "meshes": [
+        {
+          "model": "Megalith_Head_A",
+          "attach": "anchor",
+          "count": 1,
+          "sink": 0.5,
+          "scale": [
+            1.71,
+            2.47
+          ]
+        }
+      ],
+      "masks": [
+        {
+          "channel": "talus",
+          "shape": "ring",
+          "radius": 17.1,
+          "falloff": 6,
+          "value": 0.7
+        },
+        {
+          "channel": "moss",
+          "shape": "footprint",
+          "radius": 11.4,
+          "value": 0.5
+        }
+      ],
+      "scatter": [
+        {
+          "primitive": "rock_hierarchy",
+          "models": [
+            [
+              "Rock_Angular",
+              1
+            ],
+            [
+              "Boulder_Round",
+              1
+            ],
+            [
+              "Forest_Rock_Small",
+              1
+            ]
+          ],
+          "radius": 20,
+          "spread": 3.1
+        }
+      ],
+      "composition": {
+        "negative_space": 26.6,
+        "reveal_width": 12,
+        "reveal_length": 80
+      }
+    },
+    {
+      "name": "needle_field_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "needle_field"
+        ],
+        "density_per_km2": 6,
+        "min_spacing": 500,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            1.2
+          ]
+        }
+      },
+      "comment": "Black basalt needles standing out of the ground in a crowd.",
+      "scatter": [
+        {
+          "primitive": "cluster",
+          "models": [
+            [
+              "Megalith_Needle_A",
+              2
+            ]
+          ],
+          "count": [
+            3,
+            8
+          ],
+          "radius": 133.0,
+          "scale": [
+            1.33,
+            2.66
+          ],
+          "min_spacing": 22.8,
+          "tag": "megalith"
+        },
+        {
+          "primitive": "rock_hierarchy",
+          "models": [
+            [
+              "Boulder_Round",
+              1
+            ],
+            [
+              "Rock_Angular",
+              1
+            ],
+            [
+              "Forest_Rock_Small",
+              1
+            ]
+          ],
+          "radius": 60,
+          "spread": 3.1
+        }
+      ],
+      "masks": [
+        {
+          "channel": "rock",
+          "shape": "footprint",
+          "radius": 57.0,
+          "value": 0.4
+        },
+        {
+          "channel": "talus",
+          "shape": "footprint",
+          "radius": 76.0,
+          "value": 0.5
+        }
+      ],
+      "composition": {
+        "elongation": 1.6
+      }
+    },
+    {
+      "name": "portal_tower_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "portal_tower"
+        ],
+        "density_per_km2": 6,
+        "min_spacing": 500,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            0.45
+          ]
+        }
+      },
+      "comment": "The tall gate-tower on its own hill, a path running through it.",
+      "terrain": [
+        {
+          "op": "raise",
+          "height": 10,
+          "radius": [
+            85.5,
+            85.5
+          ],
+          "exponent": 2,
+          "blend": 25
+        },
+        {
+          "op": "smooth_to",
+          "radius": [
+            19.0,
+            19.0
+          ],
+          "exponent": 4,
+          "blend": 6
+        }
+      ],
+      "meshes": [
+        {
+          "model": "Megalith_Portal_A",
+          "attach": "anchor",
+          "count": 1,
+          "sink": 0.3,
+          "scale": [
+            1.9,
+            2.47
+          ]
+        }
+      ],
+      "masks": [
+        {
+          "channel": "scar",
+          "shape": "corridor",
+          "radius": 3.8,
+          "length": 60,
+          "falloff": 2,
+          "value": 0.7
+        }
+      ],
+      "composition": {
+        "negative_space": 38.0,
+        "reveal_width": 8,
+        "reveal_length": 120
+      },
+      "scatter": []
+    },
+    {
+      "name": "marsh_panel_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "marsh_panel"
+        ],
+        "density_per_km2": 8,
+        "min_spacing": 350,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            0.3
+          ]
+        }
+      },
+      "comment": "A stand of the marshes' panels: tall plates of some old armour or blade, pinched at the foot, a few holed through, leaning out of the reeds (doc/BIOMES_RU.md 01).",
+      "masks": [
+        {
+          "channel": "suppress",
+          "shape": "footprint",
+          "radius": 30.0,
+          "value": 0.35
+        }
+      ],
+      "scatter": [
+        {
+          "primitive": "cluster",
+          "models": [
+            [
+              "Megalith_MarshPanel_A",
+              1
+            ]
+          ],
+          "count": [
+            3,
+            7
+          ],
+          "radius": 45.0,
+          "scale": [
+            1.8,
+            2.8
+          ],
+          "min_spacing": 11.0,
+          "tag": "megalith"
+        }
+      ],
+      "composition": {
+        "negative_space": 40.0
+      }
+    },
+    {
+      "name": "mirror_monument_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "mirror_monument"
+        ],
+        "density_per_km2": 4,
+        "min_spacing": 1500,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            0.25
+          ]
+        }
+      },
+      "comment": "The desert's monument: a pale smooth arch of a building curving in to its crown, a black doorway nearly to the top, sand swept bare around it (doc/BIOMES_RU.md 04).",
+      "meshes": [
+        {
+          "model": "Megalith_Mirror_A",
+          "attach": "anchor",
+          "count": 1,
+          "sink": 0.6,
+          "scale": [
+            1.6,
+            2.0
+          ]
+        }
+      ],
+      "masks": [
+        {
+          "channel": "suppress",
+          "shape": "footprint",
+          "radius": 60.0,
+          "value": 0.6
+        },
+        {
+          "channel": "scar",
+          "shape": "corridor",
+          "radius": 5.0,
+          "length": 140,
+          "falloff": 3,
+          "value": 0.5
+        }
+      ],
+      "composition": {
+        "negative_space": 90.0,
+        "reveal_width": 14,
+        "reveal_length": 260
+      },
+      "scatter": []
+    },
+    {
+      "name": "iron_defender_site",
+      "scale": "local",
+      "age": "ancient",
+      "placement": {
+        "source": "painted",
+        "painted": [
+          "iron_defender"
+        ],
+        "density_per_km2": 5,
+        "min_spacing": 800,
+        "align": "random",
+        "fields": {
+          "slope": [
+            0,
+            0.35
+          ]
+        }
+      },
+      "comment": "A fallen iron defender of the plateau: a giant's armour where it fell - helm, breastplate, an arm - rusted and grown over, the grass torn around it (doc/BIOMES_RU.md 06).",
+      "meshes": [
+        {
+          "model": "Megalith_Defender_A",
+          "attach": "anchor",
+          "count": 1,
+          "sink": 0.4,
+          "scale": [
+            2.6,
+            3.4
+          ]
+        }
+      ],
+      "masks": [
+        {
+          "channel": "scar",
+          "shape": "footprint",
+          "radius": 32.0,
+          "value": 0.45
+        },
+        {
+          "channel": "talus",
+          "shape": "footprint",
+          "radius": 40.0,
+          "value": 0.3
+        }
+      ],
+      "scatter": [
+        {
+          "primitive": "cluster",
+          "models": [
+            [
+              "Megalith_Fallen_A",
+              1
+            ]
+          ],
+          "count": [
+            0,
+            2
+          ],
+          "radius": 45.0,
+          "scale": [
+            1.2,
+            1.7
+          ],
+          "min_spacing": 14.0,
+          "tag": "megalith"
+        }
+      ],
+      "composition": {
+        "negative_space": 55.0,
+        "reveal_width": 10,
+        "reveal_length": 120
+      }
+    }
+  ]
+}

@@ -1,3 +1,4 @@
+#include "engine/pipeline/pass_clock.hpp"
 #include "game/render/world_renderer.hpp"
 
 #include "engine/biomes/registry.hpp"
@@ -98,7 +99,7 @@ void WorldRenderer::holdThePicture() {
 
 void WorldRenderer::forgetTheWorld() {
     runner_.reset(); // pass destructors drain their workers while the lease is valid
-    collect_ = nullptr; sprites_ = nullptr; models_ = nullptr; foliage_ = nullptr; farTrees_ = nullptr; character_ = nullptr; render_ = nullptr;
+    collect_ = nullptr; terrainPass_ = nullptr; sprites_ = nullptr; models_ = nullptr; foliage_ = nullptr; farTrees_ = nullptr; character_ = nullptr; render_ = nullptr;
     cache_.clear();
     climate_ = {};
     shadows_.reset();
@@ -178,8 +179,9 @@ bool WorldRenderer::synchronize() {
         if (maps.empty()) for (const auto& asset : names) maps.push_back("../terrain/ph/" + asset + "/ph_" + asset);
     }
     auto* terrain = &collect_->gpuTerrain();
-    drawing->add(std::make_unique<TerrainPass>(cache_, std::move(materials), maps, climate_, world_->climate(), shadows_->binding(), terrain))
-        ->halfTextures(wantedHalfTextures_);
+    terrainPass_ = drawing->add(std::make_unique<TerrainPass>(cache_, std::move(materials), maps, climate_,
+                                                              world_->climate(), shadows_->binding(), terrain));
+    terrainPass_->halfTextures(wantedHalfTextures_);
     std::vector<std::string> grass;
     const auto modelDirectory = device_.assets() / "../generated/scene_models";
     if (std::filesystem::exists(modelDirectory / ".ue-imported")) {
@@ -371,7 +373,9 @@ bool WorldRenderer::draw(const client::Camera& camera, const WorldRenderSettings
             std::size_t(graphics.vegetationMeshKiloTriangles) * 1000);
         const bool far = graphics.farTrees && farTrees_ != nullptr;
         models_->farTrees(far ? graphics.farTreesStart : 0.0, FarTreesPass::kBand);
-        if (farTrees_) farTrees_->options(graphics.farTrees, graphics.farTreesStart);
+        // The far trees start where the placed objects really end: the
+        // setting, or nearer when the object budget has brought them in.
+        if (farTrees_) farTrees_->options(graphics.farTrees, far ? models_->handover() : graphics.farTreesStart);
     }
     foliage_->focus(cull.centreX, cull.centreY);
     if (character_) character_->set(characterState_);
@@ -405,6 +409,7 @@ bool WorldRenderer::draw(const client::Camera& camera, const WorldRenderSettings
     scene.parameters[20][1] = float(1.0 / (world_->climate().metres() * high));
     scene.parameters[20][2] = float(0.5 / wide); scene.parameters[20][3] = float(0.5 / high);
     scene.extra[3] = float(settings.map);
+    world::terrain::setStageDiagnostics(settings.map >= world::MapView::StageDelta && settings.map <= world::MapView::Flow);
     styleScene(scene, camera.centreX, camera.centreY);
     scene.environment[1] = float(std::clamp(settings.environmentChannel, 0, 7));
     for (std::size_t i = 0; i < settings.editor.size(); ++i)
@@ -485,10 +490,17 @@ bool WorldRenderer::draw(const client::Camera& camera, const WorldRenderSettings
     // from high up the fog reaches a thousand kilometres, and the forest's
     // hierarchy walked every root of it each frame for trees nobody could see.
     if (models_) models_->drawDistance(camera.perspective() ? detail : 400000.0);
+    const auto prepareStart = std::chrono::steady_clock::now();
     if (models_)
         models_->prepareDensity(scene, cull.viewportWidth, scene);
+    const auto shadowStart = std::chrono::steady_clock::now();
     if (!shadows_->update(device_,scene,settings.sunDirection,settings.shadows &&
         std::getenv("CAMPFIRE_NO_SHADOWS")==nullptr && settings.map==world::MapView::Natural && terrain.finalStage())) return false;
+    if (engine::PassClock::get().on()) {
+        const auto end = std::chrono::steady_clock::now();
+        engine::PassClock::get().add("prepare: scene objects", std::chrono::duration<double, std::milli>(shadowStart - prepareStart).count());
+        engine::PassClock::get().add("prepare: shadows", std::chrono::duration<double, std::milli>(end - shadowStart).count());
+    }
     graded_ = scene.quality[2] > 0.0f || scene.quality[3] > 0.0f;
     // The held picture goes once the new ground in view is in: something on
     // the card, nothing the view wants still missing. A few frames at least,
@@ -511,8 +523,18 @@ bool WorldRenderer::draw(const client::Camera& camera, const WorldRenderSettings
 }
 
 void WorldRenderer::holdTime(double seconds) { heldTime_ = seconds; if (runner_) runner_->holdTime(seconds); }
+std::string WorldRenderer::unsettled() const {
+    std::string why;
+    if (!collect_) return "no terrain";
+    if (!terrain().settled()) why += " terrain pages (" + terrain().unsettled().substr(terrain().unsettled().empty() ? 0 : 1) + ")";
+    if (!models_ || !models_->ready()) why += " scene models";
+    if (terrainPass_ && !terrainPass_->materialSettled()) why += " ground material cache";
+    return why.empty() ? "nothing" : why.substr(1);
+}
+
 bool WorldRenderer::settled() const {
-    return collect_ && terrain().settled() && models_ && models_->ready();
+    return collect_ && terrain().settled() && models_ && models_->ready() &&
+           (!terrainPass_ || terrainPass_->materialSettled());
 }
 const GpuTerrain& WorldRenderer::terrain() const { return collect_->gpuTerrain(); }
 void WorldRenderer::toggleTerrainSkirts() { skirts_ = !skirts_; if (collect_) collect_->gpuTerrain().skirts(skirts_); }

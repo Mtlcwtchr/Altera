@@ -78,6 +78,10 @@ bool GpuTerrain::ensure(engine::Device& device) {
     for (const auto& [texel, key] : tableOwner_) tableMirror_[texel] = {0, 0, 0, 0};
     tableOwner_.clear();
     tableUploaded_ = false;
+    texelKeys_.clear();
+    tableAdded_.clear();
+    tableRemoved_.clear();
+    tableIndexed_ = false;
     // How many H64 pages the land needs, for the progress read-out: by 8 km
     // squares first, so a world 2000 km a side of open sea is thousands of
     // questions and not sixteen million.
@@ -466,6 +470,75 @@ bool GpuTerrain::publishTable(engine::Device& device) {
         const double dx = (key.x + 0.5) * metres - lastX_, dy = (key.y + 0.5) * metres - lastY_;
         return dx * dx + dy * dy;
     };
+    const auto turn = [](std::int64_t v) {
+        return std::int64_t(std::floor(double(v) / double(kTableSide)));
+    };
+    const auto entryOf = [&](Key key, const world::terrain::HeightPageAddress& address) {
+        return std::array<float, 4>{address.uvOrigin[0], address.uvOrigin[1], address.uvPerMetre[0],
+                                    float(turn(key.x) * 1024 + turn(key.y)) + 0.25f};
+    };
+    // By what changed, once the table is known whole and on the card: the
+    // texels of the pages that came and went, and nothing else.
+    if (tableIndexed_ && tableUploaded_) {
+        std::vector<std::uint64_t> dirty;
+        for (const auto key : tableRemoved_) {
+            stale_.erase(key);
+            known_.erase(key);
+            const auto texel = texelOf(key, dataset(key.level));
+            auto found = texelKeys_.find(texel);
+            if (found == texelKeys_.end()) continue;
+            std::erase(found->second, key);
+            if (found->second.empty()) texelKeys_.erase(found);
+            dirty.push_back(texel);
+        }
+        for (const auto key : tableAdded_) {
+            if (!known_.contains(key)) continue;
+            const auto texel = texelOf(key, dataset(key.level));
+            auto& keys = texelKeys_[texel];
+            if (std::find(keys.begin(), keys.end(), key) == keys.end()) keys.push_back(key);
+            dirty.push_back(texel);
+        }
+        tableAdded_.clear();
+        tableRemoved_.clear();
+        std::array<std::pair<std::size_t, std::size_t>, kTableLayers> rows;
+        rows.fill({side, 0});
+        const auto touch = [&](std::uint64_t texel, const std::array<float, 4>& value) {
+            tableMirror_[texel] = value;
+            const auto layer = std::size_t(texel / plane), row = std::size_t((texel % plane) / side);
+            rows[layer] = {std::min(rows[layer].first, row), std::max(rows[layer].second, row + 1)};
+        };
+        for (const auto texel : dirty) {
+            // The nearest of the pages that want this texel and are on the card.
+            std::optional<Key> best;
+            std::array<float, 4> value{0, 0, 0, 0};
+            if (const auto found = texelKeys_.find(texel); found != texelKeys_.end())
+                for (const auto key : found->second)
+                    if (const auto address = atlases_[atlasOf(key.level)]->find(key))
+                        if (!best || distance(key) < distance(*best)) { best = key; value = entryOf(key, *address); }
+            if (!best) {
+                if (tableOwner_.erase(texel)) touch(texel, {0, 0, 0, 0});
+                continue;
+            }
+            tableOwner_[texel] = *best;
+            if (!(tableMirror_[texel] == value)) touch(texel, value);
+        }
+        engine::Device::Uploader upload(device);
+        bool ok = true;
+        for (std::uint32_t layer = 0; layer < kTableLayers; ++layer) {
+            const auto [from, to] = rows[layer];
+            if (from >= to) continue;
+            ok = upload.refillRegion(table_.get(), tableMirror_.data() + layer * plane + from * side, 0,
+                                     std::uint32_t(from), std::uint32_t(side), std::uint32_t(to - from), 16, layer, 0,
+                                     false) && ok;
+        }
+        ok = upload.finish() && ok;
+        tableUploaded_ = ok;
+        return ok;
+    }
+    // The whole of it: the first time, after a failed upload, after a clear.
+    tableAdded_.clear();
+    tableRemoved_.clear();
+    texelKeys_.clear();
     for (auto it = known_.begin(); it != known_.end();) {
         const auto key = *it;
         const auto address = atlases_[atlasOf(key.level)]->find(key);
@@ -481,6 +554,7 @@ bool GpuTerrain::publishTable(engine::Device& device) {
         const std::array<float, 4> entry{address->uvOrigin[0], address->uvOrigin[1], address->uvPerMetre[0],
                                          float(turn(key.x) * 1024 + turn(key.y)) + 0.25f};
         const auto texel = texelOf(key, layer);
+        texelKeys_[texel].push_back(key);
         const auto [slot, fresh] = wanted.try_emplace(texel, key, entry);
         if (!fresh && distance(key) < distance(slot->second.first)) slot->second = {key, entry};
         ++it;
@@ -518,12 +592,14 @@ bool GpuTerrain::publishTable(engine::Device& device) {
     ok = upload.finish() && ok;
     // A failed upload leaves the card behind the mirror: the whole of it next time.
     tableUploaded_ = ok;
+    tableIndexed_ = ok;
     return ok;
 }
 
 void GpuTerrain::update(engine::Frame& frame, const client::Camera& camera) {
     using Clock = std::chrono::steady_clock;
     const auto started = Clock::now();
+    changed_.clear();
     std::string configError;
     if (configWatch_.poll(config_, configError, started)) {
         std::fprintf(stderr, "terrain config: %s loaded; detail-distance=%.2f morph-seconds=%.3f mesh-builds-per-batch=%zu preload-pages=%zu\n",
@@ -725,9 +801,14 @@ void GpuTerrain::update(engine::Frame& frame, const client::Camera& camera) {
     const auto uploadAt = Clock::now();
 #endif
     if (attempted) for (auto& atlas : atlases_) atlas->publishUploads(submitted);
+    for (auto& atlas : atlases_)
+        for (const auto key : atlas->takeEvicted()) tableRemoved_.push_back(key);
     if (submitted) for (const auto key : uploaded) {
         if (!atlases_[atlasOf(key.level)]->find(key)) continue;
-        known_.insert(key);
+        const double metres = world::streaming::pageMetresAtLevel(key.level);
+        changed_.push_back({key.x * metres, key.y * metres, (key.x + 1) * metres, (key.y + 1) * metres,
+                            double(dataset(key.level))});
+        if (known_.insert(key).second) tableAdded_.push_back(key);
         refreshed_ += stale_.erase(key);
         // H16/H8 are evictable after their last frame lease, just like meshes.
         // Counted, not pinned for good: an H64 page is held by the plans that
@@ -740,8 +821,15 @@ void GpuTerrain::update(engine::Frame& frame, const client::Camera& camera) {
     if (tableDirty_) {
         tableDirty_ = !publishTable(*frame.device);
         if (tableDirty_) { progress_.uploadFailed = true; return; }
-        // Snapshot only after atlas AND indirection table publication. Copying
-        // residency is event-driven, not a per-frame walk of the whole world.
+        residencyDirty_ = true;
+    }
+    // Snapshot only after atlas AND indirection table publication. It copies
+    // every resident page, so while pages stream in it is taken at most every
+    // 150 ms, and at once when a frame brings none: the plans see the newest
+    // ground a few frames late, never a table older than the card.
+    if (residencyDirty_ && (!attempted || started - residencyAt_ >= std::chrono::milliseconds(150))) {
+        residencyDirty_ = false;
+        residencyAt_ = started;
         auto next = std::make_shared<world::terrain::TerrainResidency>();
         next->revision = residency_->revision + 1;
         next->capacity = residency_->capacity;
@@ -790,9 +878,30 @@ void GpuTerrain::update(engine::Frame& frame, const client::Camera& camera) {
     }
     missing_ = plan_ ? plan_->missing.size() : 0;
     const bool currentPlan = plan_ && plan_->view == view && plan_->residencyRevision == residency_->revision;
+    const bool staleWanted = plan_ && std::any_of(stale_.begin(), stale_.end(), [&](Key key) { return plan_->wanted.contains(key); });
     settled_ = currentPlan && displayAmount_ >= 1 && !tableDirty_ && !missing_ && !coarse_ && !plan_->morphing && !plan_->blank &&
-        !plan_->staleMeshes &&
-        std::none_of(stale_.begin(), stale_.end(), [&](Key key) { return plan_->wanted.contains(key); });
+        !plan_->staleMeshes && !staleWanted;
+    unsettled_.clear();
+    // Why not settled, for the shot tools and ASR_PASS_TIMES: strings, so
+    // only built when someone will read them.
+    static const bool explain = std::getenv("ASR_PASS_TIMES") || std::getenv("ASR_SHOT_PATIENCE");
+    if (!settled_ && explain) {
+        if (!currentPlan) unsettled_ += " plan";
+        if (displayAmount_ < 1) unsettled_ += " reveal";
+        if (tableDirty_) unsettled_ += " table";
+        if (missing_) unsettled_ += " missing:" + std::to_string(missing_);
+        if (coarse_) unsettled_ += " coarse";
+        if (plan_ && plan_->morphing) unsettled_ += " morphing";
+        if (plan_ && plan_->blank) unsettled_ += " blank";
+        if (plan_ && plan_->staleMeshes) unsettled_ += " stale-meshes";
+        if (staleWanted) unsettled_ += " stale-pages";
+        {
+            const auto w = stream_->stats();
+            unsettled_ += " [baking " + std::to_string(w.busy) + " queued " + std::to_string(w.queued) + " done " +
+                          std::to_string(w.ready) + " staged " + std::to_string(staged_.size()) +
+                          (surface.busy() ? " plan-building" : "") + "]";
+        }
+    }
 #if ASR_ENABLE_PROFILING
     if (changed || tableChanged || frame.index % 6 == 0 || !progress_.initialized) {
         world::terrain::StreamingProgress status;

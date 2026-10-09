@@ -84,3 +84,12 @@ __pycache__/
 
 # --- generated from content/config/terrain (engine/biomes) ---
 /assets/shaders/*.gen.hlsli
+
+# --- local build / profiling noise ---
+/trace1/
+/assets/generated.zip
+/BUILD_STATUS*.txt
+/build_fresh_config.txt
+/*.bat
+/imgui.ini
+/CMakeUserPresets.json

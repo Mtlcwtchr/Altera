@@ -1,9 +1,11 @@
 #pragma once
 // Grass, drawn as cards standing on the ground.
 //
-// One quad, instanced: every blade on a patch is one draw call, and where each
-// stands was decided when the patch was built and lives on the card with it.
-// The pass owns the quad and the pictures; it does not decide where grass grows.
+// On paged terrain the card decides where the cover stands, every frame
+// (foliage_spawn.hlsl): nested windows of world-fixed roots around the eye,
+// culled and compacted on the card (GrassCuller), drawn by three indirect
+// draws - cards, blades, pebbles. The CPU places nothing and uploads nothing
+// but a few numbers. The pass owns the quad and the pictures.
 
 #include <string>
 #include <vector>
@@ -32,7 +34,7 @@ public:
     // How far from the focus the far tier reaches, metres (GraphicsSettings::
     // foliageDistance): its candidate budget is spread over that disc only.
     void reach(double metres) { reach_=metres; }
-    void reset() { roots_.clear();candidates_=0;ASR_DIAGNOSTIC(draws_=uploadBytes_=0); }
+    void reset() { candidates_=0;ASR_DIAGNOSTIC(draws_=0); }
 #if ASR_ENABLE_DIAGNOSTICS
     std::string report() const;
     bool readDrawnCandidates(engine::Device& device, std::uint32_t& count) const;
@@ -52,21 +54,18 @@ private:
     GpuTerrain* pages_ = nullptr;
     engine::RenderPipeline* renderer_ = nullptr;
     engine::BindingSet vertexBindings_ = engine::kNoBindings;
-    struct Roots {
-        std::shared_ptr<const world::terrain::AdaptiveMesh> mesh;
-        std::vector<world::PageGrassRoot> values;
-        bool used = false;
-        int run = -1;   // the index stamped into `values`; re-stamped when it moves
-    };
-    std::map<std::tuple<const world::terrain::AdaptiveMesh*,std::int64_t,std::int64_t,int>,Roots> roots_;
     double x_=0,y_=0;
     double reach_=2000;
-    int windowX_=std::numeric_limits<int>::min(),windowY_=windowX_;
-    std::size_t candidates_=0,nearCandidates_=0,farCandidates_=0; // draw size and per-tier budgets
+    std::size_t candidates_=0;   // roots the spawn wrote this frame, before the cull
+    int levels_=0;               // nested windows this frame
+    double finest_=0;            // the finest window's level, fractional (its fade)
 #if ASR_ENABLE_DIAGNOSTICS
-    std::size_t draws_=0,uploadBytes_=0,runs_=0,farBlocks_=0;
+    std::size_t draws_=0;
 #endif
-    int farStep_=8;
+    // The roots, written on the card by the spawn every frame (foliage_spawn.hlsl).
+    engine::Buffer rootsBuffer_;
+    engine::ComputeSlot spawn_=0;   // a slot index: nought is a real slot
+    bool spawnReady_=false;
     bool enabled_=true; // ASR_GRASS_DISABLED: bounded capture diagnostic, not a LOD switch
     bool gpuCulling_=false; // ASR_GRASS_CULL_DISABLED preserves the direct path for A/B
     GrassCuller culler_;

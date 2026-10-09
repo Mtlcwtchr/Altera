@@ -63,6 +63,12 @@ struct ImportedGround {
     // temperature_bias: 0 colder .. 255 warmer, 128 as the climate makes it
     // (about 10 degrees either way at the ends).
     std::vector<std::uint8_t> temperature;
+    // moisture_target and moisture_hold: the rain an authored place is meant
+    // to have (0 dust .. 255 a bog) and how firmly (0 the climate's own .. 255
+    // the target). The moisture mask only leans the world's rain, which ranks
+    // every place against the rest of the land: an inland plateau meant to be
+    // lush came out parched. A biome that knows what it is holds it here.
+    std::vector<std::uint8_t> moistureTarget, moistureHold;
     // 255 where the source's water flags say lake (a basin with a bed the
     // drainage keeps and the generator holds water in); empty when none.
     std::vector<std::uint8_t> lake;

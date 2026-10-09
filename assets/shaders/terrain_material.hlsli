@@ -1,39 +1,7 @@
 #ifndef TERRAIN_MATERIAL_HLSLI
 #define TERRAIN_MATERIAL_HLSLI
 
-#include "world_frame.hlsli"
-
-// A point of the ground as the material reads it (world_frame.hlsli): an exact
-// frame origin and the metres from it. `local.z` is the height itself - heights
-// are small enough for a float to hold to a fraction of a millimetre.
-struct GroundFrame {
-    float2 anchor;
-    float3 local;
-};
-
-GroundFrame groundFrame(float2 worldXY, float2 frameXY, float height)
-{
-    GroundFrame f;
-    f.anchor = frameAnchorFrom(worldXY, frameXY);
-    f.local = float3(frameXY, height);
-    return f;
-}
-
-// A world position taken as it is (frame origin nought): what callers without
-// an interpolated offset - probes, tests - always had.
-GroundFrame groundFrameOfWorld(float3 world)
-{
-    GroundFrame f;
-    f.anchor = float2(0.0, 0.0);
-    f.local = world;
-    return f;
-}
-
-// The world position again, for smooth fields and metre-scale noise only.
-float3 groundFrameWorld(GroundFrame f)
-{
-    return float3(f.anchor + f.local.xy, f.local.z);
-}
+#include "ground_frame.hlsli"
 
 // All maps describe the same surface. Never jitter colour, properties and
 // normals differently, or let camera distance change their mixture.
@@ -95,6 +63,11 @@ struct MaterialBand {
 // showed close up as the noise's own pattern and from mid range as the same
 // two-metre photograph repeated: here no two neighbouring cells of the grid
 // show the same piece of the scan the same way round.
+// The ground material cache bakes its coarse levels (a texel of 32 cm and
+// more) with this set: one hex copy instead of three, two grounds instead of
+// three. At those texels neither difference survives; the bake's cost halves.
+static float gMaterialLite = 0.0;
+
 static const float kHexCells = 1.6;        // grid vertices across one turn of the scan
 static const float kHexRotation = 1.0;     // how much each copy may turn (1 = any angle)
 static const float kHexSharpness = 7.0;
@@ -137,7 +110,10 @@ MaterialBand sampleMaterialBand(int layer, float2 uv, float2 dx, float2 dy, floa
     hexTriangle(uv, w, v[0], v[1], v[2]);
     float3 colour[3], normal[3];
     float4 properties[3];
-    [unroll] for (int k = 0; k < 3; ++k) {
+    // The lite bake: the nearest corner's copy alone.
+    const int copies = gMaterialLite > 0.5 ? 1 : 3;
+    if (copies == 1) w = float3(1.0, 0.0, 0.0);
+    [unroll] for (int k = 0; k < 3; ++k) [branch] if (k < copies) {
         const float2 random = hexHash(v[k], layer);
         const float2x2 turn = hexTurn(random);
         const float2 at = mul(turn, uv) + random.yx * 7.31;
@@ -148,6 +124,9 @@ MaterialBand sampleMaterialBand(int layer, float2 uv, float2 dx, float2 dy, floa
         // The normal map's slope is in the copy's frame: turned back to the plane's.
         n.xy = mul(n.xy, turn);
         normal[k] = n;
+    }
+    [unroll] for (int c = 1; c < 3; ++c) if (c >= copies) {
+        colour[c] = colour[0]; properties[c] = properties[0]; normal[c] = normal[0];
     }
     // Nearest corner first, the brighter detail through: the scan's own
     // stones and blades decide where one copy gives way to the next.

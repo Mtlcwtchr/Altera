@@ -32,9 +32,13 @@ public:
     [[nodiscard]] bool ready() const { return sampler_ && planes_[0]; }
     // What a pass hands to RenderPipeline::takeVertex.
     [[nodiscard]] std::vector<SDL_GPUTextureSamplerBinding> bindings() const;
+    // The same planes as one array, a layer each: one binding for a pixel
+    // stage that is short of slots (the ground material bake).
+    [[nodiscard]] SDL_GPUTextureSamplerBinding arrayBinding() const { return {array_.get(), sampler_.get()}; }
 
 private:
     engine::Texture planes_[world::ClimateField::kPlanes];
+    engine::Texture array_;
     engine::Sampler sampler_;
 };
 

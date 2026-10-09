@@ -34,6 +34,10 @@
     [
      "fallen_trunk",
      1.2
+    ],
+    [
+     "mossy_boulder_big",
+     0.5
     ]
    ]
   },
@@ -100,6 +104,18 @@
     [
      "rubble",
      8
+    ],
+    [
+     "basalt_rough",
+     2.0
+    ],
+    [
+     "basalt_smooth",
+     2.0
+    ],
+    [
+     "crystal_violet",
+     0.5
     ]
    ],
    "decals": [
@@ -262,6 +278,10 @@
     [
      "stones",
      3
+    ],
+    [
+     "mossy_boulder_big",
+     0.5
     ]
    ],
    "decals": [
@@ -298,6 +318,10 @@
     [
      "mossy_stone",
      6
+    ],
+    [
+     "giant_mushroom",
+     3.0
     ]
    ],
    "decals": [
@@ -354,6 +378,18 @@
     [
      "rubble",
      6
+    ],
+    [
+     "rock_arch",
+     0.15
+    ],
+    [
+     "stone_spire",
+     0.4
+    ],
+    [
+     "basalt_rough",
+     1.0
     ]
    ],
    "decals": [
@@ -394,6 +430,14 @@
     [
      "stones",
      4
+    ],
+    [
+     "crystal_ice",
+     0.3
+    ],
+    [
+     "stone_spire_short",
+     0.5
     ]
    ],
    "decals": [

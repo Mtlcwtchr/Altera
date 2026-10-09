@@ -22,6 +22,11 @@
 
 namespace world::streaming { class PageStore; }
 namespace world::terrain {
+// The stage diagnostics on mesh vertices (the display modes 11-15: what a
+// stage moved, accumulation, rock type, drainage). Two foundation samples a
+// vertex in every mesh build, for colours nobody sees in play: built only
+// while one of those modes is shown. Meshes built before stay without them.
+void setStageDiagnostics(bool on);
 
 struct TerrainView {
     std::array<float, 16> matrix{}, prediction{};

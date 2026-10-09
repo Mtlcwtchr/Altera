@@ -14,10 +14,11 @@
 #define BIOME_TABLE_SAMPLER s13
 #include "terrain_biomes.hlsli"
 
+// A root as foliage_spawn.hlsl writes it on the card every frame.
 struct PageGrassIn {
     float3 position : TEXCOORD2;
-    float4 heights : TEXCOORD3; // parent, prior, prior-parent, source upright
-    float run : TEXCOORD4;      // which run of candidates, into the table below
+    float4 heights : TEXCOORD3; // z, fade (0..1), card scale, ground upright
+    float run : TEXCOORD4;      // dataset, log2 spacing (decodeGrassRun)
 };
 
 // The four numbers that differ between one block of ground and the next - how
@@ -59,7 +60,8 @@ GrassRun decodeGrassRun(float packed)
 // Every choice is a pattern fixed to the ground (cell hashes, value noise), so
 // nothing changes as the camera moves.
 float pageFloraCard(float2 p, float4 foliage, float canopy, float moisture, float marsh,
-                    float aboveWater, float baseVariant, float pick, float flowerScale = 1.0, float parched = 0.0)
+                    float aboveWater, float baseVariant, float pick, float flowerScale = 1.0, float parched = 0.0,
+                    float flowerHue = -1.0, float carpet = 0.0)
 {
     const float sum = max(foliage.x + foliage.y + foliage.z + foliage.w, 1e-3);
     const float steppe = foliage.x / sum, boreal = foliage.y / sum;
@@ -72,8 +74,11 @@ float pageFloraCard(float2 p, float4 foliage, float canopy, float moisture, floa
     // Flower fields are the islands of the shared field (patchFieldAt), thick on
     // their best ground, and the flowers stand in them by the hundred.
     const float drift = smoothstep(0.50, 0.64, patchFieldAt(p));
-    const float flowers = min(0.85, drift * open * (temperate * 0.7 + steppe * 0.5 + tropical * 0.4) *
-                          (1.0 - reeds) * (0.60 + 0.40 * smoothstep(0.2, 0.6, moisture)) * flowerScale * 0.45);
+    const float flowers = max(min(0.85, drift * open * (temperate * 0.7 + steppe * 0.5 + tropical * 0.4) *
+                          (1.0 - reeds) * (0.60 + 0.40 * smoothstep(0.2, 0.6, moisture)) * flowerScale * 0.45),
+                          // A cover that IS a flower field (poppy_meadow): the
+                          // flowers everywhere it is open, not on drifts alone.
+                          carpet * open * (1.0 - reeds));
     // A scatter of single flowers anywhere open, so a meadow is never only grass.
     const float stray = open * (temperate + steppe * 0.6) * 0.035 * flowerScale;
     // The floor of a wood.
@@ -91,7 +96,10 @@ float pageFloraCard(float2 p, float4 foliage, float canopy, float moisture, floa
         // not confetti.
         const float field = foliageNoise(p.x / 90.0 + 41.0, p.y / 90.0 - 17.0);
         const float stray = frac(pick * 91.7);
-        const float hue = stray < 0.25 ? frac(field + stray * 3.1) : field;
+        float hue = stray < 0.25 ? frac(field + stray * 3.1) : field;
+        // A cover with a colour of its own (foliage.json flower_hue): its
+        // drifts are of that one, a few strays of the meadow's.
+        if (flowerHue >= 0.0 && stray >= 0.12) hue = flowerHue;
         const int kinds[10] = {kCardFlowersWhite, kCardFlowersYellow, kCardFlowersPurple, kCardFlowersPink,
                                kCardFlowersLilac, kCardFlowersGazania, kCardFlowersCelandine,
                                kCardFlowersUrsinia, kCardFlowersRed, kCardFlowersDandelion};
@@ -117,12 +125,11 @@ FoliageInstanceIn pageGrassRoot(PageGrassIn root, float turf)
     FoliageInstanceIn instance = (FoliageInstanceIn)0;
     const float2 p = root.position.xy;
     const GrassRun run = decodeGrassRun(root.run);
-    const float blockMorph = run.morph;
     const float cellMetres = run.cell;
     const int level = run.level;
     const bool coarse = cellMetres>2.5;
-    const float nearby = (1.0-smoothstep(144.0,192.0,length(p-morphReplacement.zw)))*morphReplacement.y;
-    const float range = coarse?1.0-nearby:nearby;
+    // How far this root has faded in its level's hand-over (foliage_spawn.hlsl).
+    const float range = root.heights.y;
     if (range <= 0.0) return instance;
     const float4 address = pageAddress(p,level);
     float4 w0 = 0.0;
@@ -132,20 +139,8 @@ FoliageInstanceIn pageGrassRoot(PageGrassIn root, float turf)
         w0 = pageFields(address.xy,level,1);
         w1 = pageFields(address.xy,level,2).xy;
         head = morphWindow.z+pageFields(address.xy,level,0).z*morphWindow.w;
-        if (blockMorph>0.0 && run.level!=run.parentLevel) {
-            const float4 parent = pageAddress(p,run.parentLevel);
-            if (parent.z!=0.0) {
-                w0 = lerp(w0,pageFields(parent.xy,run.parentLevel,1),blockMorph);
-                w1 = lerp(w1,pageFields(parent.xy,run.parentLevel,2).xy,blockMorph);
-            }
-        }
     }
-    float z = lerp(root.position.z,root.heights.x,saturate(blockMorph));
-    if (morphing.y>=3.0) {
-        const float prior = lerp(root.heights.y,root.heights.z,saturate(blockMorph));
-        const float t = saturate(morphing.y-3.0);
-        z = lerp(prior,z,t*t*(3.0-2.0*t));
-    }
+    const float z = root.position.z;
     const SurfaceClimate climate = climateAt(p);
     const float field = foliageField(p.x,p.y,32.0);
     const FoliageCommunity community = foliageCommunity(climate.foliage.x,climate.foliage.y,
@@ -166,35 +161,55 @@ FoliageInstanceIn pageGrassRoot(PageGrassIn root, float turf)
     const float patch = patchFieldAt(p);
     const float broad = patchRegionAt(p);
     // No background sprinkling, including the coarse representation. The
-    // same island mask survives LOD changes and leaves real open ground.
-    const float island = smoothstep(0.50, 0.62, patch);
+    // same island mask survives LOD changes and leaves real open ground. How
+    // much of the field is island follows how lush the place is: a meadow or a
+    // forest edge carpets its ground and keeps the gaps for worn paths and bare
+    // patches; thin country - steppe, parched ground, a wood's shaded floor -
+    // keeps its grass to the islands. At one threshold for all, a meadow was
+    // two thirds bare earth.
+    const float canopy = coarse ? 0.0 : smoothstep(0.10, 0.60, cover.canopy);
+    const float lush = biome.none ? 0.0 :
+        saturate((cover.grass * 2.8 * biome.density - 0.35) * 1.5) * (1.0 - 0.7 * canopy) *
+        (1.0 - 0.6 * saturate(biome.dryness));
+    const float edge = lerp(0.50, 0.22, lush);
+    const float island = smoothstep(edge, edge + 0.12, patch);
     const float flowerFields = 1.0 + 2.4 * broad * smoothstep(0.50, 0.66, patch);
+    // A cover that is a flower field (biomeFlowerCarpet): flowers everywhere it
+    // is open, standing in every root rather than on the islands.
+    const float carpet = biome.none ? 0.0 : biomeFlowerCarpet(biome);
     instance.position = float3(p,z-0.025);
     instance.scale = (0.45+0.40*shape)*community.height*biome.height;
-    if (coarse) instance.scale *= min(cellMetres,64.0)*0.32; // wider groups, height remains capped
+    instance.scale *= root.heights.z; // the spawn's card scale: wider as the roots thin, height capped
     instance.phase = shape*6.2831853;
     instance.variant = foliageCommunityVariant(climate.foliage.x,climate.foliage.y,
         climate.foliage.z,climate.foliage.w,uint(shape*16777215.0));
-    if (!coarse) {
-        // A dry page's water head sits at the bottom of its height window; a
-        // real surface stands clear of it.
+    {
+        // Every level: a flower field is flowers from the eye to the horizon,
+        // the far roots bigger cards of the same plants. A dry page's water
+        // head sits at the bottom of its height window; a real surface stands
+        // clear of it.
         const float aboveWater = head > morphWindow.z + 0.5 ? z - head : 1000.0;
-        instance.variant = pageFloraCard(p, climate.foliage, cover.canopy, climate.environment.z, w1.x,
+        instance.variant = pageFloraCard(p, climate.foliage, coarse ? 0.0 : cover.canopy, climate.environment.z, w1.x,
             aboveWater, instance.variant, foliageHash(cell.x ^ 0x2c1bu, cell.y ^ 0x77a3u),
-            biome.flowers * flowerFields, biome.dryness * 0.8);
+            biome.flowers * flowerFields, biome.dryness * 0.8, biome.flowerHue, carpet);
     }
     // More occupied sites, not more candidates or larger overlapping cards.
     // Under a canopy the floor carries ferns and low leaves where grass would
     // be too thin to stand: a wood's floor is never bare earth from wall to wall.
-    const float wood = coarse ? 0.0 : smoothstep(0.10, 0.60, cover.canopy);
+    const float wood = canopy;
     const float understory = wood * 0.45 * saturate((w0.x + w0.y) * 1.5) * (1.0 - saturate(w0.w * 1.5)) *
                              (1.0 - saturate(w1.y * 2.0)) * (1.0 - saturate(w0.z * 2.0));
     const float turfSlope = 1.0 - smoothstep(0.14, 0.36, 1.0 - root.heights.w);
     // The environment's ground tier (content/config/environment/cover.json):
     // a wet hollow thickens the cover, a talus fan or a clearing's path thins it.
-    const float occupied = biome.none ? 0.0 : saturate(island * turfSlope *
-        saturate(max(cover.grass * 2.8 * biome.density, understory * biome.under * 1.4)) *
+    const float occupied = biome.none ? 0.0 : saturate(max(island, carpet) * turfSlope *
+        saturate(max(max(cover.grass * 2.8 * biome.density, understory * biome.under * 1.4), carpet)) *
         pageCoverAt(address, level));
+    // In a carpet the flowers stand as clumps, wider than the meadow's strays.
+    const int plant = int(instance.variant + 0.5);
+    if (carpet > 0.0 && plant >= kCardFlowersWhite && plant != kCardShortGrass && plant != kCardSeedGrass &&
+        plant != kCardFern && plant != kCardDryGrass && plant != kCardReeds && plant != kCardUndergrowth)
+        instance.scale *= 1.0 + 0.8 * carpet;
     // Parched ground takes the straw out of the green.
     const float3 grassTint = lerp(float3(cover.red, cover.green, cover.blue),
                                   float3(cover.red, cover.green, cover.blue) * float3(1.12, 0.96, 0.62), saturate(biome.dryness)) * biome.tint;
@@ -212,7 +227,12 @@ FoliageInstanceIn pageGrassRoot(PageGrassIn root, float turf)
         const float own = foliageHash(cell.x ^ (k * 0x2f1du), cell.y ^ (k * 0x61c9u));
         instance.scale *= 0.70 + 0.30 * own;
         instance.phase = frac(shape + own * 0.73) * 6.2831853;
-        const float near = coarse ? 0.0 : 1.0 - smoothstep(112.0, 160.0, length(p - camera.xy));
+        // Near the eye, by the view's depth: the focus of an orbit can be far
+        // ahead of it, and a walker's eye is where the sward is seen.
+        const bool perspectiveView = dot(abs(viewProjection[3].xyz), float3(1.0, 1.0, 1.0)) > 0.0;
+        const float eyeDepth = perspectiveView ? mul(viewProjection, float4(instance.position, 1.0)).w
+                                               : length(p - camera.xy);
+        const float near = coarse ? 0.0 : 1.0 - smoothstep(112.0, 160.0, eyeDepth);
         present = own < occupied * near ? 1.0 : 0.0;
     }
     instance.tint = float4(grassTint,
@@ -280,12 +300,7 @@ PebbleOut PebbleVS(FoliageVertexIn vertex, PageGrassIn root)
     const float4 w0 = pageFields(address.xy, run.level, 1);    // grass, soil, sand, rock
     const float2 w1 = pageFields(address.xy, run.level, 2).xy; // marsh, snow
     const float head = morphWindow.z + pageFields(address.xy, run.level, 0).z * morphWindow.w;
-    float z = lerp(root.position.z, root.heights.x, saturate(run.morph));
-    if (morphing.y >= 3.0) {
-        const float prior = lerp(root.heights.y, root.heights.z, saturate(run.morph));
-        const float t = saturate(morphing.y - 3.0);
-        z = lerp(prior, z, t * t * (3.0 - 2.0 * t));
-    }
+    const float z = root.position.z;
     if (head > z - 0.05 && head > morphWindow.z + 0.5) return hidden;   // under water
 
     const uint2 cell = uint2(int2(floor(p / 2.0)));

@@ -52,13 +52,12 @@ bool GrassCuller::secondDraw(engine::Device& device, engine::RenderPipeline& int
 }
 
 bool GrassCuller::dispatch(const engine::Frame& frame, engine::RenderPipeline& into,
-                          std::uint32_t arenaOffset, std::size_t count) {
-    if (!ready_ || !frame.device || !frame.instances || count > kCapacity ||
-        arenaOffset % sizeof(world::PageGrassRoot) != 0 ||
-        std::size_t(arenaOffset) + count * sizeof(world::PageGrassRoot) > frame.instances->bytes()) {
-        if (frame.device) frame.device->fail("grass cull input exceeds its arena range or budget");
+                          SDL_GPUBuffer* source, std::size_t count) {
+    if (!ready_ || !frame.device || !source || count > kCapacity) {
+        if (frame.device) frame.device->fail("grass cull input missing or over its budget");
         return false;
     }
+    constexpr std::uint32_t arenaOffset = 0;
     engine::ClusterSelection selection;
     const auto* matrix = engine::cullMatrix(frame.scene);
     std::copy_n(matrix, 4, selection.rowX);
@@ -72,8 +71,7 @@ bool GrassCuller::dispatch(const engine::Frame& frame, engine::RenderPipeline& i
         engine::ComputeDispatch prepare;
         prepare.pipeline = prepare_;
         prepare.groupsX = static_cast<std::uint32_t>((count + 63) / 64);
-        prepare.reads = {nullptr};
-        prepare.instanceReadSlot = 0;
+        prepare.reads = {source};
         prepare.writes = {bounds_.get(), ranks_.get()};
         const std::uint32_t input[]{arenaOffset, static_cast<std::uint32_t>(count)};
         std::memcpy(prepare.own, input, sizeof(input));
@@ -108,8 +106,7 @@ bool GrassCuller::dispatch(const engine::Frame& frame, engine::RenderPipeline& i
         engine::ComputeDispatch gather;
         gather.pipeline = gather_;
         gather.groupsX = static_cast<std::uint32_t>((count + 63) / 64);
-        gather.reads = {nullptr, ranks_.get(), blocks_.get()};
-        gather.instanceReadSlot = 0;
+        gather.reads = {source, ranks_.get(), blocks_.get()};
         gather.writes = {compacted_.get()};
         std::memcpy(gather.own, input, sizeof(input));
         into.dispatch(std::move(gather));

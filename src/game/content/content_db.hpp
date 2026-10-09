@@ -2,6 +2,7 @@
 // Loads every JSON file under content/ into immutable tables and resolves the
 // name references between them into DefIds.
 
+#include <array>
 #include <filesystem>
 #include <string>
 #include <unordered_map>

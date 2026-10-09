@@ -184,6 +184,78 @@
     1.2,
     2.4
    ]
+  },
+  {
+   "name": "mossy_boulder_big",
+   "model": "Mossy_Boulder",
+   "scale": [
+    0.6,
+    1.3
+   ]
+  },
+  {
+   "name": "basalt_smooth",
+   "model": "Basalt_Smooth",
+   "scale": [
+    0.7,
+    1.5
+   ]
+  },
+  {
+   "name": "basalt_rough",
+   "model": "Basalt_Rough",
+   "scale": [
+    0.7,
+    1.5
+   ]
+  },
+  {
+   "name": "rock_arch",
+   "model": "Rock_Arch",
+   "scale": [
+    0.8,
+    1.2
+   ]
+  },
+  {
+   "name": "stone_spire",
+   "model": "Stone_Spire_Tall",
+   "scale": [
+    0.7,
+    1.2
+   ]
+  },
+  {
+   "name": "stone_spire_short",
+   "model": "Stone_Spire_Short",
+   "scale": [
+    0.7,
+    1.3
+   ]
+  },
+  {
+   "name": "crystal_violet",
+   "model": "Crystal_Violet",
+   "scale": [
+    0.6,
+    1.4
+   ]
+  },
+  {
+   "name": "crystal_ice",
+   "model": "Crystal_Ice",
+   "scale": [
+    0.6,
+    1.4
+   ]
+  },
+  {
+   "name": "giant_mushroom",
+   "model": "Giant_Mushroom",
+   "scale": [
+    0.7,
+    1.3
+   ]
   }
  ]
 }

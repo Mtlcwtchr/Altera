@@ -10,6 +10,7 @@
 // A tree carries a transform, which asset it is, its shading, and the scatter
 // id it came from. It does not carry a mesh, a material or a renderer: see
 // engine/render/components.hpp for why that is the whole point.
+#include <functional>
 #include <cstdint>
 #include <memory>
 #include <span>
@@ -56,5 +57,12 @@ Published publishScatter(engine::ecs::Registry& registry, const Scatter& scatter
 // publishScatter's (the two are not mixed in one registry).
 Published publishParts(engine::ecs::Registry& registry, std::span<const ScatterBounds> regions,
                        std::span<const std::shared_ptr<const Scatter>> parts, std::uint32_t models);
+
+// Every region publishParts holds, with its part and the entities made from it
+// (in the part's object order, unknown models skipped). For what follows the
+// publication region by region rather than walking every entity again.
+void visitPublishedRegions(const engine::ecs::Registry& registry,
+    const std::function<void(const ScatterBounds&, const std::shared_ptr<const Scatter>&,
+                             std::span<const engine::render::Entity>)>& visit);
 
 } // namespace world::decor

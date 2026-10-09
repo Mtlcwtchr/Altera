@@ -1,5 +1,6 @@
 #pragma once
 #include "engine/render/material.hpp"
+#include <cstdlib>
 
 namespace game::materials {
 inline std::shared_ptr<const engine::Material> terrain(bool adaptive, bool backdrop = false,
@@ -13,6 +14,22 @@ inline std::shared_ptr<const engine::Material> terrain(bool adaptive, bool backd
     material->shader = adaptive ? "terrain_pages.hlsl" : "terrain.hlsl";
     material->vertexEntry = adaptive ? "AdaptiveTerrainVS" : backdrop ? "TerrainBackdropVS" : "TerrainVS";
     material->fragmentEntry = adaptive ? "TerrainPagePS" : "TerrainPS";
+#if ASR_ENABLE_PROFILING
+    // ASR_TERRAIN_FLAT_PS: the ground in one colour, its geometry unchanged -
+    // what the frame costs without the ground's pixel shading.
+    if (adaptive && std::getenv("ASR_TERRAIN_FLAT_PS")) material->fragmentEntry = "TerrainFlatPS";
+#endif
+    return material;
+}
+// The ground drawn from its baked material (terrain_cached.hlsl,
+// TerrainMaterialCache): the same vertices, a pixel stage that reads the cache.
+inline std::shared_ptr<const engine::Material> terrainCached(bool cull = false) {
+    auto material = std::make_shared<engine::Material>();
+    material->name = "terrain/ground-cached";
+    material->cull = cull ? SDL_GPU_CULLMODE_BACK : SDL_GPU_CULLMODE_NONE;
+    material->shader = "terrain_cached.hlsl";
+    material->vertexEntry = "AdaptiveTerrainVS";
+    material->fragmentEntry = "TerrainCachedPS";
     return material;
 }
 inline std::shared_ptr<const engine::Material> sceneModels(bool depthImpostors = false) {

@@ -53,10 +53,12 @@
 #include <unordered_map>
 #include <vector>
 
+#ifndef _WIN32
 #include <fcntl.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#endif
 
 #include <meshoptimizer.h>
 #include <nlohmann/json.hpp>
@@ -71,8 +73,23 @@ namespace {
 struct Mapped {
     const std::uint8_t* data = nullptr;
     std::size_t size = 0;
+#ifdef _WIN32
+    std::vector<std::uint8_t> storage;
+#endif
 
     explicit Mapped(const fs::path& path) {
+#ifdef _WIN32
+        std::ifstream input(path, std::ios::binary | std::ios::ate);
+        if (!input) throw std::runtime_error("cannot open " + path.string());
+        const auto length = input.tellg();
+        if (length < 0) throw std::runtime_error("cannot stat " + path.string());
+        size = static_cast<std::size_t>(length);
+        storage.resize(size);
+        input.seekg(0);
+        if (size && !input.read(reinterpret_cast<char*>(storage.data()), static_cast<std::streamsize>(size)))
+            throw std::runtime_error("cannot read " + path.string());
+        data = storage.data();
+#else
         const int fd = ::open(path.c_str(), O_RDONLY);
         if (fd < 0) throw std::runtime_error("cannot open " + path.string());
         struct stat st {};
@@ -85,9 +102,12 @@ struct Mapped {
         ::close(fd);
         if (p == MAP_FAILED) throw std::runtime_error("cannot map " + path.string());
         data = static_cast<const std::uint8_t*>(p);
+#endif
     }
     ~Mapped() {
+#ifndef _WIN32
         if (data) ::munmap(const_cast<std::uint8_t*>(data), size);
+#endif
     }
     Mapped(const Mapped&) = delete;
     Mapped& operator=(const Mapped&) = delete;

@@ -134,6 +134,12 @@ CacheResult publish(const std::filesystem::path& path, const std::vector<std::ui
     out.close();
     if (!out) return {CacheStatus::IoError, "cannot write page staging file"};
     std::filesystem::rename(staging, path, ec);
+    // Windows will not rename over a file another worker or process has open
+    // (a reader of the same page, or its own publication of it a moment
+    // earlier): "Access is denied". The page is there either way - written by
+    // whoever won - and pages are named by everything they are made of, so
+    // the one already in place is this one.
+    if (ec && std::filesystem::exists(path)) return CacheResult::ok();
     return ec ? CacheResult{CacheStatus::IoError, ec.message()} : CacheResult::ok();
 }
 } // namespace

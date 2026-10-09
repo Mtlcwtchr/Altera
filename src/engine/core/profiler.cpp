@@ -12,6 +12,7 @@
 #include <thread>
 #include <unordered_map>
 
+#if !defined(_WIN32)
 #include <cxxabi.h>
 #include <dlfcn.h>
 #include <pthread.h>
@@ -20,6 +21,15 @@
 #include <mach/mach.h>
 #include <mach/thread_act.h>
 #include <mach/mach_vm.h>
+#endif
+#else
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include <tlhelp32.h>
+#include <psapi.h>
+#include <dbghelp.h>
+#pragma comment(lib, "dbghelp.lib")
 #endif
 
 namespace engine::profile {
@@ -72,6 +82,9 @@ std::uint64_t residentBytes() {
     mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
     if (task_info(mach_task_self(), MACH_TASK_BASIC_INFO, reinterpret_cast<task_info_t>(&info), &count) == KERN_SUCCESS)
         return info.resident_size;
+#elif defined(_WIN32)
+    PROCESS_MEMORY_COUNTERS info{};
+    if (GetProcessMemoryInfo(GetCurrentProcess(), &info, sizeof info)) return info.WorkingSetSize;
 #endif
     return 0;
 }
@@ -164,7 +177,128 @@ std::size_t sampleOnce(std::uint64_t mainId, std::vector<Look>& looks) {
     vm_deallocate(mach_task_self(), vm_address_t(list), vm_size_t(count * sizeof(thread_act_t)));
     return used;
 }
+#endif
 
+#if defined(_WIN32) && defined(_M_X64)
+#define ASR_SAMPLER 1
+
+struct Look {
+    std::uint64_t id = 0;
+    char name[64]{};
+    std::int64_t time = 0;
+    bool waiting = false;
+    std::uint32_t depth = 0;
+    std::array<std::uintptr_t, kMaxDepth> stack{};
+};
+
+// What the sampler keeps between looks: the thread's handle (opened once) and
+// how many cycles it had run, which is how a thread that has not run since the
+// last look is told apart from one that has - Windows has no run state to ask.
+struct Watched {
+    HANDLE handle = nullptr;
+    std::uint64_t cycles = 0;
+    std::uint64_t seen = 0;
+    char name[64]{};
+};
+
+std::unordered_map<DWORD, Watched>& watched() {
+    static auto* w = new std::unordered_map<DWORD, Watched>();
+    return *w;
+}
+
+// Every thread of the process but this one, looked at. Everything that may
+// allocate (the thread list, names, the table above) happens before a thread is
+// stopped; between SuspendThread and ResumeThread only its registers, its own
+// stack and the images' unwind tables are read.
+std::size_t sampleOnce(std::uint64_t mainId, std::vector<Look>& looks) {
+    static std::uint64_t pass = 0;
+    ++pass;
+    const DWORD process = GetCurrentProcessId(), self = GetCurrentThreadId();
+    auto& known = watched();
+    // The thread list is a snapshot of every thread on the machine - slow, so
+    // taken every 64th look; between, the threads already known are looked at
+    // (one that has ended fails to stop and is skipped until the next list).
+    static std::vector<DWORD> ids;
+    const bool listing = pass % 64 == 1 || ids.empty();
+    if (listing) {
+        const HANDLE snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPTHREAD, 0);
+        if (snapshot == INVALID_HANDLE_VALUE) return 0;
+        ids.clear();
+        THREADENTRY32 entry{};
+        entry.dwSize = sizeof entry;
+        for (BOOL more = Thread32First(snapshot, &entry); more; more = Thread32Next(snapshot, &entry))
+            if (entry.th32OwnerProcessID == process && entry.th32ThreadID != self) ids.push_back(entry.th32ThreadID);
+        CloseHandle(snapshot);
+    }
+
+    std::size_t used = 0;
+    for (const DWORD id : ids) {
+        if (used >= looks.size()) break;
+        Watched& w = known[id];
+        if (!w.handle) {
+            w.handle = OpenThread(THREAD_SUSPEND_RESUME | THREAD_GET_CONTEXT | THREAD_QUERY_LIMITED_INFORMATION, FALSE, id);
+            if (!w.handle) { known.erase(id); continue; }
+            PWSTR wide = nullptr;
+            if (SUCCEEDED(GetThreadDescription(w.handle, &wide)) && wide) {
+                WideCharToMultiByte(CP_UTF8, 0, wide, -1, w.name, int(sizeof w.name), nullptr, nullptr);
+                LocalFree(wide);
+            }
+        }
+        w.seen = pass;
+        ULONG64 cycles = 0;
+        QueryThreadCycleTime(w.handle, &cycles);
+        Look& look = looks[used++];
+        look.id = id;
+        std::memcpy(look.name, w.name, sizeof look.name);
+        look.waiting = w.cycles != 0 && cycles == w.cycles;
+        w.cycles = cycles;
+        look.depth = 0;
+        look.time = now();
+        // A waiting thread is only counted as waiting - unless it is the main
+        // one: what the frame waits on (the GPU, a lock) is the question.
+        if (look.waiting && look.id != mainId) continue;
+        if (SuspendThread(w.handle) == DWORD(-1)) continue;
+        CONTEXT context{};
+        context.ContextFlags = CONTEXT_CONTROL | CONTEXT_INTEGER;
+        if (GetThreadContext(w.handle, &context)) {
+            // The walk stays inside the stack mapping the stack pointer is in.
+            MEMORY_BASIC_INFORMATION region{};
+            std::uintptr_t low = 0, high = 0;
+            if (VirtualQuery(reinterpret_cast<const void*>(context.Rsp), &region, sizeof region)) {
+                low = std::uintptr_t(context.Rsp);
+                high = std::uintptr_t(region.BaseAddress) + region.RegionSize;
+            }
+            look.stack[look.depth++] = std::uintptr_t(context.Rip);
+            while (look.depth < kMaxDepth && context.Rip && context.Rsp >= low && context.Rsp < high) {
+                DWORD64 base = 0;
+                const PRUNTIME_FUNCTION function = RtlLookupFunctionEntry(context.Rip, &base, nullptr);
+                if (function) {
+                    PVOID handler = nullptr;
+                    DWORD64 frame = 0;
+                    RtlVirtualUnwind(UNW_FLAG_NHANDLER, base, context.Rip, function, &context, &handler, &frame, nullptr);
+                } else {
+                    // A leaf: the return address is on top of the stack.
+                    if (context.Rsp + 8 > high) break;
+                    context.Rip = *reinterpret_cast<const DWORD64*>(context.Rsp);
+                    context.Rsp += 8;
+                }
+                if (!context.Rip) break;
+                look.stack[look.depth++] = std::uintptr_t(context.Rip) - 1;   // the call, not the instruction after it
+            }
+        }
+        ResumeThread(w.handle);
+    }
+    // Threads that have ended (gone from a fresh list): their handles go.
+    if (listing)
+        for (auto it = known.begin(); it != known.end();) {
+            if (it->second.seen != pass) { CloseHandle(it->second.handle); it = known.erase(it); }
+            else ++it;
+        }
+    return used;
+}
+#endif
+
+#ifdef ASR_SAMPLER
 void samplerLoop(Profiler& p) {
     std::vector<Look> looks(512);
     auto next = Clock::now();
@@ -239,10 +373,16 @@ void setEnabled(bool on) {
             p.pendingSamples.clear();
             p.pendingFrames.clear();
         }
-        gCounting.store(true, std::memory_order_relaxed);
+        // ASR_PROFILE_NO_ALLOC: samples alone, the allocations left uncounted
+        // (counting asks each block its size, which skews the profile).
+        gCounting.store(!std::getenv("ASR_PROFILE_NO_ALLOC"), std::memory_order_relaxed);
         p.running.store(true);
         p.sampler = std::thread([&p] {
+#if defined(_WIN32)
+            SetThreadDescription(GetCurrentThread(), L"profiler sampler");
+#else
             pthread_setname_np("profiler sampler");
+#endif
             samplerLoop(p);
         });
     } else {
@@ -267,7 +407,11 @@ void frame() {
     auto& p = profiler();
     if (!p.mainId.load(std::memory_order_relaxed)) {
         std::uint64_t id = 0;
+#if defined(_WIN32)
+        id = GetCurrentThreadId();
+#else
         pthread_threadid_np(nullptr, &id);
+#endif
         p.mainId.store(id);
         // Seen before it was known to be the main one: say so now.
         const std::lock_guard<std::mutex> lock(p.guard);
@@ -322,12 +466,14 @@ Symbol symbolOf(std::uintptr_t address) {
     auto& p = profiler();
     const std::lock_guard<std::mutex> lock(p.symbolGuard);
     if (const auto it = p.symbols.find(address); it != p.symbols.end()) return it->second;
+
+    Symbol s;
+    s.start = address;
+#if !defined(_WIN32)
     if (p.ownImage.empty()) {
         Dl_info self{};
         if (dladdr(reinterpret_cast<const void*>(&now), &self) && self.dli_fname) p.ownImage = self.dli_fname;
     }
-    Symbol s;
-    s.start = address;
     Dl_info info{};
     if (dladdr(reinterpret_cast<const void*>(address), &info)) {
         std::string name;
@@ -347,6 +493,43 @@ Symbol symbolOf(std::uintptr_t address) {
         p.names.push_back(std::move(name));
         s.name = p.names.back().c_str();
     }
+#else
+    // DbgHelp reads the PDB beside the executable (RelWithDebInfo writes one).
+    static const HANDLE process = [] {
+        const HANDLE h = GetCurrentProcess();
+        SymSetOptions(SYMOPT_UNDNAME | SYMOPT_DEFERRED_LOADS);
+        SymInitialize(h, nullptr, TRUE);
+        return h;
+    }();
+    const auto moduleOf = [](const void* at) {
+        HMODULE m = nullptr;
+        GetModuleHandleExA(GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                           static_cast<LPCSTR>(at), &m);
+        return m;
+    };
+    static const HMODULE own = moduleOf(reinterpret_cast<const void*>(&now));
+    const HMODULE module = moduleOf(reinterpret_cast<const void*>(address));
+    alignas(SYMBOL_INFO) char storage[sizeof(SYMBOL_INFO) + 512]{};
+    auto* info = reinterpret_cast<SYMBOL_INFO*>(storage);
+    info->SizeOfStruct = sizeof(SYMBOL_INFO);
+    info->MaxNameLen = 511;
+    DWORD64 displacement = 0;
+    std::string name;
+    if (SymFromAddr(process, address, &displacement, info)) {
+        name = shorten(info->Name);
+        s.start = address - std::uintptr_t(displacement);
+    } else {
+        char image[MAX_PATH] = "?";
+        if (module) GetModuleFileNameA(module, image, MAX_PATH);
+        const char* slash = std::strrchr(image, '\\');
+        char buf[64];
+        std::snprintf(buf, sizeof buf, "+0x%llx", static_cast<unsigned long long>(address - std::uintptr_t(module)));
+        name = std::string(slash ? slash + 1 : image) + buf;
+    }
+    s.own = module && module == own;
+    p.names.push_back(std::move(name));
+    s.name = p.names.back().c_str();
+#endif
     p.symbols.emplace(address, s);
     return s;
 }
@@ -366,6 +549,7 @@ void noteFree(std::size_t bytes) {
 }
 
 bool allocationsHooked() { return gHooked.load(std::memory_order_relaxed); }
+bool countingAllocations() { return gCounting.load(std::memory_order_relaxed); }
 
 std::vector<Bar> flame(const FrameRecord& f, std::uint16_t thread, std::size_t maxDepth) {
     std::vector<Bar> bars;

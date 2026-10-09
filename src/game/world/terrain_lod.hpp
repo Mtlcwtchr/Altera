@@ -83,17 +83,23 @@ inline constexpr DataLodPolicy kCameraFeatureDataLodPolicy =
 inline constexpr std::size_t kMeshesPerPlan = 4;
 inline constexpr std::size_t kCameraPreloadPages = 16;
 
+// The finest data a policy allows, as a page level: 0 H4, 1 H8, 2 H16, and
+// past that H64 (level 4) - there are no 32 m pages.
+constexpr int finestDataLevel(DataLodPolicy policy) {
+    return policy.finestLevel <= 2 ? std::max(policy.finestLevel, 0) : 4;
+}
+
 constexpr std::int32_t dataStepForGeometry(std::int32_t geometryMetres, DataLodPolicy policy = {}) {
     const auto dataMetres = geometryMetres >> std::clamp(policy.finerLevels, 0, 2);
     const std::int32_t coarse = !policy.widePages || dataMetres <= 128 ? 64 : dataMetres <= 512 ? 256 : 1024;
-    return std::max(4 << std::clamp(policy.finestLevel,0,2),
+    return std::max(4 << finestDataLevel(policy),
         dataMetres <= 4 ? 4 : dataMetres <= 8 ? 8 : dataMetres <= 32 ? 16 : coarse);
 }
 
 constexpr std::uint8_t dataLevelForGeometryLevel(std::int32_t geometryLevel, DataLodPolicy policy = {}) {
     const auto level = geometryLevel - std::clamp(policy.finerLevels, 0, 2);
     const int coarse = !policy.widePages || level <= 5 ? 4 : level <= 7 ? 6 : 8;
-    return std::uint8_t(std::max(std::clamp(policy.finestLevel,0,2),
+    return std::uint8_t(std::max(finestDataLevel(policy),
         level <= 0 ? 0 : level == 1 ? 1 : level <= 3 ? 2 : coarse));
 }
 

@@ -55,7 +55,9 @@ add_library(Campfire::WorldStore ALIAS asr_world_store)
 
 # The authored world (world_authoring_import_export_spec): 256 m rasters and
 # stable-id vectors in 32 km source chunks, and the package importer/exporter.
-find_package(ZLIB REQUIRED)
+if(NOT TARGET ZLIB::ZLIB)
+    find_package(ZLIB REQUIRED)
+endif()
 add_library(asr_world_source STATIC
         ${CMAKE_CURRENT_LIST_DIR}/world_source/png_io.cpp
         ${CMAKE_CURRENT_LIST_DIR}/world_source/schema.cpp

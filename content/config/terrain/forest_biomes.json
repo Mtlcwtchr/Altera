@@ -7,41 +7,49 @@
    "trees": [
     [
      "beech",
-     0.3
+     0.282
     ],
     [
      "oak",
-     0.2
+     0.188
     ],
     [
      "hornbeam",
-     0.15
+     0.141
     ],
     [
      "hornbeam_b",
-     0.1
+     0.094
     ],
     [
      "maple",
-     0.08
+     0.0752
     ],
     [
      "spruce",
-     0.12
+     0.1128
     ],
     [
      "birch",
-     0.05
+     0.047
+    ],
+    [
+     "gnarled_tree",
+     0.06
     ]
    ],
    "shrubs": [
     [
      "hazel",
-     0.6
+     0.48
     ],
     [
      "elder",
-     0.4
+     0.32
+    ],
+    [
+     "holly",
+     0.2
     ]
    ],
    "shrub_density": 0.3,
@@ -135,11 +143,15 @@
    "shrubs": [
     [
      "hazel",
-     0.5
+     0.35
     ],
     [
      "scrub",
-     0.5
+     0.35
+    ],
+    [
+     "raspberry",
+     0.3
     ]
    ],
    "shrub_density": 0.45,
@@ -191,15 +203,23 @@
    "trees": [
     [
      "swamp_pine_thin",
-     0.5
+     0.375
     ],
     [
      "dead_birch",
-     0.3
+     0.225
     ],
     [
      "fir",
-     0.2
+     0.15
+    ],
+    [
+     "dead_pine",
+     0.15
+    ],
+    [
+     "dead_bent",
+     0.1
     ]
    ],
    "shrubs": [
@@ -377,11 +397,15 @@
    "shrubs": [
     [
      "hazel",
-     0.6
+     0.51
     ],
     [
      "elder",
-     0.4
+     0.34
+    ],
+    [
+     "holly",
+     0.15
     ]
    ],
    "shrub_density": 0.35,
@@ -453,15 +477,27 @@
    "trees": [
     [
      "spruce",
-     0.55
+     0.3575
     ],
     [
      "fir",
-     0.3
+     0.195
     ],
     [
      "birch",
-     0.15
+     0.0975
+    ],
+    [
+     "conifer_tall",
+     0.18
+    ],
+    [
+     "conifer_broad",
+     0.1
+    ],
+    [
+     "snow_pine",
+     0.07
     ]
    ],
    "shrubs": [
@@ -503,6 +539,10 @@
     [
      "red_mushrooms",
      18
+    ],
+    [
+     "mossy_boulder_big",
+     1.0
     ]
    ],
    "fertility": 0.9,
@@ -612,11 +652,19 @@
    "trees": [
     [
      "eerie_bare",
-     0.7
+     0.455
     ],
     [
      "beech",
-     0.3
+     0.195
+    ],
+    [
+     "twisted_tree",
+     0.2
+    ],
+    [
+     "dead_spire",
+     0.15
     ]
    ],
    "shrubs": [
@@ -646,6 +694,14 @@
     [
      "rubble",
      14
+    ],
+    [
+     "giant_mushroom",
+     1.0
+    ],
+    [
+     "crystal_violet",
+     0.5
     ]
    ],
    "fertility": 0.55
@@ -656,11 +712,19 @@
    "trees": [
     [
      "dead_birch",
-     0.6
+     0.3
     ],
     [
      "eerie_bare",
-     0.4
+     0.2
+    ],
+    [
+     "dead_bent",
+     0.3
+    ],
+    [
+     "dead_spire",
+     0.2
     ]
    ],
    "undergrowth": "sedge",
@@ -695,7 +759,11 @@
    "shrubs": [
     [
      "tropical_shrub",
-     1.0
+     0.7
+    ],
+    [
+     "pink_leaf",
+     0.3
     ]
    ],
    "shrub_density": 0.8,
@@ -744,7 +812,11 @@
    "shrubs": [
     [
      "dry_bush",
-     1.0
+     0.6
+    ],
+    [
+     "aloe",
+     0.4
     ]
    ],
    "shrub_density": 0.6,
@@ -844,25 +916,33 @@
    "trees": [
     [
      "glade_maple",
-     0.35
+     0.315
     ],
     [
      "glade_hornbeam",
-     0.35
+     0.315
     ],
     [
      "glade_birch",
-     0.3
+     0.27
+    ],
+    [
+     "twisted_tree",
+     0.1
     ]
    ],
    "shrubs": [
     [
      "hazel",
-     0.6
+     0.42
     ],
     [
      "elder",
-     0.4
+     0.28
+    ],
+    [
+     "raspberry",
+     0.3
     ]
    ],
    "shrub_density": 0.25,
@@ -992,19 +1072,27 @@
    "trees": [
     [
      "blossom_jacaranda",
-     0.34
+     0.187
     ],
     [
      "blossom_maple",
-     0.22
+     0.121
     ],
     [
      "blossom_birch",
-     0.22
+     0.121
     ],
     [
      "blossom_oak",
-     0.22
+     0.121
+    ],
+    [
+     "cherry",
+     0.25
+    ],
+    [
+     "plum",
+     0.2
     ]
    ],
    "shrubs": [
@@ -1303,6 +1391,10 @@
     [
      "branches",
      90
+    ],
+    [
+     "giant_mushroom",
+     2.0
     ]
    ],
    "fertility": 1.1,
@@ -1398,11 +1490,15 @@
    "shrubs": [
     [
      "dry_bush",
-     0.7
+     0.42
     ],
     [
      "scrub",
-     0.3
+     0.18
+    ],
+    [
+     "aloe",
+     0.4
     ]
    ],
    "shrub_density": 0.08,

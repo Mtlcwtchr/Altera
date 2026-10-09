@@ -23,6 +23,16 @@ bool ClimateTextures::ensure(engine::Device& device, const world::ClimateField& 
     const auto wide = static_cast<std::uint32_t>(climate.wide());
     const auto high = static_cast<std::uint32_t>(climate.high());
     engine::Device::Uploader uploader(device);
+    SDL_GPUTextureCreateInfo layered{};
+    layered.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
+    layered.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    layered.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+    layered.width = wide;
+    layered.height = high;
+    layered.layer_count_or_depth = world::ClimateField::kPlanes;
+    layered.num_levels = 1;
+    array_ = device.makeTexture(layered);
+    if (!array_) return false;
     for (int plane = 0; plane < world::ClimateField::kPlanes; ++plane) {
         SDL_GPUTextureCreateInfo made{};
         made.type = SDL_GPU_TEXTURETYPE_2D;
@@ -36,6 +46,7 @@ bool ClimateTextures::ensure(engine::Device& device, const world::ClimateField& 
         if (!planes_[plane]) return false;
         const std::vector<std::uint8_t> pixels = climate.plane(plane);
         uploader.refill(planes_[plane].get(), pixels.data(), wide, high, 4);
+        uploader.refillRegion(array_.get(), pixels.data(), 0, 0, wide, high, 4, std::uint32_t(plane));
     }
     uploader.finish();
     return true;

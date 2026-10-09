@@ -227,6 +227,7 @@ std::shared_ptr<Registry> Registry::load(const fs::path& dir, std::vector<Proble
         f.dryness = rd.number(e, "dryness", 0.0);
         f.tint = rd.rgb(e, "tint", f.tint);
         f.flowers = rd.number(e, "flowers", 1.0);
+        f.flowerHue = rd.number(e, "flower_hue", -1.0);
         r.foliage_.push_back(f);
     }
     for (const auto& e : rd.read(dir / "plants.json", "plants")) {

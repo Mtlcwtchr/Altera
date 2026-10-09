@@ -25,6 +25,7 @@
 namespace engine { class RenderPipeline; }
 namespace game {
 class TerrainCollectPass;
+class TerrainPass;
 class SpritePass;
 class SceneModelsPass;
 class FoliagePass;
@@ -95,10 +96,21 @@ public:
     std::vector<content::GroundMaterial>& ground() { return ground_; }
     SpriteQueue& sprites() { return spriteQueue_; }
     bool settled() const;
+    // What settled() is still waiting for, for the shot tools' messages.
+    std::string unsettled() const;
     // A picture of the world before is on the screen while the new one comes in.
     bool holding() const { return bool(held_); }
     const GpuTerrain& terrain() const;
     const std::string& error() const { return device_.error(); }
+    // The settings that decide how the passes are built (samples, texture
+    // size), before open(): otherwise the first frame finds them different
+    // from the defaults and builds every pass a second time.
+    void prefer(const GraphicsSettings& graphics) {
+        wantedSamples_ = graphics.antialiasing == 1 ? 4 : 1;
+        wantedHalfTextures_ = graphics.terrainTextures == 0;
+    }
+    // For a loading screen: Device::onProgress, Device::present.
+    engine::Device& device() { return device_; }
     const engine::Runner& runner() const { return *runner_; }
     const TerrainCollectPass* collector() const { return collect_; }
     const engine::RenderPipeline* drawing() const { return render_; }
@@ -152,6 +164,7 @@ private:
     SpriteQueue spriteQueue_;
     std::unique_ptr<engine::Runner> runner_;
     TerrainCollectPass* collect_ = nullptr;
+    TerrainPass* terrainPass_ = nullptr;
     SpritePass* sprites_ = nullptr;
     SceneModelsPass* models_ = nullptr;
     FarTreesPass* farTrees_ = nullptr;

@@ -377,6 +377,530 @@
         "leaves recoloured"
       ],
       "category": "tree_broadleaf"
+    },
+    {
+      "name": "Conifer_Tall",
+      "source": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_conifer",
+      "tags": [
+        "tree_conifer",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Conifer_Broad",
+      "source": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_conifer",
+      "tags": [
+        "tree_conifer",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Dead_Pine",
+      "source": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_broadleaf",
+      "tags": [
+        "tree_broadleaf",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Mossy_Boulder",
+      "source": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Cherry_Tree",
+      "source": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_broadleaf",
+      "tags": [
+        "tree_broadleaf",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Plum_Tree",
+      "source": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_broadleaf",
+      "tags": [
+        "tree_broadleaf",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Holly_Bush",
+      "source": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "shrub",
+      "tags": [
+        "shrub",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Raspberry_Bush",
+      "source": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "author": "Dari",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "shrub",
+      "tags": [
+        "shrub",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Twisted_Tree",
+      "source": "https://sketchfab.com/3d-models/none-4e2589134f2442bcbdab51c1f306cd58",
+      "author": "purepoly",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_broadleaf",
+      "tags": [
+        "tree_broadleaf",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Old_Gnarled_Tree",
+      "source": "https://sketchfab.com/3d-models/none-3cb4d59eb4844dc4802480e9ee53785e",
+      "author": "evolveduk",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_broadleaf",
+      "tags": [
+        "tree_broadleaf",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Snow_Pine",
+      "source": "https://sketchfab.com/3d-models/none-7afc4ca23dd84adea90dc0ba8506c500",
+      "author": "EFX",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "tree_conifer",
+      "tags": [
+        "tree_conifer",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Dead_Tree_Spire",
+      "source": "https://sketchfab.com/3d-models/none-de2611ba107f4c3c8c89bf516d5d9b6b",
+      "author": "Wersaus33",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "deadwood",
+      "tags": [
+        "deadwood",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Dead_Tree_Bent",
+      "source": "https://sketchfab.com/3d-models/none-40510061c9814223b204f03941e4c589",
+      "author": "FlunkedPunk",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "deadwood",
+      "tags": [
+        "deadwood",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Basalt_Smooth",
+      "source": "https://sketchfab.com/3d-models/none-9efcfa23b69240c699b9ee0bd6be6e05",
+      "author": "Digital Atlas of Ancient Life",
+      "license": "CC0-1.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ]
+    },
+    {
+      "name": "Basalt_Rough",
+      "source": "https://sketchfab.com/3d-models/none-cbbe1e1ae71b4e44acc6bf1b5245f1bb",
+      "author": "Digital Atlas of Ancient Life",
+      "license": "CC0-1.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ]
+    },
+    {
+      "name": "Rock_Arch",
+      "source": "https://sketchfab.com/3d-models/none-eeb2888f84c5432b83cbf4c3333481ff",
+      "author": "-X-ScornGames",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Stone_Spire_Tall",
+      "source": "https://sketchfab.com/3d-models/none-736323ad07334c49be26da6f44f0c609",
+      "author": "Kallvin",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Stone_Spire_Short",
+      "source": "https://sketchfab.com/3d-models/none-da1f7a9e2fe04549a03d479d938b3088",
+      "author": "Kallvin",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Crystal_Violet",
+      "source": "https://sketchfab.com/3d-models/none-06d912aa58774a498ac95c90d5a2b614",
+      "author": "chrismartin1337",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Crystal_Ice",
+      "source": "https://sketchfab.com/3d-models/none-eb83bbed188e47bf9910b08e41e2956b",
+      "author": "chrismartin1337",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "rock",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Giant_Mushroom",
+      "source": "https://sketchfab.com/3d-models/none-c4362fe272e14ac19881deb908c6dc63",
+      "author": "kirbinator505_",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "mushroom",
+      "tags": [
+        "mushroom",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Pink_Leaf_Plant",
+      "source": "https://sketchfab.com/3d-models/none-868828fad0e348378c6be5397da0895c",
+      "author": "Nicola Hynes",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "shrub",
+      "tags": [
+        "shrub",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Aloe",
+      "source": "https://sketchfab.com/3d-models/none-f9b15dae5a194e41b27c220717594785",
+      "author": "LadyIReyna",
+      "license": "CC-BY-4.0",
+      "modifications": [
+        "painted restyle (tools/prepare_sketchfab.py)",
+        "parts selected, scaled to metres, decimated (tools/blender/export_sketchfab_models.py)",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "shrub",
+      "tags": [
+        "shrub",
+        "sketchfab"
+      ],
+      "license_url": "https://creativecommons.org/licenses/by/4.0/"
+    },
+    {
+      "name": "Megalith_Menhir_A",
+      "source": "tools/blender/megaliths.py --kind menhir",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Fallen_A",
+      "source": "tools/blender/megaliths.py --kind fallen_menhir",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Needle_A",
+      "source": "tools/blender/megaliths.py --kind needle",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Cyclopean_A",
+      "source": "tools/blender/megaliths.py --kind cyclopean_block",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Head_A",
+      "source": "tools/blender/megaliths.py --kind colossus_head",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Portal_A",
+      "source": "tools/blender/megaliths.py --kind portal_tower",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_MarshPanel_A",
+      "source": "tools/blender/megaliths.py --kind marsh_panel",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Mirror_A",
+      "source": "tools/blender/megaliths.py --kind mirror_monument",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
+    },
+    {
+      "name": "Megalith_Defender_A",
+      "source": "tools/blender/megaliths.py --kind iron_defender",
+      "author": "generated (Campfire)",
+      "license": "proprietary-owned",
+      "modifications": [
+        "generated procedurally in Blender",
+        "prepared by tools/prepare_environment_models.py"
+      ],
+      "category": "rock",
+      "tags": [
+        "megalith",
+        "landmark"
+      ]
     }
   ]
 }

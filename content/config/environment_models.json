@@ -258,6 +258,262 @@
         "gain": 0.55,
         "leaves_only": true
       }
+    },
+    {
+      "name": "Conifer_Tall",
+      "asset": "sk_conifer_a",
+      "variant": 0,
+      "kind": "tree_conifer",
+      "url": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Conifer_Broad",
+      "asset": "sk_conifer_b",
+      "variant": 0,
+      "kind": "tree_conifer",
+      "url": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Dead_Pine",
+      "asset": "sk_dead_pine",
+      "variant": 0,
+      "kind": "tree_broadleaf",
+      "url": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Mossy_Boulder",
+      "asset": "sk_mossy_boulder",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-240ce9cf0ad3474f809a59f9446e63cd",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Cherry_Tree",
+      "asset": "sk_cherry_tree",
+      "variant": 0,
+      "kind": "tree_broadleaf",
+      "url": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Plum_Tree",
+      "asset": "sk_plum_tree",
+      "variant": 0,
+      "kind": "tree_broadleaf",
+      "url": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Holly_Bush",
+      "asset": "sk_holly_bush",
+      "variant": 0,
+      "kind": "shrub",
+      "url": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Raspberry_Bush",
+      "asset": "sk_raspberry_bush",
+      "variant": 0,
+      "kind": "shrub",
+      "url": "https://sketchfab.com/3d-models/none-cf138b8eb2d340cda643ed59f824989c",
+      "license": "CC-BY-4.0 (Dari)"
+    },
+    {
+      "name": "Twisted_Tree",
+      "asset": "sk_twisted_tree",
+      "variant": 0,
+      "kind": "tree_broadleaf",
+      "url": "https://sketchfab.com/3d-models/none-4e2589134f2442bcbdab51c1f306cd58",
+      "license": "CC-BY-4.0 (purepoly)"
+    },
+    {
+      "name": "Old_Gnarled_Tree",
+      "asset": "sk_old_tree",
+      "variant": 0,
+      "kind": "tree_broadleaf",
+      "url": "https://sketchfab.com/3d-models/none-3cb4d59eb4844dc4802480e9ee53785e",
+      "license": "CC-BY-4.0 (evolveduk)"
+    },
+    {
+      "name": "Snow_Pine",
+      "asset": "sk_snow_pine",
+      "variant": 0,
+      "kind": "tree_conifer",
+      "url": "https://sketchfab.com/3d-models/none-7afc4ca23dd84adea90dc0ba8506c500",
+      "license": "CC-BY-4.0 (EFX)"
+    },
+    {
+      "name": "Dead_Tree_Spire",
+      "asset": "sk_dead_spire",
+      "variant": 0,
+      "kind": "deadwood",
+      "url": "https://sketchfab.com/3d-models/none-de2611ba107f4c3c8c89bf516d5d9b6b",
+      "license": "CC-BY-4.0 (Wersaus33)"
+    },
+    {
+      "name": "Dead_Tree_Bent",
+      "asset": "sk_dead_bent",
+      "variant": 0,
+      "kind": "deadwood",
+      "url": "https://sketchfab.com/3d-models/none-40510061c9814223b204f03941e4c589",
+      "license": "CC-BY-4.0 (FlunkedPunk)"
+    },
+    {
+      "name": "Basalt_Smooth",
+      "asset": "sk_basalt_smooth",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-9efcfa23b69240c699b9ee0bd6be6e05",
+      "license": "CC0-1.0 (Digital Atlas of Ancient Life)"
+    },
+    {
+      "name": "Basalt_Rough",
+      "asset": "sk_basalt_rough",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-cbbe1e1ae71b4e44acc6bf1b5245f1bb",
+      "license": "CC0-1.0 (Digital Atlas of Ancient Life)"
+    },
+    {
+      "name": "Rock_Arch",
+      "asset": "sk_rock_arch",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-eeb2888f84c5432b83cbf4c3333481ff",
+      "license": "CC-BY-4.0 (-X-ScornGames)"
+    },
+    {
+      "name": "Stone_Spire_Tall",
+      "asset": "sk_spire_tall",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-736323ad07334c49be26da6f44f0c609",
+      "license": "CC-BY-4.0 (Kallvin)"
+    },
+    {
+      "name": "Stone_Spire_Short",
+      "asset": "sk_spire_short",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-da1f7a9e2fe04549a03d479d938b3088",
+      "license": "CC-BY-4.0 (Kallvin)"
+    },
+    {
+      "name": "Crystal_Violet",
+      "asset": "sk_crystal_violet",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-06d912aa58774a498ac95c90d5a2b614",
+      "license": "CC-BY-4.0 (chrismartin1337)"
+    },
+    {
+      "name": "Crystal_Ice",
+      "asset": "sk_crystal_ice",
+      "variant": 0,
+      "kind": "rock",
+      "url": "https://sketchfab.com/3d-models/none-eb83bbed188e47bf9910b08e41e2956b",
+      "license": "CC-BY-4.0 (chrismartin1337)"
+    },
+    {
+      "name": "Giant_Mushroom",
+      "asset": "sk_giant_mushroom",
+      "variant": 0,
+      "kind": "mushroom",
+      "url": "https://sketchfab.com/3d-models/none-c4362fe272e14ac19881deb908c6dc63",
+      "license": "CC-BY-4.0 (kirbinator505_)"
+    },
+    {
+      "name": "Pink_Leaf_Plant",
+      "asset": "sk_pink_leaf",
+      "variant": 0,
+      "kind": "shrub",
+      "url": "https://sketchfab.com/3d-models/none-868828fad0e348378c6be5397da0895c",
+      "license": "CC-BY-4.0 (Nicola Hynes)"
+    },
+    {
+      "name": "Aloe",
+      "asset": "sk_aloe",
+      "variant": 0,
+      "kind": "shrub",
+      "url": "https://sketchfab.com/3d-models/none-f9b15dae5a194e41b27c220717594785",
+      "license": "CC-BY-4.0 (LadyIReyna)"
+    },
+    {
+      "name": "Megalith_Menhir_A",
+      "asset": "megalith_menhir",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Fallen_A",
+      "asset": "megalith_fallen_menhir",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Needle_A",
+      "asset": "megalith_needle",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Cyclopean_A",
+      "asset": "megalith_cyclopean_block",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Head_A",
+      "asset": "megalith_colossus_head",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Portal_A",
+      "asset": "megalith_portal_tower",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_MarshPanel_A",
+      "asset": "megalith_marsh_panel",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Mirror_A",
+      "asset": "megalith_mirror_monument",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
+    },
+    {
+      "name": "Megalith_Defender_A",
+      "asset": "megalith_iron_defender",
+      "variant": 0,
+      "kind": "rock",
+      "source": "tools/blender/megaliths.py (generated, proprietary-owned)",
+      "hemisphere": false
     }
   ],
   "moss_surface": "assets/terrain/environment/ms_tileable_moss/src/ms_tileable_moss",
@@ -270,5 +526,15 @@
     "Deadwood_Log",
     "Deadwood_Stump",
     "Deadwood_Branch"
+  ],
+  "base_kinds": [
+    "tree_broadleaf",
+    "tree_conifer",
+    "shrub",
+    "rock",
+    "mushroom",
+    "deadwood",
+    "deadwood",
+    "deadwood"
   ]
 }

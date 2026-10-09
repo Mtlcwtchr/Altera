@@ -576,11 +576,13 @@ struct BiomeCover {
     float flowers;      // times the meadow's flowers
     float3 tint;
     float under;        // the floor under the canopy: times the engine's understory
+    float flowerHue;    // the drifts' flower colour (0..1), below 0 each drift's own
 };
 BiomeCover noBiomeCover()
 {
     BiomeCover c;
     c.none = false; c.density = 1.0; c.height = 1.0; c.dryness = 0.0; c.flowers = 1.0; c.tint = 1.0; c.under = 1.0;
+    c.flowerHue = -1.0;
     return c;
 }
 // One of the pair, by a hash fixed to the ground: grass does not blend, a
@@ -598,7 +600,9 @@ BiomeCover biomeCoverAt(float2 p, float pixel, float pick)
         const int row = BIOME_ROW_FOLIAGE + int(which + 0.5) - 1;
         const float4 a = biomeRow(row, 0);
         c.density = a.x; c.height = a.y; c.dryness = a.z; c.flowers = a.w;
-        c.tint = biomeRow(row, 1).rgb;
+        const float4 b = biomeRow(row, 1);
+        c.tint = b.rgb;
+        c.flowerHue = b.w - 1.0;
     }
     // The forest's own floor: none, the engine's, or a cover's density.
     if (h.forest > 0) {
@@ -607,6 +611,27 @@ BiomeCover biomeCoverAt(float2 p, float pixel, float pick)
     }
 #endif
     return c;
+}
+
+// How much of a cover is a carpet of its own flowers (a foliage with a
+// flower_hue and many flowers, e.g. poppy_meadow): 0 a meadow's drifts only,
+// to 0.6 a field of them. The plants (foliage_pages.hlsl) and the ground's far
+// colour (terrain.hlsl) read the same number, so the field seen from afar is
+// the colour of the flowers seen close.
+float biomeFlowerCarpet(BiomeCover c)
+{
+    return c.flowerHue >= 0.0 ? saturate((c.flowers - 5.0) * 0.12) : 0.0;
+}
+// The colour of a flower field seen from too far to tell one flower: the
+// petals' colour (the species order of pageFloraCard's drifts) as a mean over
+// the flowers, their leaves and the grass between.
+float3 biomeFlowerColour(float hue)
+{
+    const float3 petals[10] = {float3(0.86, 0.86, 0.82), float3(0.92, 0.80, 0.18), float3(0.45, 0.25, 0.62),
+                               float3(0.88, 0.48, 0.62), float3(0.70, 0.58, 0.82), float3(0.95, 0.52, 0.12),
+                               float3(0.90, 0.78, 0.15), float3(0.94, 0.60, 0.10), float3(0.78, 0.09, 0.05),
+                               float3(0.92, 0.76, 0.12)};
+    return petals[min(int(saturate(hue) * 10.0), 9)];
 }
 
 // --- water ----------------------------------------------------------------

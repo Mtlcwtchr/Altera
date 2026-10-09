@@ -5,6 +5,7 @@
 // headless run would produce from the same seed, so what you watch here and what
 // sim_runner reports are the same run.
 
+#include <cstdio>
 #include "engine/biomes/shader_code.hpp"
 #include <SDL3/SDL.h>
 #include <SDL3_image/SDL_image.h>
@@ -113,7 +114,42 @@ void cycleBrushMode(ui::Hud& hud) {
 
 } // namespace
 
+#if defined(_WIN32)
+#define NOMINMAX
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+#include "engine/core/profiler.hpp"
+namespace {
+// A crash on Windows says where: the faulting thread's stack, named from the
+// PDB (engine::profile::symbolOf), on stderr before the process goes.
+LONG WINAPI reportCrash(EXCEPTION_POINTERS* info) {
+    std::fprintf(stderr, "\ncrash: exception 0x%08lx at %p\n", info->ExceptionRecord->ExceptionCode,
+                 info->ExceptionRecord->ExceptionAddress);
+    CONTEXT context = *info->ContextRecord;
+    for (int depth = 0; depth < 48 && context.Rip; ++depth) {
+        const auto symbol = engine::profile::symbolOf(std::uintptr_t(context.Rip));
+        std::fprintf(stderr, "  #%02d %s\n", depth, symbol.name ? symbol.name : "?");
+        DWORD64 base = 0;
+        const PRUNTIME_FUNCTION function = RtlLookupFunctionEntry(context.Rip, &base, nullptr);
+        if (function) {
+            PVOID handler = nullptr;
+            DWORD64 frame = 0;
+            RtlVirtualUnwind(UNW_FLAG_NHANDLER, base, context.Rip, function, &context, &handler, &frame, nullptr);
+        } else {
+            context.Rip = *reinterpret_cast<DWORD64*>(context.Rsp);
+            context.Rsp += 8;
+        }
+    }
+    std::fflush(stderr);
+    return EXCEPTION_CONTINUE_SEARCH;
+}
+} // namespace
+#endif
+
 int main(int argc, char** argv) {
+#if defined(_WIN32)
+    SetUnhandledExceptionFilter(reportCrash);
+#endif
     // The terrain categories (content/config/terrain, engine/biomes) before
     // any world is raised: the climate names categories by the registry's
     // derive rules as it is made. The renderer writes their shader code.
@@ -254,7 +290,8 @@ int main(int argc, char** argv) {
         else if (a == "--zoom" && i + 1 < argc) shotZoom = std::atof(argv[++i]);
         else if (a == "--overlay" && i + 1 < argc) shotOverlay = argv[++i];
         else if (a == "--help") {
-            std::cout << "usage: campfire_client [--seed N] [--map N] [--pop N]\n"
+            std::cout << "usage: campfire_client                 open the client menu\n"
+                      << "       campfire_client [--seed N] [--map N] [--pop N]\n"
                       << "       campfire_client --shot-menu FILE   the world-choosing screen\n"
                       << "       campfire_client --shot FILE [--day N] [--zoom PIXELS_PER_TILE]"
                       << " [--overlay none|zones|jobs]\n"
@@ -272,6 +309,11 @@ int main(int argc, char** argv) {
             return 0;
         }
     }
+
+    // The current front door to the game is the client app: menu, worlds,
+    // Explore and Edit. With no arguments at all, open that rather than the
+    // older direct game screen. Explicit modes and screenshot paths still win.
+    if (argc <= 1 && !exploring && !clientApp && shotPath.empty() && menuShotPath.empty()) clientApp = true;
 
     content::ContentDb db;
     const auto contentPath = resolveContent();

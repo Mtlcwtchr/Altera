@@ -66,8 +66,13 @@ public:
     // the draw distance). Placement stops there; placed objects dissolve
     // over `band` metres before it.
     void farTrees(double start,double band) { farTreesStart_=start; farTreesBand_=band; }
+    // Where the placed objects hand over, after the object budget: the
+    // setting, brought in while more objects than kObjectBudget stand inside
+    // it (a dense forest seen from a hill at 6 km was 350 000 objects and
+    // 150 ms of the main thread), let out again when there is room.
+    double handover() const { return farTreesStart_*reachScale_; }
     double objectReach() const {
-        return farTreesStart_>0 ? std::min(drawDistance_,farTreesStart_) : drawDistance_;
+        return farTreesStart_>0 ? std::min(drawDistance_,handover()) : drawDistance_*reachScale_;
     }
     // Draw the objects as edges. Every representation goes through it - the
     // per-object cluster cut, the impostor cards and the region aggregates -
@@ -81,6 +86,24 @@ public:
 #endif
 private:
     void updatePlacement(const engine::Scene&, double viewportWidth);
+    // The impostor pool (scene_impostor_pool.hlsl): every published object on
+    // the card, culled, sized and drawn as an impostor there each frame; the
+    // processor only takes the objects near enough to be meshes. Used while
+    // none of the group stand-ins (proxies, far hierarchy, aggregates) is on:
+    // they hide members object by object, which the pool does not ask about.
+    [[nodiscard]] bool poolActive() const {
+        return poolReady_ && !forestProxiesOn_ && !farForestOn_ && !massOn_ && vegetationMeshPixels_>0 &&
+               std::getenv("ASR_DISABLE_IMPOSTOR_POOL")==nullptr;
+    }
+    // After a publication: the regions that came onto the card, the ones that
+    // went off it. What changed, never the whole placement.
+    void syncPool();
+    // Per model, how far from the eye an object may still be a mesh (metres;
+    // negative none, huge all): the processor takes those, the pool the rest.
+    void poolRadii(const engine::render::ScreenScale& screen);
+    // The processor's share: the objects inside their radius, from the
+    // published regions near the eye only.
+    void nearSubset(const float* eye);
     // The mass batch: whole regions of objects drawn as one instance of one
     // aggregate, baked from those objects rather than from a stand-in asset.
     void updateMassRegions(const engine::render::ScreenScale&, double pixelError);
@@ -193,7 +216,7 @@ private:
     // freed, so steady-state frames allocate nothing here.
     struct FrameScratch {
         std::vector<std::vector<Instance>> batches, clusteredCards;
-        std::vector<double> batchPixels, shellAllowances, pixels;
+        std::vector<double> batchPixels, shellAllowances, pixels, batchLargest;
         std::vector<float> meshWeights, detail, hierarchyNearCoverage, complement;
         std::vector<bool> hemisphereAllowed;
         std::vector<char> keep, hierarchyReplaced;
@@ -209,6 +232,14 @@ private:
         std::vector<std::uint32_t> presentModels;
     } scratch_;
     double farTreesStart_=0,farTreesBand_=160;
+    // The object budget (handover()): placed objects selected in a frame
+    // beyond which the reach is cut by steps of kReachStep, never below
+    // kMinReach metres. Steps, not a slide: each change re-queries the
+    // placement, so it moves rarely and by a lot.
+    static constexpr std::size_t kObjectBudget=35000;
+    static constexpr double kReachStep=0.8, kMinReach=900.0;
+    double reachScale_=1.0;
+    int reachCalm_=0;   // frames since the last step
     // A grove: nine trees merged into one surface offline and clustered, drawn
     // as an instance like anything else. `layer` is the baked impostor it
     // replaces, kept for the model with no shell.
@@ -228,6 +259,17 @@ private:
     world::terrain::ViewBounds worldBounds_;
     std::vector<world::decor::ScatterBounds> wantedRegions_;
     world::decor::SceneRegionStats regionQuery_;
+    // The view the regions above were worked out for. A camera that has moved
+    // less than half a metre and turned less than half a degree since, over a
+    // settled placement, keeps them: the walk through a still world asked the
+    // same question every frame (a tenth of the main thread).
+    struct PlacementView {
+        float matrix[16]{};
+        float eye[4]{};
+        double viewportWidth=0;
+        bool drawing=false, valid=false;
+        std::chrono::steady_clock::time_point at;
+    } placementView_;
     // Members of the published scatter, grouped by the ownership region that
     // an aggregate would replace. Rebuilt only when the placement changes.
     std::map<world::decor::ScatterBounds,std::vector<engine::geometry::RegionMember>> massMembers_;
@@ -275,6 +317,24 @@ private:
     double proxyReach_=0;
 #endif
     std::vector<Model> models_;
+    struct PoolSource { float position[3],scale,yaw,phase,tint,surface; std::uint32_t model,pad[3]; };
+    static constexpr std::size_t kPoolInstances=262144;
+    // The pool's objects in chunks: a region takes as many as it needs when it
+    // is published and gives them back when it goes; an unused slot has scale
+    // nought, which the pool skips.
+    static constexpr std::size_t kPoolChunk=1024, kPoolChunks=1024;
+    struct PoolRegion { std::shared_ptr<const world::decor::Scatter> part; std::vector<std::uint32_t> chunks; };
+    std::map<world::decor::ScatterBounds,PoolRegion> poolRegions_;
+    std::vector<std::uint32_t> poolFree_;
+    std::uint32_t poolHigh_=0;   // one past the highest chunk ever taken
+    bool gatheredStale_=true;    // gathered_ not rebuilt while the pool runs
+    engine::Buffer poolSources_,poolModels_,poolInstances_,poolArguments_;
+    std::size_t poolCapacity_=0,poolCount_=0;
+    engine::ComputeSlot poolClear_=0,poolCompute_=0,poolClamp_=0;   // slot indices: nought is a slot
+    bool poolReady_=false;
+    std::vector<std::uint32_t> meshOf_,materialOf_;   // per gathered instance
+    std::vector<float> modelMaxScale_,poolRadius_;     // per model
+    engine::render::GatheredInstances near_;
     // What the render systems are handed: one description per model, built once
     // the catalogue is loaded so the error spans stay put. The cull and the
     // level selection read the same entries, which is what keeps them agreeing
@@ -342,7 +402,17 @@ private:
         float mesh=-1;
         double lastUse=0;
     };
-    std::unordered_map<std::uint32_t,RepresentationHistory> representationHistory_;
+    // By owner (its entt index, dense): a vector, not a map - sixty thousand
+    // lookups a frame and a sweep of the whole table to expire it were four
+    // milliseconds. An entry unused for longer than the residency is stale
+    // and read as new (historyFor), which is what erasing it did.
+    std::vector<RepresentationHistory> representationHistory_;
+    RepresentationHistory& historyFor(std::uint32_t owner) {
+        if (owner>=representationHistory_.size()) representationHistory_.resize(std::size_t(owner)+1);
+        auto& h=representationHistory_[owner];
+        if (h.lastUse>0 && selectionTime_-h.lastUse>view_.quality.residencySeconds) h=RepresentationHistory{};
+        return h;
+    }
     double selectionTime_=0;
     double meshStartPixels_=22;
     bool enabled_=false,failed_=false;

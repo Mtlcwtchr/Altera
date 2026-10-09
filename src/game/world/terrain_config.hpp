@@ -21,6 +21,11 @@ struct TerrainConfig {
     double lookAheadSeconds = 0.2;
     double maxLookAheadMetres = 512.0;
     double localDetailHeightMetres = 32.0; // bounded 200 m H4 window remains fixed
+    // The finest ground data streamed at all, metres a sample: 8 (the
+    // runtime's own floor), 16 or 64. The ground's shape stops there and what
+    // is finer is shading's (the material cache's normals, the erosion
+    // grooves). Restart the world to change.
+    int finestDataMetres = 8;
     // Skip the ground's back faces. Restart to change: a pipeline's cull mode is
     // fixed when the pipeline is built.
     //

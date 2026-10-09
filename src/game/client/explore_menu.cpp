@@ -310,6 +310,7 @@ void ExploreMenu::draw(SDL_Renderer* into, int width, int height) {
     text(into,10,22,std::string("Stage: ") + (stagesAvailable_ ?
         generation::kTerrainStageNames[std::size_t(terrainStage_)] : "Final (legacy; stages unavailable)"),220,225,240);
     text(into,10,36,std::string("Display: ") + world::kMapTitles[std::size_t(mapView_)],190,210,230);
+    if (!fpsText_.empty()) text(into, kSceneButtonX, 36, fpsText_, 250, 235, 160);
     text(into,10,52,"V view   M display   0 natural",150,150,160);
     text(into,10,64,"Shift+1..8 stage  Tab world  ` edit  O gfx  F scene",150,150,160);
     {

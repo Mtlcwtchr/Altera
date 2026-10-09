@@ -165,9 +165,10 @@ std::shared_ptr<const ImportedGround> ImportedSource::ground(std::int32_t rx, st
         if (r.kind == ws::RasterKind::Height) { height = &r; break; }
     // Each control mask by its name, wherever the schema keeps it.
     struct Mask { const char* name; std::vector<std::uint8_t>* into; const ws::RasterDesc* desc = nullptr; std::uint8_t channel = 0; };
-    std::array<Mask, 6> masks{{{"erosion_strength", &g->erosion}, {"moisture_bias", &g->moisture},
+    std::array<Mask, 8> masks{{{"erosion_strength", &g->erosion}, {"moisture_bias", &g->moisture},
                                {"forest_bias", &g->forest}, {"mountain_strength", &g->mountain},
-                               {"river_strength", &g->river}, {"temperature_bias", &g->temperature}}};
+                               {"river_strength", &g->river}, {"temperature_bias", &g->temperature},
+                               {"moisture_target", &g->moistureTarget}, {"moisture_hold", &g->moistureHold}}};
     for (auto& m : masks)
         for (const auto& r : schema.rasters)
             for (std::size_t c = 0; c < r.channels.size(); ++c)

@@ -44,7 +44,35 @@ HeightField& WorldFields::field() const {
     return *slot;
 }
 
-double WorldFields::height(double x, double y) const { return field().heightAt(pos(x, y)).toDouble(); }
+double WorldFields::height(double x, double y) const {
+    // The planner's ground (feature placement and zones): bilinear between
+    // lattice samples of 4 m, each worked out once a thread and kept. A
+    // candidate's shape asks 25 heights - itself, eight neighbours, two rings
+    // of eight out to 128 m - and its neighbours ask nearly the same ones; each
+    // was an exact height in fixed point, and the planning was two thirds of
+    // every page bake. What it classifies (slope, curvature, position on the
+    // hill) does not change within 4 m. The ground here is the generator's,
+    // without features or edits (field()), so a sample never goes stale.
+    constexpr double kStep = double(kSampleMetres);
+    thread_local std::unordered_map<std::uint64_t, std::unordered_map<std::uint64_t, float>> caches;
+    auto& cache = caches[id_];
+    if (cache.size() > (std::size_t(1) << 22)) cache.clear();   // ~100 MB a thread at most
+    auto& f = field();
+    const auto at = [&](std::int64_t ix, std::int64_t iy) {
+        const std::uint64_t key = (std::uint64_t(std::uint32_t(ix)) << 32) | std::uint32_t(iy);
+        const auto it = cache.find(key);
+        if (it != cache.end()) return double(it->second);
+        const float h = float(f.sampleHeight(ix, iy).toDouble());
+        cache.emplace(key, h);
+        return double(h);
+    };
+    const double gx = x / kStep, gy = y / kStep;
+    const double fx = std::floor(gx), fy = std::floor(gy);
+    const auto ix = std::int64_t(fx), iy = std::int64_t(fy);
+    const double tx = gx - fx, ty = gy - fy;
+    const double a = at(ix, iy), b = at(ix + 1, iy), c = at(ix, iy + 1), d = at(ix + 1, iy + 1);
+    return (a * (1 - tx) + b * tx) * (1 - ty) + (c * (1 - tx) + d * tx) * ty;
+}
 
 double WorldFields::erodibility(double x, double y) const {
     return std::clamp(field().soilAt(pos(x, y)).properties.erodibility.toDouble(), 0.0, 1.0);

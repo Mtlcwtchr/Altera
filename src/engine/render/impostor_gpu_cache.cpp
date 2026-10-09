@@ -3,6 +3,11 @@
 #include <algorithm>
 #include <cstring>
 #include <stdexcept>
+#include "engine/core/parallel.hpp"
+#include <atomic>
+#include <mutex>
+#include <string>
+#include <unordered_map>
 
 namespace engine::render {
 namespace {
@@ -80,21 +85,39 @@ std::vector<SDL_GPUTextureSamplerBinding> ImpostorGpuCache::bindings(SDL_GPUText
 std::shared_ptr<const ImpostorAtlas> ImpostorGpuCache::loadLeaf(
         std::span<const std::array<std::filesystem::path,3>> paths,camera::Vec3 centre,double side) {
     if (paths.size()!=21 || !(side>0) || !std::isfinite(side)) return {};
+    // A world change rebuilds the renderer, and with it every model's leaf:
+    // 63 pictures each, read again for nothing. Kept for the session, keyed by
+    // the files and their stamps, so a changed impostor is read afresh.
+    std::string key=std::to_string(centre[2])+"|"+std::to_string(side);
+    for (const auto& view:paths) for (const auto& file:view) {
+        std::error_code ec;
+        key+="|"+file.string()+"@"+std::to_string(std::filesystem::last_write_time(file,ec).time_since_epoch().count());
+    }
+    static std::mutex keptGuard;
+    static std::unordered_map<std::string,std::shared_ptr<const ImpostorAtlas>> kept;
+    {
+        const std::lock_guard<std::mutex> lock(keptGuard);
+        if (const auto found=kept.find(key);found!=kept.end()) return found->second;
+    }
     auto atlas=std::make_shared<ImpostorAtlas>();atlas->resolution=128;atlas->side=side;atlas->centre=centre;
     atlas->error=2*side/atlas->resolution+0.054*side;atlas->members=1;
     const auto pixels=std::size_t(128)*128;
     atlas->colour.resize(pixels*21);atlas->normal.resize(pixels*21);atlas->depth.resize(pixels*21);
-    for (unsigned view=0;view<21;++view) for (unsigned channel=0;channel<3;++channel) {
+    // Sixty-three decodes, on every core; each writes its own view and channel.
+    std::atomic<bool> ok{true};
+    parallelFor(std::size_t(21)*3,[&](std::size_t item) {
+        const unsigned view=unsigned(item/3),channel=unsigned(item%3);
         std::unique_ptr<SDL_Surface,decltype(&SDL_DestroySurface)> image(Device::loadDataPng(paths[view][channel]),SDL_DestroySurface);
-        if (!image || image->w!=image->h || image->w<128) return {};
+        if (!image || image->w!=image->h || image->w<128) { ok=false; return; }
         std::unique_ptr<SDL_Surface,decltype(&SDL_DestroySurface)> rgba(SDL_ConvertSurface(image.get(),SDL_PIXELFORMAT_RGBA32),SDL_DestroySurface);
-        if (!rgba) return {};
+        if (!rgba) { ok=false; return; }
         auto& target=channel==0?atlas->colour:channel==1?atlas->normal:atlas->depth;
         for (unsigned y=0;y<128;++y) for (unsigned x=0;x<128;++x) {
             const unsigned sx=(2*x+1)*unsigned(rgba->w)/256,sy=(2*y+1)*unsigned(rgba->h)/256;
             std::memcpy(target[view*pixels+y*128+x].data(),static_cast<const char*>(rgba->pixels)+sy*rgba->pitch+sx*4,4);
         }
-    }
+    });
+    if (!ok) return {};
     for (std::size_t i=0;i<atlas->depth.size();++i) {
         if (atlas->depth[i][3]!=atlas->colour[i][3] || (atlas->depth[i][3]>=51 && atlas->depth[i][2]!=i/pixels)) {
             SDL_SetError("impostor source mismatch at %zu: view=%u expected=%zu alpha=%u/%u",i,
@@ -102,6 +125,8 @@ std::shared_ptr<const ImpostorAtlas> ImpostorGpuCache::loadLeaf(
             return {};
         }
     }
+    const std::lock_guard<std::mutex> lock(keptGuard);
+    kept.emplace(key,atlas);
     return atlas;
 }
 } // namespace engine::render

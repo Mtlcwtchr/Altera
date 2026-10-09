@@ -27,6 +27,11 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 
+try:
+    from scipy.ndimage import gaussian_filter1d
+except ImportError:
+    gaussian_filter1d = None
+
 ROOT = Path(__file__).resolve().parents[1]
 PRESETS = ROOT / "content/config/style/texture_presets.json"
 
@@ -47,6 +52,9 @@ def blur(array, radius):
     if radius <= 0:
         return array
     reach = int(np.ceil(radius * 3))
+    if gaussian_filter1d is not None:
+        out = gaussian_filter1d(array, radius, axis=0, mode="wrap", radius=reach)
+        return gaussian_filter1d(out, radius, axis=1, mode="wrap", radius=reach)
     weights = np.exp(-0.5 * (np.arange(-reach, reach + 1) / radius) ** 2)
     weights /= weights.sum()
     out = array

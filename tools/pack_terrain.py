@@ -45,6 +45,9 @@ from PIL import Image
 ROOT = Path(__file__).resolve().parent.parent
 MATERIALS = ROOT / "content/config/terrain_materials.json"
 WATER = ROOT / "content/config/water_textures.json"
+# Moss and forest-floor decals (tools/prepare_environment_textures.py unpacks
+# their archives into src/; packing them is the same as any material's).
+ENVIRONMENT = ROOT / "content/config/environment_textures.json"
 TERRAIN = ROOT / "assets/terrain"
 
 # The same ladder the ground and the water already use, so one loader reads
@@ -250,6 +253,9 @@ def main():
 
     materials = json.loads(MATERIALS.read_text())
     water = json.loads(WATER.read_text())
+    if ENVIRONMENT.exists():
+        materials += [{"id": e["id"], "group": "environment/" + e["id"], "world_scale": e["metres"]}
+                      for e in json.loads(ENVIRONMENT.read_text())["textures"]]
     if args.only:
         wanted = set(args.only)
         materials = [m for m in materials if m["id"] in wanted]

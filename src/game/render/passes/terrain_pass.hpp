@@ -14,6 +14,7 @@
 #include "engine/render/geometry/mesh_cache.hpp"
 #include "engine/render/mesh_renderer.hpp"
 #include "game/render/climate_textures.hpp"
+#include "game/render/terrain_material_cache.hpp"
 
 namespace game {
 class GpuTerrain;
@@ -74,6 +75,8 @@ public:
     // Graphics setting: start the material chains at name@2 (half resolution,
     // a quarter of the memory) instead of the full-resolution base level.
     void halfTextures(bool half) { halfTextures_ = half; }
+    // The baked ground material has caught up with the camera (or there is none).
+    bool materialSettled() const { return !cachedReady_ || materialCache_.settled(); }
 
 private:
     bool halfTextures_ = false;
@@ -91,6 +94,10 @@ private:
     engine::Buffer gridIndices_;
     std::uint32_t gridIndexCount_ = 0;
     engine::SmartTerrainRenderer terrainRenderer_;
+    // The ground from its baked material, when the cache can serve the cut.
+    engine::SmartTerrainRenderer cachedRenderer_;
+    TerrainMaterialCache materialCache_;
+    bool cachedReady_ = false;
     engine::MeshRenderer backdropRenderer_;
 };
 

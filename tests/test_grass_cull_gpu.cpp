@@ -31,7 +31,7 @@ world::PageGrassRoot root(float x, float tag=0) {
 struct Probe : engine::DrawPass {
     game::GrassCuller culler;
     engine::RenderPipeline* pipeline=nullptr;
-    engine::Buffer vertices,indices;
+    engine::Buffer vertices,indices,source;
     engine::PipelineSlot graphics=0;
     std::vector<world::PageGrassRoot> roots;
     bool dispatched=false;
@@ -56,11 +56,15 @@ struct Probe : engine::DrawPass {
     }
     bool anything(const engine::Frame&) const override { return true; }
     void collect(const engine::Frame& frame,engine::DrawQueue& queue) override {
-        const std::array<float,7> prefix{9999,9999,9999,9999,9999,9999,9999};
-        frame.instances->add(std::span(prefix));
-        const auto at=roots.empty()?std::uint32_t(0):frame.instances->add(std::span(roots));
-        if (!roots.empty()) CHECK_EQ(at,32u); // typed add pads the 28-byte prefix
-        dispatched=culler.dispatch(frame,*pipeline,at,roots.size());
+        if (!source) source=frame.device->makeBuffer(
+            SDL_GPU_BUFFERUSAGE_VERTEX|SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ,
+            game::GrassCuller::kCapacity*sizeof(world::PageGrassRoot));
+        if (!roots.empty()) {
+            engine::Device::Uploader uploader(*frame.device);
+            uploader.rewriteAt(source.get(),0,roots.data(),roots.size()*sizeof(world::PageGrassRoot));
+            CHECK(uploader.finish());
+        }
+        dispatched=culler.dispatch(frame,*pipeline,source.get(),roots.size());
         if (!dispatched || roots.empty()) return;
         engine::DrawItem item;
         item.pipeline=graphics;item.vertexStreams=2;
@@ -136,11 +140,11 @@ TEST(grass_cull_gpu_compacts_and_really_draws_indirect) {
 TEST(grass_cull_gpu_preserves_full_budget_bytes_growth_and_empty_reset) {
     Harness h;const bool ready=h.start();CHECK(ready);if (!ready) return;
     h.pass->roots={root(0)};CHECK(h.run());CHECK_EQ(h.count(),1u);
-    const auto oldCapacity=h.arena.capacity();
+    const auto source=h.pass->source.get();
     h.pass->roots.clear();h.pass->roots.reserve(game::GrassCuller::kCapacity);
     for (std::size_t i=0;i<game::GrassCuller::kCapacity;++i)
         h.pass->roots.push_back(root(i%2?1000.0f:0.0f,float(i)));
-    CHECK(h.run());CHECK(h.arena.capacity()>oldCapacity);
+    CHECK(h.run());CHECK_EQ(h.pass->source.get(),source);
     CHECK_EQ(h.count(),std::uint32_t(game::GrassCuller::kCapacity/2));
     std::vector<world::PageGrassRoot> kept(h.count());
     CHECK(h.gpu.device.readBuffer(h.pass->culler.instances(),kept.data(),kept.size()*sizeof(kept[0])));
@@ -176,10 +180,8 @@ TEST(grass_cull_gpu_bounds_include_wind_and_coarse_card_width) {
 TEST(grass_cull_gpu_rejects_invalid_input_before_dispatch) {
     Harness h;const bool ready=h.start();CHECK(ready);if (!ready) return;
     engine::Frame frame{};frame.device=&h.gpu.device;frame.instances=&h.arena;
-    const std::array<world::PageGrassRoot,1> roots{root(0)};
-    h.arena.add(std::span(roots));
-    CHECK(!h.pass->culler.dispatch(frame,h.pipeline,1,1));
-    CHECK(!h.pass->culler.dispatch(frame,h.pipeline,0,2));
-    CHECK(!h.pass->culler.dispatch(frame,h.pipeline,0,game::GrassCuller::kCapacity+1));
+    auto source=h.gpu.device.makeBuffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ,sizeof(world::PageGrassRoot));
+    CHECK(!h.pass->culler.dispatch(frame,h.pipeline,nullptr,1));
+    CHECK(!h.pass->culler.dispatch(frame,h.pipeline,source.get(),game::GrassCuller::kCapacity+1));
 }
 

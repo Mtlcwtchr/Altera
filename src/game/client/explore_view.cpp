@@ -138,10 +138,59 @@ private:
 
 } // namespace
 
+namespace {
+// The renderer's own loading screen: building the passes (shaders, texture
+// arrays) is seconds before the first frame and again on every world change,
+// with nothing yet that could draw an interface. A CPU picture, put straight on
+// the window by the device: what is being prepared, how far, and a bar.
+void paintPreparing(SDL_Window* window, engine::Device& device, const std::string& step, double fraction,
+                    const std::string& detail) {
+    // The window stays a window: moved, raised, not "not responding".
+    SDL_PumpEvents();
+    int width = 0, height = 0;
+    SDL_GetWindowSizeInPixels(window, &width, &height);
+    if (width < 64 || height < 64) return;
+    SDL_Surface* picture = SDL_CreateSurface(width, height, SDL_PIXELFORMAT_ABGR8888);
+    if (!picture) return;
+    if (SDL_Renderer* paint = SDL_CreateSoftwareRenderer(picture)) {
+        const float scale = std::max(1.0f, std::round(float(height) / 540.0f));
+        SDL_SetRenderDrawColor(paint, 18, 20, 26, 255);
+        SDL_RenderClear(paint);
+        const float barWidth = std::min(float(width) * 0.6f, 900.0f * scale), barHeight = 10.0f * scale;
+        const float x = (float(width) - barWidth) * 0.5f, y = float(height) * 0.5f;
+        SDL_SetRenderScale(paint, scale * 2, scale * 2);
+        SDL_SetRenderDrawColor(paint, 235, 225, 200, 255);
+        SDL_RenderDebugText(paint, x / (scale * 2), (y - 46 * scale) / (scale * 2), "Preparing the world");
+        SDL_SetRenderScale(paint, scale, scale);
+        SDL_SetRenderDrawColor(paint, 170, 175, 190, 255);
+        const std::string line = step + (detail.empty() ? "" : "  -  " + detail);
+        SDL_RenderDebugText(paint, x / scale, (y - 18 * scale) / scale, line.c_str());
+        SDL_SetRenderScale(paint, 1, 1);
+        const SDL_FRect track{x, y, barWidth, barHeight};
+        SDL_SetRenderDrawColor(paint, 44, 48, 60, 255);
+        SDL_RenderFillRect(paint, &track);
+        const SDL_FRect done{x, y, barWidth * float(std::clamp(fraction, 0.0, 1.0)), barHeight};
+        SDL_SetRenderDrawColor(paint, 214, 160, 72, 255);
+        SDL_RenderFillRect(paint, &done);
+        SDL_RenderPresent(paint);
+        SDL_DestroyRenderer(paint);
+        device.present(picture);
+    }
+    SDL_DestroySurface(picture);
+}
+} // namespace
+
 bool ExploreView::open(SDL_Window* window, const std::filesystem::path& assets, world::WorldSystem& world,
                        const Camera& camera, ExploreMenu& menu, int headlessWidth, int headlessHeight) {
     menu_ = &menu;
     source_ = &world;
+    renderer_.prefer(menu.graphics());
+    if (window) {
+        auto& device = renderer_.device();
+        device.onProgress([window, &device](const std::string& step, double fraction, const std::string& detail) {
+            paintPreparing(window, device, step, fraction, detail);
+        });
+    }
     return renderer_.open(window, assets, world, [&menu](const game::GpuTerrain& terrain) {
         return std::make_unique<game::MenuPass>(menu, &terrain);
     }, headlessWidth, headlessHeight);
@@ -225,6 +274,16 @@ int runExploreMode(SDL_Window* window, std::uint64_t seed, std::int32_t worldCel
                    const std::string& mapName, double weatherDay, int weatherPreset,
                    const core::TimeConfig& calendar, const std::array<float,4>& seasons,
                    const ExploreViewOptions& options) {
+    // ASR_PROFILE_TRACE with ASR_PROFILE_STARTUP: sampled from here, so the
+    // first frame's record holds everything before it - generation, building
+    // the renderer - not only what follows the first frame.
+    if (std::getenv("ASR_PROFILE_TRACE") && std::getenv("ASR_PROFILE_STARTUP")) {
+        engine::profile::frame();   // names this thread the main one: its waits are sampled too
+        // Everything up to the first frame is one record: sparser looks keep a
+        // start-up of seconds, on every worker thread, under the sample cap.
+        engine::profile::setInterval(std::chrono::microseconds(5000));
+        engine::profile::setEnabled(true);
+    }
     // --shot-list: the picture being waited for changes as the list is worked
     // through; everything that asks "is this a run for a picture" still asks it
     // of this one name.
@@ -452,6 +511,18 @@ int runExploreMode(SDL_Window* window, std::uint64_t seed, std::int32_t worldCel
     ExploreView view(renderer);
     // A run that exists to take one picture has no business showing the wind.
     if (!shotPath.empty()) renderer.holdTime(shotTime);
+    // Saved graphics first (before the view opens: they decide how its passes
+    // are built), then the command line on top: a shot asked for
+    // with --draw-distance or --no-fog must get exactly that.
+    menu.graphics() = game::loadGraphicsSettings(graphicsFile());
+    // Reproducible runs, unless the run is there to reproduce what the saved
+    // settings do (ASR_SHOT_USER_GRAPHICS=1).
+    if ((!shotPath.empty() || options.benchFrames > 0) && !std::getenv("ASR_SHOT_USER_GRAPHICS"))
+        menu.graphics() = options.graphicsFile.empty() ? game::GraphicsSettings{}
+                                                       : game::loadGraphicsSettings(options.graphicsFile);
+    if (options.drawDistance > 0) menu.drawDistance(options.drawDistance);
+    if (options.clean) menu.presentation().developer = false;
+    if (!options.fog) menu.graphics().fog = false;
     if (!view.open(window, assets, builder, camera, menu, options.headlessWidth, options.headlessHeight)) {
         std::cerr << "the explorer would not start: " << renderer.error() << "\n";
         return 1;
@@ -479,17 +550,6 @@ int runExploreMode(SDL_Window* window, std::uint64_t seed, std::int32_t worldCel
         }
         if (options.editing) menu.toggleEditor();
     }
-    // Saved graphics first, then the command line on top: a shot asked for
-    // with --draw-distance or --no-fog must get exactly that.
-    menu.graphics() = game::loadGraphicsSettings(graphicsFile());
-    // Reproducible runs, unless the run is there to reproduce what the saved
-    // settings do (ASR_SHOT_USER_GRAPHICS=1).
-    if ((!shotPath.empty() || options.benchFrames > 0) && !std::getenv("ASR_SHOT_USER_GRAPHICS"))
-        menu.graphics() = options.graphicsFile.empty() ? game::GraphicsSettings{}
-                                                       : game::loadGraphicsSettings(options.graphicsFile);
-    if (options.drawDistance > 0) menu.drawDistance(options.drawDistance);
-    if (options.clean) menu.presentation().developer = false;
-    if (!options.fog) menu.graphics().fog = false;
     // A listed shot may bring its own graphics.json (lighting A/B in one
     // launch); the others get what the run started with.
     const game::GraphicsSettings shotBaseGraphics = menu.graphics();
@@ -1097,6 +1157,7 @@ int runExploreMode(SDL_Window* window, std::uint64_t seed, std::int32_t worldCel
         const auto& rate = renderer.runner().frameRate();
         if (shotPath.empty() && rate.revision != reported) {
             reported = rate.revision;
+            menu.fpsReadout(rate.fps, rate.millis);
             // Triangles as SUBMITTED, which is the only figure that is a fact.
             //
             // What the rasteriser then discards to back faces is not reported
@@ -1142,6 +1203,9 @@ int runExploreMode(SDL_Window* window, std::uint64_t seed, std::int32_t worldCel
         // was asked for at a particular frame, which is how the half-built state
         // gets looked at on purpose.
         const bool settled = renderer.settled();
+        if (std::getenv("ASR_PASS_TIMES") && frame % 60 == 0)
+            std::cerr << "settle-trace frame " << frame << " waiting for: " << (settled ? "nothing" : renderer.unsettled())
+                      << "\n";
         // A picture waits for the streaming to have been caught up for a
         // while, not for one frame of it: the first frames of a place can be
         // settled ground under trees still standing in as their coarse
@@ -1175,9 +1239,13 @@ int runExploreMode(SDL_Window* window, std::uint64_t seed, std::int32_t worldCel
         // And never for ever: a listed view that has not settled in 1500
         // frames is taken as it is (and said so), so one stubborn view does
         // not hold up the rest of the list.
-        const bool shotOverdue = !shotList.empty() && shotFrame <= 0 && frame >= shotAimedAt + 1500;
+        // ASR_SHOT_PATIENCE: more frames for a world whose pages are baked
+        // for the first time (a fresh import has nothing on disk yet).
+        static const int patience = std::getenv("ASR_SHOT_PATIENCE") ? std::max(60, std::atoi(std::getenv("ASR_SHOT_PATIENCE"))) : 1500;
+        const bool shotOverdue = !shotList.empty() && shotFrame <= 0 && frame >= shotAimedAt + patience;
         if (shotOverdue && !shotPath.empty())
-            std::cout << "not settled after 1500 frames: " << shotPath << " taken as it is\n";
+            std::cout << "not settled after " << patience << " frames (waiting for " << renderer.unsettled() << "): " << shotPath
+                      << " taken as it is\n";
         if (!shotPath.empty() && aimedLongEnough &&
             (shotOverdue || (shotFrame > 0 ? frame >= shotAimedAt + shotFrame
                            : settled && shotSettledFrames >= 45 && (!dig || (dug && frame > dug + 2))))) {

@@ -1,4 +1,7 @@
 #include "engine/render/device.hpp"
+#include "engine/core/parallel.hpp"
+#include <thread>
+#include <atomic>
 
 #include <SDL3/SDL_gpu.h>
 #include <SDL3/SDL_timer.h>
@@ -13,6 +16,8 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <unordered_map>
+#include <unordered_set>
 
 namespace engine {
 namespace {
@@ -56,6 +61,21 @@ bool putImage(SDL_GPUDevice* device, SDL_GPUTexture* texture, Uint32 layer, Uint
     SDL_ReleaseGPUTransferBuffer(device, transfer);
     SDL_DestroySurface(surface);
     return true;
+}
+
+// Pictures decoded on every core: an array of a thousand layers is a thousand
+// PNG decodes, which one thread does in seconds. Each comes out RGBA in memory
+// order (ABGR8888); a missing or unreadable one is null.
+std::vector<SDL_Surface*> decodeAll(const std::vector<std::filesystem::path>& files) {
+    std::vector<SDL_Surface*> out(files.size(), nullptr);
+    parallelFor(files.size(), [&](std::size_t i) {
+        SDL_Surface* loaded = IMG_Load(files[i].string().c_str());
+        if (!loaded) return;
+        if (loaded->format == SDL_PIXELFORMAT_ABGR8888) { out[i] = loaded; return; }
+        out[i] = SDL_ConvertSurface(loaded, SDL_PIXELFORMAT_ABGR8888);
+        SDL_DestroySurface(loaded);
+    });
+    return out;
 }
 
 // PNG arrays contain hundreds of layers. Reading dimensions must not decode
@@ -160,6 +180,11 @@ bool Device::open(SDL_Window* window, const std::filesystem::path& assets) {
 void Device::close() {
     if (device_) {
         SDL_WaitForGPUIdle(device_);
+        if (staging_) SDL_ReleaseGPUTransferBuffer(device_, staging_);
+        if (presentTexture_) SDL_ReleaseGPUTexture(device_, presentTexture_);
+        presentTexture_ = nullptr;
+        staging_ = nullptr;
+        stagingBytes_ = 0;
         textures_.clear();
         for (const auto& submission : submissions_)
             SDL_ReleaseGPUFence(device_, submission.fence);
@@ -204,6 +229,42 @@ std::uint64_t fnv(std::uint64_t hash, const void* data, std::size_t bytes) {
     return hash;
 }
 std::uint64_t fnv(std::uint64_t hash, const std::string& text) { return fnv(hash, text.data(), text.size()); }
+// One past the highest binding a stage's samplers sit at (descriptor set 0
+// for a vertex stage, 2 for a fragment one), read off the SPIR-V's own
+// decorations.
+//
+// Reflection counts the samplers a shader uses, and the device lays the set
+// out as that many slots from nought; the SPIR-V keeps the register numbers
+// it was written with. A stage that never reads some of its lower registers
+// - grass reads no height atlas, only the fields after them - so had its top
+// registers past the end of the set, and they read as nothing: the H16 and
+// H64 fields and the categories' plane and table, in every grass draw.
+std::uint32_t samplerSlots(const void* spirv, std::size_t bytes, std::uint32_t set) {
+    const auto* words = static_cast<const std::uint32_t*>(spirv);
+    const std::size_t count = bytes / 4;
+    if (count < 5 || words[0] != 0x07230203u) return 0;
+    // Decorations outlive the code that read a resource, so only what is
+    // loaded counts: a texture declared and never read is no slot.
+    std::unordered_map<std::uint32_t, std::uint32_t> sets, bindings;
+    std::unordered_set<std::uint32_t> loaded;
+    for (std::size_t at = 5; at < count;) {
+        const std::uint32_t length = words[at] >> 16, opcode = words[at] & 0xffffu;
+        if (length == 0 || at + length > count) break;
+        if (opcode == 71 && length >= 4) { // OpDecorate target decoration literal
+            if (words[at + 2] == 34) sets[words[at + 1]] = words[at + 3];          // DescriptorSet
+            else if (words[at + 2] == 33) bindings[words[at + 1]] = words[at + 3]; // Binding
+        } else if (opcode == 61 && length >= 4) { // OpLoad type result pointer
+            loaded.insert(words[at + 3]);
+        }
+        at += length;
+    }
+    std::uint32_t slots = 0;
+    for (const auto& [target, binding] : bindings)
+        if (const auto found = sets.find(target);
+            found != sets.end() && found->second == set && loaded.contains(target))
+            slots = std::max(slots, binding + 1);
+    return slots;
+}
 // A copy the caller frees with SDL_free, as it frees what the compiler gives.
 void* sdlCopy(const std::vector<std::uint8_t>& bytes, std::size_t& size) {
     void* out = SDL_malloc(bytes.size());
@@ -325,6 +386,20 @@ SDL_GPUShader* Device::compile(const std::filesystem::path& file, const char* en
     // twice: a mismatch between the two is a black screen with no error.
     SDL_ShaderCross_GraphicsShaderMetadata* metadata =
             SDL_ShaderCross_ReflectGraphicsSPIRV(info.bytecode, info.bytecode_size, 0);
+    // The set holds every slot up to the highest one used (samplerSlots).
+    // Only where the stage has nothing but samplers in that set: storage
+    // resources follow the samplers in it, and would move.
+    if (metadata && metadata->resource_info.num_storage_textures == 0 &&
+        metadata->resource_info.num_storage_buffers == 0)
+        metadata->resource_info.num_samplers = std::max(metadata->resource_info.num_samplers,
+                samplerSlots(spirv, spirvSize, fragment ? 2u : 0u));
+    // ASR_SHADER_REFLECT=1: what each shader binds, as reflection reads it.
+    static const bool reflect = std::getenv("ASR_SHADER_REFLECT") != nullptr;
+    if (reflect && metadata)
+        std::fprintf(stderr, "shader %s:%s samplers=%u storage-textures=%u storage-buffers=%u uniforms=%u\n",
+                     file.filename().string().c_str(), entry, metadata->resource_info.num_samplers,
+                     metadata->resource_info.num_storage_textures, metadata->resource_info.num_storage_buffers,
+                     metadata->resource_info.num_uniform_buffers);
     SDL_GPUShader* shader =
             metadata ? SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(device_, &info,
                                                                       &metadata->resource_info, 0)
@@ -350,6 +425,13 @@ ComputePipeline Device::makeCompute(const ComputeWanted& wanted) {
     // of step is a dispatch that reads nothing and writes nothing, with no error.
     SDL_ShaderCross_ComputePipelineMetadata* metadata =
             SDL_ShaderCross_ReflectComputeSPIRV(info.bytecode, info.bytecode_size, 0);
+    // The same slot rule as a graphics stage (samplerSlots): a compute stage
+    // that samples the page atlases but not the climate before them (t3.. of
+    // terrain_pages.hlsli) would otherwise read nothing. Only with no
+    // read-only storage in set 0, which would follow the samplers there.
+    if (metadata && metadata->num_samplers > 0 && metadata->num_readonly_storage_textures == 0 &&
+        metadata->num_readonly_storage_buffers == 0)
+        metadata->num_samplers = std::max(metadata->num_samplers, samplerSlots(spirv, size, 0u));
     SDL_GPUComputePipeline* pipeline =
             metadata ? SDL_ShaderCross_CompileComputePipelineFromSPIRV(device_, &info, metadata, 0)
                      : nullptr;
@@ -415,8 +497,9 @@ GraphicsPipeline Device::makePipeline(const PipelineWanted& wanted) {
         return {};
     }
 
+    const bool offscreen = !wanted.colourFormats.empty();
     SDL_GPUColorTargetDescription colour{};
-    colour.format = kColourFormat;
+    colour.format = offscreen ? wanted.colourFormats.front() : kColourFormat;
     if (wanted.blend) {
         colour.blend_state.enable_blend = true;
         colour.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
@@ -458,10 +541,16 @@ GraphicsPipeline Device::makePipeline(const PipelineWanted& wanted) {
     info.depth_stencil_state.enable_depth_test = wanted.depthTest;
     info.depth_stencil_state.enable_depth_write = wanted.depthWrite;
     info.depth_stencil_state.compare_op = SDL_GPU_COMPAREOP_GREATER_OR_EQUAL;   // reversed depth (Camera::viewProjection)
-    info.multisample_state.sample_count = samples_;
-    info.target_info.color_target_descriptions = &colour;
-    info.target_info.num_color_targets = 1;
-    info.target_info.has_depth_stencil_target = true;
+    // Every target blends alike; an offscreen bake has one description a format.
+    std::vector<SDL_GPUColorTargetDescription> colours(offscreen ? wanted.colourFormats.size() : 1, colour);
+    for (std::size_t i = 0; offscreen && i < colours.size(); ++i) colours[i].format = wanted.colourFormats[i];
+    const bool depth = offscreen ? wanted.offscreenDepth : true;
+    info.depth_stencil_state.enable_depth_test = depth && wanted.depthTest;
+    info.depth_stencil_state.enable_depth_write = depth && wanted.depthWrite;
+    info.multisample_state.sample_count = offscreen ? SDL_GPU_SAMPLECOUNT_1 : samples_;
+    info.target_info.color_target_descriptions = colours.data();
+    info.target_info.num_color_targets = static_cast<Uint32>(colours.size());
+    info.target_info.has_depth_stencil_target = depth;
     info.target_info.depth_stencil_format = kDepthFormat;
 
     SDL_GPUGraphicsPipeline* pipeline = SDL_CreateGPUGraphicsPipeline(device_, &info);
@@ -524,91 +613,61 @@ Buffer Device::uploadBuffer(SDL_GPUBufferUsageFlags usage, const void* data, std
     return buffer;
 }
 
-Device::Uploader::Uploader(Device& device) : device_(device) {}
+Device::Uploader::Uploader(Device& device) : device_(device) { staged_.swap(device_.stagingScratch_); }
 
-Device::Uploader::~Uploader() { finish(); }
+Device::Uploader::~Uploader() {
+    finish();
+    if (staged_.capacity() > device_.stagingScratch_.capacity()) staged_.swap(device_.stagingScratch_);
+}
+
+std::size_t Device::Uploader::stage(const void* data, std::size_t bytes) {
+    // 16: a texel block and the card's buffer-offset alignment, whichever bites.
+    const std::size_t offset = (staged_.size() + 15) & ~std::size_t(15);
+    staged_.resize(offset + bytes);
+    std::memcpy(staged_.data() + offset, data, bytes);
+    return offset;
+}
 
 Buffer Device::Uploader::add(SDL_GPUBufferUsageFlags usage, const void* data, std::size_t bytes) {
     if (bytes == 0 || !device_.handle()) return {};
     SDL_GPUDevice* card = device_.handle();
-
     SDL_GPUBufferCreateInfo bufferInfo{};
     bufferInfo.usage = usage;
     bufferInfo.size = static_cast<Uint32>(bytes);
     SDL_GPUBuffer* buffer = SDL_CreateGPUBuffer(card, &bufferInfo);
     if (!buffer) return {};
-
-    SDL_GPUTransferBufferCreateInfo transferInfo{};
-    transferInfo.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    transferInfo.size = static_cast<Uint32>(bytes);
-    SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(card, &transferInfo);
-    if (!transfer) {
-        SDL_ReleaseGPUBuffer(card, buffer);
-        return {};
-    }
-    void* mapped = SDL_MapGPUTransferBuffer(card, transfer, false);
-    std::memcpy(mapped, data, bytes);
-    SDL_UnmapGPUTransferBuffer(card, transfer);
-
-    if (!commands_) {
-        commands_ = SDL_AcquireGPUCommandBuffer(card);
-        copy_ = SDL_BeginGPUCopyPass(commands_);
-    }
-    SDL_GPUTransferBufferLocation source{transfer, 0};
-    SDL_GPUBufferRegion destination{buffer, 0, static_cast<Uint32>(bytes)};
-    SDL_UploadToGPUBuffer(copy_, &source, &destination, false);
-    // Held until the copy has been submitted: releasing a transfer buffer the
-    // copy pass still refers to is a use after free the driver does not check.
-    transfers_.push_back(transfer);
+    Copy copy{};
+    copy.kind = Copy::BufferCopy;
+    copy.offset = stage(data, bytes);
+    copy.bytes = static_cast<Uint32>(bytes);
+    copy.buffer = {buffer, 0, static_cast<Uint32>(bytes)};
+    copies_.push_back(copy);
     return Buffer(card, buffer);
 }
 
 void Device::Uploader::rewrite(SDL_GPUBuffer* buffer, const void* data, std::size_t bytes) {
     if (buffer == nullptr || data == nullptr || bytes == 0 || !device_.handle()) return;
-    SDL_GPUDevice* card = device_.handle();
-    SDL_GPUTransferBufferCreateInfo info{};
-    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    info.size = static_cast<Uint32>(bytes);
-    SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(card, &info);
-    if (transfer == nullptr) return;
-    void* mapped = SDL_MapGPUTransferBuffer(card, transfer, false);
-    std::memcpy(mapped, data, bytes);
-    SDL_UnmapGPUTransferBuffer(card, transfer);
-
-    if (!commands_) {
-        commands_ = SDL_AcquireGPUCommandBuffer(card);
-        copy_ = SDL_BeginGPUCopyPass(commands_);
-    }
-    SDL_GPUTransferBufferLocation source{transfer, 0};
-    SDL_GPUBufferRegion destination{buffer, 0, static_cast<Uint32>(bytes)};
-    SDL_UploadToGPUBuffer(copy_, &source, &destination, true);
-    transfers_.push_back(transfer);
+    Copy copy{};
+    copy.kind = Copy::BufferCopy;
+    copy.offset = stage(data, bytes);
+    copy.bytes = static_cast<Uint32>(bytes);
+    copy.buffer = {buffer, 0, static_cast<Uint32>(bytes)};
+    copy.cycle = true;
+    copies_.push_back(copy);
 }
 
 void Device::Uploader::rewriteAt(SDL_GPUBuffer* buffer, std::size_t offsetBytes,
                                  const void* data, std::size_t bytes) {
     if (buffer == nullptr || data == nullptr || bytes == 0 || !device_.handle()) return;
-    SDL_GPUDevice* card = device_.handle();
-    SDL_GPUTransferBufferCreateInfo info{};
-    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    info.size = static_cast<Uint32>(bytes);
-    SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(card, &info);
-    if (transfer == nullptr) return;
-    void* mapped = SDL_MapGPUTransferBuffer(card, transfer, false);
-    std::memcpy(mapped, data, bytes);
-    SDL_UnmapGPUTransferBuffer(card, transfer);
-
-    if (!commands_) {
-        commands_ = SDL_AcquireGPUCommandBuffer(card);
-        copy_ = SDL_BeginGPUCopyPass(commands_);
-    }
-    SDL_GPUTransferBufferLocation source{transfer, 0};
-    SDL_GPUBufferRegion destination{buffer, static_cast<Uint32>(offsetBytes),
-                                    static_cast<Uint32>(bytes)};
+    Copy copy{};
+    copy.kind = Copy::BufferCopy;
+    copy.offset = stage(data, bytes);
+    copy.bytes = static_cast<Uint32>(bytes);
+    copy.buffer = {buffer, static_cast<Uint32>(offsetBytes), static_cast<Uint32>(bytes)};
     // Never cycle: the rest of this buffer belongs to other slots that are
     // still being drawn from.
-    SDL_UploadToGPUBuffer(copy_, &source, &destination, false);
-    transfers_.push_back(transfer);
+    copy.cycle = false;
+    copies_.push_back(copy);
 }
 
 void Device::Uploader::refill(SDL_GPUTexture* texture, const void* pixels, Uint32 width,
@@ -630,53 +689,151 @@ bool Device::Uploader::refillRegion(SDL_GPUTexture* texture, const void* pixels,
     if (std::uint64_t(width) * height > std::numeric_limits<Uint32>::max() / bytesPerPixel)
         return fail("texture region upload exceeds transfer buffer size");
     const Uint32 bytes = width * height * bytesPerPixel;
-    SDL_GPUTransferBufferCreateInfo info{};
-    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    info.size = bytes;
-    SDL_GPUTransferBuffer* transfer = SDL_CreateGPUTransferBuffer(device_.handle(), &info);
-    if (!transfer) return fail(std::string("texture transfer would not be made: ") + SDL_GetError());
-    void* mapped = SDL_MapGPUTransferBuffer(device_.handle(), transfer, false);
-    if (!mapped) {
-        SDL_ReleaseGPUTransferBuffer(device_.handle(), transfer);
-        return fail(std::string("texture transfer would not map: ") + SDL_GetError());
-    }
-    std::memcpy(mapped, pixels, bytes);
-    SDL_UnmapGPUTransferBuffer(device_.handle(), transfer);
-
-    if (!commands_) {
-        commands_ = SDL_AcquireGPUCommandBuffer(device_.handle());
-        if (!commands_) {
-            SDL_ReleaseGPUTransferBuffer(device_.handle(), transfer);
-            return fail(std::string("texture command buffer unavailable: ") + SDL_GetError());
-        }
-        copy_ = SDL_BeginGPUCopyPass(commands_);
-        if (!copy_) {
-            SDL_CancelGPUCommandBuffer(commands_);
-            commands_ = nullptr;
-            SDL_ReleaseGPUTransferBuffer(device_.handle(), transfer);
-            return fail(std::string("texture copy pass unavailable: ") + SDL_GetError());
-        }
-    }
-    SDL_GPUTextureTransferInfo source{transfer, 0, width, height};
-    SDL_GPUTextureRegion region{texture, mip, layer, x, y, 0, width, height, 1};
-    SDL_UploadToGPUTexture(copy_, &source, &region, cycle);
-    transfers_.push_back(transfer);
+    Copy copy{};
+    copy.kind = Copy::TextureCopy;
+    copy.offset = stage(pixels, bytes);
+    copy.bytes = bytes;
+    copy.texture = {texture, mip, layer, x, y, 0, width, height, 1};
+    copy.width = width;
+    copy.height = height;
+    copy.cycle = cycle;
+    copies_.push_back(copy);
     return true;
 }
 
 bool Device::Uploader::finish() {
-    if (!commands_) return textureUploadsOk_;
-    SDL_EndGPUCopyPass(copy_);
-    if (!SDL_SubmitGPUCommandBuffer(commands_)) {
+    if (copies_.empty()) return textureUploadsOk_;
+    SDL_GPUDevice* card = device_.handle();
+    const auto fail = [&](const std::string& why) {
+        device_.fail(why);
+        textureUploadsOk_ = false;
+        copies_.clear();
+        staged_.clear();
+        return false;
+    };
+    if (staged_.size() > std::numeric_limits<Uint32>::max()) return fail("upload batch exceeds transfer buffer size");
+    const Uint32 total = static_cast<Uint32>(staged_.size());
+    constexpr Uint32 kStagingKeep = 64u << 20;
+    SDL_GPUTransferBuffer* transfer = nullptr;
+    bool own = false;
+    if (total <= kStagingKeep) {
+        if (device_.stagingBytes_ < total) {
+            if (device_.staging_) SDL_ReleaseGPUTransferBuffer(card, device_.staging_);
+            SDL_GPUTransferBufferCreateInfo info{};
+            info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+            info.size = std::min(kStagingKeep, std::max(total, std::max<Uint32>(device_.stagingBytes_ * 2, 1u << 20)));
+            device_.staging_ = SDL_CreateGPUTransferBuffer(card, &info);
+            device_.stagingBytes_ = device_.staging_ ? info.size : 0;
+        }
+        transfer = device_.staging_;
+    } else {
+        SDL_GPUTransferBufferCreateInfo info{};
+        info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        info.size = total;
+        transfer = SDL_CreateGPUTransferBuffer(card, &info);
+        own = true;
+    }
+    if (!transfer) return fail(std::string("transfer buffer would not be made: ") + SDL_GetError());
+    // Cycling the shared one: a copy the card is still reading stays intact.
+    void* mapped = SDL_MapGPUTransferBuffer(card, transfer, !own);
+    if (!mapped) {
+        if (own) SDL_ReleaseGPUTransferBuffer(card, transfer);
+        return fail(std::string("transfer buffer would not map: ") + SDL_GetError());
+    }
+    std::memcpy(mapped, staged_.data(), total);
+    SDL_UnmapGPUTransferBuffer(card, transfer);
+
+    SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(card);
+    if (!commands) {
+        if (own) SDL_ReleaseGPUTransferBuffer(card, transfer);
+        return fail(std::string("upload command buffer unavailable: ") + SDL_GetError());
+    }
+    SDL_GPUCopyPass* pass = SDL_BeginGPUCopyPass(commands);
+    for (const Copy& copy : copies_) {
+        if (copy.kind == Copy::BufferCopy) {
+            SDL_GPUTransferBufferLocation source{transfer, static_cast<Uint32>(copy.offset)};
+            SDL_UploadToGPUBuffer(pass, &source, &copy.buffer, copy.cycle);
+        } else {
+            SDL_GPUTextureTransferInfo source{transfer, static_cast<Uint32>(copy.offset), copy.width, copy.height};
+            SDL_UploadToGPUTexture(pass, &source, &copy.texture, copy.cycle);
+        }
+    }
+    SDL_EndGPUCopyPass(pass);
+    if (!SDL_SubmitGPUCommandBuffer(commands)) {
         device_.fail(std::string("upload submission failed: ") + SDL_GetError());
         textureUploadsOk_ = false;
     }
-    for (SDL_GPUTransferBuffer* transfer : transfers_)
-        SDL_ReleaseGPUTransferBuffer(device_.handle(), transfer);
-    transfers_.clear();
-    commands_ = nullptr;
-    copy_ = nullptr;
+    // A transfer buffer released after its copies are submitted is freed by SDL
+    // once the card is done with it.
+    if (own) SDL_ReleaseGPUTransferBuffer(card, transfer);
+    copies_.clear();
+    staged_.clear();
     return textureUploadsOk_;
+}
+
+void Device::beginStep(std::string step, std::size_t index, std::size_t count) {
+    step_ = std::move(step);
+    stepIndex_ = index;
+    stepCount_ = std::max<std::size_t>(count, 1);
+    lastProgressNs_ = 0;   // a new step is always shown
+    stepProgress(0.0);
+}
+
+void Device::stepProgress(double within, std::string_view detail) {
+    if (!progress_) return;
+    const std::uint64_t now = SDL_GetTicksNS();
+    if (lastProgressNs_ && now - lastProgressNs_ < 33000000ull && within < 1.0) return;
+    lastProgressNs_ = now;
+    const double fraction = (double(stepIndex_) + std::clamp(within, 0.0, 1.0)) / double(stepCount_);
+    progress_(step_, fraction, std::string(detail));
+}
+
+bool Device::present(SDL_Surface* picture) {
+    if (!device_ || !window_ || !picture) return false;
+    SDL_Surface* rgba = picture->format == SDL_PIXELFORMAT_ABGR8888 ? picture
+                                                                    : SDL_ConvertSurface(picture, SDL_PIXELFORMAT_ABGR8888);
+    if (!rgba) return false;
+    if (!presentTexture_ || presentWidth_ != rgba->w || presentHeight_ != rgba->h) {
+        if (presentTexture_) SDL_ReleaseGPUTexture(device_, presentTexture_);
+        SDL_GPUTextureCreateInfo info{};
+        info.type = SDL_GPU_TEXTURETYPE_2D;
+        info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+        info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        info.width = Uint32(rgba->w);
+        info.height = Uint32(rgba->h);
+        info.layer_count_or_depth = 1;
+        info.num_levels = 1;
+        presentTexture_ = SDL_CreateGPUTexture(device_, &info);
+        presentWidth_ = rgba->w;
+        presentHeight_ = rgba->h;
+    }
+    bool ok = presentTexture_ != nullptr && rgba->pitch == rgba->w * 4;
+    if (ok) {
+        Uploader upload(*this);
+        upload.refill(presentTexture_, rgba->pixels, Uint32(rgba->w), Uint32(rgba->h), 4);
+        ok = upload.finish();
+    }
+    if (rgba != picture) SDL_DestroySurface(rgba);
+    if (!ok) return false;
+    SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device_);
+    if (!commands) return false;
+    SDL_GPUTexture* swapchain = nullptr;
+    Uint32 width = 0, height = 0;
+    if (!SDL_WaitAndAcquireGPUSwapchainTexture(commands, window_, &swapchain, &width, &height) || !swapchain) {
+        SDL_SubmitGPUCommandBuffer(commands);
+        return false;
+    }
+    SDL_GPUBlitInfo blit{};
+    blit.source.texture = presentTexture_;
+    blit.source.w = Uint32(presentWidth_);
+    blit.source.h = Uint32(presentHeight_);
+    blit.destination.texture = swapchain;
+    blit.destination.w = width;
+    blit.destination.h = height;
+    blit.load_op = SDL_GPU_LOADOP_DONT_CARE;
+    blit.filter = SDL_GPU_FILTER_LINEAR;
+    SDL_BlitGPUTexture(commands, &blit);
+    return SDL_SubmitGPUCommandBuffer(commands);
 }
 
 Texture Device::makeTexture(const SDL_GPUTextureCreateInfo& info) {
@@ -747,24 +904,50 @@ Texture Device::loadArrayMippedFromFiles(const std::vector<std::vector<std::file
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     Texture texture = makeTexture(info);
     if (!texture) return {};
-    for (std::size_t layer = 0; layer < layers.size(); ++layer) {
-        if (layers[layer].size() != layers.front().size()) {
+    for (const auto& layer : layers)
+        if (layer.size() != layers.front().size()) {
             error_ = "layers of an array must have the same number of levels";
             return {};
         }
-        int layerWidth = 0, layerHeight = 0;
-        if (!sizeOf(layers[layer].front(), layerWidth, layerHeight) ||
-            layerWidth != width || layerHeight != height) {
-            error_ = "layers of an array must have matching image dimensions";
+    // A batch of layers at a time: decoded on every core, then up in one copy
+    // pass through the shared staging buffer - not a transfer buffer and a
+    // submit per picture, which for a catalogue atlas was thousands of each.
+    const std::size_t levels = generateMipmaps ? 1 : layers.front().size();
+    constexpr std::size_t kBatch = 64;
+    for (std::size_t first = 0; first < layers.size(); first += kBatch) {
+        const std::size_t last = std::min(layers.size(), first + kBatch);
+        std::vector<std::filesystem::path> files;
+        for (std::size_t layer = first; layer < last; ++layer)
+            for (std::size_t level = 0; level < levels; ++level) files.push_back(layers[layer][level]);
+        std::vector<SDL_Surface*> pictures = decodeAll(files);
+        Uploader upload(*this);
+        bool ok = true;
+        for (std::size_t i = 0; i < files.size() && ok; ++i) {
+            const std::size_t layer = first + i / levels, level = i % levels;
+            SDL_Surface* picture = pictures[i];
+            const int expectW = std::max(1, width >> int(level)), expectH = std::max(1, height >> int(level));
+            if (!picture) {
+                error_ = "layer would not load: " + files[i].string();
+                ok = false;
+            } else if (level == 0 && (picture->w != width || picture->h != height)) {
+                error_ = "layers of an array must have matching image dimensions";
+                ok = false;
+            } else if (picture->pitch != picture->w * 4 || (level > 0 && (picture->w != expectW || picture->h != expectH))) {
+                error_ = "layer has an unexpected size: " + files[i].string();
+                ok = false;
+            } else {
+                ok = upload.refillRegion(texture.get(), picture->pixels, 0, 0, Uint32(picture->w), Uint32(picture->h), 4,
+                                         Uint32(layer), Uint32(level));
+            }
+        }
+        for (SDL_Surface* picture : pictures)
+            if (picture) SDL_DestroySurface(picture);
+        if (!upload.finish() || !ok) {
+            if (error_.empty()) error_ = "texture array would not upload";
             return {};
         }
-        const std::size_t levels = generateMipmaps ? 1 : layers[layer].size();
-        for (std::size_t level = 0; level < levels; ++level)
-            if (!putImage(device_, texture.get(), static_cast<Uint32>(layer),
-                          static_cast<Uint32>(level), layers[layer][level])) {
-                error_ = "layer would not upload: " + layers[layer][level].string();
-                return {};
-            }
+        stepProgress(double(last) / double(layers.size()),
+                     "textures " + std::to_string(last) + " / " + std::to_string(layers.size()));
     }
     if (generateMipmaps && info.num_levels > 1) {
         auto* commands = SDL_AcquireGPUCommandBuffer(device_);
@@ -792,9 +975,21 @@ Texture Device::loadDataArrayFromFiles(const std::vector<std::filesystem::path>&
     if (layers.empty()) return {};
     Texture texture;Uint32 width=0,height=0;
     Uploader upload(*this);
+    // Decoded a batch at a time on every core; uploaded in order.
+    std::vector<SDL_Surface*> decoded;
+    std::size_t decodedFrom=0;
     for (std::size_t layer=0;layer<layers.size();++layer) {
-        auto* image=loadDataPng(layers[layer]);
-        if (!image) {fail("data PNG missing: "+layers[layer].string());return {};}
+        if (layer==decodedFrom+decoded.size()) {
+            for (auto* left:decoded) if (left) SDL_DestroySurface(left);
+            decodedFrom=layer;
+            decoded.assign(std::min<std::size_t>(64,layers.size()-layer),nullptr);
+            parallelFor(decoded.size(),[&](std::size_t i){decoded[i]=loadDataPng(layers[decodedFrom+i]);});
+        }
+        auto* image=decoded[layer-decodedFrom];decoded[layer-decodedFrom]=nullptr;
+        if (!image) {
+            for (auto* left:decoded) if (left) SDL_DestroySurface(left);
+            fail("data PNG missing: "+layers[layer].string());return {};
+        }
         if (!texture) {
             width=image->w;height=image->h;
             SDL_GPUTextureCreateInfo info{};info.type=SDL_GPU_TEXTURETYPE_2D_ARRAY;
@@ -805,36 +1000,26 @@ Texture Device::loadDataArrayFromFiles(const std::vector<std::filesystem::path>&
         const bool ok=texture && image->w==int(width) && image->h==int(height) && image->pitch==int(width*4) &&
             upload.refillRegion(texture.get(),image->pixels,0,0,width,height,4,Uint32(layer));
         SDL_DestroySurface(image);
-        if (!ok) {fail("data PNG upload/size mismatch: "+layers[layer].string());return {};}
+        if (!ok) {
+            for (auto* left:decoded) if (left) SDL_DestroySurface(left);
+            fail("data PNG upload/size mismatch: "+layers[layer].string());return {};
+        }
+        if ((layer+1)%64==0 || layer+1==layers.size()) {
+            if (!upload.finish()) return {};
+            stepProgress(double(layer+1)/double(layers.size()),
+                         "data " + std::to_string(layer+1) + " / " + std::to_string(layers.size()));
+        }
     }
     if (!upload.finish()) return {};
     return texture;
 }
 
 Texture Device::loadArrayFromFiles(const std::vector<std::filesystem::path>& layers) {
-    if (layers.empty()) return {};
-    int width = 0, height = 0;
-    if (!sizeOf(layers.front(), width, height)) {
-        error_ = "image is missing: " + layers.front().string();
-        return {};
-    }
-    SDL_GPUTextureCreateInfo info{};
-    info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
-    info.format = SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-    info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
-    info.width = static_cast<Uint32>(width);
-    info.height = static_cast<Uint32>(height);
-    info.layer_count_or_depth = static_cast<Uint32>(layers.size());
-    info.num_levels = 1;
-    info.sample_count = SDL_GPU_SAMPLECOUNT_1;
-    Texture texture = makeTexture(info);
-    if (!texture) return {};
-    for (std::size_t layer = 0; layer < layers.size(); ++layer)
-        if (!putImage(device_, texture.get(), static_cast<Uint32>(layer), 0, layers[layer])) {
-            error_ = "layer would not upload: " + layers[layer].string();
-            return {};
-        }
-    return texture;
+    // One level a layer: the same batched, parallel load as a mipped array.
+    std::vector<std::vector<std::filesystem::path>> single;
+    single.reserve(layers.size());
+    for (const auto& layer : layers) single.push_back({layer});
+    return loadArrayMippedFromFiles(single, false);
 }
 
 // --- images from files, kept -------------------------------------------------

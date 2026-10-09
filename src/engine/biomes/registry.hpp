@@ -107,6 +107,11 @@ struct Foliage {
     double dryness = 0.0;            // 0 as the climate says, 1 parched
     Rgb tint{1, 1, 1};
     double flowers = 1.0;            // times the meadow's flowers
+    // The colour its flower drifts are of, 0..1 along the flower cards
+    // (foliage_pages.hlsl pageFloraCard: white, yellow, purple, pink, lilac,
+    // gazania, celandine, ursinia, red, dandelion); below 0 a drift picks its
+    // own, as a meadow does. A poppy valley is red: 0.85.
+    double flowerHue = -1.0;
 };
 
 struct Plant {

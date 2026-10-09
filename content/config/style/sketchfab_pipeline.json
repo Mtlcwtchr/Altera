@@ -1,0 +1,31 @@
+{
+  "version": 1,
+  "style": "Painted fantasy illustration, 1960s-1980s",
+  "texture_size": 1024,
+  "silhouette_min_iou": 0.8,
+  "asset_overrides": {
+    "5bf0a1562b7e401e9e6d7758ec54d09c": {
+      "triangles": 0,
+      "reason": "Preserve the authored low-poly geometry and layout of the 10339-component modular scene"
+    }
+  },
+  "profiles": {
+    "architecture": {"preset": "painted_base", "triangles": 24000},
+    "surreal_landscape": {"preset": "painted_base", "triangles": 24000},
+    "flora": {"preset": "painted_base", "triangles": 30000},
+    "creatures": {"preset": "painted_base", "triangles": 16000},
+    "props": {"preset": "painted_base", "triangles": 8000},
+    "stone": {"preset": "megalith_painted", "triangles": 12000}
+  },
+  "stone_keywords": ["cloister", "ruin", "cliff", "rock", "stone arch", "stalag", "spire", "basalt"],
+  "preview_uids": [
+    "f7e507f0b0654579accf5dbf05745f7d",
+    "4ec56df1c24d422ea85d1cfbf21bbe8c",
+    "08a018e4e7b3486dbec7b0341be3aeb4",
+    "555992efd5c74cf299f5a3ab4acd0a3b",
+    "3cb4d59eb4844dc4802480e9ee53785e",
+    "a2552cfb13f84695b0d470bd5f19d559",
+    "a7780e3667954bbf97bb619cb8a3e272",
+    "8372c5e8dfca49a1ae1046e02f47e2d0"
+  ]
+}

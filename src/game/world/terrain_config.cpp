@@ -25,7 +25,8 @@ bool readTerrainConfig(const std::filesystem::path& file, TerrainConfig& into, s
                 key == "prediction_seconds" || key == "prediction_max_metres" ||
                 key == "look_ahead_seconds" || key == "max_look_ahead_metres" ||
                 key == "local_detail_height_metres" || key == "upload_mib_per_frame" ||
-                key == "cull_ground" || key == "mesh_cache_mib" || key == "gpu_mesh_cache_mib") continue;
+                key == "cull_ground" || key == "mesh_cache_mib" || key == "gpu_mesh_cache_mib" ||
+                key == "finest_data_metres") continue;
             throw std::runtime_error("unknown parameter: " + key);
         }
         const auto number = [&](const char* key, auto& destination, double low, double high) {
@@ -105,6 +106,9 @@ bool readTerrainConfig(const std::filesystem::path& file, TerrainConfig& into, s
         aliasedNumber("prediction_seconds", "look_ahead_seconds", fresh.lookAheadSeconds, 0, 2);
         aliasedNumber("prediction_max_metres", "max_look_ahead_metres", fresh.maxLookAheadMetres, 0, 4096);
         number("local_detail_height_metres", fresh.localDetailHeightMetres, 0, 512);
+        number("finest_data_metres", fresh.finestDataMetres, 8, 64);
+        if (fresh.finestDataMetres != 8 && fresh.finestDataMetres != 16 && fresh.finestDataMetres != 64)
+            throw std::runtime_error("finest_data_metres must be 8, 16 or 64");
         double uploadMiB = double(fresh.uploadBytesPerFrame) / (1u << 20);
         number("upload_mib_per_frame", uploadMiB, 1, 64);
         fresh.uploadBytesPerFrame = static_cast<std::size_t>(uploadMiB * (1u << 20));

@@ -4,6 +4,7 @@
 #include <array>
 #include <cstddef>
 #include <cmath>
+#include <cstdio>
 #include <cstdlib>
 #include <iostream>
 #if ASR_ENABLE_DIAGNOSTICS
@@ -40,15 +41,12 @@ FoliagePass::FoliagePass(const engine::MeshCache& cache, std::vector<std::string
 
 #if ASR_ENABLE_DIAGNOSTICS
 std::string FoliagePass::report() const {
-    std::size_t cached=0;
-    for (const auto& [key,entry]:roots_) cached+=entry.values.size();
     return nlohmann::json{{"adaptive",bool(pages_)},{"enabled",enabled_},{"submitted_candidates",candidates_},
-        {"candidate_budget",world::kGrassCandidateBudget*2},{"candidate_spacing_m",world::kGrassCell},
-        {"near_candidates",nearCandidates_},{"far_candidates",farCandidates_},{"far_blocks",farBlocks_},
-        {"far_candidate_step_m",farStep_},{"view_wide_ground_cover",true},
-        {"draws",draws_},{"submitted_triangles",candidates_*2},{"cached_roots",cached},
-        {"root_bytes",cached*sizeof(world::PageGrassRoot)},
-        {"instance_upload_bytes",uploadBytes_},{"instance_stride_bytes",sizeof(world::PageGrassRoot)},
+        {"candidate_budget",GrassCuller::kCapacity},{"gpu_spawn",true},{"spawn_levels",levels_},
+        {"finest_level",finest_},{"view_wide_ground_cover",true},
+        {"draws",draws_},{"submitted_triangles",candidates_*2},
+        {"root_bytes",candidates_*sizeof(world::PageGrassRoot)},
+        {"instance_upload_bytes",0},{"instance_stride_bytes",sizeof(world::PageGrassRoot)},
         {"gpu_frustum_culling",gpuCulling_},{"gpu_indirect_draw",gpuCulling_ && draws_>0},
         {"gpu_cull_working_bytes",culler_.workingBytes()},
         {"submitted_counts_are_pre_cull",gpuCulling_},
@@ -202,6 +200,18 @@ engine::PassPlace FoliagePass::setup(engine::Device& device, engine::RenderPipel
     }
     uploader.finish();
     if (!quad_ || !quadIndices_) return {};
+    if (pages_) {
+        auto spawn = device.makeCompute({"foliage_spawn.hlsl", "SpawnCS"});
+        rootsBuffer_ = device.makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX | SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ |
+                                         SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_WRITE,
+                                         GrassCuller::kCapacity * sizeof(world::PageGrassRoot));
+        if (!spawn || !rootsBuffer_) {
+            std::cerr << "Grass unavailable: its spawn did not build\n";
+            return {};
+        }
+        spawn_ = into.take(std::move(spawn));
+        spawnReady_ = true;
+    }
     if (gpuCulling_ && !culler_.setup(device,into)) return {};
     if (gpuCulling_ && blades && !culler_.secondDraw(device, into, bladeIndexCount_)) {
         std::cerr << "Grass blades unavailable: their indirect draw did not build\n";
@@ -222,109 +232,69 @@ bool FoliagePass::anything(const engine::Frame& frame) const {
 }
 
 void FoliagePass::collect(const engine::Frame& frame, engine::DrawQueue& queue) {
-    candidates_=nearCandidates_=farCandidates_=0;
-    ASR_DIAGNOSTIC(draws_=uploadBytes_=runs_=farBlocks_=0);
+    candidates_=0;
+    ASR_DIAGNOSTIC(draws_=0);
     if (pages_) {
-        if (!frame.instances || !pages_->finalStage()) return;
-        const int wx=int(std::floor(x_/world::kGrassRegion)),wy=int(std::floor(y_/world::kGrassRegion));
-        if (wx!=windowX_ || wy!=windowY_) {
-            std::erase_if(roots_,[](const auto& item){return std::get<3>(item.first)==world::kGrassCell;});
-            windowX_=wx;windowY_=wy;
-        }
-        for (auto& [key,entry]:roots_) entry.used=false;
+        if (!frame.instances || !pages_->finalStage() || !spawnReady_ || !rootsBuffer_) return;
         renderer_->replaceVertex(vertexBindings_,withBiomes(*pages_));
-        const double left=double(wx)*world::kGrassRegion-world::kGrassWindow;
-        const double bottom=double(wy)*world::kGrassRegion-world::kGrassWindow;
-        const auto cellFor=[](const auto& b,int base){return std::max(base,2<<std::clamp(b.tile.lod,0,6));};
-        // A block counts for the far tier when any of it is within reach.
-        const auto within=[&](const auto& b){
-            const double m=double(b.metres()),ox=double(b.tile.x)*m,oy=double(b.tile.y)*m;
-            const double dx=std::max({ox-x_,0.0,x_-(ox+m)}),dy=std::max({oy-y_,0.0,y_-(oy+m)});
-            return dx*dx+dy*dy<=reach_*reach_;};
-        const auto cost=[&](int step){double n=0;for (const auto& b:pages_->drawing()) if (within(b)) n+=std::pow(std::ceil(double(b.metres())/cellFor(b,step)),2);return n;};
-        while (cost(farStep_)>world::kGrassCandidateBudget && farStep_<16384) farStep_*=2;
-        while (farStep_>8 && cost(farStep_/2)<world::kGrassCandidateBudget/2) farStep_/=2;
-        const double t=std::clamp((pages_->vegetationPixelsPerMetre(frame,x_,y_)-1.0)/2.0,0.0,1.0);
-        const float nearWeight=float(t*t*(3-2*t));
-        // One draw for the whole field, not one per block and tier. What forced
-        // three hundred and forty-one of them was the draw's own uniform: each
-        // block pushed its morph, its page level, its parent's and its
-        // candidate spacing, and a uniform belongs to a draw. Those four
-        // numbers are a table now, indexed per instance, so every block's
-        // candidates go into one arena range and leave as one command.
-        std::vector<Roots*> order;
-        std::vector<std::size_t> counts;
-        for (int tier=0;tier<2;++tier) for (const auto& block:pages_->drawing()) {
-            if (!block.mesh) continue;
-            const bool coarse=tier==1;
-            if (!coarse && nearWeight<=0) continue;
-            if (coarse && !within(block)) continue;
-            const int cell=coarse?cellFor(block,farStep_):world::kGrassCell;
-            const auto ox=block.tile.x*block.metres(),oy=block.tile.y*block.metres();
-            if (!coarse && (ox>=left+2*world::kGrassWindow || oy>=bottom+2*world::kGrassWindow ||
-                ox+block.metres()<=left || oy+block.metres()<=bottom)) continue;
-            const auto key=std::tuple{block.mesh.get(),ox,oy,cell};
-            auto [entry,fresh]=roots_.try_emplace(key);
-            if (fresh) {
-                entry->second.mesh=block.mesh;
-                entry->second.values=world::buildPageGrass(*block.mesh,double(ox),double(oy),wx,wy,
-                    cell,coarse?0:world::kGrassWindow);
-            }
-            entry->second.used=true;
-            auto& tierCount=coarse?farCandidates_:nearCandidates_;
-            const auto count=std::min(entry->second.values.size(),world::kGrassCandidateBudget-tierCount);
-            if (!count) continue;
-            const auto parameters=pages_->parameters(block);
-            // Five bits of level and parent level, four of log2 spacing, eight
-            // of morph. See decodeGrassRun in foliage_pages.hlsl.
-            int logCell=0;
-            while ((1<<(logCell+1))<=cell && logCell<14) ++logCell;
-            const int run=(std::clamp(int(parameters[2]),0,7)) |
-                          (std::clamp(int(parameters[8]),0,7)<<3) | (logCell<<6) |
-                          (std::clamp(int(parameters[0]*255.0f+0.5f),0,255)<<10);
-            ASR_DIAGNOSTIC(++runs_);
-            // Re-stamped only when the code changes, which for a settled camera
-            // is never: a block that has not moved or morphed rewrites nothing.
-            if (entry->second.run!=run) {
-                for (auto& root:entry->second.values) root.run=float(run);
-                entry->second.run=run;
-            }
-            order.push_back(&entry->second);
-            counts.push_back(count);
-            candidates_+=count;tierCount+=count;ASR_DIAGNOSTIC(farBlocks_+=coarse);
-        }
-        if (order.empty()) { std::erase_if(roots_,[](const auto& item){return !item.second.used;});return; }
+        const auto parameters=pages_->parameters(pages_->drawing().front());
+        // Around the eye: the roots are as dense as the screen needs where the
+        // eye is closest to the ground and thin with distance, level by level.
+        // A map seen from above has no nearest ground: there the focus.
+        const auto* m=engine::cullMatrix(frame.scene);
+        const bool perspective=m[12]!=0 || m[13]!=0 || m[14]!=0;
+        const float* eye=engine::cullEye(frame.scene);
+        const double cx=perspective ? double(eye[0]) : x_, cy=perspective ? double(eye[1]) : y_;
+        // The finest level: a 2 m spacing until the ground under the eye is
+        // under two pixels a metre, a level up for every halving after - and
+        // fractional, so a rising eye thins the finest level out continuously
+        // (foliage_spawn.hlsl) instead of dropping it.
+        const double ppm=std::max(1e-6,pages_->vegetationPixelsPerMetre(frame,cx,cy));
+        finest_=std::max(0.0,std::log2(2.0/ppm));
+        // Past 128 m roots the cover is less than the ground's own colour.
+        if (finest_>6.0) return;
+        const int finest=int(std::floor(finest_));
+        constexpr int kSide=128;
+        constexpr int kMaxLevels=int(GrassCuller::kCapacity/(kSide*kSide));
+        // Enough levels for the reach: a level's window reaches (side/2-1) cells.
+        const double outermost=std::ceil(std::log2(std::max(1.0,reach_/(2.0*(kSide/2-1)))));
+        levels_=std::clamp(int(outermost)-finest+1,1,kMaxLevels);
+        candidates_=std::size_t(levels_)*kSide*kSide;
 
-        ASR_DIAGNOSTIC(const auto before=frame.instances->bytes());
-        std::uint32_t at=0;
-        for (std::size_t i=0;i<order.size();++i) {
-            const auto offset=frame.instances->add(std::span(order[i]->values).first(counts[i]));
-            if (i==0) at=offset;
-        }
-        ASR_DIAGNOSTIC(uploadBytes_+=frame.instances->bytes()-before);
+        engine::ComputeDispatch spawn;
+        spawn.pipeline=spawn_;
+        spawn.groupsX=std::uint32_t((candidates_+63)/64);
+        spawn.samplers=pages_->bindings();
+        spawn.writes={rootsBuffer_.get()};
+        const float block[16]{0,0,parameters[6],parameters[7],
+                              parameters[12],parameters[13],parameters[14],parameters[15],
+                              float(cx),float(cy),float(finest),float(finest_-finest),
+                              float(levels_),float(kSide),0,0};
+        std::copy(std::begin(block),std::end(block),spawn.own);
+        renderer_->dispatch(std::move(spawn));
+        if (std::getenv("ASR_GRASS_DEBUG") && frame.index%60==0) std::fprintf(stderr,"grass spawn: eye %.0f %.0f ppm %.3f finest %.2f levels %d roots %zu\n",cx,cy,ppm,finest_,levels_,candidates_);
 
         engine::DrawItem item;
         item.author = 4;
         item.pipeline=pipeline_;item.bindings=bindings_;item.vertexBindings=vertexBindings_;
-        item.vertex[0]=quad_.get();item.instancesFromArena=true;
-        item.vertexOffset[1]=at;
+        item.vertex[0]=quad_.get();item.vertex[1]=rootsBuffer_.get();
+        item.vertexOffset[1]=0;
         item.vertexStreams=2;item.index=quadIndices_.get();item.indexSize=SDL_GPU_INDEXELEMENTSIZE_16BIT;
         item.indexCount=6*world::kTurfCards;item.instances=std::uint32_t(candidates_);
         if (gpuCulling_) {
-            if (!culler_.dispatch(frame,*renderer_,at,candidates_)) return;
-            item.instancesFromArena=false;
+            if (!culler_.dispatch(frame,*renderer_,rootsBuffer_.get(),candidates_)) return;
             item.vertex[1]=culler_.instances();item.vertexOffset[1]=0;
             item.indirect=culler_.arguments();item.indirectDraws=1;
         }
         item.hasOwnData=item.ownToVertex=true;
-        // Everything a block does NOT decide for itself: the stage, the height
-        // window, the page table size, the near/far weight and the focus.
-        const auto parameters=pages_->parameters(pages_->drawing().front());
+        // What the plant shaders read from the ground's block: the height
+        // window and the page table's size (morphWindow, morphSettings).
         std::copy(parameters.begin(),parameters.end(),item.own);
-        item.own[9]=nearWeight;
         item.own[10]=float(x_);item.own[11]=float(y_);
         queue.push(item);ASR_DIAGNOSTIC(++draws_);
-        if (bladePipeline_ && nearCandidates_) {
+        // Blades and pebbles live on the 2 m roots only.
+        const bool fine=finest==0;
+        if (bladePipeline_ && fine) {
             engine::DrawItem grass=item;
             grass.pipeline=bladePipeline_;
             grass.vertex[0]=blades_.get();grass.index=bladeIndices_.get();
@@ -332,14 +302,13 @@ void FoliagePass::collect(const engine::Frame& frame, engine::DrawQueue& queue) 
             if (gpuCulling_) grass.indirect=culler_.secondArguments();
             queue.push(grass);ASR_DIAGNOSTIC(++draws_);
         }
-        if (pebblePipeline_ && nearCandidates_) {
+        if (pebblePipeline_ && fine) {
             engine::DrawItem stones=item;
             stones.pipeline=pebblePipeline_;
             stones.vertex[0]=pebble_.get();stones.index=pebbleIndices_.get();
             stones.indexCount=24;
             queue.push(stones);ASR_DIAGNOSTIC(++draws_);
         }
-        std::erase_if(roots_,[](const auto& item){return !item.second.used;});
         return;
     }
     for (const engine::MeshCache::Drawn& drawn : cache_.drawing()) {

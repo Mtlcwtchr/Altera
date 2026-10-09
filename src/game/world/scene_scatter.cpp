@@ -394,7 +394,7 @@ Scatter scatter(std::uint64_t seed,ScatterBounds bounds,double width,double heig
             // stream is already spent above, so dropping one here moves no
             // other object.
             // Boulders may stand in shallow water; nothing else does.
-            const bool boulder=model==3 || (model>=kFirstRock2 && model<=kLastRock2);
+            const bool boulder=boulderModel(model);
             if (wet && !boulder) {
                 const double r=kShoreClearance*(treeModel(model)?1.0:0.6);
                 if (wet(x+r,y) || wet(x-r,y) || wet(x,y+r) || wet(x,y-r) ||

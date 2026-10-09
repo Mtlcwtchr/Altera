@@ -1,6 +1,8 @@
 #include "game/render/passes/terrain_pass.hpp"
 
 #include <cstddef>
+#include <cstdio>
+#include <cstdlib>
 #include <fstream>
 
 #include <SDL3/SDL_log.h>
@@ -95,6 +97,15 @@ engine::PassPlace TerrainPass::setup(engine::Device& device, engine::RenderPipel
     // scratch" was.
     if (!pages_) {
         if (!backdropRenderer_.material.setup(device, into, materials::terrain(false, true), wanted)) return {};
+    }
+    // The baked ground material (TerrainMaterialCache). Without it - a bake
+    // that will not build - the ground is drawn the long way, as before.
+    cachedReady_ = false;
+    if (pages_ && !std::getenv("ASR_TERRAIN_NO_CACHE")) {
+        cachedRenderer_.author = 1;
+        cachedReady_ = materialCache_.setup(device) &&
+                       cachedRenderer_.material.setup(device, into, materials::terrainCached(cull), wanted);
+        if (!cachedReady_) SDL_Log("terrain material cache unavailable: %s", device.error().c_str());
     }
 
     // Repeating, anisotropic, and with the whole mip chain: the material tiles
@@ -208,7 +219,33 @@ void TerrainPass::collect(const engine::Frame& frame, engine::DrawQueue& queue) 
         const auto biomes = pages_->biomeBindings();
         if (biomes.size() != 2) return;
         bindings.insert(bindings.end(), biomes.begin(), biomes.end());
+        // The cache: what the bake reads (the climate array in the shadow's
+        // slot), what the cached ground reads (the cache in the material slots).
+        bool cached = false;
+        if (cachedReady_) {
+            auto bake = bindings;
+            bake[12] = pages_->climateArray();
+            materialCache_.bindings(std::move(bake));
+            for (const auto& r : pages_->changedThisUpdate()) materialCache_.invalidate(r[0], r[1], r[2], r[3], int(r[4]));
+            materialCache_.update(frame, frame.scene.camera[0], frame.scene.camera[1], pages_->sheetParameters());
+            // The display modes (extra.w) are diagnostics of the long way.
+            cached = materialCache_.usable() && frame.scene.extra[3] < 0.5f;
+            if (cached) {
+                const auto lookup = materialCache_.lookupBindings();
+                // The cached pixel stage's (terrain_cached.hlsl): colour,
+                // normal, window table, shadow, detail ids, and the ground
+                // scans for the grain under the eye. It reads no page field.
+                // And the categories (t7, t8): a flower field's far colour
+                // is the screen's, not the cache's (terrainShade).
+                const std::vector<SDL_GPUTextureSamplerBinding> drawn{
+                        lookup[0], lookup[1], lookup[2], shadow_, lookup[3],
+                        {materials_.get(), sampler_.get()}, {materialNormals_.get(), sampler_.get()},
+                        biomes[0], biomes[1]};
+                cachedRenderer_.material.textures(drawn, fields);
+            }
+        }
         terrainRenderer_.material.textures(std::move(bindings), fields);
+        auto& renderer = cached ? cachedRenderer_ : terrainRenderer_;
         // The cut, already walked once by the terrain gather: ordered, and with
         // each square's buffers and parameters resolved. This pass used to
         // re-derive all of it, and so did the water pass beside it.
@@ -224,7 +261,7 @@ void TerrainPass::collect(const engine::Frame& frame, engine::DrawQueue& queue) 
                     frame.work->groundTrianglesByLevel[patch.level] +=
                             drawn.mesh->surfaceIndices / 3;
             }
-            terrainRenderer_.submitSurface(queue,
+            renderer.submitSurface(queue,
                 {drawn.vertices, drawn.indices, SDL_GPU_INDEXELEMENTSIZE_32BIT, {drawn.firstIndex, 0},
                  drawn.vertexOffset},
                 *drawn.mesh, pages_->skirts(), {drawn.parameters, true, true});

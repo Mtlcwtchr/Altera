@@ -43,6 +43,7 @@ std::optional<HeightPageAtlas::Address> HeightPageAtlas::upload(
     const auto allocated = residency_.acquire(world::terrain::heightPageKey(page.key), frame);
     if (!allocated) return std::nullopt; // full of pinned pages; keep drawing the parent
     Entry& entry = entries_[allocated->slot];
+    if (allocated->replacedKey && entry.hasKey && !(entry.key == page.key)) evicted_.push_back(entry.key);
     if (allocated->fresh || allocated->replacedKey) entry = {};
     if (entry.address && !replace) return entry.address;
     const Address address = layout_.address(allocated->slot, page);
@@ -51,6 +52,8 @@ std::optional<HeightPageAtlas::Address> HeightPageAtlas::upload(
                                layout_.storedSamples(), sizeof(std::uint16_t)))
         return std::nullopt;
     entry = {address, true};
+    entry.key = page.key;
+    entry.hasKey = true;
     return address;
 }
 
@@ -76,7 +79,11 @@ std::optional<HeightPageAtlas::Address> HeightPageAtlas::upload(
 void HeightPageAtlas::publishUploads(bool submitted) {
     for (Entry& entry : entries_) {
         if (!entry.pending) continue;
-        if (!submitted) { entry.address.reset(); entry.fieldsReady = false; }
+        if (!submitted) {
+            entry.address.reset();
+            entry.fieldsReady = false;
+            if (entry.hasKey) evicted_.push_back(entry.key);
+        }
         entry.pending = false;
     }
 }
@@ -118,6 +125,7 @@ bool HeightPageAtlas::unpin(Key key) {
 void HeightPageAtlas::clear() {
     residency_ = world::terrain::PageResidency(layout_.capacity());
     for (Entry& entry : entries_) entry = {};
+    evicted_.clear();
 }
 
 } // namespace game

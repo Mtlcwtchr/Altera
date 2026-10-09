@@ -13,6 +13,11 @@
 //   1 shadow      rgb added to the blue the shades lean to, a = how much
 //   2 bloom_tint  rgb the spill leans to, a = its share (and extra spill)
 //   3 curve       x contrast, y saturation, z vignette, w grain (each a change)
+//   4 vintage     x how far the saturation ceiling is let go (0 held as the
+//                 storybook holds it, 1 colour as strong as it comes), y how
+//                 much the light falls into bands, z how many, w spare: the
+//                 1960s-70s illustration of doc/BIOMES_RU.md - big masses of
+//                 strong colour, a few tones inside each form
 #ifndef GAME_STYLE_PICTURE_HLSLI
 #define GAME_STYLE_PICTURE_HLSLI
 
@@ -23,6 +28,7 @@ void stylePicture(inout StylePicture p)
     const float4 shadow = regional ? gradeRow(1) : 0.0;
     const float4 bloomTint = regional ? gradeRow(2) : 0.0;
     const float4 curve = regional ? gradeRow(3) : 0.0;
+    const float4 vintage = regional ? gradeRow(4) : 0.0;
     float3 c = p.colour;
 
     // --- light that spills ----------------------------------------------
@@ -90,11 +96,20 @@ void stylePicture(inout StylePicture p)
         const float sat = top > 1e-4 ? (top - low) / top : 0.0;
         const float green = saturate((c.g - max(c.r, c.b)) * 5.0) * saturate(1.0 - (c.b - c.r) * 3.0);
         const float blue = saturate((c.b - max(c.r, c.g)) * 4.0);
-        const float ceiling = lerp(lerp(0.80, 0.64, green), 0.92, blue);
+        const float ceiling = lerp(lerp(lerp(0.80, 0.64, green), 0.92, blue), 0.98, saturate(vintage.x));
         const float held = ceiling * (1.0 - exp(-sat / ceiling));
         const float k = sat > 1e-4 ? held / sat : 1.0;
         const float l = gradeLuma(c);
         c = l + (c - l) * k;
+    }
+    // A few tones inside a form: the light, not the hue, falls softly into
+    // bands - a painted hillside is three values of its green, not a ramp.
+    [branch] if (vintage.y > 0.0) {
+        const float levels = max(vintage.z, 3.0);
+        const float l = max(gradeLuma(c), 1e-4);
+        const float q = l * levels;
+        const float banded = (floor(q) + smoothstep(0.35, 0.65, frac(q))) / levels;
+        c *= lerp(1.0, banded / l, saturate(vintage.y));
     }
     // Greens kept green: a hair warmer in the light, never pushed to olive.
     const float green = saturate((c.g - max(c.r, c.b)) * 6.0);

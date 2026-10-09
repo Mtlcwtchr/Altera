@@ -57,6 +57,13 @@ float3 gridColour(float step)
 
 float dataStep(float dataset) { return pageStepOf((int)(dataset + 0.5)); }
 
+#ifndef TERRAIN_MATERIAL_CACHED
+// Diagnostics (ASR_TERRAIN_FLAT_PS): the ground's geometry with none of its shading.
+float4 TerrainFlatPS(TerrainOut input) : SV_Target0
+{
+    return float4(0.35, 0.42, 0.25, 1.0);
+}
+
 float4 TerrainPagePS(TerrainOut input) : SV_Target0
 {
     const PageDetail detail = pageDetail(input.worldXY);
@@ -145,3 +152,4 @@ float4 TerrainPagePS(TerrainOut input) : SV_Target0
     colour.rgb = lerp(colour.rgb, marks.rgb, marks.a);
     return colour;
 }
+#endif // TERRAIN_MATERIAL_CACHED

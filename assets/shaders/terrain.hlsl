@@ -16,7 +16,15 @@
 // Terrain categories (engine/biomes): the page variant binds the category
 // plane and the biome table after its shadow (t13, t14). The mesh variant
 // binds neither and draws every id as the engine's own ground.
-#ifdef TERRAIN_PAGE_MATERIALS
+// The ground material cache's own unit (terrain_cached.hlsl) reads the baked
+// material, and the categories only for what depends on the screen (a flower
+// field's far colour, terrainShade): after its own seven (t7, t8).
+#if defined(TERRAIN_MATERIAL_CACHED)
+#define BIOME_PLANE_SLOT t7
+#define BIOME_PLANE_SAMPLER s7
+#define BIOME_TABLE_SLOT t8
+#define BIOME_TABLE_SAMPLER s8
+#elif defined(TERRAIN_PAGE_MATERIALS)
 #define BIOME_PLANE_SLOT t13
 #define BIOME_PLANE_SAMPLER s13
 #define BIOME_TABLE_SLOT t14
@@ -24,17 +32,28 @@
 #endif
 #include "terrain_biomes.hlsli"
 
+#ifndef TERRAIN_MATERIAL_CACHED
 // The six materials as layers of one array, so a pixel can pick the two it is
 // made of instead of sampling all six and throwing four away.
-Texture2DArray groundTex : register(t0, space2);
-SamplerState groundSampler : register(s0, space2);
+#ifndef GROUND_COLOUR_SLOT
+#define GROUND_COLOUR_SLOT t0
+#define GROUND_COLOUR_SAMPLER s0
+#endif
+Texture2DArray groundTex : register(GROUND_COLOUR_SLOT, space2);
+SamplerState groundSampler : register(GROUND_COLOUR_SAMPLER, space2);
 // Page detail textures occupy t1..t9 in the page variant, so the material
 // channels live after them. The mesh variant binds three contiguous samplers.
 #ifdef TERRAIN_PAGE_MATERIALS
-Texture2DArray groundNormalTex : register(t10, space2);
-SamplerState groundNormalSampler : register(s10, space2);
-Texture2DArray groundPropertiesTex : register(t11, space2);
-SamplerState groundPropertiesSampler : register(s11, space2);
+#ifndef GROUND_NORMAL_SLOT
+#define GROUND_NORMAL_SLOT t10
+#define GROUND_NORMAL_SAMPLER s10
+#define GROUND_PROPERTIES_SLOT t11
+#define GROUND_PROPERTIES_SAMPLER s11
+#endif
+Texture2DArray groundNormalTex : register(GROUND_NORMAL_SLOT, space2);
+SamplerState groundNormalSampler : register(GROUND_NORMAL_SAMPLER, space2);
+Texture2DArray groundPropertiesTex : register(GROUND_PROPERTIES_SLOT, space2);
+SamplerState groundPropertiesSampler : register(GROUND_PROPERTIES_SAMPLER, space2);
 #else
 Texture2DArray groundNormalTex : register(t1, space2);
 SamplerState groundNormalSampler : register(s1, space2);
@@ -43,10 +62,28 @@ SamplerState groundPropertiesSampler : register(s2, space2);
 #endif
 #include "terrain_material.hlsli"
 #include "terrain_decal_textures.hlsli"
-#ifdef TERRAIN_PAGE_MATERIALS
+#else
+#include "ground_frame.hlsli"
+// The cached unit has no material arrays; terrainShade's one material
+// function that reads no texture, as terrain_material.hlsli has it.
+float filteredMaterialNoise(float2 p, float footprint)
+{
+    float value = 0.0, amplitude = 0.5, total = 0.0;
+    [unroll] for (int i = 0; i < 4; ++i) {
+        const float resolved = 1.0 - smoothstep(0.25, 0.75, footprint);
+        value += lerp(0.5, noiseAt(p), resolved) * amplitude;
+        total += amplitude;
+        p = p * 2.03 + float2(3.7, 8.1);
+        footprint *= 2.03;
+        amplitude *= 0.5;
+    }
+    return value / total;
+}
+#endif
+#if defined(TERRAIN_PAGE_MATERIALS) && !defined(SHADOW_TEXTURE_SLOT)
 #define SHADOW_TEXTURE_SLOT t12
 #define SHADOW_SAMPLER_SLOT s12
-#else
+#elif !defined(SHADOW_TEXTURE_SLOT)
 #define SHADOW_TEXTURE_SLOT t3
 #define SHADOW_SAMPLER_SLOT s3
 #endif
@@ -148,6 +185,7 @@ TerrainOut TerrainVS(TerrainIn input)
 // by looking is how ground ends up looking argued about. They are content now
 // (content/config/ground.json) and the explorer can move them while it runs.
 
+#ifndef TERRAIN_MATERIAL_CACHED
 // Smoothly cross-fade the two strongest materials near their shared border.
 // Noise lets each material intrude a little into its neighbour at the border.
 // Keep biome interiors crisp and reuse the same mix at both texture scales.
@@ -347,11 +385,25 @@ GroundVariants groundVariants(int cls, GroundContext c, float2 xy)
 
 #include "terrain_biomes_code.hlsli"
 
+// What the ground at the feet is made of, for the material cache's near
+// detail (terrain_material_bake.hlsl, terrain_cached.hlsl): the layer most of
+// the top class is drawn from, and the class whose frequency it is read at.
+// Armed just before the top class is sampled; the first variants sampled
+// after (the larger side of a category border) record it.
+static bool gTrackDetail = false;
+static int gDetailLayer = 0;
+static int gDetailClass = 0;
+
 MaterialSample sampleGroundVariants(GroundVariants v, int cls, GroundFrame p, float3 normal,
                                     float3 dx, float3 dy)
 {
     const float w1 = v.s1, w2 = v.s2 * (1.0 - v.s1);
     const float wb = 1.0 - w1 - w2;
+    if (gTrackDetail) {
+        gTrackDetail = false;
+        gDetailClass = cls;
+        gDetailLayer = wb >= w1 && wb >= w2 ? v.base : (w1 >= w2 ? v.first : v.second);
+    }
     MaterialSample r = (MaterialSample)0;
     float total = 0.0;
     [branch] if (wb > 0.004) {
@@ -539,7 +591,9 @@ Ground groundHereIn(float4 weights0, float2 weights1, GroundFrame at, float3 nor
     // octaves, the variants), and a derivative taken after a branch a quad
     // did not take together is not one Metal promises - the tie line moved
     // by a few hundredths where it was.
+    gTrackDetail = true;
     const MaterialSample top = sampleGroundClass(here.top, context, p, normal, dx, dy);
+    gTrackDetail = false;
     [branch] if (next <= 0.0) {
         here.mix = 1.0;
         here.colour = top.colour;
@@ -554,7 +608,7 @@ Ground groundHereIn(float4 weights0, float2 weights1, GroundFrame at, float3 nor
     // sampled too and the two meet at an even mix, so both sides agree.
     const float underSure = lerp(1.0, smoothstep(0.0, max(0.5 * blendWidth, 0.04), next - third),
                                  smoothstep(0.0, 0.04, third));
-    [branch] if (underSure < 1.0) {
+    [branch] if (underSure < 1.0 && gMaterialLite < 0.5) {
         const MaterialSample other = sampleGroundClass(third_i, context, p, normal, dx, dy);
         const float keep = lerp(0.5, 1.0, underSure);
         under.colour = lerp(other.colour, under.colour, keep);
@@ -617,7 +671,9 @@ TerrainOut TerrainBackdropVS(TerrainIn input)
     return output;
 }
 
+#ifndef TERRAIN_MATERIAL_CACHED
 float4 terrainSurface(TerrainOut input);
+#endif
 
 // The vertex-weight entry: no analytic weight gradients. Reset explicitly -
 // a static's initializer is not something to trust across every backend.
@@ -627,14 +683,25 @@ float4 TerrainPS(TerrainOut input) : SV_Target0
     return terrainSurface(input);
 }
 
-float4 terrainSurface(TerrainOut input)
+#endif // TERRAIN_MATERIAL_CACHED
+
+// What the ground at a place is made of - the part of the surface that does
+// not change from frame to frame: which ground, which biome variant and the
+// blend between them, the shore, erosion, sand, stones, litter, decals, moss.
+// Drawn per pixel by terrainSurface, or once into the ground material cache
+// (terrain_material_bake.hlsl) and read back (terrain_cached.hlsl).
+struct SurfaceMaterial {
+    float3 colour;          // before wetness and the style grade
+    float3 normal;          // shading normal, world space
+    float4 properties;      // ao, roughness, height, mask
+    float sandCover, sandRoughness;
+    float decalRough, decalCoverage, decalMetal, decalGlow;
+    float hollow;           // concavity: where water stands
+};
+
+#ifndef TERRAIN_MATERIAL_CACHED
+SurfaceMaterial terrainMaterial(TerrainOut input)
 {
-#ifndef TERRAIN_PAGE_MATERIALS
-    if (extraPS.w > 0.5 && ringReserved.x > 0.5) {
-        float stripe=step(0.5,frac((input.position.x+input.position.y)/16.0));
-        return float4(lerp(float3(0.19,0.19,0.23),float3(0.31,0.31,0.35),stripe),1.0);
-    }
-#endif
     const float3 worldPos = float3(input.worldXY, input.worldHeight);
     // The same point to a fraction of a millimetre (world_frame.hlsli): every
     // texture coordinate, small mark and screen derivative below reads this.
@@ -715,10 +782,16 @@ float4 terrainSurface(TerrainOut input)
     const float faceEdge = (organicNoise(input.worldXY / 32.0) - 0.5) * 0.035;
     const float face = smoothstep(0.14, 0.36, steepness + faceEdge);
     const float turfCap = nose * (1.0 - smoothstep(0.20, 0.36, steepness));
+    // Snow holds the gentle ground and lets go of the steep: a face past the
+    // angle snow can lie at is rock under any snowfall. Holding every face
+    // white made a snowed range one smooth blanket with no cliff in it.
+    const float snowHolds = saturate(shoreWeights1.y) *
+                            (1.0 - smoothstep(0.22, 0.42, steepness + faceEdge * 2.0));
     const float exposedFace = face * (1.0 - hollow * 0.50) * (1.0 - turfCap * 0.45) *
-                              (1.0 - saturate(shoreWeights1.y));
+                              (1.0 - snowHolds);
     shoreWeights0.xyz *= 1.0 - exposedFace * 0.92;
     shoreWeights1.x *= 1.0 - exposedFace * 0.92;
+    shoreWeights1.y *= 1.0 - exposedFace * 0.85;
     shoreWeights0.w += exposedFace * 1.4;
     const float footSoil = hollow * smoothstep(0.04, 0.12, steepness) *
                           (1.0 - smoothstep(0.18, 0.34, steepness));
@@ -760,7 +833,19 @@ float4 terrainSurface(TerrainOut input)
     // world's grass follows its climate: lush green where it is wet, gold
     // where it is dry. Luma-preserving, and only as far as grass covers the
     // ground, so the scan's own detail stays.
-    const float grassCover = materialCoverage(0, ground.top, ground.under, ground.mix);
+    float grassCover = materialCoverage(0, ground.top, ground.under, ground.mix);
+#if defined(BIOMES_ENABLED) && defined(BIOME_ANY_GROUND)
+    // Only grass takes the grass's season. A category that lays its own soil
+    // over the grass class - the white peaks' snow, the dunes' sand - owns
+    // that soil's colour; tinted with the climate it came out a green
+    // blanket over every snowfield.
+    [branch] if (biome.any) {
+        BiomeSoil soilA, soilB;
+        const bool grassA = !biomeClassSoil(biome.groundA, 0, soilA) || soilA.l0 == 0 || soilA.l0 == LAYER_GRASS_DRY;
+        const bool grassB = !biomeClassSoil(biome.groundB, 0, soilB) || soilB.l0 == 0 || soilB.l0 == LAYER_GRASS_DRY;
+        grassCover *= lerp(grassA ? 1.0 : 0.0, grassB ? 1.0 : 0.0, biome.groundShare);
+    }
+#endif
     [branch] if (context.valid && grassCover > 0.001) {
         // The scan under it is a brown-olive photograph (hue ~40): half a tint
         // left the meadows of a temperate country orange in clear weather.
@@ -983,10 +1068,78 @@ float4 terrainSurface(TerrainOut input)
         shadingNormal=normalize(lerp(shadingNormal,moss.normal,maskedCover));
         surfaceProperties=lerp(surfaceProperties,moss.properties,maskedCover);
     }
+    SurfaceMaterial m;
+    m.colour = groundColour;
+    m.normal = shadingNormal;
+    m.properties = surfaceProperties;
+    m.sandCover = sandCover;
+    m.sandRoughness = sandRoughness;
+    m.decalRough = decalRough;
+    m.decalCoverage = decalCoverage;
+    m.decalMetal = decalMetal;
+    m.decalGlow = decalGlow;
+    m.hollow = hollow;
+    return m;
+}
+#endif // TERRAIN_MATERIAL_CACHED
+
+// The ground as it looks now: weather, snow, wetness, shadow, light and air
+// over its material. Every frame, every pixel - and cheap next to the material.
+float4 terrainShade(TerrainOut input, SurfaceMaterial m)
+{
+    const float3 worldPos = float3(input.worldXY, input.worldHeight);
+    const GroundFrame frame = groundFrame(input.worldXY, input.frameXY, input.worldHeight);
+    const float pixel = max(length(ddx(frame.local.xy)), length(ddy(frame.local.xy)));
+#if defined(BIOMES_ENABLED)
+    // A flower field (biomeFlowerCarpet) from too far to tell one flower from
+    // the next: the flowers' colour over the grass they stand in. By the
+    // screen's own pixel, so under the eye - where the plants are drawn,
+    // foliage_pages.hlsl - the ground between them stays grass, and the share
+    // grows only where a pixel is wider than a flower. Not baked: the cache's
+    // texels are as wide near the eye as a hundred metres out.
+    {
+        const float total = dot(max(input.weights0, 0.0), float4(1, 1, 1, 1)) +
+                            dot(max(input.weights1, 0.0), float2(1, 1));
+        const float grass = saturate(max(input.weights0.x, 0.0) / max(total, 1e-3));
+        const float unresolved = smoothstep(0.12, 2.0, pixel);
+        [branch] if (grass * unresolved > 0.01) {
+            const BiomeCover flowerCover = biomeCoverAt(input.worldXY, pixel, 0.5);
+            const float carpet = flowerCover.none ? 0.0 : biomeFlowerCarpet(flowerCover);
+            [branch] if (carpet > 0.0) {
+                // The petals' hue at the ground's own brightness: the albedo is
+                // linear and dark, a petal colour as painted would outshine it.
+                const float3 hue = biomeFlowerColour(flowerCover.flowerHue);
+                const float luma = dot(m.colour, float3(0.30, 0.59, 0.11));
+                const float3 petals = hue / max(dot(hue, float3(0.30, 0.59, 0.11)), 1e-3) * luma * 1.15;
+                m.colour = lerp(m.colour, petals, grass * saturate(carpet * 1.6) * unresolved * 0.65);
+            }
+        }
+    }
+#endif
+    const float3 sun = landscapeSun();
+    const float3 normal = normalize(input.normal);
+    const float hollow = m.hollow;
+    float3 groundColour = m.colour;
+    float3 shadingNormal = m.normal;
+    float4 surfaceProperties = m.properties;
+    float sandCover = m.sandCover;
+    const float sandRoughness = m.sandRoughness;
+    const float decalRough = m.decalRough, decalCoverage = m.decalCoverage;
+    const float decalMetal = m.decalMetal, decalGlow = m.decalGlow;
+    const float weatherWet=input.weather.y*input.weather.w;
+    const float snow=wxSnowMask(input.weather.x,normal.z,input.waterDepth,
+                               noiseAt(input.worldXY/11.0))*input.weather.w;
+    const float3 worldDx = ddx(frame.local), worldDy = ddy(frame.local);
     [branch] if (snow > 0.001) {
+#ifdef TERRAIN_MATERIAL_CACHED
+        // The cache's unit has no material arrays: snow as its mean.
+        groundColour = lerp(groundColour, float3(0.86, 0.89, 0.93), snow);
+        surfaceProperties = lerp(surfaceProperties, float4(1.0, 0.62, 0.5, 1.0), snow);
+#else
         const MaterialSample snowSurface = sampleGroundMaterial(5, frame, normal, worldDx, worldDy);
         groundColour = lerp(groundColour, snowSurface.colour, snow);
         surfaceProperties = lerp(surfaceProperties, snowSurface.properties, snow);
+#endif
     }
     shadingNormal=normalize(lerp(shadingNormal,normal,snow*0.8));
     sandCover*=1.0-snow;
@@ -1052,3 +1205,16 @@ float4 terrainSurface(TerrainOut input)
     }
     return float4(finished, sceneDepthAlpha(float3(input.worldXY, input.worldHeight)));
 }
+
+#ifndef TERRAIN_MATERIAL_CACHED
+float4 terrainSurface(TerrainOut input)
+{
+#ifndef TERRAIN_PAGE_MATERIALS
+    if (extraPS.w > 0.5 && ringReserved.x > 0.5) {
+        float stripe=step(0.5,frac((input.position.x+input.position.y)/16.0));
+        return float4(lerp(float3(0.19,0.19,0.23),float3(0.31,0.31,0.35),stripe),1.0);
+    }
+#endif
+    return terrainShade(input, terrainMaterial(input));
+}
+#endif // TERRAIN_MATERIAL_CACHED

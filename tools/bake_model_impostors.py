@@ -83,7 +83,8 @@ def run_native(binary, vertices, indices, layers, jobs):
                 f.write(struct.pack("<5d", j["width"], j["height"], j["frame"], j["angle"], j["eye_sign"]))
                 f.write(struct.pack("<3d", *j.get("origin", (0, 0, 0))))
                 f.write(struct.pack("<9d", *np.asarray(j.get("basis", np.eye(3)), dtype=float).reshape(-1)))
-        done = subprocess.run(["nice", "-n", "15", str(binary), str(src), str(dst)], capture_output=True, text=True)
+        done = subprocess.run(([] if sys.platform == "win32" else ["nice", "-n", "15"]) + [str(binary), str(src), str(dst)],
+                              capture_output=True, text=True)
         if done.returncode != 0:
             raise RuntimeError(done.stderr.strip())
         raw = np.fromfile(dst, dtype=np.uint8)
@@ -211,6 +212,9 @@ def sheet(into, colours, cell=128):
     """sheet.png: the ring (top row) and the hemisphere rings 8 / 8 / 4+1 over
     a mid grey, for looking at, not for the engine."""
     rows = [list(range(0, 8)), list(range(8, 16)), list(range(16, 24)), list(range(24, 29))]
+    # A model baked without the hemisphere ("hemisphere": false) has the ring alone.
+    rows = [[i for i in row if i < len(colours)] for row in rows]
+    rows = [row for row in rows if row]
     canvas = Image.new("RGB", (cell * 8, cell * len(rows)), (96, 100, 104))
     for r, views in enumerate(rows):
         for c, i in enumerate(views):

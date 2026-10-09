@@ -1,3 +1,5 @@
+#include <cstdlib>
+#include <array>
 #include "game/world/terrain_streaming/page_store.hpp"
 
 #include "engine/core/rng.hpp"
@@ -227,7 +229,7 @@ std::shared_ptr<const BakedPage> PageStore::page(TileKey key) {
         // A parent too coarse to carry the features this page does: its
         // samples are a different ground here, and are not reused.
         if (parent && environment && environment->catalogue().movesGround()) {
-            const double widest = environment->catalogue().widestGround();
+            const double widest = environment->catalogue().groundStride();
             if (double(sampleMetresAtLevel(parent->base.key.level)) > widest && double(spacing) <= widest) parent.reset();
         }
 
@@ -237,7 +239,26 @@ std::shared_ptr<const BakedPage> PageStore::page(TileKey key) {
         // identical answer, which is counted rather than prevented.
         auto& baker = bakerForThisThread();
         baker.environment(environment.get());
+        const auto bakeStart = std::chrono::steady_clock::now();
         BakedPage made = baker.bakePage(key, spacing, config_.padding, {}, parent.get());
+        // ASR_PASS_TIMES: what the bakes cost, by level, every 64 of them.
+        static const bool timed = std::getenv("ASR_PASS_TIMES") != nullptr;
+        if (timed) {
+            static std::mutex lock;
+            static std::array<double, 8> ms{};
+            static std::array<int, 8> count{};
+            static int all = 0;
+            const double took = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - bakeStart).count();
+            const std::lock_guard<std::mutex> held(lock);
+            const int level = std::min<int>(key.level, 7);
+            ms[std::size_t(level)] += took; ++count[std::size_t(level)];
+            if (++all % 64 == 0) {
+                std::fprintf(stderr, "page-bakes (%d):", all);
+                for (int l = 0; l < 8; ++l)
+                    if (count[std::size_t(l)]) std::fprintf(stderr, " H%d %d x %.1f ms", 4 << l, count[std::size_t(l)], ms[std::size_t(l)] / count[std::size_t(l)]);
+                std::fprintf(stderr, "\n");
+            }
+        }
         if (!made.base.valid()) return nullptr;
         made.groundRevision = revision;
         made.environment = environmentId;

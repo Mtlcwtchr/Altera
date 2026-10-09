@@ -33,6 +33,53 @@ nice cmake --build cmake-build-relwithdebinfo -j 2
 cmake -S . -B cmake-build-relwithdebinfo -G Ninja -DASR_BUILD_CLIENT=OFF
 ```
 
+### Windows
+
+Компилятор — **clang-cl** из Visual Studio 2022 (компонент «C++ Clang tools»), генератор
+Ninja. Обычный MSVC `cl` не подходит: `core::Fixed` считает произведения в `__int128`,
+которого у него нет (`fixed.hpp` остановит сборку с понятной ошибкой).
+
+В CLion: профиль **windows** из `CMakeUserPresets.json` (тулчейн «Visual Studio»,
+папка `cmake-build-windows`). Из терминала разработчика VS:
+
+```bat
+cmake --preset windows
+cmake --build cmake-build-windows
+```
+
+Сгенерированное не лежит в git (`assets/generated/`, запечённые карты террейна).
+На новой машине: перенести `assets/generated` с рабочей машины, затем запечь карты
+террейна из их исходников и карточки флоры. Python — с numpy/Pillow
+(`tools/scene_models_requirements.txt`):
+
+```bat
+python tools\pack_terrain.py --quiet
+python tools\make_foliage_cards.py
+```
+
+Профайлер движка (Ctrl+P, `ASR_PROFILER=1`, `ASR_PROFILE_TRACE=file.json`) работает и на
+Windows: стеки через SuspendThread/RtlVirtualUnwind, имена из PDB (DbgHelp).
+`ASR_PROFILE_STARTUP=1` вместе с `ASR_PROFILE_TRACE` пишет и загрузку до первого кадра.
+
+### GPU-профайлер (Windows, Linux)
+
+`tools/gpu_profile.py` — **отдельная тулза**: Vulkan-слой `campfire_gpu_layer` (цель CMake,
+собирается с клиентом) включается через окружение загрузчика Vulkan, в коде игры о нём
+ничего нет. Слой ставит timestamp-запросы вокруг каждой работы GPU — серии draw с одним
+пайплайном, dispatch, копии, загрузки/сохранения render pass — и называет её по точкам
+входа шейдеров (`AdaptiveTerrainVS / TerrainPagePS`). Права на счётчики и Nsight не нужны.
+
+```bat
+python tools\gpu_profile.py --skip 600 -- cmake-build-windows\campfire_client.exe --explore
+python tools\gpu_profile.py --live -- <любая Vulkan-программа и её аргументы>
+python tools\gpu_profile.py --report .cache\profiles\gpu_profile.json --skip 300
+```
+
+Отчёт: среднее/медиана/p95 GPU-кадра и мс на кадр по каждой работе; JSON по кадрам в
+`.cache/profiles/gpu_profile.json`. Метки стоят в конце конвейера: итог кадра точный,
+раскладка между соседями, перекрывающимися на GPU, — атрибуция, как у любого
+timestamp-профайлера. На macOS — Instruments (`tools/campfire_profiler.py --mode gpu`).
+
 ## Запуск
 
 В CLion готовы конфигурации (`.idea/runConfigurations`): **Game**, **Game (new

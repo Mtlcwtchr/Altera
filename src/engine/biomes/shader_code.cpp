@@ -376,7 +376,8 @@ std::vector<float> shaderTable(const Registry& r) {
         const Foliage& f = r.foliage()[i];
         const int row = kRowFoliage + int(i);
         put(t, row, 0, f.density, f.height, f.dryness, f.flowers);
-        put(t, row, 1, f.tint[0], f.tint[1], f.tint[2], 0);
+        // w: the drifts' flower colour plus one; nought, a drift's own.
+        put(t, row, 1, f.tint[0], f.tint[1], f.tint[2], f.flowerHue < 0.0 ? 0.0 : 1.0 + std::min(f.flowerHue, 0.999));
     }
     for (std::size_t i = 0; i < r.rocks().size() && i < 256; ++i) {
         const Rock& k = r.rocks()[i];

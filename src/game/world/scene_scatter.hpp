@@ -12,38 +12,35 @@
 #include <vector>
 
 namespace world::decor {
-// Manifest order is an explicit content contract, not a random filesystem order.
-inline constexpr std::array<const char*,36> kModels{
-    "CommonTree_1", "Pine_1", "Bush_Common", "Rock_Medium_1", "Mushroom_Common",
-    "Deadwood_Log", "Deadwood_Stump", "Deadwood_Branch",
-    "Cliff_Face_Grey", "Cliff_Face_Warm", "Moss_Clump", "Fern_Clump", "Shrub_Dense", "Shrub_Low",
-    // The second environment extension (content/config/environment_models.json):
-    // trees, shrubs, rocks and small props from the prepared source models.
-    "Hornbeam_Forest_A", "Hornbeam_Forest_B", "Trident_Maple", "Island_Tree_A", "Island_Tree_B",
-    "Small_Tree", "Jacaranda_Tree", "Pine_Tree",
-    "Shrub_Leafy", "Shrub_Round", "Rooibos_Bush",
-    "Boulder_Round", "Rock_Angular", "Forest_Rock_Small",
-    "Dead_Trunk", "Stump_Old", "Red_Mushrooms",
-    // Leaf-recoloured trees (tools/prepare_environment_models.py recolour): the
-    // biomes whose crowns are not green.
-    "Amber_Oak", "Amber_Hornbeam", "Blossom_Maple", "Blossom_Birch", "Dark_Oak"};
+// Manifest order is an explicit content contract, not a random filesystem order:
+// the catalogue and what each model is are generated with the manifest
+// (tools/prepare_environment_models.py -> environment_models.gen.hpp), so a model
+// is added in content/config/environment_models.json, never here.
+inline constexpr auto kModels = kCatalogueModels;
+static_assert(kCatalogueKinds.size() == kModels.size());
 inline constexpr std::uint32_t kCliffGrey=8, kCliffWarm=9, kMoss=10, kFern=11,
                                kDenseShrub=12, kLowShrub=13;
-inline constexpr std::uint32_t kFirstTree2=14, kLastTree2=21, kFirstRock2=25, kLastRock2=27,
-                               kFirstTree3=31, kLastTree3=35;
-// The beech and the spruce of the base catalogue, and the added trees.
+inline constexpr ModelKind modelKind(std::uint32_t model) {
+    return model < kCatalogueKinds.size() ? kCatalogueKinds[model] : ModelKind::Shrub;
+}
 inline constexpr bool treeModel(std::uint32_t model) {
-    return model<2 || (model>=kFirstTree2 && model<=kLastTree2) || (model>=kFirstTree3 && model<=kLastTree3);
+    return model < kModels.size() && (modelKind(model)==ModelKind::TreeBroadleaf || modelKind(model)==ModelKind::TreeConifer);
 }
-inline constexpr bool coniferModel(std::uint32_t model) { return model==1 || model==21; }
+inline constexpr bool coniferModel(std::uint32_t model) { return model < kModels.size() && modelKind(model)==ModelKind::TreeConifer; }
+// A free-standing stone: boulders, spires, crystals - not the cliff faces.
+inline constexpr bool boulderModel(std::uint32_t model) { return model < kModels.size() && modelKind(model)==ModelKind::Rock; }
 inline constexpr bool rockModel(std::uint32_t model) {
-    return model==3 || model==kCliffGrey || model==kCliffWarm || (model>=kFirstRock2 && model<=kLastRock2);
+    return boulderModel(model) || (model < kModels.size() && modelKind(model)==ModelKind::Cliff);
 }
+inline constexpr bool shrubModel(std::uint32_t model) { return model < kModels.size() && modelKind(model)==ModelKind::Shrub; }
 inline constexpr bool groundCoverModel(std::uint32_t model) { return model==kMoss || model==kFern || model==kLowShrub; }
 // How deep a plant or prop of the scatter stands in the ground, metres.
 inline constexpr double plantSink(std::uint32_t model) {
-    return model==3 || (model>=kFirstRock2 && model<=kLastRock2)?0.25:0.08;
+    return boulderModel(model)?0.25:0.08;
 }
+// The catalogue as it was before it was generated; these indices are named
+// in code and must not move.
+static_assert(treeModel(0) && coniferModel(1) && boulderModel(3) && rockModel(kCliffGrey) && rockModel(kCliffWarm));
 // Imported plants retain metre units; an 8 cm root offset would bury moss.
 inline double groundSink(std::uint32_t model,double scale) {
     if (model==kMoss) return 0.002;
@@ -54,7 +51,7 @@ inline double groundSink(std::uint32_t model,double scale) {
     return plantSink(model);
 }
 inline constexpr int kCell = 8, kRegion = 128, kRadius = 768;
-inline constexpr std::size_t kBaseModelCount=8;
+inline constexpr std::size_t kBaseModelCount=kCatalogueBaseCount;
 inline constexpr std::size_t kMaxScatterCells = 65536;
 inline constexpr std::size_t kMeshTriangleBudget = 1500000;
 inline constexpr double kImpostorFloorPixels = 0.8;

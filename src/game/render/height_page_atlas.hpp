@@ -3,6 +3,7 @@
 // this object never bakes or waits for a page on the frame thread.
 
 #include <optional>
+#include <utility>
 #include <vector>
 
 #include "engine/render/device.hpp"
@@ -57,6 +58,10 @@ public:
     bool hold(Key key);
     // A different world/version must not reuse the old world's page keys.
     void clear();
+    // The pages that stopped being resident since the last call: displaced
+    // by an upload into their slot, or an upload that was never submitted.
+    // GpuTerrain keeps its table by these instead of asking every page.
+    [[nodiscard]] std::vector<Key> takeEvicted() { return std::exchange(evicted_, {}); }
 
 private:
     struct Entry {
@@ -65,7 +70,10 @@ private:
         bool fieldsReady = false;
         bool mayHaveWater = true;
         std::shared_ptr<const world::terrain::SurfacePage> surface;
+        Key key{};
+        bool hasKey = false;
     };
+    std::vector<Key> evicted_;
     Layout layout_;
     world::terrain::PageResidency residency_;
     std::vector<Entry> entries_;

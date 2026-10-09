@@ -224,7 +224,7 @@ TEST(terrain_config_checked_in_file_is_valid_and_chunks_align_with_pages) {
     CHECK(readTerrainConfig(root / "content/config/terrain.json", config, error));
     CHECK(error.empty());
     // Check the shipped tuning, not TerrainConfig's fallback defaults.
-    CHECK_EQ(config.detailDistanceScale, 8.0);
+    CHECK_EQ(config.detailDistanceScale, 2.0);   // D191: 8 baked five times the pages for no visible gain
     CHECK_EQ(config.chunkCells, 32);
     // Two hundred and fifty-six metres to a tile until sixteen of its steps
     // fill it, and from there sixteen cells a tile, doubling with the step: a

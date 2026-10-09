@@ -1125,6 +1125,119 @@
     "warmth": 0.85,
     "fertility": 0.05
    }
+  },
+  {
+   "name": "fg_golden_dunes",
+   "id": 39,
+   "inherit": "golden_desert",
+   "_comment": "The world of fallen gods: the golden desert (doc/BIOMES_RU.md 04) - golden sand everywhere, the orange dune scan left to Xairinis.",
+   "soils": {
+    "grass": "golden_sand",
+    "dirt": "golden_sand",
+    "sand": "golden_sand"
+   },
+   "look": {
+    "tint": [
+     1.08,
+     1.0,
+     0.78
+    ]
+   }
+  },
+  {
+   "name": "fg_black_rock",
+   "id": 40,
+   "inherit": "volcanic_rock",
+   "_comment": "The world of fallen gods: the black lands (doc/BIOMES_RU.md 10) - black-blue rock, burned ground, muted.",
+   "soils": {
+    "grass": "burned",
+    "dirt": "burned"
+   },
+   "defaults": {
+    "forest": "charred_dead"
+   },
+   "look": {
+    "tint": [
+     0.42,
+     0.4,
+     0.47
+    ]
+   },
+   "climate": {
+    "zone": "alpine",
+    "warmth": 0.5,
+    "fertility": 0.05
+   }
+  },
+  {
+   "name": "fg_flower_valley",
+   "id": 41,
+   "inherit": "silver_meadow",
+   "_comment": "The world of fallen gods: the flower lake valley (doc/BIOMES_RU.md 07) - the white glossy grass; its poppy fields are fg_poppy_field.",
+   "ground_foliage": "poppy_white_grass",
+   "look": {
+    "tint": [
+     1.75,
+     1.75,
+     1.55
+    ],
+    "saturation": 0.3
+   }
+  },
+  {
+   "name": "fg_white_peaks",
+   "id": 42,
+   "inherit": "rock",
+   "_comment": "The world of fallen gods: the white mountains' heights (doc/BIOMES_RU.md 08) - snow on every ground the slope lets hold it, the cliffs grey.",
+   "soils": {
+    "grass": "alpine_snow",
+    "dirt": "alpine_snow",
+    "sand": "alpine_snow",
+    "marsh": "alpine_snow"
+   },
+   "ground_foliage": "none",
+   "look": {
+    "tint": [
+     1.02,
+     1.03,
+     1.06
+    ]
+   }
+  },
+  {
+   "name": "fg_poppy_field",
+   "id": 43,
+   "inherit": "fg_flower_valley",
+   "_comment": "The flower lake valley's poppy fields: a carpet of poppies (foliage poppy_meadow) - the colour is the flowers', the ground under them a meadow's.",
+   "look": {
+    "tint": [
+     1.0,
+     1.0,
+     1.0
+    ],
+    "saturation": 1.0
+   },
+   "ground_foliage": "poppy_meadow"
+  },
+  {
+   "name": "fg_white_jagged",
+   "id": 44,
+   "inherit": "jagged",
+   "_comment": "The white mountains' toothed heights (doc/BIOMES_RU.md 08): jagged grey faces, snow on every ledge between them - not the grass the plain jagged keeps.",
+   "soils": {
+    "grass": "alpine_snow",
+    "dirt": "alpine_snow",
+    "sand": "alpine_snow",
+    "marsh": "alpine_snow"
+   },
+   "ground_foliage": "none",
+   "look": {
+    "tint": [
+     1.02,
+     1.03,
+     1.06
+    ]
+   }
   }
  ],
  "derive": [

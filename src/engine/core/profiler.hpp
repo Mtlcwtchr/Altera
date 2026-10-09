@@ -89,6 +89,9 @@ Symbol symbolOf(std::uintptr_t address);
 void noteAllocation(std::size_t bytes);
 void noteFree(std::size_t bytes);
 [[nodiscard]] bool allocationsHooked();
+// Whether allocations are being counted now: asked before a block's size is,
+// since asking the heap for a size takes its lock (Windows _msize).
+[[nodiscard]] bool countingAllocations();
 
 // A thread's samples in a frame as bars of a flame chart: consecutive samples
 // whose stacks agree down to a depth make one bar at that depth. Depth 0 is

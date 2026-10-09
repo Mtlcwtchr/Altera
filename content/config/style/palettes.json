@@ -1,11 +1,12 @@
 {
-  "comment": "Surface style regions (engine/environment/style.hpp), read by assets/shaders/game/style_surface.hlsli: rows are changes from the unstyled colour (fantasy_80s_art_asset_style_spec \u00a73, \u00a76, \u00a78). A region applies where its zones are under the camera; the default everywhere else.",
+  "comment": "Surface style regions (engine/environment/style.hpp), read by assets/shaders/game/style_surface.hlsli: rows are changes from the unstyled colour (fantasy_80s_art_asset_style_spec §3, §6, §8). A region applies where its zones are under the camera; the default everywhere else. paint: amount, metres, relief given up, - (terrain_cached.hlsl cachedPaint): the ground's colour as masses, its scan averaged over metres.",
   "rows": [
     "shadow_tint",
     "highlight_tint",
     "shaping",
     "macro",
-    "print"
+    "print",
+    "paint"
   ],
   "default": "painted",
   "blend_seconds": 4,
@@ -40,6 +41,12 @@
         "print": [
           0.1,
           24
+        ],
+        "paint": [
+          0.85,
+          8.0,
+          0.5,
+          0.0
         ]
       }
     },
@@ -80,6 +87,12 @@
           70,
           0.04,
           0.0
+        ],
+        "paint": [
+          0.85,
+          8.0,
+          0.5,
+          0.0
         ]
       }
     },
@@ -117,6 +130,12 @@
           0.06,
           120,
           0.05,
+          0.0
+        ],
+        "paint": [
+          0.85,
+          8.0,
+          0.5,
           0.0
         ]
       }
@@ -162,6 +181,12 @@
         "print": [
           0.12,
           22
+        ],
+        "paint": [
+          0.85,
+          8.0,
+          0.5,
+          0.0
         ]
       }
     },
@@ -201,6 +226,12 @@
           150,
           0.04,
           0.0
+        ],
+        "paint": [
+          0.85,
+          8.0,
+          0.5,
+          0.0
         ]
       }
     },
@@ -236,6 +267,12 @@
           0.04,
           100,
           0.02,
+          0.0
+        ],
+        "paint": [
+          0.85,
+          8.0,
+          0.5,
           0.0
         ]
       }
