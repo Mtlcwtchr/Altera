@@ -39,6 +39,8 @@ reports/
 !/doc/reports/vg_step_*/**
 !/doc/reports/render_systems_step_*/
 !/doc/reports/render_systems_step_*/**
+!/doc/reports/terrain_core/
+!/doc/reports/terrain_core/**
 /doc/reports/**/.DS_Store
 /doc/obsolete/
 *.log
@@ -93,3 +95,4 @@ __pycache__/
 /*.bat
 /imgui.ini
 /CMakeUserPresets.json
+/terrain_lab_out/

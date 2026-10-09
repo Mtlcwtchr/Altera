@@ -1,0 +1,168 @@
+#include "terrain_core/macro_map.hpp"
+
+#include "engine/world_source/png_io.hpp"
+
+#include <algorithm>
+#include <cmath>
+
+namespace terrain_core {
+namespace {
+
+std::uint32_t hash3(std::int32_t x, std::int32_t y, std::uint32_t seed) {
+    std::uint32_t h = std::uint32_t(x) * 0x8da6b343u ^ std::uint32_t(y) * 0xd8163841u ^ seed * 0xcb1ab31fu;
+    h ^= h >> 16; h *= 0x7feb352du; h ^= h >> 15; h *= 0x846ca68bu; h ^= h >> 16;
+    return h;
+}
+
+float lattice(std::int32_t x, std::int32_t y, std::uint32_t seed) {
+    return float(hash3(x, y, seed) & 0xffffffu) / float(0xffffff) * 2.0f - 1.0f;
+}
+
+// Value noise, quintic fade, period-free. Good enough for a continent outline;
+// the fine detail is the GPU's.
+float valueNoise(float x, float y, std::uint32_t seed) {
+    const float fx = std::floor(x), fy = std::floor(y);
+    const auto ix = std::int32_t(fx), iy = std::int32_t(fy);
+    const float tx = x - fx, ty = y - fy;
+    const float ux = tx * tx * tx * (tx * (tx * 6 - 15) + 10);
+    const float uy = ty * ty * ty * (ty * (ty * 6 - 15) + 10);
+    const float a = lattice(ix, iy, seed), b = lattice(ix + 1, iy, seed);
+    const float c = lattice(ix, iy + 1, seed), d = lattice(ix + 1, iy + 1, seed);
+    return a + (b - a) * ux + (c - a) * uy + (a - b - c + d) * ux * uy;
+}
+
+float fbm(float x, float y, int octaves, std::uint32_t seed) {
+    float sum = 0, amp = 0.5f, norm = 0;
+    for (int o = 0; o < octaves; ++o) {
+        sum += amp * valueNoise(x, y, seed + std::uint32_t(o) * 101u);
+        norm += amp;
+        x = x * 2.03f + 17.1f; y = y * 2.03f - 9.7f; amp *= 0.5f;
+    }
+    return sum / norm;
+}
+
+float ridged(float x, float y, int octaves, std::uint32_t seed) {
+    float sum = 0, amp = 0.5f, norm = 0, weight = 1;
+    for (int o = 0; o < octaves; ++o) {
+        float n = 1.0f - std::fabs(valueNoise(x, y, seed + 7777u + std::uint32_t(o) * 131u));
+        n *= n * weight;
+        weight = std::clamp(n * 1.5f, 0.0f, 1.0f);
+        sum += amp * n; norm += amp;
+        x = x * 2.1f + 3.3f; y = y * 2.1f + 1.7f; amp *= 0.5f;
+    }
+    return sum / norm;
+}
+
+} // namespace
+
+bool MacroMap::load(const std::filesystem::path& png, std::string* why) {
+    auto image = engine::world_source::readPng(png, why);
+    if (!image) return false;
+    if (image->width != image->height || image->width == 0) {
+        if (why) *why = "macro map must be square";
+        return false;
+    }
+    std::vector<std::uint16_t> base(std::size_t(image->width) * image->height);
+    const std::uint32_t scale = image->bits == 16 ? 1u : 257u;
+    for (std::uint32_t y = 0; y < image->height; ++y)
+        for (std::uint32_t x = 0; x < image->width; ++x)
+            base[std::size_t(y) * image->width + x] = std::uint16_t(image->at(x, y, 0) * scale);
+    size_ = image->width;
+    buildPyramid(std::move(base));
+    return true;
+}
+
+void MacroMap::generate(std::uint32_t size, std::uint32_t seed) {
+    std::vector<std::uint16_t> base(std::size_t(size) * size);
+    for (std::uint32_t y = 0; y < size; ++y) {
+        for (std::uint32_t x = 0; x < size; ++x) {
+            const float u = (float(x) + 0.5f) / float(size), v = (float(y) + 0.5f) / float(size);
+            // Warped continents, pulled down towards the edge of the world so
+            // it ends in sea rather than in a cut.
+            const float wx = fbm(u * 3.0f, v * 3.0f, 4, seed + 1) * 0.35f;
+            const float wy = fbm(u * 3.0f + 5.2f, v * 3.0f + 1.3f, 4, seed + 2) * 0.35f;
+            float land = fbm((u + wx) * 2.5f, (v + wy) * 2.5f, 7, seed + 3);
+            const float dx = u - 0.5f, dy = v - 0.5f;
+            land += 0.25f - 1.2f * (dx * dx + dy * dy);
+            const float coast = std::clamp((land + 0.02f) * 6.0f, 0.0f, 1.0f);
+            const float inland = std::clamp((land - 0.08f) * 3.0f, 0.0f, 1.0f);
+            const float ranges = ridged((u + wx) * 9.0f, (v + wy) * 9.0f, 6, seed + 4);
+            float h = 0.18f * coast + 0.12f * inland + 0.70f * inland * ranges * ranges;
+            if (land < -0.02f) h = std::max(0.0f, 0.12f + land);   // sea floor below the coast
+            base[std::size_t(y) * size + x] = std::uint16_t(std::clamp(h, 0.0f, 1.0f) * 65535.0f);
+        }
+    }
+    size_ = size;
+    buildPyramid(std::move(base));
+}
+
+bool MacroMap::save(const std::filesystem::path& png, std::string* why) const {
+    engine::world_source::Image image;
+    image.width = image.height = size_;
+    image.channels = 1;
+    image.bits = 16;
+    image.words = texels();
+    std::error_code ignored;
+    std::filesystem::create_directories(png.parent_path(), ignored);
+    return engine::world_source::writePng(png, image, why);
+}
+
+void MacroMap::buildPyramid(std::vector<std::uint16_t> base) {
+    levels_.clear();
+    Level level{size_, base, std::move(base)};
+    levels_.push_back(std::move(level));
+    while (levels_.back().size > 1) {
+        const Level& fine = levels_.back();
+        Level coarse;
+        coarse.size = (fine.size + 1) / 2;
+        coarse.lo.assign(std::size_t(coarse.size) * coarse.size, 65535);
+        coarse.hi.assign(std::size_t(coarse.size) * coarse.size, 0);
+        for (std::uint32_t y = 0; y < fine.size; ++y)
+            for (std::uint32_t x = 0; x < fine.size; ++x) {
+                const std::size_t f = std::size_t(y) * fine.size + x;
+                const std::size_t c = std::size_t(y / 2) * coarse.size + x / 2;
+                coarse.lo[c] = std::min(coarse.lo[c], fine.lo[f]);
+                coarse.hi[c] = std::max(coarse.hi[c], fine.hi[f]);
+            }
+        levels_.push_back(std::move(coarse));
+    }
+}
+
+float MacroMap::sample(double u, double v) const {
+    if (levels_.empty()) return 0.0f;
+    const auto& t = levels_[0].lo;
+    const double x = std::clamp(u * size_ - 0.5, 0.0, double(size_ - 1));
+    const double y = std::clamp(v * size_ - 0.5, 0.0, double(size_ - 1));
+    const auto x0 = std::uint32_t(x), y0 = std::uint32_t(y);
+    const std::uint32_t x1 = std::min(x0 + 1, size_ - 1), y1 = std::min(y0 + 1, size_ - 1);
+    const double fx = x - x0, fy = y - y0;
+    auto at = [&](std::uint32_t a, std::uint32_t b) { return double(t[std::size_t(b) * size_ + a]) / 65535.0; };
+    return float((at(x0, y0) * (1 - fx) + at(x1, y0) * fx) * (1 - fy) + (at(x0, y1) * (1 - fx) + at(x1, y1) * fx) * fy);
+}
+
+std::pair<float, float> MacroMap::range(double u0, double v0, double u1, double v1) const {
+    if (levels_.empty()) return {0.0f, 0.0f};
+    // The level at which the square is a few texels across; one texel of
+    // margin round it for the bicubic's reach.
+    const double span = std::max(u1 - u0, v1 - v0) * size_;
+    std::uint32_t k = 0;
+    while (k + 1 < levels_.size() && double(1u << (k + 1)) < span * 0.5) ++k;
+    const Level& level = levels_[k];
+    const double texel = double(1u << k) / double(size_);   // one level-k texel, in map units
+    auto clampi = [&](double t) {
+        return std::uint32_t(std::clamp(t, 0.0, double(level.size - 1)));
+    };
+    const std::uint32_t x0 = clampi(std::floor(u0 / texel) - 1), x1 = clampi(std::floor(u1 / texel) + 1);
+    const std::uint32_t y0 = clampi(std::floor(v0 / texel) - 1), y1 = clampi(std::floor(v1 / texel) + 1);
+    std::uint16_t lo = 65535, hi = 0;
+    for (std::uint32_t y = y0; y <= y1; ++y)
+        for (std::uint32_t x = x0; x <= x1; ++x) {
+            lo = std::min(lo, level.lo[std::size_t(y) * level.size + x]);
+            hi = std::max(hi, level.hi[std::size_t(y) * level.size + x]);
+        }
+    // Catmull-Rom overshoots its samples by up to an eighth of a step.
+    const float spread = float(hi - lo) / 65535.0f * 0.125f;
+    return {float(lo) / 65535.0f - spread, float(hi) / 65535.0f + spread};
+}
+
+} // namespace terrain_core

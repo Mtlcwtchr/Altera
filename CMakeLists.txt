@@ -519,6 +519,20 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(asr_mesh_lab PRIVATE asr_geometry nlohmann_json
             SDL3::SDL3-static SDL3_image::SDL3_image-static asr_warnings)
 
+    # The terrain core (doc/rework/TERRAIN_REWORK_PLAN.md): macro map, GPU
+    # clipmap, CDLOD patches. Depends on the device and nothing of the game.
+    add_library(campfire_terrain_core STATIC
+            src/terrain_core/macro_map.cpp
+            src/terrain_core/lod_select.cpp
+            src/terrain_core/renderer.cpp)
+    target_include_directories(campfire_terrain_core PUBLIC src)
+    target_link_libraries(campfire_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE asr_warnings)
+
+    # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
+    add_executable(terrain_lab tools/terrain_lab/main.cpp)
+    target_link_libraries(terrain_lab PRIVATE campfire_terrain_core asr_warnings)
+    target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS)
+
     add_executable(asr_shader_check tools/shader_check.cpp)
     target_link_libraries(asr_shader_check PRIVATE SDL3::SDL3-static
             SDL3_shadercross::SDL3_shadercross-static asr_warnings)
@@ -820,6 +834,11 @@ if(ASR_BUILD_TESTS)
     target_sources(asr_terrain_tests PRIVATE tests/test_natural_basins.cpp)
     target_sources(asr_terrain_tests PRIVATE tests/test_world_scale.cpp tests/test_land_coverage.cpp
             tests/test_terrain_source.cpp)
+    if(TARGET campfire_terrain_core)
+        add_executable(campfire_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp)
+        target_link_libraries(campfire_terrain_core_tests PRIVATE campfire_terrain_core asr_warnings)
+        add_test(NAME terrain_core_unit COMMAND campfire_terrain_core_tests)
+    endif()
     add_test(NAME terrain_unit COMMAND asr_terrain_tests)
     set_tests_properties(terrain_unit PROPERTIES TIMEOUT 120)
 

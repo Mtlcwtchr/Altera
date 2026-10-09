@@ -1,0 +1,79 @@
+#pragma once
+// The terrain core on the GPU: the macro map, the clipmap it generates from it,
+// and the one instanced draw of the selected patches.
+//
+// Generation runs in the frame's own command buffer before the draw, so a
+// texel the draw reads is never stale: whatever came into view this frame is
+// generated this frame. What that costs is exactly what the benchmark is for.
+
+#include "engine/render/device.hpp"
+#include "terrain_core/lod_select.hpp"
+#include "terrain_core/macro_map.hpp"
+#include "terrain_core/params.hpp"
+
+#include <cstdint>
+#include <vector>
+
+namespace terrain_core {
+
+struct ViewUniforms {
+    float viewProjection[16];   // row-major, eye-relative
+    float eyeZ;
+    float spacing;
+    std::uint32_t clipSize;
+    std::uint32_t grid;
+    std::uint32_t levels;
+    float rangeFactor;
+    float morphStart;
+    float pad0;
+};
+
+struct LookUniforms {
+    float sunDirection[3];
+    float hazeDistance;
+    float skyColour[3];
+    std::uint32_t debugLevels;
+    std::uint32_t clipSize;
+    std::uint32_t levels;
+    float pad[2];
+};
+
+class Renderer {
+public:
+    bool open(engine::Device& device, const Params& params, const MacroMap& macro);
+
+    // Records the generation of `rects` into `commands` (compute passes, so
+    // outside any render pass). Returns the texels generated.
+    std::uint64_t generate(SDL_GPUCommandBuffer* commands, const std::vector<Rect>& rects);
+    // Copies the patch list into `commands` (a copy pass, so before the
+    // render pass). In the frame's own command buffer: a separate submit per
+    // frame for a few kilobytes was the frame's only multi-millisecond spike.
+    bool upload(SDL_GPUCommandBuffer* commands, const Selection& selection);
+    ~Renderer();
+    // Inside a render pass.
+    void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const ViewUniforms& view,
+              const LookUniforms& look);
+
+    std::uint32_t trianglesDrawn() const { return triangles_; }
+    std::uint64_t gpuBytes() const { return gpuBytes_; }
+    SDL_GPUTexture* clipmap() const { return clipmap_.get(); }
+
+private:
+    engine::Device* device_ = nullptr;
+    Params params_;
+    std::uint32_t macroSize_ = 0;
+    engine::Texture macro_, clipmap_;
+    engine::Sampler nearest_;
+    engine::ComputePipeline generate_;
+    engine::GraphicsPipeline terrain_;
+    engine::Buffer indices_, patches_;
+    SDL_GPUTransferBuffer* patchStaging_ = nullptr;
+    std::uint32_t patchCapacity_ = 0;
+    std::uint32_t quarterIndices_ = 0;
+    std::uint32_t counts_[4] = {}, firsts_[4] = {};
+    std::uint32_t triangles_ = 0;
+    std::uint64_t gpuBytes_ = 0;
+    std::vector<Patch> staging_;
+};
+
+} // namespace terrain_core
