@@ -4,6 +4,10 @@ set(SDLSHADERCROSS_STATIC ON CACHE BOOL "" FORCE)
 set(SDLSHADERCROSS_CLI OFF CACHE BOOL "" FORCE)
 set(SDLSHADERCROSS_VENDORED ON CACHE BOOL "" FORCE)
 set(SDLSHADERCROSS_DXC ON CACHE BOOL "" FORCE)
+# DXC touches its git-info script on every build ("Touch GetCommitInfo.py to
+# trigger rebuild"): a recompile and a relink of the compiler and everything
+# on it, each time, for a commit hash nobody reads.
+set(HLSL_SUPPORT_QUERY_GIT_COMMIT_INFO OFF CACHE BOOL "" FORCE)
 FetchContent_Declare(SDL3_shadercross
         GIT_REPOSITORY https://github.com/libsdl-org/SDL_shadercross.git
         GIT_TAG 1ff05bec573988a98ef9e0260b4da44f512b8367
@@ -26,6 +30,7 @@ target_include_directories(asr_engine_render PUBLIC src)
 target_link_libraries(asr_engine_render PUBLIC asr_core SDL3::SDL3-static SDL3_image::SDL3_image-static
         SDL3_shadercross::SDL3_shadercross-static PRIVATE asr_warnings)
 add_library(Campfire::Render ALIAS asr_engine_render)
+include("${CMAKE_SOURCE_DIR}/cmake/dlss.cmake")
 
 add_library(asr_impostors_gpu STATIC src/engine/render/impostor_gpu_cache.cpp)
 target_include_directories(asr_impostors_gpu PUBLIC src)
