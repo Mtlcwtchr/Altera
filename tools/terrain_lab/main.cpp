@@ -23,6 +23,8 @@
 #include "engine/render/device.hpp"
 #include "engine/render/targets.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/erosion.hpp"
+#include "engine/world_source/png_io.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
@@ -83,6 +85,8 @@ struct Camera {
 struct Options {
     Params params;
     fs::path heightmap;
+    fs::path erodeOut;        // --erode: weather the macro map, write it here, exit
+    ErosionSettings erosion;
     fs::path biomes;          // 8-bit biome ids; empty: generated
     fs::path ground;          // biome table; empty: content/config/terrain_core/biomes.json
     std::uint32_t generateSize = 0;
@@ -118,6 +122,11 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--sea") { o.params.macroSeaLevel = std::atof(next()); o.seaGiven = true; }
         else if (a == "--detail") o.params.detailAmplitude = std::atof(next());
         else if (a == "--heightmap") o.heightmap = next();
+        else if (a == "--erode") o.erodeOut = next();
+        else if (a == "--erode-scale") o.erosion.scale = std::uint32_t(std::atoi(next()));
+        else if (a == "--erode-iterations") o.erosion.iterations = std::uint32_t(std::atoi(next()));
+        else if (a == "--talus") o.erosion.talusDegrees = std::atof(next());
+        else if (a == "--erode-detail") o.erosion.detail = std::atof(next());
         else if (a == "--biomes") o.biomes = next();
         else if (a == "--ground") o.ground = next();
         else if (a == "--generate") o.generateSize = std::uint32_t(std::atoi(next()));
@@ -145,7 +154,7 @@ bool parse(int argc, char** argv, Options& o) {
     // strategic view can pull back over all of it. They cost little: each is
     // a ring of patches further out and one more layer of the clipmap. The
     // benchmark keeps the preset unless told otherwise.
-    if (o.viewKm <= 0 && !o.levelsGiven && o.bench.empty() && o.shot.empty()) o.viewKm = p.worldSize * 1.5 / 1000.0;
+    if (o.viewKm <= 0 && !o.levelsGiven && o.bench.empty() && o.shot.empty() && o.erodeOut.empty()) o.viewKm = p.worldSize * 1.5 / 1000.0;
     if (o.viewKm > 0) {
         p.levels = 1;
         while (p.viewDistance() < o.viewKm * 1000.0 && p.levels < 24) ++p.levels;
@@ -238,6 +247,7 @@ struct Lab {
     Camera camera;
     double ground = 0;      // last known height under the eye
     bool groundKnown = false;
+    bool eroded = false;      // --erode ran; nothing else to do
 
     explicit Lab(Options& o) : options(o) {}
 
@@ -264,6 +274,9 @@ struct Lab {
         }
         std::printf("macro map %u^2 in %.0f ms (%.1f m/texel)\n", macro.size(), msSince(loadStart),
                     options.params.worldSize / macro.size());
+        if (!options.erodeOut.empty()) return erodeAndSave();
+        options.params.macroTexel = macro.texelMetres(options.params.worldSize);
+        std::printf("detail from %.0f m wavelength down\n", options.params.topWavelength());
 
         const auto gpuStart = Clock::now();
         const auto biomeStart = Clock::now();
@@ -286,6 +299,48 @@ struct Lab {
         const Params& p = options.params;
         std::printf("params: world %.0f km, spacing %.2f m, clip %u, grid %u, levels %u, range x%.2f -> view %.1f km\n",
                     p.worldSize / 1000, p.spacing, p.clipSize, p.grid, p.levels, p.rangeFactor, p.viewDistance() / 1000);
+        return true;
+    }
+
+    // --erode: weather the loaded map, write it and a shaded preview beside it.
+    bool erodeAndSave() {
+        const ErosionSettings& e = options.erosion;
+        std::printf("eroding: %u^2 -> %u^2 (%.1f m/texel), %u thermal passes at %.0f deg\n", macro.size(),
+                    macro.size() * e.scale, options.params.worldSize / (macro.size() * e.scale), e.iterations,
+                    e.talusDegrees);
+        MacroMap out;
+        ErosionTimings t;
+        std::string why;
+        const auto total = Clock::now();
+        if (!erode(device, macro, options.params, e, out, t, &why)) { std::fprintf(stderr, "erosion: %s\n", why.c_str()); return false; }
+        const auto saveStart = Clock::now();
+        if (!out.save(options.erodeOut, &why)) { std::fprintf(stderr, "save: %s\n", why.c_str()); return false; }
+        const double saveMs = msSince(saveStart);
+        // A hillshade preview, 2048 a side.
+        const std::uint32_t side = std::min<std::uint32_t>(2048, out.size()), step = out.size() / side;
+        engine::world_source::Image preview;
+        preview.width = preview.height = side;
+        preview.channels = 1;
+        preview.bits = 8;
+        preview.allocate();
+        const double texel = options.params.worldSize / out.size() * step;
+        for (std::uint32_t y = 1; y + 1 < side; ++y)
+            for (std::uint32_t x = 1; x + 1 < side; ++x) {
+                auto at = [&](std::uint32_t a, std::uint32_t b) {
+                    return double(out.texels()[std::size_t(b * step) * out.size() + a * step]) / 65535.0 * options.params.macroHeightRange;
+                };
+                const double dx = (at(x + 1, y) - at(x - 1, y)) / (2 * texel), dy = (at(x, y + 1) - at(x, y - 1)) / (2 * texel);
+                const double shade = std::clamp((-dx * 0.6 - dy * 0.5 + 1.0) / std::sqrt(dx * dx + dy * dy + 1.0) * 0.75, 0.0, 1.0);
+                preview.set(x, y, 0, std::uint16_t(shade * 255));
+            }
+        fs::path previewPath = options.erodeOut;
+        previewPath.replace_extension(".preview.png");
+        engine::world_source::writePng(previewPath, preview, &why);
+        std::printf("erosion: upload %.0f ms, upscale %.0f ms, thermal %.0f ms (%.1f ms/pass), readback %.0f ms, convert %.0f ms, "
+                    "save %.0f ms; total %.1f s\n", t.uploadMs, t.upscaleMs, t.thermalMs, t.thermalMs / std::max(1u, e.iterations),
+                    t.readbackMs, t.convertMs, saveMs, msSince(total) / 1000.0);
+        std::printf("wrote %s (%u^2) and %s\n", options.erodeOut.string().c_str(), out.size(), previewPath.string().c_str());
+        eroded = true;
         return true;
     }
 
@@ -722,6 +777,7 @@ int main(int argc, char** argv) {
     {
         Lab lab(options);
         if (!lab.open(window)) return 1;
+        if (lab.eroded) return 0;
         if (!options.shot.empty()) code = runShot(lab, window);
         else if (!options.bench.empty()) code = runBench(lab, window);
         else if (window) code = runInteractive(lab, window);

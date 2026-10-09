@@ -4,6 +4,7 @@
 
 #include <algorithm>
 #include <cmath>
+#include <fstream>
 
 namespace terrain_core {
 namespace {
@@ -56,6 +57,19 @@ float ridged(float x, float y, int octaves, std::uint32_t seed) {
 } // namespace
 
 bool MacroMap::load(const std::filesystem::path& png, std::string* why) {
+    if (png.extension() == ".r16") {
+        std::ifstream in(png, std::ios::binary | std::ios::ate);
+        if (!in) { if (why) *why = "cannot read " + png.string(); return false; }
+        const auto bytes = std::uint64_t(in.tellg());
+        const auto side = std::uint32_t(std::llround(std::sqrt(double(bytes / 2))));
+        if (std::uint64_t(side) * side * 2 != bytes) { if (why) *why = "r16 map is not square"; return false; }
+        std::vector<std::uint16_t> base(std::size_t(side) * side);
+        in.seekg(0);
+        in.read(reinterpret_cast<char*>(base.data()), std::streamsize(bytes));
+        size_ = side;
+        buildPyramid(std::move(base));
+        return bool(in);
+    }
     auto image = engine::world_source::readPng(png, why);
     if (!image) return false;
     if (image->width != image->height || image->width == 0) {
@@ -96,7 +110,20 @@ void MacroMap::generate(std::uint32_t size, std::uint32_t seed) {
     buildPyramid(std::move(base));
 }
 
+void MacroMap::assign(std::uint32_t size, std::vector<std::uint16_t> texels) {
+    size_ = size;
+    buildPyramid(std::move(texels));
+}
+
 bool MacroMap::save(const std::filesystem::path& png, std::string* why) const {
+    if (png.extension() == ".r16") {
+        std::error_code ignored;
+        std::filesystem::create_directories(png.parent_path(), ignored);
+        std::ofstream out(png, std::ios::binary);
+        out.write(reinterpret_cast<const char*>(texels().data()), std::streamsize(texels().size() * 2));
+        if (!out && why) *why = "cannot write " + png.string();
+        return bool(out);
+    }
     engine::world_source::Image image;
     image.width = image.height = size_;
     image.channels = 1;
@@ -109,7 +136,7 @@ bool MacroMap::save(const std::filesystem::path& png, std::string* why) const {
 
 void MacroMap::buildPyramid(std::vector<std::uint16_t> base) {
     levels_.clear();
-    Level level{size_, base, std::move(base)};
+    Level level{size_, std::move(base), {}};
     levels_.push_back(std::move(level));
     while (levels_.back().size > 1) {
         const Level& fine = levels_.back();
@@ -117,12 +144,13 @@ void MacroMap::buildPyramid(std::vector<std::uint16_t> base) {
         coarse.size = (fine.size + 1) / 2;
         coarse.lo.assign(std::size_t(coarse.size) * coarse.size, 65535);
         coarse.hi.assign(std::size_t(coarse.size) * coarse.size, 0);
+        const auto& fineHi = fine.hi.empty() ? fine.lo : fine.hi;
         for (std::uint32_t y = 0; y < fine.size; ++y)
             for (std::uint32_t x = 0; x < fine.size; ++x) {
                 const std::size_t f = std::size_t(y) * fine.size + x;
                 const std::size_t c = std::size_t(y / 2) * coarse.size + x / 2;
                 coarse.lo[c] = std::min(coarse.lo[c], fine.lo[f]);
-                coarse.hi[c] = std::max(coarse.hi[c], fine.hi[f]);
+                coarse.hi[c] = std::max(coarse.hi[c], fineHi[f]);
             }
         levels_.push_back(std::move(coarse));
     }
@@ -158,7 +186,7 @@ std::pair<float, float> MacroMap::range(double u0, double v0, double u1, double 
     for (std::uint32_t y = y0; y <= y1; ++y)
         for (std::uint32_t x = x0; x <= x1; ++x) {
             lo = std::min(lo, level.lo[std::size_t(y) * level.size + x]);
-            hi = std::max(hi, level.hi[std::size_t(y) * level.size + x]);
+            hi = std::max(hi, (level.hi.empty() ? level.lo : level.hi)[std::size_t(y) * level.size + x]);
         }
     // Catmull-Rom overshoots its samples by up to an eighth of a step.
     const float spread = float(hi - lo) / 65535.0f * 0.125f;

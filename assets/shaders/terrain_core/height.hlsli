@@ -116,15 +116,30 @@ float3 terrainHeight(int2 t) {
     const float land = saturate((m.x - macroSeaLevel) * 100.0);
     const float rough = (0.25 + 1.75 * max(elevation * elevation, steepness)) * detailAmplitude * land;
 
-    // Octaves from wavelength 2^octaveTop texels down to 2^(level+1) texels.
+    // Octaves from wavelength 2^octaveTop texels (two of the macro map's own:
+    // anything longer the map already holds) down to 2^(level+1) texels.
+    //
+    // Weathered rather than plain: in the mountains each octave is ridged
+    // (0.35 - |n|, a crest where the noise crosses zero) so summits and
+    // ridges come out as edges, not domes; and every octave is damped by the
+    // slope the ones above it (and the map) have already made, so a steep
+    // face stays a clean plane - scree - and the small relief gathers on the
+    // flatter ground between. (Quilez's derivative-damped fBm.)
+    const float ridged = saturate(elevation * 1.6 - 0.3);
+    float2 slopeSoFar = h.yz;
     float amplitude = 0.04 * spacing * float(1u << octaveTop);   // metres, 4% of the wavelength
     for (uint o = octaveTop; o >= level + 1 && o < 32; --o) {
         const int2 cell = u >> o;
         const float2 f = float2(u - (cell << o)) / float(1u << o);
         const float3 n = gradientNoise(cell, f, o);
         const float wavelength = spacing * float(1u << o);
-        h.x += amplitude * rough * n.x;
-        h.yz += amplitude * rough * n.yz / wavelength;
+        const float value = lerp(n.x, 0.35 - abs(n.x), ridged);
+        const float2 slope = lerp(n.yz, -sign(n.x) * n.yz, ridged) / wavelength;
+        const float damp = 1.0 / (1.0 + 1.5 * dot(slopeSoFar, slopeSoFar));
+        const float a = amplitude * rough * damp;
+        h.x += a * value;
+        h.yz += a * slope;
+        slopeSoFar += a * slope;
         amplitude *= 0.48;
     }
     return h;

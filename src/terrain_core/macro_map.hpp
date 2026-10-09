@@ -17,14 +17,19 @@ namespace terrain_core {
 
 class MacroMap {
 public:
-    bool load(const std::filesystem::path& png, std::string* why = nullptr);
+    // A 16-bit greyscale PNG, or raw little-endian 16-bit (.r16, square) -
+    // what the erosion writes: a 16k PNG takes longer to compress than to make.
+    bool load(const std::filesystem::path& file, std::string* why = nullptr);
     // A continent-and-ranges map from fBm, `size` texels square. Deterministic
     // in `seed`. Written as PNG16 by save().
     void generate(std::uint32_t size, std::uint32_t seed);
-    bool save(const std::filesystem::path& png, std::string* why = nullptr) const;
+    bool save(const std::filesystem::path& file, std::string* why = nullptr) const;
+    void assign(std::uint32_t size, std::vector<std::uint16_t> texels);
 
     std::uint32_t size() const { return size_; }
     const std::vector<std::uint16_t>& texels() const { return levels_.empty() ? empty_ : levels_[0].lo; }
+    // Metres one texel covers on a world `worldSize` across.
+    double texelMetres(double worldSize) const { return size_ ? worldSize / size_ : worldSize; }
 
     // Bilinear macro value (0..1) at map coordinates (0..1). The CPU's idea of
     // the ground before the GPU has said anything: a camera placed on it.
@@ -35,6 +40,8 @@ public:
 
 private:
     void buildPyramid(std::vector<std::uint16_t> base);
+    // Level 0 keeps its texels once, in `lo`: its lowest and highest are the
+    // texels themselves, and a second copy of a 16k map is half a gigabyte.
     struct Level { std::uint32_t size; std::vector<std::uint16_t> lo, hi; };
     std::vector<Level> levels_;
     std::vector<std::uint16_t> empty_;

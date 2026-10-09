@@ -6,6 +6,7 @@
 // benchmark exists to choose them. Kept as plain data so a sweep can write a
 // table of them and the report can print one back.
 
+#include <algorithm>
 #include <cstdint>
 #include <cmath>
 
@@ -34,6 +35,9 @@ struct Params {
     double macroHeightRange = 3000.0;   // metres spanned by the 16-bit macro map
     double macroSeaLevel = 0.0;         // macro value (0..1) that is height 0
     double detailAmplitude = 1.0;       // scales the procedural detail
+    // Metres one macro-map texel covers; set once the map is loaded. The
+    // detail starts where the map stops: at two of its texels.
+    double macroTexel = 0.0;
 
     double levelSpacing(std::uint32_t level) const { return spacing * double(1u << level); }
     double nodeSize(std::uint32_t level) const { return levelSpacing(level) * grid; }
@@ -43,9 +47,14 @@ struct Params {
     std::uint64_t clipmapBytes() const { return std::uint64_t(clipSize) * clipSize * levels * 16; }
     // Upper bound of the procedural detail, for culling bounds. Must agree with
     // terrainHeight() in assets/shaders/terrain_core/height.hlsli (top octave ~4 km).
-    double detailBound() const { return 450.0 * detailAmplitude; }
-    // The longest detail octave, as a power of two of level-0 texels: ~4 km.
-    std::uint32_t octaveTop() const { return std::uint32_t(std::lround(std::log2(4096.0 / spacing))); }
+    double detailBound() const { return 0.13 * topWavelength() * detailAmplitude + 10.0; }
+    // The longest detail octave: two macro texels, 64 m .. 4 km.
+    double topWavelength() const {
+        const double wanted = macroTexel > 0 ? 2.0 * macroTexel : 4096.0;
+        return std::exp2(std::round(std::log2(std::clamp(wanted, 64.0, 4096.0))));
+    }
+    // ... as a power of two of level-0 texels.
+    std::uint32_t octaveTop() const { return std::uint32_t(std::lround(std::log2(topWavelength() / spacing))); }
 };
 
 } // namespace terrain_core

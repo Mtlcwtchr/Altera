@@ -43,12 +43,17 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
         std::vector<std::uint16_t> coarse(std::size_t(next) * next);
         for (std::uint32_t y = 0; y < next; ++y)
             for (std::uint32_t x = 0; x < next; ++x) {
-                std::uint32_t sum = 0;
+                // Half the mean, half the highest: a plain mean sinks every
+                // crest a little more each level, and a far range came out
+                // hundreds of metres lower than it stands.
+                std::uint32_t sum = 0, top = 0;
                 for (std::uint32_t k = 0; k < 4; ++k) {
                     const std::uint32_t fx = std::min(size - 1, x * 2 + (k & 1)), fy = std::min(size - 1, y * 2 + (k >> 1));
-                    sum += fine[std::size_t(fy) * size + fx];
+                    const std::uint32_t v = fine[std::size_t(fy) * size + fx];
+                    sum += v;
+                    top = std::max(top, v);
                 }
-                coarse[std::size_t(y) * next + x] = std::uint16_t((sum + 2) / 4);
+                coarse[std::size_t(y) * next + x] = std::uint16_t((sum + 4 * top + 4) / 8);
             }
         mips.push_back(std::move(coarse));
         size = next;
@@ -59,13 +64,20 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     macro_ = device.makeTexture(info);
     if (!macro_) return false;
     {
-        engine::Device::Uploader upload(device);
+        // In strips of at most 32 MB: a 16k map (512 MB) in one staging
+        // buffer is more host-visible memory than a driver always gives.
         for (std::uint32_t m = 0; m < macroMips_; ++m) {
             const std::uint32_t size = std::max(1u, macroSize_ >> m);
-            if (!upload.refillRegion(macro_.get(), mips[m].data(), 0, 0, size, size, 2, 0, m)) return false;
+            const std::uint32_t rows = std::max(1u, std::min(size, (32u << 20) / (size * 2)));
+            for (std::uint32_t y = 0; y < size; y += rows) {
+                engine::Device::Uploader upload(device);
+                const std::uint32_t h = std::min(rows, size - y);
+                if (!upload.refillRegion(macro_.get(), mips[m].data() + std::size_t(y) * size, 0, y, size, h, 2, 0, m) ||
+                    !upload.finish())
+                    return false;
+            }
             gpuBytes_ += std::uint64_t(size) * size * 2;
         }
-        if (!upload.finish()) return false;
     }
     info.num_levels = 1;
 
