@@ -23,6 +23,7 @@
 #include "engine/render/device.hpp"
 #include "engine/render/targets.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/drainage.hpp"
 #include "terrain_core/erosion.hpp"
 #include "engine/world_source/png_io.hpp"
 #include "terrain_core/lod_select.hpp"
@@ -87,6 +88,8 @@ struct Options {
     fs::path heightmap;
     fs::path erodeOut;        // --erode: weather the macro map, write it here, exit
     ErosionSettings erosion;
+    DrainageSettings drainage;
+    bool drainGenerated = true;   // run the generator's map through the drainage erosion
     fs::path biomes;          // 8-bit biome ids; empty: generated
     fs::path ground;          // biome table; empty: content/config/terrain_core/biomes.json
     std::uint32_t generateSize = 0;
@@ -127,6 +130,12 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--erode-iterations") o.erosion.iterations = std::uint32_t(std::atoi(next()));
         else if (a == "--talus") o.erosion.talusDegrees = std::atof(next());
         else if (a == "--erode-detail") o.erosion.detail = std::atof(next());
+        else if (a == "--drainage-iterations") o.drainage.iterations = std::uint32_t(std::atoi(next()));
+        else if (a == "--drainage-res") o.drainage.resolution = std::uint32_t(std::atoi(next()));
+        else if (a == "--drainage-k") o.drainage.incision = std::atof(next());
+        else if (a == "--drainage-hold") o.drainage.hold = std::atof(next());
+        else if (a == "--drainage-talus") o.drainage.talusDegrees = std::atof(next());
+        else if (a == "--raw-generator") o.drainGenerated = false;
         else if (a == "--biomes") o.biomes = next();
         else if (a == "--ground") o.ground = next();
         else if (a == "--generate") o.generateSize = std::uint32_t(std::atoi(next()));
@@ -266,9 +275,16 @@ struct Lab {
         } else {
             const std::uint32_t size = options.generateSize ? options.generateSize : 2048;
             const fs::path cached = options.out / ("generated_" + std::to_string(size) + "_" +
-                                                   std::to_string(options.params.seed) + ".png");
+                                                   std::to_string(options.params.seed) +
+                                                   (options.drainGenerated ? "_drained" : "") + ".png");
             if (!fs::exists(cached) || !macro.load(cached, &why)) {
                 macro.generate(size, options.params.seed);
+                if (options.drainGenerated) {
+                    DrainageTimings d;
+                    erodeDrainage(macro, options.params, options.drainage, d);
+                    std::printf("generator: drainage erosion %.1f s (%u floods %.0f ms, area %.0f ms, incision %.0f ms)\n",
+                                d.totalMs / 1000, d.floods, d.floodMs, d.areaMs, d.incisionMs);
+                }
                 if (!macro.save(cached, &why)) std::fprintf(stderr, "could not cache %s: %s\n", cached.string().c_str(), why.c_str());
             }
         }
@@ -312,6 +328,13 @@ struct Lab {
         ErosionTimings t;
         std::string why;
         const auto total = Clock::now();
+        if (options.drainage.iterations > 0) {
+            DrainageTimings d;
+            erodeDrainage(macro, options.params, options.drainage, d);
+            std::printf("drainage: %u iterations on %u^2: %.1f s (%u floods %.0f ms, area %.0f ms, incision %.0f ms)\n",
+                        options.drainage.iterations, std::min(macro.size(), options.drainage.resolution), d.totalMs / 1000,
+                        d.floods, d.floodMs, d.areaMs, d.incisionMs);
+        }
         if (!erode(device, macro, options.params, e, out, t, &why)) { std::fprintf(stderr, "erosion: %s\n", why.c_str()); return false; }
         const auto saveStart = Clock::now();
         if (!out.save(options.erodeOut, &why)) { std::fprintf(stderr, "save: %s\n", why.c_str()); return false; }

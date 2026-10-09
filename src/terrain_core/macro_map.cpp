@@ -80,7 +80,9 @@ bool MacroMap::load(const std::filesystem::path& png, std::string* why) {
     const std::uint32_t scale = image->bits == 16 ? 1u : 257u;
     for (std::uint32_t y = 0; y < image->height; ++y)
         for (std::uint32_t x = 0; x < image->width; ++x)
-            base[std::size_t(y) * image->width + x] = std::uint16_t(image->at(x, y, 0) * scale);
+            // A picture's top row is the north, and north is +y: row 0 of
+            // the file is the last row of the map.
+            base[std::size_t(image->height - 1 - y) * image->width + x] = std::uint16_t(image->at(x, y, 0) * scale);
     size_ = image->width;
     buildPyramid(std::move(base));
     return true;
@@ -110,18 +112,23 @@ void MacroMap::generate(std::uint32_t size, std::uint32_t seed) {
             const float coast = std::clamp((land + 0.02f) * 6.0f, 0.0f, 1.0f);
             const float inland = std::clamp((land - 0.04f) * 4.0f, 0.0f, 1.0f);
 
-            // Belts: where a two-cycle noise crosses zero, ~5% of the world wide.
-            const float beltNoise = fbm(pu * 2.2f + 11.0f, pv * 2.2f - 4.0f, 4, seed + 5);
-            const float belt = std::clamp(1.0f - std::fabs(beltNoise) / 0.25f, 0.0f, 1.0f);
+            // Belts: where a slow noise crosses zero, 100-300 km across on a 2000 km
+            // world: broad foothills (`belt`) rising to a core (`beltShape`).
+            const float beltNoise = fbm(pu * 1.6f + 11.0f, pv * 1.6f - 4.0f, 4, seed + 5);
+            const float belt = std::clamp(1.0f - std::fabs(beltNoise) / 0.45f, 0.0f, 1.0f);
             const float beltShape = belt * belt * (3.0f - 2.0f * belt);
             // Peaks inside the belts: a ridged massif, its crests the summits.
-            const float massif = ridged(pu * 9.0f, pv * 9.0f, 6, seed + 4);
+            const float massif = ridged(pu * 7.0f, pv * 7.0f, 6, seed + 4);
             // Rolling ground everywhere else, and a high plateau now and then.
             const float hills = fbm(pu * 18.0f, pv * 18.0f, 5, seed + 6) * 0.5f + 0.5f;
             const float plateau = std::clamp((fbm(pu * 4.0f - 2.0f, pv * 4.0f + 9.0f, 3, seed + 7) - 0.15f) * 4.0f, 0.0f, 1.0f);
 
-            float h = 0.13f * coast + inland * (0.05f + 0.06f * hills + 0.10f * plateau +
-                                                beltShape * (0.22f + 0.6f * massif * std::sqrt(massif)));
+            // Roughness of a few texels, so the water erosion that follows
+            // (drainage.cpp) has ground to choose a way across; on a smooth
+            // field every river runs ruler-straight.
+            const float rough = fbm(u * float(size) / 6.0f, v * float(size) / 6.0f, 3, seed + 8) * 0.006f;
+            float h = rough * inland + 0.13f * coast + inland * (0.05f + 0.06f * hills + 0.10f * plateau +
+                                                0.12f * belt + beltShape * beltShape * (0.2f + 0.6f * massif * std::sqrt(massif)));
             if (land < -0.02f) h = std::max(0.0f, 0.12f + land);   // sea floor below the coast
             field[std::size_t(y) * size + x] = h;
         }
@@ -165,7 +172,10 @@ bool MacroMap::save(const std::filesystem::path& png, std::string* why) const {
     image.width = image.height = size_;
     image.channels = 1;
     image.bits = 16;
-    image.words = texels();
+    image.words.resize(texels().size());
+    for (std::uint32_t y = 0; y < size_; ++y)   // north (+y) at the top of the picture
+        std::copy_n(texels().begin() + std::ptrdiff_t(std::size_t(size_ - 1 - y) * size_), size_,
+                    image.words.begin() + std::ptrdiff_t(std::size_t(y) * size_));
     std::error_code ignored;
     std::filesystem::create_directories(png.parent_path(), ignored);
     return engine::world_source::writePng(png, image, why);

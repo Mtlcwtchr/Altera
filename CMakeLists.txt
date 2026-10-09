@@ -525,6 +525,7 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/macro_map.cpp
             src/terrain_core/biomes.cpp
             src/terrain_core/erosion.cpp
+            src/terrain_core/drainage.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(campfire_terrain_core PUBLIC src)

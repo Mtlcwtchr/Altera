@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Terrain lab (old world)" type="CMakeRunConfiguration" factoryName="Application" folderName="Terrain" PROGRAM_PARAMS="--heightmap doc/OldWorld/terrain_core_main.png --world-km 1048.576 --height-range 3400 --sea 0.0588" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="campfire" TARGET_NAME="terrain_lab" CONFIG_NAME="windows" RUN_TARGET_PROJECT_NAME="campfire" RUN_TARGET_NAME="terrain_lab">
+  <configuration default="false" name="Terrain lab (old world)" type="CMakeRunConfiguration" factoryName="Application" folderName="Terrain" PROGRAM_PARAMS="--heightmap doc/OldWorld/terrain_core_full.png --world-km 2097.152 --height-range 3400 --sea 0.0588" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="campfire" TARGET_NAME="terrain_lab" CONFIG_NAME="windows" RUN_TARGET_PROJECT_NAME="campfire" RUN_TARGET_NAME="terrain_lab">
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>

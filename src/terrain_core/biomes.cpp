@@ -126,7 +126,7 @@ bool BiomeMap::load(const std::filesystem::path& png, std::string* why) {
     for (std::uint32_t y = 0; y < size_; ++y)
         for (std::uint32_t x = 0; x < size_; ++x) {
             const std::uint32_t v = image->at(x, y, 0);
-            ids_[std::size_t(y) * size_ + x] = std::uint8_t(image->bits == 16 ? v >> 8 : v);
+            ids_[std::size_t(size_ - 1 - y) * size_ + x] = std::uint8_t(image->bits == 16 ? v >> 8 : v);   // north up
         }
     return true;
 }
@@ -147,8 +147,8 @@ void BiomeMap::generate(const MacroMap& macro, const Params& params, std::uint32
             std::uint8_t id = 0;
             if (above > 0) {
                 const float elevation = float(above / top);
-                // North (y = 0) cold, south warm; height cools.
-                const float warm = 0.25f + 0.6f * v + 0.35f * (fbm(u * 4, v * 4, seed) - 0.5f) - 0.5f * elevation;
+                // North (+y, the top of the picture) cold, south warm; height cools.
+                const float warm = 0.25f + 0.6f * (1.0f - v) + 0.35f * (fbm(u * 4, v * 4, seed) - 0.5f) - 0.5f * elevation;
                 const float wet = fbm(u * 6 + 3.1f, v * 6 + 7.7f, seed + 1);
                 const float odd = fbm(u * 14, v * 14, seed + 2);
                 if (elevation > 0.55f) id = warm < 0.25f ? 13 : 8;                 // northern isles / white mountains
@@ -172,7 +172,10 @@ bool BiomeMap::save(const std::filesystem::path& png, std::string* why) const {
     image.width = image.height = size_;
     image.channels = 1;
     image.bits = 8;
-    image.bytes = ids_;
+    image.bytes.resize(ids_.size());
+    for (std::uint32_t y = 0; y < size_; ++y)   // north (+y) at the top of the picture
+        std::copy_n(ids_.begin() + std::ptrdiff_t(std::size_t(size_ - 1 - y) * size_), size_,
+                    image.bytes.begin() + std::ptrdiff_t(std::size_t(y) * size_));
     std::error_code ignored;
     std::filesystem::create_directories(png.parent_path(), ignored);
     return engine::world_source::writePng(png, image, why);
