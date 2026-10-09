@@ -523,10 +523,11 @@ if(ASR_BUILD_CLIENT)
     # clipmap, CDLOD patches. Depends on the device and nothing of the game.
     add_library(campfire_terrain_core STATIC
             src/terrain_core/macro_map.cpp
+            src/terrain_core/biomes.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(campfire_terrain_core PUBLIC src)
-    target_link_libraries(campfire_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE asr_warnings)
+    target_link_libraries(campfire_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
 
     # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
     add_executable(terrain_lab tools/terrain_lab/main.cpp)

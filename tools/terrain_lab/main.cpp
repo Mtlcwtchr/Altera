@@ -22,6 +22,7 @@
 
 #include "engine/render/device.hpp"
 #include "engine/render/targets.hpp"
+#include "terrain_core/biomes.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
@@ -82,6 +83,8 @@ struct Camera {
 struct Options {
     Params params;
     fs::path heightmap;
+    fs::path biomes;          // 8-bit biome ids; empty: generated
+    fs::path ground;          // biome table; empty: content/config/terrain_core/biomes.json
     std::uint32_t generateSize = 0;
     double viewKm = 0;
     std::uint32_t width = 1600, height = 900;
@@ -115,6 +118,8 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--sea") { o.params.macroSeaLevel = std::atof(next()); o.seaGiven = true; }
         else if (a == "--detail") o.params.detailAmplitude = std::atof(next());
         else if (a == "--heightmap") o.heightmap = next();
+        else if (a == "--biomes") o.biomes = next();
+        else if (a == "--ground") o.ground = next();
         else if (a == "--generate") o.generateSize = std::uint32_t(std::atoi(next()));
         else if (a == "--headless") {
             o.headless = true;
@@ -225,6 +230,8 @@ struct Lab {
     engine::Device device;
     engine::Targets targets;
     MacroMap macro;
+    BiomeTable table;
+    BiomeMap biomes;
     Renderer renderer;
     Clipmap clipmap{options.params};
     GroundProbe probe;
@@ -259,7 +266,20 @@ struct Lab {
                     options.params.worldSize / macro.size());
 
         const auto gpuStart = Clock::now();
-        if (!renderer.open(device, options.params, macro)) { std::fprintf(stderr, "renderer: %s\n", device.error().c_str()); return false; }
+        const auto biomeStart = Clock::now();
+        const fs::path groundFile = options.ground.empty()
+                ? assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "biomes.json"
+                : options.ground;
+        if (!table.load(groundFile, options.params, &why)) { std::fprintf(stderr, "ground: %s\n", why.c_str()); return false; }
+        if (!options.biomes.empty()) {
+            if (!biomes.load(options.biomes, &why)) { std::fprintf(stderr, "biomes: %s\n", why.c_str()); return false; }
+        } else {
+            biomes.generate(macro, options.params, 1024);
+            biomes.save(options.out / ("generated_biomes_" + std::to_string(options.params.seed) + ".png"), &why);
+        }
+        std::printf("biome map %u^2 (%s) in %.0f ms, %zu materials\n", biomes.size(),
+                    options.biomes.empty() ? "generated" : "imported", msSince(biomeStart), table.materialFiles().size());
+        if (!renderer.open(device, options.params, macro, table, biomes)) { std::fprintf(stderr, "renderer: %s\n", device.error().c_str()); return false; }
         if (!probe.open(device)) return false;
         std::printf("renderer ready in %.0f ms (shaders), GPU %.1f MB\n", msSince(gpuStart),
                     double(renderer.gpuBytes()) / (1 << 20));
@@ -568,7 +588,7 @@ int runInteractive(Lab& lab, SDL_Window* window) {
             if (e.type == SDL_EVENT_QUIT) return 0;
             if (e.type == SDL_EVENT_KEY_DOWN) {
                 if (e.key.key == SDLK_ESCAPE) return 0;
-                if (e.key.key == SDLK_F1) lab.options.debugLevels = (lab.options.debugLevels + 1) % 5;
+                if (e.key.key == SDLK_F1) lab.options.debugLevels = (lab.options.debugLevels + 1) % 6;
                 if (e.key.key == SDLK_M) {
                     map = !map;
                     if (map) {

@@ -4,8 +4,8 @@
 // onto the next level's grid and takes that level's height (CDLOD morph), so a
 // patch meets its coarser neighbour exactly and nothing pops.
 //
-// Deliberately plain shading - a sun, a sky term, colour by height and slope,
-// haze - so that what the benchmark measures is the terrain and not a material.
+// Plain lighting - a sun, a sky term, haze; the ground's colour is the
+// biome's materials (ground.hlsli).
 
 cbuffer View : register(b0, space1) {
     row_major float4x4 viewProjection;   // eye-relative: no translation
@@ -35,6 +35,7 @@ struct VsOut {
     nointerpolation uint level : TEXCOORD2;
     float morph : TEXCOORD3;
     float3 view : TEXCOORD4;                // eye to point, metres
+    nointerpolation int2 origin : TEXCOORD5; // patch origin, level texels (absolute)
 };
 
 int2 wrap(int2 t, uint size) { const int n = int(size); return ((t % n) + n) % n; }
@@ -84,11 +85,14 @@ VsOut terrainVs(PatchIn input) {
     o.slots = int4(slot, nextSlot);
     o.level = level;
     o.morph = morph;
+    o.origin = input.origin.xy;
     return o;
 }
 
 Texture2DArray<float4> clipPs : register(t0, space2);
 SamplerState clipPsSampler : register(s0, space2);
+
+#include "ground.hlsli"
 
 cbuffer Look : register(b0, space3) {
     float3 sunDirection;
@@ -108,25 +112,18 @@ float3 levelTint(uint level) {
 }
 
 float4 terrainPs(VsOut input) : SV_Target0 {
-    if (debugLevels == 5) return float4(frac(input.local / 8.0), 0, 1);
-    if (debugLevels == 6) return float4(frac(float2(input.slots.xy) / 64.0), frac(float(input.level) * 0.37), 1);
     float4 s = bilinear(clipPs, clipPsSampler, lookClipSize, input.slots.xy, input.local, input.level);
     if (input.morph > 0 && input.level + 1 < lookLevels)
         s = lerp(s, bilinear(clipPs, clipPsSampler, lookClipSize, input.slots.zw, input.local * 0.5, input.level + 1), input.morph);
     const float height = s.x;
     const float3 normal = normalize(float3(-s.y, -s.z, 1));
-    const float slope = 1.0 - normal.z;
 
-    float3 colour;
-    if (height < 0.0) colour = lerp(float3(0.06, 0.14, 0.26), float3(0.16, 0.34, 0.42), saturate(1.0 + height / 60.0));
-    else if (height < 3.0) colour = float3(0.62, 0.58, 0.44);
-    else {
-        const float3 low = float3(0.30, 0.42, 0.18), mid = float3(0.42, 0.40, 0.26), high = float3(0.52, 0.50, 0.48);
-        colour = lerp(low, mid, saturate(height / 900.0));
-        colour = lerp(colour, high, saturate((height - 900.0) / 1200.0));
-        colour = lerp(colour, float3(0.40, 0.36, 0.32), saturate((slope - 0.15) * 5.0));
-        colour = lerp(colour, float3(0.92, 0.94, 0.96), saturate((height - 2300.0) / 300.0) * saturate(1.0 - slope * 3.0));
-    }
+    GroundPoint p;
+    p.base = input.origin << input.level;
+    p.sub = input.local * float(1u << input.level);
+    p.footprint = max(length(ddx(p.sub)), length(ddy(p.sub)));
+    float3 colour = groundColour(p, height, normal.z, debugLevels == 5);
+    if (debugLevels == 5) return float4(colour, 1);
     if (debugLevels == 1) colour = lerp(colour, levelTint(input.level), 0.45);
     if (debugLevels == 2) return float4(normal * 0.5 + 0.5, 1);
     if (debugLevels == 3) return float4(input.morph, frac(float(input.level) * 0.37), 1.0 - input.morph, 1);

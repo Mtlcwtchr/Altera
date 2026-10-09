@@ -21,7 +21,8 @@ static_assert(sizeof(GenerateUniforms) == 64);
 
 } // namespace
 
-bool Renderer::open(engine::Device& device, const Params& params, const MacroMap& macro) {
+bool Renderer::open(engine::Device& device, const Params& params, const MacroMap& macro, const BiomeTable& table,
+                    const BiomeMap& biomes) {
     device_ = &device;
     params_ = params;
     macroSize_ = macro.size();
@@ -84,6 +85,40 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     sampling.address_mode_u = sampling.address_mode_v = sampling.address_mode_w =
             SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     nearest_ = device.makeSampler(sampling);
+    // The ground pictures: repeating, trilinear, anisotropic - the ground is
+    // seen at a grazing angle almost everywhere.
+    sampling.min_filter = sampling.mag_filter = SDL_GPU_FILTER_LINEAR;
+    sampling.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
+    sampling.address_mode_u = sampling.address_mode_v = sampling.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+    sampling.enable_anisotropy = true;
+    sampling.max_anisotropy = 8.0f;
+    repeat_ = device.makeSampler(sampling);
+
+    // Biome ids, one byte a texel; read through the nearest sampler as UNORM
+    // and turned back into an id in the shader.
+    {
+        SDL_GPUTextureCreateInfo ids{};
+        ids.type = SDL_GPU_TEXTURETYPE_2D;
+        ids.format = SDL_GPU_TEXTUREFORMAT_R8_UNORM;
+        ids.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
+        ids.width = ids.height = biomes.size();
+        ids.layer_count_or_depth = 1;
+        ids.num_levels = 1;
+        biomeMap_ = device.makeTexture(ids);
+        if (!biomeMap_) return false;
+        engine::Device::Uploader upload(device);
+        if (!upload.refillRegion(biomeMap_.get(), biomes.ids().data(), 0, 0, biomes.size(), biomes.size(), 1) ||
+            !upload.finish())
+            return false;
+        gpuBytes_ += std::uint64_t(biomes.size()) * biomes.size();
+    }
+    std::vector<std::vector<std::filesystem::path>> layers;
+    for (const auto& file : table.materialFiles()) layers.push_back({file});
+    materials_ = device.loadArrayMipped(layers, true);
+    if (!materials_) return false;
+    gpuBytes_ += std::uint64_t(layers.size()) * 128 * 128 * 4 * 4 / 3;
+    ground_ = table.uniforms();
+    ground_.biomeSize = biomes.size();
 
     engine::ComputeWanted compute;
     compute.shaderFile = "terrain_core/generate.hlsl";
@@ -208,9 +243,12 @@ void Renderer::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, con
     SDL_BindGPUGraphicsPipeline(pass, terrain_.get());
     SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
     SDL_PushGPUFragmentUniformData(commands, 0, &look, sizeof(look));
+    SDL_PushGPUFragmentUniformData(commands, 1, &ground_, sizeof(ground_));
     const SDL_GPUTextureSamplerBinding clip{clipmap_.get(), nearest_.get()};
     SDL_BindGPUVertexSamplers(pass, 0, &clip, 1);
-    SDL_BindGPUFragmentSamplers(pass, 0, &clip, 1);
+    const SDL_GPUTextureSamplerBinding fragment[3] = {
+            clip, {biomeMap_.get(), nearest_.get()}, {materials_.get(), repeat_.get()}};
+    SDL_BindGPUFragmentSamplers(pass, 0, fragment, 3);
     const SDL_GPUBufferBinding index{indices_.get(), 0};
     SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
     for (std::uint32_t q = 0; q < 4; ++q) {

@@ -7,6 +7,7 @@
 // generated this frame. What that costs is exactly what the benchmark is for.
 
 #include "engine/render/device.hpp"
+#include "terrain_core/biomes.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
@@ -40,7 +41,8 @@ struct LookUniforms {
 
 class Renderer {
 public:
-    bool open(engine::Device& device, const Params& params, const MacroMap& macro);
+    bool open(engine::Device& device, const Params& params, const MacroMap& macro, const BiomeTable& table,
+              const BiomeMap& biomes);
 
     // Records the generation of `rects` into `commands` (compute passes, so
     // outside any render pass). Returns the texels generated.
@@ -64,7 +66,9 @@ private:
     std::uint32_t macroSize_ = 0;
     std::uint32_t macroMips_ = 1;
     engine::Texture macro_, clipmap_;
-    engine::Sampler nearest_;
+    engine::Sampler nearest_, repeat_;
+    engine::Texture biomeMap_, materials_;
+    GroundUniforms ground_{};
     engine::ComputePipeline generate_;
     engine::GraphicsPipeline terrain_;
     engine::Buffer indices_, patches_;
