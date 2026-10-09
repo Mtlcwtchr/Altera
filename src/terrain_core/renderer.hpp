@@ -62,6 +62,7 @@ private:
     engine::Device* device_ = nullptr;
     Params params_;
     std::uint32_t macroSize_ = 0;
+    std::uint32_t macroMips_ = 1;
     engine::Texture macro_, clipmap_;
     engine::Sampler nearest_;
     engine::ComputePipeline generate_;

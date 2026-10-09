@@ -118,7 +118,8 @@ float4 terrainPs(VsOut input) : SV_Target0 {
     const float slope = 1.0 - normal.z;
 
     float3 colour;
-    if (height < 0.5) colour = lerp(float3(0.10, 0.22, 0.32), float3(0.55, 0.52, 0.40), saturate(height + 1.0));
+    if (height < 0.0) colour = lerp(float3(0.06, 0.14, 0.26), float3(0.16, 0.34, 0.42), saturate(1.0 + height / 60.0));
+    else if (height < 3.0) colour = float3(0.62, 0.58, 0.44);
     else {
         const float3 low = float3(0.30, 0.42, 0.18), mid = float3(0.42, 0.40, 0.26), high = float3(0.52, 0.50, 0.48);
         colour = lerp(low, mid, saturate(height / 900.0));

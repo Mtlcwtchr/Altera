@@ -14,7 +14,8 @@ struct GenerateUniforms {
     float spacing, worldSize, macroHeightRange, macroSeaLevel;
     float detailAmplitude;
     std::uint32_t octaveTop;
-    float pad[2];
+    std::uint32_t macroMips;
+    float pad;
 };
 static_assert(sizeof(GenerateUniforms) == 64);
 
@@ -32,17 +33,40 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER;
     info.width = info.height = macroSize_;
     info.layer_count_or_depth = 1;
-    info.num_levels = 1;
+    // A full mip chain, box-filtered here: the far clipmap levels read the
+    // map at their own scale (see terrainHeight).
+    std::vector<std::vector<std::uint16_t>> mips{macro.texels()};
+    for (std::uint32_t size = macroSize_; size > 1;) {
+        const std::uint32_t next = std::max(1u, size / 2);
+        const auto& fine = mips.back();
+        std::vector<std::uint16_t> coarse(std::size_t(next) * next);
+        for (std::uint32_t y = 0; y < next; ++y)
+            for (std::uint32_t x = 0; x < next; ++x) {
+                std::uint32_t sum = 0;
+                for (std::uint32_t k = 0; k < 4; ++k) {
+                    const std::uint32_t fx = std::min(size - 1, x * 2 + (k & 1)), fy = std::min(size - 1, y * 2 + (k >> 1));
+                    sum += fine[std::size_t(fy) * size + fx];
+                }
+                coarse[std::size_t(y) * next + x] = std::uint16_t((sum + 2) / 4);
+            }
+        mips.push_back(std::move(coarse));
+        size = next;
+    }
+    macroMips_ = std::uint32_t(mips.size());
+    info.num_levels = macroMips_;
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     macro_ = device.makeTexture(info);
     if (!macro_) return false;
     {
         engine::Device::Uploader upload(device);
-        if (!upload.refillRegion(macro_.get(), macro.texels().data(), 0, 0, macroSize_, macroSize_, 2) ||
-            !upload.finish())
-            return false;
+        for (std::uint32_t m = 0; m < macroMips_; ++m) {
+            const std::uint32_t size = std::max(1u, macroSize_ >> m);
+            if (!upload.refillRegion(macro_.get(), mips[m].data(), 0, 0, size, size, 2, 0, m)) return false;
+            gpuBytes_ += std::uint64_t(size) * size * 2;
+        }
+        if (!upload.finish()) return false;
     }
-    gpuBytes_ += std::uint64_t(macroSize_) * macroSize_ * 2;
+    info.num_levels = 1;
 
     info.type = SDL_GPU_TEXTURETYPE_2D_ARRAY;
     info.format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT;
@@ -56,6 +80,7 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     SDL_GPUSamplerCreateInfo sampling{};
     sampling.min_filter = sampling.mag_filter = SDL_GPU_FILTER_NEAREST;
     sampling.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+    sampling.max_lod = 1000.0f;   // the default of 0 would pin every read to mip 0
     sampling.address_mode_u = sampling.address_mode_v = sampling.address_mode_w =
             SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     nearest_ = device.makeSampler(sampling);
@@ -128,6 +153,7 @@ std::uint64_t Renderer::generate(SDL_GPUCommandBuffer* commands, const std::vect
             u.macroSeaLevel = float(params_.macroSeaLevel);
             u.detailAmplitude = float(params_.detailAmplitude);
             u.octaveTop = params_.octaveTop();
+            u.macroMips = macroMips_;
             SDL_PushGPUComputeUniformData(commands, 0, &u, sizeof(u));
             SDL_DispatchGPUCompute(pass, (r.w + 7) / 8, (r.h + 7) / 8, 1);
             texels += std::uint64_t(r.w) * r.h;

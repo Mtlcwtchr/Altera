@@ -27,7 +27,8 @@ cbuffer Generate : register(b0, space2) {
     float macroSeaLevel;
     float detailAmplitude;
     uint octaveTop;         // longest octave: wavelength spacing * 2^octaveTop
-    float2 pad;
+    uint macroMips;         // mip levels of the macro map
+    float pad;
 };
 
 uint hashLattice(int2 c, uint octave) {
@@ -62,8 +63,9 @@ void catmullRom(float t, out float4 w, out float4 dw) {
     dw = float4(-1.5 * t2 + 2 * t - 0.5, 4.5 * t2 - 5 * t, -4.5 * t2 + 4 * t + 0.5, 1.5 * t2 - t);
 }
 
-// Macro value (0..1) and its gradient per macro texel, bicubic.
-float3 macroSample(float2 texel) {
+// Macro value (0..1) and its gradient per macro texel of mip `mip`, bicubic.
+float3 macroSample(float2 texel, uint mip) {
+    const int size = max(1, int(macroSize >> mip));
     const float2 p = texel - 0.5;
     const float2 base = floor(p);
     const float2 t = p - base;
@@ -74,8 +76,8 @@ float3 macroSample(float2 texel) {
     [unroll] for (int j = 0; j < 4; ++j) {
         float row = 0, drow = 0;
         [unroll] for (int i = 0; i < 4; ++i) {
-            const int2 at = clamp(int2(base) + int2(i - 1, j - 1), 0, int(macroSize) - 1);
-            const float v = macroMap.SampleLevel(macroSampler, (float2(at) + 0.5) / float(macroSize), 0);
+            const int2 at = clamp(int2(base) + int2(i - 1, j - 1), 0, size - 1);
+            const float v = macroMap.SampleLevel(macroSampler, (float2(at) + 0.5) / float(size), float(mip));
             row += wx[i] * v;
             drow += dwx[i] * v;
         }
@@ -94,16 +96,25 @@ float3 terrainHeight(int2 t) {
     // Macro: map texel coordinate = metres / metres-per-macro-texel. A float
     // here is fine: it only places a smooth bicubic, ~0.1 m out at the far
     // edge of the largest world, which no slope can turn into a visible step.
-    const float macroTexel = worldSize / float(macroSize);
+    //
+    // A level coarser than the map reads a mip of it, not every n-th texel:
+    // the far levels (a strategic view of the whole world) are the map itself,
+    // and sampled sparsely it would shimmer as the window slides.
+    const float levelSpacing = spacing * float(1u << level);
+    const uint mip = uint(clamp(floor(log2(levelSpacing * float(macroSize) / worldSize)), 0.0, float(macroMips - 1)));
+    const float macroTexel = worldSize / float(max(1u, macroSize >> mip));
     const float2 metres = float2(u) * spacing;
-    const float3 m = macroSample(metres / macroTexel);
+    const float3 m = macroSample(metres / macroTexel, mip);
     float3 h = float3((m.x - macroSeaLevel) * macroHeightRange, m.yz * macroHeightRange / macroTexel);
 
     // How rough the ground is here: plains are gentle, high and steep ground
     // is broken. From the macro relief, so it is the same at every level.
-    const float elevation = saturate(m.x * 2.5);
+    const float elevation = saturate((m.x - macroSeaLevel) * 2.5);
     const float steepness = saturate(length(h.yz) * 4.0);
-    const float rough = (0.25 + 1.75 * max(elevation * elevation, steepness)) * detailAmplitude;
+    // The sea floor stays smooth and below the sea: detail fades in over the
+    // first ~1% of the map's range above sea level (30 m of a 3 km map).
+    const float land = saturate((m.x - macroSeaLevel) * 100.0);
+    const float rough = (0.25 + 1.75 * max(elevation * elevation, steepness)) * detailAmplitude * land;
 
     // Octaves from wavelength 2^octaveTop texels down to 2^(level+1) texels.
     float amplitude = 0.04 * spacing * float(1u << octaveTop);   // metres, 4% of the wavelength

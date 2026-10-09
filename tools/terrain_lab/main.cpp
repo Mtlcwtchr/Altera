@@ -3,8 +3,10 @@
 // Nothing of the game is linked: a window (or none), the device, the macro
 // map, the clipmap and the patches. Two ways to run it:
 //
-//   interactive   terrain_lab [params]            fly with WASD/QE, RMB look,
-//                                                 wheel = speed, F1 = level tint
+//   interactive   terrain_lab [params] [--map]    fly with WASD/QE, RMB look,
+//                                                 wheel = speed, F1 = debug views,
+//                                                 M = strategic map view (WASD/drag pan,
+//                                                 wheel zoom, RMB/QE rotate)
 //   benchmark     terrain_lab --bench all --headless 1920x1080 --out DIR [params]
 //
 // The benchmark flies scripted paths at a fixed 1/60 s step - the movement a
@@ -91,6 +93,9 @@ struct Options {
     double at[5] = {0.5, 0.5, 2.0, 35.0, -8.0};
     int debugLevels = 0;
     double startX = -1, startY = -1;    // fractions of the world; <0: auto (land near centre)
+    bool map = false;                   // start in the strategic map view
+    bool levelsGiven = false;
+    bool seaGiven = false;
 };
 
 bool parse(int argc, char** argv, Options& o) {
@@ -101,13 +106,13 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--spacing") o.params.spacing = std::atof(next());
         else if (a == "--clip") o.params.clipSize = std::uint32_t(std::atoi(next()));
         else if (a == "--grid") o.params.grid = std::uint32_t(std::atoi(next()));
-        else if (a == "--levels") o.params.levels = std::uint32_t(std::atoi(next()));
+        else if (a == "--levels") { o.params.levels = std::uint32_t(std::atoi(next())); o.levelsGiven = true; }
         else if (a == "--view-km") o.viewKm = std::atof(next());
         else if (a == "--range") o.params.rangeFactor = std::atof(next());
         else if (a == "--morph") o.params.morphStart = std::atof(next());
         else if (a == "--seed") o.params.seed = std::uint32_t(std::atoi(next()));
         else if (a == "--height-range") o.params.macroHeightRange = std::atof(next());
-        else if (a == "--sea") o.params.macroSeaLevel = std::atof(next());
+        else if (a == "--sea") { o.params.macroSeaLevel = std::atof(next()); o.seaGiven = true; }
         else if (a == "--detail") o.params.detailAmplitude = std::atof(next());
         else if (a == "--heightmap") o.heightmap = next();
         else if (a == "--generate") o.generateSize = std::uint32_t(std::atoi(next()));
@@ -124,9 +129,18 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--start") std::sscanf(next(), "%lf,%lf", &o.startX, &o.startY);
         else if (a == "--debug-levels") o.debugLevels = 1;
         else if (a == "--debug") o.debugLevels = std::atoi(next());
+        else if (a == "--map") o.map = true;
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
     }
     Params& p = o.params;
+    // The generator's coast sits at about 0.11 of its range (MacroMap::generate);
+    // an imported map is taken to have its sea at 0 unless told.
+    if (!o.seaGiven && o.heightmap.empty()) p.macroSeaLevel = 0.11;
+    // Flying it by hand, the levels go on until they cover the world, so the
+    // strategic view can pull back over all of it. They cost little: each is
+    // a ring of patches further out and one more layer of the clipmap. The
+    // benchmark keeps the preset unless told otherwise.
+    if (o.viewKm <= 0 && !o.levelsGiven && o.bench.empty() && o.shot.empty()) o.viewKm = p.worldSize * 1.5 / 1000.0;
     if (o.viewKm > 0) {
         p.levels = 1;
         while (p.viewDistance() < o.viewKm * 1000.0 && p.levels < 24) ++p.levels;
@@ -326,7 +340,9 @@ struct Lab {
         const double sun[3] = {-0.45, -0.35, 0.6};
         const double sl = std::sqrt(sun[0] * sun[0] + sun[1] * sun[1] + sun[2] * sun[2]);
         for (int i = 0; i < 3; ++i) look.sunDirection[i] = float(sun[i] / sl);
-        look.hazeDistance = float(std::max(2000.0, p.viewDistance() * 0.35));
+        // Haze by height above the ground, not by the levels there are: from the
+        // ground ~14 km as before, from a map view hundreds of kilometres.
+        look.hazeDistance = float(14350.0 + 6.0 * std::max(0.0, camera.eye.z - ground));
         look.skyColour[0] = 0.62f; look.skyColour[1] = 0.72f; look.skyColour[2] = 0.82f;
         look.debugLevels = std::uint32_t(options.debugLevels);
         look.clipSize = p.clipSize;
@@ -514,12 +530,35 @@ int runShot(Lab& lab, SDL_Window* window) {
     return 0;
 }
 
+// Strategic map camera: looks down at a point on the ground from a distance,
+// pans over the world, zooms from a few dozen metres to the whole world.
+struct MapCamera {
+    double x = 0, y = 0;                    // the point looked at
+    double distance = 3000;                 // eye to that point, metres
+    double yaw = 1.5707963, pitch = 0.95;   // pitch: radians below the horizon
+
+    void apply(Camera& camera, double groundAtTarget) const {
+        camera.yaw = yaw;
+        camera.pitch = -pitch;
+        double f[3];
+        camera.forward(f);
+        camera.eye.x = x - f[0] * distance;
+        camera.eye.y = y - f[1] * distance;
+        camera.eye.z = groundAtTarget - f[2] * distance;
+    }
+};
+
 int runInteractive(Lab& lab, SDL_Window* window) {
+    const Params& p = lab.options.params;
     double sx = lab.options.startX, sy = lab.options.startY;
     if (sx < 0 || sy < 0) lab.findLand(sx, sy);
     lab.place(sx, sy, 2.0);
     double speed = 10.0, agl = 2.0;
-    bool looking = false;
+    bool looking = false, dragging = false, map = lab.options.map;
+    MapCamera strategic;
+    strategic.x = lab.camera.eye.x;
+    strategic.y = lab.camera.eye.y;
+    if (map) strategic.distance = p.worldSize * 0.6;
     auto last = Clock::now(), titleAt = Clock::now();
     std::vector<double> window_ms;
     FrameStats s;
@@ -530,6 +569,26 @@ int runInteractive(Lab& lab, SDL_Window* window) {
             if (e.type == SDL_EVENT_KEY_DOWN) {
                 if (e.key.key == SDLK_ESCAPE) return 0;
                 if (e.key.key == SDLK_F1) lab.options.debugLevels = (lab.options.debugLevels + 1) % 5;
+                if (e.key.key == SDLK_M) {
+                    map = !map;
+                    if (map) {
+                        // Look at the ground a little ahead of where the eye stood.
+                        double f[3];
+                        lab.camera.forward(f);
+                        const double fh = std::hypot(f[0], f[1]);
+                        strategic.yaw = std::atan2(f[1], f[0]);
+                        strategic.distance = std::max(300.0, agl * 4.0);
+                        strategic.x = lab.camera.eye.x + f[0] / fh * strategic.distance * 0.5;
+                        strategic.y = lab.camera.eye.y + f[1] / fh * strategic.distance * 0.5;
+                    } else {
+                        // Drop to the ground at the point that was looked at.
+                        lab.camera.eye.x = strategic.x;
+                        lab.camera.eye.y = strategic.y;
+                        lab.camera.yaw = strategic.yaw;
+                        lab.camera.pitch = -0.1;
+                        agl = 2.0;
+                    }
+                }
             }
             if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN && e.button.button == SDL_BUTTON_RIGHT) {
                 looking = true;
@@ -539,41 +598,86 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 looking = false;
                 SDL_SetWindowRelativeMouseMode(window, false);
             }
-            if (e.type == SDL_EVENT_MOUSE_MOTION && looking) {
-                lab.camera.yaw -= e.motion.xrel * 0.003;
-                lab.camera.pitch = std::clamp(lab.camera.pitch - e.motion.yrel * 0.003, -1.5, 1.5);
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_DOWN &&
+                (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_MIDDLE))
+                dragging = true;
+            if (e.type == SDL_EVENT_MOUSE_BUTTON_UP &&
+                (e.button.button == SDL_BUTTON_LEFT || e.button.button == SDL_BUTTON_MIDDLE))
+                dragging = false;
+            if (e.type == SDL_EVENT_MOUSE_MOTION) {
+                if (map && looking) {
+                    strategic.yaw -= e.motion.xrel * 0.004;
+                    strategic.pitch = std::clamp(strategic.pitch + e.motion.yrel * 0.004, 0.2, 1.5);
+                } else if (map && dragging) {
+                    // Grab the ground: a pixel is about distance / window height.
+                    const double perPixel = strategic.distance * 1.15 / double(lab.targets.height());
+                    const double c = std::cos(strategic.yaw), sn = std::sin(strategic.yaw);
+                    strategic.x -= (e.motion.xrel * sn - e.motion.yrel * c) * perPixel;
+                    strategic.y -= (-e.motion.xrel * c - e.motion.yrel * sn) * perPixel;
+                } else if (looking) {
+                    lab.camera.yaw -= e.motion.xrel * 0.003;
+                    lab.camera.pitch = std::clamp(lab.camera.pitch - e.motion.yrel * 0.003, -1.5, 1.5);
+                }
             }
-            if (e.type == SDL_EVENT_MOUSE_WHEEL) speed = std::clamp(speed * std::pow(1.5, e.wheel.y), 1.0, 50000.0);
+            if (e.type == SDL_EVENT_MOUSE_WHEEL) {
+                if (map)
+                    strategic.distance = std::clamp(strategic.distance * std::pow(0.8, e.wheel.y), 30.0, p.worldSize * 1.2);
+                else
+                    speed = std::clamp(speed * std::pow(1.5, e.wheel.y), 1.0, 50000.0);
+            }
         }
         const double dt = std::min(0.1, std::chrono::duration<double>(Clock::now() - last).count());
         last = Clock::now();
         const bool* keys = SDL_GetKeyboardState(nullptr);
-        double f[3];
-        lab.camera.forward(f);
-        const double fh = std::hypot(f[0], f[1]);
-        const double fx = f[0] / fh, fy = f[1] / fh;
-        const double v = speed * dt * (keys[SDL_SCANCODE_LSHIFT] ? 10.0 : 1.0);
-        double mx = 0, my = 0;
-        if (keys[SDL_SCANCODE_W]) { mx += fx; my += fy; }
-        if (keys[SDL_SCANCODE_S]) { mx -= fx; my -= fy; }
-        if (keys[SDL_SCANCODE_D]) { mx += fy; my -= fx; }
-        if (keys[SDL_SCANCODE_A]) { mx -= fy; my += fx; }
-        lab.camera.eye.x = std::clamp(lab.camera.eye.x + mx * v, 0.0, lab.options.params.worldSize);
-        lab.camera.eye.y = std::clamp(lab.camera.eye.y + my * v, 0.0, lab.options.params.worldSize);
-        if (keys[SDL_SCANCODE_E]) agl += v;
-        if (keys[SDL_SCANCODE_Q]) agl = std::max(1.0, agl - v);
-        s = lab.frame(window, agl);
+        if (map) {
+            // Pan at about a screen a second, whatever the zoom.
+            const double v = strategic.distance * dt * (keys[SDL_SCANCODE_LSHIFT] ? 4.0 : 1.0);
+            const double c = std::cos(strategic.yaw), sn = std::sin(strategic.yaw);
+            if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP]) { strategic.x += c * v; strategic.y += sn * v; }
+            if (keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN]) { strategic.x -= c * v; strategic.y -= sn * v; }
+            if (keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT]) { strategic.x += sn * v; strategic.y -= c * v; }
+            if (keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT]) { strategic.x -= sn * v; strategic.y += c * v; }
+            if (keys[SDL_SCANCODE_Q]) strategic.yaw += 1.5 * dt;
+            if (keys[SDL_SCANCODE_E]) strategic.yaw -= 1.5 * dt;
+            strategic.x = std::clamp(strategic.x, 0.0, p.worldSize);
+            strategic.y = std::clamp(strategic.y, 0.0, p.worldSize);
+            strategic.apply(lab.camera, std::max(0.0, macroHeight(p, lab.macro, strategic.x, strategic.y)));
+            // Never below the ground under the eye (detail the macro map does not know).
+            lab.camera.eye.z = std::max(lab.camera.eye.z, lab.ground + 5.0);
+            s = lab.frame(window, -1.0);
+        } else {
+            double f[3];
+            lab.camera.forward(f);
+            const double fh = std::hypot(f[0], f[1]);
+            const double fx = f[0] / fh, fy = f[1] / fh;
+            const double v = speed * dt * (keys[SDL_SCANCODE_LSHIFT] ? 10.0 : 1.0);
+            double mx = 0, my = 0;
+            if (keys[SDL_SCANCODE_W]) { mx += fx; my += fy; }
+            if (keys[SDL_SCANCODE_S]) { mx -= fx; my -= fy; }
+            if (keys[SDL_SCANCODE_D]) { mx += fy; my -= fx; }
+            if (keys[SDL_SCANCODE_A]) { mx -= fy; my += fx; }
+            lab.camera.eye.x = std::clamp(lab.camera.eye.x + mx * v, 0.0, p.worldSize);
+            lab.camera.eye.y = std::clamp(lab.camera.eye.y + my * v, 0.0, p.worldSize);
+            if (keys[SDL_SCANCODE_E]) agl += v;
+            if (keys[SDL_SCANCODE_Q]) agl = std::max(1.0, agl - v);
+            s = lab.frame(window, agl);
+        }
         window_ms.push_back(s.frameMs);
         if (msSince(titleAt) > 500) {
             double mean = 0;
             for (double x : window_ms) mean += x;
             mean /= double(window_ms.size());
+            char where[160];
+            if (map)
+                std::snprintf(where, sizeof where, "MAP x %.1f y %.1f km, zoom %.1f km (M: walk)",
+                              strategic.x / 1000, strategic.y / 1000, strategic.distance / 1000);
+            else
+                std::snprintf(where, sizeof where, "x %.0f y %.0f agl %.0f, speed %.0f m/s (M: map)", s.x, s.y, agl, speed);
             char title[512];
             std::snprintf(title, sizeof title,
-                          "terrain_lab | %.0f fps %.2f ms (sel %.2f rec %.2f) | patches %u tris %.2fM | gen %llu tx | "
-                          "x %.0f y %.0f agl %.0f | speed %.0f m/s %s",
+                          "terrain_lab | %.0f fps %.2f ms (sel %.2f rec %.2f) | patches %u tris %.2fM | gen %llu tx | %s %s",
                           1000.0 / mean, mean, s.selectMs, s.recordMs, s.patches, s.triangles / 1e6,
-                          (unsigned long long)s.texels, s.x, s.y, agl, speed, s.misses ? "| COVERAGE MISS" : "");
+                          (unsigned long long)s.texels, where, s.misses ? "| COVERAGE MISS" : "");
             SDL_SetWindowTitle(window, title);
             window_ms.clear();
             titleAt = Clock::now();
