@@ -42,7 +42,11 @@ void Sky::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const Li
 bool Clouds::open(engine::Device& device) {
     device_ = &device;
     pipeline_ = device.makeCompute({"terrain_core/clouds.hlsl", "cloudsCs"});
-    return bool(pipeline_);
+    SDL_GPUSamplerCreateInfo info{};
+    info.min_filter = info.mag_filter = SDL_GPU_FILTER_NEAREST;
+    info.address_mode_u = info.address_mode_v = info.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
+    sampler_ = device.makeSampler(info);
+    return pipeline_ && sampler_;
 }
 
 bool Clouds::march(SDL_GPUCommandBuffer* commands, engine::Targets& targets, const LightUniforms& light,
@@ -67,8 +71,8 @@ bool Clouds::march(SDL_GPUCommandBuffer* commands, engine::Targets& targets, con
     out.texture = texture_.get();
     auto* pass = SDL_BeginGPUComputePass(commands, &out, 1, nullptr, 0);
     SDL_BindGPUComputePipeline(pass, pipeline_.get());
-    SDL_GPUTexture* depth = targets.depth();
-    SDL_BindGPUComputeStorageTextures(pass, 0, &depth, 1);
+    const SDL_GPUTextureSamplerBinding depth{targets.depth(), sampler_.get()};
+    SDL_BindGPUComputeSamplers(pass, 0, &depth, 1);
     struct { RayCamera camera; float info[4]; } u{camera, {nearPlane, float(targets.width()), float(targets.height()),
                                                            float(frame % 64u)}};
     SDL_PushGPUComputeUniformData(commands, 0, &u, sizeof(u));

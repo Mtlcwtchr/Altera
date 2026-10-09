@@ -206,6 +206,8 @@ std::uint64_t Renderer::generate(SDL_GPUCommandBuffer* commands, const std::vect
         SDL_BindGPUComputePipeline(pass, generate_.get());
         const SDL_GPUTextureSamplerBinding macro{macro_.get(), nearest_.get()};
         SDL_BindGPUComputeSamplers(pass, 0, &macro, 1);
+        const auto rivers = rivers_->buffers();
+        SDL_BindGPUComputeStorageBuffers(pass, 0, rivers.data(), 3);
         for (const Rect& r : rects) {
             if (r.level != level) continue;
             GenerateUniforms u{};
@@ -311,6 +313,8 @@ void Renderer::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, con
             {materialNormals_.get(), repeat_.get()}, {materialProperties_.get(), repeat_.get()},
             {shadowAtlas, shadowSampler}};
     SDL_BindGPUFragmentSamplers(pass, 0, fragment, 6);
+    const auto rivers = rivers_->buffers();
+    SDL_BindGPUFragmentStorageBuffers(pass, 0, rivers.data(), 3);
     drawSet(pass, view_);
 }
 

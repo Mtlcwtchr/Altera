@@ -532,7 +532,9 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/lighting.cpp
             src/terrain_core/sky.cpp
             src/terrain_core/hydrology.cpp
+            src/terrain_core/ground_height.cpp
             src/terrain_core/water.cpp
+            src/terrain_core/rivers.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(campfire_terrain_core PUBLIC src)
@@ -543,6 +545,11 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(terrain_lab PRIVATE campfire_terrain_core asr_warnings)
     target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS)
     campfire_configure_dlss(campfire_terrain_core terrain_lab)
+    if(ASR_BUILD_TESTS AND ASR_DLSS_AVAILABLE)
+        add_executable(asr_dlss_gpu_check tests/test_dlss_gpu.cpp)
+        target_link_libraries(asr_dlss_gpu_check PRIVATE campfire_terrain_core asr_warnings)
+        campfire_copy_dlss_runtime(asr_dlss_gpu_check)
+    endif()
 
     add_executable(asr_shader_check tools/shader_check.cpp)
     target_link_libraries(asr_shader_check PRIVATE SDL3::SDL3-static
@@ -656,11 +663,16 @@ endif()
 # tests
 # ---------------------------------------------------------------------------
 if(ASR_BUILD_TESTS)
+    enable_testing()
     add_executable(asr_dlss_math_tests tests/main.cpp tests/test_dlss_math.cpp)
     target_include_directories(asr_dlss_math_tests PRIVATE src tests)
     target_link_libraries(asr_dlss_math_tests PRIVATE asr_warnings)
     add_test(NAME dlss_math COMMAND asr_dlss_math_tests)
-    enable_testing()
+    if(TARGET asr_dlss_gpu_check AND ASR_TEST_GPU)
+        add_test(NAME dlss_gpu COMMAND asr_dlss_gpu_check)
+        set_tests_properties(dlss_gpu PROPERTIES WORKING_DIRECTORY "${CMAKE_SOURCE_DIR}"
+            SKIP_RETURN_CODE 77 TIMEOUT 120)
+    endif()
     if(TARGET asr_engine_gui)
         # The interface layer on a software renderer: the face, typing, sliders.
         add_executable(asr_ui_tests tests/main.cpp tests/test_ui.cpp)

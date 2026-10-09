@@ -205,7 +205,7 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
 
 void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, SDL_GPUTexture* clipmap,
                     SDL_GPUTexture* biomeMap, std::uint32_t biomeSize, SDL_GPUTexture* water,
-                    std::uint32_t waterSize) {
+                    std::uint32_t waterSize, const Rivers& rivers) {
     // Counts from two frames ago (the ring slot about to be reused).
     if (frame_ >= 3) {
         auto* b = readback_[frame_ % 3];
@@ -240,8 +240,9 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
         const SDL_GPUTextureSamplerBinding samplers[3] = {
                 {clipmap, nearest_.get()}, {biomeMap, nearest_.get()}, {water, nearest_.get()}};
         SDL_BindGPUComputeSamplers(pass, 0, samplers, 3);
-        SDL_GPUBuffer* reads[2] = {modelInfo_.get(), modelSlots_.get()};
-        SDL_BindGPUComputeStorageBuffers(pass, 0, reads, 2);
+        const auto river = rivers.buffers();
+        SDL_GPUBuffer* reads[5] = {modelInfo_.get(), modelSlots_.get(), river[0], river[1], river[2]};
+        SDL_BindGPUComputeStorageBuffers(pass, 0, reads, 5);
         const double spacing0 = params_.spacing;
         const double range = params_.macroHeightRange, sea = params_.macroSeaLevel;
         for (std::size_t li = 0; li < layers_.size(); ++li) {

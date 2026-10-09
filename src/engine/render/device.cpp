@@ -110,8 +110,8 @@ bool sizeOf(const std::filesystem::path& path, int& width, int& height) {
 
 Device::~Device() { close(); }
 
-bool Device::openHeadless(std::uint32_t width, std::uint32_t height, const std::filesystem::path& assets) {
-    if (!open(nullptr, assets)) return false;
+bool Device::openHeadless(std::uint32_t width, std::uint32_t height, const std::filesystem::path& assets, const char* driver) {
+    if (!open(nullptr, assets, driver)) return false;
     headlessWidth_ = std::max<std::uint32_t>(1, width);
     headlessHeight_ = std::max<std::uint32_t>(1, height);
     return true;
@@ -133,7 +133,7 @@ void Device::waitInFlight(std::size_t frames) {
     }
 }
 
-bool Device::open(SDL_Window* window, const std::filesystem::path& assets) {
+bool Device::open(SDL_Window* window, const std::filesystem::path& assets, const char* driver) {
     close();
     window_ = window;
     assets_ = assets;
@@ -148,7 +148,7 @@ bool Device::open(SDL_Window* window, const std::filesystem::path& assets) {
     // wants. Naming one would tie the game to a platform.
     const SDL_GPUShaderFormat formats =
             SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_DXIL | SDL_GPU_SHADERFORMAT_MSL;
-    device_ = SDL_CreateGPUDevice(formats, false, nullptr);
+    device_ = SDL_CreateGPUDevice(formats, SDL_getenv("ASR_GPU_DEBUG") != nullptr, driver);
     if (!device_) {
         error_ = std::string("no graphics device: ") + SDL_GetError();
         close();
@@ -387,12 +387,15 @@ SDL_GPUShader* Device::compile(const std::filesystem::path& file, const char* en
     SDL_ShaderCross_GraphicsShaderMetadata* metadata =
             SDL_ShaderCross_ReflectGraphicsSPIRV(info.bytecode, info.bytecode_size, 0);
     // The set holds every slot up to the highest one used (samplerSlots).
-    // Only where the stage has nothing but samplers in that set: storage
-    // resources follow the samplers in it, and would move.
-    if (metadata && metadata->resource_info.num_storage_textures == 0 &&
-        metadata->resource_info.num_storage_buffers == 0)
-        metadata->resource_info.num_samplers = std::max(metadata->resource_info.num_samplers,
-                samplerSlots(spirv, spirvSize, fragment ? 2u : 0u));
+    // Storage textures follow the samplers in the same set, so they are the
+    // top of that range: the samplers are what lies under them. Storage
+    // buffers are never loaded whole, so samplerSlots does not count them.
+    if (metadata) {
+        const std::uint32_t storage = metadata->resource_info.num_storage_textures;
+        const std::uint32_t slots = samplerSlots(spirv, spirvSize, fragment ? 2u : 0u);
+        if (slots > storage)
+            metadata->resource_info.num_samplers = std::max(metadata->resource_info.num_samplers, slots - storage);
+    }
     // ASR_SHADER_REFLECT=1: what each shader binds, as reflection reads it.
     static const bool reflect = std::getenv("ASR_SHADER_REFLECT") != nullptr;
     if (reflect && metadata)
@@ -427,14 +430,44 @@ ComputePipeline Device::makeCompute(const ComputeWanted& wanted) {
             SDL_ShaderCross_ReflectComputeSPIRV(info.bytecode, info.bytecode_size, 0);
     // The same slot rule as a graphics stage (samplerSlots): a compute stage
     // that samples the page atlases but not the climate before them (t3.. of
-    // terrain_pages.hlsli) would otherwise read nothing. Only with no
-    // read-only storage in set 0, which would follow the samplers there.
-    if (metadata && metadata->num_samplers > 0 && metadata->num_readonly_storage_textures == 0 &&
-        metadata->num_readonly_storage_buffers == 0)
-        metadata->num_samplers = std::max(metadata->num_samplers, samplerSlots(spirv, size, 0u));
-    SDL_GPUComputePipeline* pipeline =
-            metadata ? SDL_ShaderCross_CompileComputePipelineFromSPIRV(device_, &info, metadata, 0)
-                     : nullptr;
+    // terrain_pages.hlsli) would otherwise read nothing. Read-only storage
+    // textures follow the samplers in set 0, the top of the range; storage
+    // buffers are never loaded whole, so samplerSlots does not count them.
+    if (metadata && metadata->num_samplers > 0) {
+        const std::uint32_t storage = metadata->num_readonly_storage_textures;
+        const std::uint32_t slots = samplerSlots(spirv, size, 0u);
+        if (slots > storage) metadata->num_samplers = std::max(metadata->num_samplers, slots - storage);
+    }
+    SDL_GPUComputePipeline* pipeline = nullptr;
+    if (metadata && std::strcmp(SDL_GetGPUDeviceDriver(device_), "direct3d12") == 0) {
+        // Keep the original HLSL on D3D12. Round-tripping large vegetation
+        // kernels through SPIR-V and SPIRV-Cross can fail DXIL compilation;
+        // the helper then feeds a null blob and uninitialized size to SDL.
+        const auto source = readText(file);
+        const auto includes = file.parent_path().string();
+        SDL_ShaderCross_HLSL_Info hlsl{};
+        hlsl.source = source.c_str(); hlsl.entrypoint = wanted.entry;
+        hlsl.include_dir = includes.c_str(); hlsl.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_COMPUTE;
+        std::size_t dxilSize = 0;
+        void* dxil = SDL_ShaderCross_CompileDXILFromHLSL(&hlsl, &dxilSize);
+        if (dxil && dxilSize) {
+            SDL_GPUComputePipelineCreateInfo create{};
+            create.code = static_cast<const Uint8*>(dxil); create.code_size = dxilSize;
+            create.entrypoint = wanted.entry; create.format = SDL_GPU_SHADERFORMAT_DXIL;
+            create.num_samplers = metadata->num_samplers;
+            create.num_readonly_storage_textures = metadata->num_readonly_storage_textures;
+            create.num_readonly_storage_buffers = metadata->num_readonly_storage_buffers;
+            create.num_readwrite_storage_textures = metadata->num_readwrite_storage_textures;
+            create.num_readwrite_storage_buffers = metadata->num_readwrite_storage_buffers;
+            create.num_uniform_buffers = metadata->num_uniform_buffers;
+            create.threadcount_x = metadata->threadcount_x; create.threadcount_y = metadata->threadcount_y;
+            create.threadcount_z = metadata->threadcount_z;
+            pipeline = SDL_CreateGPUComputePipeline(device_, &create);
+        }
+        SDL_free(dxil);
+    } else if (metadata) {
+        pipeline = SDL_ShaderCross_CompileComputePipelineFromSPIRV(device_, &info, metadata, 0);
+    }
     if (!pipeline)
         error_ = std::string("compute shader ") + wanted.entry + " would not load: " + SDL_GetError();
     SDL_free(metadata);
@@ -840,7 +873,9 @@ bool Device::present(SDL_Surface* picture) {
 Texture Device::makeTexture(const SDL_GPUTextureCreateInfo& info) {
     SDL_GPUTexture* texture = SDL_CreateGPUTexture(device_, &info);
     if (!texture) {
-        error_ = std::string("texture would not be made: ") + SDL_GetError();
+        error_ = "texture would not be made (" + std::to_string(info.width) + "x" + std::to_string(info.height) +
+                 ", layers=" + std::to_string(info.layer_count_or_depth) + ", mips=" + std::to_string(info.num_levels) +
+                 ", format=" + std::to_string(info.format) + ", usage=" + std::to_string(info.usage) + "): " + SDL_GetError();
         return {};
     }
     return Texture(device_, texture);

@@ -145,11 +145,11 @@ public:
     // `assets` is the sprite directory; shaders are found beside it. Returns
     // false and leaves a reason in error() rather than throwing, because the
     // caller's answer to "no GPU" is to say so and exit, not to unwind.
-    bool open(SDL_Window* window, const std::filesystem::path& assets);
+    bool open(SDL_Window* window, const std::filesystem::path& assets, const char* driver = nullptr);
     // No window at all: frames are drawn into the offscreen target and never
     // presented. For measuring and for pictures taken without taking anybody's
     // screen - a window, even a hidden one, is an application in the Dock.
-    bool openHeadless(std::uint32_t width, std::uint32_t height, const std::filesystem::path& assets);
+    bool openHeadless(std::uint32_t width, std::uint32_t height, const std::filesystem::path& assets, const char* driver = nullptr);
     bool headless() const { return device_ != nullptr && window_ == nullptr; }
     std::uint32_t headlessWidth() const { return headlessWidth_; }
     std::uint32_t headlessHeight() const { return headlessHeight_; }

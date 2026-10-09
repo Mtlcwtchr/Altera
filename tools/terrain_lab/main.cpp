@@ -190,7 +190,8 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-grass") o.grass = false;
         else if (a == "--no-water") o.water = false;
         else if (a == "--water-preview") o.waterPreview = next();
-        else if (a == "--river-area") o.hydrology.riverArea = std::atof(next());
+        else if (a == "--stream-area") o.hydrology.streamArea = std::atof(next());
+        else if (a == "--humidity") o.hydrology.humidity = std::atof(next());
         else if (a == "--time") o.light.timeOfDay = std::atof(next());
         else if (a == "--clouds") o.light.cloudCover = std::atof(next());
         else if (a == "--no-clouds") o.light.clouds = false;
@@ -307,12 +308,15 @@ struct Lab {
     Grass grass;
     bool grassReady = false;
     Post post;
+    Post dlssComposite;
     bool postReady = false;
     std::uint64_t frames = 0;
     Lighting lighting;
     Water water;
     bool waterReady = false;
     WaterMap waterMap;
+    std::vector<RiverSegment> riverSegments;
+    Rivers rivers;   // the river graph on the GPU (empty with the water off)
     ShadowAtlas shadows;
     Sky sky;
     Clouds clouds;
@@ -343,6 +347,8 @@ struct Lab {
         if (!ok) { std::fprintf(stderr, "device: %s\n", device.error().c_str()); return false; }
         dlss.open(device);
         std::printf("%s\n", dlss.status().c_str());
+        targets.sampledDepth(true);
+        dlssTargets.sampledDepth(true);
         if (!targets.resize(device, options.width, options.height)) { std::fprintf(stderr, "targets\n"); return false; }
 
         const auto loadStart = Clock::now();
@@ -370,11 +376,16 @@ struct Lab {
         if (!options.erodeOut.empty()) return erodeAndSave();
         options.params.macroTexel = macro.texelMetres(options.params.worldSize);
         if (options.water) {
-            waterMap = buildHydrology(macro, options.params, options.hydrology);
-            std::printf("hydrology: %u^2, %u lake cells, %u river cells, %.0f ms\n", waterMap.size, waterMap.lakeCells,
-                        waterMap.riverCells, waterMap.ms);
+            Hydrology hydro = buildHydrology(macro, options.params, options.hydrology);
+            std::printf("hydrology: %u^2, %u lakes (%u closed, %u cells), river graph %u nodes, %u sources, %u mouths, "
+                        "%zu segments, biggest %.0f km^2, %.0f ms\n", hydro.water.size, hydro.lakes, hydro.closedLakes,
+                        hydro.water.lakeCells, hydro.nodes, hydro.sources, hydro.mouths, hydro.rivers.size(), hydro.biggestKm2,
+                        hydro.ms);
+            waterMap = std::move(hydro.water);
+            riverSegments = std::move(hydro.rivers);
             if (!options.waterPreview.empty()) {
-                // Land grey by height, the sea dark, lakes blue, rivers red; north up.
+                // Land grey by height, the sea dark, lakes blue, rivers red
+                // (brighter and wider the bigger); north up.
                 engine::world_source::Image picture;
                 picture.width = picture.height = waterMap.size;
                 picture.channels = 3;
@@ -387,13 +398,30 @@ struct Lab {
                         const double hm = double(macro.texels()[std::size_t(y * step) * macro.size() + x * step]) / 65535.0;
                         const double ground = (hm - options.params.macroSeaLevel) * options.params.macroHeightRange;
                         std::uint16_t r, g, b;
-                        if (ground <= 0) { r = 20; g = 40; b = 70; }
-                        else if (w[0] > ground && w[1] == 0.0f) { r = 40; g = 120; b = 255; }
-                        else if (w[1] > 0.0f && w[0] > ground - 20) { r = 255; g = 40; b = 30; }
+                        if (w[0] == 0.0f && ground <= 0) { r = 20; g = 40; b = 70; }
+                        else if (w[0] > ground) { r = 40; g = 120; b = 255; }
                         else { const auto v = std::uint16_t(std::clamp(80.0 + ground / 30.0, 80.0, 235.0)); r = g = b = v; }
                         const std::uint32_t py = n - 1 - y;
                         picture.set(x, py, 0, r); picture.set(x, py, 1, g); picture.set(x, py, 2, b);
                     }
+                const double cell = options.params.worldSize / n;
+                for (const RiverSegment& seg : riverSegments) {
+                    const double len = std::hypot(seg.x1 - seg.x0, seg.y1 - seg.y0);
+                    const int steps = std::max(1, int(std::ceil(len / cell * 2)));
+                    const int thick = seg.width0 > cell * 0.5 ? 1 : 0;
+                    const auto red = std::uint16_t(120 + 135 * seg.flow);
+                    for (int k = 0; k <= steps; ++k) {
+                        const double t = double(k) / steps;
+                        const int cx = int((seg.x0 + (seg.x1 - seg.x0) * t) / cell);
+                        const int cy = int(n - 1) - int((seg.y0 + (seg.y1 - seg.y0) * t) / cell);
+                        for (int oy = -thick; oy <= thick; ++oy)
+                            for (int ox = -thick; ox <= thick; ++ox) {
+                                const int px = cx + ox, py = cy + oy;
+                                if (px < 0 || py < 0 || px >= int(n) || py >= int(n)) continue;
+                                picture.set(px, py, 0, red); picture.set(px, py, 1, 30); picture.set(px, py, 2, 25);
+                            }
+                    }
+                }
                 engine::world_source::writePng(options.waterPreview, picture, &why);
             }
         }
@@ -413,6 +441,15 @@ struct Lab {
         }
         std::printf("biome map %u^2 (%s) in %.0f ms, %zu materials\n", biomes.size(),
                     options.biomes.empty() ? "generated" : "imported", msSince(biomeStart), table.materialFiles().size());
+        if (!rivers.open(device, riverSegments, options.params.worldSize, &why)) {
+            std::fprintf(stderr, "rivers: %s\n", why.c_str());
+            return false;
+        }
+        std::printf("river graph on the GPU: %.1f MB, %u tiles a side, longest tile list %u\n",
+                    double(rivers.gpuBytes()) / (1 << 20), rivers.tilesPerSide(), rivers.longestList());
+        riverSegments.clear();
+        riverSegments.shrink_to_fit();
+        renderer.setRivers(&rivers);
         if (!renderer.open(device, options.params, macro, table, biomes)) { std::fprintf(stderr, "renderer: %s\n", device.error().c_str()); return false; }
         {
             const auto foliageStart = Clock::now();
@@ -422,6 +459,7 @@ struct Lab {
             grassReady = grass.open(device, options.params, GrassSettings{}, spriteDir, &why);
             if (!grassReady) std::fprintf(stderr, "grass off: %s\n", why.c_str());
             postReady = post.open(device);
+            if (postReady) dlssComposite.open(device);
             {
                 // Opened even with the water off - one dry texel - since the
                 // plants' spawns read the water map either way.
@@ -545,6 +583,7 @@ struct Lab {
             useDlss = false;
         }
         auto& sceneTargets = useDlss ? dlssTargets : targets;
+        renderer.setTextureScale(useDlss ? float(dlss.renderWidth()) / float(outputWidth) : 1.0f);
         const double aspect = double(targets.width()) / double(targets.height());
         ViewUniforms view{};
         camera.viewProjection(view.viewProjection, aspect);
@@ -600,7 +639,7 @@ struct Lab {
             f.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
             f.minPixels = options.foliageMinPixels;
             foliage.spawn(commands, f, renderer.clipmap(), renderer.biomeMap(), renderer.biomeSize(), water.map(),
-                          water.mapSize());
+                          water.mapSize(), rivers);
             s.foliageInstances = foliage.drawnInstances();
             s.foliageTriangles = foliage.drawnTriangles();
             s.foliageCandidates = foliage.candidates();
@@ -616,7 +655,7 @@ struct Lab {
             }
             GroundUniforms ground = renderer.ground();
             grass.spawn(commands, g, renderer.clipmap(), renderer.biomeMap(), renderer.materials(),
-                        renderer.materialNormals(), renderer.materialProperties(), water.map(), water.mapSize(),
+                        renderer.materialNormals(), renderer.materialProperties(), water.map(), water.mapSize(), rivers,
                         ground, light);
             s.grassTufts = grass.tufts();
             s.grassCandidates = grass.candidates();
@@ -654,7 +693,13 @@ struct Lab {
         depth.stencil_load_op = SDL_GPU_LOADOP_DONT_CARE;
         depth.stencil_store_op = SDL_GPU_STOREOP_DONT_CARE;
         auto* pass = SDL_BeginGPURenderPass(commands, &colour, 1, &depth);
-        const RayCamera rays = rayCamera(forward, camera.fovY, aspect);
+        RayCamera rays = rayCamera(forward, camera.fovY, aspect);
+        if (useDlss) {
+            const auto jitter = dlss.jitterOffset();
+            for (int i = 0; i < 3; ++i)
+                rays.forward[i] += 2 * jitter[0] / float(sceneTargets.width()) * rays.right[i]
+                                 - 2 * jitter[1] / float(sceneTargets.height()) * rays.up[i];
+        }
         if (lightReady) sky.draw(commands, pass, light, rays);
         LookUniforms look{};
         look.debugLevels = std::uint32_t(options.debugLevels);
@@ -672,7 +717,7 @@ struct Lab {
                                                             std::uint32_t(frames));
         if (useDlss) {
             // Composite clouds before DLSS; grade and grain at display resolution.
-            if (postReady && cloudsDrawn) post.apply(commands, sceneTargets, 0, float(seconds), clouds.texture());
+            if (postReady && cloudsDrawn) dlssComposite.apply(commands, sceneTargets, 0, float(seconds), clouds.texture());
             const double eye[3] = {camera.eye.x, camera.eye.y, camera.eye.z};
             auto* upscaled = dlss.evaluate(commands, sceneTargets.resolved(), sceneTargets.depth(), unjittered, eye, float(dt * 1000));
             SDL_GPUBlitInfo upscale{};
@@ -844,10 +889,14 @@ int runBench(Lab& lab, SDL_Window* window) {
                       "%s    {\"name\": \"%s\", \"frames\": %zu, \"meanMs\": %.3f, \"p50Ms\": %.3f, \"p95Ms\": %.3f, "
                       "\"p99Ms\": %.3f, \"maxMs\": %.3f, \"selectMs\": %.3f, \"recordMs\": %.3f, \"coldMs\": %.3f, "
                       "\"patchesMax\": %.0f, \"trianglesMax\": %.0f, \"texelsPerFrame\": %.0f, \"texelsMax\": %.0f, "
-                      "\"coverageMisses\": %.0f, \"foliageInstancesMax\": %.0f, \"foliageTrianglesMax\": %.0f}",
+                      "\"coverageMisses\": %.0f, \"foliageInstancesMax\": %.0f, \"foliageTrianglesMax\": %.0f, "
+                      "\"dlssActive\": %s, \"dlssQuality\": %d, \"renderWidth\": %u, \"renderHeight\": %u}",
                       first ? "" : ",\n", sc.name, frames.size(), mean, percentile(ms, 0.5), percentile(ms, 0.95),
                       percentile(ms, 0.99), percentile(ms, 1.0), selMean, recMean, coldMs, patchMax, triMax,
-                      texelSum / double(frames.size()), texelMax, misses, foliageMax, foliageTriMax);
+                      texelSum / double(frames.size()), texelMax, misses, foliageMax, foliageTriMax,
+                      lab.dlss.active() ? "true" : "false", o.dlssQuality,
+                      lab.dlss.active() ? lab.dlss.renderWidth() : lab.targets.width(),
+                      lab.dlss.active() ? lab.dlss.renderHeight() : lab.targets.height());
         summary += buf;
         first = false;
     }

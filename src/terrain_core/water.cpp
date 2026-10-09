@@ -89,6 +89,8 @@ void Water::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, Render
     SDL_PushGPUFragmentUniformData(commands, 1, &wl, sizeof(wl));
     const SDL_GPUTextureSamplerBinding vertex{map_.get(), nearest_.get()};
     SDL_BindGPUVertexSamplers(pass, 0, &vertex, 1);
+    const auto rivers = terrain.rivers()->buffers();
+    SDL_BindGPUVertexStorageBuffers(pass, 0, rivers.data(), 3);
     SDL_BindGPUFragmentSamplers(pass, 0, fragment, 2);
     terrain.drawPatches(pass);
 }

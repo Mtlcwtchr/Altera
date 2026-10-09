@@ -20,12 +20,15 @@ SamplerState clipSampler : register(s0, space0);
 // For the clouds' shadow, worked out once a tuft here rather than on every
 // pixel of it: a cloud is a kilometre across, a tuft a few centimetres.
 #define LIGHT_UNIFORMS register(b2, space2)
-#define SHADOW_TEXTURE register(t6, space0)
-#define SHADOW_SAMPLER register(s6, space0)
+#define NO_SUN_SHADOW   // the sun's shadow is the draw's
 #include "lighting.hlsli"
 Texture2D<float4> waterMap : register(t5, space0);
 SamplerState waterSampler : register(s5, space0);
 #include "water_map.hlsli"
+#define RIVER_SEGMENTS register(t6, space0)
+#define RIVER_TILES register(t7, space0)
+#define RIVER_LIST register(t8, space0)
+#include "rivers.hlsli"
 
 struct Tuft {
     float4 positionYaw;   // eye-relative foot (m), yaw
@@ -132,6 +135,8 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     if (waterAt(waterMap, waterSampler, (float2(p.base) + p.sub) * spacing0, spawnWorldSize, spawnWaterMapSize, wet).x >
         hg.x - 0.1)
         return;   // under water
+    const RiverHit river = nearestRiver((float2(p.base) + p.sub) * spacing0);
+    if (river.found && river.distance < river.halfWidth + 0.3) return;
     const float normalZ = rsqrt(1.0 + dot(hg.yz, hg.yz));
     const float4 ground = groundSample(p, hg.x, normalZ, false);
     const uint h2 = hashCell(cell, seed + 101u);

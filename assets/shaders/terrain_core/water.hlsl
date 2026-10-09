@@ -51,6 +51,11 @@ int2 wrapSlot(int2 t, uint size) { const int n = int(size); return ((t % n) + n)
 
 #include "water_map.hlsli"
 
+#define RIVER_SEGMENTS register(t1, space0)
+#define RIVER_TILES register(t2, space0)
+#define RIVER_LIST register(t3, space0)
+#include "rivers.hlsli"
+
 VsOut waterVs(PatchIn input) {
     const uint side = grid + 1;
     const float2 local = float2(input.vertex % side, input.vertex / side);
@@ -58,7 +63,17 @@ VsOut waterVs(PatchIn input) {
     const float levelSpacing = spacing * float(1u << level);
     const float2 metres = (float2(input.origin.xy) + local) * levelSpacing;
     float wet;
-    const float4 w = waterAt(waterMapVs, waterVsSampler, metres, worldSize, mapSize, wet);
+    float4 w = waterAt(waterMapVs, waterVsSampler, metres, worldSize, mapSize, wet);
+    // A river, where this level's mesh is fine enough to hold its channel
+    // (the ground is cut to the same rule): its surface over the water and
+    // the channel's banks, not the whole valley - the banks rise above it,
+    // so the water shows only over the bed.
+    const RiverHit river = nearestRiver(metres);
+    if (river.found && river.distance < river.halfWidth + channelBank(river) && riverResolved(river, levelSpacing) > 0 &&
+        (wet < 0.999 || river.surface > w.x)) {   // a lake's partial edge texel blends towards dry
+        w = float4(river.surface, river.flow, river.along);
+        wet = 1;
+    }
     VsOut o;
     o.view = float3(input.rel.xy + local * levelSpacing, w.x - eyeZ);
     o.position = mul(viewProjection, float4(o.view, 1));
@@ -192,7 +207,8 @@ float4 waterPs(VsOut input) : SV_Target0 {
     // where a river runs hard; both fade out with distance (no sparkle).
     const float churn = noiseD(place / 1.3 + float2(lookTime * 0.3, 0)).x * 0.6 + noiseD(place / 0.45).x * 0.4;
     const float near = 1.0 - saturate(distance / 1500.0);
-    const float shore = saturate((1.0 - depth / 0.6) * 1.6 - (1.0 - churn) * 1.2);
+    // A river is shallow all across: only its very edge foams.
+    const float shore = saturate((1.0 - depth / (input.flow.z > 0 ? 0.2 : 0.6)) * 1.6 - (1.0 - churn) * 1.2);
     const float foam = (shore * 0.7 + input.flow.z * 0.3 * smoothstep(0.55, 0.85, churn)) * (0.3 + 0.7 * near);
     float3 colour = body * opacity * (1.0 - fresnel) + reflection * fresnel;
     float alpha = saturate(opacity * (1.0 - fresnel) + fresnel);

@@ -7,6 +7,9 @@
 //   #define LIGHT_UNIFORMS register(bN, space3)
 //   #define SHADOW_TEXTURE register(tN, space2)
 //   #define SHADOW_SAMPLER register(sN, space2)
+// or #define NO_SUN_SHADOW: no shadow map at all, sunShadow() is 1 (a
+// compute pass that only wants the clouds' shadow; a declared texture it never
+// binds would still take a slot on some back ends).
 // Positions are eye-relative metres; the eye's own absolute position is here.
 #ifndef TERRAIN_CORE_LIGHTING
 #define TERRAIN_CORE_LIGHTING
@@ -38,8 +41,10 @@ cbuffer Light : LIGHT_UNIFORMS {
     float4 cascadeFar;          // where cascades 0, 1, 2 end (m); w: shadow atlas texel (1/width)
 };
 
+#ifndef NO_SUN_SHADOW
 Texture2D<float> shadowAtlas : SHADOW_TEXTURE;
 SamplerState shadowSampler : SHADOW_SAMPLER;
+#endif
 
 float3 skyColour(float3 dir) {
     const float up = saturate(dir.z);
@@ -69,6 +74,9 @@ float3 applyFog(float3 colour, float3 rel) {
 
 // How much of the sun gets to a point past the shadow map, 0..1.
 float sunShadow(float3 rel, float3 normal) {
+#ifdef NO_SUN_SHADOW
+    return 1.0;
+#else
     if (lightShadows < 0.5) return 1.0;
     const float distance = length(rel);
     const int cascade = distance < cascadeFar.x ? 0 : distance < cascadeFar.y ? 1 : distance < cascadeFar.z ? 2 : 3;
@@ -90,6 +98,7 @@ float sunShadow(float3 rel, float3 normal) {
     lit /= 5.0;
     // Fade out towards the far end of the last cascade.
     return lerp(lit, 1.0, saturate((distance - cascadeFar.z * 0.85) / (cascadeFar.z * 0.15)));
+#endif
 }
 
 float cloudShadow(float3 rel) {

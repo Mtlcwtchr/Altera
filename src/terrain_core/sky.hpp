@@ -42,6 +42,7 @@ public:
 private:
     engine::Device* device_ = nullptr;
     engine::ComputePipeline pipeline_;
+    engine::Sampler sampler_;
     engine::Texture texture_;
     std::uint32_t width_ = 0, height_ = 0;
 };

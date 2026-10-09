@@ -100,6 +100,11 @@ SamplerState clipPsSampler : register(s0, space2);
 #define SHADOW_SAMPLER register(s5, space2)
 #include "lighting.hlsli"
 
+#define RIVER_SEGMENTS register(t6, space2)
+#define RIVER_TILES register(t7, space2)
+#define RIVER_LIST register(t8, space2)
+#include "rivers.hlsli"
+
 cbuffer Look : register(b0, space3) {
     float3 lookUnusedSun;      // the light is lighting.hlsli's now
     float lookUnusedHaze;
@@ -149,6 +154,22 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         const float relief = maps ? 1.0 - saturate(p.footprint / 24.0) : 0.0;
         normal = normalize(float3(-s.y + surface.slope.x * relief, -s.z + surface.slope.y * relief, 1));
     }
+    // The river graph: banks damp near the water; and a river this level's
+    // mesh is too coarse to cut (the generator leaves it) painted instead,
+    // never thinner than about a pixel if it is a big one - so rivers read
+    // from far off, the way they do on a map.
+    const float2 metres = (float2(p.base) + p.sub) * groundWorld.y;
+    const RiverHit river = nearestRiver(metres);
+    float riverCover = 0;
+    if (river.found) {
+        const float resolved = riverResolved(river, groundWorld.y * float(1u << input.level));
+        const float damp = 1.0 - saturate((river.distance - river.halfWidth) / max(channelBank(river) * 0.5, 1.0));
+        colour *= 1.0 - 0.3 * damp * resolved;
+        const float pixel = max(p.footprint * groundWorld.y, 1e-3);   // metres a pixel spans
+        const float halfWidth = max(river.halfWidth, pixel * 0.6);
+        const float strength = max(saturate(2.0 * river.halfWidth / pixel), smoothstep(0.15, 0.6, river.flow));
+        riverCover = saturate((halfWidth - river.distance) / pixel + 0.5) * (1.0 - resolved) * strength;
+    }
     if (debugLevels == 5) return float4(colour, 1);
     if (debugLevels == 1) colour = lerp(colour, levelTint(input.level), 0.45);
     if (debugLevels == 2) return float4(normal * 0.5 + 0.5, 1);
@@ -156,7 +177,14 @@ float4 terrainPs(VsOut input) : SV_Target0 {
     if (debugLevels == 4) return float4(frac(height / 50.0), frac(height / 500.0), saturate(height / 3000.0), 1);
 
     const float sunLight = sunShadow(input.view, surfaceNormal) * cloudShadow(input.view);
-    const float3 lit = shadeSurface(colour, normal, input.view, sunLight, 1.0, 0.0);
+    float3 lit = shadeSurface(colour, normal, input.view, sunLight, 1.0, 0.0);
+    if (riverCover > 0) {
+        // Flat water: the sky by Fresnel over the water's own dark colour.
+        const float3 toEye = -normalize(input.view);
+        const float fresnel = 0.02 + 0.98 * pow(1.0 - saturate(toEye.z), 5.0);
+        const float3 body = float3(0.02, 0.09, 0.11) * (lerp(lightGround, lightZenith, 0.7) * 1.2 + lightSunColour * 0.25 * sunLight);
+        lit = lerp(lit, lerp(body, skyColour(float3(-toEye.xy, abs(toEye.z))), fresnel), riverCover);
+    }
     return float4(applyFog(lit, input.view), 1);
 }
 

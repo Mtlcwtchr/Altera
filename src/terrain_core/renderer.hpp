@@ -12,6 +12,7 @@
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
+#include "terrain_core/rivers.hpp"
 
 #include <cstdint>
 #include <vector>
@@ -79,8 +80,16 @@ public:
     SDL_GPUTexture* materialProperties() const { return materialProperties_.get(); }
     std::uint32_t biomeSize() const { return ground_.biomeSize; }
     const GroundUniforms& ground() const { return ground_; }
+    // The river graph: the generator cuts the beds, the ground paints the
+    // thin ones. Must be set (an empty one will do) before anything is drawn.
+    void setRivers(const Rivers* rivers) { rivers_ = rivers; }
+    const Rivers* rivers() const { return rivers_; }
+    // Render pixels per screen pixel (DLSS: below 1): the ground's materials
+    // pick their mip for the screen, as upscaling wants (a negative LOD bias).
+    void setTextureScale(float scale) { ground_.textureScale = scale; }
 
 private:
+    const Rivers* rivers_ = nullptr;
     engine::Device* device_ = nullptr;
     Params params_;
     std::uint32_t macroSize_ = 0;

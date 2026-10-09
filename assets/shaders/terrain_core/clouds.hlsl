@@ -8,7 +8,8 @@
 // itself) with a forward-scattering phase (the silver edge against the sun)
 // and the sky's light, and fogged with distance like everything else.
 
-Texture2D<float> sceneDepth : register(t0, space0);   // read-only storage: the frame's depth, reversed
+Texture2D<float> sceneDepth : register(t0, space0);   // sampled depth, reversed
+SamplerState depthSampler : register(s0, space0);
 RWTexture2D<float4> cloudsOut : register(u0, space1);
 
 cbuffer CloudCamera : register(b0, space2) {
@@ -41,7 +42,7 @@ void cloudsCs(uint3 id : SV_DispatchThreadID) {
     const float3 dir = normalize(cameraForward.xyz + ndc.x * cameraRight.xyz + ndc.y * cameraUp.xyz);
 
     // How far the scene is along this ray (reversed depth: near / distance).
-    const float depth = sceneDepth.Load(int3(full, 0));
+    const float depth = sceneDepth.SampleLevel(depthSampler, (float2(full) + 0.5) / frameInfo.yz, 0);
     const float sceneT = depth > 0 ? frameInfo.x / depth / max(dot(dir, cameraForward.xyz), 1e-3) : 1e9;
 
     // The ray's stretch inside the layer.

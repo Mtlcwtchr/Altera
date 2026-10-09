@@ -12,6 +12,7 @@
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/params.hpp"
+#include "terrain_core/rivers.hpp"
 
 #include <filesystem>
 #include <string>
@@ -45,7 +46,7 @@ public:
     // map and the material array the ground draws with, and its uniforms.
     void spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
                SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
-               SDL_GPUTexture* properties, SDL_GPUTexture* water, std::uint32_t waterSize, const GroundUniforms& ground,
+               SDL_GPUTexture* properties, SDL_GPUTexture* water, std::uint32_t waterSize, const Rivers& rivers, const GroundUniforms& ground,
                const LightUniforms& light);
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
               const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler);

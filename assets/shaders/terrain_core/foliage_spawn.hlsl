@@ -31,6 +31,10 @@ SamplerState clipSampler : register(s0, space0);
 SamplerState biomeSampler : register(s1, space0);
 SamplerState waterSampler : register(s2, space0);
 #include "water_map.hlsli"
+#define RIVER_SEGMENTS register(t5, space0)
+#define RIVER_TILES register(t6, space0)
+#define RIVER_LIST register(t7, space0)
+#include "rivers.hlsli"
 RWStructuredBuffer<Instance> instances : register(u0, space1);
 RWStructuredBuffer<uint> counters : register(u1, space1);
 
@@ -134,8 +138,10 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     if (normalZ < minNormalZ) return;
     // Nothing grows under water: a lake, a river, its wet bank.
     float wet;
-    if (waterAt(waterMap, waterSampler, (float2(p.base) + p.sub) * spacing0, worldSize, waterMapSize, wet).x > ground.x - 0.3)
-        return;
+    const float2 metres = (float2(p.base) + p.sub) * spacing0;
+    if (waterAt(waterMap, waterSampler, metres, worldSize, waterMapSize, wet).x > ground.x - 0.3) return;
+    const RiverHit river = nearestRiver(metres);
+    if (river.found && river.distance < river.halfWidth + 1.5) return;
 
     BiomeMapInfo info;
     info.size = biomeSize;

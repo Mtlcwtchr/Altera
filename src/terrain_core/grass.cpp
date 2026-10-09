@@ -92,7 +92,7 @@ bool Grass::open(engine::Device& device, const Params& params, const GrassSettin
 
 void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_GPUTexture* clipmap,
                   SDL_GPUTexture* biomeMap, SDL_GPUTexture* materials, SDL_GPUTexture* normals,
-                  SDL_GPUTexture* properties, SDL_GPUTexture* water, std::uint32_t waterSize,
+                  SDL_GPUTexture* properties, SDL_GPUTexture* water, std::uint32_t waterSize, const Rivers& rivers,
                   const GroundUniforms& ground, const LightUniforms& light) {
     if (frame_ >= 3) {
         if (const auto* n = static_cast<const std::uint32_t*>(
@@ -117,6 +117,8 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
                 {clipmap, nearest_.get()}, {biomeMap, nearest_.get()}, {materials, repeat_.get()},
                 {normals, repeat_.get()}, {properties, repeat_.get()}, {water, nearest_.get()}};
         SDL_BindGPUComputeSamplers(pass, 0, samplers, 6);
+        const auto river = rivers.buffers();
+        SDL_BindGPUComputeStorageBuffers(pass, 0, river.data(), 3);
         SDL_PushGPUComputeUniformData(commands, 1, &ground, sizeof(ground));
         SDL_PushGPUComputeUniformData(commands, 2, &light, sizeof(light));
         const double range = params_.macroHeightRange, sea = params_.macroSeaLevel;

@@ -8,7 +8,7 @@
 namespace engine {
 
 bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
-    if (width == width_ && height == height_ && colour_) return true;
+    if (width == width_ && height == height_ && colour_ && sampledDepth_ == builtSampledDepth_) return true;
     // The old ones may still be in a frame the card has not finished, and
     // releasing a texture out from under a command buffer is a crash a long way
     // from here.
@@ -42,7 +42,7 @@ bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
     // occlusion pass. It remains a depth attachment for raster, and is also
     // exposed as a read-only compute texture after the render pass ends.
     info.usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET |
-                 SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ;
+                 (sampledDepth_ ? SDL_GPU_TEXTUREUSAGE_SAMPLER : SDL_GPU_TEXTUREUSAGE_COMPUTE_STORAGE_READ);
     depth_ = device.makeTexture(info);
 
     if (samples != SDL_GPU_SAMPLECOUNT_1) {
@@ -79,6 +79,7 @@ bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
     }
     width_ = width;
     height_ = height;
+    builtSampledDepth_ = sampledDepth_;
     return true;
 }
 

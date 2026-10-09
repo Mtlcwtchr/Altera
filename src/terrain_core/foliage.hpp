@@ -16,6 +16,7 @@
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/params.hpp"
+#include "terrain_core/rivers.hpp"
 
 #include <array>
 #include <filesystem>
@@ -51,7 +52,8 @@ public:
     // Compute passes: reset, spawn every enabled layer, arguments. Outside
     // any render pass. Needs the clipmap and biome map the terrain draws with.
     void spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, SDL_GPUTexture* clipmap,
-               SDL_GPUTexture* biomeMap, std::uint32_t biomeSize, SDL_GPUTexture* water, std::uint32_t waterSize);
+               SDL_GPUTexture* biomeMap, std::uint32_t biomeSize, SDL_GPUTexture* water, std::uint32_t waterSize,
+               const Rivers& rivers);
     // Inside the render pass, after the terrain. `look` is the terrain's.
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
               const LightUniforms& light, SDL_GPUTexture* shadowAtlas, SDL_GPUSampler* shadowSampler);

@@ -19,6 +19,8 @@ namespace engine {
 class Targets {
 public:
     bool resize(Device& device, Uint32 width, Uint32 height);
+    // SDL's portable depth read path for sampler-based compute shaders.
+    void sampledDepth(bool enabled) { sampledDepth_ = enabled; }
     // What the passes draw into. Multisampled when the card will do it.
     SDL_GPUTexture* colour() const { return colour_.get(); }
     SDL_GPUTexture* depth() const { return depth_.get(); }
@@ -43,6 +45,7 @@ public:
 private:
     Texture colour_, depth_, resolve_, grab_;
     Uint32 width_ = 0, height_ = 0;
+    bool sampledDepth_ = false, builtSampledDepth_ = false;
 };
 
 // Reads the colour target back and writes it out. Slow and synchronous, which

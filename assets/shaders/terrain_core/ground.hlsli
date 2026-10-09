@@ -42,7 +42,7 @@ cbuffer Ground : GROUND_UNIFORMS {
     float4 biomeData[32 * 5];   // per biome: materials, patch, slope, high, tint
     float4 groundGlobals;       // shore material, shore height, sea floor material, log2(tile in level-0 texels)
     uint4 groundSizes;          // biome map size, -, -, -
-    float4 groundWorld;         // world size, spacing, -, -
+    float4 groundWorld;         // world size, spacing, texture scale (0 = 1), -
     float4 materialGrass[8];    // per material layer: how much of it is grass, 0..1
 };
 
@@ -134,7 +134,10 @@ Surface material(float layer, GroundPoint p, float wander) {
     const float2 uvA = uv + offsetOf(i), uvB = uv + offsetOf(i + 1);
 #ifdef GROUND_IN_COMPUTE
     // 128 texels a tile: texture texels per level-0 texel, times the footprint.
-    const float lod = log2(max(p.footprint * 128.0 / float(1 << tile), 1.0));
+    // Under DLSS the scene renders smaller than the screen: the texture is
+    // picked for the screen's pixels (its LOD bias), the rest stays the render's.
+    const float textureScale = groundWorld.z > 0 ? groundWorld.z : 1.0;
+    const float lod = log2(max(p.footprint * textureScale * 128.0 / float(1 << tile), 1.0));
     const float2 dx = 0, dy = 0;
 #else
     const float lod = 0;
