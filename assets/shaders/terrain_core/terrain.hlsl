@@ -166,8 +166,12 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         const float damp = 1.0 - saturate((river.distance - river.halfWidth) / max(channelBank(river) * 0.5, 1.0));
         colour *= 1.0 - 0.3 * damp * resolved;
         const float pixel = max(p.footprint * groundWorld.y, 1e-3);   // metres a pixel spans
-        const float halfWidth = max(river.halfWidth, pixel * 0.6);
-        const float strength = max(saturate(2.0 * river.halfWidth / pixel), smoothstep(0.15, 0.6, river.flow));
+        // Never thinner than its rank allows: the biggest river two pixels
+        // across, a tributary one, a brook only as wide as it really is (and
+        // so fading out as it gets under a pixel).
+        const float rank = smoothstep(0.2, 0.9, river.flow);
+        const float halfWidth = max(river.halfWidth, pixel * rank);
+        const float strength = max(saturate(2.0 * river.halfWidth / pixel), smoothstep(0.2, 0.5, river.flow));
         riverCover = saturate((halfWidth - river.distance) / pixel + 0.5) * (1.0 - resolved) * strength;
     }
     if (debugLevels == 5) return float4(colour, 1);

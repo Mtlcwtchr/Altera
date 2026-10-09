@@ -377,10 +377,14 @@ struct Lab {
         options.params.macroTexel = macro.texelMetres(options.params.worldSize);
         if (options.water) {
             Hydrology hydro = buildHydrology(macro, options.params, options.hydrology);
-            std::printf("hydrology: %u^2, %u lakes (%u closed, %u cells), river graph %u nodes, %u sources, %u mouths, "
+            std::printf("hydrology: %u^2, %u lakes (%u closed, %u cells), river graph %u nodes, %u sources, %u mouths, %u deltas, "
                         "%zu segments, biggest %.0f km^2, %.0f ms\n", hydro.water.size, hydro.lakes, hydro.closedLakes,
-                        hydro.water.lakeCells, hydro.nodes, hydro.sources, hydro.mouths, hydro.rivers.size(), hydro.biggestKm2,
+                        hydro.water.lakeCells, hydro.nodes, hydro.sources, hydro.mouths, hydro.deltas, hydro.rivers.size(), hydro.biggestKm2,
                         hydro.ms);
+            std::sort(hydro.deltaHeads.begin(), hydro.deltaHeads.end(), [](const auto& a, const auto& b) { return a[2] > b[2]; });
+            for (std::size_t i = 0; i < std::min<std::size_t>(5, hydro.deltaHeads.size()); ++i)
+                std::printf("  delta at %.4f,%.4f (%.0f km^2)\n", hydro.deltaHeads[i][0] / options.params.worldSize,
+                            hydro.deltaHeads[i][1] / options.params.worldSize, hydro.deltaHeads[i][2]);
             waterMap = std::move(hydro.water);
             riverSegments = std::move(hydro.rivers);
             if (!options.waterPreview.empty()) {

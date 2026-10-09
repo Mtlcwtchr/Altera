@@ -186,115 +186,239 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
     for (std::uint32_t i = 0; i < cells; ++i)
         if (receiver[i] != i) receiver[i] = steepest(i, filled, receiver[i]);
 
-    // The hollows themselves, from the true ground: the routing's noise
-    // makes a pit of every bump, and the pits of a plain would join into one
-    // vast "hollow". A second flood, no noise, no slope on the flats.
-    std::vector<float> brim(h);
-    {
-        using Item = std::pair<float, std::uint32_t>;
-        std::priority_queue<Item, std::vector<Item>, std::greater<Item>> open;
-        std::vector<std::uint8_t> done(cells, 0);
-        for (std::uint32_t i = 0; i < cells; ++i) {
-            const std::uint32_t x = i % side, y = i / side;
-            if (x == 0 || y == 0 || x == side - 1 || y == side - 1 || ocean[i]) {
-                done[i] = 1;
-                open.push({brim[i], i});
-            }
-        }
-        while (!open.empty()) {
-            const auto [level, i] = open.top();
-            open.pop();
-            for (int k = 0; k < 8; ++k) {
-                const std::uint32_t c = neighbour(i, k);
-                if (c == kNone || done[c]) continue;
-                done[c] = 1;
-                brim[c] = std::max(brim[c], level);
-                open.push({brim[c], c});
-            }
-        }
-    }
-    auto hollow = [&](std::uint32_t i) { return !ocean[i] && brim[i] - h[i] > 0.3f; };
-
-    // Catchment as the flood routes it, km^2: what each hollow is fed.
-    std::vector<float> area(cells, float(cellKm2));
-    for (std::size_t k = order.size(); k-- > 0;) {
-        const std::uint32_t i = order[k];
-        if (receiver[i] != i) area[receiver[i]] += area[i];
-    }
-
-    // The hollows and their lakes, by water balance.
+    // The lakes: fill, spill, merge over the hollows' hierarchy (after
+    // Barnes, Callaghan & Wickert, "Computing water flow through complex
+    // landscapes", 2020).
+    //
+    // Swept by height, the ground under each level is a set of separate
+    // hollows; where two meet is a saddle, where one meets the sea or the
+    // map's edge its outlet. That is a tree: a caldera is a hollow of its own
+    // inside the basin round it, joined to it only at its rim. Each hollow is
+    // fed by the ground that drains into it (steepest descent), and holds a
+    // lake as big as `humidity` times that: if the water would reach the
+    // saddle, the hollow is full and the rest runs over into its neighbour;
+    // two full neighbours become one lake. So a caldera with its own walls
+    // for a catchment gets its own lake, at its own level - not the level of
+    // the plateau round it.
     Hydrology out;
+    std::vector<float> area(cells, float(cellKm2));
     std::vector<std::uint8_t> lake(cells, 0);
     std::vector<float> lakeLevel(cells, WaterMap::kNoWater);
+    std::vector<std::uint8_t> closed(cells, 0);   // 1: dry, in a hollow that keeps its water; 2: its lake
     {
-        std::vector<std::uint8_t> seen(cells, 0);
-        std::vector<std::uint32_t> stack, members, extent, grow;
-        for (std::uint32_t first = 0; first < cells; ++first) {
-            if (seen[first] || !hollow(first)) continue;
-            members.clear();
-            stack.assign(1, first);
-            seen[first] = 1;
-            float fed = 0, spill = 0;
+        struct Hollow {
+            float z = std::numeric_limits<float>::max();   // the level it joins its parent at
+            std::uint32_t parent = kNone;                   // kNone: never joined; 0: the sea
+            std::uint32_t cellsBelow = 0;                   // its cells when it joins: the lake's area at z
+            double water = 0;                               // km^2 of lake its own catchment keeps
+            std::vector<std::uint32_t> children, own;       // own: cells added to it directly, by height
+        };
+        std::vector<Hollow> hollows(1);                     // 0: the sea and the map's edge
+        std::vector<std::uint32_t> byHeight(cells);
+        for (std::uint32_t i = 0; i < cells; ++i) byHeight[i] = i;
+        std::sort(byHeight.begin(), byHeight.end(), [&](std::uint32_t a, std::uint32_t b) {
+            return h[a] < h[b] || (h[a] == h[b] && a < b);
+        });
+        std::vector<std::uint32_t> set(cells, kNone), setSize(cells, 0), hollowOf(cells, 0), owner(cells, 0);
+        auto find = [&](std::uint32_t i) {
+            while (set[i] != i) { set[i] = set[set[i]]; i = set[i]; }
+            return i;
+        };
+        auto join = [&](std::uint32_t a, std::uint32_t b) {   // b's set into a's; a stays the root
+            set[b] = a;
+            setSize[a] += setSize[b];
+        };
+        for (const std::uint32_t i : byHeight) {
+            const std::uint32_t x = i % side, y = i / side;
+            const bool outlet = ocean[i] || x == 0 || y == 0 || x == side - 1 || y == side - 1;
+            std::uint32_t roots[8];
+            int count = 0;
+            for (int k = 0; k < 8; ++k) {
+                const std::uint32_t c = neighbour(i, k);
+                if (c == kNone || set[c] == kNone) continue;
+                const std::uint32_t r = find(c);
+                if (std::find(roots, roots + count, r) == roots + count) roots[count++] = r;
+            }
+            set[i] = i;
+            setSize[i] = 1;
+            bool sea = outlet;
+            for (int k = 0; k < count; ++k) sea = sea || hollowOf[roots[k]] == 0;
+            if (count == 0 && !sea) {
+                hollowOf[i] = std::uint32_t(hollows.size());
+                owner[i] = hollowOf[i];
+                hollows.emplace_back().own.push_back(i);
+                continue;
+            }
+            if (sea) {
+                // Everything that meets the sea here spills into it at this level.
+                for (int k = 0; k < count; ++k) {
+                    if (hollowOf[roots[k]] == 0) continue;
+                    Hollow& hollow = hollows[hollowOf[roots[k]]];
+                    hollow.z = h[i];
+                    hollow.parent = 0;
+                    hollow.cellsBelow = setSize[roots[k]];
+                }
+                for (int k = 0; k < count; ++k) join(i, roots[k]);
+                hollowOf[i] = 0;
+                owner[i] = 0;
+                continue;
+            }
+            if (count == 1) {
+                join(roots[0], i);
+                owner[i] = hollowOf[roots[0]];
+                hollows[owner[i]].own.push_back(i);
+                continue;
+            }
+            // A saddle: the hollows meeting here become one, above this level.
+            const auto merged = std::uint32_t(hollows.size());
+            hollows.emplace_back();
+            for (int k = 0; k < count; ++k) {
+                Hollow& child = hollows[hollowOf[roots[k]]];
+                child.z = h[i];
+                child.parent = merged;
+                child.cellsBelow = setSize[roots[k]];
+                hollows[merged].children.push_back(hollowOf[roots[k]]);
+            }
+            for (int k = 0; k < count; ++k) join(i, roots[k]);
+            hollowOf[i] = merged;
+            owner[i] = merged;
+            hollows[merged].own.push_back(i);
+        }
+
+        // Where each cell's water ends up: down the steepest drop of the true
+        // ground to a cell with nothing lower, which belongs to some hollow.
+        std::vector<std::uint32_t> end(cells);
+        for (const std::uint32_t i : byHeight) {
+            std::uint32_t low = i;
+            for (int k = 0; k < 8; ++k) {
+                const std::uint32_t c = neighbour(i, k);
+                if (c != kNone && h[c] < h[low]) low = c;
+            }
+            end[i] = low == i ? i : end[low];
+        }
+        for (std::uint32_t i = 0; i < cells; ++i) hollows[owner[end[i]]].water += cellKm2 * s.humidity;
+        // A hollow's water is its own and all it contains: children first
+        // (a hollow is always made after the ones it joins).
+        std::vector<double> total(hollows.size(), 0.0);
+        std::vector<float> floor(hollows.size(), std::numeric_limits<float>::max());
+        for (std::size_t n = 1; n < hollows.size(); ++n) {
+            total[n] += hollows[n].water;
+            if (!hollows[n].own.empty()) floor[n] = std::min(floor[n], h[hollows[n].own.front()]);
+            if (hollows[n].parent != kNone && hollows[n].parent != 0) {
+                total[hollows[n].parent] += total[n];
+                floor[hollows[n].parent] = std::min(floor[hollows[n].parent], floor[n]);
+            }
+        }
+        // A shallow or small hollow is a dent in the ground (the detail makes
+        // them on every slope), not a basin with a climate of its own: its
+        // water runs straight through, as if the stream had long since cut
+        // its way out - no pond, and no water kept.
+        auto dent = [&](std::uint32_t n) {
+            const Hollow& hollow = hollows[n];
+            return hollow.z - floor[n] < s.fillDepth || hollow.cellsBelow * cellKm2 < s.fillArea;
+        };
+
+        // Down the tree from each hollow that spills into the sea, sharing out
+        // the water: a hollow with enough fills to the level it joins at; one
+        // without makes its own lake and keeps its water.
+        struct Lake { float level; std::vector<std::uint32_t> cells; bool closed; };
+        std::vector<Lake> lakes;
+        auto everything = [&](std::uint32_t n, std::vector<std::uint32_t>& into) {
+            std::vector<std::uint32_t> stack(1, n);
             while (!stack.empty()) {
-                const std::uint32_t i = stack.back();
+                const Hollow& hollow = hollows[stack.back()];
                 stack.pop_back();
-                members.push_back(i);
-                fed = std::max(fed, area[i]);
-                spill = std::max(spill, brim[i]);
-                for (int k = 0; k < 8; ++k) {
-                    const std::uint32_t c = neighbour(i, k);
-                    if (c == kNone || seen[c] || !hollow(c)) continue;
-                    seen[c] = 1;
-                    stack.push_back(c);
-                }
+                into.insert(into.end(), hollow.own.begin(), hollow.own.end());
+                stack.insert(stack.end(), hollow.children.begin(), hollow.children.end());
             }
-            std::sort(members.begin(), members.end(), [&](std::uint32_t a, std::uint32_t b) { return h[a] < h[b]; });
-            // Fill from the bottom until the lake is as big as its water allows.
-            const double wanted = s.humidity * fed;
-            float level = spill;
-            bool brim = true;
-            // A small or shallow hollow fills and spills whatever the climate:
-            // a dent in the map, not a basin with a water balance of its own.
-            const bool basin = spill - h[members[0]] >= s.closedDepth && double(members.size()) * cellKm2 >= s.closedArea;
-            for (std::size_t k = 0; basin && k + 1 < members.size(); ++k)
-                if (double(k + 1) * cellKm2 >= wanted) {
-                    level = h[members[k + 1]];
-                    brim = level >= spill;
-                    break;
-                }
-            // The lake: what lies under that level, joined to the lowest point.
-            extent.assign(1, members[0]);
-            grow.assign(1, members[0]);
-            lake[members[0]] = 2;   // 2: being grown
-            while (!grow.empty()) {
-                const std::uint32_t i = grow.back();
-                grow.pop_back();
-                for (int k = 0; k < 8; ++k) {
-                    const std::uint32_t c = neighbour(i, k);
-                    if (c == kNone || lake[c] || !hollow(c) || h[c] >= level) continue;
-                    lake[c] = 2;
-                    extent.push_back(c);
-                    grow.push_back(c);
-                }
+        };
+        struct Task { std::uint32_t n; double water; };
+        std::vector<Task> tasks;
+        for (std::uint32_t n = 1; n < hollows.size(); ++n)
+            if (hollows[n].parent == 0) tasks.push_back({n, total[n]});
+        while (!tasks.empty()) {
+            const Task task = tasks.back();
+            tasks.pop_back();
+            const Hollow& hollow = hollows[task.n];
+            const double capacity = hollow.cellsBelow * cellKm2;
+            if (dent(task.n)) continue;
+            if (task.water >= capacity) {
+                // Full: a lake to the level it spills at; the rest goes on.
+                Lake full{hollow.z, {}, false};
+                everything(task.n, full.cells);
+                lakes.push_back(std::move(full));
+                continue;
             }
-            const bool keep = level - h[members[0]] >= s.lakeDepth && double(extent.size()) * cellKm2 >= s.minLakeArea;
-            for (const std::uint32_t i : extent) {
-                lake[i] = keep ? 1 : 0;
-                if (keep) lakeLevel[i] = level;
+            // What it takes to fill its parts to where they meet. A dent needs
+            // nothing: silted up, it is just more floor for the lake.
+            double childrenNeed = 0;
+            for (const std::uint32_t c : hollow.children)
+                if (!dent(c)) childrenNeed += hollows[c].cellsBelow * cellKm2;
+            if (hollow.children.empty() || task.water >= childrenNeed) {
+                // One lake over all of it, its level where its area is the water.
+                Lake open{0, {}, true};
+                for (const std::uint32_t c : hollow.children) everything(c, open.cells);
+                const auto more = std::size_t(std::max(0.0, task.water - childrenNeed) / cellKm2);
+                const std::size_t wet = std::min(more, hollow.own.size());
+                open.cells.insert(open.cells.end(), hollow.own.begin(), hollow.own.begin() + std::ptrdiff_t(wet));
+                open.level = wet < hollow.own.size() ? h[hollow.own[wet]] : hollow.z;
+                for (std::size_t k = wet; k < hollow.own.size(); ++k) closed[hollow.own[k]] = 1;
+                lakes.push_back(std::move(open));
+                continue;
+            }
+            // The water does not reach the saddle: each part keeps its own, a
+            // full one spilling over into the others. What falls on the saddle
+            // ground itself goes to the biggest.
+            for (const std::uint32_t own : hollow.own) closed[own] = 1;
+            std::vector<double> share;
+            double spare = task.water;
+            std::size_t biggest = 0;
+            for (std::size_t k = 0; k < hollow.children.size(); ++k) {
+                share.push_back(total[hollow.children[k]]);
+                spare -= share.back();
+                if (hollows[hollow.children[k]].cellsBelow > hollows[hollow.children[biggest]].cellsBelow) biggest = k;
+            }
+            share[biggest] += std::max(0.0, spare);
+            for (int round = 0; round < 8; ++round) {
+                double over = 0, deficit = -1;
+                std::size_t driest = 0;
+                for (std::size_t k = 0; k < share.size(); ++k) {
+                    // A dent holds nothing: what reaches it runs on.
+                    const double room = dent(hollow.children[k]) ? 0.0 : hollows[hollow.children[k]].cellsBelow * cellKm2;
+                    if (share[k] > room) { over += share[k] - room; share[k] = room; }
+                    else if (room - share[k] > deficit) { deficit = room - share[k]; driest = k; }
+                }
+                if (over <= 0) break;
+                share[driest] += over;
+            }
+            for (std::size_t k = 0; k < share.size(); ++k) tasks.push_back({hollow.children[k], share[k]});
+        }
+
+        // Too small or too shallow to be a lake: dry ground (still keeping
+        // its water if it was closed).
+        for (const Lake& l : lakes) {
+            if (l.cells.empty()) continue;
+            float bottom = l.level;
+            for (const std::uint32_t i : l.cells) bottom = std::min(bottom, h[i]);
+            const bool keep = l.level - bottom >= s.lakeDepth && double(l.cells.size()) * cellKm2 >= s.minLakeArea;
+            for (const std::uint32_t i : l.cells) {
+                if (l.closed) closed[i] = keep ? 2 : 1;
+                if (!keep) continue;
+                lake[i] = 1;
+                lakeLevel[i] = l.level;
             }
             if (keep) {
                 ++out.lakes;
-                out.water.lakeCells += std::uint32_t(extent.size());
-            }
-            if (!brim) {
-                // Closed: its water stays. Down the true ground to the lake
-                // (or the floor's own pits), and no further.
-                ++out.closedLakes;
-                for (const std::uint32_t i : members)
-                    receiver[i] = lake[i] ? i : steepest(i, route, i);
+                out.closedLakes += l.closed ? 1 : 0;
+                out.water.lakeCells += std::uint32_t(l.cells.size());
             }
         }
     }
+    // In a hollow that keeps its water the flow stops: down the true ground
+    // to the lake, which is where it ends.
+    for (std::uint32_t i = 0; i < cells; ++i)
+        if (closed[i] == 2) receiver[i] = i;
+        else if (closed[i] == 1) receiver[i] = steepest(i, route, i);
 
     // Catchment again, now that closed hollows keep theirs: in dependency
     // order (Kahn), which is also upstream-before-downstream for the graph.
@@ -376,8 +500,8 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
     double biggest = s.streamArea;
     for (Node& node : nodes) {
         biggest = std::max(biggest, double(node.area));
-        node.width = float(s.widthScale * std::sqrt(node.area));
-        node.depth = float(s.depthScale * std::pow(node.area, 0.3) + 0.3);
+        node.width = float(s.widthScale * std::pow(node.area, s.widthExponent));
+        node.depth = float(s.depthScale * std::pow(node.area, 0.33) + 0.3);
         if (node.upMain == kNone && !node.terminal) ++out.sources;
         if (node.down == kNone) ++out.mouths;
     }
@@ -585,6 +709,94 @@ Hydrology buildHydrology(const MacroMap& macro, const Params& params, const Hydr
             seg.bank = std::max(bank, std::min(3.0f * cut, 400.0f));
             out.rivers.push_back(seg);
         }
+    }
+    // Deltas: a big river reaching the sea over low, flat ground splits a
+    // way above its mouth into branches fanning out to the shore - two for
+    // a river, three or four for a great one. Each is narrower than the
+    // river and cut like any other; the river's own channel stays as one.
+    auto isSea = [&](double x, double y) {
+        const auto cx = std::int64_t(x / dx), cy = std::int64_t(y / dx);
+        if (cx < 0 || cy < 0 || cx >= std::int64_t(side) || cy >= std::int64_t(side)) return true;
+        return ocean[std::size_t(cy) * side + std::size_t(cx)] != 0;
+    };
+    for (std::size_t k = 0; k < nodes.size(); ++k) {
+        const Node& last = nodes[k];
+        if (last.down == kNone || !nodes[last.down].terminal || last.area < s.deltaArea) continue;
+        if (!ocean[nodes[last.down].cell]) continue;   // into a lake: no delta (yet)
+        const Node& mouth = nodes[last.down];
+        // Up the main line to the head of the delta.
+        const double reach = std::clamp(0.25 * std::sqrt(double(last.area)), 4.0, 15.0) * 1000.0;
+        std::size_t head = k;
+        double walked = std::hypot(mouth.x - last.x, mouth.y - last.y);
+        while (walked < reach && nodes[head].upMain != kNone) {
+            const Node& up = nodes[nodes[head].upMain];
+            walked += std::hypot(nodes[head].x - up.x, nodes[head].y - up.y);
+            head = nodes[head].upMain;
+        }
+        const Node& top = nodes[head];
+        const float topGround = ground.at(top.x, top.y, 8.0);
+        if (topGround > s.deltaHeight) continue;   // a river falling to the sea off high ground: no delta
+        const int branches = 2 + (last.area > 2000 ? 1 : 0) + (last.area > 8000 ? 1 : 0);
+        const double ax = mouth.x - top.x, ay = mouth.y - top.y, along = std::max(std::hypot(ax, ay), 1.0);
+        const double ux = ax / along, uy = ay / along;
+        const float width = float(last.width / std::pow(double(branches), 0.6));
+        const float depth = float(last.depth / std::pow(double(branches), 0.4));
+        const float topSurface = std::max(0.5f, std::min(topGround - 0.3f, top.surface));
+        const float flow = float(std::clamp(std::log(double(last.area) / s.streamArea) / logBiggest, 0.0, 1.0)) * 0.8f;
+        // The directions from the head that reach the sea soon enough: a
+        // fan across the river's line, kept only where it meets the water
+        // (a narrow bay takes fewer branches than an open coast).
+        struct Way { double x, y; };
+        std::vector<Way> ways;
+        for (int a = 0; a <= 24; ++a) {
+            const double turn = -1.1 + 2.2 * a / 24.0;
+            const double c = std::cos(turn), sn = std::sin(turn);
+            const double dxA = ux * c - uy * sn, dyA = ux * sn + uy * c;
+            for (double t = 0.3 * along; t < 1.4 * along; t += 100.0)
+                if (isSea(top.x + dxA * t, top.y + dyA * t)) { ways.push_back({top.x + dxA * t, top.y + dyA * t}); break; }
+        }
+        if (ways.size() < 3) continue;
+        const int made = std::min<int>(branches, int(ways.size() / 3) + 1);
+        if (made < 2) continue;
+        for (int b = 0; b < made; ++b) {
+            const Way& way = ways[std::size_t((ways.size() - 1) * (b + 0.5) / made)];
+            const double ex = way.x, ey = way.y;
+            // A curve: leaving along the river, bending out to its own mouth,
+            // and swinging from side to side on the way as a channel over a
+            // flat does - never at the fork or the mouth.
+            const double mx = top.x + ux * along * 0.35, my = top.y + uy * along * 0.35;
+            const double length = std::hypot(ex - top.x, ey - top.y);
+            const double bends = std::max(2.0, length / std::max(30.0 * double(width), 1500.0));
+            const double swing = std::min(0.06 * length, 8.0 * double(width) + 150.0);
+            const double phase = valueNoise(top.x, top.y + b * 1777.0, 2000.0, 57) * 6.2831853;
+            const int kPieces = std::max(10, int(bends * 8));
+            double px = top.x, py = top.y;
+            for (int j = 1; j <= kPieces; ++j) {
+                const double t = double(j) / kPieces, t0 = double(j - 1) / kPieces;
+                double qx = (1 - t) * (1 - t) * top.x + 2 * (1 - t) * t * mx + t * t * ex;
+                double qy = (1 - t) * (1 - t) * top.y + 2 * (1 - t) * t * my + t * t * ey;
+                // Sideways to the curve's own direction there.
+                const double tx = 2 * (1 - t) * (mx - top.x) + 2 * t * (ex - mx), ty = 2 * (1 - t) * (my - top.y) + 2 * t * (ey - my);
+                const double tl = std::max(std::hypot(tx, ty), 1e-3);
+                const double off = swing * std::sin(t * bends * 6.2831853 + phase) * std::sin(t * 3.14159265);
+                qx += -ty / tl * off;
+                qy += tx / tl * off;
+                RiverSegment seg{};
+                seg.x0 = float(px); seg.y0 = float(py); seg.x1 = float(qx); seg.y1 = float(qy);
+                seg.surface0 = float(topSurface * (1.0 - t0));
+                seg.surface1 = float(topSurface * (1.0 - t));
+                seg.width0 = float(last.width + (width - last.width) * std::min(1.0, t0 * 3.0));
+                seg.width1 = float(last.width + (width - last.width) * std::min(1.0, t * 3.0));
+                seg.depth0 = seg.depth1 = depth;
+                seg.flow = flow;
+                seg.bank = std::max(6.0f, width) + 4.0f * depth;
+                out.rivers.push_back(seg);
+                px = qx;
+                py = qy;
+            }
+        }
+        ++out.deltas;
+        out.deltaHeads.push_back({float(top.x), float(top.y), last.area});
     }
     out.ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
     return out;

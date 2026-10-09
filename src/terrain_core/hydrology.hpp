@@ -24,6 +24,7 @@
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
 
+#include <array>
 #include <cstdint>
 #include <vector>
 
@@ -32,13 +33,19 @@ namespace terrain_core {
 struct HydrologySettings {
     std::uint32_t resolution = 2048;   // work grid, at most this many texels a side
     double streamArea = 2.0;           // km^2 a cell must drain to be on the river graph
-    double humidity = 0.15;            // a closed lake's area, as a share of what drains into it
-    double closedDepth = 5.0;          // a hollow shallower than this (m) or smaller than
-    double closedArea = 2.0;           //   this (km^2) always fills and spills
+    double humidity = 0.5;             // a lake's area, as a share of the ground that drains into it
+    double fillDepth = 30.0;           // a hollow shallower than this (m) or smaller than
+    double fillArea = 2.0;             //   this (km^2) drains: no pond, its water runs through
     double lakeDepth = 1.0;            // metres: a shallower lake is left dry
     double minLakeArea = 0.3;          // km^2: a smaller one too
-    double widthScale = 1.6;           // river width (m) = widthScale * sqrt(catchment km^2)
-    double depthScale = 0.45;          // river depth (m) = depthScale * catchment^0.3 + 0.3
+    // River width (m) = widthScale * catchment(km^2)^widthExponent: a brook
+    // of 2 km^2 ~1.4 m, a tributary of 200 km^2 ~25 m, a river of 20 000 km^2
+    // ~400 m. Steeper than nature's square root, so the sizes read apart.
+    double widthScale = 0.9;
+    double widthExponent = 0.62;
+    double depthScale = 0.35;          // river depth (m) = depthScale * catchment^0.33 + 0.3
+    double deltaArea = 300.0;          // km^2: a river this big reaching the sea over low ground splits
+    double deltaHeight = 150.0;        // metres: ...if the ground where it would split is no higher
     double meander = 1.0;              // multiplies how far big rivers on the flat swing
 };
 
@@ -66,7 +73,8 @@ static_assert(sizeof(RiverSegment) == 48);
 struct Hydrology {
     WaterMap water;
     std::vector<RiverSegment> rivers;
-    std::uint32_t nodes = 0, sources = 0, mouths = 0, lakes = 0, closedLakes = 0;
+    std::uint32_t nodes = 0, sources = 0, mouths = 0, lakes = 0, closedLakes = 0, deltas = 0;
+    std::vector<std::array<float, 3>> deltaHeads;   // x, y (m), catchment km^2 of each delta
     double biggestKm2 = 0;
     double ms = 0;
 };
