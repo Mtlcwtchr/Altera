@@ -32,7 +32,7 @@ struct Params {
 
     // Heights.
     std::uint32_t seed = 11;
-    double macroHeightRange = 3000.0;   // metres spanned by the 16-bit macro map
+    double macroHeightRange = 6000.0;   // metres spanned by the 16-bit macro map
     double macroSeaLevel = 0.0;         // macro value (0..1) that is height 0
     double detailAmplitude = 1.0;       // scales the procedural detail
     // Metres one macro-map texel covers; set once the map is loaded. The

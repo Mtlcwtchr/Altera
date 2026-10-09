@@ -87,7 +87,15 @@ bool MacroMap::load(const std::filesystem::path& png, std::string* why) {
 }
 
 void MacroMap::generate(std::uint32_t size, std::uint32_t seed) {
-    std::vector<std::uint16_t> base(std::size_t(size) * size);
+    // What was here drew its mountains as the crests of a ridged noise at
+    // nine cycles a world, squared: lines one or two texels wide - two
+    // kilometres on a 2000 km world - which the eye reads as a scratch, not a
+    // range. Mountains are belts tens of kilometres across with peaks inside
+    // them, so they are built that way: a few long belts where a low-frequency
+    // noise crosses zero, widened, and a ridged massif of peaks only inside
+    // them. The map is normalised at the end so the highest peaks reach the
+    // top of the range whatever the noise happened to do.
+    std::vector<float> field(std::size_t(size) * size);
     for (std::uint32_t y = 0; y < size; ++y) {
         for (std::uint32_t x = 0; x < size; ++x) {
             const float u = (float(x) + 0.5f) / float(size), v = (float(y) + 0.5f) / float(size);
@@ -95,16 +103,45 @@ void MacroMap::generate(std::uint32_t size, std::uint32_t seed) {
             // it ends in sea rather than in a cut.
             const float wx = fbm(u * 3.0f, v * 3.0f, 4, seed + 1) * 0.35f;
             const float wy = fbm(u * 3.0f + 5.2f, v * 3.0f + 1.3f, 4, seed + 2) * 0.35f;
-            float land = fbm((u + wx) * 2.5f, (v + wy) * 2.5f, 7, seed + 3);
+            const float pu = u + wx, pv = v + wy;
+            float land = fbm(pu * 2.5f, pv * 2.5f, 7, seed + 3);
             const float dx = u - 0.5f, dy = v - 0.5f;
             land += 0.25f - 1.2f * (dx * dx + dy * dy);
             const float coast = std::clamp((land + 0.02f) * 6.0f, 0.0f, 1.0f);
-            const float inland = std::clamp((land - 0.08f) * 3.0f, 0.0f, 1.0f);
-            const float ranges = ridged((u + wx) * 9.0f, (v + wy) * 9.0f, 6, seed + 4);
-            float h = 0.18f * coast + 0.12f * inland + 0.70f * inland * ranges * ranges;
+            const float inland = std::clamp((land - 0.04f) * 4.0f, 0.0f, 1.0f);
+
+            // Belts: where a two-cycle noise crosses zero, ~5% of the world wide.
+            const float beltNoise = fbm(pu * 2.2f + 11.0f, pv * 2.2f - 4.0f, 4, seed + 5);
+            const float belt = std::clamp(1.0f - std::fabs(beltNoise) / 0.25f, 0.0f, 1.0f);
+            const float beltShape = belt * belt * (3.0f - 2.0f * belt);
+            // Peaks inside the belts: a ridged massif, its crests the summits.
+            const float massif = ridged(pu * 9.0f, pv * 9.0f, 6, seed + 4);
+            // Rolling ground everywhere else, and a high plateau now and then.
+            const float hills = fbm(pu * 18.0f, pv * 18.0f, 5, seed + 6) * 0.5f + 0.5f;
+            const float plateau = std::clamp((fbm(pu * 4.0f - 2.0f, pv * 4.0f + 9.0f, 3, seed + 7) - 0.15f) * 4.0f, 0.0f, 1.0f);
+
+            float h = 0.13f * coast + inland * (0.05f + 0.06f * hills + 0.10f * plateau +
+                                                beltShape * (0.22f + 0.6f * massif * std::sqrt(massif)));
             if (land < -0.02f) h = std::max(0.0f, 0.12f + land);   // sea floor below the coast
-            base[std::size_t(y) * size + x] = std::uint16_t(std::clamp(h, 0.0f, 1.0f) * 65535.0f);
+            field[std::size_t(y) * size + x] = h;
         }
+    }
+    // Scale the land (not the sea floor) so the 99.95th percentile of it
+    // stands at 0.97 of the range.
+    std::vector<float> high;
+    high.reserve(field.size() / 8);
+    for (std::size_t i = 0; i < field.size(); i += 7) if (field[i] > 0.13f) high.push_back(field[i]);
+    float top = 1.0f;
+    if (!high.empty()) {
+        const std::size_t k = std::min(high.size() - 1, std::size_t(double(high.size()) * 0.9995));
+        std::nth_element(high.begin(), high.begin() + std::ptrdiff_t(k), high.end());
+        top = high[k];
+    }
+    const float stretch = top > 0.13f ? (0.97f - 0.13f) / (top - 0.13f) : 1.0f;
+    std::vector<std::uint16_t> base(field.size());
+    for (std::size_t i = 0; i < field.size(); ++i) {
+        const float h = field[i] > 0.13f ? 0.13f + (field[i] - 0.13f) * stretch : field[i];
+        base[i] = std::uint16_t(std::clamp(h, 0.0f, 1.0f) * 65535.0f);
     }
     size_ = size;
     buildPyramid(std::move(base));

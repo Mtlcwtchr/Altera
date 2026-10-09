@@ -14,3 +14,4 @@ doc/NewRef/**/*.png filter=lfs diff=lfs merge=lfs -text
 doc/NewRef/**/*.jpg filter=lfs diff=lfs merge=lfs -text
 new_assets/**/*.zip filter=lfs diff=lfs merge=lfs -text
 doc/reports/terrain_core/**/*.png filter=lfs diff=lfs merge=lfs -text
+doc/OldWorld/**/*.png filter=lfs diff=lfs merge=lfs -text
