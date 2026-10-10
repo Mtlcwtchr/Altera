@@ -74,8 +74,6 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         const float layer = float(layerOf.size());
         layerOf[name] = layer;
     }
-    // Not rock_grey: its layer of the material array comes out black on the
-    // card (measured: every other rock fine, that one ~2% grey).
     const float fallback = layerOf.count("rocky_grey") ? layerOf["rocky_grey"] : 0.0f;
     {
         std::ifstream rules(materialsJson.parent_path() / "props.json");
