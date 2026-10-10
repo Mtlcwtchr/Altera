@@ -279,11 +279,82 @@ def sea_stacks(world, rules, catalogue, rng, add):
     return len(made)
 
 
+def rim_ledges(world, rules, catalogue, rng, add):
+    """Ledges of hard rock overhanging the canyon rims (doc/BIOMES_RU.md, 03):
+    on high ground a step from a steep drop, reaching out over it."""
+    r = rules["rim_ledges"]
+    zone = np.isin(world.zones, r["zones"])
+    gy, gx = np.gradient(world.hz, world.cell)
+    slope = np.hypot(gx, gy)
+    steep = slope > r["drop_slope"]
+    near = ndimage.distance_transform_edt(~steep) * world.cell
+    top = ndimage.maximum_filter(world.hz, 5)
+    ok = zone & ~steep & (near < r["rim_m"]) & (world.hz > top - r["below_top_m"])
+    ys, xs = np.nonzero(ok)
+    if not len(xs):
+        return 0
+    # Which way is out: towards the nearest steep cell's downhill.
+    _, (si, sj) = ndimage.distance_transform_edt(~steep, return_indices=True)
+    names = _names(catalogue, r["kind"])
+    made = []
+    for k in rng.permutation(len(xs)):
+        i, j = ys[k], xs[k]
+        x, y = (j + 0.5) * world.cell, (i + 0.5) * world.cell
+        if any((x - p[0]) ** 2 + (y - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
+            continue
+        a, b = si[i, j], sj[i, j]
+        out = np.array([-gx[a, b], -gy[a, b]])
+        if np.linalg.norm(out) < 1e-6:
+            continue
+        made.append((x, y))
+        name = names[rng.integers(len(names))]
+        m = catalogue[name]
+        s = rng.uniform(*r["size_m"]) / _size(m)
+        add(r["kind"], name, x, y, math.atan2(out[1], out[0]), (s, s, s), z=round(float(world.hz[i, j]) + 2.0, 1))
+        if len(made) >= r["count"]:
+            break
+    return len(made)
+
+
+def clefts(world, rules, catalogue, rng, add):
+    """Deep clefts of the black lands (doc/BIOMES_RU.md, 10): two or three
+    jagged blades side by side, the dark gap between them the cleft."""
+    r = rules["clefts"]
+    zone = np.isin(world.zones, r["zones"])
+    deep = ndimage.distance_transform_edt(zone) * world.cell > r["edge_m"]
+    ys, xs = np.nonzero(deep & (world.hz > 1.0))
+    if not len(xs):
+        return 0
+    area = zone.sum() * (world.cell / 1000) ** 2
+    count = int(area / 1000 * r["per_1000km2"])
+    names = _names(catalogue, r["kind"])
+    made = []
+    for k in rng.permutation(len(xs)):
+        cx, cy = (xs[k] + rng.random()) * world.cell, (ys[k] + rng.random()) * world.cell
+        if any((cx - p[0]) ** 2 + (cy - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
+            continue
+        made.append((cx, cy))
+        yaw = rng.uniform(0, math.pi)
+        side = np.array([-math.sin(yaw), math.cos(yaw)])
+        n = int(rng.integers(2, 4))
+        gap = rng.uniform(*r["gap_m"])
+        for q in range(n):
+            off = (q - (n - 1) / 2) * gap
+            name = names[rng.integers(len(names))]
+            m = catalogue[name]
+            s = rng.uniform(*r["size_m"]) / _size(m)
+            add(r["kind"], name, cx + side[0] * off + rng.uniform(-30, 30), cy + side[1] * off + rng.uniform(-30, 30),
+                yaw + rng.uniform(-0.12, 0.12), (s, s * rng.uniform(0.8, 1.2), s * rng.uniform(0.85, 1.25)))
+        if len(made) >= count:
+            break
+    return len(made)
+
+
 def place(world, rules, catalogue, rng, add):
     counts = {}
     for name, fn in (("canyon_bridges", canyon_bridges), ("ruin_chains", ruin_chains), ("rotunda", rotunda),
                      ("sentinels", sentinels), ("spiral_isle", spiral_isle), ("floating_isles", floating_isles),
-                     ("sea_stacks", sea_stacks)):
+                     ("sea_stacks", sea_stacks), ("rim_ledges", rim_ledges), ("clefts", clefts)):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     return counts

@@ -560,6 +560,89 @@ def sea_stack(rng, seed):
     return o
 
 
+def rim_ledge(rng, seed):
+    """A ledge of hard rock overhanging a canyon rim (doc/BIOMES_RU.md, 03:
+    the overhanging plateaus): a slab reaching out along +x past its foot,
+    ragged at the front, thinning out over the drop. Top at z = 0; ~320 m
+    out, ~260 m wide, ~45 m thick at the root."""
+    L = rng.uniform(280, 360)
+    W = rng.uniform(220, 300)
+    balls = []
+    for i in range(14):
+        u = i / 13                                  # 0 at the root, 1 at the tip
+        x = -L * 0.35 + u * L
+        th = 26 * (1 - 0.55 * u) + 8
+        for q in range(5):
+            y = (q / 4 - 0.5) * W * (1 - 0.25 * u) + rng.uniform(-15, 15)
+            balls.append({"co": (x + rng.uniform(-12, 12), y, -th * 0.7), "radius": th * rng.uniform(1.0, 1.35),
+                          "size": (1.4, 1.2, 0.55)})
+    # The root runs back into the plateau, deeper.
+    for q in range(5):
+        balls.append({"co": (-L * 0.45, (q / 4 - 0.5) * W, -60), "radius": 60, "size": (1.2, 1.0, 1.0)})
+    o = ab.metaball_mass("rim_ledge", balls, resolution=2.4, threshold=0.6)
+    o = finish(o, 2.2, 25, 4, 2, seed)
+    cut_above(o, -2.0)
+    for v in o.data.vertices:
+        v.co.z += 2.0
+    return o
+
+
+def rock_blade(rng, seed):
+    """A jagged black blade of the black lands (doc/BIOMES_RU.md, 10: barren
+    black rock, deep clefts): a knife-edged ridge, its crest broken into
+    sharp teeth. ~600 m along x, ~220 m high, thin."""
+    L = rng.uniform(500, 700)
+    H = rng.uniform(180, 260)
+    teeth = rng.randint(5, 9)
+    phase = rng.uniform(0, math.pi)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
+    o = bpy.context.active_object
+    ab.select_only(o)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.subdivide(number_cuts=40)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    for v in o.data.vertices:
+        u, w, k = v.co.x + 0.5, v.co.y, v.co.z + 0.5        # along, across, up
+        tooth = (1 - abs(math.sin(u * math.pi * teeth + phase))) ** 3
+        crest = H * (0.4 + 0.6 * tooth) * math.sin(math.pi * (0.05 + 0.9 * u)) ** 0.5
+        thick = 70 * (1 - k) ** 1.3 + 4
+        v.co.x = (u - 0.5) * L + noise.noise(Vector((u * 6, k * 3, seed))) * 25
+        v.co.y = w * thick + noise.noise(Vector((u * 9, k * 5, seed + 1))) * 10 * (1 - k)
+        v.co.z = crest * k - 40
+    voxel(o, 2.5)
+    ab.weather(o, seed=seed, cracks=0.5, erosion=0.7, chips=0.5, scale=0.4)
+    return o
+
+
+def hogback(rng, seed):
+    """A hogback ridge: a fin of tilted hard strata standing out of the
+    meadows, a steep broken face on one side (-y), a long slope on the other.
+    ~800 m along x, ~170 m high."""
+    L = rng.uniform(650, 950)
+    H = rng.uniform(130, 200)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
+    o = bpy.context.active_object
+    ab.select_only(o)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.subdivide(number_cuts=36)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    for v in o.data.vertices:
+        u, w, k = v.co.x + 0.5, v.co.y + 0.5, v.co.z + 0.5   # along, across (0 steep side), up
+        crest = H * math.sin(math.pi * u) ** 0.55 * (0.8 + 0.2 * noise.noise(Vector((u * 5, seed, 0))))
+        # Across: the steep face rises within the first sixth, the back
+        # slope falls over the rest.
+        prof = min(w / 0.16, 1.0) if w < 0.16 else max(0.0, 1.0 - (w - 0.16) / 0.84) ** 0.8
+        v.co.x = (u - 0.5) * L
+        v.co.y = (w - 0.16) * H * 2.4
+        v.co.z = (crest * prof if k > 0.5 else -40) + noise.noise(Vector((u * 14, w * 6, seed + 2))) * 6
+    voxel(o, 3.0)
+    boulders(o, 40, 4, seed)
+    ab.weather(o, seed=seed, cracks=0.5, erosion=0.5, chips=0.4, scale=0.15)
+    return o
+
+
 NEW = {
     "spire": (spire, 26000),
     "bridge": (bridge, 9000),
@@ -576,6 +659,9 @@ NEW = {
     "floating_isle": (floating_isle, 14000),
     "tilted_mass": (tilted_mass, 24000),
     "sea_stack": (sea_stack, 7000),
+    "rim_ledge": (rim_ledge, 9000),
+    "rock_blade": (rock_blade, 14000),
+    "hogback": (hogback, 14000),
 }
 
 
@@ -763,6 +849,7 @@ ALL = {"spire": 6, "bridge": 3, "valley_spire": 1,
        "marsh_arch": 2, "ruin_tower": 3, "ruin_wall": 2, "giant_bones": 2, "white_rotunda": 1,
        "sentinel_peak": 2, "spiral_tower": 1, "bridge_piece": 3,
        "sleeping_troll": 3, "floating_isle": 4, "tilted_mass": 2, "sea_stack": 4,
+       "rim_ledge": 4, "rock_blade": 4, "hogback": 3,
        "menhir": 3, "fallen_menhir": 2, "marsh_panel": 3, "colossus_head": 2, "colossus_hand": 1,
        "needle": 3, "portal_tower": 2, "mirror_monument": 1, "iron_defender": 1, "cyclopean_block": 2,
        "giant_stair": 1}
