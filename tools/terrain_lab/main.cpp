@@ -117,6 +117,7 @@ struct Options {
     bool dlss = false;            // NVIDIA DLSS Super Resolution, live toggle F12
     int dlssQuality = 0;          // 0 Quality, 1 Balanced, 2 Performance
     HydrologySettings hydrology;
+    double clock = 0;             // --clock: the world's clock at the start, seconds (water, wind, clouds)
     fs::path waterPreview;        // --water-preview: the water map as a picture
     fs::path waterSkeleton;       // --water-skeleton: the main lakes and rivers, painted (red rivers, blue lakes)
     fs::path waterRules;          // --water-rules: runoff (R) and where deltas may form (G), from the world generator
@@ -215,6 +216,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--stream-area") o.hydrology.streamArea = std::atof(next());
         else if (a == "--humidity") o.hydrology.humidity = std::atof(next());
         else if (a == "--time") o.light.timeOfDay = std::atof(next());
+        else if (a == "--clock") o.clock = std::atof(next());
         else if (a == "--clouds") o.light.cloudCover = std::atof(next());
         else if (a == "--no-clouds") o.light.clouds = false;
         else if (a == "--no-shadows") o.light.shadows = false;
@@ -347,7 +349,7 @@ struct Lab {
     Sky sky;
     Clouds clouds;
     bool lightReady = false;
-    double seconds = 0;           // the world's clock: wind, clouds
+    double seconds = options.clock;   // the world's clock: wind, clouds, water
     Clock::time_point lastFrame = Clock::now();
     Clipmap clipmap{options.params};
     GroundProbe probe;

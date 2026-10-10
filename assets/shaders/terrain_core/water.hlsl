@@ -28,6 +28,9 @@ cbuffer WaterView : register(b1, space1) {
 
 Texture2D<float4> waterMapVs : register(t0, space0);
 SamplerState waterVsSampler : register(s0, space0);
+// The biome ids (terrain_core::Renderer::biomeMap): which still water is marsh.
+Texture2D<float> biomeVs : register(t1, space0);
+SamplerState biomeVsSampler : register(s1, space0);
 
 struct PatchIn {
     uint vertex : SV_VertexID;
@@ -46,15 +49,16 @@ struct VsOut {
     float wet : TEXCOORD6;                 // 1 where there is water
     nointerpolation float ocean : TEXCOORD7;   // 1: the open ocean beyond the world
     float2 river : TEXCOORD8;              // the river's fall (m per m); how far past its water's edge (m)
+    float3 kind : TEXCOORD9;               // how much of it is sea, river, marsh (the rest: a lake)
 };
 
 int2 wrapSlot(int2 t, uint size) { const int n = int(size); return ((t % n) + n) % n; }
 
 #include "water_map.hlsli"
 
-#define RIVER_SEGMENTS register(t1, space0)
-#define RIVER_TILES register(t2, space0)
-#define RIVER_LIST register(t3, space0)
+#define RIVER_SEGMENTS register(t2, space0)
+#define RIVER_TILES register(t3, space0)
+#define RIVER_LIST register(t4, space0)
 #include "rivers.hlsli"
 
 VsOut waterVs(PatchIn input) {
@@ -71,6 +75,16 @@ VsOut waterVs(PatchIn input) {
     // so the water shows only over the bed.
     const RiverHit river = nearestRiver(metres);
     float2 riverInfo = float2(0, -1);
+    // What kind of water: the sea lies at level 0 in the map; still water
+    // whose ground is marsh (biome 1) is marsh; a river's own channel below.
+    float3 kind = float3(w.x < 0.05 ? 1.0 : 0.0, saturate(w.y * 4.0), 0.0);
+    {
+        float bw, bh;
+        biomeVs.GetDimensions(bw, bh);
+        const float2 bt = clamp(floor(metres / worldSize * bw), 0, bw - 1);
+        const uint biome = uint(round(biomeVs.SampleLevel(biomeVsSampler, (bt + 0.5) / bw, 0) * 255.0));
+        kind.z = biome == 1u && kind.x < 0.5 ? 1.0 : 0.0;
+    }
     if (river.found && river.distance < river.halfWidth + channelBank(river) && riverResolved(river, levelSpacing) > 0 &&
         (wet < 0.999 || river.surface > w.x)) {   // a lake's partial edge texel blends towards dry
         // Over dry ground past the water's edge the sheet only fills the
@@ -79,6 +93,7 @@ VsOut waterVs(PatchIn input) {
         riverInfo = float2(river.fall, wet > 0.5 ? -1.0 : river.distance - river.halfWidth);
         w = float4(river.surface, river.flow, river.along);
         wet = 1;
+        kind = float3(0, 1, 0);
     }
     VsOut o;
     o.view = float3(input.rel.xy + local * levelSpacing, w.x - eyeZ);
@@ -91,6 +106,7 @@ VsOut waterVs(PatchIn input) {
     o.wet = wet;
     o.ocean = 0;
     o.river = riverInfo;
+    o.kind = kind;
     return o;
 }
 
@@ -115,6 +131,7 @@ VsOut oceanVs(uint id : SV_VertexID) {
     o.wet = 1;
     o.ocean = 1;
     o.river = float2(0, -1);
+    o.kind = float3(1, 0, 0);
     return o;
 }
 
@@ -155,31 +172,53 @@ float3 noiseD(float2 p) {
                   du * float2(b - a + (a - b - c + d) * u.y, c - a + (a - b - c + d) * u.x));
 }
 
-// Slopes of the water's surface: a few travelling waves across the wind,
-// their height swelling and falling in patches, and over them two octaves of
-// drifting noise so no lattice shows; on a river, ripples running downstream.
-float2 waveSlope(float2 p, float3 flow, float distance, out float patch) {
+// Gradient noise as a slope, at its own scale and strength.
+float2 noiseSlope(float2 p, float scale, float strength) {
+    return noiseD(p / scale).yz / scale * strength;
+}
+
+// Slopes of open water: a few travelling waves across the wind, their height
+// swelling and falling in patches, and two octaves of drifting noise so no
+// lattice shows. `size` stretches the waves (the sea's swell is long, a
+// lake's chop short), `amount` scales them (a lake is calm, a marsh still).
+float2 openWaves(float2 p, float distance, float size, float amount, float drift, out float patch) {
     float2 slope = 0;
-    const float swell = noiseD(p / 60.0 + lookTime * 0.01).x;
+    const float swell = noiseD(p / (60.0 * size) + lookTime * 0.01).x;
     patch = swell;
     const float2 dirs[4] = {float2(0.94, 0.34), float2(-0.41, 0.91), float2(0.62, -0.78), float2(-0.88, -0.47)};
     const float lengths[4] = {23.0, 11.0, 5.3, 2.1};
     [unroll] for (int k = 0; k < 4; ++k) {
-        const float kw = 6.2831853 / lengths[k];
-        const float amplitude = lengths[k] * 0.008 * (0.3 + 1.4 * swell) *
-                                (1.0 - saturate(distance / (lengths[k] * 120.0)));
+        const float len = lengths[k] * size;
+        const float kw = 6.2831853 / len;
+        const float amplitude = len * 0.008 * amount * (0.3 + 1.4 * swell) * (1.0 - saturate(distance / (len * 120.0)));
         const float phase = dot(p, dirs[k]) * kw - lookTime * sqrt(9.81 * kw);
         slope += dirs[k] * kw * amplitude * cos(phase);
     }
-    const float2 drift = float2(0.7, 0.4) * lookTime;
-    const float3 n1 = noiseD((p + drift) / 6.5), n2 = noiseD((p - drift * 1.7) / 1.9 + 17.0);
-    slope += n1.yz / 6.5 * 1.1 * (1.0 - saturate(distance / 900.0));
-    slope += n2.yz / 1.9 * 0.35 * (1.0 - saturate(distance / 250.0));
-    if (flow.z > 0) {
-        const float along = dot(p, flow.xy) * 0.9 - lookTime * (2.0 + 4.0 * flow.z);
-        const float across = dot(p, float2(-flow.y, flow.x)) * 0.35;
-        slope += flow.xy * cos(along + sin(across) * 1.7) * 0.18 * flow.z;
-    }
+    const float2 d = float2(0.7, 0.4) * lookTime * drift;
+    slope += noiseSlope(p + d, 6.5, 1.1 * amount) * (1.0 - saturate(distance / 900.0));
+    slope += noiseSlope(p - d * 1.7 + 17.0, 1.9, 0.35 * amount) * (1.0 - saturate(distance / 250.0));
+    return slope;
+}
+
+// A river's surface: its ripples carried downstream by the current (two
+// phases of a flow map, cross-faded so the stretch never shows), faster where
+// the river is big or falls steeply, with the slow wobble of big eddies.
+float2 currentSlope(float2 p, float2 downstream, float strength, float fall, float distance) {
+    const float speed = 1.2 + 3.5 * strength + 14.0 * min(fall, 0.3);
+    const float cycle = 2.5;
+    const float t0 = frac(lookTime / cycle), t1 = frac(lookTime / cycle + 0.5);
+    const float blend = abs(1.0 - 2.0 * t0);
+    const float2 across = float2(-downstream.y, downstream.x);
+    // (squeezed along the current: streaks, not round ripples)
+    const float2 q = float2(dot(p, downstream) * 0.45, dot(p, across));
+    const float2 q0 = q - float2(t0 * cycle * speed * 0.45, 0);
+    const float2 q1 = q - float2(t1 * cycle * speed * 0.45, 0) + 7.3;
+    const float2 a = noiseD(q0 / 1.6).yz / 1.6 + noiseD(q0 / 0.55 + 3.1).yz / 0.55 * 0.35;
+    const float2 b = noiseD(q1 / 1.6).yz / 1.6 + noiseD(q1 / 0.55 + 3.1).yz / 0.55 * 0.35;
+    const float2 local = lerp(a, b, blend) * (0.35 + 0.5 * strength) * (1.0 - saturate(distance / 700.0));
+    // back to the world: x along the current, y across it
+    float2 slope = downstream * local.x * 0.45 + across * local.y;
+    slope += noiseSlope(p - downstream * lookTime * speed * 0.6, 9.0, 0.5 * strength);
     return slope;
 }
 
@@ -197,40 +236,71 @@ float4 waterPs(VsOut input) : SV_Target0 {
     // surface: beside a fall, where the banks drop away. Not water.
     if (input.ocean < 0.5 && input.river.y > 0.0 && depth > 0.25) discard;
     const float2 place = input.view.xy + lookEyeWrapped;
+    // The kinds, as weights: sea, river, marsh; a lake is what is left.
+    const float sea = saturate(input.kind.x);
+    const float riverW = saturate(input.kind.y) * (1.0 - sea);
+    const float marsh = saturate(input.kind.z) * (1.0 - sea) * (1.0 - riverW);
+    const float lake = saturate(1.0 - sea - riverW - marsh);
+
+    // The surface. The sea: a long swell and a chop; a lake: a light chop,
+    // nearly a mirror; a marsh: all but still; a river: its current.
     float patch;
-    float2 slope = waveSlope(place, input.flow, distance, patch);
-    // The river's own slope: a waterfall is a steep sheet, lit as one.
-    const float fall = input.river.x;
     const float2 downstream = input.flow.xy / max(length(input.flow.xy), 1e-4);
-    slope -= downstream * min(fall, 4.0);
+    const float fall = input.river.x;
+    const float waveAmount = sea * 1.25 + lake * 0.16 + marsh * 0.05 + riverW * 0.12;
+    float2 slope = openWaves(place, distance, lerp(1.0, 2.2, sea), waveAmount, lerp(0.35, 1.0, sea), patch);
+    if (riverW > 0) slope += currentSlope(place, downstream, input.flow.z, fall, distance) * riverW;
+    // The river's own slope: a waterfall is a steep sheet, lit as one.
+    slope -= downstream * min(fall, 4.0) * riverW;
     const float3 n = normalize(float3(-slope, 1));
     const float3 toEye = -input.view / max(distance, 1e-3);
 
     const float sunLight = sunShadow(input.view, float3(0, 0, 1)) * cloudShadow(input.view);
-    // What the water itself sends back: dark, blue-green, lit by the sky and a little sun.
-    const float3 body = float3(0.02, 0.09, 0.11) * (lerp(lightGround, lightZenith, 0.7) * 1.2 + lightSunColour * 0.25 * sunLight);
-    // How much of the bed shows: thin water is clear.
-    const float opacity = 1.0 - exp(-depth * 0.22);
-    // Reflection: the sky (and the sun) by Fresnel.
+    const float3 ambient = lerp(lightGround, lightZenith, 0.7) * 1.2 + lightSunColour * 0.25 * sunLight;
+    // What the water itself sends back, by kind: the sea deep blue going
+    // turquoise over the shallows, a lake dark and clear, a river a little
+    // green and silty, a marsh brown-green and murky.
+    const float3 seaBody = lerp(float3(0.040, 0.190, 0.190), float3(0.010, 0.055, 0.105), saturate(depth / 18.0));
+    const float3 body = (seaBody * sea + float3(0.015, 0.070, 0.085) * lake + float3(0.035, 0.085, 0.070) * riverW +
+                         float3(0.045, 0.050, 0.020) * marsh) * ambient;
+    // How much of the bed shows: thin water is clear, a marsh's is not.
+    const float murk = 0.22 * sea + 0.18 * lake + 0.35 * riverW + 0.9 * marsh;
+    const float opacity = 1.0 - exp(-depth * murk);
+    // Reflection: the sky (and the sun) by Fresnel; a lake the sharpest mirror.
     const float facing = saturate(dot(n, toEye));
     const float fresnel = 0.02 + 0.98 * pow(1.0 - facing, 5.0);
     const float3 mirrored = reflect(-toEye, n);
     float3 reflection = skyColour(float3(mirrored.xy, abs(mirrored.z)));
-    reflection += lightSunColour * pow(saturate(dot(mirrored, lightSun)), 600.0) * 30.0 * sunLight;
+    const float glint = lerp(600.0, 1400.0, lake);
+    reflection += lightSunColour * pow(saturate(dot(mirrored, lightSun)), glint) * 30.0 * sunLight * (1.0 - 0.7 * marsh);
     // Foam: in the shallows at the shore, and where a river runs hard.
     // Broken, not a rim: a ragged band where the water thins, and streaks
     // where a river runs hard; both fade out with distance (no sparkle).
     const float churn = noiseD(place / 1.3 + float2(lookTime * 0.3, 0)).x * 0.6 + noiseD(place / 0.45).x * 0.4;
     const float near = 1.0 - saturate(distance / 1500.0);
-    // A river is shallow all across: only its very edge foams.
-    const float shore = saturate((1.0 - depth / (input.flow.z > 0 ? 0.2 : 0.6)) * 1.6 - (1.0 - churn) * 1.2);
-    float foam = (shore * 0.7 + input.flow.z * 0.3 * smoothstep(0.55, 0.85, churn)) * (0.3 + 0.7 * near);
+    // A river is shallow all across: only its very edge foams; a lake's
+    // shore barely, a marsh's not at all.
+    const float shore = saturate((1.0 - depth / (input.flow.z > 0 ? 0.2 : 0.6)) * 1.6 - (1.0 - churn) * 1.2) *
+                        (1.0 - 0.9 * marsh - 0.5 * lake);
+    float foam = (shore * 0.7 + input.flow.z * 0.3 * smoothstep(0.55, 0.85, churn) * riverW) * (0.3 + 0.7 * near);
+    // The surf: breakers rolling in to the sea's shore. Crests are lines of
+    // equal depth running shorewards as time goes; each breaks white as the
+    // water under it thins, and the wash spreads ragged behind it.
+    if (sea > 0 && depth < 9.0) {
+        const float wobble = noiseD(place / 14.0).x * 4.0 + noiseD(place / 4.0 + 5.0).x * 1.2;
+        const float crest = frac(depth * 0.36 + lookTime * 0.13 + wobble * 0.2);
+        // (a crest's face steep, its back a long fading wash)
+        const float breaking = smoothstep(0.62, 0.9, crest) * (1.0 - smoothstep(0.93, 1.0, crest)) * smoothstep(0.45, 0.7, churn + 0.25);
+        const float shoal = smoothstep(9.0, 2.0, depth);
+        const float wash = smoothstep(1.4, 0.2, depth) * smoothstep(0.35, 0.75, churn);
+        foam = max(foam, saturate(breaking * shoal * 1.1 + wash * 0.7) * sea * (0.5 + 0.5 * near));
+    }
     // White water: rapids where the river steepens, and a fall all white -
     // streaks running down it, faster the steeper. Along the fall's own
     // length (its drop counts, not just the ground it spans), so a sheet
     // nearly vertical still streams rather than smearing into a band.
-    const float rapids = smoothstep(0.02, 0.1, fall);
-    const float plunge = smoothstep(0.3, 0.8, fall);
+    const float rapids = smoothstep(0.02, 0.1, fall) * riverW;
+    const float plunge = smoothstep(0.3, 0.8, fall) * riverW;
     if (rapids > 0) {
         const float across = dot(place, float2(-downstream.y, downstream.x));
         const float down = dot(place, downstream) + fmod(-input.level, 512.0);
@@ -242,6 +312,20 @@ float4 waterPs(VsOut input) : SV_Target0 {
     }
     float3 colour = body * opacity * (1.0 - fresnel) + reflection * fresnel;
     float alpha = saturate(max(opacity, plunge * 0.9) * (1.0 - fresnel) + fresnel);
+    // A marsh's floating green: duckweed and algae in rafts, thickest near the
+    // shore, drifting very slowly; matte, it hides the reflection.
+    if (marsh > 0) {
+        const float2 slow = float2(0.05, 0.03) * lookTime;
+        const float raft = noiseD((place + slow) / 6.0).x * 0.55 + noiseD((place - slow) / 1.8 + 9.0).x * 0.3 +
+                           noiseD(place / 0.7 + 21.0).x * 0.15;
+        const float weed = smoothstep(0.6, 0.68, raft + 0.15 * smoothstep(2.5, 0.3, depth)) * marsh * 0.95;
+        // (duckweed: a yellow-green skin, freckled close by, even far off - no shimmer)
+        const float freckle = lerp(noiseD(place / 0.35).x, 0.5, saturate(distance / 60.0));
+        const float3 green = float3(0.13, 0.20, 0.035) * (0.75 + 0.5 * freckle) *
+                             (lightSunColour * sunLight * 0.7 + ambient * 0.9);
+        colour = lerp(colour, green, weed);
+        alpha = lerp(alpha, 1.0, weed);
+    }
     colour = lerp(colour, float3(0.92, 0.95, 0.96) * (lightSunColour * sunLight * 0.6 + lightZenith * 0.6), foam * 0.8);
     alpha = max(alpha, foam * 0.8);
     colour = applyFog(colour / max(alpha, 1e-3), input.view);

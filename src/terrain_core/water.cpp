@@ -87,8 +87,10 @@ void Water::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, Render
     SDL_PushGPUVertexUniformData(commands, 1, &wv, sizeof(wv));
     SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
     SDL_PushGPUFragmentUniformData(commands, 1, &wl, sizeof(wl));
-    const SDL_GPUTextureSamplerBinding vertex{map_.get(), nearest_.get()};
-    SDL_BindGPUVertexSamplers(pass, 0, &vertex, 1);
+    // The water map, and the biome map: which still water is a marsh's.
+    SDL_GPUTexture* biomes = terrain.biomeMap() ? terrain.biomeMap() : map_.get();
+    const SDL_GPUTextureSamplerBinding vertex[2] = {{map_.get(), nearest_.get()}, {biomes, nearest_.get()}};
+    SDL_BindGPUVertexSamplers(pass, 0, vertex, 2);
     const auto rivers = terrain.rivers()->buffers();
     SDL_BindGPUVertexStorageBuffers(pass, 0, rivers.data(), 3);
     SDL_BindGPUFragmentSamplers(pass, 0, fragment, 2);
