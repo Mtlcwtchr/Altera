@@ -1,12 +1,16 @@
 """World generator driven by rules (doc/rework/WORLD_GENERATOR_PLAN.md).
 
     python tools/terrain_lab/world_gen.py [--rules content/config/terrain_core/world_rules.json]
-                                          [--out terrain_lab_out/world] [--size 1024] [--seed N]
+                                          [--out terrain_lab_out/world] [--size 2048] [--seed N]
+                                          [--heights 2048] [--finish eroded.r16]
 
-Stage 1 - layout: the continent inside the world (ocean all round, room for
-the northern isles), its zones from the rules, the special places, the isles.
-Writes <out>_zones.png (a picture of the layout) and <out>_biomes.png (biome
-ids, as the lab's --biomes reads them).
+Layout: the continent inside the world (ocean all round, the top of the map
+left for the northern isles, taken from an imported heightmap), its zones from
+the rules, the special places. Writes <out>_zones.png (a picture of the
+layout), <out>_biomes.png (biome ids, as the lab's --biomes reads them) and
+<out>_water.png (what each zone gives to the rivers: --water-rules).
+Relief: a recipe per zone, blends and steps between them, coasts by kind;
+then thermal erosion (here at layout size, on the GPU for the finished map).
 
 Coordinates: x west->east, y south->north, 0..1 over the world; pictures are
 written north up. On the continent: s west->east, t south->north, 0..1 over
@@ -18,6 +22,8 @@ import json
 import numpy as np
 from PIL import Image, ImageDraw
 from scipy import ndimage
+
+COAST_BEACH, COAST_CLIFF, COAST_FLAT = 0, 1, 2
 
 
 def fbm(n, seed, octaves=5, base=4, persistence=0.5):
@@ -48,38 +54,68 @@ ZONE_COLOURS = {
     "steppe_canyon": (120, 64, 34), "green_plateau": (120, 176, 80), "great_marshes": (64, 120, 100),
     "river_marshes": (40, 140, 150), "dark_forest": (30, 70, 50), "foothills": (150, 160, 110),
     "white_mountains": (232, 232, 236), "lake_valley": (220, 120, 140), "river_valley": (110, 190, 160),
-    "black_lands": (40, 30, 40), "isles": (110, 120, 110), "cliff_coast": (250, 220, 150),
+    "black_lands": (40, 30, 40), "isles": (110, 120, 110), "dragon_cliff": (60, 130, 60),
     "steppe": (170, 180, 90),
 }
 
 
+def load_isles(rules, n):
+    """The northern isles from the imported heightmap: its land pieces lying
+    wholly in the top `keep_top` of the picture, the biggest piece (the
+    continent) apart. -> mask and heights (metres), at n*n, row 0 south."""
+    cfg = rules["isles"]
+    a = np.array(Image.open(cfg["source"])).astype(np.float32) / 65535.0
+    h = (a - 0.13) * 6000.0
+    ns = h.shape[0]
+    lab, count = ndimage.label(h > 0)
+    sizes = ndimage.sum(np.ones_like(h), lab, range(1, count + 1))
+    main = int(np.argmax(sizes)) + 1
+    keep = []
+    for k, rows in enumerate(ndimage.find_objects(lab), start=1):
+        if k != main and rows[0].stop / ns < cfg["keep_top"]:
+            keep.append(k)
+    mask = np.isin(lab, keep)
+    mask = ndimage.zoom(mask.astype(np.float32), n / ns, order=1) > 0.5
+    heights = ndimage.zoom(h, n / ns, order=1)
+    return mask[::-1].copy(), heights[::-1].astype(np.float32).copy()
+
+
 def layout(rules, n, seed):
+    """-> zone (object array of names), land, box, coast (int8 kinds per pixel)."""
     world = rules["continent"]
     margin = world["margin"]
     yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n          # row = y (south first), col = x
-    # The continent's box: ocean on every side, more in the north for the isles.
-    isle_band = rules["isles"]["band"]
+    # The continent's box: ocean on every side, the top of the map for the isles.
     x0, x1 = margin, 1.0 - margin
-    y0, y1 = margin, 1.0 - isle_band[1] - 0.01
+    y0, y1 = margin, 1.0 - rules["isles"]["keep_top"] - 0.012
     # A rounded box, its edge wobbled: big bays and capes, and a ragged line.
     bx, by = (xx - (x0 + x1) / 2) / ((x1 - x0) / 2), (yy - (y0 + y1) / 2) / ((y1 - y0) / 2)
-    shape = 1.0 - (np.abs(bx) ** 4 + np.abs(by) ** 4) ** 0.25
-    shape += world["roughness"] * (fbm(n, seed + 1, octaves=4, base=3) + 0.35 * fbm(n, seed + 2, octaves=5, base=12))
-    land = shape > 0.08
+    # The outline: a rounded body (its width and height are the box above - the
+    # continent stretches or narrows with it) whose coordinates are bent first,
+    # so the coast folds into bays, capes and fjords, then noise at every scale
+    # cuts it ragged. Not a box with a wobbled edge.
+    e = world.get("exponent", 2.6)
+    wx = bx + world.get("warp", 0.18) * fbm(n, seed + 3, octaves=4, base=4)
+    wy = by + world.get("warp", 0.18) * fbm(n, seed + 4, octaves=4, base=4)
+    shape = 1.0 - (np.abs(wx) ** e + np.abs(wy) ** e) ** (1.0 / e)
+    shape += world["roughness"] * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
+                                   + 0.35 * fbm(n, seed + 5, octaves=5, base=16) + 0.15 * fbm(n, seed + 6, octaves=4, base=40))
+    land = shape > world.get("threshold", 0.10)
+    land = ndimage.binary_opening(land, iterations=2)
     parts, count = ndimage.label(land)
     if count > 1:
         sizes = ndimage.sum(land, parts, range(1, count + 1))
         land = parts == (int(np.argmax(sizes)) + 1)
     land = ndimage.binary_fill_holes(land)
 
-    s = (xx - x0) / (x1 - x0)
-    t = (yy - y0) / (y1 - y0)
-
-    # The bands, south to north, sharing their edges: each edge a curve, all
-    # bent together widely (so the bands swing as one) and each wobbled on
-    # its own (so their widths vary). Never crossing.
-    bands = rules["bands"]
     warp = rules["warp"]
+    # The continent's own coordinates, bent: no border runs straight.
+    s = (xx - x0) / (x1 - x0) + warp["coord"] * fbm(n, seed + 31, octaves=5, base=3)
+    t = (yy - y0) / (y1 - y0) + warp["coord"] * fbm(n, seed + 32, octaves=5, base=3)
+
+    # The bands, south to north, sharing their edges: all bent together
+    # widely, each wobbled on its own. Never crossing.
+    bands = rules["bands"]
     wide = warp["large"] * fbm(n, seed + 10, octaves=3, base=2)
     edges = [np.full((n, n), -10.0)]
     at = 0.0
@@ -100,12 +136,13 @@ def layout(rules, n, seed):
         """'band:fraction' -> where that is in t, per point (the bands' own curves)."""
         name, frac = spec.split(":")
         k = order[name]
-        lo = edges[k] if k > 0 else np.zeros((n, n))
-        hi = edges[k + 1] if k + 1 < len(bands) else np.ones((n, n))
+        lo = edges[k] if k > 0 else np.full((n, n), -0.2)
+        hi = edges[k + 1] if k + 1 < len(bands) else np.full((n, n), 1.2)
         return lo + float(frac) * (hi - lo)
 
     wing = rules["east_wing"]
-    east = s >= wing["s"] + wing["warp"] * fbm(n, seed + 40, octaves=4, base=3)
+    wobble = fbm(n, seed + 40, octaves=4, base=6) + 0.7 * fbm(n, seed + 41, octaves=3, base=14)
+    east = s + wing["tilt"] * (t - 0.5) >= wing["s"] + wing["warp"] * wobble
     for z in wing["zones"]:
         zone[land & east & (t >= place(z["from"])) & (t < place(z["to"]))] = z["name"]
 
@@ -113,7 +150,6 @@ def layout(rules, n, seed):
     rng = np.random.default_rng(seed + 50)
     # The round valley with its lake, in the mountains.
     lv = f["lake_valley"]
-    k = order[lv["in"]]
     cx = x0 + lv["s"] * (x1 - x0)
     col = int(cx * n)
     rows = np.nonzero(zone[:, col] == lv["in"])[0]
@@ -122,67 +158,65 @@ def layout(rules, n, seed):
     valley = (r < lv["radius"] * (x1 - x0) * (1 + 0.06 * fbm(n, seed + 300, octaves=3, base=6))) & land
     zone[valley] = "lake_valley"
 
-    # The rocky canyon land holds islands of steppe, each in a ring of canyon.
+    # The rocky canyon land is cut by its network of canyons; the biggest
+    # stretches of top the network leaves standing are the steppe (green
+    # pasture among the stone), each walled all round by canyon.
     si = f["steppe_islands"]
     rocky = zone == si["in"]
-    cand = np.argwhere(ndimage.binary_erosion(rocky, iterations=int(0.03 * n)))
-    centres = []
-    for _ in range(400):
-        if len(centres) >= si["count"] or len(cand) == 0:
-            break
-        cyx = cand[rng.integers(len(cand))] / n
-        size = rng.uniform(*si["size"]) * (x1 - x0)
-        if all(np.hypot(*(cyx - c[0])) > (size + c[1]) * 2.2 for c in centres):
-            centres.append((cyx, size))
-    ring_px = max(1, int(round(si["canyon_width"] * (x1 - x0) * n)))
-    for i, (cyx, size) in enumerate(centres):
-        stretch = rng.uniform(1.0, 1.8)
-        ang = rng.uniform(0, np.pi)
-        dx, dy = xx - cyx[1], yy - cyx[0]
-        u = (dx * np.cos(ang) + dy * np.sin(ang)) / (size * stretch)
-        v = (-dx * np.sin(ang) + dy * np.cos(ang)) / size
-        blob = ((u * u + v * v) < (1.0 + 0.4 * fbm(n, seed + 400 + i, octaves=4, base=6))) & rocky
-        ring = ndimage.binary_dilation(blob, iterations=ring_px) & ~blob & rocky
-        zone[blob] = "steppe"
-        zone[ring] = "steppe_canyon"
+    rr = rules["relief"][si["in"]]
+    c1, _ = canyon_network(n, rules["world_km"], seed, rr)
+    thr = np.percentile(c1[rocky], 100 * (1 - rr["cover"]))
+    standing = (c1 < thr - 0.03) & rocky
+    standing = ndimage.binary_opening(standing, iterations=max(2, n // 256))
+    parts, count = ndimage.label(standing)
+    if count:
+        sizes = ndimage.sum(standing, parts, range(1, count + 1))
+        km2 = (rules["world_km"] / n) ** 2
+        order_ = np.argsort(sizes)[::-1]
+        picked = [int(k) + 1 for k in order_[:si["count"]] if sizes[k] * km2 >= si["min_km2"]]
+        zone[np.isin(parts, picked)] = "steppe"
 
     # River marshes: the marshes near the sea - the deltas.
-    to_sea_n = ndimage.distance_transform_edt(land) / n
+    to_sea_km = ndimage.distance_transform_edt(land) * rules["world_km"] / n
     rm = f["river_marshes"]
-    zone[(zone == rm["in"]) & (to_sea_n < rm["coast_band"] * (x1 - x0))] = "river_marshes"
+    zone[(zone == rm["in"]) & (to_sea_km < rm["coast_band"] * (x1 - x0) * rules["world_km"])] = "river_marshes"
     # The valley's river runs east and ends in marshes there: its delta.
     vd = f["valley_delta"]
-    zone[(zone == vd["in"]) & (s >= vd["s"]) & (to_sea_n < vd["reach"] * (x1 - x0))] = "river_marshes"
-    # The cut cliff coast of the desert.
-    cc = f["cliff_coast"]
-    zone[(zone == cc["in"]) & (to_sea_n * rules["world_km"] < cc["width_km"])] = "cliff_coast"
+    zone[(zone == vd["in"]) & (s >= vd["s"]) & (to_sea_km < vd["reach"] * (x1 - x0) * rules["world_km"])] = "river_marshes"
 
-    # The northern isles: tilted plateaus out in the northern ocean, clear
-    # of the continent.
-    isles = rules["isles"]
-    near = ndimage.binary_dilation(land, iterations=int(isles["clearance"] * n))
-    made = 0
-    for i in range(200):
-        if made >= isles["count"]:
-            break
-        ix = rng.uniform(0.1, 0.9)
-        iy = 1.0 - rng.uniform(*isles["band"])
-        size = rng.uniform(*isles["size"])
-        stretch = rng.uniform(1.3, 2.2)
-        ang = rng.uniform(0, np.pi)
-        dx, dy = xx - ix, yy - iy
-        u = (dx * np.cos(ang) + dy * np.sin(ang)) / (size * stretch)
-        v = (-dx * np.sin(ang) + dy * np.cos(ang)) / size
-        blob = (u * u + v * v) < (1.0 + 0.35 * fbm(n, seed + 600 + i, octaves=4, base=8))
-        # Clear of the world's edge too: no island cut off by it.
-        e = isles["edge"]
-        if (blob & ((xx < e) | (xx > 1 - e) | (yy > 1 - e))).any():
+    # Where the coast is cliff and where beach: stretches, by a slow noise
+    # along it. The desert's cliff stretches are lined with a strip of green
+    # cliff land under giant trees; the rest of the desert runs into the sea.
+    cn = rules["coast"]
+    stretch_noise = fbm(n, seed + 700, octaves=3, base=max(2, int(round(rules["world_km"] / cn["noise_km"]))))
+    cliff_stretch = stretch_noise > cn["threshold"]
+    dc = f["dragon_cliff"]
+    zone[(zone == dc["in"]) & cliff_stretch & (to_sea_km < dc["width_km"])] = "dragon_cliff"
+
+    # The northern isles, as imported.
+    isle_mask, isle_heights = load_isles(rules, n)
+    zone[isle_mask & ~land] = "isles"
+    all_land = zone != "ocean"
+
+    # The coast kind of every pixel, by the zone of the land nearest to it.
+    coasts = rules["transitions"]["coasts"]
+    _, idx = ndimage.distance_transform_edt(~all_land, return_indices=True)
+    facing = np.where(all_land, zone, zone[idx[0], idx[1]])
+    coast = np.full((n, n), COAST_CLIFF, np.int8)
+    for name in np.unique(facing):
+        if name == "ocean":
             continue
-        if (blob & (near | (zone == "isles"))).any() or blob.sum() < 50:
-            continue
-        zone[blob] = "isles"
-        made += 1
-    return zone, land | (zone == "isles"), (x0, x1, y0, y1)
+        kind = coasts.get(name, coasts["default"])
+        sel = facing == name
+        if kind == "beach":
+            coast[sel] = COAST_BEACH
+        elif kind == "flat":
+            coast[sel] = COAST_FLAT
+        elif kind == "mixed":
+            coast[sel] = np.where(cliff_stretch[sel], COAST_CLIFF, COAST_BEACH)
+        else:
+            coast[sel] = COAST_CLIFF
+    return zone, all_land, (x0, x1, y0, y1), coast, (isle_mask, isle_heights)
 
 
 def fbm32(n, seed, km, world_km, octaves=5, persistence=0.5):
@@ -221,7 +255,16 @@ def warped(field, n, seed, km, world_km, strength_km):
     return ndimage.map_coordinates(field, [yy + wy, xx + wx], order=1, mode="nearest").astype(np.float32)
 
 
-def relief(zone, rules, seed):
+def canyon_network(n, world_km, seed, r):
+    """The canyon network of the rocky steppe: two crest fields (the great
+    canyons and the lesser ones). Where a field is high there is canyon. The
+    same in the layout (which parts stay as steppe) and in the relief."""
+    c1 = warped(ridged(n, seed + 5000, r["km"], world_km, octaves=5), n, seed + 5009, r["km"] * 2, world_km, r["km"] * 0.5)
+    c2 = ridged(n, seed + 5021, r["km"] / 3, world_km, octaves=4)
+    return c1, c2
+
+
+def relief(zone, rules, seed, coast, isles):
     """Heights in metres over the sea, from the zones and the rules."""
     n = zone.shape[0]
     world_km = rules["world_km"]
@@ -230,17 +273,21 @@ def relief(zone, rules, seed):
     yy, xx = (np.mgrid[0:n, 0:n].astype(np.float32) + 0.5) / n
     land = zone != "ocean"
     names = [z for z in np.unique(zone) if z != "ocean"]
-    heights, masks = {}, {}
+    heights, tops, masks = {}, {}, {}
+    deferred = []
     for k, name in enumerate(names):
-        r = recipes.get(name, {"kind": "lowland", "base": 50, "rise": 0, "amp": 10, "km": 5})
-        if r["kind"] == "same_as":
-            r = recipes[r["zone"]]
         m = zone == name
         masks[name] = m
+        if name == "isles":
+            heights[name] = isles[1]
+            continue
+        r = recipes.get(name, {"kind": "lowland", "base": 50, "rise": 0, "amp": 10, "km": 5})
+        if r["kind"] == "lift_of":
+            deferred.append(name)
+            continue
         rows = np.nonzero(m.any(axis=1))[0]
         lo, hi = (rows.min() + 0.5) / n, (rows.max() + 0.5) / n
         progress = np.clip((yy - lo) / max(hi - lo, 1e-3), 0, 1)     # south->north across the zone
-        inside_km = ndimage.distance_transform_edt(m) * km_px            # how deep inside it
         sd = seed + 1000 + 37 * k
         kind = r["kind"]
         if kind == "dunes":
@@ -252,10 +299,19 @@ def relief(zone, rules, seed):
             # Draa (great ridges of sand) and the dunes riding on them.
             h = (r["base"] + r["rise"] * progress + r.get("draa_m", 0) * dune_field(r.get("draa_km", 5), 2.0, sd + 3)
                  + r["dune_m"] * dune_field(r["dune_km"], 3.0, sd) * strength + 25 * fbm32(n, sd + 2, 30, world_km, 3))
-        elif kind == "mesas":
-            q = (fbm32(n, sd, r["km"], world_km, 4) * 0.5 + 0.5) * r["levels"]
-            step = np.floor(q) + smoothstep(0.82, 1.0, q - np.floor(q))
-            h = r["base"] + r["rise"] * progress + r["step_m"] * step
+        elif kind == "canyons":
+            # A plateau top cut by a network of canyons, most of it canyon
+            # and dry stone floor: the top stays only as mesas between them.
+            # (the steppe cut from it is the same land: the thresholds from both.)
+            land_m = m | (zone == "steppe")
+            top = r["base"] + r["rise"] * progress + r.get("bumps", 30) * fbm32(n, sd + 3, 6, world_km, 3)
+            c1, c2 = canyon_network(n, world_km, seed, r)
+            thr = np.percentile(c1[land_m] if land_m.any() else c1, 100 * (1 - r["cover"]))
+            thr2 = np.percentile(c2[land_m] if land_m.any() else c2, 78)
+            d1 = smoothstep(thr, thr + r.get("wall", 0.05), c1)
+            d2 = smoothstep(thr2, thr2 + r.get("wall", 0.05), c2)
+            h = top - r["depth"] * d1 - 0.35 * r["depth"] * d2 * (1 - d1) + 10 * fbm32(n, sd + 4, 2, world_km, 3) * d1
+            tops[name] = top
         elif kind == "table":
             h = r["base"] + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
         elif kind == "canyon":
@@ -270,7 +326,10 @@ def relief(zone, rules, seed):
             ridge = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
             # The range's height swells and sinks along it: massifs and saddles.
             massif = 0.65 + 0.35 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
-            envelope = smoothstep(0.0, 14.0, inside_km)
+            # Alpine ranges fall away into the foothills over tens of kilometres,
+            # on both sides: the envelope reaches out past the zone's edge.
+            signed = (ndimage.distance_transform_edt(m) - ndimage.distance_transform_edt(~m)) * km_px
+            envelope = smoothstep(-r["fade_out_km"], r["fade_in_km"], signed)
             h = r["base"] + (r["peak"] - r["base"]) * envelope * massif * ridge ** 1.5
         elif kind == "bowl":
             cy, cx = ndimage.center_of_mass(m)
@@ -281,40 +340,39 @@ def relief(zone, rules, seed):
             h = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx + r["amp"] * fbm32(n, sd, 4, world_km, 3)
         elif kind == "spikes":
             sharp = warped(ridged(n, sd, r["km"], world_km, octaves=7), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.3) ** 2.0
-            envelope = smoothstep(0.0, 8.0, inside_km)
+            # Rising out of the valley without a step: the envelope is a long ramp.
+            inside_km = ndimage.distance_transform_edt(m) * km_px
+            envelope = smoothstep(0.0, r["fade_km"], inside_km)
             h = r["base"] + (r["peak"] - r["base"]) * envelope * sharp
-        elif kind == "tilted":
-            h = np.zeros((n, n), np.float32)
-            parts, count = ndimage.label(m)
-            rng = np.random.default_rng(sd)
-            for i in range(1, count + 1):
-                one = parts == i
-                cy, cx = ndimage.center_of_mass(one)
-                ang = rng.uniform(0, 2 * np.pi)
-                proj = ((xx * n - cx) * np.cos(ang) + (yy * n - cy) * np.sin(ang))
-                span = max(np.abs(proj[one]).max(), 1.0)
-                q = np.clip(proj / span * 0.5 + 0.5, 0, 1) * r["terraces"]
-                stepped = (np.floor(q) + smoothstep(0.85, 1.0, q - np.floor(q))) / r["terraces"]
-                h = np.where(one, r["low"] + (r["high"] - r["low"]) * stepped, h)
         else:
             raise ValueError(f"relief kind {kind}")
         heights[name] = h.astype(np.float32)
+    for name in deferred:
+        r = recipes[name]
+        base = (tops if r.get("top") else heights).get(r["zone"])
+        if base is None:
+            continue
+        sd = seed + 2000 + len(heights)
+        heights[name] = (base + r["lift"] + r["amp"] * fbm32(n, sd, 3, world_km, 3)).astype(np.float32)
 
-    # Blend: every zone's own heights, weighted by how far inside it a point is.
+    # Blend: every zone's own heights, weighted by how far inside it a point is
+    # (a zone reaches as far as its own blend distance).
     tr = rules["transitions"]
-    sigma = tr["blend_km"] / km_px / 2.0
     total = np.zeros((n, n), np.float32)
     weight = np.zeros((n, n), np.float32)
     for name in names:
-        if recipes.get(name, {}).get("kind") == "canyon":
+        if recipes.get(name, {}).get("kind") == "canyon" or name == "isles":
             continue
+        sigma = tr["blend_overrides"].get(name, tr["blend_km"]) / km_px / 2.0
         w = ndimage.gaussian_filter(masks[name].astype(np.float32), sigma)
         total += w * heights[name]
         weight += w
     h = np.where(weight > 1e-6, total / np.maximum(weight, 1e-6), 0.0).astype(np.float32)
+    if "isles" in masks:
+        h = np.where(masks["isles"], heights["isles"], h)
     # Cliffs: where two zones meet in a step, each keeps its own height right
     # to the edge - no blend across it.
-    band = 2.5 * sigma
+    band = 2.5 * tr["blend_km"] / km_px / 2.0
     for a, b in tr["cliffs"]:
         if a not in masks or b not in masks:
             continue
@@ -337,26 +395,19 @@ def relief(zone, rules, seed):
         level = np.where(m, np.maximum(around, h), h)
         h = np.where(m, level - r["depth"] * floor, h)
 
-    # Coasts and the sea floor, by the kind of coast each zone has.
-    coasts = tr["coasts"]
+    # Coasts and the sea floor, by the kind of coast each pixel has.
     d_in = ndimage.distance_transform_edt(land) * km_px
-    d_out, idx = ndimage.distance_transform_edt(~land, return_indices=True)
-    d_out *= km_px
-    nearest = zone[idx[0], idx[1]]                  # the land zone each sea point faces
-    kinds = {z: coasts.get(z, coasts["default"]) for z in np.unique(nearest)}
-    facing = np.where(land, zone, nearest)
-    coast_land = np.empty((n, n), dtype=object)
-    for z, kd in kinds.items():
-        coast_land[facing == z] = kd
-    # A black shore: a narrow beach, then straight up into the land.
-    beach = 1.5 + 15.0 * d_in + 500.0 * np.maximum(d_in - 1.5, 0.0)
+    d_out = ndimage.distance_transform_edt(~land) * km_px
+    # A beach: a gentle shore, and for a black one a quick climb behind it.
+    beach = 1.5 + 15.0 * d_in + 40.0 * np.maximum(d_in - 4.0, 0.0) ** 1.6
     flat = 0.6 + 1.2 * d_in
-    h = np.where(land & (coast_land == "beach"), np.minimum(h, beach), h)
-    h = np.where(land & (coast_land == "flat"), np.minimum(h, flat), h)
+    keep_isles = masks.get("isles", np.zeros_like(land))
+    h = np.where(land & (coast == COAST_BEACH) & ~keep_isles, np.minimum(h, beach), h)
+    h = np.where(land & (coast == COAST_FLAT), np.minimum(h, flat), h)
     h = np.where(land, np.maximum(h, 0.8), h)
     shelf = -(25.0 + 350.0 * smoothstep(0, 30, d_out) + 1100.0 * smoothstep(30, 140, d_out))
     steep = -(60.0 + 300.0 * smoothstep(0, 4, d_out) + 1100.0 * smoothstep(20, 120, d_out))
-    sea = np.where(coast_land == "cliff", steep, shelf) + 15.0 * fbm32(n, seed + 77, 20, world_km, 3)
+    sea = np.where(coast == COAST_CLIFF, steep, shelf) + 15.0 * fbm32(n, seed + 77, 20, world_km, 3)
     h = np.where(land, h, np.minimum(sea, -2.0))
     return h.astype(np.float32)
 
@@ -419,19 +470,18 @@ def preview(h, rules, path):
     Image.fromarray((np.clip(rgb, 0, 1)[::-1] * 255).astype(np.uint8)).resize((1024, 1024), Image.LANCZOS).save(path)
 
 
-def protected(zone, rules, width):
-    """Cliffs that must stay sheer: the steps between zones and the cut coasts."""
+def protected(zone, rules, coast, width):
+    """What keeps the generator's heights: the sheer steps between zones, the
+    cliff coasts, and the zones the rules keep whole (canyons wait for their
+    cliff meshes; the isles come eroded)."""
     protect = np.zeros(zone.shape, bool)
     for a, b in rules["transitions"]["cliffs"]:
         ma, mb = zone == a, zone == b
         protect |= (ndimage.binary_dilation(ma, iterations=width) & mb) | (ndimage.binary_dilation(mb, iterations=width) & ma)
     land = zone != "ocean"
-    coasts = rules["transitions"]["coasts"]
-    cut = np.zeros(zone.shape, bool)
-    for name in np.unique(zone):
-        if name != "ocean" and coasts.get(name, coasts["default"]) == "cliff":
-            cut |= zone == name
-    protect |= cut & ~ndimage.binary_erosion(land, iterations=width)
+    protect |= (coast == COAST_CLIFF) & land & ~ndimage.binary_erosion(land, iterations=width)
+    for name in rules["erosion"].get("keep_zones", []):
+        protect |= zone == name
     return protect
 
 
@@ -442,13 +492,14 @@ def water_rules(zone, rules, seed):
     n = zone.shape[0]
     rain = {z["name"]: z["rain"] for z in rules["bands"] + rules["east_wing"]["zones"]}
     f = rules["features"]
-    rain.update({"lake_valley": f["lake_valley"]["rain"], "steppe": 0.0, "steppe_canyon": 0.0, "cliff_coast": 0.0,
-                 "river_marshes": 1.0, "isles": rules["isles"].get("rain", 0.3), "ocean": 0.0})
+    rain.update({"lake_valley": f["lake_valley"]["rain"], "steppe": 0.0, "steppe_canyon": 0.0,
+                 "dragon_cliff": f["dragon_cliff"]["rain"], "river_marshes": 1.0,
+                 "isles": rules["isles"].get("rain", 0.3), "ocean": 0.0})
     runoff = np.zeros((n, n), np.float32)
     for name, r in rain.items():
         runoff[zone == name] = r
     # Soft edges (a kilometre or two): rain does not stop at a line.
-    runoff = ndimage.gaussian_filter(runoff, 2.0)
+    runoff = ndimage.gaussian_filter(runoff, max(2.0, n / 512))
     delta = ndimage.binary_dilation(zone == "river_marshes", iterations=max(2, n // 128))
     rgb = np.zeros((n, n, 3), np.uint8)
     rgb[..., 0] = np.clip(runoff * 255 + 0.5, 0, 255).astype(np.uint8)
@@ -466,19 +517,19 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--rules", default="content/config/terrain_core/world_rules.json")
     ap.add_argument("--out", default="terrain_lab_out/world")
-    ap.add_argument("--size", type=int, default=1024)
+    ap.add_argument("--size", type=int, default=2048)
     ap.add_argument("--seed", type=int, default=None)
-    ap.add_argument("--heights", type=int, default=0, help="also the heightmap, this many texels a side (a multiple of --size)")
-    ap.add_argument("--finish", default="", help="the eroded .r16 to finish: cliffs restored, written as <out>_final.r16")
+    ap.add_argument("--heights", type=int, default=0, help="also the heightmap (--size, or a multiple of it)")
+    ap.add_argument("--finish", default="", help="the eroded .r16 to finish: kept zones and cliffs restored, written as <out>_final.r16")
     args = ap.parse_args()
     rules = json.load(open(args.rules, encoding="utf-8"))
     seed = rules["seed"] if args.seed is None else args.seed
     n = args.size
 
-    zone, land, box = layout(rules, n, seed)
+    zone, land, box, coast, isles = layout(rules, n, seed)
     if args.finish:
         # The eroded map (the lab's --erode output, raw 16-bit, south row first)
-        # with the cliffs put back as the generator made them.
+        # with the zones the rules keep and the cliffs put back as made.
         raw = np.fromfile(args.finish, dtype="<u2")
         big = int(round(np.sqrt(raw.size)))
         eroded = raw.reshape(big, big).astype(np.float32) / 65535.0
@@ -486,10 +537,9 @@ def main():
         src = np.array(Image.open(args.out + "_height.png")).astype(np.float32)[::-1] / 65535.0
         src = (src - 0.13) * 6000.0
         src_big = ndimage.zoom(src, big / src.shape[0], order=1)
-        # The cliffs' mask at twice the layout's resolution, then stretched.
-        zone2 = np.repeat(np.repeat(zone, 2, axis=0), 2, axis=1)
-        mask2 = ndimage.gaussian_filter(protected(zone2, rules, 2).astype(np.float32), 0.7)
-        keep = ndimage.zoom(mask2, big / mask2.shape[0], order=1)
+        mask = protected(zone, rules, coast, 2).astype(np.float32)
+        mask = ndimage.gaussian_filter(mask, 0.7)
+        keep = ndimage.zoom(mask, big / mask.shape[0], order=1)
         h = eroded + (src_big - eroded) * np.clip(keep * 1.5, 0, 1)
         out = np.clip(h / 6000.0 + 0.13, 0, 1)
         (out * 65535 + 0.5).astype("<u2").tofile(args.out + "_final.r16")
@@ -497,36 +547,35 @@ def main():
         print(f"finished {big}^2: {h.min():.0f} .. {h.max():.0f} m; wrote {args.out}_final.r16")
         return
     if args.heights:
-        big = args.heights
-        f = big // n
-        zone_big = np.repeat(np.repeat(zone, f, axis=0), f, axis=1)
-        h = relief(zone_big, rules, seed)
-        protect = protected(zone_big, rules, 2)
-        h = thermal(h, zone_big, rules, protect, rules["erosion"].get("thermal_iterations", 60))
+        assert args.heights == n, "--heights must equal --size"
+        h = relief(zone, rules, seed, coast, isles)
+        protect = protected(zone, rules, coast, 2)
+        h = thermal(h, zone, rules, protect, rules["erosion"].get("thermal_iterations", 60))
         sea, rng_m = 0.13, 6000.0
         v = np.clip(h / rng_m + sea, 0, 1)
         Image.fromarray((v[::-1] * 65535 + 0.5).astype(np.uint16)).save(args.out + "_height.png")
         preview(h, rules, args.out + "_height_preview.png")
-        print(f"heights {big}^2: {h.min():.0f} .. {h.max():.0f} m; wrote {args.out}_height.png")
+        print(f"heights {n}^2: {h.min():.0f} .. {h.max():.0f} m; wrote {args.out}_height.png")
 
     # The layout as a picture, north up, with a legend.
     rgb = np.zeros((n, n, 3), np.uint8)
     for name, colour in ZONE_COLOURS.items():
         rgb[zone == name] = colour
-    pic = Image.fromarray(rgb[::-1])
-    legend = Image.new("RGB", (n + 230, n), (16, 16, 20))
+    pic = Image.fromarray(rgb[::-1]).resize((1024, 1024), Image.NEAREST)
+    legend = Image.new("RGB", (1024 + 230, 1024), (16, 16, 20))
     legend.paste(pic, (0, 0))
     d = ImageDraw.Draw(legend)
     for k, (name, colour) in enumerate(ZONE_COLOURS.items()):
-        d.rectangle([n + 10, 12 + 22 * k, n + 26, 28 + 22 * k], fill=colour)
-        d.text((n + 34, 14 + 22 * k), name, fill=(230, 230, 230))
+        d.rectangle([1024 + 10, 12 + 22 * k, 1024 + 26, 28 + 22 * k], fill=colour)
+        d.text((1024 + 34, 14 + 22 * k), name, fill=(230, 230, 230))
     legend.save(args.out + "_zones.png")
 
     Image.fromarray(water_rules(zone, rules, seed)).save(args.out + "_water.png")
 
     # Biome ids, as the lab reads them (north up).
     biome_of = {z["name"]: z["biome"] for z in rules["bands"] + rules["east_wing"]["zones"]}
-    biome_of.update({"ocean": 0, "steppe": 3, "steppe_canyon": 3, "river_marshes": 1, "cliff_coast": 4,
+    biome_of.update({"ocean": 0, "steppe": 3, "steppe_canyon": 3, "river_marshes": 1,
+                     "dragon_cliff": rules["features"]["dragon_cliff"]["biome"],
                      "lake_valley": rules["features"]["lake_valley"]["biome"], "isles": rules["isles"]["biome"]})
     ids = np.zeros((n, n), np.uint8)
     for name, b in biome_of.items():
