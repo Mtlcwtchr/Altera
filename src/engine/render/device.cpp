@@ -935,7 +935,6 @@ Texture Device::loadArrayMippedFromFiles(const std::vector<std::vector<std::file
     if (generateMipmaps) {
         info.num_levels = 1;
         for (int side = std::max(width, height); side > 1; side /= 2) ++info.num_levels;
-        info.usage |= SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
     }
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     Texture texture = makeTexture(info);
@@ -974,6 +973,33 @@ Texture Device::loadArrayMippedFromFiles(const std::vector<std::vector<std::file
             } else {
                 ok = upload.refillRegion(texture.get(), picture->pixels, 0, 0, Uint32(picture->w), Uint32(picture->h), 4,
                                          Uint32(layer), Uint32(level));
+                if (ok && generateMipmaps) {
+                    // The smaller levels made here, a 2x2 box at a time, not by
+                    // SDL_GenerateMipmapsForGPUTexture: on D3D12 that left some
+                    // layers of a big array black below level 0 (layer 18 of the
+                    // terrain's materials: the ground went black a few hundred
+                    // metres off).
+                    std::vector<std::uint8_t> above(static_cast<const std::uint8_t*>(picture->pixels),
+                                                    static_cast<const std::uint8_t*>(picture->pixels) + std::size_t(picture->pitch) * picture->h);
+                    int w = picture->w, h = picture->h;
+                    for (Uint32 mip = 1; mip < info.num_levels && ok; ++mip) {
+                        const int nw = std::max(1, w / 2), nh = std::max(1, h / 2);
+                        std::vector<std::uint8_t> below(std::size_t(nw) * nh * 4);
+                        for (int y = 0; y < nh; ++y)
+                            for (int x = 0; x < nw; ++x)
+                                for (int c = 0; c < 4; ++c) {
+                                    const int x0 = std::min(2 * x, w - 1), x1 = std::min(2 * x + 1, w - 1);
+                                    const int y0 = std::min(2 * y, h - 1), y1 = std::min(2 * y + 1, h - 1);
+                                    const unsigned sum = above[(std::size_t(y0) * w + x0) * 4 + c] + above[(std::size_t(y0) * w + x1) * 4 + c] +
+                                                         above[(std::size_t(y1) * w + x0) * 4 + c] + above[(std::size_t(y1) * w + x1) * 4 + c];
+                                    below[(std::size_t(y) * nw + x) * 4 + c] = std::uint8_t((sum + 2) / 4);
+                                }
+                        ok = upload.refillRegion(texture.get(), below.data(), 0, 0, Uint32(nw), Uint32(nh), 4, Uint32(layer), mip);
+                        above.swap(below);
+                        w = nw;
+                        h = nh;
+                    }
+                }
             }
         }
         for (SDL_Surface* picture : pictures)
@@ -984,18 +1010,6 @@ Texture Device::loadArrayMippedFromFiles(const std::vector<std::vector<std::file
         }
         stepProgress(double(last) / double(layers.size()),
                      "textures " + std::to_string(last) + " / " + std::to_string(layers.size()));
-    }
-    if (generateMipmaps && info.num_levels > 1) {
-        auto* commands = SDL_AcquireGPUCommandBuffer(device_);
-        if (!commands) {
-            error_ = std::string("mip generation command failed: ") + SDL_GetError();
-            return {};
-        }
-        SDL_GenerateMipmapsForGPUTexture(commands, texture.get());
-        if (!SDL_SubmitGPUCommandBuffer(commands)) {
-            error_ = std::string("mip generation failed: ") + SDL_GetError();
-            return {};
-        }
     }
     return texture;
 }
