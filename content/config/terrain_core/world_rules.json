@@ -48,7 +48,7 @@
   },
   "relief": {
     "golden_desert":   {"kind": "dunes", "base": 220, "rise": 260, "dune_m": 40, "dune_km": 1.6, "draa_m": 120, "draa_km": 5.0},
-    "canyon_steppe":   {"kind": "canyons", "base": 1000, "rise": 120, "depth": 360, "cover": 0.58, "km": 14, "wall": 0.05, "bumps": 30},
+    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 330, "floor_rise": 90, "spires": 420, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 25},
     "steppe":          {"kind": "lift_of", "zone": "canyon_steppe", "top": true, "lift": 8, "amp": 8},
     "steppe_canyon":   {"kind": "canyon", "depth": 300},
     "dragon_cliff":    {"kind": "lift_of", "zone": "golden_desert", "lift": 70, "amp": 25},
@@ -57,7 +57,7 @@
     "river_marshes":   {"kind": "lowland", "base": 2, "rise": 4, "amp": 1.5, "km": 2},
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7},
     "foothills":       {"kind": "hills", "base": 1250, "rise": 650, "amp": 450, "km": 9},
-    "white_mountains": {"kind": "ridges", "base": 1300, "peak": 4700, "km": 18, "width_km": 13, "gap_deg": 40, "bend_km": 8, "fade_in_km": 40, "fade_out_km": 26},
+    "white_mountains": {"kind": "ridges", "base": 900, "peak": 5200, "km": 18, "width_km": 13, "gap_deg": 40, "bend_km": 8, "fade_in_km": 60, "fade_out_km": 50},
     "lake_valley":     {"kind": "bowl", "floor": 1450, "rim": 3200},
     "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15},
     "black_lands":     {"kind": "spikes", "base": 650, "peak": 3000, "km": 11, "fade_km": 14}
@@ -66,8 +66,8 @@
     "comment": "blend_km: how wide neighbours blend by default; blend_overrides per zone. `cliffs`: pairs that meet in a sharp step. coasts by zone: cliff, beach, flat, or mixed (stretches of both, by noise).",
     "blend_km": 6.0,
     "blend_overrides": {"great_marshes": 22, "river_marshes": 18, "golden_desert": 14, "dark_forest": 14,
-                        "white_mountains": 16, "foothills": 12, "green_plateau": 12, "black_lands": 12, "river_valley": 8},
-    "cliffs": [],
+                        "white_mountains": 30, "foothills": 18, "green_plateau": 12, "black_lands": 22, "river_valley": 18},
+    "cliffs": [["canyon_steppe", "green_plateau"], ["steppe", "green_plateau"]],
     "coasts": {
       "golden_desert": "beach", "canyon_steppe": "beach", "steppe": "beach", "dragon_cliff": "cliff", "black_lands": "mixed", "great_marshes": "flat",
       "river_marshes": "flat", "river_valley": "flat", "isles": "cliff", "default": "cliff"

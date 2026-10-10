@@ -447,13 +447,20 @@ def relief(zone, rules, seed, coast, isles):
             # and dry stone floor: the top stays only as mesas between them.
             # (the steppe cut from it is the same land: the thresholds from both.)
             land_m = m | (zone == "steppe")
+            # The whole zone is one wide canyon between the desert and the plain:
+            # its floor at the desert's level, its mesas and the steppe islands
+            # at the plain's level, the walls between them sheer, spires rising
+            # from the floor.
             top = r["base"] + r["rise"] * progress + r.get("bumps", 30) * fbm32(n, sd + 3, 6, world_km, 3)
+            floor = r["floor"] + r["floor_rise"] * progress + 14 * fbm32(n, sd + 6, 3, world_km, 3)
             c1, c2 = canyon_network(n, world_km, seed, r)
             thr = np.percentile(c1[land_m] if land_m.any() else c1, 100 * (1 - r["cover"]))
             thr2 = np.percentile(c2[land_m] if land_m.any() else c2, 78)
-            d1 = smoothstep(thr, thr + r.get("wall", 0.05), c1)
-            d2 = smoothstep(thr2, thr2 + r.get("wall", 0.05), c2)
-            h = top - r["depth"] * d1 - 0.35 * r["depth"] * d2 * (1 - d1) + 10 * fbm32(n, sd + 4, 2, world_km, 3) * d1
+            d1 = smoothstep(thr, thr + r.get("wall", 0.03), c1)
+            d2 = smoothstep(thr2, thr2 + r.get("wall", 0.03), c2)
+            sp = fbm32(n, sd + 7, 3.0, world_km, 4)
+            spires = r.get("spires", 0) * smoothstep(0.30, 0.46, sp) * (0.45 + 0.55 * ridged(n, sd + 8, 1.5, world_km, octaves=3))
+            h = top - (top - floor) * d1 - 0.25 * (top - floor) * d2 * (1 - d1) + d1 * spires
             tops[name] = top
         elif kind == "table":
             h = r["base"] + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
