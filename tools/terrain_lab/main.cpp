@@ -32,6 +32,7 @@
 #include "terrain_core/erosion.hpp"
 #include "terrain_core/foliage.hpp"
 #include "terrain_core/grass.hpp"
+#include "terrain_core/props.hpp"
 #include "terrain_core/post.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/sky.hpp"
@@ -109,6 +110,8 @@ struct Options {
     bool surfaceMaps = true;      // the materials' normal and AO maps (F6)
     bool foliage = true;          // the trees module (trees and bushes)
     bool grass = true;            // the grass cover
+    bool props = true;            // the mega structures (P)
+    fs::path features;            // --features: <world>_features.json; empty: beside a <world>_final.r16 heightmap
     std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
     bool water = true;            // rivers, lakes, sea (F11); off also skips cutting the river beds
     bool dlss = false;            // NVIDIA DLSS Super Resolution, live toggle F12
@@ -199,6 +202,8 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-surface") o.surfaceMaps = false;
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
         else if (a == "--no-grass") o.grass = false;
+        else if (a == "--no-props") o.props = false;
+        else if (a == "--features") o.features = next();
         else if (a == "--no-water") o.water = false;
         else if (a == "--water-preview") o.waterPreview = next();
         else if (a == "--water-skeleton") o.waterSkeleton = next();
@@ -307,6 +312,8 @@ struct FrameStats {
     std::uint64_t texels = 0;
     std::uint64_t foliageInstances = 0, foliageTriangles = 0, foliageCandidates = 0;
     std::uint64_t grassTufts = 0, grassCandidates = 0;
+    std::uint64_t propsDrawn = 0, propsTriangles = 0;
+    double propsCullMs = 0;
     double x = 0, y = 0, z = 0, ground = 0;
 };
 
@@ -324,6 +331,8 @@ struct Lab {
     bool foliageReady = false;
     Grass grass;
     bool grassReady = false;
+    Props props;
+    bool propsReady = false;
     Post post;
     Post dlssComposite;
     bool postReady = false;
@@ -582,6 +591,32 @@ struct Lab {
                             double(foliage.gpuBytes()) / (1 << 20), msSince(foliageStart));
             }
         }
+        {
+            // The mega structures: the world generator's feature list beside
+            // its heightmap (tools/terrain_lab/world_features.py).
+            fs::path features = options.features;
+            const std::string hm = options.heightmap.string();
+            const std::string tail = "_final.r16";
+            if (features.empty() && hm.size() > tail.size() && hm.compare(hm.size() - tail.size(), tail.size(), tail) == 0)
+                features = hm.substr(0, hm.size() - tail.size()) + "_features.json";
+            if (!features.empty() && fs::exists(features)) {
+                const auto propsStart = Clock::now();
+                const fs::path root = assets.parent_path().parent_path();
+                const fs::path groundFile = options.ground.empty()
+                        ? root / "content" / "config" / "terrain_core" / "biomes.json" : options.ground;
+                const Params& p = options.params;
+                propsReady = props.open(device, features, assets.parent_path() / "terrain_core" / "props", groundFile,
+                                        [&](double x, double y) { return macroHeight(p, macro, x, y); }, &why);
+                std::error_code age;
+                if (!options.heightmap.empty() &&
+                    fs::last_write_time(features, age) < fs::last_write_time(options.heightmap, age) && !age)
+                    std::fprintf(stderr, "props: %s is older than the heightmap - run tools/terrain_lab/world_features.py\n",
+                                 features.string().c_str());
+                if (!propsReady) std::fprintf(stderr, "props off: %s\n", why.c_str());
+                else std::printf("props: %zu instances of %u models, %.1f MB, in %.0f ms\n", props.instanceCount(),
+                                 props.modelCount(), double(props.gpuBytes()) / (1 << 20), msSince(propsStart));
+            }
+        }
         if (!probe.open(device)) return false;
         std::printf("renderer ready in %.0f ms (shaders), GPU %.1f MB\n", msSince(gpuStart),
                     double(renderer.gpuBytes()) / (1 << 20));
@@ -759,6 +794,17 @@ struct Lab {
             s.grassTufts = grass.tufts();
             s.grassCandidates = grass.candidates();
         }
+        if (propsReady && options.props) {
+            PropsFrame f;
+            f.eye = camera.eye;
+            f.frustum = frustumFrom(unjittered);
+            f.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
+            f.shadowRange = shadowsOn ? double(light.cascadeFar[2]) : 0.0;
+            props.prepare(commands, f);
+            s.propsDrawn = props.drawn();
+            s.propsTriangles = props.trianglesDrawn();
+            s.propsCullMs = props.cullMs();
+        }
         if (shadowsOn) {
             // The sun's shadow atlas: the ground and the trees, three cascades.
             auto* shadowPass = shadows.begin(commands);
@@ -771,6 +817,11 @@ struct Lab {
                     PlantView lightPlants = plants;
                     std::memcpy(lightPlants.viewProjection, lighting.cascadeMatrix(c), sizeof(lightPlants.viewProjection));
                     foliage.drawShadow(commands, shadowPass, lightPlants);
+                }
+                if (propsReady && options.props) {
+                    PlantView lightPlants = plants;
+                    std::memcpy(lightPlants.viewProjection, lighting.cascadeMatrix(c), sizeof(lightPlants.viewProjection));
+                    props.drawShadow(commands, shadowPass, lightPlants);
                 }
             }
             SDL_EndGPURenderPass(shadowPass);
@@ -806,6 +857,13 @@ struct Lab {
         look.levels = p.levels;
         look.flags = (options.groundMaterials ? 0u : kLookPlainGround) | (options.surfaceMaps ? 0u : kLookNoSurfaceMaps);
         renderer.draw(commands, pass, view, look, light, shadows.texture(), shadows.sampler());
+        if (propsReady && options.props) {
+            PropsLook rock;
+            rock.tileMetres = float(std::exp2(renderer.ground().tileLog2) * p.spacing);
+            rock.textureScale = renderer.ground().textureScale;
+            props.draw(commands, pass, plants, light, rock, renderer.materials(), renderer.materialNormals(),
+                       renderer.materialProperties(), shadows.texture(), shadows.sampler());
+        }
         if (foliageReady && options.foliage) foliage.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
         if (grassReady && options.grass) grass.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
         if (waterReady && options.water)
@@ -1062,6 +1120,7 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_F2) lab.options.groundMaterials = !lab.options.groundMaterials;
                 if (e.key.key == SDLK_F3) lab.options.foliage = !lab.options.foliage;
                 if (e.key.key == SDLK_F4) lab.options.grass = !lab.options.grass;
+                if (e.key.key == SDLK_P) lab.options.props = !lab.options.props;
                 if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
                 if (e.key.key == SDLK_F6) lab.options.surfaceMaps = !lab.options.surfaceMaps;
                 if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;

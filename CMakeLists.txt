@@ -527,6 +527,7 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/erosion.cpp
             src/terrain_core/drainage.cpp
             src/terrain_core/foliage.cpp
+            src/terrain_core/props.cpp
             src/terrain_core/grass.cpp
             src/terrain_core/post.cpp
             src/terrain_core/lighting.cpp

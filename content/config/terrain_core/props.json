@@ -1,0 +1,53 @@
+{
+  "comment": "Where the mega structures stand (tools/terrain_lab/world_features.py -> <world>_features.json, drawn by terrain_core/props). Models: assets/terrain_core/props (tools/blender/terrain_props.py). `spires`: the canyon steppe's kilometre spires, on the canyon floors, their tops at the level of the high ground round them (the steppe islands, the plateau's rim) within `reach_km`. `bridges`: natural bridges between spires whose tops are alike. `groups`: megaliths by zone, made mega by `height_m`. `singles`: one of a kind. `material`: a ground material (content/config/terrain_core/biomes.json) laid over a kind in world space; otherwise the slope material of the biome it stands in.",
+  "spires": {
+    "kind": "spire",
+    "zones": ["canyon_steppe", "steppe_canyon"],
+    "top_zones": ["steppe", "canyon_steppe", "green_plateau"],
+    "reach_km": 8.0,
+    "per_100km2": 9.0,
+    "min_gap_km": 0.55,
+    "cluster_km": 9.0,
+    "floor_share": 0.4,
+    "min_rise_m": 250,
+    "top_share": [0.94, 1.04],
+    "width": [0.8, 1.2]
+  },
+  "bridges": {"kind": "bridge", "gap_km": [0.45, 1.5], "top_diff": 0.07, "share": 0.4, "thickness": [0.85, 1.15]},
+  "groups": [
+    {"kind": "marsh_panel",     "zones": ["great_marshes", "river_marshes"], "per_1000km2": 5,  "cluster": [3, 7], "cluster_m": 450, "size_m": [70, 140]},
+    {"kind": "menhir",          "zones": ["great_marshes", "dark_forest"],   "per_1000km2": 4,  "cluster": [5, 9], "cluster_m": 600, "size_m": [45, 90], "ring": true},
+    {"kind": "colossus_head",   "zones": ["green_plateau"],                  "per_1000km2": 0.8, "size_m": [140, 220]},
+    {"kind": "colossus_hand",   "zones": ["green_plateau", "river_valley"],  "per_1000km2": 0.5, "size_m": [120, 200]},
+    {"kind": "iron_defender",   "zones": ["green_plateau"],                  "per_1000km2": 0.5, "size_m": [90, 140]},
+    {"kind": "cyclopean_block", "zones": ["golden_desert", "green_plateau"], "per_1000km2": 1.5, "cluster": [2, 5], "cluster_m": 500, "size_m": [50, 90]},
+    {"kind": "needle",          "zones": ["black_lands", "isles"],           "per_1000km2": 2.5, "cluster": [2, 6], "cluster_m": 700, "size_m": [250, 550]},
+    {"kind": "portal_tower",    "zones": ["black_lands"],                    "per_1000km2": 0.6, "size_m": [350, 520]},
+    {"kind": "fallen_menhir",   "zones": ["green_plateau", "steppe"],        "per_1000km2": 1.5, "size_m": [25, 45]},
+    {"kind": "giant_stair",     "zones": ["white_mountains"],                "per_1000km2": 0.4, "size_m": [120, 200]}
+  ],
+  "singles": [
+    {"kind": "valley_spire",    "zone": "river_valley",  "height_m": [800, 950], "near_low": true},
+    {"kind": "mirror_monument", "zone": "golden_desert", "size_m": [280, 340]}
+  ],
+  "materials": {
+    "spire": "rock_ochre", "bridge": "rock_ochre", "valley_spire": "rock_dark",
+    "marsh_panel": "rock_mossy", "menhir": "rock_grey", "fallen_menhir": "rock_grey",
+    "needle": "rock_dark", "portal_tower": "rock_dark", "mirror_monument": "rock_pale",
+    "colossus_head": "rock_pale", "colossus_hand": "rock_pale", "iron_defender": "rock_dark",
+    "cyclopean_block": "rock_ochre", "giant_stair": "rock_grey"
+  },
+  "cliffs": {
+    "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py): `zones`: zone -> slope (rise over run) from which ground is a wall there. A wall must drop `min_drop_m` within `band_m`. It is pushed out downhill until it stands, `overhang` more at the rim, and never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim; `strata` and `gullies` shape its face; `sink_m`: how deep the skin's edge lies under the ground.",
+    "zones": {"canyon_steppe": 0.7, "steppe": 0.7, "steppe_canyon": 0.7, "green_plateau": 0.8, "dragon_cliff": 0.7, "black_lands": 1.1},
+    "band_m": 300, "min_drop_m": 60, "min_cells": 6, "margin_cells": 2,
+    "overhang": 0.35, "max_push_m": 420, "min_push_m": 14, "overhang_drop": 0.08,
+    "strata": 0.14, "strata_m": 9.0, "gullies": 0.08,
+    "sink_m": 6.0, "grid_m": 12,
+    "materials": {"canyon_steppe": "rock_ochre", "steppe": "rock_ochre", "steppe_canyon": "rock_ochre",
+                  "green_plateau": "rock_ochre", "dragon_cliff": "rock_pale", "black_lands": "rock_dark", "default": "rock_grey"}
+  },
+  "min_gap_m": 250,
+  "edge_m": 800,
+  "max_slope": 0.35
+}

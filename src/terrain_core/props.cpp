@@ -1,0 +1,322 @@
+#include "terrain_core/props.hpp"
+
+#include <nlohmann/json.hpp>
+
+#include <algorithm>
+#include <chrono>
+#include <cmath>
+#include <cstring>
+#include <fstream>
+#include <map>
+
+namespace terrain_core {
+namespace {
+
+struct Vertex { float position[3], normal[3], uv[2]; };
+
+bool readMesh(const std::filesystem::path& file, std::vector<Vertex>& vertices, std::vector<std::uint32_t>& indices,
+              float lo[3], float hi[3]) {
+    std::ifstream in(file, std::ios::binary);
+    char magic[4];
+    std::uint32_t version = 0, vertexCount = 0, indexCount = 0;
+    in.read(magic, 4);
+    in.read(reinterpret_cast<char*>(&version), 4);
+    in.read(reinterpret_cast<char*>(&vertexCount), 4);
+    in.read(reinterpret_cast<char*>(&indexCount), 4);
+    in.read(reinterpret_cast<char*>(lo), 12);
+    in.read(reinterpret_cast<char*>(hi), 12);
+    if (!in || std::memcmp(magic, "FOLM", 4) != 0 || version != 1) return false;
+    vertices.resize(vertexCount);
+    indices.resize(indexCount);
+    in.read(reinterpret_cast<char*>(vertices.data()), std::streamsize(vertexCount * sizeof(Vertex)));
+    in.read(reinterpret_cast<char*>(indices.data()), std::streamsize(indexCount * 4));
+    return bool(in);
+}
+
+// Pixels a model must cover on screen for each level (radius in pixels).
+constexpr float kLevelPixels[2] = {260.0f, 70.0f};
+
+} // namespace
+
+Props::~Props() {
+    if (device_ && transfer_) SDL_ReleaseGPUTransferBuffer(device_->handle(), transfer_);
+}
+
+bool Props::open(engine::Device& device, const std::filesystem::path& featuresFile,
+                 const std::filesystem::path& modelDir, const std::filesystem::path& materialsJson,
+                 const std::function<double(double, double)>& ground, std::string* why) {
+    device_ = &device;
+    auto fail = [&](const std::string& what) { if (why) *why = what; return false; };
+    nlohmann::json features, table;
+    try {
+        std::ifstream in(featuresFile);
+        if (!in) return fail("cannot read " + featuresFile.string() + " (run tools/terrain_lab/world_features.py)");
+        features = nlohmann::json::parse(in);
+        std::ifstream t(materialsJson);
+        if (!t) return fail("cannot read " + materialsJson.string());
+        table = nlohmann::json::parse(t);
+    } catch (const std::exception& e) {
+        return fail(e.what());
+    }
+    // Layers of the ground's material array: its materials in the order the
+    // biome table loads them (nlohmann's object order, as BiomeTable::load).
+    std::map<std::string, float> layerOf;
+    for (const auto& [name, spec] : table["materials"].items()) {
+        (void)spec;
+        const float layer = float(layerOf.size());
+        layerOf[name] = layer;
+    }
+    const float fallback = layerOf.count("rock_grey") ? layerOf["rock_grey"] : 0.0f;
+
+    std::vector<Vertex> allVertices;
+    std::vector<std::uint32_t> allIndices;
+    std::map<std::string, std::uint32_t> modelIndex;
+    // A model is found by name in the models' folder, or - the world's own,
+    // its cliff tiles - in a folder beside the features file.
+    auto modelFor = [&](const std::string& name, const std::filesystem::path& dir) -> int {
+        const std::string key = (dir / name).string();
+        if (auto it = modelIndex.find(key); it != modelIndex.end()) return int(it->second);
+        Model m;
+        m.name = name;
+        for (int k = 0; k < kLevels; ++k) {
+            std::vector<Vertex> v;
+            std::vector<std::uint32_t> idx;
+            float lo[3], hi[3];
+            const auto file = dir / (name + "_lod" + std::to_string(k) + ".mesh");
+            if (!readMesh(file, v, idx, lo, hi)) return -1;
+            if (k == 0) {
+                std::memcpy(m.lo, lo, sizeof(lo));
+                std::memcpy(m.hi, hi, sizeof(hi));
+            }
+            m.levels[k].firstIndex = std::uint32_t(allIndices.size());
+            m.levels[k].indexCount = std::uint32_t(idx.size());
+            const auto base = std::uint32_t(allVertices.size());
+            for (auto i : idx) allIndices.push_back(base + i);
+            allVertices.insert(allVertices.end(), v.begin(), v.end());
+        }
+        const float dx = m.hi[0] - m.lo[0], dy = m.hi[1] - m.lo[1], dz = m.hi[2] - m.lo[2];
+        m.radius = 0.5f * std::sqrt(dx * dx + dy * dy + dz * dz);
+        modelIndex[key] = std::uint32_t(models_.size());
+        models_.push_back(m);
+        return int(models_.size()) - 1;
+    };
+
+    for (const auto& o : features["instances"]) {
+        const std::string name = o.value("m", std::string());
+        const std::string own = o.value("dir", std::string());
+        const std::filesystem::path dir = own.empty() ? modelDir : featuresFile.parent_path() / own;
+        const int model = modelFor(name, dir);
+        if (model < 0) return fail("cannot read model " + name + " in " + dir.string() +
+                                   (own.empty() ? " (run tools/blender/terrain_props.py --all)"
+                                                : " (run tools/terrain_lab/world_features.py)"));
+        const Model& m = models_[std::size_t(model)];
+        Instance in;
+        in.model = std::uint32_t(model);
+        in.x = o.value("x", 0.0);
+        in.y = o.value("y", 0.0);
+        in.yaw = o.value("yaw", 0.0f);
+        in.sx = o["s"][0].get<float>();
+        in.sy = o["s"][1].get<float>();
+        in.sz = o["s"][2].get<float>();
+        const std::string material = o.value("material", std::string());
+        in.layer = layerOf.count(material) ? layerOf[material] : fallback;
+        if (o.contains("z")) {
+            in.z = o["z"].get<double>();
+        } else {
+            // Stood on the lowest ground under its footprint, so no edge of
+            // its foot hangs over a slope.
+            const double r = 0.5 * std::max(double(m.hi[0] - m.lo[0]) * in.sx, double(m.hi[1] - m.lo[1]) * in.sy);
+            double z = ground(in.x, in.y);
+            for (int k = 0; k < 8; ++k) {
+                const double a = k * 0.7853981633974483;
+                z = std::min(z, ground(in.x + std::cos(a) * r * 0.7, in.y + std::sin(a) * r * 0.7));
+            }
+            in.z = z;
+            // A spire is stretched from that ground up to the height it was
+            // given: always reaching the high ground round it.
+            if (o.contains("top") && m.hi[2] > 1.0f) in.sz = float((o["top"].get<double>() - z) / m.hi[2]);
+        }
+        // Bounding sphere (yaw ignored: the radius covers any turn).
+        const double c = std::cos(in.yaw), s = std::sin(in.yaw);
+        const double mx = 0.5 * (m.lo[0] + m.hi[0]) * in.sx, my = 0.5 * (m.lo[1] + m.hi[1]) * in.sy;
+        in.cx = in.x + mx * c - my * s;
+        in.cy = in.y + mx * s + my * c;
+        in.cz = in.z + 0.5 * (m.lo[2] + m.hi[2]) * in.sz;
+        const float dx = (m.hi[0] - m.lo[0]) * in.sx, dy = (m.hi[1] - m.lo[1]) * in.sy, dz = (m.hi[2] - m.lo[2]) * in.sz;
+        in.radius = 0.5f * std::sqrt(dx * dx + dy * dy + dz * dz);
+        instances_.push_back(in);
+    }
+    if (instances_.empty()) return fail("no instances in " + featuresFile.string());
+
+    {
+        engine::Device::Uploader upload(device);
+        vertices_ = upload.add(SDL_GPU_BUFFERUSAGE_VERTEX, allVertices.data(), allVertices.size() * sizeof(Vertex));
+        indices_ = upload.add(SDL_GPU_BUFFERUSAGE_INDEX, allIndices.data(), allIndices.size() * 4);
+        if (!upload.finish()) return fail("props upload: " + device.error());
+    }
+    // Room for every instance twice: the view's and the shadows' lists.
+    capacity_ = std::uint32_t(instances_.size()) * 2;
+    gpuInstances_ = device.makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, std::size_t(capacity_) * sizeof(Gpu));
+    SDL_GPUTransferBufferCreateInfo info{};
+    info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+    info.size = std::uint32_t(std::size_t(capacity_) * sizeof(Gpu));
+    transfer_ = SDL_CreateGPUTransferBuffer(device.handle(), &info);
+    gpuBytes_ = allVertices.size() * sizeof(Vertex) + allIndices.size() * 4 + std::uint64_t(capacity_) * sizeof(Gpu);
+
+    SDL_GPUSamplerCreateInfo sampling{};
+    sampling.min_filter = sampling.mag_filter = SDL_GPU_FILTER_LINEAR;
+    sampling.mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
+    sampling.address_mode_u = sampling.address_mode_v = sampling.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_REPEAT;
+    sampling.max_lod = 1000.0f;
+    sampling.enable_anisotropy = true;
+    sampling.max_anisotropy = 8.0f;
+    linear_ = device.makeSampler(sampling);
+
+    engine::PipelineWanted wanted;
+    wanted.shaderFile = "terrain_core/props.hlsl";
+    wanted.vertexEntry = "propsVs";
+    wanted.fragmentEntry = "propsPs";
+    wanted.depthClip = true;
+    // The models are wound counter-clockwise seen from outside. terrain_lab's
+    // camera (eye-relative right, up, forward) keeps the world's handedness
+    // on the screen, so with the device's clockwise front face the faces
+    // turned to the eye arrive as "back": cull the other side. Measured: with
+    // BACK the cliff walls facing the eye vanished and the spires showed
+    // their insides.
+    wanted.cull = SDL_GPU_CULLMODE_FRONT;
+    wanted.buffers = {{0, sizeof(Vertex), SDL_GPU_VERTEXINPUTRATE_VERTEX, 0},
+                      {1, sizeof(Gpu), SDL_GPU_VERTEXINPUTRATE_INSTANCE, 0}};
+    wanted.attributes = {{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0},
+                         {1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 12},
+                         {2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 24},
+                         {3, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
+                         {4, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
+                         {5, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32}};
+    draw_ = device.makePipeline(wanted);
+    wanted.fragmentEntry = "propsShadowPs";
+    wanted.depthOnly = true;
+    wanted.cull = SDL_GPU_CULLMODE_NONE;
+    wanted.depthBiasConstant = -2.0f;
+    wanted.depthBiasSlope = -2.5f;
+    shadow_ = device.makePipeline(wanted);
+    if (!vertices_ || !indices_ || !gpuInstances_ || !transfer_ || !linear_ || !draw_ || !shadow_)
+        return fail("props GPU objects: " + device.error());
+    buckets_.assign(models_.size() * kLevels, {});
+    return true;
+}
+
+void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batches) {
+    for (auto& b : buckets_) b.clear();
+    for (std::uint32_t i = 0; i < instances_.size(); ++i) {
+        const Instance& in = instances_[i];
+        const double rx = in.cx - frame.eye.x, ry = in.cy - frame.eye.y, rz = in.cz - frame.eye.z;
+        const double d = std::sqrt(rx * rx + ry * ry + rz * rz);
+        int level = 0;
+        if (shadow) {
+            if (d - in.radius > frame.shadowRange) continue;
+            level = 1;   // shadows are soft at this size: the middle level does
+        } else {
+            bool inside = true;
+            for (const auto& p : frame.frustum)
+                if (p[0] * rx + p[1] * ry + p[2] * rz + p[3] < -double(in.radius) * std::sqrt(double(p[0]) * p[0] + double(p[1]) * p[1] + double(p[2]) * p[2])) {
+                    inside = false;
+                    break;
+                }
+            if (!inside) continue;
+            const float pixels = d > in.radius ? float(in.radius / d) * frame.pixelScale : 1e9f;
+            if (pixels < frame.minPixels) continue;
+            level = pixels > kLevelPixels[0] ? 0 : pixels > kLevelPixels[1] ? 1 : 2;
+        }
+        buckets_[in.model * kLevels + level].push_back(i);
+    }
+    for (std::uint32_t b = 0; b < buckets_.size(); ++b) {
+        if (buckets_[b].empty()) continue;
+        Batch batch{b / kLevels, b % kLevels, std::uint32_t(staging_.size()), std::uint32_t(buckets_[b].size())};
+        for (auto i : buckets_[b]) {
+            const Instance& in = instances_[i];
+            Gpu g{};
+            g.posYaw[0] = float(in.x - frame.eye.x);
+            g.posYaw[1] = float(in.y - frame.eye.y);
+            g.posYaw[2] = float(in.z - frame.eye.z);
+            g.posYaw[3] = in.yaw;
+            g.scale[0] = in.sx;
+            g.scale[1] = in.sy;
+            g.scale[2] = in.sz;
+            g.scale[3] = in.layer;
+            // Where the model stands, wrapped: the rock's texture coordinates
+            // come from it plus the local position, never from a float world
+            // coordinate in the millions.
+            g.anchor[0] = float(std::fmod(in.x, 4096.0));
+            g.anchor[1] = float(std::fmod(in.y, 4096.0));
+            g.anchor[2] = float(in.z);
+            g.anchor[3] = float(i % 97) / 97.0f;   // a per-instance variation
+            staging_.push_back(g);
+        }
+        batches.push_back(batch);
+    }
+}
+
+void Props::prepare(SDL_GPUCommandBuffer* commands, const PropsFrame& frame) {
+    const auto start = std::chrono::steady_clock::now();
+    staging_.clear();
+    viewBatches_.clear();
+    shadowBatches_.clear();
+    fill(frame, false, viewBatches_);
+    drawn_ = 0;
+    triangles_ = 0;
+    for (const auto& b : viewBatches_) {
+        drawn_ += b.count;
+        triangles_ += std::uint64_t(b.count) * models_[b.model].levels[b.level].indexCount / 3;
+    }
+    if (frame.shadowRange > 0) fill(frame, true, shadowBatches_);
+    cullMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    if (staging_.empty()) return;
+    const auto bytes = std::uint32_t(staging_.size() * sizeof(Gpu));
+    void* mapped = SDL_MapGPUTransferBuffer(device_->handle(), transfer_, true);
+    if (!mapped) return;
+    std::memcpy(mapped, staging_.data(), bytes);
+    SDL_UnmapGPUTransferBuffer(device_->handle(), transfer_);
+    auto* copy = SDL_BeginGPUCopyPass(commands);
+    const SDL_GPUTransferBufferLocation from{transfer_, 0};
+    const SDL_GPUBufferRegion to{gpuInstances_.get(), 0, bytes};
+    SDL_UploadToGPUBuffer(copy, &from, &to, true);
+    SDL_EndGPUCopyPass(copy);
+}
+
+void Props::drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches) {
+    const SDL_GPUBufferBinding index{indices_.get(), 0};
+    SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+    for (const auto& b : batches) {
+        const SDL_GPUBufferBinding buffers[2] = {{vertices_.get(), 0},
+                                                 {gpuInstances_.get(), b.first * std::uint32_t(sizeof(Gpu))}};
+        SDL_BindGPUVertexBuffers(pass, 0, buffers, 2);
+        const Level& l = models_[b.model].levels[b.level];
+        SDL_DrawGPUIndexedPrimitives(pass, l.indexCount, b.count, l.firstIndex, 0, 0);
+    }
+}
+
+void Props::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view,
+                 const LightUniforms& light, const PropsLook& look, SDL_GPUTexture* materials,
+                 SDL_GPUTexture* normals, SDL_GPUTexture* properties, SDL_GPUTexture* shadowAtlas,
+                 SDL_GPUSampler* shadowSampler) {
+    if (viewBatches_.empty()) return;
+    SDL_BindGPUGraphicsPipeline(pass, draw_.get());
+    SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
+    SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
+    SDL_PushGPUFragmentUniformData(commands, 1, &look, sizeof(look));
+    const SDL_GPUTextureSamplerBinding textures[4] = {{materials, linear_.get()},
+                                                      {normals, linear_.get()},
+                                                      {properties, linear_.get()},
+                                                      {shadowAtlas, shadowSampler}};
+    SDL_BindGPUFragmentSamplers(pass, 0, textures, 4);
+    drawBatches(pass, viewBatches_);
+}
+
+void Props::drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view) {
+    if (shadowBatches_.empty()) return;
+    SDL_BindGPUGraphicsPipeline(pass, shadow_.get());
+    SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
+    drawBatches(pass, shadowBatches_);
+}
+
+} // namespace terrain_core
