@@ -42,6 +42,16 @@ struct WaterSkeleton {
     std::vector<std::uint8_t> cells;
 };
 
+// What the ground gives to the rivers, as the world's rules set it: per
+// pixel `runoff` (0 none .. 255 the most: desert and steppe 0, mountains
+// all of it) and `delta` (255 where a river reaching the sea may split into
+// a delta) and `absorb`. Row 0 is the north edge.
+struct WaterRules {
+    std::uint32_t width = 0, height = 0;
+    std::vector<std::uint8_t> runoff, delta;
+    std::vector<std::uint8_t> absorb;   // 255 where the ground swallows water (a desert): a river ends at its edge
+};
+
 struct HydrologySettings {
     std::uint32_t resolution = 2048;   // work grid, at most this many texels a side
     double streamArea = 2.0;           // km^2 a cell must drain to be on the river graph
@@ -64,6 +74,7 @@ struct HydrologySettings {
     // than `mainRiverArea`, the `mainLakes` biggest lakes over `mainLakeArea`.
     // Nothing outside it holds water: every other hollow drains.
     const WaterSkeleton* skeleton = nullptr;
+    const WaterRules* rules = nullptr;   // runoff and where deltas are allowed; none: everywhere, all of it
     double mainRiverArea = 1000.0;     // km^2
     double mainLakeArea = 15.0;        // km^2
     std::uint32_t mainLakes = 24;

@@ -111,6 +111,7 @@ struct Options {
     HydrologySettings hydrology;
     fs::path waterPreview;        // --water-preview: the water map as a picture
     fs::path waterSkeleton;       // --water-skeleton: the main lakes and rivers, painted (red rivers, blue lakes)
+    fs::path waterRules;          // --water-rules: runoff (R) and where deltas may form (G), from the world generator
     fs::path waterSkeletonOut;    // --water-skeleton-out: the framework used, as such a picture, to edit
     LightSettings light;          // time of day, clouds, wind; shadows/clouds/wind modules (F7 F8 F9, F10 time)
     std::string foliageLayers;   // comma list of layers to keep; empty: all
@@ -197,6 +198,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--water-preview") o.waterPreview = next();
         else if (a == "--water-skeleton") o.waterSkeleton = next();
         else if (a == "--water-skeleton-out") o.waterSkeletonOut = next();
+        else if (a == "--water-rules") o.waterRules = next();
         else if (a == "--main-river-area") o.hydrology.mainRiverArea = std::atof(next());
         else if (a == "--main-lakes") o.hydrology.mainLakes = std::uint32_t(std::atoi(next()));
         else if (a == "--main-lake-area") o.hydrology.mainLakeArea = std::atof(next());
@@ -408,7 +410,32 @@ struct Lab {
                                  image ? "needs an RGB picture" : why.c_str());
                 }
             }
+            WaterRules rulesImage;
+            if (!options.waterRules.empty()) {
+                if (auto image = engine::world_source::readPng(options.waterRules, &why); image && image->channels >= 2) {
+                    rulesImage.width = image->width;
+                    rulesImage.height = image->height;
+                    const std::size_t count = std::size_t(image->width) * image->height;
+                    rulesImage.runoff.resize(count);
+                    rulesImage.delta.resize(count);
+                    if (image->channels >= 3) rulesImage.absorb.resize(count);
+                    const double top = image->maximum();
+                    for (std::uint32_t y = 0; y < image->height; ++y)
+                        for (std::uint32_t x = 0; x < image->width; ++x) {
+                            const std::size_t at = std::size_t(y) * image->width + x;
+                            rulesImage.runoff[at] = std::uint8_t(image->at(x, y, 0) / top * 255.0 + 0.5);
+                            rulesImage.delta[at] = std::uint8_t(image->at(x, y, 1) / top * 255.0 + 0.5);
+                            if (image->channels >= 3) rulesImage.absorb[at] = std::uint8_t(image->at(x, y, 2) / top * 255.0 + 0.5);
+                        }
+                    options.hydrology.rules = &rulesImage;
+                    std::printf("water rules %ux%u from %s\n", rulesImage.width, rulesImage.height, options.waterRules.string().c_str());
+                } else {
+                    std::fprintf(stderr, "water rules %s: %s\n", options.waterRules.string().c_str(),
+                                 image ? "needs an RGB picture" : why.c_str());
+                }
+            }
             Hydrology hydro = buildHydrology(macro, options.params, options.hydrology);
+            options.hydrology.rules = nullptr;
             options.hydrology.skeleton = nullptr;
             std::printf("framework: %u main lakes, %u main river cells (%s)\n", hydro.mainLakeCount, hydro.mainRiverCells,
                         painted.cells.empty() ? "generated" : "painted");

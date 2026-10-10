@@ -106,6 +106,23 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
         }
     });
 
+    // What each cell gives to the rivers, and where deltas may form: the
+    // world's rules (a desert gives nothing), else all of it, everywhere.
+    std::vector<float> runoff(cells, 1.0f);
+    std::vector<std::uint8_t> deltaOk(cells, 1), absorb(cells, 0);
+    if (s.rules && s.rules->width && s.rules->height) {
+        const WaterRules& rules = *s.rules;
+        for (std::uint32_t y = 0; y < side; ++y)
+            for (std::uint32_t x = 0; x < side; ++x) {
+                const std::uint32_t px = std::min(rules.width - 1, (x * 2 + 1) * rules.width / (side * 2));
+                const std::uint32_t py = std::min(rules.height - 1, (std::uint32_t(side - 1 - y) * 2 + 1) * rules.height / (side * 2));
+                const std::size_t at = std::size_t(py) * rules.width + px;
+                runoff[std::size_t(y) * side + x] = float(rules.runoff[at]) / 255.0f;
+                deltaOk[std::size_t(y) * side + x] = rules.delta.empty() || rules.delta[at] > 127;
+                absorb[std::size_t(y) * side + x] = !rules.absorb.empty() && rules.absorb[at] > 127;
+            }
+    }
+
     // The sea: what under sea level joins the map's edge. A hollow inland
     // that dips under sea level is a hollow (a caldera, a rift).
     std::vector<std::uint8_t> ocean(cells, 0);
@@ -203,7 +220,8 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
     // for a catchment gets its own lake, at its own level - not the level of
     // the plateau round it.
     Hydrology out;
-    std::vector<float> area(cells, float(cellKm2));
+    std::vector<float> area(cells);
+    for (std::uint32_t i = 0; i < cells; ++i) area[i] = float(cellKm2) * runoff[i];
     std::vector<std::uint8_t> lake(cells, 0);
     std::vector<float> lakeLevel(cells, WaterMap::kNoWater);
     std::vector<std::uint8_t> closed(cells, 0);   // 1: dry, in a hollow that keeps its water; 2: its lake
@@ -298,7 +316,7 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
             }
             end[i] = low == i ? i : end[low];
         }
-        for (std::uint32_t i = 0; i < cells; ++i) hollows[owner[end[i]]].water += cellKm2 * s.humidity;
+        for (std::uint32_t i = 0; i < cells; ++i) hollows[owner[end[i]]].water += cellKm2 * s.humidity * runoff[i];
         // A hollow's water is its own and all it contains: children first
         // (a hollow is always made after the ones it joins).
         std::vector<double> total(hollows.size(), 0.0);
@@ -402,7 +420,10 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
             if (l.cells.empty()) continue;
             float bottom = l.level;
             for (const std::uint32_t i : l.cells) bottom = std::min(bottom, h[i]);
-            const bool keep = l.level - bottom >= s.lakeDepth && double(l.cells.size()) * cellKm2 >= s.minLakeArea;
+            std::size_t dry = 0;
+            for (const std::uint32_t i : l.cells) dry += absorb[i];
+            const bool keep = l.level - bottom >= s.lakeDepth && double(l.cells.size()) * cellKm2 >= s.minLakeArea &&
+                              dry * 2 < l.cells.size();   // none on ground that swallows water
             for (const std::uint32_t i : l.cells) {
                 if (l.closed) closed[i] = keep ? 2 : 1;
                 if (!keep) continue;
@@ -425,7 +446,7 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
     // Catchment in dependency order (Kahn), which is also upstream-before-
     // downstream for the graph.
     auto accumulate = [&] {
-        std::fill(area.begin(), area.end(), float(cellKm2));
+        for (std::uint32_t i = 0; i < cells; ++i) area[i] = float(cellKm2) * runoff[i];
         order.clear();
         std::vector<std::uint8_t> pending(cells, 0);
         for (std::uint32_t i = 0; i < cells; ++i)
@@ -666,6 +687,10 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
             if (!seed(i) && !ocean[i] && receiver[i] != i) receiver[i] = steepest(i, filled, receiver[i]);
         for (std::uint32_t i = 0; i < cells; ++i)
             if (skel[i] == 2) { lake[i] = 1; lakeLevel[i] = skelLevel[i]; }
+        // A desert swallows what reaches it: the flow stops there, a river
+        // ends at its edge (the rain that fell on it was none to begin with).
+        for (std::uint32_t i = 0; i < cells; ++i)
+            if (absorb[i] && !ocean[i] && !skel[i]) receiver[i] = i;
     }
     accumulate();
     if (!painted)
@@ -706,7 +731,7 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
     std::vector<Node> nodes;
     std::vector<std::uint32_t> nodeOf(cells, kNone);
     for (const std::uint32_t i : order)
-        if (!ocean[i] && !lake[i] && (area[i] >= s.streamArea || skel[i] == 1)) {
+        if (!ocean[i] && !lake[i] && !absorb[i] && (area[i] >= s.streamArea || skel[i] == 1)) {
             nodeOf[i] = std::uint32_t(nodes.size());
             Node node;
             node.cell = i;
@@ -1079,6 +1104,7 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
     for (std::size_t k = 0; k < nodes.size(); ++k) {
         const Node& last = nodes[k];
         if (last.down == kNone || !nodes[last.down].terminal || last.area < s.deltaArea || !last.main) continue;
+        if (!deltaOk[nodes[last.down].cell] && !deltaOk[last.cell]) continue;   // not where the rules want a delta
         if (!ocean[nodes[last.down].cell]) continue;   // into a lake: no delta (yet)
         const Node& mouth = nodes[last.down];
         // Up the main line to the head of the delta.

@@ -1,0 +1,280 @@
+{
+ "comment": "Rules of the world generator (tools/terrain_lab/world_gen.py, doc/rework/WORLD_GENERATOR_PLAN.md). The continent is cut into `bands` from south to north (`size`: share of its height), sharing their edges - each a curve, bent widely (`warp.large`) and wobbled (`warp.edge`). The `east_wing` replaces the bands east of `s` (west->east, 0..1 across the continent) between two places in the band sequence ('band:fraction'). `features`: places inside zones. `biome`: ids of content/config/biomes/fallen_gods.json. `rain`: how much the ground drains (0 none).",
+ "world_km": 524.288,
+ "seed": 7,
+ "continent": {
+  "margin": 0.05,
+  "roughness": 0.1
+ },
+ "bands": [
+  {
+   "name": "golden_desert",
+   "biome": 4,
+   "size": 0.27,
+   "rain": 0.0
+  },
+  {
+   "name": "canyon_steppe",
+   "biome": 3,
+   "size": 0.19,
+   "rain": 0.0
+  },
+  {
+   "name": "green_plateau",
+   "biome": 6,
+   "size": 0.17,
+   "rain": 0.3
+  },
+  {
+   "name": "foothills",
+   "biome": 5,
+   "size": 0.06,
+   "rain": 0.5
+  },
+  {
+   "name": "white_mountains",
+   "biome": 8,
+   "size": 0.15,
+   "rain": 1.0
+  },
+  {
+   "name": "river_valley",
+   "biome": 9,
+   "size": 0.05,
+   "rain": 1.0
+  },
+  {
+   "name": "black_lands",
+   "biome": 10,
+   "size": 0.11,
+   "rain": 0.0
+  }
+ ],
+ "warp": {
+  "large": 0.07,
+  "edge": 0.02
+ },
+ "east_wing": {
+  "s": 0.64,
+  "warp": 0.06,
+  "zones": [
+   {
+    "name": "great_marshes",
+    "biome": 1,
+    "from": "canyon_steppe:0.0",
+    "to": "green_plateau:0.6",
+    "rain": 1.0
+   },
+   {
+    "name": "dark_forest",
+    "biome": 2,
+    "from": "green_plateau:0.6",
+    "to": "foothills:1.0",
+    "rain": 0.9
+   }
+  ]
+ },
+ "features": {
+  "lake_valley": {
+   "biome": 7,
+   "in": "white_mountains",
+   "s": 0.42,
+   "radius": 0.075,
+   "rain": 0.8
+  },
+  "steppe_islands": {
+   "in": "canyon_steppe",
+   "count": 6,
+   "size": [
+    0.022,
+    0.042
+   ],
+   "canyon_width": 0.007
+  },
+  "river_marshes": {
+   "in": "great_marshes",
+   "coast_band": 0.07
+  },
+  "cliff_coast": {
+   "in": "golden_desert",
+   "width_km": 2.0
+  },
+  "valley_delta": {
+   "in": "river_valley",
+   "s": 0.84,
+   "reach": 0.1
+  }
+ },
+ "isles": {
+  "biome": 13,
+  "count": 5,
+  "band": [
+   0.05,
+   0.11
+  ],
+  "size": [
+   0.02,
+   0.045
+  ],
+  "clearance": 0.02,
+  "edge": 0.025,
+  "rain": 0.3
+ },
+ "erosion": {
+  "comment": "thermal: the main shaping everywhere high; fluvial: weak and smoothed everywhere but where `fluvial` says more (the rocky steppe's deep canyons, finished by cliff meshes)",
+  "thermal": 1.0,
+  "fluvial_default": 0.15,
+  "fluvial": {
+   "canyon_steppe": 1.0,
+   "steppe_canyon": 1.0
+  },
+  "thermal_iterations": 80,
+  "thermal_rate": 0.3,
+  "talus_deg": {
+   "default": 30,
+   "white_mountains": 36,
+   "black_lands": 42,
+   "foothills": 28,
+   "lake_valley": 30,
+   "canyon_steppe": 40,
+   "golden_desert": 32,
+   "isles": 40
+  }
+ },
+ "relief": {
+  "golden_desert": {
+   "kind": "dunes",
+   "base": 220,
+   "rise": 260,
+   "dune_m": 40,
+   "dune_km": 1.6,
+   "draa_m": 120,
+   "draa_km": 5.0
+  },
+  "canyon_steppe": {
+   "kind": "mesas",
+   "base": 620,
+   "rise": 80,
+   "step_m": 70,
+   "levels": 4,
+   "km": 9
+  },
+  "steppe": {
+   "kind": "table",
+   "base": 700,
+   "amp": 12,
+   "km": 6
+  },
+  "steppe_canyon": {
+   "kind": "canyon",
+   "depth": 260
+  },
+  "green_plateau": {
+   "kind": "hills",
+   "base": 1150,
+   "rise": 200,
+   "amp": 220,
+   "km": 8
+  },
+  "great_marshes": {
+   "kind": "lowland",
+   "base": 6,
+   "rise": 30,
+   "amp": 4,
+   "km": 3
+  },
+  "river_marshes": {
+   "kind": "lowland",
+   "base": 2,
+   "rise": 4,
+   "amp": 1.5,
+   "km": 2
+  },
+  "dark_forest": {
+   "kind": "hills",
+   "base": 80,
+   "rise": 900,
+   "amp": 200,
+   "km": 6
+  },
+  "foothills": {
+   "kind": "hills",
+   "base": 1350,
+   "rise": 500,
+   "amp": 420,
+   "km": 7
+  },
+  "white_mountains": {
+   "kind": "ridges",
+   "base": 1800,
+   "peak": 4600,
+   "km": 16
+  },
+  "lake_valley": {
+   "kind": "bowl",
+   "floor": 1450,
+   "rim": 3200
+  },
+  "river_valley": {
+   "kind": "valley",
+   "floor_west": 420,
+   "floor_east": 40,
+   "amp": 15
+  },
+  "black_lands": {
+   "kind": "spikes",
+   "base": 700,
+   "peak": 2900,
+   "km": 9
+  },
+  "cliff_coast": {
+   "kind": "same_as",
+   "zone": "golden_desert"
+  },
+  "isles": {
+   "kind": "tilted",
+   "low": 90,
+   "high": 620,
+   "terraces": 3
+  }
+ },
+ "transitions": {
+  "comment": "blend_km: how wide neighbours blend by default. `cliffs`: pairs that meet in a sharp step instead (the higher stays up to the edge). Coasts by zone.",
+  "blend_km": 6.0,
+  "cliffs": [
+   [
+    "canyon_steppe",
+    "green_plateau"
+   ],
+   [
+    "steppe",
+    "green_plateau"
+   ],
+   [
+    "steppe_canyon",
+    "green_plateau"
+   ],
+   [
+    "river_valley",
+    "black_lands"
+   ],
+   [
+    "steppe_canyon",
+    "steppe"
+   ],
+   [
+    "steppe_canyon",
+    "canyon_steppe"
+   ]
+  ],
+  "coasts": {
+   "cliff_coast": "cliff",
+   "golden_desert": "cliff",
+   "black_lands": "beach",
+   "great_marshes": "flat",
+   "river_marshes": "flat",
+   "isles": "cliff",
+   "default": "cliff"
+  }
+ }
+}
