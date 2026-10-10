@@ -163,6 +163,10 @@ def continent(n, seed, rs, land_share, y_top):
     return ndimage.binary_fill_holes(land)
 
 
+# The water painted on the imported zones picture (lakes, rivers), if any.
+PICTURE_WATER = None
+
+
 def layout(rules, n, seed):
     """-> zone (object array of names), land, box, coast (int8 kinds per pixel)."""
     world = rules["continent"]
@@ -210,6 +214,8 @@ def layout(rules, n, seed):
         pal_zone = {k: v for k, v in pal.items() if k != "_water"}
         zone = world_zones.import_zones(zi, {**pal_zone, "_water": pal["_water"]}, land, n)
         print("zones imported from", zi)
+        global PICTURE_WATER
+        PICTURE_WATER = world_zones.import_zones.water
 
     f = rules["features"]
     rng = np.random.default_rng(seed + 50)
@@ -463,8 +469,10 @@ def massif(m, r, sd, n, world_km):
     d = ndimage.distance_transform_edt(m) * km_px
     size = max(3, int(30.0 / km_px))
     local = ndimage.gaussian_filter(ndimage.grey_dilation(d, size=(size, size)), 12.0 / km_px)
-    q = np.clip(d / np.maximum(local, 4.0), 0.0, 1.0)
-    body = 0.10 + 0.90 * q ** r.get("power", 0.9)
+    q = np.clip(ndimage.gaussian_filter(d, 1.5 / km_px) / np.maximum(local, 4.0), 0.0, 1.0)
+    # (q ** power alone stands up vertically at the edge: a crease along the
+    # ragged border; the smoothstep lays the foot down flat into the neighbour)
+    body = 0.10 + 0.90 * q ** r.get("power", 0.9) * smoothstep(0.0, 0.3, q)
     ridge = warped(ridged(n, sd, r["km"], world_km, octaves=7), n, sd + 9, r["km"] * 2.0, world_km, r["km"] * 0.9)
     fine = ridged(n, sd + 3, r["km"] / 3.0, world_km, octaves=6)
     frac = np.clip((0.6 * ridge ** 1.2 + 0.4 * fine ** 1.4 - 0.1) / 0.8, 0.0, 1.0)
@@ -497,9 +505,18 @@ def caldera(h, zone, r, rules, seed, n):
     wall = wall ** 1.15 * (0.75 + 0.25 * crest)
     floor = r["floor"] + 25 * fbm32(n, seed + 613, 4, world_km, 3) + 120 * smoothstep(0.2, 0.6, d) * (crest - 0.3)
     cal = floor + (rim_top - floor) * wall
-    inside = d < 1.0
-    # beyond the rim: the range's own heights, lifted so that the rim sinks into them
-    out = np.maximum(h, rim_top * (1.0 - smoothstep(1.0, 1.55, d)) + h * smoothstep(1.0, 1.55, d))
+    # (the crest's own height, which the outer flank starts from: no step at the rim)
+    rim_eff = floor + (rim_top - floor) * (0.75 + 0.25 * crest)
+    # Beyond the rim: the volcano's outer flank, concave, cut by radial gullies
+    # (ridged noise stretched along the rays: sampled at a radius squeezed 4x,
+    # so nothing seams), sinking into the range's own heights.
+    rr = np.maximum(np.hypot(yy - cy, xx - cx), 1e-3)
+    rad = R + (rr - R) / 4.0
+    gullies = ndimage.map_coordinates(ridged(n, seed + 621, 2.5, world_km, octaves=5),
+                                      [cy + (yy - cy) / rr * rad, cx + (xx - cx) / rr * rad], order=1, mode="reflect")
+    s = smoothstep(1.0, 2.0, d)
+    flank = rim_eff * (1.0 - s) ** 1.5 * (1.0 + (0.35 * (gullies - 0.5) - 0.05) * smoothstep(1.0, 1.25, d)) + h * s
+    out = np.maximum(h, flank)
     out = np.where(d < 1.0, cal, out)
     return out.astype(np.float32)
 
@@ -576,9 +593,16 @@ def relief(zone, rules, seed, coast, isles):
             h = r["base"] + r["rise"] * progress + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
             if r.get("pools"):
                 # Shallow marsh waters of their own: many small pools just under the sea's level.
-                f = fbm32(n, sd + 5, r.get("pool_km", 1.4), world_km, 4)
-                thr = np.percentile(f[m], 100 * (1.0 - r["pools"])) if m.any() else 0.0
-                pool = smoothstep(thr, thr + 0.10, f)
+                if PICTURE_WATER is not None and (PICTURE_WATER & m).any():
+                    # the lakes the zones picture paints there, their shores
+                    # ragged by a little noise, shelving gently (no deep bowls)
+                    wet = ndimage.gaussian_filter((PICTURE_WATER & m).astype(np.float32), 0.6 / km_px)
+                    wet = wet + 0.25 * fbm32(n, sd + 5, r.get("pool_km", 1.4), world_km, 4)
+                    pool = smoothstep(0.35, 0.65, wet)
+                else:
+                    f = fbm32(n, sd + 5, r.get("pool_km", 1.4), world_km, 4)
+                    thr = np.percentile(f[m], 100 * (1.0 - r["pools"])) if m.any() else 0.0
+                    pool = smoothstep(thr, thr + 0.10, f)
                 h = h + (-r.get("pool_depth", 1.4) - h) * pool
         elif kind == "ridges":
             h = ranges(zone, m, r, sd, n, world_km, xx, yy)
@@ -605,22 +629,41 @@ def relief(zone, rules, seed, coast, isles):
     if "lake_valley" in heights and "white_mountains" in heights:
         heights["lake_valley"] = heights["white_mountains"]
     # The valley is where the slopes of the two ranges (the white mountains' north side,
-    # the black peaks' south side) meet. From its banks the ground climbs, over
-    # `slope_km`, to exactly the height the range has at its edge: no step.
+    # the black peaks' south side) meet. From the river in its middle the ground
+    # climbs, concave, over up to `slope_km` (never past the middle), to the height
+    # the range has along its edge: no step.
     for name in names:
         r = recipes.get(name, {})
         if r.get("kind") != "valley":
             continue
         floor = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx
-        walls = np.zeros((n, n), np.float32)
         L = r.get("slope_km", 14)
+        sides = []
         for other in ("white_mountains", "black_lands"):
             om = (zone == other) | ((zone == "lake_valley") if other == "white_mountains" else False)
             if not om.any() or other not in heights:
                 continue
-            dist, near = ndimage.distance_transform_edt(~om, return_indices=True)
-            edge_h = ndimage.gaussian_filter(heights[other][near[0], near[1]], 9.0 / km_px)   # (no rays from the nearest-edge lookup)
-            walls = np.maximum(walls, (edge_h - floor) * (1.0 - smoothstep(0.0, L, dist * km_px)) ** 1.6)
+            # The range's edge height, averaged along the edge by a normalized blur
+            # (no nearest-edge lookup: that smears every edge bump into a ray).
+            band = (om & (ndimage.distance_transform_edt(om) * km_px < 4.0)).astype(np.float32)
+            edge_h = np.zeros((n, n), np.float32)
+            got = np.zeros((n, n), np.float32)
+            for s_km in (6.0, 24.0):
+                wsum = ndimage.gaussian_filter(band, s_km / km_px)
+                hsum = ndimage.gaussian_filter(band * heights[other], s_km / km_px)
+                avg = hsum / np.maximum(wsum, 1e-6)
+                take = np.clip(wsum / 0.05, 0.0, 1.0) * (1.0 - got)
+                edge_h += take * np.where(wsum > 1e-6, avg, 0.0)
+                got += take
+            edge_h = np.where(got > 1e-3, edge_h / np.maximum(got, 1e-3), floor)
+            # (blurred: a ragged edge creases the distance field, and every crease
+            # would run down the slope as a line)
+            sides.append((ndimage.gaussian_filter(ndimage.distance_transform_edt(~om) * km_px, 3.0 / km_px), edge_h))
+        walls = np.zeros((n, n), np.float32)
+        for k, (dist, edge_h) in enumerate(sides):
+            other_d = sides[1 - k][0] if len(sides) == 2 else np.full_like(dist, 1e9)
+            reach = np.clip(0.5 * (dist + other_d), 1.0, L)
+            walls = np.maximum(walls, (edge_h - floor) * (1.0 - smoothstep(0.0, reach, dist)) ** 1.8)
         heights[name] = (floor + np.maximum(walls, 0.0) + r["amp"] * fbm32(n, seed + 1900, 4, world_km, 3)).astype(np.float32)
     for name in deferred:
         r = recipes[name]
@@ -676,16 +719,36 @@ def relief(zone, rules, seed, coast, isles):
     d_in = ndimage.distance_transform_edt(land) * km_px
     d_out = ndimage.distance_transform_edt(~land) * km_px
     # A beach: a gentle shore, and for a black one a quick climb behind it.
-    beach = 1.5 + 15.0 * d_in + 40.0 * np.maximum(d_in - 4.0, 0.0) ** 1.6
-    # (a flat coast is flat near the sea only: further in the ground is free to rise)
-    flat = 0.6 + 1.2 * d_in + 6000.0 * smoothstep(12.0, 30.0, d_in)
+    # (the caps below follow the distance to the sea: blurred, more so further in,
+    # or every bay of the ragged coast creases them into flat facets)
+    d_near = ndimage.gaussian_filter(d_in, 1.5 / km_px)
+    d_in = np.where(land, d_near + (ndimage.gaussian_filter(d_in, 5.0 / km_px) - d_near) * smoothstep(3.0, 10.0, d_near), d_in)
+    beach = 1.5 + 15.0 * d_in + 60.0 * np.maximum(d_in - 3.0, 0.0) ** 1.6
+    # (a flat coast is flat near the sea only: further in the ground is free to rise;
+    # the cap lets go by a blend, not by a steep ramp under min(), whose crossing
+    # with the ground would be a crease)
+    flat = 0.6 + 1.2 * d_in
+    flat_free = smoothstep(6.0, 30.0, d_in) ** 1.5
     keep_isles = masks.get("isles", np.zeros_like(land))
-    h = np.where(land & (coast == COAST_BEACH) & ~keep_isles, np.minimum(h, beach), h)
-    h = np.where(land & (coast == COAST_FLAT), np.minimum(h, flat), h)
+    # The coast kinds fade into each other over a few km (where two kinds meet,
+    # on land and on the sea floor alike, a hard switch is a step or a fan of rays).
+    def kind_weight(kind, km=2.5):
+        return ndimage.gaussian_filter((coast == kind).astype(np.float32), km / km_px)
+    w_beach = kind_weight(COAST_BEACH) * ~keep_isles
+    w_flat = kind_weight(COAST_FLAT)
+    # (the cap keeps the ground's own small relief: a mountain coming down to a
+    # beach stays cut by its gullies, not planed smooth)
+    detail = h - ndimage.gaussian_filter(h, 1.5 / km_px)
+    def soft_min(a, b, k):
+        # (min() with its corner rounded over `k` metres: no crease where they cross)
+        return 0.5 * (a + b - np.sqrt((a - b) ** 2 + k * k))
+    h = np.where(land, h + (soft_min(h, beach + 0.8 * detail * smoothstep(1.0, 4.0, d_in), 40.0) - h) * w_beach, h)
+    flat_h = np.minimum(h, flat)
+    h = np.where(land, h + (flat_h + (h - flat_h) * flat_free - h) * w_flat, h)
     h = np.where(land, np.maximum(h, 0.8), h)
     shelf = -(25.0 + 350.0 * smoothstep(0, 30, d_out) + 1100.0 * smoothstep(30, 140, d_out))
     steep = -(60.0 + 300.0 * smoothstep(0, 4, d_out) + 1100.0 * smoothstep(20, 120, d_out))
-    sea = np.where(coast == COAST_CLIFF, steep, shelf) + 15.0 * fbm32(n, seed + 77, 20, world_km, 3)
+    sea = shelf + (steep - shelf) * kind_weight(COAST_CLIFF, 4.0) + 15.0 * fbm32(n, seed + 77, 20, world_km, 3)
     h = np.where(land, h, np.minimum(sea, -2.0))
     return h.astype(np.float32)
 
@@ -834,6 +897,22 @@ def main():
         Image.fromarray((v[::-1] * 65535 + 0.5).astype(np.uint16)).save(args.out + "_height.png")
         preview(h, rules, args.out + "_height_preview.png")
         print(f"heights {n}^2: {h.min():.0f} .. {h.max():.0f} m; wrote {args.out}_height.png")
+
+    if PICTURE_WATER is not None:
+        # The lakes the zones picture paints (round patches; the long lines are
+        # its rivers, left to the generated ones), as the lab's painted water
+        # framework (--water-skeleton): blue lakes, north up.
+        parts, count = ndimage.label(PICTURE_WATER, np.ones((3, 3)))
+        lakes = np.zeros((n, n), bool)
+        for k, sl in enumerate(ndimage.find_objects(parts), start=1):
+            piece = parts[sl] == k
+            span = max(piece.shape)
+            if piece.sum() >= 12 and span * span < 10.0 * piece.sum():
+                lakes[sl] |= piece
+        pic = np.zeros((n, n, 3), np.uint8)
+        pic[lakes] = (0, 0, 255)
+        Image.fromarray(pic[::-1]).save(args.out + "_water_skeleton.png")
+        print(f"{int(ndimage.label(lakes)[1])} painted lakes; wrote {args.out}_water_skeleton.png")
 
     # The layout as a picture, north up, with a legend.
     rgb = np.zeros((n, n, 3), np.uint8)

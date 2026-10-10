@@ -537,6 +537,7 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
         std::vector<std::vector<std::uint32_t>> parts;
         lakeParts(wet, parts);
         std::vector<float> bed(cells, std::numeric_limits<float>::max());
+        std::vector<float> cut(cells, 0.0f);
         for (const auto& part : parts) {
             float rim = std::numeric_limits<float>::max();
             for (const std::uint32_t i : part)
@@ -565,10 +566,17 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
                     }
                 ring.swap(next);
             }
+            // As deep as the lake is big - a crater lake of a hundred km^2 tens
+            // of metres - but shallow on the lowland by the sea: a marsh's
+            // waters are a few metres deep, however wide.
+            const float lowland = std::clamp((level - 5.0f) / 95.0f, 0.0f, 1.0f);
+            const float deepest = std::clamp(4.0f * float(std::sqrt(double(part.size()) * cellKm2)) * lowland, 2.5f, 60.0f);
+            const float perCell = std::min(6.0f, 0.004f * float(dx) * deepest / 2.5f);
             for (const std::uint32_t i : part) {
                 skel[i] = 2;
                 skelLevel[i] = level;
-                bed[i] = level - std::min(2.0f + 6.0f * float(from[i]), 60.0f);
+                bed[i] = level - std::min(1.0f + perCell * float(from[i]), deepest);
+                cut[i] = std::max(h[i] - bed[i], 0.0f);
                 h[i] = std::min(h[i], bed[i]);
                 route[i] = std::min(route[i], bed[i]);
             }
@@ -576,12 +584,25 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
         }
         if (!parts.empty()) {
             std::vector<std::uint16_t> texels(macro.texels());
+            // Cut bilinearly between the cells (a cell's whole block cut at
+            // once is a staircase shore): by how much each cell sinks, and
+            // where all four cells around are lake, down to their bed.
+            constexpr float kDry = std::numeric_limits<float>::max();
             for (std::uint32_t y = 0; y < n; ++y)
                 for (std::uint32_t x = 0; x < n; ++x) {
-                    const float b = bed[std::size_t(y / f) * side + x / f];
-                    if (b == std::numeric_limits<float>::max()) continue;
-                    const double v = (double(b) + sea) / range * 65535.0;
+                    const double u = (x + 0.5) / f - 0.5, w = (y + 0.5) / f - 0.5;
+                    const int cx = std::clamp(int(std::floor(u)), 0, int(side) - 2), cy = std::clamp(int(std::floor(w)), 0, int(side) - 2);
+                    const double ax = std::clamp(u - cx, 0.0, 1.0), ay = std::clamp(w - cy, 0.0, 1.0);
+                    const std::size_t c00 = std::size_t(cy) * side + cx, c10 = c00 + 1, c01 = c00 + side, c11 = c01 + 1;
+                    const double sink = (cut[c00] * (1 - ax) + cut[c10] * ax) * (1 - ay) + (cut[c01] * (1 - ax) + cut[c11] * ax) * ay;
+                    const bool inside = bed[c00] != kDry && bed[c10] != kDry && bed[c01] != kDry && bed[c11] != kDry;
+                    if (sink <= 0.0 && !inside) continue;
                     std::uint16_t& t = texels[std::size_t(y) * n + x];
+                    double v = double(t) - sink / range * 65535.0;
+                    if (inside) {
+                        const double b = (bed[c00] * (1 - ax) + bed[c10] * ax) * (1 - ay) + (bed[c01] * (1 - ax) + bed[c11] * ax) * ay;
+                        v = std::min(v, (b + sea) / range * 65535.0);
+                    }
                     t = std::uint16_t(std::clamp(std::min(double(t), v), 0.0, 65535.0));
                 }
             macro.assign(n, std::move(texels));
@@ -693,7 +714,10 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
             if (absorb[i] && !ocean[i] && !skel[i]) receiver[i] = i;
     }
     accumulate();
-    if (!painted)
+    // (a framework with lakes painted but no rivers still gets its main rivers)
+    bool paintedRivers = false;
+    for (std::uint32_t i = 0; i < cells && painted && !paintedRivers; ++i) paintedRivers = skel[i] == 1;
+    if (!paintedRivers)
         for (std::uint32_t i = 0; i < cells; ++i)
             if (!ocean[i] && !skel[i] && area[i] >= s.mainRiverArea) skel[i] = 1;
     for (std::uint32_t i = 0; i < cells; ++i) out.mainRiverCells += skel[i] == 1 ? 1 : 0;

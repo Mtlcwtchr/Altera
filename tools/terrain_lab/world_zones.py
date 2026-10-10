@@ -204,6 +204,8 @@ def import_zones(path, palette, land, n):
     d = np.stack([np.linalg.norm(rgb - c, axis=2) for c in cols], axis=2)
     pick = np.argmin(d, axis=2)
     wet = np.linalg.norm(rgb - water, axis=2) < 60
+    # (the picture's own lakes and rivers, kept for the relief: the marshes' pools)
+    import_zones.water = wet & land
     # (the edge pixels between colours are blends: they count as wet, too)
     wet = ndimage.binary_dilation(wet, iterations=2)
     zone = np.full((n, n), "ocean", dtype=object)
