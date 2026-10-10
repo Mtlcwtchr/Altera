@@ -2,7 +2,7 @@
   "comment": "Rules of the world generator (tools/terrain_lab/world_gen.py, doc/rework/WORLD_GENERATOR_PLAN.md). The continent is cut into `bands` from south to north (`size`: share of its height), sharing their edges; all coordinates are bent (`warp.coord`) so no border is a straight line. The `east_wing` replaces the bands east of `s` (west->east, 0..1 across the continent, tilted by `tilt`) between two places in the band sequence ('band:fraction'). `features`: places inside zones. `isles`: the northern isles are taken from a heightmap (its land pieces wholly in the top `keep_top` of the picture, but the biggest). `biome`: ids of content/config/biomes/fallen_gods.json. `rain`: how much the ground drains (0 none, and then it swallows water).",
   "world_km": 262.144,
   "seed": 7,
-  "continent": {"land_share": 0.50},
+  "continent": {"land_share": 0.38},
   "bands": [
     {"name": "golden_desert",   "biome": 4,  "weight": 0.22, "rain": 0.0},
     {"name": "canyon_steppe",   "biome": 16, "weight": 0.22, "rain": 0.0},

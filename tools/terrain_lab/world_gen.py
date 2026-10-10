@@ -87,6 +87,58 @@ def pick(rng, spec):
     return spec
 
 
+def continent(n, seed, rs, land_share, y_top):
+    """A continent as a seed makes it: a meandering chain of lobes of every
+    size with peninsulas on its sides, bent and bitten by noise at every
+    scale. No box, no stripes; kept off the world's edge."""
+    yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n
+    k = int(rs.integers(6, 10))
+    xa, xb = rs.uniform(0.15, 0.22), 1.0 - rs.uniform(0.15, 0.22)
+    sx = np.linspace(0, 1, k) + rs.uniform(-0.04, 0.04, k)
+    cxs = xa + np.clip(sx, 0, 1) * (xb - xa)
+    mid = 0.16 + 0.5 * (y_top - 0.16)
+    walk = np.cumsum(rs.normal(0, 0.08, k))
+    cys = np.clip(mid + walk - walk.mean(), 0.24, y_top - 0.16)
+    lobes = [(cxs[i], cys[i], rs.uniform(0.06, 0.11)) for i in range(k)]
+    for _ in range(int(rs.integers(5, 9))):             # peninsulas and capes
+        i = int(rs.integers(0, k))
+        side = rs.choice([-1.0, 1.0])
+        lobes.append((cxs[i] + rs.uniform(-0.06, 0.06), np.clip(cys[i] + side * rs.uniform(0.09, 0.15), 0.14, y_top - 0.06),
+                      rs.uniform(0.035, 0.07)))
+    angles, stretch = rs.uniform(0, np.pi, len(lobes)), rs.uniform(1.0, 1.7, len(lobes))
+    wx = xx + 0.08 * fbm(n, seed + 3, octaves=4, base=3) + 0.025 * fbm(n, seed + 4, octaves=4, base=9)
+    wy = yy + 0.08 * fbm(n, seed + 5, octaves=4, base=3) + 0.025 * fbm(n, seed + 6, octaves=4, base=9)
+    noise = 0.30 * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
+                    + 0.35 * fbm(n, seed + 7, octaves=5, base=16) + 0.15 * fbm(n, seed + 8, octaves=4, base=40))
+    edge = np.minimum(np.minimum(xx, 1 - xx), np.minimum(yy, 1 - yy))
+    noise -= 2.0 * (1.0 - smoothstep(0.0, 0.07, edge)) + 2.0 * smoothstep(y_top, y_top + 0.03, yy)
+
+    def make(scale):
+        field = noise.copy()
+        for (cx_, cy_, r_), a_, e_ in zip(lobes, angles, stretch):
+            dx, dy = wx - cx_, wy - cy_
+            u = (dx * np.cos(a_) + dy * np.sin(a_)) / (r_ * e_ * scale)
+            v = (-dx * np.sin(a_) + dy * np.cos(a_)) / (r_ * scale)
+            field += np.exp(-(u * u + v * v) * 1.6)
+        return (field > 0.5) & (edge > 0.025)
+
+    # The lobes grow or shrink together until the land is the share asked for.
+    lo_s, hi_s = 0.4, 2.2
+    for _ in range(9):
+        mid_s = 0.5 * (lo_s + hi_s)
+        if make(mid_s).mean() < land_share:
+            lo_s = mid_s
+        else:
+            hi_s = mid_s
+    land = make(0.5 * (lo_s + hi_s))
+    land = ndimage.binary_opening(land, iterations=2)
+    parts, count = ndimage.label(land)
+    if count > 1:
+        sizes = ndimage.sum(land, parts, range(1, count + 1))
+        land = parts == (int(np.argmax(sizes)) + 1)
+    return ndimage.binary_fill_holes(land)
+
+
 def layout(rules, n, seed):
     """-> zone (object array of names), land, box, coast (int8 kinds per pixel)."""
     world = rules["continent"]
@@ -94,36 +146,25 @@ def layout(rules, n, seed):
     # how stretched the continent is, how it is bent, how ragged and bitten.
     rs = np.random.default_rng(seed + 1)
     yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n          # row = y (south first), col = x
-    x0, x1 = rs.uniform(0.04, 0.08), 1.0 - rs.uniform(0.04, 0.08)
-    y0, y1 = rs.uniform(0.06, 0.09), 1.0 - rules["isles"]["keep_top"] - 0.012
-    bx, by = (xx - (x0 + x1) / 2) / ((x1 - x0) / 2), (yy - (y0 + y1) / 2) / ((y1 - y0) / 2)
-    e = rs.uniform(2.1, 2.9)
-    warp_c = rs.uniform(0.26, 0.36)
-    rough = rs.uniform(0.14, 0.20)
-    bite = rs.uniform(0.20, 0.40)
-    wx = bx + warp_c * fbm(n, seed + 3, octaves=4, base=4)
-    wy = by + warp_c * fbm(n, seed + 4, octaves=4, base=4)
-    shape = 1.0 - (np.abs(wx) ** e + np.abs(wy) ** e) ** (1.0 / e)
-    shape += rough * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
-                      + 0.35 * fbm(n, seed + 5, octaves=5, base=16) + 0.15 * fbm(n, seed + 6, octaves=4, base=40))
-    west = smoothstep(-0.1, 0.9, -bx)
-    shape -= bite * west * (0.5 + 0.5 * fbm(n, seed + 8, octaves=4, base=5) + 0.4 * fbm(n, seed + 9, octaves=4, base=11))
-    # Never touching the world's edge: the coast falls away well before it.
-    edge = np.minimum(np.minimum(xx, 1 - xx), np.minimum(yy, 1 - yy))
-    shape -= 2.0 * (1.0 - smoothstep(0.0, 0.07, edge))
-    thr_land = float(np.quantile(shape[yy < y1 + 0.02], 1.0 - world["land_share"] * 1.15))
-    land = (shape > thr_land) & (edge > 0.025)
-    land = ndimage.binary_opening(land, iterations=2)
-    parts, count = ndimage.label(land)
-    if count > 1:
-        sizes = ndimage.sum(land, parts, range(1, count + 1))
-        land = parts == (int(np.argmax(sizes)) + 1)
-    land = ndimage.binary_fill_holes(land)
-
+    y_top = 1.0 - rules["isles"]["keep_top"] - 0.012
+    # 1. The continent first, on its own: where its land is, by no zone's rules.
+    land = continent(n, seed, rs, world["land_share"], y_top)
+    # 2. Then read from the shape where things can go. Its extent west->east,
+    # and for every column how far the land reaches south and north: the
+    # coordinates of the zones follow the coast, they are not a grid laid on it.
+    cols = np.nonzero(land.any(axis=0))[0]
+    x0, x1 = (cols[0] + 0.5) / n, (cols[-1] + 0.5) / n
+    has = land.any(axis=0)
+    ci = np.arange(n)
+    lo = np.interp(ci, ci[has], np.argmax(land, axis=0)[has].astype(np.float32))
+    hi = np.interp(ci, ci[has], (n - 1 - np.argmax(land[::-1], axis=0))[has].astype(np.float32))
+    sm = n / 14.0
+    lo, hi = ndimage.gaussian_filter1d(lo, sm, mode="nearest"), ndimage.gaussian_filter1d(hi, sm, mode="nearest")
+    y0, y1 = float(lo[has].min()) / n, float(hi[has].max()) / n
     warp = rules["warp"]
-    # The continent's own coordinates, bent: no border runs straight.
+    ext = np.maximum(hi - lo, n * 0.05)[None, :]
     s = (xx - x0) / (x1 - x0) + warp["coord"] * fbm(n, seed + 31, octaves=5, base=3)
-    t = (yy - y0) / (y1 - y0) + warp["coord"] * fbm(n, seed + 32, octaves=5, base=3)
+    t = (yy * n - lo[None, :]) / ext + warp["coord"] * fbm(n, seed + 32, octaves=5, base=3)
 
     # The bands, south to north, sharing their edges: all bent together
     # widely, each wobbled on its own. Never crossing.
