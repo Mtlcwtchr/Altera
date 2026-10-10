@@ -537,6 +537,11 @@ def relief(zone, rules, seed, coast, isles):
                 return np.where(f < 0.75, f / 0.75, (1 - f) / 0.25)      # long windward, steep lee
             strength = 0.4 + 0.6 * (fbm32(n, sd + 1, 12, world_km, 3) * 0.5 + 0.5)
             # Draa (great ridges of sand) and the dunes riding on them.
+            if r.get("tip_rise"):
+                # low where it meets the canyon, climbing smoothly to the nose, where it ends in the cliff
+                canyon = (zone == "canyon_steppe") | (zone == "steppe")
+                far = ndimage.distance_transform_edt(~canyon) * km_px if canyon.any() else np.full((n, n), 1.0)
+                progress = np.clip(far / max(float(np.percentile(far[m], 96)) if m.any() else 1.0, 1.0), 0.0, 1.0) ** 1.4
             h = (r["base"] + r["rise"] * progress + r.get("draa_m", 0) * dune_field(r.get("draa_km", 5), 2.0, sd + 3)
                  + r["dune_m"] * dune_field(r["dune_km"], 3.0, sd) * strength + 25 * fbm32(n, sd + 2, 30, world_km, 3))
         elif kind == "canyons":
@@ -569,6 +574,12 @@ def relief(zone, rules, seed, coast, isles):
             h = r["base"] + r["rise"] * progress + r["amp"] * bumps + 0.25 * r["amp"] * small
         elif kind == "lowland":
             h = r["base"] + r["rise"] * progress + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
+            if r.get("pools"):
+                # Shallow marsh waters of their own: many small pools just under the sea's level.
+                f = fbm32(n, sd + 5, r.get("pool_km", 1.4), world_km, 4)
+                thr = np.percentile(f[m], 100 * (1.0 - r["pools"])) if m.any() else 0.0
+                pool = smoothstep(thr, thr + 0.10, f)
+                h = h + (-r.get("pool_depth", 1.4) - h) * pool
         elif kind == "ridges":
             h = ranges(zone, m, r, sd, n, world_km, xx, yy)
         elif kind == "massif":

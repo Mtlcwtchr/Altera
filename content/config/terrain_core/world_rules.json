@@ -64,13 +64,13 @@
                   "golden_desert": 32}
   },
   "relief": {
-    "golden_desert":   {"kind": "dunes", "base": 220, "rise": 260, "dune_m": 40, "dune_km": 1.6, "draa_m": 120, "draa_km": 5.0},
-    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 330, "floor_rise": 90, "spires": 420, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 25},
-    "steppe":          {"kind": "lift_of", "zone": "canyon_steppe", "top": true, "lift": 8, "amp": 8},
+    "golden_desert":   {"kind": "dunes", "tip_rise": true, "base": 70, "rise": 380, "dune_m": 40, "dune_km": 1.6, "draa_m": 120, "draa_km": 5.0},
+    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 110, "floor_rise": 40, "spires": 420, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 25},
+    "steppe":          {"kind": "lift_of", "zone": "canyon_steppe", "lift": 0, "amp": 0},
     "steppe_canyon":   {"kind": "canyon", "depth": 300},
     "dragon_cliff":    {"kind": "lift_of", "zone": "golden_desert", "lift": 70, "amp": 25},
     "green_plateau":   {"kind": "hills", "base": 1100, "rise": 160, "amp": 260, "km": 10},
-    "great_marshes":   {"kind": "lowland", "base": 6, "rise": 30, "amp": 4, "km": 3},
+    "great_marshes":   {"kind": "lowland", "base": 2.5, "rise": 8, "amp": 2.5, "km": 3, "pools": 0.22, "pool_km": 1.4, "pool_depth": 1.4},
     "river_marshes":   {"kind": "lowland", "base": 2, "rise": 4, "amp": 1.5, "km": 2},
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7},
     "white_mountains": {"kind": "massif", "base": 1050, "peak": 5200, "km": 16, "power": 0.9},
@@ -94,8 +94,9 @@
                         "white_mountains": 16, "green_plateau": 7, "black_lands": 12, "river_valley": 10},
     "cliffs": [["canyon_steppe", "green_plateau"], ["steppe", "green_plateau"]],
     "coasts": {
-      "golden_desert": "beach", "canyon_steppe": "beach", "steppe": "beach", "dragon_cliff": "cliff", "black_lands": "mixed", "great_marshes": "flat",
-      "river_marshes": "flat", "river_valley": "flat", "isles": "cliff", "default": "cliff"
+      "golden_desert": "beach", "canyon_steppe": "beach", "steppe": "beach", "dragon_cliff": "cliff",
+      "black_lands": "mixed", "green_plateau": "mixed", "white_mountains": "mixed", "dark_forest": "mixed",
+      "great_marshes": "flat", "river_marshes": "flat", "river_valley": "flat", "isles": "cliff", "default": "mixed"
     }
   }
 }
