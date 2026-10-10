@@ -346,36 +346,24 @@ def ranges(zone, m, r, sd, n, world_km, xx, yy):
         ring_r = np.sqrt(lake.sum() / np.pi) * km_px
     else:
         cy, cx, ring_r = float(yc.mean()), world_km / 2, 0.0
-    # Two ranges, one from each side, that curl round the caldera like pincers:
-    # each runs along the band, reaches the ring and follows it a good part of
-    # the way, thinning out. The ring is left with gaps (the passes).
+    # One long range along the band, bending as it goes. On it stands a great
+    # peak whose top has fallen in: its slopes are the skirt, the fallen top a
+    # bowl (the lake valley), the rim left broken and uneven, lower in places.
     ycol = np.broadcast_to(yc[None, :], (n, n))
-    R = max(ring_r * 1.2, 1.0)
+    R = max(ring_r * 1.15, 1.0)
     w = r["width_km"]
     def prof(d):
         return np.exp(-(d / w) ** 2) + 0.25 * np.exp(-(d / (2.6 * w)) ** 2)
-    ang = np.arctan2(Y - cy, X - cx)
+    spine = cy + (ycol + bend - cy) * smoothstep(0.0, 2.0 * R, np.abs(X - cx)) if lake.any() else ycol + bend
+    line = prof(np.abs(Y - spine) / 1.25) * (0.7 + 0.3 * smoothstep(0.0, 3.0 * R, 3.0 * R - np.abs(X - cx)))
     rad = np.hypot(X - cx, Y - cy)
-    ring = prof(np.abs(rad - R))
-    def arc(a0, a1):
-        """weight of the arc running counter-clockwise from angle a0 (its free,
-        thinning end) to a1 (where the range joins it)."""
-        t = np.mod(ang - a0, 2 * np.pi) / np.mod(a1 - a0, 2 * np.pi)
-        return np.where(t <= 1.0, smoothstep(0.0, 0.4, t), 0.0)
-    deg = np.pi / 180.0
-    gap = r.get("gap_deg", 40) * deg
-    # Angles run counter-clockwise from east (y is north). The west range joins
-    # the ring at 180 and goes over the north; the east range joins at 0 and
-    # goes round the south. Between their free ends: the passes.
-    west_ring = ring * arc(gap, np.pi)
-    east_ring = ring * arc(-np.pi + gap, 0.0)
-    near_w = smoothstep(0.0, 2.4 * R, cx - X)              # 0 at the ring, 1 far west
-    near_e = smoothstep(0.0, 2.4 * R, X - cx)
-    yw = cy + (ycol + bend - cy) * near_w
-    ye = cy + (ycol + bend * 0.8 - cy) * near_e
-    wline = prof(np.abs(Y - yw)) * smoothstep(-0.2 * R, 1.0 * R, cx - X - R * 0.6)
-    eline = prof(np.abs(Y - ye)) * smoothstep(-0.2 * R, 1.0 * R, X - cx - R * 0.6)
-    crest = np.clip(np.maximum.reduce([wline, eline, west_ring, east_ring]), 0, 1)
+    ang = np.arctan2(Y - cy, X - cx)
+    # rim height by direction: a few notches where the wall has slumped
+    notch = fbm(n, sd + 41, octaves=3, base=3)
+    rim_dir = 0.72 + 0.28 * np.sin(3 * ang + 2.0 * notch) * 0.5 + 0.28 * notch
+    skirt = 0.78 * np.exp(-(np.maximum(rad - R, 0.0) / (1.7 * R)) ** 2)
+    rim = prof(np.abs(rad - R) / 1.3) * np.clip(rim_dir, 0.45, 1.0)
+    crest = np.clip(np.maximum.reduce([line, rim, np.where(rad > R, skirt, 0.0) * 0.9]), 0, 1)
     detail = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
     massif = 0.6 + 0.4 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
     signed = (ndimage.distance_transform_edt(m | lake) - ndimage.distance_transform_edt(~(m | lake))) * km_px
