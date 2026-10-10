@@ -51,6 +51,7 @@
     {"id": 12, "name": "volcanic_paradise", "base": "grass_lush",    "patch": {"material": "gravel_black", "cell_m": 32,  "cover": 0.25}, "slope": {"material": "rock_grey",  "from": 0.85, "to": 0.70}, "high": {"material": "ash_black", "from": 1350, "to": 1950}, "tint": [0.85, 1.05, 0.95]},
     {"id": 13, "name": "northern_isles",    "base": "rocky_dark",    "patch": {"material": "grass_olive",  "cell_m": 40,  "cover": 0.35}, "slope": {"material": "rock_dark",  "from": 0.82, "to": 0.68}, "high": {"material": "snow", "from": 1800, "to": 2500}},
     {"id": 14, "name": "sky_shards",        "base": "grass_flowers", "patch": {"material": "rock_pale",    "cell_m": 56,  "cover": 0.30}, "slope": {"material": "rock_pale",  "from": 0.85, "to": 0.70}, "tint": [0.95, 0.95, 1.05]},
-    {"id": 15, "name": "south_unassigned",  "base": "grass_meadow",  "patch": {"material": "dirt_brown",   "cell_m": 64,  "cover": 0.30}, "slope": {"material": "rock_grey",  "from": 0.85, "to": 0.70}}
+    {"id": 15, "name": "south_unassigned",  "base": "grass_meadow",  "patch": {"material": "dirt_brown",   "cell_m": 64,  "cover": 0.30}, "slope": {"material": "rock_grey",  "from": 0.85, "to": 0.70}},
+    {"id": 16, "name": "stone_desert",      "base": "gravel_pale",   "patch": {"material": "rock_ochre",   "cell_m": 80,  "cover": 0.45}, "slope": {"material": "rock_pale",  "from": 0.88, "to": 0.72}}
   ]
 }

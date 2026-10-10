@@ -80,31 +80,39 @@ def load_isles(rules, n):
     return mask[::-1].copy(), heights[::-1].astype(np.float32).copy()
 
 
+def pick(rng, spec):
+    """A rule's number, or a range [lo, hi] the seed picks from."""
+    if isinstance(spec, (list, tuple)):
+        return float(rng.uniform(spec[0], spec[1]))
+    return spec
+
+
 def layout(rules, n, seed):
     """-> zone (object array of names), land, box, coast (int8 kinds per pixel)."""
     world = rules["continent"]
-    margin = world["margin"]
+    # The rules say what the world has and how much; the seed makes the shape:
+    # how stretched the continent is, how it is bent, how ragged and bitten.
+    rs = np.random.default_rng(seed + 1)
     yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n          # row = y (south first), col = x
-    # The continent's box: ocean on every side, the top of the map for the isles.
-    x0, x1 = margin, 1.0 - margin
-    y0, y1 = margin, 1.0 - rules["isles"]["keep_top"] - 0.012
-    # A rounded box, its edge wobbled: big bays and capes, and a ragged line.
+    x0, x1 = rs.uniform(0.04, 0.08), 1.0 - rs.uniform(0.04, 0.08)
+    y0, y1 = rs.uniform(0.06, 0.09), 1.0 - rules["isles"]["keep_top"] - 0.012
     bx, by = (xx - (x0 + x1) / 2) / ((x1 - x0) / 2), (yy - (y0 + y1) / 2) / ((y1 - y0) / 2)
-    # The outline: a rounded body (its width and height are the box above - the
-    # continent stretches or narrows with it) whose coordinates are bent first,
-    # so the coast folds into bays, capes and fjords, then noise at every scale
-    # cuts it ragged. Not a box with a wobbled edge.
-    e = world.get("exponent", 2.6)
-    wx = bx + world.get("warp", 0.18) * fbm(n, seed + 3, octaves=4, base=4)
-    wy = by + world.get("warp", 0.18) * fbm(n, seed + 4, octaves=4, base=4)
+    e = rs.uniform(2.1, 2.9)
+    warp_c = rs.uniform(0.26, 0.36)
+    rough = rs.uniform(0.14, 0.20)
+    bite = rs.uniform(0.20, 0.40)
+    wx = bx + warp_c * fbm(n, seed + 3, octaves=4, base=4)
+    wy = by + warp_c * fbm(n, seed + 4, octaves=4, base=4)
     shape = 1.0 - (np.abs(wx) ** e + np.abs(wy) ** e) ** (1.0 / e)
-    shape += world["roughness"] * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
-                                   + 0.35 * fbm(n, seed + 5, octaves=5, base=16) + 0.15 * fbm(n, seed + 6, octaves=4, base=40))
-    # The west side is cut deeper: bays and capes, not a wall of land.
+    shape += rough * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
+                      + 0.35 * fbm(n, seed + 5, octaves=5, base=16) + 0.15 * fbm(n, seed + 6, octaves=4, base=40))
     west = smoothstep(-0.1, 0.9, -bx)
-    shape -= world.get("west_bite", 0.0) * west * (0.5 + 0.5 * fbm(n, seed + 8, octaves=4, base=5)
-                                                  + 0.4 * fbm(n, seed + 9, octaves=4, base=11))
-    land = shape > world.get("threshold", 0.10)
+    shape -= bite * west * (0.5 + 0.5 * fbm(n, seed + 8, octaves=4, base=5) + 0.4 * fbm(n, seed + 9, octaves=4, base=11))
+    # Never touching the world's edge: the coast falls away well before it.
+    edge = np.minimum(np.minimum(xx, 1 - xx), np.minimum(yy, 1 - yy))
+    shape -= 2.0 * (1.0 - smoothstep(0.0, 0.07, edge))
+    thr_land = float(np.quantile(shape[yy < y1 + 0.02], 1.0 - world["land_share"] * 1.15))
+    land = (shape > thr_land) & (edge > 0.025)
     land = ndimage.binary_opening(land, iterations=2)
     parts, count = ndimage.label(land)
     if count > 1:
@@ -120,6 +128,12 @@ def layout(rules, n, seed):
     # The bands, south to north, sharing their edges: all bent together
     # widely, each wobbled on its own. Never crossing.
     bands = rules["bands"]
+    total_w = 0.0
+    for b in bands:
+        b["size"] = b["weight"] * rs.uniform(0.82, 1.18)
+        total_w += b["size"]
+    for b in bands:
+        b["size"] /= total_w
     wide = warp["large"] * fbm(n, seed + 10, octaves=3, base=2)
     edges = [np.full((n, n), -10.0)]
     at = 0.0
@@ -146,7 +160,7 @@ def layout(rules, n, seed):
 
     wing = rules["east_wing"]
     wobble = fbm(n, seed + 40, octaves=4, base=6) + 0.7 * fbm(n, seed + 41, octaves=3, base=14)
-    east = s + wing["tilt"] * (t - 0.5) >= wing["s"] + wing["warp"] * wobble
+    east = s + pick(rs, wing["tilt"]) * (t - 0.5) >= pick(rs, wing["s"]) + wing["warp"] * wobble
     for z in wing["zones"]:
         zone[land & east & (t >= place(z["from"])) & (t < place(z["to"]))] = z["name"]
 
@@ -154,12 +168,13 @@ def layout(rules, n, seed):
     rng = np.random.default_rng(seed + 50)
     # The round valley with its lake, in the mountains.
     lv = f["lake_valley"]
-    cx = x0 + lv["s"] * (x1 - x0)
+    lv_s, lv_radius = pick(rs, lv["s"]), pick(rs, lv["radius"])
+    cx = x0 + lv_s * (x1 - x0)
     col = int(cx * n)
     rows = np.nonzero(zone[:, col] == lv["in"])[0]
     cy = (rows.mean() + 0.5) / n if len(rows) else y0 + 0.75 * (y1 - y0)
     r = np.hypot(xx - cx, yy - cy)
-    valley = (r < lv["radius"] * (x1 - x0) * (1 + 0.06 * fbm(n, seed + 300, octaves=3, base=6))) & land
+    valley = (r < lv_radius * (x1 - x0) * (1 + 0.06 * fbm(n, seed + 300, octaves=3, base=6))) & land
     zone[valley] = "lake_valley"
 
     # The rocky canyon land is cut by its network of canyons; the biggest
@@ -201,7 +216,8 @@ def layout(rules, n, seed):
     rows_ = np.arange(n)[:, None]
     south_facing = (rows_ - near_sea[0]) > 0.7 * to_sea_km / (rules["world_km"] / n)
     along = (xx - x0) / (x1 - x0)
-    stretch = (along > dc["s_from"]) & (along < dc["s_to"])
+    dc_from = pick(rs, dc["s_from"])
+    stretch = (along > dc_from) & (along < dc_from + pick(rs, dc["span"]))
     zone[(zone == dc["in"]) & stretch & south_facing & (to_sea_km < dc["width_km"])] = "dragon_cliff"
 
     # Narrow sea inlets cut into the desert and the rocky steppe (the plateau
@@ -349,32 +365,38 @@ def ranges(zone, m, r, sd, n, world_km, xx, yy):
     # One long range along the band, bending as it goes. On it stands a great
     # peak whose top has fallen in: its slopes are the skirt, the fallen top a
     # bowl (the lake valley), the rim left broken and uneven, lower in places.
-    ycol = np.broadcast_to(yc[None, :], (n, n))
+    # The spine lies a little off the band's middle (a seed's choice) and
+    # bends along its length; the great peak sits on it.
+    shift = np.random.default_rng(sd).uniform(-0.12, 0.12)
+    ycol = np.broadcast_to((yc + shift * half)[None, :], (n, n))
     R = max(ring_r * 1.15, 1.0)
-    w = r["width_km"]
-    def prof(d):
-        return np.exp(-(d / w) ** 2) + 0.25 * np.exp(-(d / (2.6 * w)) ** 2)
+    w = r.get("width_km", 14.0)
     spine = cy + (ycol + bend - cy) * smoothstep(0.0, 2.0 * R, np.abs(X - cx)) if lake.any() else ycol + bend
-    line = prof(np.abs(Y - spine) / 1.25) * (0.7 + 0.3 * smoothstep(0.0, 3.0 * R, 3.0 * R - np.abs(X - cx)))
+    d = np.abs(Y - spine)
+    # Cross-section: a sharp crest with long heavy skirts, which are the
+    # foothills (no separate belt): they sink into the plains over tens of km.
+    prof = 0.78 / (1.0 + (d / w) ** 2) ** 1.1 + 0.22 * np.exp(-(d / (5.0 * w)) ** 2)
+    # Along the range: massifs and saddles, slow; the great peak is the highest.
+    along_h = 0.72 + 0.28 * (fbm32(n, sd + 11, 150, world_km, 3) * 0.5 + 0.5)
     rad = np.hypot(X - cx, Y - cy)
-    skirt = 0.85 * np.exp(-(rad / (2.3 * R)) ** 2)
-    crest = np.clip(np.maximum(line, skirt), 0, 1)
-    detail = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
-    massif = 0.6 + 0.4 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
+    peak = 0.30 * np.exp(-(rad / (2.6 * R)) ** 2)
+    shape = np.clip(prof * along_h * (1.0 + 0.0) + peak, 0.0, 1.0)
     signed = (ndimage.distance_transform_edt(m | lake) - ndimage.distance_transform_edt(~(m | lake))) * km_px
     envelope = smoothstep(-r["fade_out_km"], r["fade_in_km"], signed)
-    # Alpine fractal relief: ridged multifractals at three scales stretched
-    # over the broad crest: main arêtes, side spurs, rock teeth.
-    fine = ridged(n, sd + 3, r["km"] / 3, world_km, octaves=6)
-    teeth = ridged(n, sd + 5, r["km"] / 9, world_km, octaves=4)
-    # Stretched along the range (west->east): crests run lengthwise.
+    # Alpine fractal relief rides on that body: arêtes, spurs, rock teeth,
+    # stretched along the range. Strong high up, nearly none low down.
     gy, gx = np.mgrid[0:n, 0:n].astype(np.float32)
     def along(f, k):
         return ndimage.map_coordinates(f, [gy, (gx - n / 2) / k + n / 2], order=1, mode="reflect")
-    detail, fine, teeth = along(detail, 2.4), along(fine, 1.8), along(teeth, 1.3)
-    frac = 0.55 * detail ** 1.3 + 0.30 * fine ** 1.3 + 0.15 * teeth
-    frac = np.clip((frac - 0.15) / 0.6, 0.0, 1.0)
-    return r["base"] + (r["peak"] - r["base"]) * envelope * massif * crest ** 0.9 * (0.05 + 0.95 * frac ** 1.4)
+    detail = along(warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35), 2.4)
+    fine = along(ridged(n, sd + 3, r["km"] / 3, world_km, octaves=6), 1.8)
+    teeth = along(ridged(n, sd + 5, r["km"] / 9, world_km, octaves=4), 1.3)
+    frac = np.clip((0.55 * detail ** 1.3 + 0.30 * fine ** 1.3 + 0.15 * teeth - 0.3) / 0.45, -0.5, 1.0)
+    rugged = 0.06 + 0.40 * smoothstep(0.12, 0.55, shape)
+    foot = 150.0 * fbm32(n, sd + 14, 9, world_km, 4) * (1.0 - smoothstep(0.1, 0.4, shape))
+    span = r["peak"] - r["base"]
+    top = span * shape * (1.0 - 0.6 * rugged + rugged * frac) + foot
+    return r["base"] + envelope * np.clip(top, 0.0, span)
 
 
 def caldera(h, zone, r, rules, seed, n):
@@ -724,6 +746,9 @@ def main():
     ids = np.zeros((n, n), np.uint8)
     for name, b in biome_of.items():
         ids[zone == name] = b
+    if args.heights:
+        # The mountains' lower skirts are the foothills: grass and stone, not snow.
+        ids[(zone == "white_mountains") & (h < 2300.0)] = 5
     Image.fromarray(ids[::-1]).save(args.out + "_biomes.png")
     print(f"land {land.mean() * 100:.0f}% of the world; wrote {args.out}_zones.png, {args.out}_biomes.png")
 
