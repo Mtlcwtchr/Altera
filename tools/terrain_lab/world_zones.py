@@ -195,6 +195,7 @@ def import_zones(path, palette, land, n):
     the zone whose palette colour is nearest to the picture's colour there (river and
     lake blue count as the ground round them). -> zone array like place_zones."""
     from PIL import Image
+    Image.MAX_IMAGE_PIXELS = None
     img = Image.open(path).convert("RGB").resize((n, n), Image.NEAREST)
     rgb = np.asarray(img, np.float32)[::-1]
     names = list(palette)
@@ -203,6 +204,8 @@ def import_zones(path, palette, land, n):
     d = np.stack([np.linalg.norm(rgb - c, axis=2) for c in cols], axis=2)
     pick = np.argmin(d, axis=2)
     wet = np.linalg.norm(rgb - water, axis=2) < 60
+    # (the edge pixels between colours are blends: they count as wet, too)
+    wet = ndimage.binary_dilation(wet, iterations=2)
     zone = np.full((n, n), "ocean", dtype=object)
     arr = np.array(names, dtype=object)
     zone[land] = arr[pick[land]]

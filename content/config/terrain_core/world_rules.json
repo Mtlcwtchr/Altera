@@ -8,10 +8,10 @@
     "comment": "zones_image: a coloured biome picture (north up, as the heightmap) read as the zones instead of the generator's own placement, when the file exists; palette: the zone each colour stands for (_water: river and lake blue, counted as the ground round it).",
     "zones_image": "doc/NewRef/world_biomes_v7.png",
     "palette": {
-      "black_lands": [96, 70, 100], "river_valley": [100, 160, 70], "white_mountains": [205, 213, 226],
-      "lake_valley": [240, 130, 150], "dark_forest": [24, 90, 70], "great_marshes": [60, 185, 175],
-      "green_plateau": [105, 195, 50], "canyon_steppe": [195, 115, 50], "golden_desert": [245, 205, 70],
-      "dragon_cliff": [0, 230, 100], "_water": [30, 110, 240]
+      "black_lands": [85, 68, 94], "river_valley": [85, 153, 68], "white_mountains": [216, 222, 232],
+      "lake_valley": [230, 109, 133], "dark_forest": [22, 75, 59], "great_marshes": [51, 183, 165],
+      "green_plateau": [102, 204, 51], "canyon_steppe": [200, 117, 55], "golden_desert": [242, 207, 83],
+      "dragon_cliff": [0, 255, 102], "_water": [36, 111, 229]
     }
   },
   "placement": {
