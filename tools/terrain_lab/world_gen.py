@@ -87,24 +87,47 @@ def pick(rng, spec):
     return spec
 
 
+def split_body(land, frac=0.05):
+    """The land with its narrow tongues taken off (an opening by a big disk)."""
+    r_open = frac * land.shape[0]
+    core = ndimage.distance_transform_edt(land) > r_open
+    return (ndimage.distance_transform_edt(~core) <= r_open) & land
+
+
+def tongue_score(land):
+    """The area of land that juts out south of the body as a narrow tongue."""
+    n = land.shape[0]
+    body = split_body(land)
+    rows = np.nonzero(body.any(axis=1))[0]
+    if not len(rows):
+        return 0.0
+    south = rows[0] + 0.04 * n
+    tongue = land & ~body
+    tongue[int(south):] = False
+    parts, count = ndimage.label(tongue)
+    if not count:
+        return 0.0
+    return float(ndimage.sum(tongue, parts, range(1, count + 1)).max()) / n ** 2
+
+
 def continent(n, seed, rs, land_share, y_top):
     """A continent as a seed makes it: a meandering chain of lobes of every
     size with peninsulas on its sides, bent and bitten by noise at every
     scale. No box, no stripes; kept off the world's edge."""
     yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n
-    k = int(rs.integers(6, 10))
-    xa, xb = rs.uniform(0.15, 0.22), 1.0 - rs.uniform(0.15, 0.22)
+    k = int(rs.integers(5, 8))
+    xa, xb = rs.uniform(0.24, 0.32), 1.0 - rs.uniform(0.24, 0.32)
     sx = np.linspace(0, 1, k) + rs.uniform(-0.04, 0.04, k)
     cxs = xa + np.clip(sx, 0, 1) * (xb - xa)
     mid = 0.16 + 0.5 * (y_top - 0.16)
-    walk = np.cumsum(rs.normal(0, 0.08, k))
-    cys = np.clip(mid + walk - walk.mean(), 0.24, y_top - 0.16)
+    walk = np.cumsum(rs.normal(0, 0.11, k))
+    cys = np.clip(mid + walk - walk.mean(), 0.22, y_top - 0.16)
     lobes = [(cxs[i], cys[i], rs.uniform(0.06, 0.11)) for i in range(k)]
     for _ in range(int(rs.integers(5, 9))):             # peninsulas and capes
         i = int(rs.integers(0, k))
         side = rs.choice([-1.0, 1.0])
-        lobes.append((cxs[i] + rs.uniform(-0.06, 0.06), np.clip(cys[i] + side * rs.uniform(0.09, 0.15), 0.14, y_top - 0.06),
-                      rs.uniform(0.035, 0.07)))
+        lobes.append((cxs[i] + rs.uniform(-0.06, 0.06), np.clip(cys[i] + side * rs.uniform(0.11, 0.22), 0.10, y_top - 0.06),
+                      rs.uniform(0.04, 0.075)))
     angles, stretch = rs.uniform(0, np.pi, len(lobes)), rs.uniform(1.0, 1.7, len(lobes))
     wx = xx + 0.08 * fbm(n, seed + 3, octaves=4, base=3) + 0.025 * fbm(n, seed + 4, octaves=4, base=9)
     wy = yy + 0.08 * fbm(n, seed + 5, octaves=4, base=3) + 0.025 * fbm(n, seed + 6, octaves=4, base=9)
@@ -148,16 +171,30 @@ def layout(rules, n, seed):
     yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n          # row = y (south first), col = x
     y_top = 1.0 - rules["isles"]["keep_top"] - 0.012
     # 1. The continent first, on its own: where its land is, by no zone's rules.
-    land = continent(n, seed, rs, world["land_share"], y_top)
+    # (Several continents come out of the seed's noise; the one with the best
+    # southern tongue of land - where the desert can lie washed by the sea on both
+    # sides - is kept. The shape itself is nobody's design: it is noise.)
+    best, best_score = 0, -1.0
+    for c in range(14):
+        cand = continent(512, seed + 101 * c, np.random.default_rng(seed * 7919 + c), world["land_share"], y_top)
+        # (a continent pressed against the world's edge or the isles' band is no good)
+        yy5, xx5 = (np.mgrid[0:512, 0:512] + 0.5) / 512
+        wall = (xx5 < 0.09) | (xx5 > 0.91) | (yy5 < 0.09) | (yy5 > y_top - 0.03)
+        sc = tongue_score(cand) - 4.0 * float((cand & wall).sum()) / 512 ** 2
+        if sc > best_score:
+            best, best_score = c, sc
+    land = continent(n, seed + 101 * best, np.random.default_rng(seed * 7919 + best), world["land_share"], y_top)
     # 2. Then read from the shape where things can go. Its extent west->east,
     # and for every column how far the land reaches south and north: the
     # coordinates of the zones follow the coast, they are not a grid laid on it.
+    # The body: the land with its narrow tongues (the nose) taken off.
+    body = split_body(land)
     cols = np.nonzero(land.any(axis=0))[0]
     x0, x1 = (cols[0] + 0.5) / n, (cols[-1] + 0.5) / n
-    has = land.any(axis=0)
+    has = body.any(axis=0)
     ci = np.arange(n)
-    lo = np.interp(ci, ci[has], np.argmax(land, axis=0)[has].astype(np.float32))
-    hi = np.interp(ci, ci[has], (n - 1 - np.argmax(land[::-1], axis=0))[has].astype(np.float32))
+    lo = np.interp(ci, ci[has], np.argmax(body, axis=0)[has].astype(np.float32))
+    hi = np.interp(ci, ci[has], (n - 1 - np.argmax(body[::-1], axis=0))[has].astype(np.float32))
     sm = n / 14.0
     lo, hi = ndimage.gaussian_filter1d(lo, sm, mode="nearest"), ndimage.gaussian_filter1d(hi, sm, mode="nearest")
     y0, y1 = float(lo[has].min()) / n, float(hi[has].max()) / n
@@ -257,8 +294,8 @@ def layout(rules, n, seed):
     rows_ = np.arange(n)[:, None]
     south_facing = (rows_ - near_sea[0]) > 0.7 * to_sea_km / (rules["world_km"] / n)
     along = (xx - x0) / (x1 - x0)
-    dc_from = pick(rs, dc["s_from"])
-    stretch = (along > dc_from) & (along < dc_from + pick(rs, dc["span"]))
+    y_south_km = float(np.nonzero(land.any(axis=1))[0][0]) * rules["world_km"] / n
+    stretch = yy * rules["world_km"] < y_south_km + pick(rs, dc["tip_km"])
     zone[(zone == dc["in"]) & stretch & south_facing & (to_sea_km < dc["width_km"])] = "dragon_cliff"
 
     # Narrow sea inlets cut into the desert and the rocky steppe (the plateau
@@ -540,7 +577,14 @@ def relief(zone, rules, seed, coast, isles):
         elif kind == "bowl":
             h = np.zeros((n, n), np.float32)        # (made later: caldera(), over the range)
         elif kind == "valley":
-            h = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx + r["amp"] * fbm32(n, sd, 4, world_km, 3)
+            # No carved trench: the valley is where the slopes of the two ranges (the
+            # white mountains' north side, the black peaks' south side) meet low.
+            wm = (zone == "white_mountains") | (zone == "lake_valley")
+            bm = zone == "black_lands"
+            dw = ndimage.distance_transform_edt(~wm) * km_px if wm.any() else np.full((n, n), 99.0)
+            db = ndimage.distance_transform_edt(~bm) * km_px if bm.any() else np.full((n, n), 99.0)
+            walls = r.get("walls", 600) * np.maximum(np.exp(-dw / r.get("slope_km", 9)), np.exp(-db / r.get("slope_km", 9)))
+            h = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx + walls + r["amp"] * fbm32(n, sd, 4, world_km, 3)
         elif kind == "spikes":
             sharp = warped(ridged(n, sd, r["km"], world_km, octaves=7), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.3) ** 2.0
             # Rising out of the valley without a step: the envelope is a long ramp.

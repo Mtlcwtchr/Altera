@@ -2,9 +2,9 @@
   "comment": "Rules of the world generator (tools/terrain_lab/world_gen.py, doc/rework/WORLD_GENERATOR_PLAN.md). The continent is cut into `bands` from south to north (`size`: share of its height), sharing their edges; all coordinates are bent (`warp.coord`) so no border is a straight line. The `east_wing` replaces the bands east of `s` (west->east, 0..1 across the continent, tilted by `tilt`) between two places in the band sequence ('band:fraction'). `features`: places inside zones. `isles`: the northern isles are taken from a heightmap (its land pieces wholly in the top `keep_top` of the picture, but the biggest). `biome`: ids of content/config/biomes/fallen_gods.json. `rain`: how much the ground drains (0 none, and then it swallows water).",
   "world_km": 262.144,
   "seed": 7,
-  "continent": {"land_share": 0.38},
+  "continent": {"land_share": 0.32},
   "bands": [
-    {"name": "golden_desert",   "biome": 4,  "weight": 0.22, "rain": 0.0},
+    {"name": "golden_desert",   "biome": 4,  "weight": 0.10, "rain": 0.0},
     {"name": "canyon_steppe",   "biome": 16, "weight": 0.22, "rain": 0.0},
     {"name": "green_plateau",   "biome": 6,  "weight": 0.14, "rain": 0.3},
     {"name": "white_mountains", "biome": 8,  "weight": 0.23, "rain": 1.0},
@@ -24,7 +24,7 @@
     "steppe_islands": {"in": "canyon_steppe", "count": 6, "min_km2": 150},
     "river_marshes":  {"in": "great_marshes", "coast_band": 0.07},
     "valley_delta":   {"in": "river_valley", "s": 0.84, "reach": 0.10},
-    "dragon_cliff":   {"in": "golden_desert", "biome": 5, "width_km": 3.0, "s_from": [0.12, 0.6], "span": [0.10, 0.20], "rain": 0.25}
+    "dragon_cliff":   {"in": "golden_desert", "biome": 5, "width_km": 3.0, "tip_km": [14, 30], "rain": 0.25}
   },
   "inlets": {"zones": ["golden_desert", "canyon_steppe", "steppe"], "count": 4, "spacing_km": 45, "length_km": [22, 50], "width_km": [1.5, 3.0]},
   "coast": {"noise_km": 45, "threshold": 0.0},
@@ -57,7 +57,7 @@
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7},
     "white_mountains": {"kind": "ridges", "base": 1050, "peak": 5200, "km": 18, "width_km": 9, "gap_deg": 40, "bend_km": 5, "fade_in_km": 30, "fade_out_km": 25},
     "lake_valley":     {"kind": "bowl", "floor": 1450, "rim": 3200},
-    "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15},
+    "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15, "walls": 600, "slope_km": 9},
     "black_lands":     {"kind": "spikes", "base": 650, "peak": 3000, "km": 11, "fade_km": 14}
   },
   "biome_height": {
