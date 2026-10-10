@@ -536,9 +536,18 @@ def massif(m, r, sd, n, world_km):
     frac = np.clip((0.6 * ridge ** 1.2 + 0.4 * fine ** 1.4 - 0.1) / 0.8, 0.0, 1.0)
     # the height swells and sinks along the range: massifs and saddles
     lo_s = r.get("swell_low", 0.7)
-    swell = lo_s + (1.0 - lo_s) * (fbm32(n, sd + 11, r["km"] * r.get("swell_km", 5.0), world_km, 3) * 0.5 + 0.5)
+    # (stretched to its full range: deep saddles and high massifs, not a ripple)
+    sw = smoothstep(-0.6, 0.6, fbm32(n, sd + 11, r["km"] * r.get("swell_km", 5.0), world_km, 3) * r.get("swell_contrast", 1.0))
+    swell = lo_s + (1.0 - lo_s) * sw
+    # lone great summits standing over the crest line
+    if r.get("summits"):
+        swell = swell + r["summits"] * smoothstep(0.35, 0.8, fbm32(n, sd + 12, r["km"] * 1.3, world_km, 2))
     span = r["peak"] - r["base"]
     h = r["base"] + span * body * swell * (0.22 + 0.78 * frac)
+    if r.get("foot_m"):
+        # a belt of foothills before the range: hills and spurs, not a smooth apron
+        hills = warped(ridged(n, sd + 13, r["km"] / 2.5, world_km, octaves=5), n, sd + 14, r["km"], world_km, r["km"] * 0.3)
+        h = h + r["foot_m"] * hills * smoothstep(0.0, 0.08, q) * (1.0 - smoothstep(0.2, 0.5, q))
     if r.get("cap"):
         # The highest crests bend under a ceiling instead of being cut flat by it
         # (the map's range ends at about 5.2 km): they keep their shapes, pressed.
@@ -651,8 +660,9 @@ def relief(zone, rules, seed, coast, isles):
             # its floor at the desert's level, its mesas and the steppe islands
             # at the plain's level, the walls between them sheer, spires rising
             # from the floor.
-            top = r["base"] + r["rise"] * progress + r.get("bumps", 30) * fbm32(n, sd + 3, 6, world_km, 3)
-            floor = r["floor"] + r["floor_rise"] * progress + 14 * fbm32(n, sd + 6, 3, world_km, 3)
+            # (a mesa's top rolls a little: no table plate tens of km^2 dead flat)
+            top = r["base"] + r["rise"] * progress + r.get("bumps", 30) * fbm32(n, sd + 3, 6, world_km, 5)
+            floor = r["floor"] + r["floor_rise"] * progress + r.get("floor_bumps", 14) * fbm32(n, sd + 6, 3, world_km, 4)
             c1, c2 = canyon_network(n, world_km, seed, r)
             thr = np.percentile(c1[land_m] if land_m.any() else c1, 100 * (1 - r["cover"]))
             thr2 = np.percentile(c2[land_m] if land_m.any() else c2, 78)

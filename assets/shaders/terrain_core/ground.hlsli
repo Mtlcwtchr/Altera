@@ -179,7 +179,7 @@ Surface biomeGround(uint id, GroundPoint p, float height, float normalZ, float w
         const float n = islands(p, int(patch.x), 101u + id);
         // Far off the islands are smaller than a pixel: what is left of them
         // is their share of the ground, not a speckle.
-        const float m = lerp(smoothstep(1.0 - patch.y - 0.04, 1.0 - patch.y + 0.04, n), patch.y,
+        const float m = lerp(smoothstep(1.0 - patch.y - 0.10, 1.0 - patch.y + 0.10, n), patch.y,
                              noiseFade(p, int(patch.x) - 1));
         if (m > 0) ground = surfaceOver(ground, material(mats.y, p, wander), m);
     }
@@ -190,7 +190,10 @@ Surface biomeGround(uint id, GroundPoint p, float height, float normalZ, float w
         if (m > 0) ground = surfaceOver(ground, material(mats.z, p, wander), m);
     }
     if (mats.w >= 0) {
-        const float m = saturate((height - high.x + jitter * 150.0) / max(high.y - high.x, 1.0)) * saturate(normalZ * 1.6 - 0.4);
+        // (the snow line wanders by hundreds of metres: tongues down the gullies,
+        // bare patches above - not one even sheet at a contour)
+        const float drift = cellNoise(p, int(groundGlobals.w) + 7, 307u + id) - 0.5;
+        const float m = saturate((height - high.x + jitter * 150.0 + drift * 700.0) / max(high.y - high.x, 1.0)) * saturate(normalZ * 1.6 - 0.4);
         if (m > 0) ground = surfaceOver(ground, material(mats.w, p, wander), m);
     }
     ground.colour *= tint.rgb;

@@ -41,7 +41,7 @@
     "lake_valley":    {"biome": 7, "in": "white_mountains", "radius_km": [14, 20], "rain": 0.8},
     "steppe_islands": {"in": "canyon_steppe", "count": 6, "min_km2": 150},
     "river_marshes":  {"in": "great_marshes", "coast_band": 0.012},
-    "valley_delta":   {"in": "river_valley", "s": 0.84, "reach": 0.10},
+    "valley_delta":   {"in": "river_valley", "s": 0.70, "reach": 0.08},
     "dragon_cliff":   {"in": "golden_desert", "biome": 5, "width_km": 3.0, "tip_km": [14, 30], "rain": 0.25}
   },
   "inlets": {"zones": ["golden_desert", "canyon_steppe", "steppe"], "count": 4, "spacing_km": 45, "length_km": [12, 26], "width_km": [1.2, 2.4]},
@@ -59,13 +59,13 @@
     "fluvial": {"canyon_steppe": 1.0, "steppe_canyon": 1.0},
     "thermal_iterations": 80,
     "thermal_rate": 0.3,
-    "keep_zones": ["canyon_steppe", "steppe", "steppe_canyon", "isles"],
+    "keep_zones": ["canyon_steppe", "steppe", "steppe_canyon"],
     "talus_deg": {"default": 30, "white_mountains": 36, "black_lands": 42, "lake_valley": 30,
                   "golden_desert": 32}
   },
   "relief": {
     "golden_desert":   {"kind": "dunes", "tip_rise": true, "base": 70, "rise": 380, "dune_m": 40, "dune_km": 1.6, "draa_m": 120, "draa_km": 5.0},
-    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 110, "floor_rise": 40, "spires": 0, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 25},
+    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 110, "floor_rise": 40, "spires": 0, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 70, "floor_bumps": 28},
     "steppe":          {"kind": "lift_of", "zone": "canyon_steppe", "lift": 0, "amp": 0},
     "steppe_canyon":   {"kind": "canyon", "depth": 300},
     "dragon_cliff":    {"kind": "lift_of", "zone": "golden_desert", "lift": 70, "amp": 25},
@@ -73,8 +73,8 @@
     "great_marshes":   {"kind": "lowland", "base": 9, "rise": 6, "amp": 2.0, "km": 3, "pools": 0.22, "pool_km": 1.4, "pool_depth": 6.0, "pool_bed_min": 4.5},
     "river_marshes":   {"kind": "lowland", "base": 5, "rise": 4, "amp": 1.5, "km": 2},
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7, "ridge_m": 160},
-    "isles":           {"detail": 0.6, "km": 6, "shore_km": [0.15, 3.5]},
-    "white_mountains": {"kind": "massif", "base": 850, "peak": 6400, "km": 16, "power": 0.75, "knee": 4000, "cap": 5150, "swell_low": 0.45, "swell_km": 2.5},
+    "isles":           {"detail": 0.4, "km": 6, "shore_km": [0.4, 3.5]},
+    "white_mountains": {"kind": "massif", "base": 850, "peak": 6400, "km": 16, "power": 0.75, "knee": 4300, "cap": 5150, "swell_low": 0.32, "swell_km": 1.8, "swell_contrast": 1.6, "summits": 0.22, "foot_m": 420},
     "lake_valley":     {"kind": "bowl", "floor": 1450, "rim": 3900},
     "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15, "slope_km": 22},
     "black_lands":     {"kind": "massif", "base": 500, "peak": 3300, "km": 12, "power": 0.55}
