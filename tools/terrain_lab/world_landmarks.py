@@ -300,17 +300,30 @@ def rim_ledges(world, rules, catalogue, rng, add):
     for k in rng.permutation(len(xs)):
         i, j = ys[k], xs[k]
         x, y = (j + 0.5) * world.cell, (i + 0.5) * world.cell
-        if any((x - p[0]) ** 2 + (y - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
-            continue
         a, b = si[i, j], sj[i, j]
         out = np.array([-gx[a, b], -gy[a, b]])
         if np.linalg.norm(out) < 1e-6:
+            continue
+        out /= np.linalg.norm(out)
+        # Walk out to the true rim at full resolution: the first point where
+        # the ground falls away; the ledge's origin is the rim.
+        h0 = world.height(x, y)
+        rim = None
+        for step in range(1, 60):
+            px, py = x + out[0] * step * 16.0, y + out[1] * step * 16.0
+            if world.height(px, py) < h0 - r["fall_m"]:
+                rim = (x + out[0] * (step - 2) * 16.0, y + out[1] * (step - 2) * 16.0)
+                break
+        if rim is None:
+            continue
+        x, y = rim
+        if any((x - p[0]) ** 2 + (y - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
             continue
         made.append((x, y))
         name = names[rng.integers(len(names))]
         m = catalogue[name]
         s = rng.uniform(*r["size_m"]) / _size(m)
-        add(r["kind"], name, x, y, math.atan2(out[1], out[0]), (s, s, s), z=round(float(world.hz[i, j]) + 2.0, 1))
+        add(r["kind"], name, x, y, math.atan2(out[1], out[0]), (s, s, s), z=round(world.height(x, y) + 2.0, 1))
         if len(made) >= r["count"]:
             break
     return len(made)

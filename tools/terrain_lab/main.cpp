@@ -111,6 +111,7 @@ struct Options {
     bool foliage = true;          // the trees module (trees and bushes)
     bool grass = true;            // the grass cover
     bool props = true;            // the mega structures (P)
+    double propsDetail = 1400;    // --props-detail M: cliffs nearer than this are refined (0: never)
     fs::path features;            // --features: <world>_features.json; empty: beside a <world>_final.r16 heightmap
     std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
     bool water = true;            // rivers, lakes, sea (F11); off also skips cutting the river beds
@@ -205,6 +206,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-grass") o.grass = false;
         else if (a == "--no-props") o.props = false;
         else if (a == "--features") o.features = next();
+        else if (a == "--props-detail") o.propsDetail = std::atof(next());
         else if (a == "--no-water") o.water = false;
         else if (a == "--water-preview") o.waterPreview = next();
         else if (a == "--water-skeleton") o.waterSkeleton = next();
@@ -802,7 +804,8 @@ struct Lab {
             f.frustum = frustumFrom(unjittered);
             f.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
             f.shadowRange = shadowsOn ? double(light.cascadeFar[2]) : 0.0;
-            f.detailBuilds = options.shot.empty() ? 1 : 64;   // a still picture: every near cliff refined at once
+            f.detailBuilds = options.shot.empty() ? 1 : 64;
+            f.detailRange = options.propsDetail;   // a still picture: every near cliff refined at once
             props.prepare(commands, f);
             s.propsDrawn = props.drawn();
             s.propsTriangles = props.trianglesDrawn();

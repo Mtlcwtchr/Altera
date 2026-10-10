@@ -45,7 +45,7 @@
   "sea_stacks": {"kind": "sea_stack", "zones": ["dragon_cliff", "isles", "black_lands"], "count": 45, "off_m": [120, 700],
                  "max_depth_m": 120, "spacing_m": 2500, "group": [1, 4], "group_m": 220, "height_m": [90, 220]},
   "rim_ledges": {"kind": "rim_ledge", "zones": ["canyon_steppe", "steppe", "steppe_canyon"], "count": 45, "drop_slope": 0.6,
-                 "rim_m": 400, "below_top_m": 120, "spacing_m": 1600, "size_m": [380, 560]},
+                 "rim_m": 400, "below_top_m": 120, "spacing_m": 1600, "size_m": [420, 620], "fall_m": 40},
   "clefts": {"kind": "rock_blade", "zones": ["black_lands"], "per_1000km2": 1.6, "edge_m": 1500, "spacing_m": 5000,
              "gap_m": [70, 150], "size_m": [500, 800]},
   "spiral_isle": {"zone": "dragon_cliff", "tower": "spiral_tower", "piece": "bridge_piece", "height_m": [420, 520], "pieces": 6, "reach_m": 2200},
@@ -71,14 +71,14 @@
   "cliffs": {
     "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py): `zones`: zone -> slope (rise over run) from which ground is a wall there, or {slope, coast_m}: only within coast_m of the sea. A wall must drop `min_drop_m` within `band_m`. It is pushed out downhill until it stands, `overhang` more at the rim, and never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim; `strata` and `gullies` shape its face; `sink_m`: how deep the skin's edge lies under the ground; `skirt_m`: how far the tile borders hang down (no cracks between tiles at different detail); `apron_m`: how far below the foot scree is banked against the wall, `scree_share` of the drop high (at most `scree_max_m`).",
     "zones": {"canyon_steppe": 0.7, "steppe": 0.7, "steppe_canyon": 0.7, "green_plateau": 0.8, "dragon_cliff": 0.7, "black_lands": 1.1,
-              "isles": {"slope": 1.6, "coast_m": 350}},
+              "isles": {"slope": 1.8, "coast_m": 300}},
     "band_m": 300, "min_drop_m": 60, "min_cells": 6, "margin_cells": 2,
     "overhang": 0.35, "max_push_m": 420, "min_push_m": 14, "overhang_drop": 0.08,
     "strata": 0.1, "strata_m": 9.0, "gullies": 0.08,
-    "sink_m": 6.0, "grid_m": 16, "skirt_m": 12,
+    "sink_m": 6.0, "grid_m": 20, "skirt_m": 12,
     "apron_m": 160, "scree_share": 0.06, "scree_max_m": 70,
     "materials": {"canyon_steppe": "rock_ochre", "steppe": "rock_ochre", "steppe_canyon": "rock_ochre",
-                  "green_plateau": "rock_ochre", "dragon_cliff": "rock_pale", "black_lands": "rock_dark", "isles": "rock_dark", "default": "rocky_grey"}
+                  "green_plateau": "rock_ochre", "dragon_cliff": "rock_pale", "black_lands": "rock_dark", "isles": "rock_dark", "golden_desert": "rock_ochre", "default": "rocky_grey"}
   },
   "min_gap_m": 250,
   "edge_m": 800,

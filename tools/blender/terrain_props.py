@@ -562,25 +562,29 @@ def sea_stack(rng, seed):
 
 def rim_ledge(rng, seed):
     """A ledge of hard rock overhanging a canyon rim (doc/BIOMES_RU.md, 03:
-    the overhanging plateaus): a slab reaching out along +x past its foot,
-    ragged at the front, thinning out over the drop. Top at z = 0; ~320 m
-    out, ~260 m wide, ~45 m thick at the root."""
-    L = rng.uniform(280, 360)
-    W = rng.uniform(220, 300)
+    the overhanging plateaus): a thick slab reaching out along +x from x = 0
+    (the rim), stepped underneath in two or three strata, ragged at the
+    front. Top at z = 0; ~450 m out, ~320 m wide, ~70 m thick at the rim."""
+    L = rng.uniform(400, 520)
+    W = rng.uniform(260, 380)
     balls = []
-    for i in range(14):
-        u = i / 13                                  # 0 at the root, 1 at the tip
-        x = -L * 0.35 + u * L
-        th = 26 * (1 - 0.55 * u) + 8
-        for q in range(5):
-            y = (q / 4 - 0.5) * W * (1 - 0.25 * u) + rng.uniform(-15, 15)
-            balls.append({"co": (x + rng.uniform(-12, 12), y, -th * 0.7), "radius": th * rng.uniform(1.0, 1.35),
-                          "size": (1.4, 1.2, 0.55)})
-    # The root runs back into the plateau, deeper.
-    for q in range(5):
-        balls.append({"co": (-L * 0.45, (q / 4 - 0.5) * W, -60), "radius": 60, "size": (1.2, 1.0, 1.0)})
-    o = ab.metaball_mass("rim_ledge", balls, resolution=2.4, threshold=0.6)
-    o = finish(o, 2.2, 25, 4, 2, seed)
+    for i in range(18):
+        u = i / 17                                  # 0 at the rim, 1 at the tip
+        x = -L * 0.2 + u * L * 1.2
+        for layer, (depth, reach) in enumerate(((0, 1.0), (1, 0.8), (2, 0.55))):
+            if u > reach:
+                continue
+            th = (34 - 8 * layer) * (1 - 0.4 * u / reach) + 10
+            z = -th * 0.6 - layer * 26
+            for q in range(6):
+                y = (q / 5 - 0.5) * W * (1 - 0.3 * u) * (1 - 0.12 * layer) + rng.uniform(-18, 18)
+                balls.append({"co": (x + rng.uniform(-15, 15), y, z), "radius": th * rng.uniform(1.0, 1.3),
+                              "size": (1.4, 1.2, 0.5)})
+    # The root runs back into the plateau, deep.
+    for q in range(6):
+        balls.append({"co": (-L * 0.3, (q / 5 - 0.5) * W, -80), "radius": 75, "size": (1.3, 1.0, 1.0)})
+    o = ab.metaball_mass("rim_ledge", balls, resolution=2.6, threshold=0.6)
+    o = finish(o, 2.4, 30, 5, 2, seed)
     cut_above(o, -2.0)
     for v in o.data.vertices:
         v.co.z += 2.0
@@ -786,7 +790,7 @@ def build(kind, variants, seed, catalogue, preview=None):
                [vtx.co for vtx in obj.data.vertices]
         cx = sum(c.x for c in near) / len(near)
         cy = sum(c.y for c in near) / len(near)
-        if kind != "bridge":
+        if kind not in ("bridge", "rim_ledge"):   # these keep their own origin (span centre, the rim)
             for vtx in obj.data.vertices:
                 vtx.co.x -= cx
                 vtx.co.y -= cy

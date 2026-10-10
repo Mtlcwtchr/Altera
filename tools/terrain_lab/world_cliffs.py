@@ -36,6 +36,22 @@ def _write_mesh(path, pos, nrm, uv, tris):
         f.write(tris.astype("<u4").tobytes())
 
 
+def _vnoise(x, y, cell, seed):
+    """Smooth value noise of world metres, 0..1: the same at a point whatever
+    tile asks, so neighbouring tiles agree on their shared border."""
+    gx, gy = x / cell, y / cell
+    ix, iy = np.floor(gx), np.floor(gy)
+    fx, fy = gx - ix, gy - iy
+    fx, fy = fx * fx * (3 - 2 * fx), fy * fy * (3 - 2 * fy)
+
+    def h(a, b):
+        v = (a.astype(np.int64) * 73856093) ^ (b.astype(np.int64) * 19349663) ^ (seed * 83492791)
+        v = (v ^ (v >> 13)) * 1274126177
+        return ((v ^ (v >> 16)) & 0xffff) / 65535.0
+
+    return (h(ix, iy) * (1 - fx) + h(ix + 1, iy) * fx) * (1 - fy) + (h(ix, iy + 1) * (1 - fx) + h(ix + 1, iy + 1) * fx) * fy
+
+
 def _skirt(P, N, UV, tris, depth):
     """Hangs a skirt from the tile's open edges on its border, `depth` down
     along the surface's own inward side: where a neighbour tile is drawn at
@@ -215,9 +231,12 @@ def tile(f, ti, tj, origin, c, cr, out_dir):
         skin = ndimage.map_coordinates(f["skin"].astype(np.float32), coords, order=0, mode="nearest").reshape(X.shape) > 0.5
         # Ledges and runnels: the wall is pushed out in bands of rock
         # and drawn in along gullies, so it reads as strata.
-        strata = 1 + cr["strata"] * np.sin(z / cr["strata_m"] + 3 * np.sin(X / 211.0 + Y / 173.0))
-        gully = 1 + cr["gullies"] * np.sin(X / 37.0 + 2.1 * np.sin(Y / 53.0)) * np.sin(Y / 41.0 + 1.7 * np.sin(X / 61.0))
-        mod = strata * gully
+        # Added, not multiplied (their product was a grid of pits): ledges by
+        # height, wandering; runnels by place along the wall, from noise.
+        strata = cr["strata"] * (0.65 * np.sin(z / cr["strata_m"] + 2.5 * _vnoise(X, Y, 260.0, 1))
+                                 + 0.35 * np.sin(z / (cr["strata_m"] * 2.7) + 1.0))
+        gully = cr["gullies"] * (2.0 * _vnoise(X, Y, 45.0, 2) - 1.0 + 0.6 * (2.0 * _vnoise(X, Y, 17.0, 3) - 1.0))
+        mod = 1.0 + strata + gully
         PX = X + px * mod
         PY = Y + py * mod
         PZ = z + lift - sink * (1 - np.clip(inner * 1.5, 0, 1))
