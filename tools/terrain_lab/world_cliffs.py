@@ -72,6 +72,7 @@ def fields(h, zones, c, rules):
     dx = -gx / np.maximum(slope, 1e-3)
     dy = -gy / np.maximum(slope, 1e-3)
     region = band
+    lift = np.zeros(h.shape)
     if band.any():
         # The lip: past the top of a band the push dies away, slower than it
         # moves the ground (so the skin never folds), only on the high side.
@@ -84,7 +85,17 @@ def fields(h, zones, c, rules):
         push = np.where(lip, top_push * (1 - dist / lip_len), push)
         dx = np.where(lip, dx[ni, nj], dx)
         dy = np.where(lip, dy[ni, nj], dy)
-        region = band | lip
+        # The apron: below the foot, scree banked against the wall - the skin
+        # rises out of the floor to meet it, so the ground never shows in the
+        # seam where a sheer wall stands on it.
+        apron_len = cr["apron_m"]
+        apron = ~band & ~high_side & (dist < apron_len)
+        fall = np.clip(1 - dist / apron_len, 0, 1)
+        lift = np.where(apron, np.clip(cr["scree_share"] * drop[ni, nj], 4.0, cr["scree_max_m"]) * fall ** 1.5, 0.0)
+        push = np.where(apron, push[ni, nj] * fall, push)
+        dx = np.where(apron, dx[ni, nj], dx)
+        dy = np.where(apron, dy[ni, nj], dy)
+        region = band | lip | apron
     # Smooth the vector field so neighbours never tear apart.
     px = ndimage.gaussian_filter(np.where(region, push * dx, 0).astype(np.float32), 1.2)
     py = ndimage.gaussian_filter(np.where(region, push * dy, 0).astype(np.float32), 1.2)
@@ -94,7 +105,7 @@ def fields(h, zones, c, rules):
     py = np.where(weight > 0.02, py / np.maximum(weight, 0.02), 0) * fade
     skin = ndimage.binary_dilation(region, iterations=cr["margin_cells"])
     inner = ndimage.gaussian_filter(region.astype(np.float32), 1.0)
-    return {"h": h, "px": px.astype(np.float32), "py": py.astype(np.float32), "skin": skin,
+    return {"lift": ndimage.gaussian_filter(lift, 1.0).astype(np.float32), "h": h, "px": px.astype(np.float32), "py": py.astype(np.float32), "skin": skin,
             "inner": inner, "t": t.astype(np.float32), "zones": zones, "band": band}
 
 
@@ -158,10 +169,11 @@ def tile(f, ti, tj, origin, c, cr, out_dir):
         u = X / c - 0.5 - c0
         v = Y / c - 0.5 - r0
         coords = [v.ravel(), u.ravel()]
-        z = ndimage.map_coordinates(f["h"], coords, order=3, mode="nearest").reshape(X.shape)
+        z = ndimage.map_coordinates(f["h"], coords, order=1, mode="nearest").reshape(X.shape)
         px = ndimage.map_coordinates(f["px"], coords, order=1, mode="nearest").reshape(X.shape)
         py = ndimage.map_coordinates(f["py"], coords, order=1, mode="nearest").reshape(X.shape)
         inner = ndimage.map_coordinates(f["inner"], coords, order=1, mode="nearest").reshape(X.shape)
+        lift = ndimage.map_coordinates(f["lift"], coords, order=1, mode="nearest").reshape(X.shape)
         tt = ndimage.map_coordinates(f["t"], coords, order=1, mode="nearest").reshape(X.shape)
         skin = ndimage.map_coordinates(f["skin"].astype(np.float32), coords, order=0, mode="nearest").reshape(X.shape) > 0.5
         # Ledges and runnels: the wall is pushed out in bands of rock
@@ -171,7 +183,7 @@ def tile(f, ti, tj, origin, c, cr, out_dir):
         mod = strata * gully
         PX = X + px * mod
         PY = Y + py * mod
-        PZ = z - sink * (1 - np.clip(inner * 1.5, 0, 1))
+        PZ = z + lift - sink * (1 - np.clip(inner * 1.5, 0, 1))
         # Quads whose four corners are all in the skin.
         q = skin[:-1, :-1] & skin[1:, :-1] & skin[:-1, 1:] & skin[1:, 1:]
         if not q.any():

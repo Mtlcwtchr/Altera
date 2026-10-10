@@ -38,12 +38,13 @@
     "cyclopean_block": "rock_ochre", "giant_stair": "rock_grey"
   },
   "cliffs": {
-    "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py): `zones`: zone -> slope (rise over run) from which ground is a wall there. A wall must drop `min_drop_m` within `band_m`. It is pushed out downhill until it stands, `overhang` more at the rim, and never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim; `strata` and `gullies` shape its face; `sink_m`: how deep the skin's edge lies under the ground.",
+    "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py): `zones`: zone -> slope (rise over run) from which ground is a wall there. A wall must drop `min_drop_m` within `band_m`. It is pushed out downhill until it stands, `overhang` more at the rim, and never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim; `strata` and `gullies` shape its face; `sink_m`: how deep the skin's edge lies under the ground; `apron_m`: how far below the foot scree is banked against the wall, `scree_share` of the drop high (at most `scree_max_m`).",
     "zones": {"canyon_steppe": 0.7, "steppe": 0.7, "steppe_canyon": 0.7, "green_plateau": 0.8, "dragon_cliff": 0.7, "black_lands": 1.1},
     "band_m": 300, "min_drop_m": 60, "min_cells": 6, "margin_cells": 2,
     "overhang": 0.35, "max_push_m": 420, "min_push_m": 14, "overhang_drop": 0.08,
-    "strata": 0.14, "strata_m": 9.0, "gullies": 0.08,
-    "sink_m": 6.0, "grid_m": 12,
+    "strata": 0.1, "strata_m": 9.0, "gullies": 0.08,
+    "sink_m": 6.0, "grid_m": 16,
+    "apron_m": 160, "scree_share": 0.06, "scree_max_m": 70,
     "materials": {"canyon_steppe": "rock_ochre", "steppe": "rock_ochre", "steppe_canyon": "rock_ochre",
                   "green_plateau": "rock_ochre", "dragon_cliff": "rock_pale", "black_lands": "rock_dark", "default": "rock_grey"}
   },
