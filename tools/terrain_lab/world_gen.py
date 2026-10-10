@@ -357,18 +357,54 @@ def ranges(zone, m, r, sd, n, world_km, xx, yy):
     spine = cy + (ycol + bend - cy) * smoothstep(0.0, 2.0 * R, np.abs(X - cx)) if lake.any() else ycol + bend
     line = prof(np.abs(Y - spine) / 1.25) * (0.7 + 0.3 * smoothstep(0.0, 3.0 * R, 3.0 * R - np.abs(X - cx)))
     rad = np.hypot(X - cx, Y - cy)
-    ang = np.arctan2(Y - cy, X - cx)
-    # rim height by direction: a few notches where the wall has slumped
-    notch = fbm(n, sd + 41, octaves=3, base=3)
-    rim_dir = 0.72 + 0.28 * np.sin(3 * ang + 2.0 * notch) * 0.5 + 0.28 * notch
-    skirt = 0.78 * np.exp(-(np.maximum(rad - R, 0.0) / (1.7 * R)) ** 2)
-    rim = prof(np.abs(rad - R) / 1.3) * np.clip(rim_dir, 0.45, 1.0)
-    crest = np.clip(np.maximum.reduce([line, rim, np.where(rad > R, skirt, 0.0) * 0.9]), 0, 1)
+    skirt = 0.85 * np.exp(-(rad / (2.3 * R)) ** 2)
+    crest = np.clip(np.maximum(line, skirt), 0, 1)
     detail = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
     massif = 0.6 + 0.4 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
     signed = (ndimage.distance_transform_edt(m | lake) - ndimage.distance_transform_edt(~(m | lake))) * km_px
     envelope = smoothstep(-r["fade_out_km"], r["fade_in_km"], signed)
-    return r["base"] + (r["peak"] - r["base"]) * envelope * massif * crest ** 1.2 * (0.55 + 0.45 * detail)
+    # Alpine fractal relief: ridged multifractals at three scales stretched
+    # over the broad crest: main arêtes, side spurs, rock teeth.
+    fine = ridged(n, sd + 3, r["km"] / 3, world_km, octaves=6)
+    teeth = ridged(n, sd + 5, r["km"] / 9, world_km, octaves=4)
+    # Stretched along the range (west->east): crests run lengthwise.
+    gy, gx = np.mgrid[0:n, 0:n].astype(np.float32)
+    def along(f, k):
+        return ndimage.map_coordinates(f, [gy, (gx - n / 2) / k + n / 2], order=1, mode="reflect")
+    detail, fine, teeth = along(detail, 2.4), along(fine, 1.8), along(teeth, 1.3)
+    frac = 0.55 * detail ** 1.3 + 0.30 * fine ** 1.3 + 0.15 * teeth
+    frac = np.clip((frac - 0.15) / 0.6, 0.0, 1.0)
+    return r["base"] + (r["peak"] - r["base"]) * envelope * massif * crest ** 0.9 * (0.05 + 0.95 * frac ** 1.4)
+
+
+def caldera(h, zone, r, rules, seed, n):
+    """Second pass: the fallen top of the great peak. A flat floor, walls that
+    climb in a fractal rim (ridged crests, notches where it slumped), merged
+    into the range around it."""
+    km_px = rules["world_km"] / n
+    world_km = rules["world_km"]
+    lake = zone == "lake_valley"
+    if not lake.any():
+        return h
+    yy, xx = (np.mgrid[0:n, 0:n].astype(np.float32) + 0.5)
+    cy, cx = ndimage.center_of_mass(lake)
+    R = np.sqrt(lake.sum() / np.pi)
+    d = np.hypot(yy - cy, xx - cx) / R
+    ang = np.arctan2(yy - cy, xx - cx)
+    warp = 0.10 * fbm32(n, seed + 601, R * km_px * 0.8, world_km, 3)
+    d = d * (1.0 + warp)
+    crest = ridged(n, seed + 611, 7.0, world_km, octaves=6)
+    notch = fbm(n, seed + 612, octaves=3, base=3)
+    rim_top = r["rim"] + r.get("rim_var", 700) * (crest - 0.5) + 350 * notch
+    wall = smoothstep(0.55, 1.0, d)
+    wall = wall ** 1.15 * (0.75 + 0.25 * crest)
+    floor = r["floor"] + 25 * fbm32(n, seed + 613, 4, world_km, 3) + 120 * smoothstep(0.2, 0.6, d) * (crest - 0.3)
+    cal = floor + (rim_top - floor) * wall
+    inside = d < 1.0
+    # beyond the rim: the range's own heights, lifted so that the rim sinks into them
+    out = np.maximum(h, rim_top * (1.0 - smoothstep(1.0, 1.55, d)) + h * smoothstep(1.0, 1.55, d))
+    out = np.where(d < 1.0, cal, out)
+    return out.astype(np.float32)
 
 
 def relief(zone, rules, seed, coast, isles):
@@ -432,10 +468,7 @@ def relief(zone, rules, seed, coast, isles):
         elif kind == "ridges":
             h = ranges(zone, m, r, sd, n, world_km, xx, yy)
         elif kind == "bowl":
-            cy, cx = ndimage.center_of_mass(m)
-            rad = np.sqrt(m.sum() / np.pi)
-            d = np.hypot(yy * n - cy, xx * n - cx) / rad
-            h = r["floor"] + (r["rim"] - r["floor"]) * np.clip(d, 0, 1.3) ** 2.4 + 20 * fbm32(n, sd, 4, world_km, 3)
+            h = np.zeros((n, n), np.float32)        # (made later: caldera(), over the range)
         elif kind == "valley":
             h = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx + r["amp"] * fbm32(n, sd, 4, world_km, 3)
         elif kind == "spikes":
@@ -447,6 +480,8 @@ def relief(zone, rules, seed, coast, isles):
         else:
             raise ValueError(f"relief kind {kind}")
         heights[name] = h.astype(np.float32)
+    if "lake_valley" in heights and "white_mountains" in heights:
+        heights["lake_valley"] = heights["white_mountains"]
     for name in deferred:
         r = recipes[name]
         base = (tops if r.get("top") else heights).get(r["zone"])
@@ -470,6 +505,8 @@ def relief(zone, rules, seed, coast, isles):
     h = np.where(weight > 1e-6, total / np.maximum(weight, 1e-6), 0.0).astype(np.float32)
     if "isles" in masks:
         h = np.where(masks["isles"], heights["isles"], h)
+    if "lake_valley" in masks:
+        h = caldera(h, zone, recipes["lake_valley"], rules, seed, n)
     # Cliffs: where two zones meet in a step, each keeps its own height right
     # to the edge - no blend across it.
     band = 2.5 * tr["blend_km"] / km_px / 2.0
