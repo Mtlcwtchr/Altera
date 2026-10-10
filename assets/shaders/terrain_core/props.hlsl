@@ -59,7 +59,8 @@ SamplerState propertySampler : register(s2, space2);
 cbuffer Rock : register(b1, space3) {
     float rockTile;          // the ground's material tile, metres
     float rockTextureScale;  // render over output pixels (0 = 1): the mip bias under DLSS
-    float2 rockPad;
+    float rockMossLayer;     // the material laid as moss
+    float rockPad;
 };
 
 struct Rock { float3 colour; float3 normal; float ao; };
@@ -89,7 +90,8 @@ Rock triplanar(float3 p, float3 n, float layer, float tile, float bias) {
 float4 propsPs(VsOut input) : SV_Target0 {
     const float3 n0 = normalize(input.normal);
     const float bias = log2(rockTextureScale > 0 ? rockTextureScale : 1.0);
-    const float layer = input.layer.x;
+    const float layer = floor(input.layer.x);
+    const float moss = frac(input.layer.x) * 2.0;
     // Two scales: the broad one carries the mass from afar, the near one the
     // grain at the foot; the near fades out before its repeat can show.
     const float distance = length(input.view);
@@ -106,6 +108,18 @@ float4 propsPs(VsOut input) : SV_Target0 {
     const float band = sin(z * 0.021 + input.layer.y * 6.0 + sin(z * 0.0047) * 2.0);
     colour *= 0.9 + 0.12 * band;
     colour = lerp(colour, colour * float3(1.12, 1.06, 0.98), saturate((n0.z - 0.6) * 2.5) * 0.6);
+    // Moss on what faces up and in the hollows, in patches, more low down
+    // where the wet stays (doc/BIOMES_RU.md, 01: by wetness and facing).
+    if (moss > 0) {
+        const float patches = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 20.0), layer), bias + 2).g;
+        const float up = saturate((n0.z + 0.15) * 1.6);
+        const float wet = lerp(1.0, 0.55, saturate(input.uv.y * 1.4)) + (1.0 - input.uv.x) * 0.6;
+        const float m = smoothstep(0.35, 0.65, moss * up * wet + (patches - 0.45) * 0.8);
+        if (m > 0) {
+            const float3 green = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 1.5), rockMossLayer), bias).rgb;
+            colour = lerp(colour, green * 0.85, m);
+        }
+    }
     // Cavity from the model, darker at the foot where it meets the ground.
     const float foot = lerp(0.65, 1.0, saturate(input.uv.y * 12.0));
     const float occlusion = input.uv.x * foot * lerp(0.7, 1.0, ao);

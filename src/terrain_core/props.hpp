@@ -43,7 +43,8 @@ struct PropsFrame {
 struct PropsLook {
     float tileMetres = 4;      // the ground's material tile
     float textureScale = 1;    // as GroundUniforms::textureScale
-    float pad[2] = {};
+    float mossLayer = 0;       // the material laid as moss (props.json "moss_material")
+    float pad = 0;
 };
 
 class Props {
@@ -64,6 +65,7 @@ public:
     void drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view);
 
     std::size_t instanceCount() const { return instances_.size(); }
+    float mossLayer() const { return mossLayer_; }
     std::uint32_t modelCount() const { return std::uint32_t(models_.size()); }
     std::uint32_t drawn() const { return drawn_; }
     std::uint64_t trianglesDrawn() const { return triangles_; }
@@ -91,6 +93,7 @@ private:
         double x = 0, y = 0, z = 0;   // the model's origin (ground level)
         float yaw = 0, sx = 1, sy = 1, sz = 1;
         float layer = 0;              // material array layer
+        float moss = 0;               // 0..1: how much moss its upward faces carry
         double cx = 0, cy = 0, cz = 0;   // bounding sphere centre
         float radius = 1;
         bool detail = false;          // a cliff tile: refined near the eye
@@ -139,6 +142,7 @@ private:
     std::uint64_t frame_ = 0;
     std::uint32_t detailDrawn_ = 0;
     double detailMs_ = 0;
+    float mossLayer_ = 0;
     std::uint32_t drawn_ = 0;
     std::uint64_t triangles_ = 0, gpuBytes_ = 0;
     double cullMs_ = 0;

@@ -75,6 +75,14 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         layerOf[name] = layer;
     }
     const float fallback = layerOf.count("rock_grey") ? layerOf["rock_grey"] : 0.0f;
+    {
+        std::ifstream rules(materialsJson.parent_path() / "props.json");
+        std::string moss = "grass_dark";
+        if (rules) {
+            try { moss = nlohmann::json::parse(rules).value("moss_material", moss); } catch (const std::exception&) {}
+        }
+        mossLayer_ = layerOf.count(moss) ? layerOf[moss] : fallback;
+    }
 
     std::vector<Vertex> allVertices;
     std::vector<std::uint32_t> allIndices;
@@ -136,6 +144,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         in.sz = o["s"][2].get<float>();
         const std::string material = o.value("material", std::string());
         in.layer = layerOf.count(material) ? layerOf[material] : fallback;
+        in.moss = std::clamp(o.value("moss", 0.0f), 0.0f, 1.0f);
         if (o.contains("z")) {
             in.z = o["z"].get<double>();
         } else {
@@ -232,7 +241,8 @@ Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
     g.scale[0] = in.sx;
     g.scale[1] = in.sy;
     g.scale[2] = in.sz;
-    g.scale[3] = in.layer;
+    // Layer in the whole part, moss in the fraction (a layer is a small integer).
+    g.scale[3] = in.layer + std::min(in.moss, 0.99f) * 0.5f;
     // Where the model stands, wrapped: the rock's texture coordinates come
     // from it plus the local position, never from a float world coordinate
     // in the millions.

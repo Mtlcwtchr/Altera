@@ -862,6 +862,7 @@ struct Lab {
             PropsLook rock;
             rock.tileMetres = float(std::exp2(renderer.ground().tileLog2) * p.spacing);
             rock.textureScale = renderer.ground().textureScale;
+            rock.mossLayer = props.mossLayer();
             props.draw(commands, pass, plants, light, rock, renderer.materials(), renderer.materialNormals(),
                        renderer.materialProperties(), shadows.texture(), shadows.sampler());
         }

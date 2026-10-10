@@ -148,9 +148,14 @@ def place(world, rules, catalogue, seed):
     out = []
     mat = rules.get("materials", {})
 
+    moss = rules.get("moss", {})
+
     def add(kind, name, x, y, yaw, scale, **extra):
-        out.append({"m": name, "x": round(float(x), 1), "y": round(float(y), 1), "yaw": round(float(yaw), 4),
-                    "s": [round(float(s), 4) for s in scale], "material": mat.get(kind, ""), **extra})
+        o = {"m": name, "x": round(float(x), 1), "y": round(float(y), 1), "yaw": round(float(yaw), 4),
+             "s": [round(float(s), 4) for s in scale], "material": mat.get(kind, ""), **extra}
+        if moss.get(kind, 0) > 0:
+            o["moss"] = moss[kind]
+        out.append(o)
 
     # --- spires: on the canyon floors, tops at the high ground's level ---
     sp = rules["spires"]

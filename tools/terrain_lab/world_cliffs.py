@@ -45,8 +45,17 @@ def fields(h, zones, c, rules):
     gy, gx = np.gradient(hs, c)
     slope = np.hypot(gx, gy)
     band = np.zeros(h.shape, bool)
-    for zone, thr in cr["zones"].items():
-        band |= (zones == zone) & (slope > thr)
+    sea_m = None
+    for zone, rule in cr["zones"].items():
+        # A slope, or {"slope", "coast_m"}: only within coast_m of the sea
+        # (the isles: their sea cliffs, not every crag inland).
+        thr = rule["slope"] if isinstance(rule, dict) else rule
+        here = (zones == zone) & (slope > thr)
+        if isinstance(rule, dict) and "coast_m" in rule and here.any():
+            if sea_m is None:
+                sea_m = ndimage.distance_transform_edt(h > 0.5) * c
+            here &= sea_m < rule["coast_m"]
+        band |= here
     reach = int(cr["band_m"] / c) | 1
     lo = ndimage.minimum_filter(h, reach)
     hi = ndimage.maximum_filter(h, reach)
