@@ -594,8 +594,14 @@ def relief(zone, rules, seed, coast, isles):
             bm = zone == "black_lands"
             dw = ndimage.distance_transform_edt(~wm) * km_px if wm.any() else np.full((n, n), 99.0)
             db = ndimage.distance_transform_edt(~bm) * km_px if bm.any() else np.full((n, n), 99.0)
-            walls = r.get("walls", 600) * np.maximum(np.exp(-dw / r.get("slope_km", 9)), np.exp(-db / r.get("slope_km", 9)))
-            h = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx + walls + r["amp"] * fbm32(n, sd, 4, world_km, 3)
+            floor = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx
+            # From the banks the ground climbs, over `slope_km`, to exactly the height the
+            # range's own edge has on either side: no step, the slopes meet.
+            hw = recipes.get("white_mountains", {}).get("base", 900.0)
+            hb = recipes.get("black_lands", {}).get("base", 450.0)
+            L = r.get("slope_km", 14)
+            walls = np.maximum((hw - floor) * np.exp(-dw / L), (hb - floor) * np.exp(-db / L))
+            h = floor + np.maximum(walls, 0.0) + r["amp"] * fbm32(n, sd, 4, world_km, 3)
         elif kind == "spikes":
             sharp = warped(ridged(n, sd, r["km"], world_km, octaves=7), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.3) ** 2.0
             # Rising out of the valley without a step: the envelope is a long ramp.
@@ -854,10 +860,13 @@ def main():
                 continue
             lo_, hi_ = span_
             sel = zone == name
-            fit[sel] = (h[sel] >= lo_) & (h[sel] <= hi_)
+            # (shores and the sea floor keep their own biome: only dry ground is judged)
+            fit[sel] = ((h[sel] >= lo_) & (h[sel] <= hi_)) | (h[sel] < 3.0)
         if not fit.all() and fit.any():
-            _, near = ndimage.distance_transform_edt(~fit, return_indices=True)
-            ids = ids[near[0], near[1]]
+            dist, near = ndimage.distance_transform_edt(~fit, return_indices=True)
+            # ... and only from ground close by: no wedges borrowed from far zones
+            close = dist * (rules["world_km"] / n) < 6.0
+            ids = np.where(close, ids[near[0], near[1]], ids)
         # The mountains' lower skirts are the foothills: grass and stone, not snow.
         ids[(zone == "white_mountains") & (h < 2300.0)] = 5
     Image.fromarray(ids[::-1]).save(args.out + "_biomes.png")

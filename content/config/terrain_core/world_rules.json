@@ -65,7 +65,7 @@
   },
   "relief": {
     "golden_desert":   {"kind": "dunes", "tip_rise": true, "base": 70, "rise": 380, "dune_m": 40, "dune_km": 1.6, "draa_m": 120, "draa_km": 5.0},
-    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 110, "floor_rise": 40, "spires": 420, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 25},
+    "canyon_steppe":   {"kind": "canyons", "base": 1100, "rise": 40, "floor": 110, "floor_rise": 40, "spires": 0, "cover": 0.68, "km": 14, "wall": 0.03, "bumps": 25},
     "steppe":          {"kind": "lift_of", "zone": "canyon_steppe", "lift": 0, "amp": 0},
     "steppe_canyon":   {"kind": "canyon", "depth": 300},
     "dragon_cliff":    {"kind": "lift_of", "zone": "golden_desert", "lift": 70, "amp": 25},
@@ -73,10 +73,10 @@
     "great_marshes":   {"kind": "lowland", "base": 2.5, "rise": 8, "amp": 2.5, "km": 3, "pools": 0.22, "pool_km": 1.4, "pool_depth": 1.4},
     "river_marshes":   {"kind": "lowland", "base": 2, "rise": 4, "amp": 1.5, "km": 2},
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7},
-    "white_mountains": {"kind": "massif", "base": 1050, "peak": 5200, "km": 16, "power": 0.9},
+    "white_mountains": {"kind": "massif", "base": 850, "peak": 4800, "km": 16, "power": 0.9},
     "lake_valley":     {"kind": "bowl", "floor": 1450, "rim": 3200},
-    "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15, "walls": 600, "slope_km": 9},
-    "black_lands":     {"kind": "massif", "base": 450, "peak": 3300, "km": 12, "power": 0.8}
+    "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15, "slope_km": 14},
+    "black_lands":     {"kind": "massif", "base": 500, "peak": 3300, "km": 12, "power": 0.8}
   },
   "biome_height": {
     "comment": "The same brush paints the height and the biome: where the final height lies outside the range its zone gives, the biome of the nearest ground that does fit is painted instead (so a steppe island keeps to the plain's level, the plateau does not take the canyon's biome).",

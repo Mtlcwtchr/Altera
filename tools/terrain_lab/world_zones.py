@@ -209,9 +209,12 @@ def import_zones(path, palette, land, n):
     zone = np.full((n, n), "ocean", dtype=object)
     arr = np.array(names, dtype=object)
     zone[land] = arr[pick[land]]
-    # blue lines and lakes: the nearest dry ground's zone
-    dry = land & ~wet
+    # Blue lines and lakes, and the blends where one colour meets another or the black
+    # of the sea (anti-aliasing: a dark blend would pass for the black lands or the
+    # forest): the zone of the nearest ground whose colour is a true one.
+    true_colour = d.min(axis=2) < 28.0
+    dry = land & ~wet & true_colour
     _, near = ndimage.distance_transform_edt(~dry, return_indices=True)
-    zone = np.where(land & wet, zone[near[0], near[1]], zone)
+    zone = np.where(land & ~dry, zone[near[0], near[1]], zone)
     # land the picture leaves unpainted (black): the nearest painted zone
     return zone
