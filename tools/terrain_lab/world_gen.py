@@ -204,6 +204,51 @@ def layout(rules, n, seed):
     stretch = (along > dc["s_from"]) & (along < dc["s_to"])
     zone[(zone == dc["in"]) & stretch & south_facing & (to_sea_km < dc["width_km"])] = "dragon_cliff"
 
+    # Narrow sea inlets cut into the desert and the rocky steppe (the plateau
+    # keeps its cliff): winding gulfs that the land runs down into smoothly.
+    inl = rules.get("inlets")
+    if inl:
+        km_px = rules["world_km"] / n
+        land_now = zone != "ocean"
+        d_in = ndimage.gaussian_filter(ndimage.distance_transform_edt(land_now).astype(np.float32), 6)
+        gy, gx = np.gradient(d_in)
+        okz = np.isin(zone, inl["zones"])
+        edge = land_now & okz & (ndimage.distance_transform_edt(land_now) < 3)
+        ey, ex = np.nonzero(edge)
+        irng = np.random.default_rng(seed + 90)
+        taken = []
+        carve = np.zeros((n, n), bool)
+        yg, xg = np.mgrid[0:n, 0:n]
+        tries = 0
+        while len(taken) < inl["count"] and len(ey) and tries < 400:
+            tries += 1
+            k = irng.integers(len(ey))
+            py, px = float(ey[k]), float(ex[k])
+            if any(np.hypot(py - a, px - b) * km_px < inl["spacing_km"] for a, b in taken):
+                continue
+            taken.append((py, px))
+            length = irng.uniform(*inl["length_km"]) / km_px
+            width = irng.uniform(*inl["width_km"]) / km_px
+            ang = np.arctan2(gy[int(py), int(px)], gx[int(py), int(px)])
+            wander = 0.0
+            steps = int(length)
+            for i in range(steps):
+                wander += irng.normal(0, 0.06) - 0.04 * wander
+                a_ = ang + wander + 0.5 * np.sin(i / max(length, 1) * 7 + k)
+                py += np.sin(a_); px += np.cos(a_)
+                if not (3 < py < n - 3 and 3 < px < n - 3):
+                    break
+                if not okz[int(py), int(px)] and i > 4:
+                    break
+                w_ = width * (0.55 + 0.45 * np.sin(np.pi * min(i / steps, 1.0) ** 0.6)) * (0.8 + 0.2 * np.sin(i / 9.0))
+                y0_, y1_, x0_, x1_ = int(py - w_) - 1, int(py + w_) + 2, int(px - w_) - 1, int(px + w_) + 2
+                sub = (yg[y0_:y1_, x0_:x1_] - py) ** 2 + (xg[y0_:y1_, x0_:x1_] - px) ** 2 < w_ * w_
+                carve[y0_:y1_, x0_:x1_] |= sub
+            # the mouth: open it to the sea
+            carve |= (np.hypot(yg - taken[-1][0], xg - taken[-1][1]) < width * 0.9)
+        zone[carve & okz] = "ocean"
+        to_sea_km = ndimage.distance_transform_edt(zone != "ocean") * km_px
+
     # The northern isles, as imported.
     isle_mask, isle_heights = load_isles(rules, n)
     zone[isle_mask & ~land] = "isles"
@@ -301,22 +346,36 @@ def ranges(zone, m, r, sd, n, world_km, xx, yy):
         ring_r = np.sqrt(lake.sum() / np.pi) * km_px
     else:
         cy, cx, ring_r = float(yc.mean()), world_km / 2, 0.0
-    # The distance of each range's line from the band's middle: far from the
-    # ring it is `spread` of the half-width; it opens out to the ring's radius.
+    # Two ranges, one from each side, that curl round the caldera like pincers:
+    # each runs along the band, reaches the ring and follows it a good part of
+    # the way, thinning out. The ring is left with gaps (the passes).
     ycol = np.broadcast_to(yc[None, :], (n, n))
-    hcol = np.broadcast_to(half[None, :], (n, n))
-    near = 1.0 - smoothstep(0.0, 2.4 * max(ring_r, 1.0), np.abs(X - cx))
-    off = r.get("spread", 0.45) * hcol
-    off = off + (np.maximum(ring_r * 1.08, off) - off) * near
+    R = max(ring_r * 1.2, 1.0)
     w = r["width_km"]
     def prof(d):
         return np.exp(-(d / w) ** 2) + 0.25 * np.exp(-(d / (2.6 * w)) ** 2)
-    south = prof(np.abs(Y - (ycol - off) - bend))
-    north = prof(np.abs(Y - (ycol + off) - bend * 0.8))
-    crest = np.maximum(south, north)
-    if ring_r:
-        crest = np.maximum(crest, prof(np.abs(np.hypot(X - cx, Y - cy) - ring_r * 1.08)))
-    crest = np.clip(crest, 0, 1)
+    ang = np.arctan2(Y - cy, X - cx)
+    rad = np.hypot(X - cx, Y - cy)
+    ring = prof(np.abs(rad - R))
+    def arc(a0, a1):
+        """weight of the arc running counter-clockwise from angle a0 (its free,
+        thinning end) to a1 (where the range joins it)."""
+        t = np.mod(ang - a0, 2 * np.pi) / np.mod(a1 - a0, 2 * np.pi)
+        return np.where(t <= 1.0, smoothstep(0.0, 0.4, t), 0.0)
+    deg = np.pi / 180.0
+    gap = r.get("gap_deg", 40) * deg
+    # Angles run counter-clockwise from east (y is north). The west range joins
+    # the ring at 180 and goes over the north; the east range joins at 0 and
+    # goes round the south. Between their free ends: the passes.
+    west_ring = ring * arc(gap, np.pi)
+    east_ring = ring * arc(-np.pi + gap, 0.0)
+    near_w = smoothstep(0.0, 2.4 * R, cx - X)              # 0 at the ring, 1 far west
+    near_e = smoothstep(0.0, 2.4 * R, X - cx)
+    yw = cy + (ycol + bend - cy) * near_w
+    ye = cy + (ycol + bend * 0.8 - cy) * near_e
+    wline = prof(np.abs(Y - yw)) * smoothstep(-0.2 * R, 1.0 * R, cx - X - R * 0.6)
+    eline = prof(np.abs(Y - ye)) * smoothstep(-0.2 * R, 1.0 * R, X - cx - R * 0.6)
+    crest = np.clip(np.maximum.reduce([wline, eline, west_ring, east_ring]), 0, 1)
     detail = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
     massif = 0.6 + 0.4 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
     signed = (ndimage.distance_transform_edt(m | lake) - ndimage.distance_transform_edt(~(m | lake))) * km_px
