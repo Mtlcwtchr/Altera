@@ -100,6 +100,10 @@ def layout(rules, n, seed):
     shape = 1.0 - (np.abs(wx) ** e + np.abs(wy) ** e) ** (1.0 / e)
     shape += world["roughness"] * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
                                    + 0.35 * fbm(n, seed + 5, octaves=5, base=16) + 0.15 * fbm(n, seed + 6, octaves=4, base=40))
+    # The west side is cut deeper: bays and capes, not a wall of land.
+    west = smoothstep(-0.1, 0.9, -bx)
+    shape -= world.get("west_bite", 0.0) * west * (0.5 + 0.5 * fbm(n, seed + 8, octaves=4, base=5)
+                                                  + 0.4 * fbm(n, seed + 9, octaves=4, base=11))
     land = shape > world.get("threshold", 0.10)
     land = ndimage.binary_opening(land, iterations=2)
     parts, count = ndimage.label(land)
@@ -191,7 +195,14 @@ def layout(rules, n, seed):
     stretch_noise = fbm(n, seed + 700, octaves=3, base=max(2, int(round(rules["world_km"] / cn["noise_km"]))))
     cliff_stretch = stretch_noise > cn["threshold"]
     dc = f["dragon_cliff"]
-    zone[(zone == dc["in"]) & cliff_stretch & (to_sea_km < dc["width_km"])] = "dragon_cliff"
+    # A narrow strip at the very south only: where the sea lies to the south of
+    # the desert, between two places along it.
+    _, near_sea = ndimage.distance_transform_edt(land, return_indices=True)
+    rows_ = np.arange(n)[:, None]
+    south_facing = (rows_ - near_sea[0]) > 0.7 * to_sea_km / (rules["world_km"] / n)
+    along = (xx - x0) / (x1 - x0)
+    stretch = (along > dc["s_from"]) & (along < dc["s_to"])
+    zone[(zone == dc["in"]) & stretch & south_facing & (to_sea_km < dc["width_km"])] = "dragon_cliff"
 
     # The northern isles, as imported.
     isle_mask, isle_heights = load_isles(rules, n)
@@ -264,6 +275,55 @@ def canyon_network(n, world_km, seed, r):
     return c1, c2
 
 
+def ranges(zone, m, r, sd, n, world_km, xx, yy):
+    """The white mountains: two long ranges running west->east that draw
+    together and close into a ring around the lake valley (the caldera). Both
+    fall away smoothly, on the outer sides, into the foothills and the river
+    valley."""
+    km_px = world_km / n
+    lake = zone == "lake_valley"
+    band = m | lake
+    has = band.any(axis=0)
+    cols = np.arange(n)
+    lo = np.argmax(band, axis=0).astype(np.float32)
+    hi = (n - 1 - np.argmax(band[::-1], axis=0)).astype(np.float32)
+    lo = np.interp(cols, cols[has], lo[has])
+    hi = np.interp(cols, cols[has], hi[has])
+    sm = n / 30.0
+    lo, hi = ndimage.gaussian_filter1d(lo, sm), ndimage.gaussian_filter1d(hi, sm)
+    yc = (lo + hi) / 2 * km_px
+    half = (hi - lo) / 2 * km_px                       # half the band's width, km
+    Y, X = yy * world_km, xx * world_km
+    bend = r.get("bend_km", 7.0) * fbm32(n, sd + 21, 70, world_km, 3)
+    if lake.any():
+        cy, cx = ndimage.center_of_mass(lake)
+        cy, cx = cy * km_px, cx * km_px
+        ring_r = np.sqrt(lake.sum() / np.pi) * km_px
+    else:
+        cy, cx, ring_r = float(yc.mean()), world_km / 2, 0.0
+    # The distance of each range's line from the band's middle: far from the
+    # ring it is `spread` of the half-width; it opens out to the ring's radius.
+    ycol = np.broadcast_to(yc[None, :], (n, n))
+    hcol = np.broadcast_to(half[None, :], (n, n))
+    near = 1.0 - smoothstep(0.0, 2.4 * max(ring_r, 1.0), np.abs(X - cx))
+    off = r.get("spread", 0.45) * hcol
+    off = off + (np.maximum(ring_r * 1.08, off) - off) * near
+    w = r["width_km"]
+    def prof(d):
+        return np.exp(-(d / w) ** 2) + 0.25 * np.exp(-(d / (2.6 * w)) ** 2)
+    south = prof(np.abs(Y - (ycol - off) - bend))
+    north = prof(np.abs(Y - (ycol + off) - bend * 0.8))
+    crest = np.maximum(south, north)
+    if ring_r:
+        crest = np.maximum(crest, prof(np.abs(np.hypot(X - cx, Y - cy) - ring_r * 1.08)))
+    crest = np.clip(crest, 0, 1)
+    detail = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
+    massif = 0.6 + 0.4 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
+    signed = (ndimage.distance_transform_edt(m | lake) - ndimage.distance_transform_edt(~(m | lake))) * km_px
+    envelope = smoothstep(-r["fade_out_km"], r["fade_in_km"], signed)
+    return r["base"] + (r["peak"] - r["base"]) * envelope * massif * crest ** 1.2 * (0.55 + 0.45 * detail)
+
+
 def relief(zone, rules, seed, coast, isles):
     """Heights in metres over the sea, from the zones and the rules."""
     n = zone.shape[0]
@@ -323,14 +383,7 @@ def relief(zone, rules, seed, coast, isles):
         elif kind == "lowland":
             h = r["base"] + r["rise"] * progress + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
         elif kind == "ridges":
-            ridge = warped(ridged(n, sd, r["km"], world_km), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.35)
-            # The range's height swells and sinks along it: massifs and saddles.
-            massif = 0.65 + 0.35 * (fbm32(n, sd + 11, r["km"] * 3, world_km, 2) * 0.5 + 0.5)
-            # Alpine ranges fall away into the foothills over tens of kilometres,
-            # on both sides: the envelope reaches out past the zone's edge.
-            signed = (ndimage.distance_transform_edt(m) - ndimage.distance_transform_edt(~m)) * km_px
-            envelope = smoothstep(-r["fade_out_km"], r["fade_in_km"], signed)
-            h = r["base"] + (r["peak"] - r["base"]) * envelope * massif * ridge ** 1.5
+            h = ranges(zone, m, r, sd, n, world_km, xx, yy)
         elif kind == "bowl":
             cy, cx = ndimage.center_of_mass(m)
             rad = np.sqrt(m.sum() / np.pi)
