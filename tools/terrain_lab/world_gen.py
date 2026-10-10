@@ -464,7 +464,7 @@ def massif(m, r, sd, n, world_km):
     size = max(3, int(30.0 / km_px))
     local = ndimage.gaussian_filter(ndimage.grey_dilation(d, size=(size, size)), 12.0 / km_px)
     q = np.clip(d / np.maximum(local, 4.0), 0.0, 1.0)
-    body = q ** r.get("power", 0.9)
+    body = 0.10 + 0.90 * q ** r.get("power", 0.9)
     ridge = warped(ridged(n, sd, r["km"], world_km, octaves=7), n, sd + 9, r["km"] * 2.0, world_km, r["km"] * 0.9)
     fine = ridged(n, sd + 3, r["km"] / 3.0, world_km, octaves=6)
     frac = np.clip((0.6 * ridge ** 1.2 + 0.4 * fine ** 1.4 - 0.1) / 0.8, 0.0, 1.0)
@@ -588,20 +588,8 @@ def relief(zone, rules, seed, coast, isles):
         elif kind == "bowl":
             h = np.zeros((n, n), np.float32)        # (made later: caldera(), over the range)
         elif kind == "valley":
-            # No carved trench: the valley is where the slopes of the two ranges (the
-            # white mountains' north side, the black peaks' south side) meet low.
-            wm = (zone == "white_mountains") | (zone == "lake_valley")
-            bm = zone == "black_lands"
-            dw = ndimage.distance_transform_edt(~wm) * km_px if wm.any() else np.full((n, n), 99.0)
-            db = ndimage.distance_transform_edt(~bm) * km_px if bm.any() else np.full((n, n), 99.0)
-            floor = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx
-            # From the banks the ground climbs, over `slope_km`, to exactly the height the
-            # range's own edge has on either side: no step, the slopes meet.
-            hw = recipes.get("white_mountains", {}).get("base", 900.0)
-            hb = recipes.get("black_lands", {}).get("base", 450.0)
-            L = r.get("slope_km", 14)
-            walls = np.maximum((hw - floor) * np.exp(-dw / L), (hb - floor) * np.exp(-db / L))
-            h = floor + np.maximum(walls, 0.0) + r["amp"] * fbm32(n, sd, 4, world_km, 3)
+            # No carved trench of its own: made after the ranges (below), from their edges.
+            h = np.zeros((n, n), np.float32)
         elif kind == "spikes":
             sharp = warped(ridged(n, sd, r["km"], world_km, octaves=7), n, sd + 9, r["km"] * 2, world_km, r["km"] * 0.3) ** 2.0
             # Rising out of the valley without a step: the envelope is a long ramp.
@@ -616,6 +604,24 @@ def relief(zone, rules, seed, coast, isles):
         heights[name] = h.astype(np.float32)
     if "lake_valley" in heights and "white_mountains" in heights:
         heights["lake_valley"] = heights["white_mountains"]
+    # The valley is where the slopes of the two ranges (the white mountains' north side,
+    # the black peaks' south side) meet. From its banks the ground climbs, over
+    # `slope_km`, to exactly the height the range has at its edge: no step.
+    for name in names:
+        r = recipes.get(name, {})
+        if r.get("kind") != "valley":
+            continue
+        floor = r["floor_west"] + (r["floor_east"] - r["floor_west"]) * xx
+        walls = np.zeros((n, n), np.float32)
+        L = r.get("slope_km", 14)
+        for other in ("white_mountains", "black_lands"):
+            om = (zone == other) | ((zone == "lake_valley") if other == "white_mountains" else False)
+            if not om.any() or other not in heights:
+                continue
+            dist, near = ndimage.distance_transform_edt(~om, return_indices=True)
+            edge_h = ndimage.gaussian_filter(heights[other][near[0], near[1]], 9.0 / km_px)   # (no rays from the nearest-edge lookup)
+            walls = np.maximum(walls, (edge_h - floor) * (1.0 - smoothstep(0.0, L, dist * km_px)) ** 1.6)
+        heights[name] = (floor + np.maximum(walls, 0.0) + r["amp"] * fbm32(n, seed + 1900, 4, world_km, 3)).astype(np.float32)
     for name in deferred:
         r = recipes[name]
         base = (tops if r.get("top") else heights).get(r["zone"])
@@ -671,7 +677,8 @@ def relief(zone, rules, seed, coast, isles):
     d_out = ndimage.distance_transform_edt(~land) * km_px
     # A beach: a gentle shore, and for a black one a quick climb behind it.
     beach = 1.5 + 15.0 * d_in + 40.0 * np.maximum(d_in - 4.0, 0.0) ** 1.6
-    flat = 0.6 + 1.2 * d_in
+    # (a flat coast is flat near the sea only: further in the ground is free to rise)
+    flat = 0.6 + 1.2 * d_in + 6000.0 * smoothstep(12.0, 30.0, d_in)
     keep_isles = masks.get("isles", np.zeros_like(land))
     h = np.where(land & (coast == COAST_BEACH) & ~keep_isles, np.minimum(h, beach), h)
     h = np.where(land & (coast == COAST_FLAT), np.minimum(h, flat), h)
