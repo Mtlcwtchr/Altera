@@ -39,6 +39,14 @@ constexpr float kLevelPixels[2] = {260.0f, 70.0f};
 } // namespace
 
 Props::~Props() {
+    for (auto& [i, f] : pending_)
+        if (f.valid()) f.wait();
+    if (device_) {
+        for (auto& [i, m] : detail_)
+            if (m.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), m.transfer);
+        for (auto& m : spare_)
+            if (m.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), m.transfer);
+    }
     if (device_ && transfer_) SDL_ReleaseGPUTransferBuffer(device_->handle(), transfer_);
 }
 
@@ -73,7 +81,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     std::map<std::string, std::uint32_t> modelIndex;
     // A model is found by name in the models' folder, or - the world's own,
     // its cliff tiles - in a folder beside the features file.
-    auto modelFor = [&](const std::string& name, const std::filesystem::path& dir) -> int {
+    auto modelFor = [&](const std::string& name, const std::filesystem::path& dir, bool keepCpu) -> int {
         const std::string key = (dir / name).string();
         if (auto it = modelIndex.find(key); it != modelIndex.end()) return int(it->second);
         Model m;
@@ -87,6 +95,12 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
             if (k == 0) {
                 std::memcpy(m.lo, lo, sizeof(lo));
                 std::memcpy(m.hi, hi, sizeof(hi));
+                if (keepCpu) {
+                    CpuMesh& c = cpu_[std::uint32_t(models_.size())];
+                    c.vertices.assign(reinterpret_cast<const float*>(v.data()),
+                                      reinterpret_cast<const float*>(v.data()) + v.size() * 8);
+                    c.indices = idx;
+                }
             }
             m.levels[k].firstIndex = std::uint32_t(allIndices.size());
             m.levels[k].indexCount = std::uint32_t(idx.size());
@@ -105,13 +119,15 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         const std::string name = o.value("m", std::string());
         const std::string own = o.value("dir", std::string());
         const std::filesystem::path dir = own.empty() ? modelDir : featuresFile.parent_path() / own;
-        const int model = modelFor(name, dir);
+        const bool detail = o.value("detail", false);
+        const int model = modelFor(name, dir, detail);
         if (model < 0) return fail("cannot read model " + name + " in " + dir.string() +
                                    (own.empty() ? " (run tools/blender/terrain_props.py --all)"
                                                 : " (run tools/terrain_lab/world_features.py)"));
         const Model& m = models_[std::size_t(model)];
         Instance in;
         in.model = std::uint32_t(model);
+        in.detail = detail;
         in.x = o.value("x", 0.0);
         in.y = o.value("y", 0.0);
         in.yaw = o.value("yaw", 0.0f);
@@ -131,10 +147,11 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
                 const double a = k * 0.7853981633974483;
                 z = std::min(z, ground(in.x + std::cos(a) * r * 0.7, in.y + std::sin(a) * r * 0.7));
             }
-            in.z = z;
+            // Buried: a tower in the dunes, a wall to its arches.
+            in.z = z - o.value("sink", 0.0);
             // A spire is stretched from that ground up to the height it was
             // given: always reaching the high ground round it.
-            if (o.contains("top") && m.hi[2] > 1.0f) in.sz = float((o["top"].get<double>() - z) / m.hi[2]);
+            if (o.contains("top") && m.hi[2] > 1.0f) in.sz = float((o["top"].get<double>() - in.z) / m.hi[2]);
         }
         // Bounding sphere (yaw ignored: the radius covers any turn).
         const double c = std::cos(in.yaw), s = std::sin(in.yaw);
@@ -205,8 +222,31 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     return true;
 }
 
+Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
+    const Instance& in = instances_[i];
+    Gpu g{};
+    g.posYaw[0] = float(in.x - frame.eye.x);
+    g.posYaw[1] = float(in.y - frame.eye.y);
+    g.posYaw[2] = float(in.z - frame.eye.z);
+    g.posYaw[3] = in.yaw;
+    g.scale[0] = in.sx;
+    g.scale[1] = in.sy;
+    g.scale[2] = in.sz;
+    g.scale[3] = in.layer;
+    // Where the model stands, wrapped: the rock's texture coordinates come
+    // from it plus the local position, never from a float world coordinate
+    // in the millions.
+    g.anchor[0] = float(std::fmod(in.x, 4096.0));
+    g.anchor[1] = float(std::fmod(in.y, 4096.0));
+    g.anchor[2] = float(in.z);
+    g.anchor[3] = float(i % 97) / 97.0f;   // a per-instance variation
+    return g;
+}
+
 void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batches) {
     for (auto& b : buckets_) b.clear();
+    std::vector<std::uint32_t> refined;
+    int builds = 0;
     for (std::uint32_t i = 0; i < instances_.size(); ++i) {
         const Instance& in = instances_[i];
         const double rx = in.cx - frame.eye.x, ry = in.cy - frame.eye.y, rz = in.cz - frame.eye.z;
@@ -226,33 +266,204 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
             const float pixels = d > in.radius ? float(in.radius / d) * frame.pixelScale : 1e9f;
             if (pixels < frame.minPixels) continue;
             level = pixels > kLevelPixels[0] ? 0 : pixels > kLevelPixels[1] ? 1 : 2;
+            if (in.detail && d - in.radius < frame.detailRange) {
+                auto it = detail_.find(i);
+                // Refined off the frame's thread: until it is ready, level 0.
+                if (it == detail_.end() && !pending_.count(i) && builds < frame.detailBuilds) {
+                    ++builds;
+                    const Instance& at = instances_[i];
+                    if (const auto c = cpu_.find(at.model); c != cpu_.end())
+                        pending_[i] = std::async(std::launch::async, refineSurface, &c->second, at.x, at.y, at.z);
+                }
+                if (it != detail_.end()) {
+                    it->second.lastUsed = frame_;
+                    refined.push_back(i);
+                    continue;
+                }
+            }
         }
         buckets_[in.model * kLevels + level].push_back(i);
     }
     for (std::uint32_t b = 0; b < buckets_.size(); ++b) {
         if (buckets_[b].empty()) continue;
         Batch batch{b / kLevels, b % kLevels, std::uint32_t(staging_.size()), std::uint32_t(buckets_[b].size())};
-        for (auto i : buckets_[b]) {
-            const Instance& in = instances_[i];
-            Gpu g{};
-            g.posYaw[0] = float(in.x - frame.eye.x);
-            g.posYaw[1] = float(in.y - frame.eye.y);
-            g.posYaw[2] = float(in.z - frame.eye.z);
-            g.posYaw[3] = in.yaw;
-            g.scale[0] = in.sx;
-            g.scale[1] = in.sy;
-            g.scale[2] = in.sz;
-            g.scale[3] = in.layer;
-            // Where the model stands, wrapped: the rock's texture coordinates
-            // come from it plus the local position, never from a float world
-            // coordinate in the millions.
-            g.anchor[0] = float(std::fmod(in.x, 4096.0));
-            g.anchor[1] = float(std::fmod(in.y, 4096.0));
-            g.anchor[2] = float(in.z);
-            g.anchor[3] = float(i % 97) / 97.0f;   // a per-instance variation
-            staging_.push_back(g);
-        }
+        for (auto i : buckets_[b]) staging_.push_back(gpuOf(i, frame));
         batches.push_back(batch);
+    }
+    for (auto i : refined) {
+        batches.push_back({instances_[i].model, 0, std::uint32_t(staging_.size()), 1, &detail_[i]});
+        staging_.push_back(gpuOf(i, frame));
+    }
+    if (shadow) return;
+    detailDrawn_ = std::uint32_t(refined.size());
+    // Forget surfaces the eye left long ago, the oldest first (never one
+    // drawn this frame: the batches point at it).
+    while (detail_.size() > 48) {
+        auto oldest = detail_.begin();
+        for (auto it = detail_.begin(); it != detail_.end(); ++it)
+            if (it->second.lastUsed < oldest->second.lastUsed) oldest = it;
+        if (oldest->second.lastUsed + 3 >= frame_) break;
+        forget(oldest);
+    }
+}
+
+namespace {
+
+// Value noise in 3D, smooth, 0..1.
+double hashCell(std::int64_t x, std::int64_t y, std::int64_t z) {
+    std::uint64_t h = std::uint64_t(x) * 0x9E3779B97F4A7C15ull ^ std::uint64_t(y) * 0xC2B2AE3D27D4EB4Full ^
+                      std::uint64_t(z) * 0x165667B19E3779F9ull;
+    h ^= h >> 29;
+    h *= 0xBF58476D1CE4E5B9ull;
+    h ^= h >> 32;
+    return double(h & 0xffffff) / double(0xffffff);
+}
+
+double valueNoise(double x, double y, double z) {
+    const double fx = std::floor(x), fy = std::floor(y), fz = std::floor(z);
+    const auto ix = std::int64_t(fx), iy = std::int64_t(fy), iz = std::int64_t(fz);
+    auto s = [](double t) { return t * t * (3 - 2 * t); };
+    const double u = s(x - fx), v = s(y - fy), w = s(z - fz);
+    double c[2][2][2];
+    for (int a = 0; a < 2; ++a)
+        for (int b = 0; b < 2; ++b)
+            for (int d = 0; d < 2; ++d) c[a][b][d] = hashCell(ix + a, iy + b, iz + d);
+    auto l = [](double p, double q, double t) { return p + (q - p) * t; };
+    return l(l(l(c[0][0][0], c[1][0][0], u), l(c[0][1][0], c[1][1][0], u), v),
+             l(l(c[0][0][1], c[1][0][1], u), l(c[0][1][1], c[1][1][1], u), v), w);
+}
+
+// Rock: broad lumps, then blocks split by joints - ridged, so the faces come
+// out as facets and cracks rather than as a soft wobble.
+double rock(double x, double y, double z) {
+    double v = valueNoise(x / 23.0, y / 23.0, z / 17.0) - 0.5;
+    v += (0.5 - std::abs(valueNoise(x / 8.5, y / 8.5, z / 6.0) - 0.5)) * 0.9 - 0.2;
+    v += (valueNoise(x / 3.1, y / 3.1, z / 2.6) - 0.5) * 0.35;
+    return v;
+}
+
+} // namespace
+
+Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, double z) {
+    const CpuMesh& base = *mesh;
+    // Two rounds of splitting every edge at its middle: a 16 m grid becomes 4 m.
+    std::vector<float> v = base.vertices;
+    std::vector<std::uint32_t> tris = base.indices;
+    for (int round = 0; round < 2; ++round) {
+        std::map<std::uint64_t, std::uint32_t> mid;
+        std::vector<std::uint32_t> next;
+        next.reserve(tris.size() * 4);
+        auto middle = [&](std::uint32_t a, std::uint32_t b) {
+            const std::uint64_t key = a < b ? (std::uint64_t(a) << 32 | b) : (std::uint64_t(b) << 32 | a);
+            if (auto it = mid.find(key); it != mid.end()) return it->second;
+            const auto n = std::uint32_t(v.size() / 8);
+            for (int k = 0; k < 8; ++k) v.push_back(0.5f * (v[std::size_t(a) * 8 + k] + v[std::size_t(b) * 8 + k]));
+            mid[key] = n;
+            return n;
+        };
+        for (std::size_t t = 0; t + 2 < tris.size(); t += 3) {
+            const std::uint32_t a = tris[t], b = tris[t + 1], c = tris[t + 2];
+            const std::uint32_t ab = middle(a, b), bc = middle(b, c), ca = middle(c, a);
+            next.insert(next.end(), {a, ab, ca, ab, b, bc, ca, bc, c, ab, bc, ca});
+        }
+        tris.swap(next);
+    }
+    // Roughen: each point pushed along its (smooth) normal by the rock noise,
+    // much on a wall, little on a ledge. The tile's border stays put, so the
+    // tiles round it meet it whatever their level.
+    const std::size_t count = v.size() / 8;
+    for (std::size_t k = 0; k < count; ++k) {
+        float* p = &v[k * 8];
+        const bool border = p[0] < 0.5f || p[1] < 0.5f || p[0] > 1023.5f || p[1] > 1023.5f;
+        if (border) continue;
+        const double nl = std::sqrt(double(p[3]) * p[3] + double(p[4]) * p[4] + double(p[5]) * p[5]);
+        if (nl < 1e-6) continue;
+        const double nx = p[3] / nl, ny = p[4] / nl, nz = p[5] / nl;
+        const double steep = 1.0 - std::abs(nz);
+        const double amount = (0.6 + 4.4 * steep) * rock(x + p[0], y + p[1], z + p[2]);
+        p[0] += float(nx * amount);
+        p[1] += float(ny * amount);
+        p[2] += float(nz * amount);
+    }
+    // Normals again, from the roughened faces.
+    std::vector<double> n(count * 3, 0.0);
+    for (std::size_t t = 0; t + 2 < tris.size(); t += 3) {
+        const float* a = &v[std::size_t(tris[t]) * 8];
+        const float* b = &v[std::size_t(tris[t + 1]) * 8];
+        const float* c = &v[std::size_t(tris[t + 2]) * 8];
+        const double e1[3] = {double(b[0]) - a[0], double(b[1]) - a[1], double(b[2]) - a[2]};
+        const double e2[3] = {double(c[0]) - a[0], double(c[1]) - a[1], double(c[2]) - a[2]};
+        const double f[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
+        for (int q = 0; q < 3; ++q)
+            for (int j = 0; j < 3; ++j) n[std::size_t(tris[t + q]) * 3 + j] += f[j];
+    }
+    for (std::size_t k = 0; k < count; ++k) {
+        const double l = std::sqrt(n[k * 3] * n[k * 3] + n[k * 3 + 1] * n[k * 3 + 1] + n[k * 3 + 2] * n[k * 3 + 2]);
+        if (l < 1e-12) continue;
+        for (int j = 0; j < 3; ++j) v[k * 8 + 3 + j] = float(n[k * 3 + j] / l);
+    }
+    return {std::move(v), std::move(tris)};
+}
+
+bool Props::upload(SDL_GPUCommandBuffer* commands, std::uint32_t i, const Surface& surface) {
+    const auto start = std::chrono::steady_clock::now();
+    const auto vbytes = std::uint32_t(surface.first.size() * 4), ibytes = std::uint32_t(surface.second.size() * 4);
+    // Buffers of a surface forgotten earlier when they are big enough (making
+    // new ones costs milliseconds on the frame), else new ones with room to spare.
+    DetailMesh mesh;
+    for (auto it = spare_.begin(); it != spare_.end(); ++it)
+        if (it->vertexBytes >= vbytes && it->indexBytes >= ibytes) {
+            mesh = std::move(*it);
+            spare_.erase(it);
+            break;
+        }
+    if (!mesh.transfer) {
+        mesh.vertexBytes = vbytes + vbytes / 3;
+        mesh.indexBytes = ibytes + ibytes / 3;
+        mesh.vertices = device_->makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, mesh.vertexBytes);
+        mesh.indices = device_->makeBuffer(SDL_GPU_BUFFERUSAGE_INDEX, mesh.indexBytes);
+        SDL_GPUTransferBufferCreateInfo info{};
+        info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
+        info.size = mesh.vertexBytes + mesh.indexBytes;
+        mesh.transfer = SDL_CreateGPUTransferBuffer(device_->handle(), &info);
+        if (!mesh.vertices || !mesh.indices || !mesh.transfer) {
+            if (mesh.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), mesh.transfer);
+            return false;
+        }
+    }
+    auto* mapped = static_cast<std::uint8_t*>(SDL_MapGPUTransferBuffer(device_->handle(), mesh.transfer, true));
+    std::memcpy(mapped, surface.first.data(), vbytes);
+    std::memcpy(mapped + vbytes, surface.second.data(), ibytes);
+    SDL_UnmapGPUTransferBuffer(device_->handle(), mesh.transfer);
+    auto* copy = SDL_BeginGPUCopyPass(commands);
+    const SDL_GPUTransferBufferLocation fromV{mesh.transfer, 0}, fromI{mesh.transfer, vbytes};
+    const SDL_GPUBufferRegion toV{mesh.vertices.get(), 0, vbytes}, toI{mesh.indices.get(), 0, ibytes};
+    SDL_UploadToGPUBuffer(copy, &fromV, &toV, true);
+    SDL_UploadToGPUBuffer(copy, &fromI, &toI, true);
+    SDL_EndGPUCopyPass(copy);
+    mesh.indexCount = std::uint32_t(surface.second.size());
+    mesh.lastUsed = frame_;
+    detail_[i] = std::move(mesh);
+    detailMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    return true;
+}
+
+void Props::forget(std::map<std::uint32_t, DetailMesh>::iterator it) {
+    // Unused for frames: its buffers go to the next surface (cycled on
+    // upload, so nothing the card still reads is overwritten).
+    if (spare_.size() < 16) spare_.push_back(std::move(it->second));
+    else if (it->second.transfer) SDL_ReleaseGPUTransferBuffer(device_->handle(), it->second.transfer);
+    detail_.erase(it);
+}
+
+void Props::collect(SDL_GPUCommandBuffer* commands, bool wait) {
+    for (auto it = pending_.begin(); it != pending_.end();) {
+        if (!wait && it->second.wait_for(std::chrono::seconds(0)) != std::future_status::ready) {
+            ++it;
+            continue;
+        }
+        upload(commands, it->first, it->second.get());
+        it = pending_.erase(it);
     }
 }
 
@@ -261,12 +472,16 @@ void Props::prepare(SDL_GPUCommandBuffer* commands, const PropsFrame& frame) {
     staging_.clear();
     viewBatches_.clear();
     shadowBatches_.clear();
+    ++frame_;
+    // A still picture waits for its refined cliffs; a moving eye never does.
+    collect(commands, frame.detailBuilds > 1);
     fill(frame, false, viewBatches_);
     drawn_ = 0;
     triangles_ = 0;
     for (const auto& b : viewBatches_) {
         drawn_ += b.count;
-        triangles_ += std::uint64_t(b.count) * models_[b.model].levels[b.level].indexCount / 3;
+        triangles_ += std::uint64_t(b.count) *
+                      (b.detail ? b.detail->indexCount : models_[b.model].levels[b.level].indexCount) / 3;
     }
     if (frame.shadowRange > 0) fill(frame, true, shadowBatches_);
     cullMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
@@ -284,12 +499,16 @@ void Props::prepare(SDL_GPUCommandBuffer* commands, const PropsFrame& frame) {
 }
 
 void Props::drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches) {
-    const SDL_GPUBufferBinding index{indices_.get(), 0};
-    SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
     for (const auto& b : batches) {
-        const SDL_GPUBufferBinding buffers[2] = {{vertices_.get(), 0},
+        const SDL_GPUBufferBinding index{b.detail ? b.detail->indices.get() : indices_.get(), 0};
+        SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+        const SDL_GPUBufferBinding buffers[2] = {{b.detail ? b.detail->vertices.get() : vertices_.get(), 0},
                                                  {gpuInstances_.get(), b.first * std::uint32_t(sizeof(Gpu))}};
         SDL_BindGPUVertexBuffers(pass, 0, buffers, 2);
+        if (b.detail) {
+            SDL_DrawGPUIndexedPrimitives(pass, b.detail->indexCount, b.count, 0, 0, 0);
+            continue;
+        }
         const Level& l = models_[b.model].levels[b.level];
         SDL_DrawGPUIndexedPrimitives(pass, l.indexCount, b.count, l.firstIndex, 0, 0);
     }

@@ -24,8 +24,18 @@
     {"kind": "needle",          "zones": ["black_lands", "isles"],           "per_1000km2": 2.5, "cluster": [2, 6], "cluster_m": 700, "size_m": [250, 550]},
     {"kind": "portal_tower",    "zones": ["black_lands"],                    "per_1000km2": 0.6, "size_m": [350, 520]},
     {"kind": "fallen_menhir",   "zones": ["green_plateau", "steppe"],        "per_1000km2": 1.5, "size_m": [25, 45]},
-    {"kind": "giant_stair",     "zones": ["white_mountains"],                "per_1000km2": 0.4, "size_m": [120, 200]}
+    {"kind": "giant_stair",     "zones": ["white_mountains"],                "per_1000km2": 0.4, "size_m": [120, 200]},
+    {"kind": "marsh_arch",      "zones": ["great_marshes"],                  "per_1000km2": 0.8, "height_m": [260, 340]},
+    {"kind": "giant_bones",     "zones": ["golden_desert"],                  "per_1000km2": 0.5, "size_m": [300, 420]}
   ],
+  "canyon_bridges": {"kind": "bridge", "zones": ["canyon_steppe", "steppe_canyon"], "count": 18, "min_depth_m": 250,
+                     "min_gap_m": 250, "max_gap_m": 1600, "rim_diff": 0.08, "spacing_m": 2500, "thickness": [0.45, 0.7]},
+  "ruin_chains": {"zone": "golden_desert", "tower": "ruin_tower", "wall": "ruin_wall", "chains": 5, "length": [1, 6],
+                  "step_m": [600, 1300], "tower_m": [150, 240], "buried": [0.2, 0.5], "walls": 0.6, "wall_buried": [0.1, 0.5],
+                  "edge_m": 1500},
+  "rotunda": {"zone": "green_plateau", "kind": "white_rotunda", "stair": "giant_stair", "size_m": [260, 320], "stair_m": [220, 300], "edge_m": 2500},
+  "sentinels": {"zone": "black_lands", "from": "river_valley", "kind": "sentinel_peak", "height_m": [820, 980], "gap_m": 700, "inside_m": 900},
+  "spiral_isle": {"zone": "dragon_cliff", "tower": "spiral_tower", "piece": "bridge_piece", "height_m": [420, 520], "pieces": 6, "reach_m": 2200},
   "singles": [
     {"kind": "valley_spire",    "zone": "river_valley",  "height_m": [800, 950], "near_low": true},
     {"kind": "mirror_monument", "zone": "golden_desert", "size_m": [280, 340]}
@@ -35,7 +45,9 @@
     "marsh_panel": "rock_mossy", "menhir": "rock_grey", "fallen_menhir": "rock_grey",
     "needle": "rock_dark", "portal_tower": "rock_dark", "mirror_monument": "rock_pale",
     "colossus_head": "rock_pale", "colossus_hand": "rock_pale", "iron_defender": "rock_dark",
-    "cyclopean_block": "rock_ochre", "giant_stair": "rock_grey"
+    "cyclopean_block": "rock_ochre", "giant_stair": "rock_pale",
+    "marsh_arch": "rock_mossy", "giant_bones": "rock_pale", "white_rotunda": "rock_pale", "ruin_tower": "rock_ochre",
+    "ruin_wall": "rock_ochre", "sentinel_peak": "rock_dark", "spiral_tower": "rock_pale", "bridge_piece": "rock_pale"
   },
   "cliffs": {
     "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py): `zones`: zone -> slope (rise over run) from which ground is a wall there. A wall must drop `min_drop_m` within `band_m`. It is pushed out downhill until it stands, `overhang` more at the rim, and never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim; `strata` and `gullies` shape its face; `sink_m`: how deep the skin's edge lies under the ground; `apron_m`: how far below the foot scree is banked against the wall, `scree_share` of the drop high (at most `scree_max_m`).",

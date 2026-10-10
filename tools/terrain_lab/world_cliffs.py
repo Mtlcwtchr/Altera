@@ -221,6 +221,9 @@ def tile(f, ti, tj, origin, c, cr, out_dir):
     # The tile's rock: the material of the zone most of its wall is in.
     sl = (slice(ti * per_tile - r0, (ti + 1) * per_tile - r0), slice(tj * per_tile - c0, (tj + 1) * per_tile - c0))
     zs = f["zones"][sl][f["band"][sl]]
+    if not zs.size:
+        # Only the lip or the scree of a wall next door: the rock of the walls round it.
+        zs = f["zones"][sl][f["skin"][sl] & np.isin(f["zones"][sl], list(cr["zones"]))]
     if zs.size:
         names, counts = np.unique(zs, return_counts=True)
         zone = names[np.argmax(counts)]
@@ -228,4 +231,4 @@ def tile(f, ti, tj, origin, c, cr, out_dir):
         zone = ""
     material = cr["materials"].get(str(zone), cr["materials"].get("default", "rock_grey"))
     return ({"m": name, "dir": out_dir.name, "x": round(float(x0), 1), "y": round(float(y0), 1),
-             "z": 0.0, "yaw": 0.0, "s": [1.0, 1.0, 1.0], "material": material}, triangles, vertices)
+             "z": 0.0, "yaw": 0.0, "s": [1.0, 1.0, 1.0], "material": material, "detail": True}, triangles, vertices)

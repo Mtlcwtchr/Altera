@@ -20,7 +20,8 @@
 |---|---|---|
 | модели | `tools/blender/terrain_props.py` | Blender (фоном): шпили, мосты и шпиль долины на метаболах, мегалиты из `megaliths.py`; три уровня детализации, формат `.mesh` фолиажа; `assets/terrain_core/props/` + `props.json` (каталог) |
 | места | `tools/terrain_lab/world_features.py` | читает `<world>_final.r16` и `_zones.png`, правила `content/config/terrain_core/props.json`; пишет `<world>_features.json` и превью |
-| клифы | `tools/terrain_lab/world_cliffs.py` | поле сдвига по крутым полосам, тайлы по 1024 м в `<world>_cliffs/` |
+| клифы | `tools/terrain_lab/world_cliffs.py` | поле сдвига по крутым полосам, тайлы по 1024 м в `<world>_cliffs/`; вблизи глаза лаборатория дважды делит тайл и даёт ему рельеф камня |
+| ориентиры | `tools/terrain_lab/world_landmarks.py` | мосты каньонов от кромки до кромки, цепи башен пустыни со стенами, ротонда с лестницей, часовые пики, спиральная башня с обломками моста |
 | рисование | `src/terrain_core/props.*`, `assets/shaders/terrain_core/props.hlsl` | статичный список экземпляров, отбор и LOD на CPU (double), один инстансный вызов на модель и уровень, тени в каскады; камень — массив материалов земли трипланарно в мировых координатах |
 | лаборатория | `tools/terrain_lab/main.cpp` | `--features PATH` (по умолчанию рядом с `<world>_final.r16`), `--no-props`, клавиша P |
 

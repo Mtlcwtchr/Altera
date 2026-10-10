@@ -272,6 +272,10 @@ def place(world, rules, catalogue, seed):
         m = catalogue[name]
         s = scale_for(g, m, rng)
         add(g["kind"], name, x, y, rng.uniform(0, math.tau), (s, s, s))
+
+    # --- composed and one-of-a-kind landmarks ---
+    import world_landmarks
+    world_landmarks.place(world, rules, catalogue, rng, add)
     return out
 
 
@@ -280,7 +284,9 @@ def preview(world, stem, items, catalogue, path):
     img = Image.open(base).convert("RGB") if base.exists() else Image.new("RGB", (1024, 1024))
     side = img.size[0]
     d = ImageDraw.Draw(img)
-    colours = {"spire": (255, 60, 30), "bridge": (255, 255, 0), "valley_spire": (255, 0, 255)}
+    colours = {"spire": (255, 60, 30), "bridge": (255, 255, 0), "valley_spire": (255, 0, 255),
+               "ruin_tower": (255, 140, 0), "ruin_wall": (255, 140, 0), "sentinel_peak": (255, 0, 0),
+               "marsh_arch": (0, 255, 120), "white_rotunda": (255, 255, 255), "spiral_tower": (180, 120, 255)}
     for o in items:
         if o["m"] not in catalogue:
             continue

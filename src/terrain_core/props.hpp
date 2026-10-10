@@ -22,6 +22,8 @@
 #include <array>
 #include <filesystem>
 #include <functional>
+#include <future>
+#include <map>
 #include <string>
 #include <vector>
 
@@ -33,6 +35,8 @@ struct PropsFrame {
     float pixelScale = 1;      // pixels per metre of size at one metre
     float minPixels = 2.0f;    // smaller than this on screen: not drawn
     double shadowRange = 0;    // casters within this of the eye go into the shadow atlas
+    double detailRange = 1400; // cliff tiles nearer than this get their refined surface
+    int detailBuilds = 1;      // refined surfaces made per frame at most
 };
 
 // Must match cbuffer Rock in props.hlsl.
@@ -65,6 +69,11 @@ public:
     std::uint64_t trianglesDrawn() const { return triangles_; }
     std::uint64_t gpuBytes() const { return gpuBytes_; }
     double cullMs() const { return cullMs_; }
+    // Cliff tiles drawn refined this frame, kept refined, and what the last
+    // refinement cost on the CPU.
+    std::uint32_t detailDrawn() const { return detailDrawn_; }
+    std::size_t detailKept() const { return detail_.size(); }
+    double detailMs() const { return detailMs_; }
 
     ~Props();
 
@@ -84,13 +93,33 @@ private:
         float layer = 0;              // material array layer
         double cx = 0, cy = 0, cz = 0;   // bounding sphere centre
         float radius = 1;
+        bool detail = false;          // a cliff tile: refined near the eye
     };
+    // A cliff tile's surface split twice and roughened, near the eye: made on
+    // the CPU when the eye comes close, dropped when it is long gone.
+    struct DetailMesh {
+        engine::Buffer vertices, indices;
+        SDL_GPUTransferBuffer* transfer = nullptr;   // its upload
+        std::uint32_t vertexBytes = 0, indexBytes = 0;   // what the buffers hold at most
+        std::uint32_t indexCount = 0;
+        std::uint64_t lastUsed = 0;
+    };
+    struct CpuMesh { std::vector<float> vertices; std::vector<std::uint32_t> indices; };
     // One draw: a run of the instance buffer.
-    struct Batch { std::uint32_t model, level, first, count; };
+    struct Batch { std::uint32_t model, level, first, count; const DetailMesh* detail = nullptr; };
     struct Gpu { float posYaw[4], scale[4], anchor[4]; };   // 48 bytes, the vertex shader's instance input
 
     void fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batches);
+    Gpu gpuOf(std::uint32_t instance, const PropsFrame& frame) const;
     void drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches);
+    // A refined surface, made on a worker thread: vertices (8 floats each), indices.
+    using Surface = std::pair<std::vector<float>, std::vector<std::uint32_t>>;
+    static Surface refineSurface(const CpuMesh* base, double x, double y, double z);
+    // Copied in the frame's own command buffer: no wait on the card.
+    bool upload(SDL_GPUCommandBuffer* commands, std::uint32_t instance, const Surface& surface);
+    // Takes in the surfaces the workers have finished (all of them, waiting, with `wait`).
+    void collect(SDL_GPUCommandBuffer* commands, bool wait);
+    void forget(std::map<std::uint32_t, DetailMesh>::iterator it);
 
     engine::Device* device_ = nullptr;
     std::vector<Model> models_;
@@ -103,6 +132,13 @@ private:
     std::vector<Gpu> staging_;
     std::vector<std::vector<std::uint32_t>> buckets_;
     std::vector<Batch> viewBatches_, shadowBatches_;
+    std::map<std::uint32_t, CpuMesh> cpu_;            // by model: level 0 kept for refining
+    std::map<std::uint32_t, DetailMesh> detail_;      // by instance
+    std::map<std::uint32_t, std::future<Surface>> pending_;   // by instance, being refined
+    std::vector<DetailMesh> spare_;                   // buffers of forgotten surfaces, for the next
+    std::uint64_t frame_ = 0;
+    std::uint32_t detailDrawn_ = 0;
+    double detailMs_ = 0;
     std::uint32_t drawn_ = 0;
     std::uint64_t triangles_ = 0, gpuBytes_ = 0;
     double cullMs_ = 0;

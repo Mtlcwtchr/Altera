@@ -800,6 +800,7 @@ struct Lab {
             f.frustum = frustumFrom(unjittered);
             f.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
             f.shadowRange = shadowsOn ? double(light.cascadeFar[2]) : 0.0;
+            f.detailBuilds = options.shot.empty() ? 1 : 64;   // a still picture: every near cliff refined at once
             props.prepare(commands, f);
             s.propsDrawn = props.drawn();
             s.propsTriangles = props.trianglesDrawn();
@@ -1069,6 +1070,9 @@ int runShot(Lab& lab, SDL_Window* window) {
     lab.camera.pitch = o.at[4] * 3.14159265358979 / 180.0;
     for (int i = 0; i < 4; ++i) lab.frame(window, o.at[2]);
     lab.device.waitInFlight(0);
+    if (lab.propsReady)   // detailMs: the upload of the last refined cliff (the refining is off the frame)
+        std::printf("props: %u drawn, %.2f M triangles, %u cliff tiles refined (last %.1f ms)\n", lab.props.drawn(),
+                    double(lab.props.trianglesDrawn()) / 1e6, lab.props.detailDrawn(), lab.props.detailMs());
     if (!engine::saveTargetAsPng(lab.device, lab.targets, o.shot)) {
         std::fprintf(stderr, "could not save %s\n", o.shot.c_str());
         return 1;
