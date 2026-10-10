@@ -111,50 +111,31 @@ def tongue_score(land):
 
 
 def continent(n, seed, rs, land_share, y_top):
-    """A continent as a seed makes it: a meandering chain of lobes of every
-    size with peninsulas on its sides, bent and bitten by noise at every
-    scale. No box, no stripes; kept off the world's edge."""
+    """The continent's shape, on its own: a broad oval of the seed's size, tilt and
+    stretch, whose coast is cut by noise at every scale - the noise is warped by
+    itself, so bays curl and capes hook. The land is whatever stands above a level
+    chosen so that it fills the share of the world asked for."""
     yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n
-    k = int(rs.integers(5, 8))
-    xa, xb = rs.uniform(0.24, 0.32), 1.0 - rs.uniform(0.24, 0.32)
-    sx = np.linspace(0, 1, k) + rs.uniform(-0.04, 0.04, k)
-    cxs = xa + np.clip(sx, 0, 1) * (xb - xa)
-    mid = 0.16 + 0.5 * (y_top - 0.16)
-    walk = np.cumsum(rs.normal(0, 0.11, k))
-    cys = np.clip(mid + walk - walk.mean(), 0.22, y_top - 0.16)
-    lobes = [(cxs[i], cys[i], rs.uniform(0.06, 0.11)) for i in range(k)]
-    for _ in range(int(rs.integers(5, 9))):             # peninsulas and capes
-        i = int(rs.integers(0, k))
-        side = rs.choice([-1.0, 1.0])
-        lobes.append((cxs[i] + rs.uniform(-0.06, 0.06), np.clip(cys[i] + side * rs.uniform(0.11, 0.22), 0.10, y_top - 0.06),
-                      rs.uniform(0.04, 0.075)))
-    angles, stretch = rs.uniform(0, np.pi, len(lobes)), rs.uniform(1.0, 1.7, len(lobes))
-    wx = xx + 0.08 * fbm(n, seed + 3, octaves=4, base=3) + 0.025 * fbm(n, seed + 4, octaves=4, base=9)
-    wy = yy + 0.08 * fbm(n, seed + 5, octaves=4, base=3) + 0.025 * fbm(n, seed + 6, octaves=4, base=9)
-    noise = 0.30 * (fbm(n, seed + 1, octaves=3, base=2) + 0.6 * fbm(n, seed + 2, octaves=4, base=6)
-                    + 0.35 * fbm(n, seed + 7, octaves=5, base=16) + 0.15 * fbm(n, seed + 8, octaves=4, base=40))
+    cy0 = 0.5 * y_top + 0.03
+    ax, ay = rs.uniform(0.30, 0.37), rs.uniform(0.22, 0.28) * y_top / 0.76
+    rot = rs.uniform(-0.3, 0.3)
+    # the noise bends the space it is read in
+    qx = xx + 0.10 * fbm(n, seed + 3, octaves=4, base=2) + 0.04 * fbm(n, seed + 4, octaves=4, base=6)
+    qy = yy + 0.10 * fbm(n, seed + 5, octaves=4, base=2) + 0.04 * fbm(n, seed + 6, octaves=4, base=6)
+    dx, dy = qx - 0.5, qy - cy0
+    u = dx * np.cos(rot) + dy * np.sin(rot)
+    v = -dx * np.sin(rot) + dy * np.cos(rot)
+    oval = 1.0 - np.sqrt((u / ax) ** 2 + (v / ay) ** 2)
+    amp = rs.uniform(0.50, 0.65)
+    noise = (fbm(n, seed + 1, octaves=3, base=2) + 0.75 * fbm(n, seed + 2, octaves=4, base=4)
+             + 0.45 * fbm(n, seed + 7, octaves=5, base=9) + 0.25 * fbm(n, seed + 8, octaves=5, base=22)
+             + 0.12 * fbm(n, seed + 9, octaves=4, base=55))
+    field = oval + amp * noise
     edge = np.minimum(np.minimum(xx, 1 - xx), np.minimum(yy, 1 - yy))
-    noise -= 2.0 * (1.0 - smoothstep(0.0, 0.07, edge)) + 2.0 * smoothstep(y_top, y_top + 0.03, yy)
-
-    def make(scale):
-        field = noise.copy()
-        for (cx_, cy_, r_), a_, e_ in zip(lobes, angles, stretch):
-            dx, dy = wx - cx_, wy - cy_
-            u = (dx * np.cos(a_) + dy * np.sin(a_)) / (r_ * e_ * scale)
-            v = (-dx * np.sin(a_) + dy * np.cos(a_)) / (r_ * scale)
-            field += np.exp(-(u * u + v * v) * 1.6)
-        return (field > 0.5) & (edge > 0.025)
-
-    # The lobes grow or shrink together until the land is the share asked for.
-    lo_s, hi_s = 0.4, 2.2
-    for _ in range(9):
-        mid_s = 0.5 * (lo_s + hi_s)
-        if make(mid_s).mean() < land_share:
-            lo_s = mid_s
-        else:
-            hi_s = mid_s
-    land = make(0.5 * (lo_s + hi_s))
-    land = ndimage.binary_opening(land, iterations=2)
+    field -= 2.5 * (1.0 - smoothstep(0.0, 0.08, edge)) + 2.5 * smoothstep(y_top, y_top + 0.03, yy)
+    thr = float(np.quantile(field, 1.0 - land_share))
+    land = (field > thr) & (edge > 0.03)
+    land = ndimage.binary_opening(land, iterations=max(1, n // 512))
     parts, count = ndimage.label(land)
     if count > 1:
         sizes = ndimage.sum(land, parts, range(1, count + 1))
@@ -180,7 +161,12 @@ def layout(rules, n, seed):
         # (a continent pressed against the world's edge or the isles' band is no good)
         yy5, xx5 = (np.mgrid[0:512, 0:512] + 0.5) / 512
         wall = (xx5 < 0.09) | (xx5 > 0.91) | (yy5 < 0.09) | (yy5 > y_top - 0.03)
-        sc = tongue_score(cand) - 4.0 * float((cand & wall).sum()) / 512 ** 2
+        # a whole, not too bitten shape (its area against what a big closing makes of it)
+        r_ = int(0.12 * 512)
+        dil = ndimage.distance_transform_edt(~cand) <= r_
+        closed = ndimage.distance_transform_edt(dil) > r_
+        solidity = float(cand.sum()) / max(float(closed.sum()), 1.0)
+        sc = 40.0 * min(tongue_score(cand), 0.012) + 3.0 * solidity - 4.0 * float((cand & wall).sum()) / 512 ** 2
         if sc > best_score:
             best, best_score = c, sc
     land = continent(n, seed + 101 * best, np.random.default_rng(seed * 7919 + best), world["land_share"], y_top)
@@ -590,7 +576,10 @@ def relief(zone, rules, seed, coast, isles):
             # Rising out of the valley without a step: the envelope is a long ramp.
             inside_km = ndimage.distance_transform_edt(m) * km_px
             envelope = smoothstep(0.0, r["fade_km"], inside_km)
-            h = r["base"] + (r["peak"] - r["base"]) * envelope * sharp
+            # The black peaks stand along the valley; beyond them the black lands
+            # run on, falling into dry hills and plains toward the sea.
+            far = smoothstep(r.get("peaks_share", 0.4), 1.0, progress)
+            h = r["base"] + (r["peak"] - r["base"]) * envelope * sharp * (1.0 - 0.8 * far) - r.get("lowering", 350) * far
         else:
             raise ValueError(f"relief kind {kind}")
         heights[name] = h.astype(np.float32)
