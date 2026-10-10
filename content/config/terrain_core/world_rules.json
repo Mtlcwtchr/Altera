@@ -3,6 +3,14 @@
   "world_km": 262.144,
   "seed": 7,
   "continent": {"land_share": 0.30},
+  "shape": {"image": "doc/NewRef/world_shape_v7.png", "threshold": 12, "isle_peak_m": 2600},
+  "placement": {
+    "comment": "The zones are patches of natural outline laid over the shape and given their biomes by rules of place (tools/terrain_lab/world_zones.py): the desert on the peninsula the sea washes from most sides, then the stone steppe, the plain, the range; marshes on the west-east side opposite the desert, the forest from them onto the plain and the range's foot, the black lands the rest. shares: of the land.",
+    "patch_km2": 110,
+    "valley_km": 5.0,
+    "axis_weight": 0.85,
+    "shares": {"golden_desert": 0.07, "canyon_steppe": 0.13, "green_plateau": 0.27, "white_mountains": 0.24, "great_marshes": 0.10, "dark_forest": 0.12}
+  },
   "bands": [
     {"name": "golden_desert",   "biome": 4,  "weight": 0.10, "rain": 0.0},
     {"name": "canyon_steppe",   "biome": 16, "weight": 0.22, "rain": 0.0},
@@ -20,7 +28,7 @@
     ]
   },
   "features": {
-    "lake_valley":    {"biome": 7, "in": "white_mountains", "s": [0.28, 0.65], "radius": [0.06, 0.085], "rain": 0.8},
+    "lake_valley":    {"biome": 7, "in": "white_mountains", "radius_km": [14, 20], "rain": 0.8},
     "steppe_islands": {"in": "canyon_steppe", "count": 6, "min_km2": 150},
     "river_marshes":  {"in": "great_marshes", "coast_band": 0.07},
     "valley_delta":   {"in": "river_valley", "s": 0.84, "reach": 0.10},
@@ -55,10 +63,10 @@
     "great_marshes":   {"kind": "lowland", "base": 6, "rise": 30, "amp": 4, "km": 3},
     "river_marshes":   {"kind": "lowland", "base": 2, "rise": 4, "amp": 1.5, "km": 2},
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7},
-    "white_mountains": {"kind": "ridges", "base": 1050, "peak": 5200, "km": 18, "width_km": 9, "gap_deg": 40, "bend_km": 5, "fade_in_km": 30, "fade_out_km": 25},
+    "white_mountains": {"kind": "massif", "base": 1050, "peak": 5200, "km": 16, "power": 0.9},
     "lake_valley":     {"kind": "bowl", "floor": 1450, "rim": 3200},
     "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15, "walls": 600, "slope_km": 9},
-    "black_lands":     {"kind": "spikes", "base": 650, "peak": 3000, "km": 11, "fade_km": 14}
+    "black_lands":     {"kind": "massif", "base": 450, "peak": 3300, "km": 12, "power": 0.8}
   },
   "biome_height": {
     "comment": "The same brush paints the height and the biome: where the final height lies outside the range its zone gives, the biome of the nearest ground that does fit is painted instead (so a steppe island keeps to the plain's level, the plateau does not take the canyon's biome).",
