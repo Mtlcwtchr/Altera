@@ -1,6 +1,6 @@
 {
   "comment": "Rules of the world generator (tools/terrain_lab/world_gen.py, doc/rework/WORLD_GENERATOR_PLAN.md). The continent is cut into `bands` from south to north (`size`: share of its height), sharing their edges; all coordinates are bent (`warp.coord`) so no border is a straight line. The `east_wing` replaces the bands east of `s` (west->east, 0..1 across the continent, tilted by `tilt`) between two places in the band sequence ('band:fraction'). `features`: places inside zones. `isles`: the northern isles are taken from a heightmap (its land pieces wholly in the top `keep_top` of the picture, but the biggest). `biome`: ids of content/config/biomes/fallen_gods.json. `rain`: how much the ground drains (0 none, and then it swallows water).",
-  "world_km": 524.288,
+  "world_km": 262.144,
   "seed": 7,
   "continent": {"land_share": 0.50},
   "bands": [
@@ -21,13 +21,13 @@
   },
   "features": {
     "lake_valley":    {"biome": 7, "in": "white_mountains", "s": [0.28, 0.65], "radius": [0.06, 0.085], "rain": 0.8},
-    "steppe_islands": {"in": "canyon_steppe", "count": 6, "min_km2": 500},
+    "steppe_islands": {"in": "canyon_steppe", "count": 6, "min_km2": 150},
     "river_marshes":  {"in": "great_marshes", "coast_band": 0.07},
     "valley_delta":   {"in": "river_valley", "s": 0.84, "reach": 0.10},
-    "dragon_cliff":   {"in": "golden_desert", "biome": 5, "width_km": 5.0, "s_from": [0.12, 0.6], "span": [0.10, 0.20], "rain": 0.25}
+    "dragon_cliff":   {"in": "golden_desert", "biome": 5, "width_km": 3.0, "s_from": [0.12, 0.6], "span": [0.10, 0.20], "rain": 0.25}
   },
-  "inlets": {"zones": ["golden_desert", "canyon_steppe", "steppe"], "count": 4, "spacing_km": 90, "length_km": [40, 90], "width_km": [2.5, 5.0]},
-  "coast": {"noise_km": 90, "threshold": 0.0},
+  "inlets": {"zones": ["golden_desert", "canyon_steppe", "steppe"], "count": 4, "spacing_km": 45, "length_km": [22, 50], "width_km": [1.5, 3.0]},
+  "coast": {"noise_km": 45, "threshold": 0.0},
   "isles": {
     "biome": 13,
     "source": "doc/NewRef/world_heightmap_v5_4096_gray16.png",
@@ -55,16 +55,25 @@
     "great_marshes":   {"kind": "lowland", "base": 6, "rise": 30, "amp": 4, "km": 3},
     "river_marshes":   {"kind": "lowland", "base": 2, "rise": 4, "amp": 1.5, "km": 2},
     "dark_forest":     {"kind": "hills", "base": 80, "rise": 900, "amp": 200, "km": 7},
-    "white_mountains": {"kind": "ridges", "base": 1050, "peak": 5200, "km": 18, "width_km": 13, "gap_deg": 40, "bend_km": 8, "fade_in_km": 60, "fade_out_km": 50},
+    "white_mountains": {"kind": "ridges", "base": 1050, "peak": 5200, "km": 18, "width_km": 9, "gap_deg": 40, "bend_km": 5, "fade_in_km": 30, "fade_out_km": 25},
     "lake_valley":     {"kind": "bowl", "floor": 1450, "rim": 3200},
     "river_valley":    {"kind": "valley", "floor_west": 420, "floor_east": 40, "amp": 15},
     "black_lands":     {"kind": "spikes", "base": 650, "peak": 3000, "km": 11, "fade_km": 14}
   },
+  "biome_height": {
+    "comment": "The same brush paints the height and the biome: where the final height lies outside the range its zone gives, the biome of the nearest ground that does fit is painted instead (so a steppe island keeps to the plain's level, the plateau does not take the canyon's biome).",
+    "golden_desert": [-5, 800],
+    "canyon_steppe": [-5, 1900],
+    "steppe": [900, 1500],
+    "green_plateau": [850, 2400],
+    "great_marshes": [-5, 450],
+    "river_marshes": [-5, 150]
+  },
   "transitions": {
     "comment": "blend_km: how wide neighbours blend by default; blend_overrides per zone. `cliffs`: pairs that meet in a sharp step. coasts by zone: cliff, beach, flat, or mixed (stretches of both, by noise).",
-    "blend_km": 6.0,
-    "blend_overrides": {"great_marshes": 22, "river_marshes": 18, "golden_desert": 14, "dark_forest": 14,
-                        "white_mountains": 30, "green_plateau": 12, "black_lands": 22, "river_valley": 18},
+    "blend_km": 4.0,
+    "blend_overrides": {"great_marshes": 12, "river_marshes": 10, "golden_desert": 8, "dark_forest": 8,
+                        "white_mountains": 16, "green_plateau": 7, "black_lands": 12, "river_valley": 10},
     "cliffs": [["canyon_steppe", "green_plateau"], ["steppe", "green_plateau"]],
     "coasts": {
       "golden_desert": "beach", "canyon_steppe": "beach", "steppe": "beach", "dragon_cliff": "cliff", "black_lands": "mixed", "great_marshes": "flat",

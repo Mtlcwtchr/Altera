@@ -7,6 +7,7 @@
 //                                                 wheel = speed, F1 = debug views,
 //                                                 M = strategic map view (WASD/drag pan,
 //                                                 wheel zoom, RMB/QE rotate)
+//                                                 G = another world, another seed (builds, then restarts the lab on it)
 //   benchmark     terrain_lab --bench all --headless 1920x1080 --out DIR [params]
 //
 // The benchmark flies scripted paths at a fixed 1/60 s step - the movement a
@@ -45,6 +46,10 @@
 
 #include <algorithm>
 #include <chrono>
+#include <cstdlib>
+#ifdef _WIN32
+#include <process.h>
+#endif
 #include <cmath>
 #include <cstdio>
 #include <cstring>
@@ -1077,6 +1082,12 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key >= SDLK_1 && e.key.key <= SDLK_9 && lab.foliageReady) {
                     const std::size_t i = std::size_t(e.key.key - SDLK_1);
                     if (i < lab.foliage.layers().size()) lab.foliage.layers()[i].enabled = !lab.foliage.layers()[i].enabled;
+                }
+                if (e.key.key == SDLK_G && !e.key.repeat) {
+                    // Another world by the same rules, another seed: built in a console
+                    // window of its own, then this lab is replaced by one on the new world.
+                    std::system(("start \"world\" python tools/terrain_lab/regenerate.py --pid " + std::to_string(int(_getpid())) + "").c_str());
+                    SDL_SetWindowTitle(window, "terrain_lab - building a new world (see the console window)...");
                 }
                 if (e.key.key == SDLK_M) {
                     map = !map;

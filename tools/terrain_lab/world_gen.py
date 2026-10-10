@@ -747,6 +747,18 @@ def main():
     for name, b in biome_of.items():
         ids[zone == name] = b
     if args.heights:
+        # One brush for the height and the biome: ground whose height falls
+        # outside its zone's range takes the biome of the nearest ground that fits.
+        fit = np.ones((n, n), bool)
+        for name, span_ in rules.get("biome_height", {}).items():
+            if name == "comment":
+                continue
+            lo_, hi_ = span_
+            sel = zone == name
+            fit[sel] = (h[sel] >= lo_) & (h[sel] <= hi_)
+        if not fit.all() and fit.any():
+            _, near = ndimage.distance_transform_edt(~fit, return_indices=True)
+            ids = ids[near[0], near[1]]
         # The mountains' lower skirts are the foothills: grass and stone, not snow.
         ids[(zone == "white_mountains") & (h < 2300.0)] = 5
     Image.fromarray(ids[::-1]).save(args.out + "_biomes.png")
