@@ -36,6 +36,34 @@ def _write_mesh(path, pos, nrm, uv, tris):
         f.write(tris.astype("<u4").tobytes())
 
 
+def _skirt(P, N, UV, tris, depth):
+    """Hangs a skirt from the tile's open edges on its border, `depth` down
+    along the surface's own inward side: where a neighbour tile is drawn at
+    another level of detail, the crack between them shows the skirt, not sky."""
+    e = np.concatenate([tris[:, [0, 1]], tris[:, [1, 2]], tris[:, [2, 0]]])
+    key = np.sort(e, 1)
+    _, inv, counts = np.unique(key, axis=0, return_inverse=True, return_counts=True)
+    open_ = e[counts[inv.ravel()] == 1]
+    if not len(open_):
+        return P, N, UV, tris
+    on = lambda q: (np.abs(q[:, 0]) < 0.5) | (np.abs(q[:, 0] - TILE_M) < 0.5) |                    (np.abs(q[:, 1]) < 0.5) | (np.abs(q[:, 1] - TILE_M) < 0.5)
+    border = open_[on(P[open_[:, 0]]) & on(P[open_[:, 1]])]
+    if not len(border):
+        return P, N, UV, tris
+    ends = np.unique(border)
+    low = np.full(len(P), -1, np.int64)
+    low[ends] = len(P) + np.arange(len(ends))
+    drop = P[ends] - N[ends] * depth
+    drop[:, 2] = np.minimum(drop[:, 2], P[ends, 2] - depth)
+    P2 = np.concatenate([P, drop])
+    N2 = np.concatenate([N, N[ends]])
+    UV2 = np.concatenate([UV, UV[ends] * np.array([0.7, 1.0])])
+    a, b = border[:, 0], border[:, 1]
+    # Wound as the edge runs in its own triangle, so the skirt faces out with it.
+    skirt = np.concatenate([np.stack([b, a, low[a]], 1), np.stack([b, low[a], low[b]], 1)])
+    return P2, N2, UV2, np.concatenate([tris, skirt])
+
+
 def fields(h, zones, c, rules):
     """The push field over a block of the map (32 m texels): where the skin
     is, which way and how far each point is pushed, how deep in it lies.
@@ -221,6 +249,7 @@ def tile(f, ti, tj, origin, c, cr, out_dir):
         under = np.clip(-N[:, 2], 0, 1)
         ao = np.clip(1 - 0.5 * under, 0.35, 1)
         UV = np.stack([ao, np.clip(tt.reshape(-1)[used], 0.1, 1)], 1)
+        P, N, UV, tris = _skirt(P, N, UV, tris, cr["skirt_m"])
         _write_mesh(out_dir / f"{name}_lod{level}.mesh", P, N, UV, tris.ravel())
         if level == 0:
             triangles += len(tris)

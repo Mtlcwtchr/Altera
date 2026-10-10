@@ -5,6 +5,7 @@
 1. world_gen.py: layout, zones, relief from the rules     -> world_height.png, world_biomes.png
 2. terrain_lab --erode: thermal erosion on the GPU (8192^2) -> world_eroded.r16
 3. world_gen.py --finish: the cliffs put back              -> world_final.r16
+4. world_features.py: spires, landmarks, cliff meshes     -> world_features.json, world_cliffs/
 
 Then view it with the run configuration "Terrain lab (generated world)", or
     terrain_lab.exe --heightmap terrain_lab_out/world_final.r16 --world-km 262.144 --height-range 6000
@@ -39,6 +40,12 @@ def build(seed, out, rules_file, no_erode=False):
     run(LAB, "--headless", "64x64", "--heightmap", out / "world_height.png", "--world-km", km,
         "--height-range", 6000, "--sea", 0.13, "--erode", out / "world_eroded.r16", "--erode-scale", 4)
     run(*gen, "--finish", out / "world_eroded.r16")
+    # The mesh part of the hybrid: spires, landmarks and cliff walls placed on
+    # this very heightmap (doc/rework/MESH_TERRAIN_PLAN.md).
+    feat = [sys.executable, "tools/terrain_lab/world_features.py", "--world", out / "world"]
+    if seed is not None:
+        feat += ["--seed", seed]
+    run(*feat)
     print(f"done: {out / 'world_final.r16'}  (preview: {out / 'world_final_preview.png'})")
     return km
 

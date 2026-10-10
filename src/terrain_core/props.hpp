@@ -114,7 +114,8 @@ private:
 
     void fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batches);
     Gpu gpuOf(std::uint32_t instance, const PropsFrame& frame) const;
-    void drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches);
+    void drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches, std::uint32_t firstArg,
+                     std::uint32_t args);
     // A refined surface, made on a worker thread: vertices (8 floats each), indices.
     using Surface = std::pair<std::vector<float>, std::vector<std::uint32_t>>;
     static Surface refineSurface(const CpuMesh* base, double x, double y, double z);
@@ -128,6 +129,10 @@ private:
     std::vector<Model> models_;
     std::vector<Instance> instances_;
     engine::Buffer vertices_, indices_, gpuInstances_;
+    // The draws of the shared meshes, view's then shadows', as indirect
+    // commands: one call draws them all, whatever the number of cliff tiles.
+    engine::Buffer args_;
+    std::uint32_t argsCapacity_ = 0, viewDraws_ = 0, shadowDraws_ = 0;
     SDL_GPUTransferBuffer* transfer_ = nullptr;
     std::uint32_t capacity_ = 0;
     engine::Sampler linear_;

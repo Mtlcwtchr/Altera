@@ -183,9 +183,13 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     // Room for every instance twice: the view's and the shadows' lists.
     capacity_ = std::uint32_t(instances_.size()) * 2;
     gpuInstances_ = device.makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, std::size_t(capacity_) * sizeof(Gpu));
+    argsCapacity_ = std::uint32_t(models_.size()) * kLevels * 2;
+    args_ = device.makeBuffer(SDL_GPU_BUFFERUSAGE_INDIRECT,
+                              std::size_t(argsCapacity_) * sizeof(SDL_GPUIndexedIndirectDrawCommand));
     SDL_GPUTransferBufferCreateInfo info{};
     info.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
-    info.size = std::uint32_t(std::size_t(capacity_) * sizeof(Gpu));
+    info.size = std::uint32_t(std::size_t(capacity_) * sizeof(Gpu) +
+                              std::size_t(argsCapacity_) * sizeof(SDL_GPUIndexedIndirectDrawCommand));
     transfer_ = SDL_CreateGPUTransferBuffer(device.handle(), &info);
     gpuBytes_ = allVertices.size() * sizeof(Vertex) + allIndices.size() * 4 + std::uint64_t(capacity_) * sizeof(Gpu);
 
@@ -225,7 +229,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     wanted.depthBiasConstant = -2.0f;
     wanted.depthBiasSlope = -2.5f;
     shadow_ = device.makePipeline(wanted);
-    if (!vertices_ || !indices_ || !gpuInstances_ || !transfer_ || !linear_ || !draw_ || !shadow_)
+    if (!vertices_ || !indices_ || !gpuInstances_ || !args_ || !transfer_ || !linear_ || !draw_ || !shadow_)
         return fail("props GPU objects: " + device.error());
     buckets_.assign(models_.size() * kLevels, {});
     return true;
@@ -495,32 +499,62 @@ void Props::prepare(SDL_GPUCommandBuffer* commands, const PropsFrame& frame) {
     }
     if (frame.shadowRange > 0) fill(frame, true, shadowBatches_);
     cullMs_ = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    // Indirect commands for the shared meshes: view's first, then shadows'.
+    // Each reads its run of the instance buffer through first_instance (the
+    // instance data are a vertex stream, so that is allowed).
+    std::vector<SDL_GPUIndexedIndirectDrawCommand> commandsOut;
+    auto addArgs = [&](const std::vector<Batch>& batches) {
+        std::uint32_t n = 0;
+        for (const auto& b : batches) {
+            if (b.detail) continue;
+            const Level& l = models_[b.model].levels[b.level];
+            commandsOut.push_back({l.indexCount, b.count, l.firstIndex, 0, b.first});
+            ++n;
+        }
+        return n;
+    };
+    viewDraws_ = addArgs(viewBatches_);
+    shadowDraws_ = addArgs(shadowBatches_);
     if (staging_.empty()) return;
     const auto bytes = std::uint32_t(staging_.size() * sizeof(Gpu));
-    void* mapped = SDL_MapGPUTransferBuffer(device_->handle(), transfer_, true);
+    const auto argBytes = std::uint32_t(commandsOut.size() * sizeof(SDL_GPUIndexedIndirectDrawCommand));
+    const auto argsAt = std::uint32_t(std::size_t(capacity_) * sizeof(Gpu));
+    auto* mapped = static_cast<std::uint8_t*>(SDL_MapGPUTransferBuffer(device_->handle(), transfer_, true));
     if (!mapped) return;
     std::memcpy(mapped, staging_.data(), bytes);
+    if (argBytes) std::memcpy(mapped + argsAt, commandsOut.data(), argBytes);
     SDL_UnmapGPUTransferBuffer(device_->handle(), transfer_);
     auto* copy = SDL_BeginGPUCopyPass(commands);
     const SDL_GPUTransferBufferLocation from{transfer_, 0};
     const SDL_GPUBufferRegion to{gpuInstances_.get(), 0, bytes};
     SDL_UploadToGPUBuffer(copy, &from, &to, true);
+    if (argBytes) {
+        const SDL_GPUTransferBufferLocation fromArgs{transfer_, argsAt};
+        const SDL_GPUBufferRegion toArgs{args_.get(), 0, argBytes};
+        SDL_UploadToGPUBuffer(copy, &fromArgs, &toArgs, true);
+    }
     SDL_EndGPUCopyPass(copy);
 }
 
-void Props::drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches) {
-    for (const auto& b : batches) {
-        const SDL_GPUBufferBinding index{b.detail ? b.detail->indices.get() : indices_.get(), 0};
+void Props::drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches, std::uint32_t firstArg,
+                        std::uint32_t args) {
+    if (args) {
+        const SDL_GPUBufferBinding index{indices_.get(), 0};
         SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-        const SDL_GPUBufferBinding buffers[2] = {{b.detail ? b.detail->vertices.get() : vertices_.get(), 0},
+        const SDL_GPUBufferBinding buffers[2] = {{vertices_.get(), 0}, {gpuInstances_.get(), 0}};
+        SDL_BindGPUVertexBuffers(pass, 0, buffers, 2);
+        SDL_DrawGPUIndexedPrimitivesIndirect(pass, args_.get(),
+                                             firstArg * std::uint32_t(sizeof(SDL_GPUIndexedIndirectDrawCommand)), args);
+    }
+    // The refined cliffs near the eye: their own buffers, a draw each.
+    for (const auto& b : batches) {
+        if (!b.detail) continue;
+        const SDL_GPUBufferBinding index{b.detail->indices.get(), 0};
+        SDL_BindGPUIndexBuffer(pass, &index, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+        const SDL_GPUBufferBinding buffers[2] = {{b.detail->vertices.get(), 0},
                                                  {gpuInstances_.get(), b.first * std::uint32_t(sizeof(Gpu))}};
         SDL_BindGPUVertexBuffers(pass, 0, buffers, 2);
-        if (b.detail) {
-            SDL_DrawGPUIndexedPrimitives(pass, b.detail->indexCount, b.count, 0, 0, 0);
-            continue;
-        }
-        const Level& l = models_[b.model].levels[b.level];
-        SDL_DrawGPUIndexedPrimitives(pass, l.indexCount, b.count, l.firstIndex, 0, 0);
+        SDL_DrawGPUIndexedPrimitives(pass, b.detail->indexCount, b.count, 0, 0, 0);
     }
 }
 
@@ -538,14 +572,14 @@ void Props::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const 
                                                       {properties, linear_.get()},
                                                       {shadowAtlas, shadowSampler}};
     SDL_BindGPUFragmentSamplers(pass, 0, textures, 4);
-    drawBatches(pass, viewBatches_);
+    drawBatches(pass, viewBatches_, 0, viewDraws_);
 }
 
 void Props::drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view) {
     if (shadowBatches_.empty()) return;
     SDL_BindGPUGraphicsPipeline(pass, shadow_.get());
     SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
-    drawBatches(pass, shadowBatches_);
+    drawBatches(pass, shadowBatches_, viewDraws_, shadowDraws_);
 }
 
 } // namespace terrain_core
