@@ -93,15 +93,14 @@ def place_zones(land, rules, n, seed, rs, fbm):
     # peninsula), the south preferred; it takes its washed neighbours until it
     # has its share.
     first = int(np.argmax(expo - 0.5 * south))
-    desert = {first}
-    got = area[first]
-    while got < shares["golden_desert"] * total:
-        frontier = {q for p in desert for q in adj[p] if q not in desert}
-        if not frontier:
+    # (it takes the patches nearest to that one over the land, so the whole tip is desert)
+    near_first = dijkstra(graph, indices=first)
+    desert, got = set(), 0.0
+    for p in np.argsort(near_first):
+        if got >= shares["golden_desert"] * total:
             break
-        q = max(frontier, key=lambda k: expo[k] - 0.25 * south[k])
-        desert.add(q)
-        got += area[q]
+        desert.add(int(p))
+        got += area[p]
     dsel = sorted(desert)
     dc = (cen[dsel] * area[dsel][:, None]).sum(axis=0) / area[dsel].sum()
 
@@ -111,7 +110,15 @@ def place_zones(land, rules, n, seed, rs, fbm):
     name_of = {p: "golden_desert" for p in desert}
     band_order = [("canyon_steppe", shares["canyon_steppe"]), ("green_plateau", shares["green_plateau"]),
                   ("white_mountains", shares["white_mountains"])]
-    k, cum = 0, 0.0
+    # The desert passes into nothing but the stone steppe: whatever land touches it
+    # is the canyon belt that wraps it (the sea washes the rest).
+    cum = 0.0
+    for p in sorted(desert):
+        for q in adj[p]:
+            if q not in desert and q not in name_of:
+                name_of[q] = "canyon_steppe"
+                cum += area[q]
+    k = 0
     edge = band_order[0][1] * total
     # The order is how far a patch lies from the desert, over the land and (by
     # `axis_weight`) along the north axis, so the belts run across the continent.
@@ -120,7 +127,7 @@ def place_zones(land, rules, n, seed, rs, fbm):
     key = (1.0 - wgt) * g + wgt * along * (g.max() / max(along.max(), 1.0))
     for p in np.argsort(key):
         p = int(p)
-        if p in desert:
+        if p in name_of:
             continue
         while k < len(band_order) and cum >= edge:
             k += 1
@@ -181,3 +188,27 @@ def place_zones(land, rules, n, seed, rs, fbm):
         db = ndimage.distance_transform_edt(~black) * km_px
         zone[inland & (dw < vw) & (db < vw) & (white | black)] = "river_valley"
     return zone, {"patches": P, "desert_patches": len(desert), "marsh_side": side}
+
+
+def import_zones(path, palette, land, n):
+    """A coloured biome picture (north up) read as the zones: every land pixel takes
+    the zone whose palette colour is nearest to the picture's colour there (river and
+    lake blue count as the ground round them). -> zone array like place_zones."""
+    from PIL import Image
+    img = Image.open(path).convert("RGB").resize((n, n), Image.NEAREST)
+    rgb = np.asarray(img, np.float32)[::-1]
+    names = list(palette)
+    cols = np.array([palette[k] for k in names], np.float32)
+    water = np.array(palette.get("_water", [30, 110, 240]), np.float32)
+    d = np.stack([np.linalg.norm(rgb - c, axis=2) for c in cols], axis=2)
+    pick = np.argmin(d, axis=2)
+    wet = np.linalg.norm(rgb - water, axis=2) < 60
+    zone = np.full((n, n), "ocean", dtype=object)
+    arr = np.array(names, dtype=object)
+    zone[land] = arr[pick[land]]
+    # blue lines and lakes: the nearest dry ground's zone
+    dry = land & ~wet
+    _, near = ndimage.distance_transform_edt(~dry, return_indices=True)
+    zone = np.where(land & wet, zone[near[0], near[1]], zone)
+    # land the picture leaves unpainted (black): the nearest painted zone
+    return zone

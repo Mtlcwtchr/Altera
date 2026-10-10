@@ -18,6 +18,7 @@ its box.
 """
 import argparse
 import json
+from pathlib import Path
 
 import numpy as np
 import world_zones
@@ -202,11 +203,19 @@ def layout(rules, n, seed):
     s = (xx - x0) / (x1 - x0)
     zone, info = world_zones.place_zones(land, rules, n, seed, rs, fbm)
     print("patches:", info)
+    zi = (rules.get("shape") or {}).get("zones_image")
+    if zi and Path(zi).exists():
+        pal = {k: v for k, v in rules["shape"]["palette"].items() if not k.startswith("_")}
+        pal["_water"] = rules["shape"]["palette"].get("_water", [30, 110, 240])
+        pal_zone = {k: v for k, v in pal.items() if k != "_water"}
+        zone = world_zones.import_zones(zi, {**pal_zone, "_water": pal["_water"]}, land, n)
+        print("zones imported from", zi)
 
     f = rules["features"]
     rng = np.random.default_rng(seed + 50)
     # The round valley with its lake, in the mountains.
     lv = f["lake_valley"]
+    have_lake = (zone == "lake_valley").any()
     white = zone == lv["in"]
     km_px_ = rules["world_km"] / n
     depth_km = ndimage.distance_transform_edt(white) * km_px_
@@ -217,7 +226,8 @@ def layout(rules, n, seed):
     lv_radius_km = min(pick(rs, lv["radius_km"]), 0.8 * float(depth_km[iy, ix]))
     r = np.hypot(xx - cx, yy - cy)
     valley = (r < lv_radius_km / rules["world_km"] * (1 + 0.06 * fbm(n, seed + 300, octaves=3, base=6))) & land
-    zone[valley] = "lake_valley"
+    if not have_lake:
+        zone[valley] = "lake_valley"
 
     # The rocky canyon land is cut by its network of canyons; the biggest
     # stretches of top the network leaves standing are the steppe (green
