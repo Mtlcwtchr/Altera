@@ -210,10 +210,80 @@ def spiral_isle(world, rules, catalogue, rng, add):
     return 1 + r["pieces"]
 
 
+def _coast(world, zones):
+    """Sea cells next to the land of `zones`, and how far each sea cell is
+    from that land (metres)."""
+    land = world.hz > 1.0
+    mine = np.isin(world.zones, zones) & land
+    dist = ndimage.distance_transform_edt(~mine) * world.cell
+    return ~land, dist
+
+
+def floating_isles(world, rules, catalogue, rng, add):
+    """Floating rock islands out over the sea off the forest cliff
+    (doc/BIOMES_RU.md, 05), their grassy tops high above the water."""
+    r = rules["floating_isles"]
+    sea, dist = _coast(world, r["zones"])
+    ok = sea & (dist > r["off_m"][0]) & (dist < r["off_m"][1])
+    ys, xs = np.nonzero(ok)
+    if not len(xs):
+        return 0
+    names = _names(catalogue, r["kind"])
+    pts = np.stack([(xs + rng.random(len(xs))) * world.cell, (ys + rng.random(len(xs))) * world.cell], 1)
+    order = rng.permutation(len(pts))
+    made = []
+    for k in order:
+        x, y = pts[k]
+        if any((x - p[0]) ** 2 + (y - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
+            continue
+        made.append((x, y))
+        name = names[rng.integers(len(names))]
+        m = catalogue[name]
+        s = rng.uniform(*r["size_m"]) / _size(m)
+        add(r["kind"], name, x, y, rng.uniform(0, math.tau), (s, s, s), z=round(float(rng.uniform(*r["top_m"])), 1))
+        if len(made) >= r["count"]:
+            break
+    return len(made)
+
+
+def sea_stacks(world, rules, catalogue, rng, add):
+    """Sea stacks off the cliff coasts: columns the sea has cut from the land,
+    standing in the shallows a little way out, often in small groups."""
+    r = rules["sea_stacks"]
+    sea, dist = _coast(world, r["zones"])
+    ok = sea & (dist > r["off_m"][0]) & (dist < r["off_m"][1]) & (world.hz > -r["max_depth_m"])
+    ys, xs = np.nonzero(ok)
+    if not len(xs):
+        return 0
+    names = _names(catalogue, r["kind"])
+    made = []
+    order = rng.permutation(len(xs))
+    for k in order:
+        cx, cy = (xs[k] + rng.random()) * world.cell, (ys[k] + rng.random()) * world.cell
+        if any((cx - p[0]) ** 2 + (cy - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
+            continue
+        made.append((cx, cy))
+        for q in range(int(rng.integers(r["group"][0], r["group"][1] + 1))):
+            x = cx + rng.uniform(-1, 1) * r["group_m"]
+            y = cy + rng.uniform(-1, 1) * r["group_m"]
+            name = names[rng.integers(len(names))]
+            m = catalogue[name]
+            # Out of the sea, not the sea floor: the lab stretches it from
+            # the floor up to `top` above the water.
+            top = rng.uniform(*r["height_m"])
+            depth = max(0.0, -world.height(x, y))
+            s = (top + depth) / m["hi"][2]
+            add(r["kind"], name, x, y, rng.uniform(0, math.tau), (s, s, s), top=round(top, 1))
+        if len(made) >= r["count"]:
+            break
+    return len(made)
+
+
 def place(world, rules, catalogue, rng, add):
     counts = {}
     for name, fn in (("canyon_bridges", canyon_bridges), ("ruin_chains", ruin_chains), ("rotunda", rotunda),
-                     ("sentinels", sentinels), ("spiral_isle", spiral_isle)):
+                     ("sentinels", sentinels), ("spiral_isle", spiral_isle), ("floating_isles", floating_isles),
+                     ("sea_stacks", sea_stacks)):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     return counts

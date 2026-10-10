@@ -445,6 +445,121 @@ def bridge_piece(rng, seed):
     return o
 
 
+def sleeping_troll(rng, seed):
+    """A foothill of the white mountains that is a sleeping rock troll
+    (doc/BIOMES_RU.md, 08): a hunched back, a shoulder, a knee drawn up, a
+    head tucked down - no face, no fingers, nothing human; a hill first.
+    ~600 m long, ~230 m high."""
+    balls = []
+    L = rng.uniform(520, 680)
+    # The back: a long rounded ridge rising to the shoulders.
+    for i in range(22):
+        t = i / 21
+        x = (t - 0.5) * L
+        hgt = 170 + 150 * math.sin(math.pi * min(1.0, t * 1.15)) ** 1.5
+        balls.append({"co": (x, rng.uniform(-10, 10), hgt * 0.55), "radius": hgt * 0.6,
+                      "size": (1.0, rng.uniform(0.8, 0.95), 0.95)})
+    # Shoulder hump and the head tucked under it, at the high end.
+    sx = L * 0.32
+    balls.append({"co": (sx, 0, 230), "radius": 140, "size": (1.2, 1.0, 0.75)})
+    balls.append({"co": (sx + 110, rng.uniform(-30, 30), 150), "radius": 85, "size": (1.0, 0.9, 0.9)})
+    # A knee drawn up and an arm lying along the side.
+    balls.append({"co": (-L * 0.15, 150, 90), "radius": 85, "size": (1.2, 0.8, 0.9)})
+    chain(balls, (sx, -120, 70), (-L * 0.1, -150, 40), 55, 45)
+    o = ab.metaball_mass("sleeping_troll", balls, resolution=4.0, threshold=0.6)
+    o = finish(o, 3.5, 70, 14, 3, seed)
+    for v in o.data.vertices:
+        v.co.z -= 40
+    return o
+
+
+def floating_isle(rng, seed):
+    """A floating island off the forest cliff (doc/BIOMES_RU.md, 05): a flat
+    grassy top, the rock below drawn down to a point, strata on its flanks,
+    a few lumps hanging off. Top at z = 0; ~320 m across, ~380 m deep."""
+    R = rng.uniform(140, 190)
+    D = rng.uniform(320, 440)
+    balls = []
+    rings = 14
+    for k in range(rings):
+        t = k / (rings - 1)                    # 0 at the top, 1 at the tip
+        r = R * (1 - t) ** 0.8 + 12
+        z = -t * D
+        for q in range(7):
+            a = q / 7 * math.tau + rng.uniform(-0.3, 0.3)
+            d = r * rng.uniform(0.35, 0.6)
+            balls.append({"co": (math.cos(a) * d, math.sin(a) * d, z), "radius": r * rng.uniform(0.5, 0.7),
+                          "size": (1, 1, 0.6)})
+    for k in range(rng.randint(2, 4)):          # hanging lumps
+        a = rng.uniform(0, math.tau)
+        balls.append({"co": (math.cos(a) * R * 0.7, math.sin(a) * R * 0.7, -rng.uniform(0.25, 0.5) * D),
+                      "radius": R * rng.uniform(0.18, 0.3), "size": (1, 1, 1.6)})
+    o = ab.metaball_mass("floating_isle", balls, resolution=3.0, threshold=0.6)
+    o = finish(o, 2.6, 40, 6, 2, seed)
+    cut_above(o, -8.0)
+    for v in o.data.vertices:
+        v.co.z += 8.0
+    return o
+
+
+def tilted_mass(rng, seed):
+    """The green plateau's tilted rock mass (doc/BIOMES_RU.md, 06): a great
+    slab heaved up on one side - a sheer cut face there, a long slope on the
+    other running back into the ground. ~1 km long, the cut ~260 m."""
+    L = rng.uniform(900, 1200)
+    W = rng.uniform(450, 650)
+    H = rng.uniform(220, 300)
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, 0, 0))
+    o = bpy.context.active_object
+    o.scale = (L, W, 200)
+    ab.select_only(o)
+    bpy.ops.object.transform_apply(scale=True)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.subdivide(number_cuts=24)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    for v in o.data.vertices:
+        u = min(max(v.co.x / L + 0.5, 0.0), 1.0)  # 0 at the low end, 1 at the cut
+        top = v.co.z > 0
+        lift = H * u ** 1.4
+        # The slab's outline wanders; its top swells a little.
+        wob = noise.noise(Vector((v.co.x / 300, v.co.y / 300, seed))) * 60
+        v.co.y *= 1.0 + 0.15 * noise.noise(Vector((v.co.x / 400, seed, 0)))
+        # A ridged back, not a box: the top falls away to both sides.
+        side = min(abs(v.co.y) / (W / 2), 1.0)
+        v.co.z = (lift * (1 - 0.55 * side * side) + wob * 0.3 + 12) if top else -260
+        if top:
+            v.co.y *= 1.0 - 0.3 * u
+        v.co.x += wob * 0.4
+    voxel(o, 6.0)
+    boulders(o, 90, 10, seed)
+    smooth(o, 2, 0.4)
+    ab.weather(o, seed=seed, cracks=0.4, erosion=0.6, chips=0.3, scale=0.05)
+    return o
+
+
+def sea_stack(rng, seed):
+    """A sea stack off the cliff coasts: a column of rock left standing in the
+    sea, its foot notched by the waves, flat-topped. ~120-220 m."""
+    h = rng.uniform(120, 220)
+    r = h * rng.uniform(0.16, 0.24)
+    balls = []
+    z = -40
+    while z < h:
+        t = max(0.0, z / h)
+        notch = 0.72 if 0 < z < 25 else 1.0
+        rr = r * (1.05 - 0.25 * t) * notch
+        for q in range(3):
+            a = q / 3 * math.tau + rng.uniform(-0.4, 0.4)
+            balls.append({"co": (math.cos(a) * rr * 0.4, math.sin(a) * rr * 0.4, z), "radius": rr * 0.75,
+                          "size": (1, 1, 0.7)})
+        z += rr * 0.45
+    o = ab.metaball_mass("sea_stack", balls, resolution=1.8, threshold=0.6)
+    o = finish(o, 1.6, r * 0.6, r * 0.12, 2, seed)
+    cut_above(o, h)
+    return o
+
+
 NEW = {
     "spire": (spire, 26000),
     "bridge": (bridge, 9000),
@@ -457,6 +572,10 @@ NEW = {
     "sentinel_peak": (sentinel_peak, 18000),
     "spiral_tower": (spiral_tower, 14000),
     "bridge_piece": (bridge_piece, 4000),
+    "sleeping_troll": (sleeping_troll, 22000),
+    "floating_isle": (floating_isle, 14000),
+    "tilted_mass": (tilted_mass, 24000),
+    "sea_stack": (sea_stack, 7000),
 }
 
 
@@ -643,6 +762,7 @@ def render_preview(objects, path):
 ALL = {"spire": 6, "bridge": 3, "valley_spire": 1,
        "marsh_arch": 2, "ruin_tower": 3, "ruin_wall": 2, "giant_bones": 2, "white_rotunda": 1,
        "sentinel_peak": 2, "spiral_tower": 1, "bridge_piece": 3,
+       "sleeping_troll": 3, "floating_isle": 4, "tilted_mass": 2, "sea_stack": 4,
        "menhir": 3, "fallen_menhir": 2, "marsh_panel": 3, "colossus_head": 2, "colossus_hand": 1,
        "needle": 3, "portal_tower": 2, "mirror_monument": 1, "iron_defender": 1, "cyclopean_block": 2,
        "giant_stair": 1}

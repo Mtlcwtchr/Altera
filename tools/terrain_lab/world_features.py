@@ -168,6 +168,11 @@ def place(world, rules, catalogue, seed):
     rise = top - world.hz
     low = world.hz < floor + sp["floor_share"] * np.maximum(top - floor, 0)
     ok = canyon & low & (rise > sp["min_rise_m"])
+    # Clear of the walls: a spire on a canyon's slope or at its rim stands with
+    # its foot in the air on the downhill side (and the wall's mesh skin is there).
+    gy, gx = np.gradient(world.hz, world.cell)
+    steep = np.hypot(gx, gy) > sp["wall_slope"]
+    ok &= ndimage.distance_transform_edt(~steep) * world.cell > sp["wall_gap_m"]
     pts, (ys, xs) = cells_of(world, ok, rng)
     area_km2 = canyon.sum() * (world.cell / 1000) ** 2
     count = int(area_km2 / 100 * sp["per_100km2"])
@@ -234,7 +239,7 @@ def place(world, rules, catalogue, seed):
     for g in rules["groups"]:
         inside = np.isin(zones, g["zones"])
         deep = ndimage.distance_transform_edt(inside) * world.cell > rules["edge_m"]
-        ok = deep & flat & (world.hz > 1.0)
+        ok = deep & flat & (world.hz > 1.0) & (world.hz < g.get("max_height_m", 1e9))
         area_km2 = inside.sum() * (world.cell / 1000) ** 2
         n = int(round(area_km2 / 1000 * g["per_1000km2"] * rng.uniform(0.8, 1.2)))
         pts, _ = cells_of(world, ok, rng)
@@ -327,7 +332,7 @@ def main():
         k = catalogue[o["m"]]["kind"] if o["m"] in catalogue else "cliff"
         kinds[k] = kinds.get(k, 0) + 1
     print(f"{len(items)} instances -> {out}: " + ", ".join(f"{k} {v}" for k, v in sorted(kinds.items())))
-    tops = [o["top"] - o["ground"] for o in items if "top" in o]
+    tops = [o["top"] - o["ground"] for o in items if "top" in o and "ground" in o]
     if tops:
         print(f"spires rise {min(tops):.0f} .. {max(tops):.0f} m (median {np.median(tops):.0f})")
 
