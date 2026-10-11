@@ -897,28 +897,33 @@ def white_cube(rng, seed):
 
 
 def mirror_prism(rng, seed):
-    """The golden desert's one megalith (doc/BIOMES_RU.md, 04): a huge
-    light, mirroring volume narrowing upward in an arc, a narrow black
-    entrance running all the way to its top. A building's thickness, not a
-    plane. 1000 m tall nominal."""
+    """The golden desert's one megalith (doc/BIOMES_RU.md, 04): a tall,
+    slender mirroring prism narrowing upward in an arc to a blunt point, a
+    narrow black entrance running up its face. A building's thickness, not
+    a plane. 1000 m tall nominal, ~200 m wide at the foot."""
     H = 1000.0
-    W = H * 0.42
-    D = W * 0.55
-    o = _box((W, D, H), (0, 0, H / 2), cuts=30)
+    W = H * 0.2
+    D = W * 0.6
+    o = _box((W, D, H), (0, 0, H / 2), cuts=40)
     for v in o.data.vertices:
-        t = max(0.0, v.co.z / H)
-        # Narrowing upward in an arc.
-        k = math.cos(t * math.pi / 2) ** 0.7 * 0.92 + 0.08
+        t = min(max(v.co.z / H + 0.5, 0.0), 1.0)   # the box's mesh is centred: -H/2 .. H/2
+        # Narrowing in an arc: slowly at first, then sweeping in to the tip.
+        k = max(0.04, math.cos(t * math.pi / 2) ** 0.55)
         v.co.x *= k
-        v.co.y *= 0.55 + 0.45 * k
-    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -D / 2, H / 2 + 20))
+        v.co.y *= 0.4 + 0.6 * k
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -D / 2, H * 0.4))
     slit = bpy.context.active_object
-    slit.scale = (W * 0.06, D * 0.5, H * 1.1)
-    cut_with(o, [slit])
-    voxel(o, H / 350.0)
-    smooth(o, 1, 0.25)
+    slit.scale = (W * 0.07, D * 0.45, H * 0.8)
+    ab.select_only(o)
+    bpy.ops.object.transform_apply(location=True)
     for v in o.data.vertices:
-        v.co.z -= 25
+        v.co.z -= H / 2
+    slit.location.z -= H / 2
+    cut_with(o, [slit])
+    voxel(o, H / 500.0)
+    smooth(o, 1, 0.2)
+    for v in o.data.vertices:
+        v.co.z += H / 2 - 25
     return o
 
 

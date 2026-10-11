@@ -202,6 +202,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         in.layer = layerOf.count(material) ? layerOf[material] : fallback;
         in.moss = std::clamp(o.value("moss", 0.0f), 0.0f, 1.0f);
         in.cover = std::clamp(o.value("cover", 0.0f), 0.0f, 1.0f);
+        in.mirror = std::clamp(o.value("mirror", 0.0f), 0.0f, 1.0f);
         // A cliff tile: the two biomes it wears (world_cliffs.py), by id.
         if (o.contains("biomes") && o["biomes"].size() == 2)
             for (int k = 0; k < 2; ++k)
@@ -322,6 +323,7 @@ Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
     g.extra[0] = in.cover;
     g.extra[1] = float(in.biomes[0]);
     g.extra[2] = float(in.biomes[1]);
+    g.extra[3] = in.mirror;
     return g;
 }
 

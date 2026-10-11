@@ -263,7 +263,7 @@
         "golden_desert": {
           "kind": "mirror_prism",
           "count": 1,
-          "share": 0.07
+          "share": 0.09
         }
       },
       "share": 0.08,
@@ -617,5 +617,8 @@
     "floating_isle": 1.0,
     "hogback": 0.7
   },
-  "cover_material": "grass_dry"
+  "cover_material": "grass_dry",
+  "mirror": {
+    "mirror_prism": 0.92
+  }
 }

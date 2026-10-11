@@ -104,6 +104,7 @@ private:
         float layer = 0;              // material array layer
         float moss = 0;               // 0..1: how much moss its upward faces carry
         float cover = 0;              // 0..1: how much of its tops is ground (steppe) rather than rock
+        float mirror = 0;             // 0..1: how much it mirrors the sky (the desert's prism)
         std::array<int, 2> biomes{-1, -1};   // a cliff tile: the two biomes it wears
         double cx = 0, cy = 0, cz = 0;   // bounding sphere centre
         float radius = 1;

@@ -17,7 +17,7 @@ struct VertexIn {
     float4 positionYaw : TEXCOORD3;   // instance: eye-relative origin, yaw
     float4 scale : TEXCOORD4;         // instance: scale x, y, z; material layer
     float4 anchor : TEXCOORD5;        // instance: origin x, y wrapped to 4096 m; origin z; variation
-    float4 extra : TEXCOORD6;         // instance: cover (steppe on its tops), a cliff's two biomes (-1: none), -
+    float4 extra : TEXCOORD6;         // instance: cover (steppe on its tops), a cliff's two biomes (-1: none), mirror
     float blend : TEXCOORD7;          // a cliff's vertex: how far it wears the second biome
 };
 
@@ -30,6 +30,7 @@ struct VsOut {
     nointerpolation float2 layer : TEXCOORD4;   // material layer, variation
     nointerpolation float hero : TEXCOORD5;     // 1: a megalith
     nointerpolation float cover : TEXCOORD6;    // 0..1: ground on its tops
+    nointerpolation float mirror : TEXCOORD9;   // 0..1: mirrors the sky
     float blend : TEXCOORD7;                    // a cliff: the second biome's share
     nointerpolation float2 biomes : TEXCOORD8;  // a cliff: its two biomes (-1: not a cliff)
 };
@@ -48,6 +49,7 @@ VsOut propsVs(VertexIn input) {
     o.layer = float2(input.scale.w, frac(input.anchor.w));
     o.hero = input.anchor.w > 1.5 ? 1.0 : 0.0;
     o.cover = input.extra.x;
+    o.mirror = input.extra.w;
     o.blend = input.blend;
     o.biomes = input.extra.yz;
     return o;
@@ -212,7 +214,27 @@ float4 propsPs(VsOut input) : SV_Target0 {
     const float foot = lerp(0.65, 1.0, saturate(input.uv.y * 12.0));
     const float occlusion = input.uv.x * foot * lerp(0.7, 1.0, ao);
     const float sunLight = sunShadow(input.view, n0) * cloudShadow(input.view);
-    const float3 lit = shadeSurface(colour, n, input.view, sunLight, occlusion, 0.0) * lerp(0.8, 1.0, input.uv.x);
+    float3 lit = shadeSurface(colour, n, input.view, sunLight, occlusion, 0.0) * lerp(0.8, 1.0, input.uv.x);
+    // A mirror (the desert's prism): the sky and the sun reflected off a
+    // smooth face, a little of the stone's own colour left in it, and the
+    // desert below it caught in the lower half of the reflection.
+    if (input.mirror > 0) {
+        const float3 v = normalize(input.view);
+        const float3 r = reflect(v, n0);
+        float3 seen = skyColour(r) + sunDisc(r) * sunLight;
+        // The clouds in it: where the reflected ray meets the cloud layer.
+        if (r.z > 0.02 && lightCloudCover > 0) {
+            const float3 world = float3(lightEyeXY + input.view.xy, lightEyeZ + input.view.z);
+            const float mid = (lightCloudBase + lightCloudTop) * 0.5;
+            const float2 at = world.xy + r.xy / r.z * (mid - world.z);
+            const float c = cloudCoverage(at, lightCloudCover, lightCloudDrift);
+            seen = lerp(seen, lightSunColour * 0.45 + lightZenith * 0.9, saturate(c * 1.2) * 0.85);
+        }
+        const float3 sand = float3(0.78, 0.62, 0.38) * (lightSunColour * 0.6 + lightZenith * 0.5);
+        seen = lerp(seen, sand, saturate(-r.z * 3.0));
+        const float fresnel = 0.55 + 0.45 * pow(1.0 - saturate(dot(-v, n0)), 4.0);
+        lit = lerp(lit, seen, input.mirror * fresnel);
+    }
     // A megalith keeps its silhouette through the haze: hazed as if a third
     // as far, with a quarter of the full haze laid over that.
     if (input.hero > 0.5) {
