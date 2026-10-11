@@ -164,7 +164,7 @@ private:
     struct CliffBiomes {
         static constexpr std::size_t kBiomes = 32;
         std::array<std::array<float, 4>, kBiomes> stone;   // rock layer, ground layer, ground from, rock below (normal z)
-        std::array<std::array<float, 4>, kBiomes> tint;    // tint, moss (0..2)
+        std::array<std::array<float, 4>, kBiomes> tint;    // tint, moss (0..1)
     } cliffBiomes_{};
     std::array<bool, kCategories> enabled_{true, true, true};
     std::array<std::size_t, kCategories> counts_{};

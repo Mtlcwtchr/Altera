@@ -118,11 +118,16 @@ Rock stone(float3 place, float3 n0, float layer, float distance, float bias) {
 }
 
 // A biome on a cliff: its rock on the walls, its ground on what faces up
-// (the plateau's grass to the brink of its cliffs), in its tint.
-Rock biomeStone(uint id, float3 place, float3 n0, float distance, float bias) {
+// (the plateau's grass to the brink of its cliffs; on the ledges down the
+// wall only in patches), in its tint. `height`: how far up the wall, 0..1.
+Rock cliffStone(uint id, float3 place, float3 n0, float height, float distance, float bias) {
     const float4 s = biomeStone[id];
     Rock r = stone(place, n0, s.x, distance, bias);
-    const float up = smoothstep(s.w, s.z, n0.z);
+    float up = smoothstep(s.w, s.z, n0.z);
+    if (up > 0) {
+        const float patches = materials.SampleBias(materialSampler, float3(place.xy / (rockTile * 12.0), s.y), bias + 3).g;
+        up *= saturate((patches - 0.4) * 3.0 + saturate((height - 0.9) * 10.0));
+    }
     if (up > 0) {
         const float2 uv = place.xy / rockTile;
         const float3 near = materials.SampleBias(materialSampler, float3(uv, s.y), bias).rgb;
@@ -152,9 +157,9 @@ float4 propsPs(VsOut input) : SV_Target0 {
             wb = smoothstep(0.3, 0.7, input.blend + (patches - 0.5) * 0.6);
         }
         Rock r = (Rock)0;
-        if (wb < 0.99) r = biomeStone(a, input.place, n0, distance, bias);
+        if (wb < 0.99) r = cliffStone(a, input.place, n0, input.uv.y, distance, bias);
         if (wb > 0.01) {
-            const Rock rb = biomeStone(b, input.place, n0, distance, bias);
+            const Rock rb = cliffStone(b, input.place, n0, input.uv.y, distance, bias);
             if (wb >= 0.99) r = rb;
             else {
                 r.colour = lerp(r.colour, rb.colour, wb);

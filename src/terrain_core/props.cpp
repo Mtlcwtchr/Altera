@@ -133,7 +133,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
             auto& tint = cliffBiomes_.tint[std::size_t(id)];
             if (b.contains("tint"))
                 for (int i = 0; i < 3; ++i) tint[i] = b["tint"][i].get<float>();
-            tint[3] = std::clamp(mossOf.value(name, 0.0f), 0.0f, 1.0f) * 2.0f;
+            tint[3] = std::clamp(mossOf.value(name, 0.0f), 0.0f, 1.0f);
         }
     }
 
@@ -453,18 +453,20 @@ Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, dou
         tris.swap(next);
     }
     // Roughen: each point pushed along its (smooth) normal by the rock noise,
-    // much on a wall, little on a ledge. The tile's border stays put, so the
-    // tiles round it meet it whatever their level.
+    // much on a wall, little on a ledge. Fading out towards the tile's
+    // border, which stays put, so the tiles round it meet it whatever their
+    // level and with no step where the roughness would stop short.
     const std::size_t count = v.size() / kFloats;
     for (std::size_t k = 0; k < count; ++k) {
         float* p = &v[k * kFloats];
-        const bool border = p[0] < 0.5f || p[1] < 0.5f || p[0] > 1023.5f || p[1] > 1023.5f;
-        if (border) continue;
+        const double edge = std::min(std::min(double(p[0]), 1024.0 - p[0]), std::min(double(p[1]), 1024.0 - p[1]));
+        const double fade = std::clamp((edge - 0.5) / 40.0, 0.0, 1.0);
+        if (fade <= 0) continue;
         const double nl = std::sqrt(double(p[3]) * p[3] + double(p[4]) * p[4] + double(p[5]) * p[5]);
         if (nl < 1e-6) continue;
         const double nx = p[3] / nl, ny = p[4] / nl, nz = p[5] / nl;
         const double steep = 1.0 - std::abs(nz);
-        const double amount = (0.6 + 4.4 * steep) * rock(x + p[0], y + p[1], z + p[2]);
+        const double amount = (0.6 + 4.4 * steep) * rock(x + p[0], y + p[1], z + p[2]) * fade * fade * (3 - 2 * fade);
         p[0] += float(nx * amount);
         p[1] += float(ny * amount);
         p[2] += float(nz * amount);
