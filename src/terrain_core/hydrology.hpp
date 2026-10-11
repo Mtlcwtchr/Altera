@@ -66,7 +66,7 @@ struct HydrologySettings {
     double widthScale = 0.9;
     double widthExponent = 0.62;
     double depthScale = 0.35;          // river depth (m) = depthScale * catchment^0.33 + 0.3
-    double deltaArea = 300.0;          // km^2: a river this big reaching the sea over low ground splits
+    double deltaArea = 75.0;           // km^2: a river this big reaching the sea over low ground splits (a 131 km world)
     double deltaHeight = 150.0;        // metres: ...if the ground where it would split is no higher
     double meander = 1.0;              // multiplies how far big rivers on the flat swing
     // The framework: the main lakes and rivers everything else drains to.

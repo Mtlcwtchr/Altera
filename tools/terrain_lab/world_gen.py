@@ -17,6 +17,7 @@ written north up. On the continent: s west->east, t south->north, 0..1 over
 its box.
 """
 import argparse
+import heapq
 import json
 from pathlib import Path
 
@@ -852,6 +853,40 @@ def relief(zone, rules, seed, coast, isles):
     return h.astype(np.float32)
 
 
+def drain(h, mask, slope=0.004):
+    """The ground in `mask` made to run out: every hollow in it filled up to its
+    spill point, with a slight fall towards the outlet (`slope` metres a cell),
+    so a river crossing it runs on instead of ending in a lake (priority flood,
+    over the mask's box; the box's edge and the sea are the outlets)."""
+    ys, xs = np.nonzero(mask)
+    if not len(ys):
+        return h
+    pad = 4
+    y0, y1 = max(ys.min() - pad, 0), min(ys.max() + pad + 1, h.shape[0])
+    x0, x1 = max(xs.min() - pad, 0), min(xs.max() + pad + 1, h.shape[1])
+    sub = h[y0:y1, x0:x1].astype(np.float64)
+    inside = ndimage.binary_dilation(mask[y0:y1, x0:x1], iterations=pad)
+    ny, nx = sub.shape
+    out = sub.copy()
+    done = ~inside | (sub <= 0.0)
+    done[0, :] = done[-1, :] = done[:, 0] = done[:, -1] = True
+    # (the outlets: every done cell next to one that is not)
+    edge = done & ndimage.binary_dilation(~done)
+    queue = [(float(sub[y, x]), int(y), int(x)) for y, x in zip(*np.nonzero(edge))]
+    heapq.heapify(queue)
+    while queue:
+        z, y, x = heapq.heappop(queue)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            v, u = y + dy, x + dx
+            if 0 <= v < ny and 0 <= u < nx and not done[v, u]:
+                done[v, u] = True
+                out[v, u] = max(sub[v, u], z + slope)
+                heapq.heappush(queue, (out[v, u], v, u))
+    res = h.copy()
+    res[y0:y1, x0:x1] = np.where(mask[y0:y1, x0:x1], out, sub).astype(h.dtype)
+    return res
+
+
 def thermal(h, zone, rules, protect, iterations):
     """Thermal erosion (Jacobi, eight neighbours): wherever ground stands
     steeper than its zone's angle of repose, the excess slides down - peaks
@@ -989,6 +1024,9 @@ def main():
     if args.heights:
         assert args.heights == n, "--heights must equal --size"
         h = relief(zone, rules, seed, coast, isles)
+        # The river valley runs out to the sea: no hollow on its floor (where the two
+        # ranges' skirts meet they would dam it into a chain of lakes).
+        h = drain(h, zone == "river_valley")
         protect = protected(zone, rules, coast, 2)
         h = thermal(h, zone, rules, protect, rules["erosion"].get("thermal_iterations", 60))
         sea, rng_m = 0.13, 6000.0
@@ -1007,8 +1045,11 @@ def main():
             piece = parts[sl] == k
             span = max(piece.shape)
             # (a marsh's pools are lakes whatever their outline: arms and all)
-            marshy = np.isin(zone[sl][piece], ["great_marshes", "river_marshes"]).mean() > 0.5
-            if piece.sum() >= 12 and (span * span < 10.0 * piece.sum() or marshy):
+            marshy = (zone[sl][piece] == "great_marshes").mean() > 0.5
+            # (the picture's river down the valley breaks into beads on a small map:
+            # they are that river, which the lab makes itself - not a chain of lakes)
+            valley = np.isin(zone[sl][piece], ["river_valley", "river_marshes"]).mean() > 0.3
+            if piece.sum() >= 12 and (span * span < 10.0 * piece.sum() or marshy) and not valley:
                 lakes[sl] |= piece
         pic = np.zeros((n, n, 3), np.uint8)
         pic[lakes] = (0, 0, 255)

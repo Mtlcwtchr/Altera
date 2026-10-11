@@ -123,6 +123,10 @@ float3 shadeSurface(float3 albedo, float3 normal, float3 rel, float sunLight, fl
     }
     const float3 sky = lerp(lightGround, lightZenith, normal.z * 0.5 + 0.5);
     light += sky * ao * 0.75;
+    // In the sun's shadow the ground still gets the light thrown back by the
+    // lit ground and rock round it: warm and soft, so a deep shadow reads as
+    // dark stone, not as a blue pool of sky light alone.
+    light += lightSunColour * float3(1.0, 0.86, 0.70) * (0.26 * (1.0 - sunLight) * ao);
     return albedo * light;
 }
 
