@@ -978,37 +978,156 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
     // downstream. Upstream first (the nodes are in that order). A junction
     // takes the level of its main stem - the biggest river into it - so a
     // brook coming in from a hanging valley does not drag the river down;
-    // the brook falls into it instead (below).
-    std::vector<float> into(nodes.size(), std::numeric_limits<float>::max());
-    for (std::size_t k = 0; k < nodes.size(); ++k)
-        if (nodes[k].terminal) into[k] = nodes[k].surface;
-    for (std::size_t k = 0; k < nodes.size(); ++k) {
-        if (!edges[k].pieces) continue;
-        const Node& b = nodes[nodes[k].down];
-        float level = into[k];
-        for (Sample& q : profile[k]) {
-            level = std::min(level, q.low - (0.15f * depthAt(k, q.t) + 0.3f));
-            // Into the sea or a lake: no lower than its water.
-            q.surface = b.terminal ? std::max(level, b.surface) : level;
+    // the brook falls into it instead (below). A tributary meets the river at
+    // that river's level, never under it - unless the brook comes in through
+    // a dip lower than the river (a hollow it drains through): there it stays
+    // under its own ground rather than standing as a pond up to the river's
+    // level.
+    std::vector<float> into(nodes.size());
+    auto settle = [&] {
+        std::fill(into.begin(), into.end(), std::numeric_limits<float>::max());
+        for (std::size_t k = 0; k < nodes.size(); ++k)
+            if (nodes[k].terminal) into[k] = nodes[k].surface;
+        for (std::size_t k = 0; k < nodes.size(); ++k) {
+            if (!edges[k].pieces) continue;
+            const Node& b = nodes[nodes[k].down];
+            float level = into[k];
+            for (Sample& q : profile[k]) {
+                level = std::min(level, q.low - (0.15f * depthAt(k, q.t) + 0.3f));
+                // Into the sea or a lake: no lower than its water.
+                q.surface = b.terminal ? std::max(level, b.surface) : level;
+            }
+            // ...and at its water: a river arriving high falls into it at the
+            // shore (the step the samples found), not out over the lake.
+            if (b.terminal) profile[k].back().surface = b.surface;
+            else if (b.upMain == k) into[nodes[k].down] = level;
         }
-        // ...and at its water: a river arriving high falls into it at the
-        // shore (the step the samples found), not out over the lake.
-        if (b.terminal) profile[k].back().surface = b.surface;
-        else if (b.upMain == k) into[nodes[k].down] = level;
+        for (std::size_t k = 0; k < nodes.size(); ++k) {
+            if (!edges[k].pieces) continue;
+            const Node& b = nodes[nodes[k].down];
+            if (b.terminal || b.upMain == k) continue;
+            const float join = into[nodes[k].down];
+            for (Sample& q : profile[k])
+                q.surface = std::max(q.surface, std::min(join, q.low - (0.15f * depthAt(k, q.t) + 0.3f)));
+        }
+    };
+    settle();
+
+    // The ground a river runs on is the ground the other rivers' valleys
+    // leave (the GPU cuts them all, generate.hlsl). A brook coming down to a
+    // river that had to cut a valley through a rise would otherwise keep the
+    // level of the uncut ground to the river's edge - its water standing on
+    // a ridge across the valley, falling off its end. So every sample's
+    // ground is lowered to what the valleys of the rivers it is joined with
+    // make of it, where they run well below it, and the surfaces are laid
+    // again. Twice: a brook into a tributary into a river.
+    {
+        // A river: a chain of edges, each the main stem of the next.
+        std::vector<std::uint32_t> chain(nodes.size(), kNone);
+        for (std::size_t k = nodes.size(); k-- > 0;) {
+            if (!edges[k].pieces) continue;
+            const std::uint32_t d = nodes[k].down;
+            const bool stem = !nodes[d].terminal && nodes[d].upMain == k && edges[d].pieces;
+            chain[k] = stem ? chain[d] : std::uint32_t(k);
+        }
+        // ...and the river it flows into.
+        auto receiver = [&](std::uint32_t c) {
+            const std::uint32_t d = nodes[c].down;
+            return !nodes[d].terminal && edges[d].pieces ? chain[d] : kNone;
+        };
+        // Joined rivers: one flows, through others or not, into the other.
+        // Their valleys meet where they come together. Not a river passing
+        // by another's valley: laid on it, it would cut its whole course
+        // below there down to the other's level (its own valley likewise
+        // would walk the cut upstream).
+        std::vector<std::array<std::uint32_t, 8>> below(nodes.size());
+        for (std::size_t k = 0; k < nodes.size(); ++k) {
+            if (!edges[k].pieces || chain[k] != k) continue;
+            below[k].fill(kNone);
+            std::uint32_t c = std::uint32_t(k);
+            for (std::size_t i = 0; i < below[k].size() && (c = receiver(c)) != kNone; ++i) below[k][i] = c;
+        }
+        auto related = [&](std::uint32_t a, std::uint32_t b) {
+            return std::find(below[a].begin(), below[a].end(), b) != below[a].end() ||
+                   std::find(below[b].begin(), below[b].end(), a) != below[b].end();
+        };
+        struct Reach {
+            float x0, y0, x1, y1, s0, s1, w0, w1, bank;   // w: half widths
+            std::uint32_t chain;
+        };
+        constexpr double kCell = 256.0;
+        const std::size_t gridSide = std::size_t(std::ceil(double(side) * dx / kCell));
+        std::vector<Reach> reaches;
+        std::vector<std::vector<std::uint32_t>> grid(gridSide * gridSide);
+        for (int pass = 0; pass < 2; ++pass) {
+            reaches.clear();
+            for (auto& g : grid) g.clear();
+            for (std::size_t k = 0; k < nodes.size(); ++k) {
+                const std::vector<Sample>& samples = profile[k];
+                for (std::size_t i = 0; i + 1 < samples.size(); ++i) {
+                    const Sample &p0 = samples[i], &p1 = samples[i + 1];
+                    Reach r{float(p0.x), float(p0.y), float(p1.x), float(p1.y), p0.surface, p1.surface,
+                            widthAt(k, p0.t) * 0.5f, widthAt(k, p1.t) * 0.5f, 0, chain[k]};
+                    // As the segments below reach: the channel's banks, or as
+                    // far as the cut is deep, three to one.
+                    const float cut = std::max(p0.mid - p0.surface, p1.mid - p1.surface);
+                    const float channel = std::max(6.0f, 2.0f * std::max(r.w0, r.w1)) +
+                                          4.0f * std::max(depthAt(k, p0.t), depthAt(k, p1.t));
+                    r.bank = std::max(channel, std::min(3.0f * cut, 400.0f));
+                    const double reach = std::max(r.w0, r.w1) + r.bank;
+                    const auto cell = [&](double v) {
+                        return std::size_t(std::clamp(v / kCell, 0.0, double(gridSide - 1)));
+                    };
+                    const std::size_t gx0 = cell(std::min(r.x0, r.x1) - reach), gx1 = cell(std::max(r.x0, r.x1) + reach);
+                    const std::size_t gy0 = cell(std::min(r.y0, r.y1) - reach), gy1 = cell(std::max(r.y0, r.y1) + reach);
+                    for (std::size_t gy = gy0; gy <= gy1; ++gy)
+                        for (std::size_t gx = gx0; gx <= gx1; ++gx)
+                            grid[gy * gridSide + gx].push_back(std::uint32_t(reaches.size()));
+                    reaches.push_back(r);
+                }
+            }
+            parallelFor(nodes.size(), [&](std::size_t k) {
+                if (!edges[k].pieces) return;
+                for (Sample& q : profile[k]) {
+                    const std::size_t gx = std::size_t(std::clamp(q.x / kCell, 0.0, double(gridSide - 1)));
+                    const std::size_t gy = std::size_t(std::clamp(q.y / kCell, 0.0, double(gridSide - 1)));
+                    for (const std::uint32_t j : grid[gy * gridSide + gx]) {
+                        const Reach& r = reaches[j];
+                        if (!related(chain[k], r.chain)) continue;
+                        const double ex = r.x1 - r.x0, ey = r.y1 - r.y0;
+                        // Not upstream of its start, as on the GPU.
+                        const double along = ((q.x - r.x0) * ex + (q.y - r.y0) * ey) / std::max(ex * ex + ey * ey, 1e-6);
+                        if (along < 0.0) continue;
+                        const double u = std::min(along, 1.0);
+                        const float surface = float(r.s0 + (r.s1 - r.s0) * u);
+                        // Only a river well below: one about level with it is
+                        // where the two meet, and each laid a margin under the
+                        // other's water they would step each other down.
+                        if (surface > q.surface - 2.0f) continue;
+                        const float d = float(std::hypot(q.x - (r.x0 + ex * u), q.y - (r.y0 + ey * u)));
+                        const float beyond = std::max(d - float(r.w0 + (r.w1 - r.w0) * u), 0.0f);
+                        if (beyond >= r.bank) continue;
+                        // generate.hlsl's valley: up from the water at one to
+                        // three, back into the ground over the bank.
+                        const float x = beyond / r.bank, b = x * x * (3.0f - 2.0f * x);
+                        const float rise = surface + beyond * 0.33f;
+                        q.mid = std::min(q.mid, rise + (q.mid - rise) * b);
+                        q.low = std::min(q.low, rise + (q.low - rise) * b);
+                    }
+                }
+            });
+            settle();
+        }
     }
-    // A tributary meets the river at that river's level. Coming in higher it
-    // falls at the river's edge: flat to the lip, then down.
+
+    // Coming in higher than the river it meets, a tributary falls at the
+    // river's edge: flat to the lip, then down.
     for (std::size_t k = 0; k < nodes.size(); ++k) {
         if (!edges[k].pieces) continue;
         const Node& b = nodes[nodes[k].down];
         if (b.terminal || b.upMain == k) continue;
         const float join = into[nodes[k].down];
         std::vector<Sample>& samples = profile[k];
-        // Never under it - unless the brook comes in through a dip lower than
-        // the river (a hollow it drains through): there it stays under its
-        // own ground rather than standing as a pond up to the river's level.
-        for (Sample& q : samples)
-            q.surface = std::max(q.surface, std::min(join, q.low - (0.15f * depthAt(k, q.t) + 0.3f)));
         const double jx = samples.back().x, jy = samples.back().y;
         const double edge = b.width * 0.5 + 0.5;
         auto from = [&](const Sample& q) { return std::hypot(q.x - jx, q.y - jy); };

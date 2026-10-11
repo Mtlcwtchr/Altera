@@ -25,9 +25,7 @@ struct RiverHit {
     float2 away;       // from the centre line towards the point, unit
 };
 
-// Nearest by the edge of the water, not the centre line: where a brook joins
-// a big river, a point in the big river belongs to it.
-RiverHit nearestRiver(float2 p) {
+RiverHit noRiver() {
     RiverHit r;
     r.found = false;
     r.distance = 1e9;
@@ -39,34 +37,56 @@ RiverHit nearestRiver(float2 p) {
     r.fall = 0;
     r.along = float2(1, 0);
     r.away = float2(0, 1);
+    return r;
+}
+
+// The point's tile of the river graph: (offset, count) into riverList, or
+// none off the map.
+uint2 riverSpan(float2 p) {
     const uint2 header = riverTiles[0];
     const float tile = asfloat(header.x);
     const int side = int(header.y);
-    if (side == 0) return r;
+    if (side == 0) return uint2(0, 0);
     const int2 t = int2(floor(p / tile));
-    if (any(t < 0) || any(t >= side)) return r;
-    const uint2 span = riverTiles[1 + uint(t.y * side + t.x)];
+    if (any(t < 0) || any(t >= side)) return uint2(0, 0);
+    return riverTiles[1 + uint(t.y * side + t.x)];
+}
+
+// Segment `index` seen from `p`; `u` is where along it p falls, unclamped
+// (0 its start, 1 its end).
+RiverHit riverSegment(uint index, float2 p, out float u) {
+    const uint s = index * 3;
+    const float4 a = riverSegments[s], b = riverSegments[s + 1], c = riverSegments[s + 2];
+    const float2 e = a.zw - a.xy;
+    u = dot(p - a.xy, e) / max(dot(e, e), 1e-6);
+    const float uc = saturate(u);
+    const float2 q = a.xy + e * uc;
+    RiverHit r;
+    r.found = true;
+    r.distance = length(p - q);
+    r.halfWidth = lerp(b.z, b.w, uc) * 0.5;
+    r.surface = lerp(b.x, b.y, uc);
+    r.depth = lerp(c.x, c.y, uc);
+    r.bank = c.w;
+    r.flow = c.z;
+    r.fall = max(b.x - b.y, 0.0) / max(length(e), 1e-3);
+    r.along = e / max(length(e), 1e-4);
+    r.away = r.distance > 1e-4 ? (p - q) / r.distance : float2(-r.along.y, r.along.x);
+    return r;
+}
+
+// Nearest by the edge of the water, not the centre line: where a brook joins
+// a big river, a point in the big river belongs to it.
+RiverHit nearestRiver(float2 p) {
+    RiverHit r = noRiver();
+    const uint2 span = riverSpan(p);
     float best = 1e9;
     for (uint k = 0; k < span.y; ++k) {
-        const uint s = riverList[span.x + k] * 3;
-        const float4 a = riverSegments[s], b = riverSegments[s + 1], c = riverSegments[s + 2];
-        const float2 e = a.zw - a.xy;
-        const float u = saturate(dot(p - a.xy, e) / max(dot(e, e), 1e-6));
-        const float2 q = a.xy + e * u;
-        const float d = length(p - q);
-        const float halfWidth = lerp(b.z, b.w, u) * 0.5;
-        if (d - halfWidth >= best || d > halfWidth + c.w) continue;
-        best = d - halfWidth;
-        r.found = true;
-        r.distance = d;
-        r.halfWidth = halfWidth;
-        r.surface = lerp(b.x, b.y, u);
-        r.depth = lerp(c.x, c.y, u);
-        r.bank = c.w;
-        r.flow = c.z;
-        r.fall = max(b.x - b.y, 0.0) / max(length(e), 1e-3);
-        r.along = e / max(length(e), 1e-4);
-        r.away = d > 1e-4 ? (p - q) / d : float2(-r.along.y, r.along.x);
+        float u;
+        const RiverHit h = riverSegment(riverList[span.x + k], p, u);
+        if (h.distance - h.halfWidth >= best || h.distance > h.halfWidth + h.bank) continue;
+        best = h.distance - h.halfWidth;
+        r = h;
     }
     return r;
 }

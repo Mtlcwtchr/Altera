@@ -17,7 +17,7 @@
 
 RWTexture2D<float4> clipLevel : register(u0, space1);
 
-// The ground `h` (height, dh/dx, dh/dy) at `p` with any river's bed and
+// The ground `h` (height, dh/dx, dh/dy) at `p` with one river's bed and
 // valley cut into it. Across the water a parabola down to the depth (where
 // this level can hold the channel; a coarser one keeps a flat floor at the
 // water, which the ground's shader paints); then the sides rising at 1:3
@@ -25,9 +25,8 @@ RWTexture2D<float4> clipLevel : register(u0, space1);
 // width. Only ever down: the graph laid the water under the ground all
 // along the river (hydrology.cpp), so ground lower than the cut is left as it
 // is rather than built up into a bank the water stands on.
-float3 carveRiver(float3 h, float2 p, float levelSpacing) {
-    const RiverHit r = nearestRiver(p);
-    if (!r.found || r.distance >= r.halfWidth + r.bank) return h;
+float3 carveOne(float3 h, RiverHit r, float levelSpacing) {
+    if (r.distance >= r.halfWidth + r.bank) return h;
     const float valley = valleyResolved(r, levelSpacing);
     if (valley <= 0) return h;
     const float channel = riverResolved(r, levelSpacing);
@@ -45,6 +44,27 @@ float3 carveRiver(float3 h, float2 p, float levelSpacing) {
     }
     if (cut.x >= h.x) return h;
     return lerp(h, cut, valley);
+}
+
+// Every river's valley, not just the nearest's: where a brook comes down
+// into a river's valley the two cuts meet, the lower one wins, and no wall of
+// uncut ground is left standing where the nearest river changes. The
+// nearest river's cut as before; then the others, all but where the point
+// lies upstream of a segment's start: there, past the foot of a fall, the
+// river below would eat back into the lip.
+float3 carveRiver(float3 h, float2 p, float levelSpacing) {
+    const RiverHit nearest = nearestRiver(p);
+    if (!nearest.found) return h;
+    float3 best = carveOne(h, nearest, levelSpacing);
+    const uint2 span = riverSpan(p);
+    for (uint k = 0; k < span.y; ++k) {
+        float u;
+        const RiverHit r = riverSegment(riverList[span.x + k], p, u);
+        if (u < 0.0) continue;
+        const float3 c = carveOne(h, r, levelSpacing);
+        if (c.x < best.x) best = c;
+    }
+    return best;
 }
 
 [numthreads(8, 8, 1)]
