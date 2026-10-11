@@ -182,6 +182,7 @@ def continent(n, seed, rs, land_share, y_top):
 
 # The water painted on the imported zones picture (lakes, rivers), if any.
 PICTURE_WATER = None
+BOG_WATER = None     # the bog's pools (relief(), great marshes with "bog"), painted as lakes
 
 
 def smooth_zones(zone, land, rules, seed):
@@ -671,7 +672,24 @@ def relief(zone, rules, seed, coast, isles):
             d2 = smoothstep(thr2, thr2 + r.get("wall", 0.03), c2)
             sp = fbm32(n, sd + 7, 3.0, world_km, 4)
             spires = r.get("spires", 0) * smoothstep(0.30, 0.46, sp) * (0.45 + 0.55 * ridged(n, sd + 8, 1.5, world_km, octaves=3))
-            h = top - (top - floor) * d1 - 0.25 * (top - floor) * d2 * (1 - d1) + d1 * spires
+            if r.get("tiers"):
+                # Mesas at several levels, of every size: the standing ground steps
+                # down in tiers (a slow noise, terraced), the lesser canyons cut it
+                # into islands a tier or two lower; the floor is broken by dry
+                # washes and rises in scree at the foot of every wall.
+                k = r["tiers"]
+                lvl = 0.5 + 0.5 * fbm32(n, sd + 9, r["km"] * 0.7, world_km, 3) * 1.6
+                q = np.clip(lvl, 0.0, 0.999) * k
+                step = (np.floor(q) + smoothstep(0.82, 1.0, q - np.floor(q))) / k
+                tier = r.get("tier_low", 0.3) + (1.0 - r.get("tier_low", 0.3)) * step
+                stand = floor + (top - floor) * tier * (1.0 - r.get("cut", 0.6) * d2)
+                washes = ridged(n, sd + 11, r["km"] / 4.0, world_km, octaves=4)
+                low = floor - r.get("wash_m", 25) * smoothstep(0.55, 0.9, washes)
+                scree = ndimage.gaussian_filter(1.0 - d1, 0.35 / km_px)
+                low = low + r.get("scree_m", 60) * scree * (1.0 - scree)
+                h = low + (stand - low) * (1.0 - d1) + d1 * spires
+            else:
+                h = top - (top - floor) * d1 - 0.25 * (top - floor) * d2 * (1 - d1) + d1 * spires
             tops[name] = top
         elif kind == "table":
             h = r["base"] + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
@@ -689,6 +707,14 @@ def relief(zone, rules, seed, coast, isles):
             h = r["base"] + r["rise"] * progress + r["amp"] * fbm32(n, sd, r["km"], world_km, 3)
             if r.get("pools"):
                 # Shallow marsh waters of their own: many small pools just under the sea's level.
+                if r.get("bog"):
+                    # A bog: standing water everywhere, broken into moss islands
+                    # and spits of every size (the picture's lakes join them).
+                    f = 0.6 * fbm32(n, sd + 21, r.get("bog_km", 0.6), world_km, 4) + 0.4 * fbm32(n, sd + 22, r.get("bog_km", 0.6) / 3.0, world_km, 3)
+                    thr_b = np.percentile(f[m], 100 * (1.0 - r["bog"])) if m.any() else 0.0
+                    bog = smoothstep(thr_b, thr_b + 0.05, f)
+                else:
+                    bog = 0.0
                 if PICTURE_WATER is not None and (PICTURE_WATER & m).any():
                     # the lakes the zones picture paints there, their shores
                     # ragged by a little noise, shelving gently (no deep bowls)
@@ -701,8 +727,12 @@ def relief(zone, rules, seed, coast, isles):
                     pool = smoothstep(thr, thr + 0.10, f)
                 # (the bed sinks below the marsh, but stays above the shore's sand:
                 # under the water lies mud, dark, not a pale beach)
+                pool = np.maximum(pool, bog)
                 bed = np.maximum(h - r.get("pool_depth", 6.0), r.get("pool_bed_min", 4.5))
                 h = h + (bed - h) * pool
+                if r.get("bog"):
+                    global BOG_WATER
+                    BOG_WATER = (pool > 0.5) & m
         elif kind == "ridges":
             h = ranges(zone, m, r, sd, n, world_km, xx, yy)
         elif kind == "massif":
@@ -1051,6 +1081,9 @@ def main():
             valley = np.isin(zone[sl][piece], ["river_valley", "river_marshes"]).mean() > 0.3
             if piece.sum() >= 12 and (span * span < 10.0 * piece.sum() or marshy) and not valley:
                 lakes[sl] |= piece
+        if BOG_WATER is not None:
+            # the bog's own water: painted too, every pool, or the lab drops them as dents
+            lakes |= BOG_WATER
         pic = np.zeros((n, n, 3), np.uint8)
         pic[lakes] = (0, 0, 255)
         Image.fromarray(pic[::-1]).save(args.out + "_water_skeleton.png")
@@ -1114,6 +1147,15 @@ def main():
         # (not along one contour line: the edge climbs and falls with a noise)
         foot = 2300.0 + 300.0 * fbm(n, seed + 1801, octaves=5, base=max(2, int(rules["world_km"] / 12.0)))
         ids[(zone == "white_mountains") & (h < foot)] = 5
+        # The canyon's mesas and plateaus, at whatever tier: steppe on their tops
+        # (flat ground well above the floor), stone on the floor and the walls.
+        rc = rules["relief"].get("canyon_steppe", {})
+        if rc.get("kind") == "canyons":
+            cell_m = rules["world_km"] * 1000.0 / n
+            gy_, gx_ = np.gradient(h, cell_m)
+            flat = np.hypot(gx_, gy_) < np.tan(np.radians(18.0))
+            above = h > rc["floor"] + rc["floor_rise"] + rc.get("steppe_above_m", 150.0)
+            ids[np.isin(zone, ["canyon_steppe", "steppe"]) & above & flat] = 3
     Image.fromarray(ids[::-1]).save(args.out + "_biomes.png")
     print(f"land {land.mean() * 100:.0f}% of the world; wrote {args.out}_zones.png, {args.out}_biomes.png")
 

@@ -38,7 +38,7 @@
   "sea_floor": "sand_grey",
   "biomes": [
     {"id": 0,  "name": "sea",               "base": "sand_grey"},
-    {"id": 1,  "name": "great_marshes",     "base": "grass_dark",    "patch": {"material": "dirt_mud",     "cell_m": 48,  "cover": 0.40}, "slope": {"material": "dirt_dark",  "from": 0.95, "to": 0.85}, "tint": [0.85, 1.0, 0.95]},
+    {"id": 1,  "name": "great_marshes",     "base": "grass_dark",    "patch": {"material": "grass_olive",  "cell_m": 24,  "cover": 0.40}, "slope": {"material": "dirt_mud",   "from": 0.95, "to": 0.85}, "tint": [0.74, 0.96, 0.58]},
     {"id": 2,  "name": "dark_forest",       "base": "grass_olive",   "patch": {"material": "dirt_dark",    "cell_m": 32,  "cover": 0.35}, "slope": {"material": "rock_mossy", "from": 0.85, "to": 0.70}, "tint": [0.70, 0.80, 0.68]},
     {"id": 3,  "name": "canyon_steppe",     "base": "grass_dry",     "patch": {"material": "dirt_red",     "cell_m": 96,  "cover": 0.35}, "slope": {"material": "rock_ochre", "from": 0.92, "to": 0.80}},
     {"id": 4,  "name": "golden_desert",     "base": "sand_gold",     "patch": {"material": "sand_dune",    "cell_m": 192, "cover": 0.30}, "slope": {"material": "rock_ochre", "from": 0.88, "to": 0.75}},
