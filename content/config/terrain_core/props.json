@@ -73,7 +73,7 @@
         "steppe",
         "steppe_canyon"
       ],
-      "count": 45,
+      "count": 0,
       "drop_slope": 0.6,
       "rim_m": 400,
       "below_top_m": 120,
@@ -262,15 +262,15 @@
       "above_floor_m": 100,
       "min_cells": 4,
       "rock_kind": "spire",
-      "rock_gap_m": 220,
-      "rock_out_m": 45,
+      "rock_gap_m": 200,
+      "rock_out_m": 20,
       "rock_above_m": [
-        10,
-        70
+        40,
+        160
       ],
       "rock_width_m": [
-        60,
-        130
+        150,
+        280
       ],
       "bridge_kind": "bridge",
       "odd_kind": "ribbon_bridge",
