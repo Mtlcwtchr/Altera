@@ -1093,16 +1093,23 @@ def main():
         if not fit.all() and fit.any():
             # (from another zone's ground: a marsh climbing a hill takes the
             # forest's biome, not its own from the foot of the hill)
+            # (and from ground at its own level: a mesa top above the canyon takes
+            # the plain's biome, not the desert's sand from the foot of the cliff)
             src = ids.copy()
+            spans = {k: v for k, v in rules.get("biome_height", {}).items() if k != "comment"}
             for name in np.unique(zone[~fit]):
-                sel = (zone == name) & ~fit
-                donor = fit & (zone != name) & (zone != "ocean")
-                if not donor.any():
-                    continue
-                dist, near = ndimage.distance_transform_edt(~donor, return_indices=True)
-                # ... and only from ground close by: no wedges borrowed from far zones
-                close = sel & (dist * (rules["world_km"] / n) < 6.0)
-                ids = np.where(close, src[near[0], near[1]], ids)
+                lo_, hi_ = spans.get(name, (-1e9, 1e9))
+                for side, level in (("high", h > hi_), ("low", h < lo_)):
+                    sel = (zone == name) & ~fit & level
+                    if not sel.any():
+                        continue
+                    donor = fit & (zone != name) & (zone != "ocean") & (h > hi_ - 150.0 if side == "high" else h < lo_ + 150.0)
+                    if not donor.any():
+                        continue
+                    dist, near = ndimage.distance_transform_edt(~donor, return_indices=True)
+                    # ... and only from ground close by: no wedges borrowed from far zones
+                    close = sel & (dist * (rules["world_km"] / n) < 6.0)
+                    ids = np.where(close, src[near[0], near[1]], ids)
         # The mountains' lower skirts are the foothills: grass and stone, not snow.
         # (not along one contour line: the edge climbs and falls with a noise)
         foot = 2300.0 + 300.0 * fbm(n, seed + 1801, octaves=5, base=max(2, int(rules["world_km"] / 12.0)))

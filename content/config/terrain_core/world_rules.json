@@ -82,9 +82,9 @@
   "biome_height": {
     "comment": "The same brush paints the height and the biome: where the final height lies outside the range its zone gives, the biome of the nearest ground that does fit is painted instead (so a steppe island keeps to the plain's level, the plateau does not take the canyon's biome).",
     "golden_desert": [-5, 800],
-    "canyon_steppe": [-5, 1900],
+    "canyon_steppe": [-5, 900],
     "steppe": [900, 1500],
-    "green_plateau": [850, 2400],
+    "green_plateau": [300, 2400],
     "great_marshes": [-5, 120],
     "river_marshes": [-5, 150]
   },
