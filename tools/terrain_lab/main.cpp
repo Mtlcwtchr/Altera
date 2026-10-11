@@ -492,6 +492,7 @@ struct Lab {
             for (std::size_t i = 0; i < std::min<std::size_t>(5, hydro.deltaHeads.size()); ++i)
                 std::printf("  delta at %.4f,%.4f (%.0f km^2)\n", hydro.deltaHeads[i][0] / options.params.worldSize,
                             hydro.deltaHeads[i][1] / options.params.worldSize, hydro.deltaHeads[i][2]);
+            if (hydro.drySegments) std::printf("  %u segments dry (along a steep slope)\n", hydro.drySegments);
             if (hydro.falls)
                 std::printf("  %u fall segments, biggest %.0f m at %.4f,%.4f\n", hydro.falls, hydro.biggestFall[2],
                             hydro.biggestFall[0] / options.params.worldSize, hydro.biggestFall[1] / options.params.worldSize);

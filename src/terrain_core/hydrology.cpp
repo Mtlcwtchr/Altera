@@ -1165,6 +1165,83 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
     for (std::size_t k = 0; k < nodes.size(); ++k)
         if (edges[k].pieces && !nodes[k].terminal) nodes[k].surface = profile[k].front().surface;
 
+    // A river does not run along a steep slope: water there goes straight
+    // down it, and a channel cut sideways into a cliff face is a slot no
+    // water keeps. The graph, routed on a coarser grid than the ground, can
+    // still lay a river along a cliff or across a valley's wall. Where the
+    // ground across a river falls steeply to one side - and more than it
+    // falls along the river - the river is dry: no water and no channel
+    // there, it goes on below where it comes off the slope. The painted
+    // framework always runs.
+    constexpr float kSideways = 0.45f;   // fall across the river (m per m) it cannot run along
+    std::vector<std::vector<std::uint8_t>> dryAt(nodes.size());
+    parallelFor(nodes.size(), [&](std::size_t k) {
+        if (!edges[k].pieces || nodes[k].main) return;
+        const std::vector<Sample>& samples = profile[k];
+        std::vector<std::uint8_t>& dry = dryAt[k];
+        dry.assign(samples.size(), 0);
+        for (std::size_t i = 0; i < samples.size(); ++i) {
+            const Sample& q = samples[i];
+            const Sample& a = samples[i > 0 ? i - 1 : i];
+            const Sample& b = samples[i + 1 < samples.size() ? i + 1 : i];
+            const double len = std::hypot(b.x - a.x, b.y - a.y);
+            if (len < 1e-3) continue;
+            const double tx = (b.x - a.x) / len, ty = (b.y - a.y) / len;
+            const double r = std::max(40.0, 2.0 * widthAt(k, q.t));
+            const float left = ground.at(q.x - ty * r, q.y + tx * r, 2.0 * kFinest);
+            const float right = ground.at(q.x + ty * r, q.y - tx * r, 2.0 * kFinest);
+            const double across = std::abs(left - right) / (2.0 * r);
+            if (across <= kSideways) continue;
+            const float up = ground.at(q.x - tx * r, q.y - ty * r, 2.0 * kFinest);
+            const float down = ground.at(q.x + tx * r, q.y + ty * r, 2.0 * kFinest);
+            dry[i] = across > 2.0 * std::max((up - down) / (2.0 * r), 0.0);
+        }
+    });
+    // Along each river over a couple of hundred metres the most of it
+    // decides: it does not blink wet and dry from sample to sample.
+    {
+        constexpr double kWindow = 120.0;   // metres either way
+        std::vector<std::pair<std::uint32_t, std::uint32_t>> run;   // (edge, sample), downstream
+        std::vector<double> at;
+        std::vector<std::uint32_t> dryBefore;                       // dry samples before each
+        std::vector<std::uint32_t> line;
+        for (std::size_t c = 0; c < nodes.size(); ++c) {
+            if (!edges[c].pieces) continue;
+            const std::uint32_t d = nodes[c].down;
+            if (!nodes[d].terminal && nodes[d].upMain == c && edges[d].pieces) continue;   // not a river's last edge
+            line.clear();
+            for (std::uint32_t k = std::uint32_t(c); k != kNone && edges[k].pieces; k = nodes[k].upMain) line.push_back(k);
+            std::reverse(line.begin(), line.end());
+            run.clear();
+            at.clear();
+            bool any = false;
+            for (const std::uint32_t k : line)
+                for (std::size_t i = 0; i < profile[k].size(); ++i) {
+                    const Sample& q = profile[k][i];
+                    at.push_back(run.empty() ? 0.0 : at.back() + std::hypot(q.x - profile[run.back().first][run.back().second].x,
+                                                                            q.y - profile[run.back().first][run.back().second].y));
+                    run.push_back({k, std::uint32_t(i)});
+                    any |= !dryAt[k].empty() && dryAt[k][i];
+                }
+            if (!any) continue;
+            dryBefore.assign(run.size() + 1, 0);
+            for (std::size_t j = 0; j < run.size(); ++j) {
+                const auto [k, i] = run[j];
+                dryBefore[j + 1] = dryBefore[j] + (!dryAt[k].empty() && dryAt[k][i] ? 1 : 0);
+            }
+            std::vector<std::uint8_t> decided(run.size());
+            for (std::size_t j = 0, lo = 0, hi = 0; j < run.size(); ++j) {
+                while (at[j] - at[lo] > kWindow) ++lo;
+                while (hi < run.size() && at[hi] - at[j] <= kWindow) ++hi;
+                decided[j] = 2 * (dryBefore[hi] - dryBefore[lo]) > hi - lo;
+            }
+            for (std::size_t j = 0; j < run.size(); ++j) {
+                const auto [k, i] = run[j];
+                if (!dryAt[k].empty()) dryAt[k][i] = decided[j];
+            }
+        }
+    }
+
     // Segments: the samples thinned to what the surface needs - a run at an
     // even slope is one segment, a fall keeps its lip and foot - never
     // letting the water rise more than a quarter metre over a sample's level
@@ -1185,6 +1262,9 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
         std::vector<std::uint8_t> keep(count, 0);
         keep.front() = keep.back() = 1;
         for (std::size_t i = 0; i < count; ++i) keep[i] |= samples[i].keep ? 1 : 0;
+        const std::vector<std::uint8_t>& dry = dryAt[k];
+        if (!dry.empty())
+            for (std::size_t i = 1; i < count; ++i) keep[i] |= dry[i] != dry[i - 1] ? 1 : 0;
         std::vector<std::pair<std::size_t, std::size_t>> spans;
         for (std::size_t i = 0, last = 0; i < count; ++i)
             if (keep[i] && i > last) { spans.push_back({last, i}); last = i; }
@@ -1224,7 +1304,12 @@ Hydrology buildHydrology(MacroMap& macro, const Params& params, const HydrologyS
             for (std::size_t i = i0; i <= i1; ++i) cut = std::max(cut, samples[i].mid - samples[i].surface);
             const float bank = std::max(6.0f, std::max(seg.width0, seg.width1)) + 4.0f * std::max(seg.depth0, seg.depth1);
             seg.bank = std::max(bank, std::min(3.0f * cut, 400.0f));
-            if (std::hypot(seg.x1 - seg.x0, seg.y1 - seg.y0) > 1e-3f) {
+            std::size_t dryCount = 0;
+            if (!dry.empty())
+                for (std::size_t i = i0; i <= i1; ++i) dryCount += dry[i];
+            if (2 * dryCount > i1 - i0 + 1) {
+                ++out.drySegments;
+            } else if (std::hypot(seg.x1 - seg.x0, seg.y1 - seg.y0) > 1e-3f) {
                 const float drop = seg.surface0 - seg.surface1;
                 if (drop > 3.0f && drop > 0.3f * std::hypot(seg.x1 - seg.x0, seg.y1 - seg.y0)) {
                     ++out.falls;

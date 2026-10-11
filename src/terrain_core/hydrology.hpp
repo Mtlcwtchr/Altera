@@ -112,6 +112,7 @@ struct Hydrology {
     std::uint32_t mainLakeCount = 0, mainRiverCells = 0;
     std::vector<std::array<float, 3>> deltaHeads;   // x, y (m), catchment km^2 of each delta
     std::uint32_t falls = 0;                        // segments dropping steeply (a waterfall's face)
+    std::uint32_t drySegments = 0;                  // left out: running along a steep slope
     std::array<float, 3> biggestFall{};             // x, y (m) of its lip, and its drop (m)
     double biggestKm2 = 0;
     double ms = 0;
