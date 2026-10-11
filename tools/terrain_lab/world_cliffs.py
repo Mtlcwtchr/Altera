@@ -14,8 +14,8 @@ near the top, so the rim overhangs): the union of all that is the rock. Its
 surface is found on a grid (surface nets) and cut into tiles. Because it is
 one solid, walls that meet - round a bay, across a narrow canyon, where two
 bands touch - merge into one rock instead of passing through each other, and
-nothing can fold. A canyon keeps an opening: no wall reaches further than
-`gap_share` of the way to the wall that faces it; where a band stops short
+nothing can fold. A canyon keeps its floor: past its foot no wall reaches
+further than `gap_share` of half the floor in front of it; where a band stops short
 on a steep slope its reach dies away, so no buttress stands out of the bare
 ground with a cut end. Below the wall scree is
 banked against the foot; everywhere else the surface lies `sink_m` under the
@@ -46,7 +46,7 @@ from PIL import Image
 from scipy import ndimage
 
 TILE_M = 1024.0
-MARGIN_M = 640.0     # what a tile looks at round it: more than any wall reaches
+MARGIN_M = 800.0     # what a tile looks at round it: more than any wall reaches, and the opening measured
 SHIFT = 8            # points of the finest grid beyond the tile's edge (the coarsest cell and the smoothing)
 
 
@@ -189,18 +189,64 @@ def fields(h, zones, biomes, c, rules, origin=(0, 0)):
     # the foot (so the ramp stands up), more near the top (the rim
     # overhangs), never less than `min_push_m` give or take (where the
     # heightfield already stands sheer), plus `overhang_drop` of the drop at the rim.
-    run = (h - lo) / np.maximum(slope, 0.35)
+    rows, cols = np.nonzero(band)
+    ddx = (-gx / np.maximum(slope, 1e-3))[band]
+    ddy = (-gy / np.maximum(slope, 1e-3))[band]
+    bh = h[band]
+    # Where each wall ends, up and down: walking uphill off the band (its
+    # top, the land on top a little further) and downhill off it (its foot).
+    up_steps = int(math.ceil(cr.get("wall_max_m", 2500.0) / c))
+    bandf = band.astype(np.float32)
+    up_hit = _march(bandf, rows.astype(np.float64), cols.astype(np.float64), -ddy, -ddx, 1.0, up_steps,
+                    lambda hv, live, k: hv < 0.5, order=0)
+    down_hit = _march(bandf, rows.astype(np.float64), cols.astype(np.float64), ddy, ddx, 1.0, up_steps,
+                      lambda hv, live, k: hv < 0.5, order=0)
+    # The floor in front of each point of a wall: walking downhill, where the
+    # ground stops falling (the foot) and where it starts to rise again (the
+    # wall across).
+    steps = int(math.ceil(2.2 * cr["max_push_m"] / c))
+    floor = bh.astype(np.float64).copy()
+    foot_k = np.zeros(len(bh), np.int32)
+
+    def across(hv, live, k):
+        lower = hv < floor[live]
+        idx = np.nonzero(live)[0]
+        floor[idx[lower]] = hv[lower]
+        foot_k[idx[lower]] = k
+        return hv > floor[live] + 0.15 * (bh[live] - floor[live]) + 1.0
+
+    rise_k = _march(h, rows.astype(np.float64), cols.astype(np.float64), ddy, ddx, 1.0, steps, across)
+    foot_k = np.where(rise_k > steps, np.minimum(down_hit, steps), np.minimum(foot_k, down_hit))
+    ztop = ndimage.map_coordinates(h, [rows - ddy * np.minimum(up_hit, up_steps), cols - ddx * np.minimum(up_hit, up_steps)],
+                                   order=1, mode="nearest")
+    zfoot = ndimage.map_coordinates(h, [rows + ddy * foot_k, cols + ddx * foot_k], order=1, mode="nearest")
+    zfoot = np.minimum(zfoot, bh)
+    ztop = np.maximum(ztop, bh)
+    out["zfoot"] = lo.astype(np.float32)
+    out["zspan"] = drop.astype(np.float32)
+    out["zfoot"][band] = zfoot
+    out["zspan"][band] = np.maximum(ztop - zfoot, 1.0)
+
+    # How far each point of a band reaches out: to its foot (so the ramp
+    # stands up), more near the top (the rim overhangs), never less than
+    # `min_push_m` give or take (where the heightfield already stands
+    # sheer), plus `overhang_drop` of the wall's drop at the rim; past its
+    # foot at most `gap_share` of half the floor in front of it, so a gully
+    # keeps a floor instead of being closed by its two walls.
+    tw = np.clip((bh - zfoot) / np.maximum(ztop - zfoot, 1.0), 0, 1)
     over = cr["overhang"]
     # (a noise of the world, not of the block: the blocks agree where they meet)
-    Yw, Xw = np.meshgrid((np.arange(h.shape[0]) + origin[0] + 0.5) * c, (np.arange(h.shape[1]) + origin[1] + 0.5) * c,
-                         indexing="ij")
-    wander = 3.5 * (_vnoise(Xw, Yw, 3.0 * c, 7) - 0.5)
-    base = cr["min_push_m"] * np.clip(1.0 + 0.45 * wander, 0.3, 2.0) + cr["overhang_drop"] * drop * t * t
-    push = np.where(band, np.minimum(np.maximum(run * (1 + over * t * t), base), cr["max_push_m"]), 0.0)
+    wander = 3.5 * (_vnoise((cols + origin[1] + 0.5) * c, (rows + origin[0] + 0.5) * c, 3.0 * c, 7) - 0.5)
+    base = cr["min_push_m"] * np.clip(1.0 + 0.45 * wander, 0.3, 2.0) + cr["overhang_drop"] * (ztop - zfoot) * tw * tw
+    run = foot_k * c
+    reach = np.minimum(np.maximum(run * (1 + over * tw * tw), base), cr["max_push_m"])
+    cap = np.where(rise_k > steps, np.inf, (foot_k + cr.get("gap_share", 0.8) * 0.5 * (rise_k - foot_k)) * c)
+    push = np.zeros(h.shape, np.float32)
+    push[band] = np.minimum(reach, cap)
     # Smoothed along the band only (the band's own neighbours), so the reach
     # does not jump from texel to texel.
     wsum = ndimage.gaussian_filter(band.astype(np.float32), 1.2)
-    push = np.where(band, ndimage.gaussian_filter(push.astype(np.float32), 1.2) / np.maximum(wsum, 1e-3), 0.0)
+    push = np.where(band, ndimage.gaussian_filter(push, 1.2) / np.maximum(wsum, 1e-3), 0.0)
     # Where a band ends along its wall (the wall goes on, steep, but no
     # longer one to stand up) its reach dies away over a few hundred metres,
     # so no buttress stands out of the bare wall with a cut end.
@@ -210,41 +256,13 @@ def fields(h, zones, biomes, c, rules, origin=(0, 0)):
     ends = np.clip((share - 0.25) / 0.5, 0, 1) ** 1.5
     push = push * ends
 
-    rows, cols = np.nonzero(band)
-    ddx = (-gx / np.maximum(slope, 1e-3))[band]
-    ddy = (-gy / np.maximum(slope, 1e-3))[band]
-    blo, bdrop, bh = lo[band], drop[band], h[band]
-    # The opening in front of each wall: walking downhill, how far until the
-    # ground rises again past a third of the wall's drop (the wall across).
-    steps = int(math.ceil(2.2 * cr["max_push_m"] / c))
-    gap_hit = _march(h, rows.astype(np.float64), cols.astype(np.float64), ddy, ddx, 1.0, steps,
-                     lambda hv, live, k: (k * c > 40.0) & (hv > (blo + 0.35 * bdrop)[live]))
-    gap = np.where(gap_hit > steps, np.inf, gap_hit * c)
-    push[band] = np.minimum(push[band], cr.get("gap_share", 0.8) * 0.5 * gap)
-
-    # Where each wall ends, up and down: walking uphill off the band (its
-    # top, the land on top a little further) and downhill off it (its foot).
-    up_steps = int(math.ceil(cr.get("wall_max_m", 2500.0) / c))
-    bandf = band.astype(np.float32)
-    up_hit = _march(bandf, rows.astype(np.float64), cols.astype(np.float64), -ddy, -ddx, 1.0, up_steps,
-                    lambda hv, live, k: hv < 0.5, order=0)
-    down_hit = _march(bandf, rows.astype(np.float64), cols.astype(np.float64), ddy, ddx, 1.0, up_steps,
-                      lambda hv, live, k: hv < 0.5, order=0)
-    ztop = ndimage.map_coordinates(h, [rows - ddy * np.minimum(up_hit, up_steps), cols - ddx * np.minimum(up_hit, up_steps)],
-                                   order=1, mode="nearest")
-    zfoot = ndimage.map_coordinates(h, [rows + ddy * np.minimum(down_hit, up_steps), cols + ddx * np.minimum(down_hit, up_steps)],
-                                    order=1, mode="nearest")
-    zfoot = np.minimum(zfoot, bh)
-    ztop = np.maximum(ztop, bh)
-    out["zfoot"] = lo.astype(np.float32)
-    out["zspan"] = drop.astype(np.float32)
-    out["zfoot"][band] = zfoot
-    out["zspan"][band] = np.maximum(ztop - zfoot, 1.0)
+    # Which biome is on top of each wall (a little past its top) and which
+    # at its foot (a little past its foot).
     beyond = cr.get("biome_look_m", 160.0) / c
     ur = rows - ddy * (np.minimum(up_hit, up_steps) + beyond)
     uc = cols - ddx * (np.minimum(up_hit, up_steps) + beyond)
-    fr = rows + ddy * (np.minimum(down_hit, up_steps) + beyond)
-    fc = cols + ddx * (np.minimum(down_hit, up_steps) + beyond)
+    fr = rows + ddy * (foot_k + beyond)
+    fc = cols + ddx * (foot_k + beyond)
     top = out["top"].copy()
     foot = out["foot"].copy()
     top[band] = ndimage.map_coordinates(biomes, [ur, uc], order=0, mode="nearest")
@@ -487,6 +505,13 @@ def tile(f, ti, tj, origin, c, cr):
             d = dist[pidx] * sf
             si, sj = ind[0][pidx], ind[1][pidx]
             r = pushf[si, sj] * mod
+            # The opening at this height: half the width of the air here (the
+            # largest distance to rock round the point). Walls facing each
+            # other across a gully or a slot fill at most `gap_share` of it,
+            # so it never closes over, whatever their reach.
+            win = int(cr.get("gap_window_m", 520.0) / sf) * 2 + 1
+            half = ndimage.maximum_filter(dist, size=win, mode="nearest")[pidx] * sf
+            r = np.minimum(r, cr.get("gap_share", 0.5) * half)
             w = np.where(Rp, w, r - (d - sf * 0.5))
             # Buttresses and hollows: the face pushed in and out by a noise in
             # all three dimensions, then the corners of the map's contours

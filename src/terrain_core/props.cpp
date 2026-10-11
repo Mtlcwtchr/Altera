@@ -462,13 +462,14 @@ Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, dou
     for (std::size_t k = 0; k < count; ++k) {
         float* p = &v[k * kFloats];
         const double edge = std::min(std::min(double(p[0]), 1024.0 - p[0]), std::min(double(p[1]), 1024.0 - p[1]));
-        const double fade = std::clamp((edge - 0.5) / 40.0, 0.0, 1.0);
+        // (wide: a refined tile beside one drawn plain shows no step in roughness)
+        const double fade = std::clamp((edge - 0.5) / 160.0, 0.0, 1.0);
         if (fade <= 0) continue;
         const double nl = std::sqrt(double(p[3]) * p[3] + double(p[4]) * p[4] + double(p[5]) * p[5]);
         if (nl < 1e-6) continue;
         const double nx = p[3] / nl, ny = p[4] / nl, nz = p[5] / nl;
         const double steep = 1.0 - std::abs(nz);
-        const double amount = (0.6 + 4.4 * steep) * rock(x + p[0], y + p[1], z + p[2]) * fade * fade * (3 - 2 * fade);
+        const double amount = (0.4 + 2.6 * steep) * rock(x + p[0], y + p[1], z + p[2]) * fade * fade * (3 - 2 * fade);
         p[0] += float(nx * amount);
         p[1] += float(ny * amount);
         p[2] += float(nz * amount);

@@ -128,7 +128,8 @@ Rock cliffStone(uint id, float3 place, float3 n0, float height, float distance, 
     float up = smoothstep(s.w, s.z, n0.z);
     if (up > 0) {
         const float patches = materials.SampleBias(materialSampler, float3(place.xy / (rockTile * 12.0), s.y), bias + 3).g;
-        up *= saturate((patches - 0.4) * 3.0 + saturate((height - 0.9) * 10.0));
+        // (a flat - the rim reaching out, a terrace, the scree - is the land's own ground whole)
+        up *= saturate((patches - 0.4) * 3.0 + saturate((height - 0.9) * 10.0) + smoothstep(0.86, 0.94, n0.z));
     }
     if (up > 0) {
         const float2 uv = place.xy / rockTile;
