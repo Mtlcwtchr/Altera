@@ -500,13 +500,116 @@ def spire_islands(world, rules, catalogue, rng, add):
     return made
 
 
+def canyon_islands(world, rules, catalogue, rng, add):
+    """The canyon's mesa islands (the tiers the relief cuts, doc/BIOMES_RU.md,
+    03): their rims lined with boulder rock of the spires' own make, so an
+    island reads as a spire grown wide; and between neighbouring islands a
+    way across - spires of every size standing in the gap with their tops at
+    the deck, and bridges or ribbons from rim to spire to spire to rim."""
+    from scipy.spatial import cKDTree
+    r = rules["canyon_islands"]
+    canyon = np.isin(world.zones, r["zones"])
+    gy, gx = np.gradient(world.hz, world.cell)
+    flat = np.hypot(gx, gy) < r["flat_slope"]
+    floor = ndimage.minimum_filter(np.where(canyon, world.hz, 1e4), r["floor_cells"])
+    isl = canyon & flat & (world.hz > floor + r["above_floor_m"])
+    lab, n = ndimage.label(isl)
+    if not n:
+        return 0
+    sizes = ndimage.sum(isl, lab, range(1, n + 1))
+    spires = _names(catalogue, r["rock_kind"])
+    bridges = _names(catalogue, r["bridge_kind"])
+    odd = _names(catalogue, r["odd_kind"]) if r.get("odd_kind") else []
+    islands = []
+    for k in range(n):
+        if sizes[k] < r["min_cells"]:
+            continue
+        mask = lab == k + 1
+        rim = mask & ~ndimage.binary_erosion(mask)
+        ys, xs = np.nonzero(rim)
+        pts = np.stack([(xs + 0.5) * world.cell, (ys + 0.5) * world.cell], 1)
+        h = float(np.median(world.hz[mask]))
+        cy, cx = ndimage.center_of_mass(mask)
+        islands.append({"rim": pts, "h": h, "c": np.array([(cx + 0.5) * world.cell, (cy + 0.5) * world.cell])})
+
+    def column(x, y, top, width, kind="spire"):
+        """A boulder column from the lowest ground round it (down the wall,
+        at a rim) to `top`, never squatter than its make: narrow if short."""
+        name = spires[int(rng.integers(len(spires)))]
+        m = catalogue[name]
+        base = world.lowest(x, y, r["foot_reach_m"]) - 10.0
+        rise = max(top - base, 30.0)
+        sz = rise / m["hi"][2]
+        sxy = min(width / max(m["hi"][0] - m["lo"][0], 1.0), sz * 1.1)
+        add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), z=round(float(base), 1))
+
+    rocks = 0
+    # Rims lined with boulder rock, pushed a little out over the brink.
+    for isl_ in islands:
+        placed = []
+        for k in rng.permutation(len(isl_["rim"])):
+            p = isl_["rim"][k]
+            if any(np.hypot(*(p - q)) < r["rock_gap_m"] for q in placed):
+                continue
+            placed.append(p)
+            out = p - isl_["c"]
+            out /= max(np.linalg.norm(out), 1e-6)
+            x, y = p + out * r["rock_out_m"]
+            column(x, y, isl_["h"] + rng.uniform(*r["rock_above_m"]), rng.uniform(*r["rock_width_m"]))
+            rocks += 1
+    # Ways across: each island to its nearest neighbours within reach.
+    ways = 0
+    trees = [cKDTree(i["rim"]) for i in islands]
+    links = set()
+    for a in range(len(islands)):
+        cand = []
+        for b in range(len(islands)):
+            if a == b:
+                continue
+            d, j = trees[b].query(islands[a]["rim"], k=1)
+            i = int(np.argmin(d))
+            cand.append((float(d[i]), b, islands[a]["rim"][i], islands[b]["rim"][j[i]]))
+        cand.sort(key=lambda c: c[0])
+        for rank, (d, b, pa, pb) in enumerate(cand[:2]):
+            if not (r["gap_m"][0] <= d <= r["gap_m"][1]) or (min(a, b), max(a, b)) in links:
+                continue
+            if rank == 1 and rng.random() > r["second_share"]:
+                continue
+            links.add((min(a, b), max(a, b)))
+            deck = min(islands[a]["h"], islands[b]["h"]) - rng.uniform(*r["deck_below_m"])
+            nseg = max(1, int(round(d / r["span_m"])))
+            side = np.array([-(pb - pa)[1], (pb - pa)[0]]) / max(d, 1e-6)
+            pts = [pa]
+            for k in range(1, nseg):
+                q = pa + (pb - pa) * k / nseg + side * rng.uniform(-1, 1) * r["wander_m"]
+                if world.height(*q) > deck - 20:
+                    continue
+                column(q[0], q[1], deck + 4, rng.uniform(*r["pier_width_m"]))
+                pts.append(q)
+            pts.append(pb)
+            for p0, p1 in zip(pts, pts[1:]):
+                seg = float(np.hypot(*(p1 - p0)))
+                if seg < 30:
+                    continue
+                kind, names = r["bridge_kind"], bridges
+                if odd and rng.random() < r.get("odd_share", 0.0):
+                    kind, names = r["odd_kind"], odd
+                th = rng.uniform(*r["thickness"])
+                add(kind, names[int(rng.integers(len(names)))], (p0[0] + p1[0]) / 2, (p0[1] + p1[1]) / 2,
+                    math.atan2(p1[1] - p0[1], p1[0] - p0[0]), (seg * 1.2 / 1000.0, th, th), z=round(deck, 1))
+            ways += 1
+    print(f"canyon islands: {len(islands)}, rim rocks {rocks}, ways across {ways}")
+    return ways
+
+
 def place(world, rules, catalogue, rng, add):
     """Every terrain part the section names; returns how many of each."""
     import world_features as wf
     counts = {}
     for name, fn in (("spires", canyon_spires), ("canyon_bridges", canyon_bridges), ("rim_ledges", rim_ledges),
                      ("clefts", clefts), ("sea_stacks", sea_stacks), ("floating_isles", floating_isles),
-                     ("sentinels", sentinels), ("switchbacks", switchbacks), ("spire_islands", spire_islands)):
+                     ("sentinels", sentinels), ("switchbacks", switchbacks), ("spire_islands", spire_islands),
+                     ("canyon_islands", canyon_islands)):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     counts["groups"] = wf.place_groups(world, rules, catalogue, rng, add)

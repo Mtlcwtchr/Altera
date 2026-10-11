@@ -249,6 +249,52 @@
         0.25,
         0.4
       ]
+    },
+    "canyon_islands": {
+      "comment": "The canyon's mesa islands: rims lined with spire-like boulder rock; between neighbours, spires of every size carrying bridges and ribbons.",
+      "zones": [
+        "canyon_steppe",
+        "steppe",
+        "steppe_canyon"
+      ],
+      "flat_slope": 0.2,
+      "floor_cells": 25,
+      "above_floor_m": 100,
+      "min_cells": 4,
+      "rock_kind": "spire",
+      "rock_gap_m": 220,
+      "rock_out_m": 45,
+      "rock_above_m": [
+        10,
+        70
+      ],
+      "rock_width_m": [
+        60,
+        130
+      ],
+      "bridge_kind": "bridge",
+      "odd_kind": "ribbon_bridge",
+      "odd_share": 0.4,
+      "gap_m": [
+        150,
+        1600
+      ],
+      "second_share": 0.5,
+      "deck_below_m": [
+        5,
+        30
+      ],
+      "span_m": 420,
+      "wander_m": 120,
+      "pier_width_m": [
+        50,
+        120
+      ],
+      "thickness": [
+        0.3,
+        0.45
+      ],
+      "foot_reach_m": 180
     }
   },
   "megaliths": {
@@ -561,7 +607,7 @@
   },
   "moss_material": "grass_dark",
   "cliffs": {
-    "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py), built as one solid so walls that meet merge instead of crossing: `zones`: zone -> slope (rise over run) from which ground is a wall there, or {slope, coast_m}: only within coast_m of the sea. A wall must drop `min_drop_m` within `band_m`. Each height of it reaches out downhill until it stands, `overhang` more at the rim, never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim, and never more than `gap_share` of the way to the wall across; `strata`, `gullies` and `rock_noise_m` shape its face, `smooth_cells` rounds the corners of its outline; `sink_m`: how deep the surface lies under the ground away from the walls; `skirt_m`: how far the tile borders hang down (no cracks between tiles at different detail); `apron_m`: how far below the foot scree is banked against the wall, `scree_share` of the drop high (at most `scree_max_m`). Colours: a wall wears the biome on top of it (world_biomes.png, looked for `biome_look_m` past its top), its lowest `foot_share` and its scree the biome at its foot: per biome of biomes.json its slope material on the walls unless `materials` names another, its ground on what faces up, its tint, `moss` on its rock.",
+    "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py), built as one solid so walls that meet merge instead of crossing: `zones`: zone -> slope (rise over run) from which ground is a wall there, or {slope, coast_m}: only within coast_m of the sea. A wall must drop `min_drop_m` within `band_m`. Each height of it reaches out downhill until it stands, `overhang` more at the rim, never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim, and past its foot never more than `gap_share` of half the floor in front of it (a gully keeps a floor); `strata`, `gullies` and `rock_noise_m` shape its face, `smooth_cells` rounds the corners of its outline; `sink_m`: how deep the surface lies under the ground away from the walls; `skirt_m`: how far the tile borders hang down (no cracks between tiles at different detail); `apron_m`: how far below the foot scree is banked against the wall, `scree_share` of the drop high (at most `scree_max_m`). Colours: a wall wears the biome on top of it (world_biomes.png, looked for `biome_look_m` past its top), its lowest `foot_share` and its scree the biome at its foot: per biome of biomes.json its slope material on the walls unless `materials` names another, its ground on what faces up, its tint, `moss` on its rock.",
     "zones": {
       "canyon_steppe": 0.7,
       "steppe": 0.7,
@@ -591,7 +637,7 @@
     "apron_m": 160,
     "scree_share": 0.06,
     "scree_max_m": 70,
-    "gap_share": 0.8,
+    "gap_share": 0.5,
     "biome_look_m": 160,
     "foot_share": 0.14,
     "rock_noise_m": 10,
