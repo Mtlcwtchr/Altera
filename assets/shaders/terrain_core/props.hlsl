@@ -17,6 +17,8 @@ struct VertexIn {
     float4 positionYaw : TEXCOORD3;   // instance: eye-relative origin, yaw
     float4 scale : TEXCOORD4;         // instance: scale x, y, z; material layer
     float4 anchor : TEXCOORD5;        // instance: origin x, y wrapped to 4096 m; origin z; variation
+    float4 extra : TEXCOORD6;         // instance: cover (steppe on its tops), a cliff's two biomes (-1: none), -
+    float blend : TEXCOORD7;          // a cliff's vertex: how far it wears the second biome
 };
 
 struct VsOut {
@@ -27,6 +29,9 @@ struct VsOut {
     float2 uv : TEXCOORD3;
     nointerpolation float2 layer : TEXCOORD4;   // material layer, variation
     nointerpolation float hero : TEXCOORD5;     // 1: a megalith
+    nointerpolation float cover : TEXCOORD6;    // 0..1: ground on its tops
+    float blend : TEXCOORD7;                    // a cliff: the second biome's share
+    nointerpolation float2 biomes : TEXCOORD8;  // a cliff: its two biomes (-1: not a cliff)
 };
 
 VsOut propsVs(VertexIn input) {
@@ -42,6 +47,9 @@ VsOut propsVs(VertexIn input) {
     o.uv = input.uv;
     o.layer = float2(input.scale.w, frac(input.anchor.w));
     o.hero = input.anchor.w > 1.5 ? 1.0 : 0.0;
+    o.cover = input.extra.x;
+    o.blend = input.blend;
+    o.biomes = input.extra.yz;
     return o;
 }
 
@@ -62,7 +70,14 @@ cbuffer Rock : register(b1, space3) {
     float rockTile;          // the ground's material tile, metres
     float rockTextureScale;  // render over output pixels (0 = 1): the mip bias under DLSS
     float rockMossLayer;     // the material laid as moss
-    float rockPad;
+    float rockCoverLayer;    // the ground laid on tops (steppe)
+};
+
+// Must match terrain_core::Props::CliffBiomes: per biome of biomes.json, what
+// its cliffs wear (tools/terrain_lab/world_cliffs.py).
+cbuffer Biomes : register(b2, space3) {
+    float4 biomeStone[32];   // rock layer, ground layer, ground from (normal z), rock below (normal z)
+    float4 biomeTint[32];    // the biome's tint, moss on its rock
 };
 
 struct Rock { float3 colour; float3 normal; float ao; };
@@ -89,20 +104,75 @@ Rock triplanar(float3 p, float3 n, float layer, float tile, float bias) {
     return r;
 }
 
+// Two scales: the broad one carries the mass from afar, the near one the
+// grain at the foot; the near fades out before its repeat can show.
+Rock stone(float3 place, float3 n0, float layer, float distance, float bias) {
+    const Rock broad = triplanar(place, n0, layer, rockTile * 9.0, bias);
+    const Rock near = triplanar(place, n0, layer, rockTile * 1.5, bias);
+    const float t = saturate(1.0 - distance / 900.0);
+    Rock r;
+    r.colour = lerp(broad.colour, near.colour * 0.5 + broad.colour * 0.5, t);
+    r.normal = normalize(lerp(broad.normal, near.normal, t * 0.6));
+    r.ao = lerp(broad.ao, near.ao, t);
+    return r;
+}
+
+// A biome on a cliff: its rock on the walls, its ground on what faces up
+// (the plateau's grass to the brink of its cliffs), in its tint.
+Rock biomeStone(uint id, float3 place, float3 n0, float distance, float bias) {
+    const float4 s = biomeStone[id];
+    Rock r = stone(place, n0, s.x, distance, bias);
+    const float up = smoothstep(s.w, s.z, n0.z);
+    if (up > 0) {
+        const float2 uv = place.xy / rockTile;
+        const float3 near = materials.SampleBias(materialSampler, float3(uv, s.y), bias).rgb;
+        const float3 far = materials.SampleBias(materialSampler, float3(uv / 7.0, s.y), bias).rgb;
+        r.colour = lerp(r.colour, lerp(near, far, saturate(distance / 1500.0)), up);
+        r.normal = normalize(lerp(r.normal, n0, up));
+    }
+    r.colour *= biomeTint[id].rgb;
+    return r;
+}
+
 float4 propsPs(VsOut input) : SV_Target0 {
     const float3 n0 = normalize(input.normal);
     const float bias = log2(rockTextureScale > 0 ? rockTextureScale : 1.0);
-    const float layer = floor(input.layer.x);
-    const float moss = frac(input.layer.x) * 2.0;
-    // Two scales: the broad one carries the mass from afar, the near one the
-    // grain at the foot; the near fades out before its repeat can show.
+    float layer = floor(input.layer.x);
+    float moss = frac(input.layer.x) * 2.0;
     const float distance = length(input.view);
-    const Rock broad = triplanar(input.place, n0, layer, rockTile * 9.0, bias);
-    const Rock near = triplanar(input.place, n0, layer, rockTile * 1.5, bias);
-    const float t = saturate(1.0 - distance / 900.0);
-    float3 colour = lerp(broad.colour, near.colour * 0.5 + broad.colour * 0.5, t);
-    const float3 n = normalize(lerp(broad.normal, near.normal, t * 0.6));
-    const float ao = lerp(broad.ao, near.ao, t);
+    float3 colour, n;
+    float ao;
+    if (input.biomes.x >= 0) {
+        // A cliff: the biome on top of it down its wall, the one at its foot
+        // low down, the line between them ragged.
+        const uint a = uint(input.biomes.x), b = uint(input.biomes.y);
+        float wb = 0;
+        if (a != b) {
+            const float patches = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 20.0) + input.place.z / (rockTile * 30.0), biomeStone[a].x), bias + 2).g;
+            wb = smoothstep(0.3, 0.7, input.blend + (patches - 0.5) * 0.6);
+        }
+        Rock r = (Rock)0;
+        if (wb < 0.99) r = biomeStone(a, input.place, n0, distance, bias);
+        if (wb > 0.01) {
+            const Rock rb = biomeStone(b, input.place, n0, distance, bias);
+            if (wb >= 0.99) r = rb;
+            else {
+                r.colour = lerp(r.colour, rb.colour, wb);
+                r.normal = normalize(lerp(r.normal, rb.normal, wb));
+                r.ao = lerp(r.ao, rb.ao, wb);
+            }
+        }
+        colour = r.colour;
+        n = r.normal;
+        ao = r.ao;
+        layer = biomeStone[wb < 0.5 ? a : b].x;
+        moss = lerp(biomeTint[a].w, biomeTint[b].w, wb);
+    } else {
+        const Rock r = stone(input.place, n0, layer, distance, bias);
+        colour = r.colour;
+        n = r.normal;
+        ao = r.ao;
+    }
 
     // The painted look: broad bands of colour up the stone, as layered rock
     // reads in a painting, and a lighter weathered crust on what faces up.
@@ -120,6 +190,17 @@ float4 propsPs(VsOut input) : SV_Target0 {
         if (m > 0) {
             const float3 green = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 1.5), rockMossLayer), bias).rgb;
             colour = lerp(colour, green * 0.85, m);
+        }
+    }
+    // Steppe on the tops: the islands and the spires' flat crowns carry the
+    // dry grass of the steppe round them, not bare rock, fading at the brink.
+    if (input.cover > 0) {
+        const float top = smoothstep(0.62, 0.86, n0.z) * input.cover;
+        if (top > 0) {
+            const float2 uv = input.place.xy / (rockTile * 1.0);
+            const float3 grass = materials.SampleBias(materialSampler, float3(uv, rockCoverLayer), bias).rgb;
+            const float3 grassFar = materials.SampleBias(materialSampler, float3(uv / 7.0, rockCoverLayer), bias).rgb;
+            colour = lerp(colour, lerp(grass, grassFar, saturate(distance / 1500.0)), top);
         }
     }
     // Cavity from the model, darker at the foot where it meets the ground.

@@ -44,7 +44,7 @@ struct PropsLook {
     float tileMetres = 4;      // the ground's material tile
     float textureScale = 1;    // as GroundUniforms::textureScale
     float mossLayer = 0;       // the material laid as moss (props.json "moss_material")
-    float pad = 0;
+    float coverLayer = 0;      // the ground laid over what faces up (props.json "cover_material": steppe)
 };
 
 class Props {
@@ -74,6 +74,7 @@ public:
     bool enabled(int category) const { return enabled_[category]; }
     std::size_t count(int category) const { return counts_[category]; }
     float mossLayer() const { return mossLayer_; }
+    float coverLayer() const { return coverLayer_; }
     std::uint32_t modelCount() const { return std::uint32_t(models_.size()); }
     std::uint32_t drawn() const { return drawn_; }
     std::uint64_t trianglesDrawn() const { return triangles_; }
@@ -102,6 +103,8 @@ private:
         float yaw = 0, sx = 1, sy = 1, sz = 1;
         float layer = 0;              // material array layer
         float moss = 0;               // 0..1: how much moss its upward faces carry
+        float cover = 0;              // 0..1: how much of its tops is ground (steppe) rather than rock
+        std::array<int, 2> biomes{-1, -1};   // a cliff tile: the two biomes it wears
         double cx = 0, cy = 0, cz = 0;   // bounding sphere centre
         float radius = 1;
         bool detail = false;          // a cliff tile: refined near the eye
@@ -119,13 +122,13 @@ private:
     struct CpuMesh { std::vector<float> vertices; std::vector<std::uint32_t> indices; };
     // One draw: a run of the instance buffer.
     struct Batch { std::uint32_t model, level, first, count; const DetailMesh* detail = nullptr; };
-    struct Gpu { float posYaw[4], scale[4], anchor[4]; };   // 48 bytes, the vertex shader's instance input
+    struct Gpu { float posYaw[4], scale[4], anchor[4], extra[4]; };   // 64 bytes, the vertex shader's instance input
 
     void fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batches);
     Gpu gpuOf(std::uint32_t instance, const PropsFrame& frame) const;
     void drawBatches(SDL_GPURenderPass* pass, const std::vector<Batch>& batches, std::uint32_t firstArg,
                      std::uint32_t args);
-    // A refined surface, made on a worker thread: vertices (8 floats each), indices.
+    // A refined surface, made on a worker thread: vertices (9 floats each), indices.
     using Surface = std::pair<std::vector<float>, std::vector<std::uint32_t>>;
     static Surface refineSurface(const CpuMesh* base, double x, double y, double z);
     // Copied in the frame's own command buffer: no wait on the card.
@@ -156,7 +159,13 @@ private:
     std::uint64_t frame_ = 0;
     std::uint32_t detailDrawn_ = 0;
     double detailMs_ = 0;
-    float mossLayer_ = 0;
+    float mossLayer_ = 0, coverLayer_ = 0;
+    // Must match cbuffer Biomes in props.hlsl: per biome id, what its cliffs wear.
+    struct CliffBiomes {
+        static constexpr std::size_t kBiomes = 32;
+        std::array<std::array<float, 4>, kBiomes> stone;   // rock layer, ground layer, ground from, rock below (normal z)
+        std::array<std::array<float, 4>, kBiomes> tint;    // tint, moss (0..2)
+    } cliffBiomes_{};
     std::array<bool, kCategories> enabled_{true, true, true};
     std::array<std::size_t, kCategories> counts_{};
     std::uint32_t drawn_ = 0;

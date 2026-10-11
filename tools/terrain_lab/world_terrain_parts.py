@@ -71,7 +71,8 @@ def canyon_spires(world, rules, catalogue, rng, add):
     weights = clump[ys, xs] ** 3 + 0.02
     spires = poisson(pts, weights, count, sp["min_gap_km"] * 1000, rng)
     names = _names(catalogue, sp["kind"])
-    spire_list = []
+    spire_list = SPIRES
+    spire_list.clear()
     # Some of them are spiral rises: a ramp winding round the column to its top.
     rises = _names(catalogue, sp["rise_kind"]) if sp.get("rise_kind") else []
     for x, y in spires:
@@ -394,13 +395,109 @@ def switchbacks(world, rules, catalogue, rng, add):
         name = names[rng.integers(len(names))]
         m = catalogue[name]
         sz = drop * rng.uniform(0.85, 0.98) / m["hi"][2]
-        sxy = rng.uniform(*r["width"])
+        # A ribbon spiral stands free of the wall, out over the floor by its
+        # own radius, winding up from the floor to the rim; a zigzag (the old
+        # kind) lies against the wall.
+        spiral = r["kind"] != "switchback"
+        sxy = sz if spiral else rng.uniform(*r["width"])
+        if spiral:
+            out = 0.5 * (m["hi"][0] - m["lo"][0]) * sxy * 0.9
+            fx, fy = foot[0] + down[0] * out, foot[1] + down[1] * out
         made.append((x, y))
-        add(r["kind"], name, fx, fy, math.atan2(down[1], down[0]) + math.pi / 2, (sxy, 1.0, sz),
+        add(r["kind"], name, fx, fy, math.atan2(down[1], down[0]) + math.pi / 2, (sxy, sxy if spiral else 1.0, sz),
             z=round(world.height(*foot) - 5.0, 1))
         if len(made) >= r["count"]:
             break
     return len(made)
+
+
+SPIRES = []   # (x, y, top, ground, radius) of the spires canyon_spires placed this run
+
+
+def spire_islands(world, rules, catalogue, rng, add):
+    """Small islands grown out of the spires at different heights
+    (doc/BIOMES_RU.md, 03 - the heart of the biome): neighbouring spires get a
+    pair of islands at a height both reach, facing each other, with a bridge
+    between them; a spire near a steppe island gets one near the island's
+    height, with a passage across to its rim."""
+    r = rules["spire_islands"]
+    if not SPIRES:
+        return 0
+    plat = _names(catalogue, r["kind"])
+    bridges = _names(catalogue, r["bridge_kind"])
+    odd = _names(catalogue, r["odd_kind"]) if r.get("odd_kind") else []
+
+    def island(x, y, radius, h, toward):
+        """An island on the spire at (x, y), at height h, facing `toward`;
+        returns the point at its outer edge."""
+        name = plat[int(rng.integers(len(plat)))]
+        m = catalogue[name]
+        s = rng.uniform(*r["scale"])
+        d = np.array(toward, float) - (x, y)
+        d /= max(np.linalg.norm(d), 1e-6)
+        root = radius * r["root_share"]
+        add(r["kind"], name, x + d[0] * root, y + d[1] * root, math.atan2(d[1], d[0]), (s, s, s), z=round(h, 1))
+        reach = root + m["hi"][0] * s * 0.85
+        return x + d[0] * reach, y + d[1] * reach
+
+    def bridge(a, b, h):
+        gap = math.hypot(b[0] - a[0], b[1] - a[1])
+        if gap < 30:
+            return
+        kind, names = r["bridge_kind"], bridges
+        if odd and rng.random() < r.get("odd_share", 0.0):
+            kind, names = r["odd_kind"], odd
+        th = rng.uniform(*r["thickness"])
+        add(kind, names[int(rng.integers(len(names)))], (a[0] + b[0]) / 2, (a[1] + b[1]) / 2,
+            math.atan2(b[1] - a[1], b[0] - a[0]), (gap * 1.15 / 1000.0, th, th), z=round(h, 1))
+
+    made = 0
+    # Between neighbouring spires.
+    used = {}
+    for i in range(len(SPIRES)):
+        for j in range(i + 1, len(SPIRES)):
+            xa, ya, ta, ga, ra = SPIRES[i]
+            xb, yb, tb, gb, rb = SPIRES[j]
+            d = math.hypot(xb - xa, yb - ya)
+            if not (r["gap_m"][0] <= d - ra - rb <= r["gap_m"][1]):
+                continue
+            if used.get(i, 0) >= r["per_spire"] or used.get(j, 0) >= r["per_spire"]:
+                continue
+            lo = max(ga, gb) + r["low_share"] * min(ta - ga, tb - gb)
+            hi = min(ta, tb) - r["below_top_m"]
+            if hi - lo < 40:
+                continue
+            h = rng.uniform(lo, hi)
+            a = island(xa, ya, ra, h, (xb, yb))
+            b = island(xb, yb, rb, h, (xa, ya))
+            bridge(a, b, h)
+            used[i] = used.get(i, 0) + 1
+            used[j] = used.get(j, 0) + 1
+            made += 1
+    # Passages across to the steppe islands: from the spire, the nearest
+    # high ground within reach whose rim is about the island's height.
+    for i, (x, y, t, g, rad) in enumerate(SPIRES):
+        if used.get(i, 0) >= r["per_spire"] + 1:
+            continue
+        best = None
+        for k in range(24):
+            ang = k * math.tau / 24
+            dx, dy = math.cos(ang), math.sin(ang)
+            for step in range(int(rad / 16) + 2, int(r["passage_m"] / 16)):
+                px, py = x + dx * step * 16.0, y + dy * step * 16.0
+                hh = world.height(px, py)
+                if hh > t - r["below_top_m"] - 120 and hh > g + r["low_share"] * (t - g):
+                    if best is None or step < best[0]:
+                        best = (step, px, py, hh, dx, dy)
+                    break
+        if best is None:
+            continue
+        step, px, py, hh, dx, dy = best
+        h = min(hh, t - r["below_top_m"])
+        a = island(x, y, rad, h, (px, py))
+        bridge(a, (px + dx * 40, py + dy * 40), h)
+        made += 1
+    return made
 
 
 def place(world, rules, catalogue, rng, add):
@@ -409,7 +506,7 @@ def place(world, rules, catalogue, rng, add):
     counts = {}
     for name, fn in (("spires", canyon_spires), ("canyon_bridges", canyon_bridges), ("rim_ledges", rim_ledges),
                      ("clefts", clefts), ("sea_stacks", sea_stacks), ("floating_isles", floating_isles),
-                     ("sentinels", sentinels), ("switchbacks", switchbacks)):
+                     ("sentinels", sentinels), ("switchbacks", switchbacks), ("spire_islands", spire_islands)):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     counts["groups"] = wf.place_groups(world, rules, catalogue, rng, add)

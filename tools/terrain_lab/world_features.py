@@ -211,6 +211,7 @@ def place(world, rules, catalogue, seed):
     out = []
     mat = rules.get("materials", {})
     moss = rules.get("moss", {})
+    cover = rules.get("cover", {})
     SHARED.update({k: rules[k] for k in ("max_slope", "edge_m") if k in rules})
     TAKEN.clear()
     import world_buildings
@@ -228,6 +229,8 @@ def place(world, rules, catalogue, seed):
                  "s": [round(float(s), 4) for s in scale], "material": mat.get(kind, ""), "cat": _cat, **extra}
             if moss.get(kind, 0) > 0:
                 o["moss"] = moss[kind]
+            if cover.get(kind, 0) > 0:
+                o["cover"] = cover[kind]
             out.append(o)
             TAKEN.append((float(x), float(y)))
 

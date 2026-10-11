@@ -12,7 +12,10 @@
 namespace terrain_core {
 namespace {
 
-struct Vertex { float position[3], normal[3], uv[2]; };
+// `blend`: a cliff tile's vertex, how far it wears the tile's second biome
+// (version 2 of the file; version 1 has none, 0).
+struct Vertex { float position[3], normal[3], uv[2], blend; };
+constexpr int kFloats = sizeof(Vertex) / sizeof(float);
 
 bool readMesh(const std::filesystem::path& file, std::vector<Vertex>& vertices, std::vector<std::uint32_t>& indices,
               float lo[3], float hi[3]) {
@@ -25,10 +28,17 @@ bool readMesh(const std::filesystem::path& file, std::vector<Vertex>& vertices, 
     in.read(reinterpret_cast<char*>(&indexCount), 4);
     in.read(reinterpret_cast<char*>(lo), 12);
     in.read(reinterpret_cast<char*>(hi), 12);
-    if (!in || std::memcmp(magic, "FOLM", 4) != 0 || version != 1) return false;
+    if (!in || std::memcmp(magic, "FOLM", 4) != 0 || (version != 1 && version != 2)) return false;
     vertices.resize(vertexCount);
     indices.resize(indexCount);
-    in.read(reinterpret_cast<char*>(vertices.data()), std::streamsize(vertexCount * sizeof(Vertex)));
+    if (version == 2) {
+        in.read(reinterpret_cast<char*>(vertices.data()), std::streamsize(vertexCount * sizeof(Vertex)));
+    } else {
+        for (auto& v : vertices) {
+            in.read(reinterpret_cast<char*>(&v), 8 * sizeof(float));
+            v.blend = 0;
+        }
+    }
     in.read(reinterpret_cast<char*>(indices.data()), std::streamsize(indexCount * 4));
     return bool(in);
 }
@@ -82,11 +92,49 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     const float fallback = layerOf.count("rocky_grey") ? layerOf["rocky_grey"] : 0.0f;
     {
         std::ifstream rules(materialsJson.parent_path() / "props.json");
-        std::string moss = "grass_dark";
+        std::string moss = "grass_dark", cover = "grass_dry";
         if (rules) {
-            try { moss = nlohmann::json::parse(rules).value("moss_material", moss); } catch (const std::exception&) {}
+            try {
+                const auto j = nlohmann::json::parse(rules);
+                moss = j.value("moss_material", moss);
+                cover = j.value("cover_material", cover);
+            } catch (const std::exception&) {}
         }
         mossLayer_ = layerOf.count(moss) ? layerOf[moss] : fallback;
+        coverLayer_ = layerOf.count(cover) ? layerOf[cover] : fallback;
+    }
+    {
+        // What a cliff wears in each biome: the biome's slope material on its
+        // walls (or props.json cliffs.materials by biome name), its ground on
+        // what faces up, its tint; cliffs.moss by biome name.
+        nlohmann::json cliffs;
+        try {
+            std::ifstream rules(materialsJson.parent_path() / "props.json");
+            if (rules) cliffs = nlohmann::json::parse(rules).value("cliffs", nlohmann::json::object());
+        } catch (const std::exception&) {}
+        const auto rockOf = cliffs.value("materials", nlohmann::json::object());
+        const auto mossOf = cliffs.value("moss", nlohmann::json::object());
+        auto layer = [&](const std::string& name, float otherwise) {
+            return layerOf.count(name) ? layerOf[name] : otherwise;
+        };
+        for (auto& b : cliffBiomes_.stone) b[0] = b[1] = fallback, b[2] = 0.85f, b[3] = 0.7f;
+        for (auto& t : cliffBiomes_.tint) t[0] = t[1] = t[2] = 1.0f, t[3] = 0.0f;
+        for (const auto& b : table.value("biomes", nlohmann::json::array())) {
+            const int id = b.value("id", -1);
+            if (id < 0 || id >= int(CliffBiomes::kBiomes)) continue;
+            const std::string name = b.value("name", std::string());
+            const std::string base = b.value("base", std::string());
+            const auto slope = b.value("slope", nlohmann::json::object());
+            auto& stone = cliffBiomes_.stone[std::size_t(id)];
+            stone[1] = layer(base, fallback);
+            stone[0] = layer(rockOf.value(name, slope.value("material", base)), stone[1]);
+            stone[2] = slope.value("from", 0.85f);
+            stone[3] = slope.value("to", 0.7f);
+            auto& tint = cliffBiomes_.tint[std::size_t(id)];
+            if (b.contains("tint"))
+                for (int i = 0; i < 3; ++i) tint[i] = b["tint"][i].get<float>();
+            tint[3] = std::clamp(mossOf.value(name, 0.0f), 0.0f, 1.0f) * 2.0f;
+        }
     }
 
     std::vector<Vertex> allVertices;
@@ -111,7 +159,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
                 if (keepCpu) {
                     CpuMesh& c = cpu_[std::uint32_t(models_.size())];
                     c.vertices.assign(reinterpret_cast<const float*>(v.data()),
-                                      reinterpret_cast<const float*>(v.data()) + v.size() * 8);
+                                      reinterpret_cast<const float*>(v.data()) + v.size() * kFloats);
                     c.indices = idx;
                 }
             }
@@ -153,6 +201,11 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         const std::string material = o.value("material", std::string());
         in.layer = layerOf.count(material) ? layerOf[material] : fallback;
         in.moss = std::clamp(o.value("moss", 0.0f), 0.0f, 1.0f);
+        in.cover = std::clamp(o.value("cover", 0.0f), 0.0f, 1.0f);
+        // A cliff tile: the two biomes it wears (world_cliffs.py), by id.
+        if (o.contains("biomes") && o["biomes"].size() == 2)
+            for (int k = 0; k < 2; ++k)
+                in.biomes[k] = std::clamp(o["biomes"][k].get<int>(), 0, int(CliffBiomes::kBiomes) - 1);
         if (o.contains("z")) {
             in.z = o["z"].get<double>();
         } else {
@@ -229,7 +282,9 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
                          {2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 24},
                          {3, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},
                          {4, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
-                         {5, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32}};
+                         {5, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32},
+                         {6, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48},
+                         {7, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT, 32}};
     draw_ = device.makePipeline(wanted);
     wanted.fragmentEntry = "propsShadowPs";
     wanted.depthOnly = true;
@@ -264,6 +319,9 @@ Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
     // A per-instance variation, 0..1; +2 for a megalith, whose silhouette
     // the haze softens but does not swallow (seen from across its biome).
     g.anchor[3] = float(i % 97) / 97.0f + (in.category == kMegaliths ? 2.0f : 0.0f);
+    g.extra[0] = in.cover;
+    g.extra[1] = float(in.biomes[0]);
+    g.extra[2] = float(in.biomes[1]);
     return g;
 }
 
@@ -381,8 +439,9 @@ Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, dou
         auto middle = [&](std::uint32_t a, std::uint32_t b) {
             const std::uint64_t key = a < b ? (std::uint64_t(a) << 32 | b) : (std::uint64_t(b) << 32 | a);
             if (auto it = mid.find(key); it != mid.end()) return it->second;
-            const auto n = std::uint32_t(v.size() / 8);
-            for (int k = 0; k < 8; ++k) v.push_back(0.5f * (v[std::size_t(a) * 8 + k] + v[std::size_t(b) * 8 + k]));
+            const auto n = std::uint32_t(v.size() / kFloats);
+            for (int k = 0; k < kFloats; ++k)
+                v.push_back(0.5f * (v[std::size_t(a) * kFloats + k] + v[std::size_t(b) * kFloats + k]));
             mid[key] = n;
             return n;
         };
@@ -396,9 +455,9 @@ Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, dou
     // Roughen: each point pushed along its (smooth) normal by the rock noise,
     // much on a wall, little on a ledge. The tile's border stays put, so the
     // tiles round it meet it whatever their level.
-    const std::size_t count = v.size() / 8;
+    const std::size_t count = v.size() / kFloats;
     for (std::size_t k = 0; k < count; ++k) {
-        float* p = &v[k * 8];
+        float* p = &v[k * kFloats];
         const bool border = p[0] < 0.5f || p[1] < 0.5f || p[0] > 1023.5f || p[1] > 1023.5f;
         if (border) continue;
         const double nl = std::sqrt(double(p[3]) * p[3] + double(p[4]) * p[4] + double(p[5]) * p[5]);
@@ -413,9 +472,9 @@ Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, dou
     // Normals again, from the roughened faces.
     std::vector<double> n(count * 3, 0.0);
     for (std::size_t t = 0; t + 2 < tris.size(); t += 3) {
-        const float* a = &v[std::size_t(tris[t]) * 8];
-        const float* b = &v[std::size_t(tris[t + 1]) * 8];
-        const float* c = &v[std::size_t(tris[t + 2]) * 8];
+        const float* a = &v[std::size_t(tris[t]) * kFloats];
+        const float* b = &v[std::size_t(tris[t + 1]) * kFloats];
+        const float* c = &v[std::size_t(tris[t + 2]) * kFloats];
         const double e1[3] = {double(b[0]) - a[0], double(b[1]) - a[1], double(b[2]) - a[2]};
         const double e2[3] = {double(c[0]) - a[0], double(c[1]) - a[1], double(c[2]) - a[2]};
         const double f[3] = {e1[1] * e2[2] - e1[2] * e2[1], e1[2] * e2[0] - e1[0] * e2[2], e1[0] * e2[1] - e1[1] * e2[0]};
@@ -425,7 +484,7 @@ Props::Surface Props::refineSurface(const CpuMesh* mesh, double x, double y, dou
     for (std::size_t k = 0; k < count; ++k) {
         const double l = std::sqrt(n[k * 3] * n[k * 3] + n[k * 3 + 1] * n[k * 3 + 1] + n[k * 3 + 2] * n[k * 3 + 2]);
         if (l < 1e-12) continue;
-        for (int j = 0; j < 3; ++j) v[k * 8 + 3 + j] = float(n[k * 3 + j] / l);
+        for (int j = 0; j < 3; ++j) v[k * kFloats + 3 + j] = float(n[k * 3 + j] / l);
     }
     return {std::move(v), std::move(tris)};
 }
@@ -578,6 +637,7 @@ void Props::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const 
     SDL_PushGPUVertexUniformData(commands, 0, &view, sizeof(view));
     SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
     SDL_PushGPUFragmentUniformData(commands, 1, &look, sizeof(look));
+    SDL_PushGPUFragmentUniformData(commands, 2, &cliffBiomes_, sizeof(cliffBiomes_));
     const SDL_GPUTextureSamplerBinding textures[4] = {{materials, linear_.get()},
                                                       {normals, linear_.get()},
                                                       {properties, linear_.get()},

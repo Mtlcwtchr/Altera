@@ -856,6 +856,144 @@ def loop_arch(rng, seed):
     return o
 
 
+def _box(size, loc=(0, 0, 0), rot=(0, 0, 0), cuts=6):
+    bpy.ops.mesh.primitive_cube_add(size=1, location=loc)
+    o = bpy.context.active_object
+    o.scale = size
+    o.rotation_euler = rot
+    ab.select_only(o)
+    bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.subdivide(number_cuts=cuts)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    return o
+
+
+def prism_column(rng, seed):
+    """One of the marshes' row of towering rectangular prisms (a straight
+    slab of stone, sharp-edged, its foot sunk in the bog). 1000 m tall
+    nominal, ~120 x 60 m in section."""
+    H = 1000.0
+    w = H * rng.uniform(0.1, 0.14)
+    d = w * rng.uniform(0.4, 0.6)
+    o = _box((w, d, H + 80), (0, 0, H / 2 - 40), (rng.uniform(-0.015, 0.015), rng.uniform(-0.015, 0.015), 0), cuts=24)
+    voxel(o, H / 400.0)
+    ab.weather(o, seed=seed, cracks=0.35, erosion=0.35, chips=0.25, scale=0.25)
+    # Edges kept sharp: no smoothing.
+    return o
+
+
+def white_cube(rng, seed):
+    """A huge white cube of the green shore at the desert's edge
+    (doc/BIOMES_RU.md, 05: a tight group of white cubes): squared, barely
+    weathered, tipped a little and sunk on one corner. 300 m nominal."""
+    S = 300.0
+    o = _box((S, S, S), (0, 0, S / 2 - S * 0.12),
+             (rng.uniform(-0.12, 0.12), rng.uniform(-0.12, 0.12), rng.uniform(0, math.pi)), cuts=16)
+    voxel(o, S / 220.0)
+    ab.weather(o, seed=seed, cracks=0.15, erosion=0.1, chips=0.2, scale=0.12)
+    return o
+
+
+def mirror_prism(rng, seed):
+    """The golden desert's one megalith (doc/BIOMES_RU.md, 04): a huge
+    light, mirroring volume narrowing upward in an arc, a narrow black
+    entrance running all the way to its top. A building's thickness, not a
+    plane. 1000 m tall nominal."""
+    H = 1000.0
+    W = H * 0.42
+    D = W * 0.55
+    o = _box((W, D, H), (0, 0, H / 2), cuts=30)
+    for v in o.data.vertices:
+        t = max(0.0, v.co.z / H)
+        # Narrowing upward in an arc.
+        k = math.cos(t * math.pi / 2) ** 0.7 * 0.92 + 0.08
+        v.co.x *= k
+        v.co.y *= 0.55 + 0.45 * k
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(0, -D / 2, H / 2 + 20))
+    slit = bpy.context.active_object
+    slit.scale = (W * 0.06, D * 0.5, H * 1.1)
+    cut_with(o, [slit])
+    voxel(o, H / 350.0)
+    smooth(o, 1, 0.25)
+    for v in o.data.vertices:
+        v.co.z -= 25
+    return o
+
+
+def giant_spine(rng, seed):
+    """A giant's spine arching out of the ground (the remains of the fallen
+    in the plain and the desert): a row of vertebrae, each with its spur,
+    rising and sinking again. ~700 m long, ~180 m high."""
+    L = rng.uniform(600, 800)
+    balls = []
+    n = 22
+    for i in range(n):
+        u = i / (n - 1)
+        x = (u - 0.5) * L
+        z = 170 * math.sin(math.pi * u) ** 0.8 - 40
+        r = 26 + 10 * math.sin(math.pi * u)
+        balls.append({"co": (x, 0, z), "radius": r, "size": (1.25, 1.2, 1.0)})
+        # The spur standing up from each vertebra, and the two sideways.
+        balls.append({"co": (x, 0, z + r * 0.95), "radius": r * 0.6, "size": (0.55, 0.6, 1.9)})
+        for s in (-1, 1):
+            balls.append({"co": (x, s * r * 0.95, z + r * 0.2), "radius": r * 0.5, "size": (0.6, 1.9, 0.6)})
+    o = ab.metaball_mass("giant_spine", balls, resolution=2.4, threshold=0.6)
+    return finish(o, 2.2, 14, 1.5, 2, seed)
+
+
+def spire_platform(rng, seed):
+    """A small island grown out of a spire's side (doc/BIOMES_RU.md, 03): a
+    flat shelf of rock with a steppe top, its underside a hanging cone. The
+    spire's face at x = 0, the shelf reaching out along +x. Top at z = 0;
+    ~140 m across, ~120 m deep."""
+    R = rng.uniform(60, 80)
+    balls = []
+    for k in range(10):
+        t = k / 9
+        r = R * (1 - t) ** 0.9 + 10
+        for q in range(6):
+            a = q / 6 * math.tau + rng.uniform(-0.3, 0.3)
+            d = r * rng.uniform(0.3, 0.55)
+            balls.append({"co": (R * 0.7 + math.cos(a) * d, math.sin(a) * d, -t * R * 1.6),
+                          "radius": r * rng.uniform(0.5, 0.7), "size": (1, 1, 0.6)})
+    # Rooted into the spire.
+    balls.append({"co": (0, 0, -R * 0.4), "radius": R * 0.7, "size": (1, 1, 1.2)})
+    o = ab.metaball_mass("spire_platform", balls, resolution=1.6, threshold=0.6)
+    o = finish(o, 1.5, 12, 1.5, 2, seed)
+    cut_above(o, -3.0)
+    for v in o.data.vertices:
+        v.co.z += 3.0
+    return o
+
+
+def ribbon_spiral(rng, seed):
+    """A ribbon of rock winding up in a spiral, free of any pillar: the
+    canyon's way from the floor to the rim, a thin deck banked as it turns.
+    700 m tall nominal, ~260 m across."""
+    H = 700.0
+    R = rng.uniform(110, 140)
+    W = rng.uniform(34, 46)
+    turns = rng.uniform(1.6, 2.4)
+    balls = []
+    n = int(turns * 90)
+    for i in range(n):
+        t = i / (n - 1)
+        a = t * turns * math.tau
+        r = R * (1 - 0.25 * math.sin(t * math.pi))
+        bank = 0.35
+        for q in range(4):
+            w = (q / 3 - 0.5) * W
+            rr = r + w
+            balls.append({"co": (math.cos(a) * rr, math.sin(a) * rr, t * H - w * bank), "radius": 9,
+                          "size": (1.4, 1.4, 1.0)})
+    # Feet: where the ribbon meets the floor, a buttress.
+    balls.append({"co": (R, 0, -10), "radius": 40, "size": (1, 1, 1)})
+    o = ab.metaball_mass("ribbon_spiral", balls, resolution=1.8, threshold=0.6)
+    return finish(o, 1.6, 10, 1.0, 2, seed)
+
+
 NEW = {
     "spire": (spire, 26000),
     "bridge": (bridge, 9000),
@@ -883,6 +1021,12 @@ NEW = {
     "ribbon_bridge": (ribbon_bridge, 12000),
     "switchback": (switchback, 12000),
     "loop_arch": (loop_arch, 14000),
+    "prism_column": (prism_column, 6000),
+    "white_cube": (white_cube, 6000),
+    "mirror_prism": (mirror_prism, 10000),
+    "giant_spine": (giant_spine, 14000),
+    "spire_platform": (spire_platform, 5000),
+    "ribbon_spiral": (ribbon_spiral, 16000),
 }
 
 
@@ -1007,7 +1151,7 @@ def build(kind, variants, seed, catalogue, preview=None):
                [vtx.co for vtx in obj.data.vertices]
         cx = sum(c.x for c in near) / len(near)
         cy = sum(c.y for c in near) / len(near)
-        if kind not in ("bridge", "rim_ledge", "ribbon_bridge", "switchback"):   # these keep their own origin (span centre, the rim)
+        if kind not in ("bridge", "rim_ledge", "ribbon_bridge", "switchback", "spire_platform"):   # these keep their own origin (span centre, the rim)
             for vtx in obj.data.vertices:
                 vtx.co.x -= cx
                 vtx.co.y -= cy
@@ -1073,6 +1217,7 @@ ALL = {"spire": 6, "bridge": 3, "valley_spire": 1,
        "rim_ledge": 4, "rock_blade": 4, "hogback": 3,
        "mega_ring": 3, "mega_stake": 4, "trilithon": 3, "pierced_ring": 2,
        "spiral_rise": 3, "ribbon_bridge": 3, "switchback": 3, "loop_arch": 2,
+       "prism_column": 4, "white_cube": 4, "mirror_prism": 1, "giant_spine": 3, "spire_platform": 5, "ribbon_spiral": 3,
        "menhir": 3, "fallen_menhir": 2, "marsh_panel": 3, "colossus_head": 2, "colossus_hand": 1,
        "needle": 3, "portal_tower": 2, "mirror_monument": 1, "iron_defender": 1, "cyclopean_block": 2,
        "giant_stair": 1}

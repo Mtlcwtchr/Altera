@@ -208,187 +208,65 @@
         ]
       }
     ],
-    "singles": [
-      {
-        "kind": "valley_spire",
-        "zone": "river_valley",
-        "height_m": [
-          800,
-          950
-        ],
-        "near_low": true
-      }
-    ],
+    "singles": [],
     "switchbacks": {
-      "kind": "switchback",
+      "kind": "ribbon_spiral",
       "zones": [
         "canyon_steppe",
         "steppe",
         "steppe_canyon"
       ],
-      "count": 14,
+      "count": 10,
       "slope": 1.0,
       "min_drop_m": 200,
       "spacing_m": 3000,
-      "into_m": -45,
+      "into_m": 0,
       "width": [
         1.4,
         2.2
       ]
+    },
+    "spire_islands": {
+      "comment": "Small islands on the spires at different heights, bridged to each other and to the steppe islands (the heart of the canyon biome).",
+      "kind": "spire_platform",
+      "bridge_kind": "bridge",
+      "odd_kind": "ribbon_bridge",
+      "odd_share": 0.4,
+      "scale": [
+        0.8,
+        1.3
+      ],
+      "root_share": 0.75,
+      "gap_m": [
+        120,
+        900
+      ],
+      "per_spire": 2,
+      "low_share": 0.3,
+      "below_top_m": 60,
+      "passage_m": 1400,
+      "thickness": [
+        0.25,
+        0.4
+      ]
     }
   },
   "megaliths": {
-    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): surreal standing things - rings and stakes out of the ground, Stonehenge-like stones, standing panels, needles, the stone giants. They stand on the terrain; they are not part of it.",
-    "groups": [
-      {
-        "kind": "marsh_panel",
-        "zones": [
-          "great_marshes",
-          "river_marshes"
-        ],
-        "per_1000km2": 5,
-        "cluster": [
-          3,
-          7
-        ],
-        "cluster_m": 450,
-        "size_m": [
-          140,
-          280
-        ]
-      },
-      {
-        "kind": "menhir",
-        "zones": [
-          "great_marshes",
-          "dark_forest"
-        ],
-        "per_1000km2": 4,
-        "cluster": [
-          5,
-          9
-        ],
-        "cluster_m": 600,
-        "size_m": [
-          90,
-          180
-        ],
-        "ring": true
-      },
-      {
-        "kind": "colossus_head",
-        "zones": [
-          "green_plateau"
-        ],
-        "per_1000km2": 0.8,
-        "size_m": [
-          280,
-          440
-        ]
-      },
-      {
-        "kind": "colossus_hand",
-        "zones": [
-          "green_plateau",
-          "river_valley"
-        ],
-        "per_1000km2": 0.5,
-        "size_m": [
-          240,
-          400
-        ]
-      },
-      {
-        "kind": "cyclopean_block",
-        "zones": [
-          "golden_desert",
-          "green_plateau"
-        ],
-        "per_1000km2": 1.5,
-        "cluster": [
-          2,
-          5
-        ],
-        "cluster_m": 500,
-        "size_m": [
-          100,
-          180
-        ]
-      },
-      {
-        "kind": "needle",
-        "zones": [
-          "black_lands",
-          "isles"
-        ],
-        "per_1000km2": 2.5,
-        "cluster": [
-          2,
-          6
-        ],
-        "cluster_m": 700,
-        "size_m": [
-          500,
-          1100
-        ]
-      },
-      {
-        "kind": "fallen_menhir",
-        "zones": [
-          "green_plateau",
-          "steppe"
-        ],
-        "per_1000km2": 1.5,
-        "size_m": [
-          50,
-          90
-        ]
-      },
-      {
-        "kind": "marsh_arch",
-        "zones": [
-          "great_marshes"
-        ],
-        "per_1000km2": 0.8,
-        "height_m": [
-          520,
-          680
-        ]
-      },
-      {
-        "kind": "giant_bones",
-        "zones": [
-          "golden_desert"
-        ],
-        "per_1000km2": 0.5,
-        "size_m": [
-          600,
-          840
-        ]
-      }
-    ],
-    "singles": [],
+    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): one kind per biome, none repeated elsewhere; the isles and the crescent have none. `heroes`: zone -> {kind, count, share of the biome's extent as height}. `prism_row`: towering prisms along a border. `cube_cluster`: huge white cubes. `coast_spikes`: spikes all along a coast. `groups` / `singles`: as elsewhere.",
     "heroes": {
-      "comment": "The great megaliths: `zones` -> how many in each biome; height = `share` of the biome's extent (root of its area), within `height_m`; at least `edge_share` of the extent in from its edge and `spacing_share` of it apart.",
-      "kinds": [
-        "mega_ring",
-        "mega_stake",
-        "trilithon",
-        "pierced_ring"
-      ],
       "zones": {
-        "green_plateau": 3,
-        "golden_desert": 2,
-        "great_marshes": 2,
-        "dark_forest": 1,
-        "white_mountains": 2,
-        "black_lands": 3,
-        "river_valley": 1,
-        "canyon_steppe": 1,
-        "lake_valley": 1,
-        "isles": 2
+        "white_mountains": {
+          "kind": "mega_ring",
+          "count": 1,
+          "share": 0.08
+        },
+        "golden_desert": {
+          "kind": "mirror_prism",
+          "count": 1,
+          "share": 0.07
+        }
       },
-      "share": 0.1,
+      "share": 0.08,
       "height_m": [
         1200,
         3600
@@ -396,7 +274,137 @@
       "edge_share": 0.12,
       "spacing_share": 0.3,
       "max_slope": 0.3
-    }
+    },
+    "prism_row": {
+      "kind": "prism_column",
+      "zone": "great_marshes",
+      "along": "dark_forest",
+      "depth_m": 900,
+      "count": 7,
+      "gap_m": 650,
+      "share": 0.06,
+      "height_m": [
+        1100,
+        2600
+      ]
+    },
+    "cube_cluster": {
+      "kind": "white_cube",
+      "zone": "dragon_cliff",
+      "near": "golden_desert",
+      "depth_m": 1500,
+      "count": [
+        4,
+        7
+      ],
+      "cluster_m": 900,
+      "size_m": [
+        280,
+        620
+      ]
+    },
+    "coast_spikes": {
+      "kind": "needle",
+      "zone": "black_lands",
+      "shore_m": 450,
+      "gap_m": [
+        600,
+        1800
+      ],
+      "group": 3,
+      "height_m": [
+        200,
+        520
+      ]
+    },
+    "groups": [
+      {
+        "kind": "marsh_panel",
+        "zones": [
+          "great_marshes",
+          "river_marshes"
+        ],
+        "per_1000km2": 8,
+        "cluster": [
+          3,
+          7
+        ],
+        "cluster_m": 450,
+        "size_m": [
+          70,
+          160
+        ]
+      },
+      {
+        "kind": "colossus_head",
+        "zones": [
+          "green_plateau"
+        ],
+        "per_1000km2": 1.5,
+        "size_m": [
+          300,
+          480
+        ]
+      },
+      {
+        "kind": "colossus_hand",
+        "zones": [
+          "green_plateau",
+          "golden_desert"
+        ],
+        "per_1000km2": 1.2,
+        "size_m": [
+          260,
+          420
+        ]
+      },
+      {
+        "kind": "iron_defender",
+        "zones": [
+          "green_plateau",
+          "golden_desert"
+        ],
+        "per_1000km2": 1.0,
+        "size_m": [
+          300,
+          520
+        ]
+      },
+      {
+        "kind": "giant_spine",
+        "zones": [
+          "green_plateau",
+          "golden_desert"
+        ],
+        "per_1000km2": 1.2,
+        "size_m": [
+          700,
+          1200
+        ]
+      },
+      {
+        "kind": "giant_bones",
+        "zones": [
+          "golden_desert"
+        ],
+        "per_1000km2": 1.0,
+        "size_m": [
+          600,
+          900
+        ]
+      }
+    ],
+    "singles": [
+      {
+        "kind": "valley_spire",
+        "zone": "river_valley",
+        "height_m": [
+          1400,
+          1800
+        ],
+        "near_low": true
+      }
+    ]
   },
   "buildings": {
     "comment": "Buildings (tools/terrain_lab/world_buildings.py): their own piece of work, off until then.",
@@ -456,17 +464,6 @@
     },
     "groups": [
       {
-        "kind": "iron_defender",
-        "zones": [
-          "green_plateau"
-        ],
-        "per_1000km2": 0.5,
-        "size_m": [
-          90,
-          140
-        ]
-      },
-      {
         "kind": "portal_tower",
         "zones": [
           "black_lands"
@@ -503,11 +500,11 @@
   "materials": {
     "spire": "rock_ochre",
     "bridge": "rock_ochre",
-    "valley_spire": "rock_dark",
+    "valley_spire": "rocky_grey",
     "marsh_panel": "rock_mossy",
     "menhir": "rocky_grey",
     "fallen_menhir": "rocky_grey",
-    "needle": "rock_dark",
+    "needle": "rocky_grey",
     "portal_tower": "rock_dark",
     "mirror_monument": "rock_pale",
     "colossus_head": "rock_pale",
@@ -537,7 +534,13 @@
     "spiral_rise": "rock_ochre",
     "ribbon_bridge": "rock_ochre",
     "switchback": "rock_ochre",
-    "loop_arch": "rock_ochre"
+    "loop_arch": "rock_ochre",
+    "prism_column": "rock_dark",
+    "white_cube": "rock_pale",
+    "mirror_prism": "rock_pale",
+    "giant_spine": "rock_pale",
+    "spire_platform": "rock_ochre",
+    "ribbon_spiral": "rock_ochre"
   },
   "moss": {
     "marsh_arch": 0.95,
@@ -548,13 +551,13 @@
     "colossus_hand": 0.35,
     "iron_defender": 0.25,
     "giant_stair": 0.3,
-    "valley_spire": 0.45,
     "sleeping_troll": 0.55,
     "tilted_mass": 0.75,
     "floating_isle": 0.9,
     "hogback": 0.6,
     "trilithon": 0.4,
-    "mega_ring": 0.25
+    "mega_ring": 0.25,
+    "prism_column": 0.5
   },
   "moss_material": "grass_dark",
   "cliffs": {
@@ -602,5 +605,15 @@
   },
   "min_gap_m": 250,
   "edge_m": 800,
-  "max_slope": 0.35
+  "max_slope": 0.35,
+  "cover": {
+    "spire": 1.0,
+    "spiral_rise": 1.0,
+    "spire_platform": 1.0,
+    "rim_ledge": 1.0,
+    "tilted_mass": 0.8,
+    "floating_isle": 1.0,
+    "hogback": 0.7
+  },
+  "cover_material": "grass_dry"
 }
