@@ -8,7 +8,7 @@
 4. world_features.py: spires, landmarks, cliff meshes     -> world_features.json, world_cliffs/
 
 Then view it with the run configuration "Terrain lab (generated world)", or
-    terrain_lab.exe --heightmap terrain_lab_out/world_final.r16 --world-km 262.144 --height-range 6000
+    terrain_lab.exe --heightmap terrain_lab_out/world_final.r16 --world-km 131.072 --height-range 6000
                     --sea 0.13 --biomes terrain_lab_out/world_biomes.png --water-rules terrain_lab_out/world_water.png
 """
 import argparse
