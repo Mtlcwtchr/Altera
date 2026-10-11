@@ -26,6 +26,7 @@ struct VsOut {
     float3 place : TEXCOORD2;         // texture space: wrapped world metres
     float2 uv : TEXCOORD3;
     nointerpolation float2 layer : TEXCOORD4;   // material layer, variation
+    nointerpolation float hero : TEXCOORD5;     // 1: a megalith
 };
 
 VsOut propsVs(VertexIn input) {
@@ -39,7 +40,8 @@ VsOut propsVs(VertexIn input) {
     o.normal = float3(n.x * c - n.y * s, n.x * s + n.y * c, n.z);
     o.place = float3(input.anchor.xy + turned.xy, input.anchor.z + turned.z);
     o.uv = input.uv;
-    o.layer = float2(input.scale.w, input.anchor.w);
+    o.layer = float2(input.scale.w, frac(input.anchor.w));
+    o.hero = input.anchor.w > 1.5 ? 1.0 : 0.0;
     return o;
 }
 
@@ -125,6 +127,13 @@ float4 propsPs(VsOut input) : SV_Target0 {
     const float occlusion = input.uv.x * foot * lerp(0.7, 1.0, ao);
     const float sunLight = sunShadow(input.view, n0) * cloudShadow(input.view);
     const float3 lit = shadeSurface(colour, n, input.view, sunLight, occlusion, 0.0) * lerp(0.8, 1.0, input.uv.x);
+    // A megalith keeps its silhouette through the haze: hazed as if a third
+    // as far, with a quarter of the full haze laid over that.
+    if (input.hero > 0.5) {
+        const float3 near = applyFog(lit, input.view * 0.35);
+        const float3 far = applyFog(lit, input.view);
+        return float4(lerp(near, far, 0.25), 1);
+    }
     return float4(applyFog(lit, input.view), 1);
 }
 

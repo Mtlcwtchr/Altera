@@ -647,6 +647,215 @@ def hogback(rng, seed):
     return o
 
 
+def _torus(R, r, segs=96, rings=24):
+    bpy.ops.mesh.primitive_torus_add(major_radius=R, minor_radius=r, major_segments=segs, minor_segments=rings)
+    return bpy.context.active_object
+
+
+def mega_ring(rng, seed):
+    """A stone ring standing on edge, sunk a fifth into the ground: thick,
+    weathered, a bite broken out of it (doc/BIOMES_RU.md, the art language:
+    surreal standing rings). 1000 m across nominal."""
+    R = 500.0
+    r = R * rng.uniform(0.11, 0.16)
+    o = _torus(R, r)
+    o.rotation_euler = (math.pi / 2, 0, 0)
+    ab.select_only(o)
+    bpy.ops.object.transform_apply(rotation=True)
+    for v in o.data.vertices:
+        # Thicker at the foot, thinning to the crown; squared off a little.
+        k = (v.co.z + R) / (2 * R)
+        v.co.x *= 1.0
+        v.co.y *= 1.0 + 0.25 * (1 - k)
+    # A bite out of the rim.
+    a = rng.uniform(0.3, 1.2) * rng.choice((-1, 1))
+    bpy.ops.mesh.primitive_uv_sphere_add(radius=r * 1.6, location=(math.sin(a) * R, 0, math.cos(a) * R))
+    cut_with(o, [bpy.context.active_object])
+    voxel(o, R / 140.0)
+    boulders(o, r * 0.9, r * 0.12, seed)
+    ab.weather(o, seed=seed, cracks=0.45, erosion=0.5, chips=0.4, scale=0.5)
+    smooth(o, 2, 0.4)
+    for v in o.data.vertices:
+        v.co.z += R * 0.8
+    return o
+
+
+def mega_stake(rng, seed):
+    """A stake driven into the ground at a lean: a tapering four-sided spike
+    of stone, faceted, bent a little near the tip. 1000 m long nominal."""
+    L = 1000.0
+    w = L * rng.uniform(0.045, 0.07)
+    bpy.ops.mesh.primitive_cylinder_add(vertices=5, radius=w, depth=L, location=(0, 0, L / 2))
+    o = bpy.context.active_object
+    ab.select_only(o)
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.mesh.subdivide(number_cuts=30)
+    bpy.ops.object.mode_set(mode="OBJECT")
+    bend = rng.uniform(-0.06, 0.06) * L
+    for v in o.data.vertices:
+        t = v.co.z / L
+        taper = (1 - t) ** 0.8 + 0.02
+        v.co.x = v.co.x * taper + bend * t ** 3
+        v.co.y *= taper
+    voxel(o, L / 300.0)
+    ab.weather(o, seed=seed, cracks=0.5, erosion=0.4, chips=0.6, scale=0.6)
+    # Lean it: the lab turns it about z, this tips it over x.
+    lean = math.radians(rng.uniform(8, 28))
+    for v in o.data.vertices:
+        y, z = v.co.y, v.co.z
+        v.co.y = y * math.cos(lean) - z * math.sin(lean)
+        v.co.z = y * math.sin(lean) + z * math.cos(lean) - 0.12 * L
+    return o
+
+
+def trilithon(rng, seed):
+    """Two standing stones and a lintel laid across them, Stonehenge-like,
+    the lintel slipped askew. 500 m tall nominal."""
+    H = 500.0
+    parts = []
+    gap = H * rng.uniform(0.35, 0.5)
+    for side in (-1, 1):
+        w = H * rng.uniform(0.2, 0.26)
+        d = w * rng.uniform(0.55, 0.75)
+        bpy.ops.mesh.primitive_cube_add(size=1, location=(side * (gap / 2 + w / 2), 0, H / 2 - 30))
+        p = bpy.context.active_object
+        p.scale = (w, d, H + 60)
+        p.rotation_euler = (rng.uniform(-0.04, 0.04), side * rng.uniform(0.0, 0.05), rng.uniform(-0.05, 0.05))
+        parts.append(p)
+    lw = gap + 2 * H * 0.24
+    bpy.ops.mesh.primitive_cube_add(size=1, location=(rng.uniform(-0.05, 0.05) * H, 0, H + H * 0.08))
+    lint = bpy.context.active_object
+    lint.scale = (lw * rng.uniform(1.0, 1.15), H * 0.16, H * 0.16)
+    lint.rotation_euler = (0, rng.uniform(-0.08, 0.08), rng.uniform(-0.15, 0.15))
+    parts.append(lint)
+    for p in parts:
+        ab.select_only(p)
+        bpy.ops.object.transform_apply(location=False, rotation=True, scale=True)
+        bpy.ops.object.mode_set(mode="EDIT")
+        bpy.ops.mesh.select_all(action="SELECT")
+        bpy.ops.mesh.subdivide(number_cuts=8)
+        bpy.ops.object.mode_set(mode="OBJECT")
+    o = ab.union(parts[0], parts[1:])
+    voxel(o, H / 160.0)
+    ab.weather(o, seed=seed, cracks=0.5, erosion=0.5, chips=0.6, scale=0.35)
+    smooth(o, 1, 0.3)
+    return o
+
+
+def pierced_ring(rng, seed):
+    """A ring on its edge run through by a stake: the two surreal shapes in
+    one. 1100 m across nominal."""
+    ring = mega_ring(rng, seed)
+    stake = mega_stake(rng, seed + 1)
+    # Through the ring's hole, across it.
+    R = 500.0
+    for v in stake.data.vertices:
+        v.co.z += R * 0.35
+        x, y = v.co.x, v.co.y
+        v.co.x, v.co.y = y, -x
+    o = ab.join([ring, stake], "pierced_ring")
+    voxel(o, R / 150.0)
+    smooth(o, 1, 0.3)
+    return o
+
+
+def spiral_rise(rng, seed):
+    """A spiral rise (doc/BIOMES_RU.md, 03: heavy winding paths that climb and
+    drop sharply): a ramp of rock winding round a pillar to its top, wide
+    enough to walk, its outer edge broken. 600 m tall nominal."""
+    H = 600.0
+    core = H * rng.uniform(0.1, 0.13)
+    turns = rng.uniform(2.2, 3.4)
+    balls = []
+    z = -30
+    while z < H:
+        balls.append({"co": (0, 0, z), "radius": core * rng.uniform(0.95, 1.15), "size": (1, 1, 0.8)})
+        z += core * 0.5
+    n = int(turns * 60)
+    for i in range(n):
+        t = i / (n - 1)
+        a = t * turns * math.tau
+        rr = core * 0.85 + 26 + 10 * math.sin(i * 0.7)   # overlapping the pillar: one piece
+        z = t * H
+        # The ramp: a flat run of stone hanging off the pillar.
+        balls.append({"co": (math.cos(a) * rr, math.sin(a) * rr, z), "radius": 26 * rng.uniform(0.85, 1.15),
+                      "size": (1.2, 1.2, 0.35)})
+    o = ab.metaball_mass("spiral_rise", balls, resolution=3.0, threshold=0.6)
+    return finish(o, 2.6, 20, 2.5, 2, seed)
+
+
+def ribbon_bridge(rng, seed):
+    """A bridge twisted like a ribbon (bizarre, after Dean): a thin deck that
+    turns half over along its span and back. Span 1000 m along x, deck at
+    z = 0 at both ends, sagging upward in an arch."""
+    S = 1000.0
+    W = rng.uniform(55, 80)
+    T = rng.uniform(14, 20)
+    twist = rng.uniform(0.6, 1.1) * math.pi
+    balls = []
+    n = 70
+    for i in range(n + 1):
+        u = i / n
+        x = (u - 0.5) * S * 1.08
+        a = twist * math.sin(math.pi * u)
+        z = S * 0.12 * math.sin(math.pi * u)
+        for q in range(5):
+            w = (q / 4 - 0.5) * W
+            balls.append({"co": (x, w * math.cos(a), z + w * math.sin(a)), "radius": T, "size": (1.3, 1, 1)})
+    o = ab.metaball_mass("ribbon_bridge", balls, resolution=2.0, threshold=0.6)
+    return finish(o, 2.0, 15, 1.5, 2, seed)
+
+
+def switchback(rng, seed):
+    """A switchback climb cut along a canyon wall: ledges zigzagging up a
+    sheer face, each joined to the next at a hairpin. Laid on the plane y = 0
+    (the wall), standing out along -y; 700 m tall, 500 m wide nominal."""
+    H, W = 700.0, 500.0
+    legs = rng.randint(6, 9)
+    balls = []
+    for k in range(legs):
+        z0, z1 = H * k / legs, H * (k + 1) / legs
+        x0, x1 = (-W / 2, W / 2) if k % 2 == 0 else (W / 2, -W / 2)
+        n = 26
+        for i in range(n + 1):
+            t = i / n
+            balls.append({"co": (x0 + (x1 - x0) * t, -18, z0 + (z1 - z0) * t), "radius": 24,
+                          "size": (1.3, 1.1, 0.45)})
+        # A buttress under each hairpin.
+        balls.append({"co": (x1, -10, z1 - 20), "radius": 26, "size": (1, 0.8, 1.4)})
+    o = ab.metaball_mass("switchback", balls, resolution=1.8, threshold=0.6)
+    return finish(o, 1.6, 10, 1.2, 1, seed)
+
+
+def loop_arch(rng, seed):
+    """A natural arch that curls over into a loop before coming down again:
+    an impossible bend of rock. ~500 m across, ~450 m tall."""
+    balls = []
+    n = 120
+    R = rng.uniform(160, 200)
+    for i in range(n + 1):
+        t = i / n
+        # Rise from the left foot, a full loop at the top, down to the right foot.
+        if t < 0.3:
+            u = t / 0.3
+            p = (-260 + 140 * u, 0, 260 * math.sin(u * math.pi / 2))
+        elif t < 0.7:
+            u = (t - 0.3) / 0.4
+            a = -math.pi / 2 + u * math.tau
+            p = (-120 + 120 * u + R * 0.6 * math.cos(a), 25 * math.sin(u * math.pi), 260 + R + R * math.sin(a))
+        else:
+            u = (t - 0.7) / 0.3
+            p = (0 + 260 * u, 0, 260 * math.cos(u * math.pi / 2))
+        th = 34 if t < 0.12 or t > 0.88 else 24
+        balls.append({"co": p, "radius": th * rng.uniform(0.9, 1.1), "size": (1, 1, 1)})
+    o = ab.metaball_mass("loop_arch", balls, resolution=2.4, threshold=0.6)
+    o = finish(o, 2.2, 22, 3, 2, seed)
+    for v in o.data.vertices:
+        v.co.z -= 20
+    return o
+
+
 NEW = {
     "spire": (spire, 26000),
     "bridge": (bridge, 9000),
@@ -666,6 +875,14 @@ NEW = {
     "rim_ledge": (rim_ledge, 9000),
     "rock_blade": (rock_blade, 14000),
     "hogback": (hogback, 14000),
+    "mega_ring": (mega_ring, 24000),
+    "mega_stake": (mega_stake, 10000),
+    "trilithon": (trilithon, 14000),
+    "pierced_ring": (pierced_ring, 30000),
+    "spiral_rise": (spiral_rise, 20000),
+    "ribbon_bridge": (ribbon_bridge, 12000),
+    "switchback": (switchback, 12000),
+    "loop_arch": (loop_arch, 14000),
 }
 
 
@@ -790,7 +1007,7 @@ def build(kind, variants, seed, catalogue, preview=None):
                [vtx.co for vtx in obj.data.vertices]
         cx = sum(c.x for c in near) / len(near)
         cy = sum(c.y for c in near) / len(near)
-        if kind not in ("bridge", "rim_ledge"):   # these keep their own origin (span centre, the rim)
+        if kind not in ("bridge", "rim_ledge", "ribbon_bridge", "switchback"):   # these keep their own origin (span centre, the rim)
             for vtx in obj.data.vertices:
                 vtx.co.x -= cx
                 vtx.co.y -= cy
@@ -854,6 +1071,8 @@ ALL = {"spire": 6, "bridge": 3, "valley_spire": 1,
        "sentinel_peak": 2, "spiral_tower": 1, "bridge_piece": 3,
        "sleeping_troll": 3, "floating_isle": 4, "tilted_mass": 2, "sea_stack": 4,
        "rim_ledge": 4, "rock_blade": 4, "hogback": 3,
+       "mega_ring": 3, "mega_stake": 4, "trilithon": 3, "pierced_ring": 2,
+       "spiral_rise": 3, "ribbon_bridge": 3, "switchback": 3, "loop_arch": 2,
        "menhir": 3, "fallen_menhir": 2, "marsh_panel": 3, "colossus_head": 2, "colossus_hand": 1,
        "needle": 3, "portal_tower": 2, "mirror_monument": 1, "iron_defender": 1, "cyclopean_block": 2,
        "giant_stair": 1}

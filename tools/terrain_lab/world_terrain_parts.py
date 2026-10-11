@@ -72,9 +72,14 @@ def canyon_spires(world, rules, catalogue, rng, add):
     spires = poisson(pts, weights, count, sp["min_gap_km"] * 1000, rng)
     names = _names(catalogue, sp["kind"])
     spire_list = []
+    # Some of them are spiral rises: a ramp winding round the column to its top.
+    rises = _names(catalogue, sp["rise_kind"]) if sp.get("rise_kind") else []
     for x, y in spires:
         i, j = int(y // world.cell), int(x // world.cell)
+        kind = "spire"
         name = names[rng.integers(len(names))]
+        if rises and rng.random() < sp.get("rise_share", 0.0):
+            kind, name = sp["rise_kind"], rises[rng.integers(len(rises))]
         m = catalogue[name]
         tall = m["hi"][2]
         ground = world.lowest(x, y, 0.5 * (m["hi"][0] - m["lo"][0]))
@@ -83,7 +88,7 @@ def canyon_spires(world, rules, catalogue, rng, add):
             continue
         sz = (t - ground) / tall
         sxy = sz ** 0.85 * rng.uniform(*sp["width"])   # nearly as built: no squat boulders
-        add("spire", name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), top=round(float(t), 1),
+        add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), top=round(float(t), 1),
             ground=round(ground, 1))
         spire_list.append((x, y, t, ground, sxy * 0.5 * (m["hi"][0] - m["lo"][0])))
 
@@ -116,8 +121,11 @@ def canyon_spires(world, rules, catalogue, rng, add):
         rise = min(ta - ga, tb - gb)
         deck = min(ta, tb) - rng.uniform(0.02, 0.18) * rise
         th = rng.uniform(*br["thickness"])
-        name = bnames[rng.integers(len(bnames))]
-        add("bridge", name, (xa + xb) / 2, (ya + yb) / 2, math.atan2(yb - ya, xb - xa),
+        kind, name = br["kind"], bnames[rng.integers(len(bnames))]
+        if br.get("odd_kind") and rng.random() < br.get("odd_share", 0.0):
+            odd = _names(catalogue, br["odd_kind"])
+            kind, name = br["odd_kind"], odd[rng.integers(len(odd))]
+        add(kind, name, (xa + xb) / 2, (ya + yb) / 2, math.atan2(yb - ya, xb - xa),
             (d / 1000.0, th, th * math.sqrt(d / 1000.0)), z=round(float(deck), 1))
     return len(spire_list)
 
@@ -169,7 +177,11 @@ def canyon_bridges(world, rules, catalogue, rng, add):
         made.append((mx, my))
         th = rng.uniform(*r["thickness"])
         # Its ends reach well into the rims: span plus a fifth either side.
-        add(r["kind"], names[rng.integers(len(names))], mx, my, math.atan2(y1 - y0, x1 - x0),
+        kind, name = r["kind"], names[rng.integers(len(names))]
+        if r.get("odd_kind") and rng.random() < r.get("odd_share", 0.0):
+            odd = _names(catalogue, r["odd_kind"])
+            kind, name = r["odd_kind"], odd[rng.integers(len(odd))]
+        add(kind, name, mx, my, math.atan2(y1 - y0, x1 - x0),
             ((gap * 1.4) / 1000.0, th, th * math.sqrt(gap / 1000.0)), z=round(float(min(h0, h1) - rng.uniform(5, 25)), 1))
     return len(made)
 
@@ -346,13 +358,58 @@ def sentinels(world, rules, catalogue, rng, add):
     return 2
 
 
+def switchbacks(world, rules, catalogue, rng, add):
+    """Switchback climbs cut along the canyon walls (doc/BIOMES_RU.md, 03:
+    heavy winding paths that drop and climb sharply): on a sheer stretch, the
+    model's wall plane laid along it, its ledges standing out downhill, from
+    the foot to the rim."""
+    r = rules["switchbacks"]
+    zone = np.isin(world.zones, r["zones"])
+    gy, gx = np.gradient(world.hz, world.cell)
+    slope = np.hypot(gx, gy)
+    lo = ndimage.minimum_filter(world.hz, 5)
+    hi = ndimage.maximum_filter(world.hz, 5)
+    ok = zone & (slope > r["slope"]) & (hi - lo > r["min_drop_m"])
+    ys, xs = np.nonzero(ok)
+    if not len(xs):
+        return 0
+    names = _names(catalogue, r["kind"])
+    made = []
+    for k in rng.permutation(len(xs)):
+        i, j = ys[k], xs[k]
+        x, y = (j + 0.5) * world.cell, (i + 0.5) * world.cell
+        if any((x - p[0]) ** 2 + (y - p[1]) ** 2 < r["spacing_m"] ** 2 for p in made):
+            continue
+        down = np.array([-gx[i, j], -gy[i, j]]) / max(slope[i, j], 1e-6)
+        # Walk downhill to the foot: the model stands there, its wall plane
+        # (y = 0) against the face, its ledges (-y) facing out over the floor.
+        foot = (x, y)
+        for step in range(1, 40):
+            px, py = x + down[0] * step * 16.0, y + down[1] * step * 16.0
+            if world.height(px, py) > world.height(*foot) - 2.0:
+                break
+            foot = (px, py)
+        fx, fy = foot[0] - down[0] * r["into_m"], foot[1] - down[1] * r["into_m"]
+        drop = float(hi[i, j] - lo[i, j])
+        name = names[rng.integers(len(names))]
+        m = catalogue[name]
+        sz = drop * rng.uniform(0.85, 0.98) / m["hi"][2]
+        sxy = rng.uniform(*r["width"])
+        made.append((x, y))
+        add(r["kind"], name, fx, fy, math.atan2(down[1], down[0]) + math.pi / 2, (sxy, 1.0, sz),
+            z=round(world.height(*foot) - 5.0, 1))
+        if len(made) >= r["count"]:
+            break
+    return len(made)
+
+
 def place(world, rules, catalogue, rng, add):
     """Every terrain part the section names; returns how many of each."""
     import world_features as wf
     counts = {}
     for name, fn in (("spires", canyon_spires), ("canyon_bridges", canyon_bridges), ("rim_ledges", rim_ledges),
                      ("clefts", clefts), ("sea_stacks", sea_stacks), ("floating_isles", floating_isles),
-                     ("sentinels", sentinels)):
+                     ("sentinels", sentinels), ("switchbacks", switchbacks)):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     counts["groups"] = wf.place_groups(world, rules, catalogue, rng, add)

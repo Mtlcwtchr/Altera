@@ -28,7 +28,9 @@
         1.2
       ],
       "wall_slope": 0.35,
-      "wall_gap_m": 350
+      "wall_gap_m": 350,
+      "rise_kind": "spiral_rise",
+      "rise_share": 0.15
     },
     "bridges": {
       "kind": "bridge",
@@ -41,7 +43,9 @@
       "thickness": [
         0.85,
         1.15
-      ]
+      ],
+      "odd_kind": "ribbon_bridge",
+      "odd_share": 0.35
     },
     "canyon_bridges": {
       "kind": "bridge",
@@ -58,7 +62,9 @@
       "thickness": [
         0.45,
         0.7
-      ]
+      ],
+      "odd_kind": "ribbon_bridge",
+      "odd_share": 0.3
     },
     "rim_ledges": {
       "kind": "rim_ledge",
@@ -188,6 +194,18 @@
           700,
           1050
         ]
+      },
+      {
+        "kind": "loop_arch",
+        "zones": [
+          "canyon_steppe",
+          "steppe"
+        ],
+        "per_1000km2": 2.0,
+        "height_m": [
+          500,
+          900
+        ]
       }
     ],
     "singles": [
@@ -200,7 +218,24 @@
         ],
         "near_low": true
       }
-    ]
+    ],
+    "switchbacks": {
+      "kind": "switchback",
+      "zones": [
+        "canyon_steppe",
+        "steppe",
+        "steppe_canyon"
+      ],
+      "count": 14,
+      "slope": 1.0,
+      "min_drop_m": 200,
+      "spacing_m": 3000,
+      "into_m": -45,
+      "width": [
+        1.4,
+        2.2
+      ]
+    }
   },
   "megaliths": {
     "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): surreal standing things - rings and stakes out of the ground, Stonehenge-like stones, standing panels, needles, the stone giants. They stand on the terrain; they are not part of it.",
@@ -218,8 +253,8 @@
         ],
         "cluster_m": 450,
         "size_m": [
-          70,
-          140
+          140,
+          280
         ]
       },
       {
@@ -235,8 +270,8 @@
         ],
         "cluster_m": 600,
         "size_m": [
-          45,
-          90
+          90,
+          180
         ],
         "ring": true
       },
@@ -247,8 +282,8 @@
         ],
         "per_1000km2": 0.8,
         "size_m": [
-          140,
-          220
+          280,
+          440
         ]
       },
       {
@@ -259,8 +294,8 @@
         ],
         "per_1000km2": 0.5,
         "size_m": [
-          120,
-          200
+          240,
+          400
         ]
       },
       {
@@ -276,8 +311,8 @@
         ],
         "cluster_m": 500,
         "size_m": [
-          50,
-          90
+          100,
+          180
         ]
       },
       {
@@ -293,8 +328,8 @@
         ],
         "cluster_m": 700,
         "size_m": [
-          250,
-          550
+          500,
+          1100
         ]
       },
       {
@@ -305,8 +340,8 @@
         ],
         "per_1000km2": 1.5,
         "size_m": [
-          25,
-          45
+          50,
+          90
         ]
       },
       {
@@ -316,8 +351,8 @@
         ],
         "per_1000km2": 0.8,
         "height_m": [
-          260,
-          340
+          520,
+          680
         ]
       },
       {
@@ -327,12 +362,41 @@
         ],
         "per_1000km2": 0.5,
         "size_m": [
-          300,
-          420
+          600,
+          840
         ]
       }
     ],
-    "singles": []
+    "singles": [],
+    "heroes": {
+      "comment": "The great megaliths: `zones` -> how many in each biome; height = `share` of the biome's extent (root of its area), within `height_m`; at least `edge_share` of the extent in from its edge and `spacing_share` of it apart.",
+      "kinds": [
+        "mega_ring",
+        "mega_stake",
+        "trilithon",
+        "pierced_ring"
+      ],
+      "zones": {
+        "green_plateau": 3,
+        "golden_desert": 2,
+        "great_marshes": 2,
+        "dark_forest": 1,
+        "white_mountains": 2,
+        "black_lands": 3,
+        "river_valley": 1,
+        "canyon_steppe": 1,
+        "lake_valley": 1,
+        "isles": 2
+      },
+      "share": 0.1,
+      "height_m": [
+        1200,
+        3600
+      ],
+      "edge_share": 0.12,
+      "spacing_share": 0.3,
+      "max_slope": 0.3
+    }
   },
   "buildings": {
     "comment": "Buildings (tools/terrain_lab/world_buildings.py): their own piece of work, off until then.",
@@ -465,7 +529,15 @@
     "sea_stack": "rock_dark",
     "rim_ledge": "rock_ochre",
     "rock_blade": "rock_dark",
-    "hogback": "rocky_grey"
+    "hogback": "rocky_grey",
+    "mega_ring": "rock_pale",
+    "mega_stake": "rock_dark",
+    "trilithon": "rocky_grey",
+    "pierced_ring": "rock_pale",
+    "spiral_rise": "rock_ochre",
+    "ribbon_bridge": "rock_ochre",
+    "switchback": "rock_ochre",
+    "loop_arch": "rock_ochre"
   },
   "moss": {
     "marsh_arch": 0.95,
@@ -480,7 +552,9 @@
     "sleeping_troll": 0.55,
     "tilted_mass": 0.75,
     "floating_isle": 0.9,
-    "hogback": 0.6
+    "hogback": 0.6,
+    "trilithon": 0.4,
+    "mega_ring": 0.25
   },
   "moss_material": "grass_dark",
   "cliffs": {

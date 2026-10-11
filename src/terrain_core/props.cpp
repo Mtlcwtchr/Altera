@@ -261,7 +261,9 @@ Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
     g.anchor[0] = float(std::fmod(in.x, 4096.0));
     g.anchor[1] = float(std::fmod(in.y, 4096.0));
     g.anchor[2] = float(in.z);
-    g.anchor[3] = float(i % 97) / 97.0f;   // a per-instance variation
+    // A per-instance variation, 0..1; +2 for a megalith, whose silhouette
+    // the haze softens but does not swallow (seen from across its biome).
+    g.anchor[3] = float(i % 97) / 97.0f + (in.category == kMegaliths ? 2.0f : 0.0f);
     return g;
 }
 
