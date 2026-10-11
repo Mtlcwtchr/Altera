@@ -111,6 +111,7 @@ struct Options {
     bool foliage = true;          // the trees module (trees and bushes)
     bool grass = true;            // the grass cover
     bool props = true;            // the mega structures (P)
+    std::string propsCategories;  // --props-cats terrain,megaliths,buildings: only these (O toggles megaliths)
     double propsDetail = 1400;    // --props-detail M: cliffs nearer than this are refined (0: never)
     fs::path features;            // --features: <world>_features.json; empty: beside a <world>_final.r16 heightmap
     std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
@@ -207,6 +208,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-props") o.props = false;
         else if (a == "--features") o.features = next();
         else if (a == "--props-detail") o.propsDetail = std::atof(next());
+        else if (a == "--props-cats") o.propsCategories = next();
         else if (a == "--no-water") o.water = false;
         else if (a == "--water-preview") o.waterPreview = next();
         else if (a == "--water-skeleton") o.waterSkeleton = next();
@@ -617,8 +619,18 @@ struct Lab {
                     std::fprintf(stderr, "props: %s is older than the heightmap - run tools/terrain_lab/world_features.py\n",
                                  features.string().c_str());
                 if (!propsReady) std::fprintf(stderr, "props off: %s\n", why.c_str());
-                else std::printf("props: %zu instances of %u models, %.1f MB, in %.0f ms\n", props.instanceCount(),
-                                 props.modelCount(), double(props.gpuBytes()) / (1 << 20), msSince(propsStart));
+                else {
+                    std::printf("props: %zu instances of %u models, %.1f MB, in %.0f ms (", props.instanceCount(),
+                                props.modelCount(), double(props.gpuBytes()) / (1 << 20), msSince(propsStart));
+                    for (int c = 0; c < Props::kCategories; ++c) {
+                        if (!options.propsCategories.empty())
+                            props.setEnabled(c, ("," + options.propsCategories + ",").find(
+                                                    std::string(",") + Props::categoryName(c) + ",") != std::string::npos);
+                        std::printf("%s%s %zu%s", c ? ", " : "", Props::categoryName(c), props.count(c),
+                                    props.enabled(c) ? "" : " off");
+                    }
+                    std::printf(")\n");
+                }
             }
         }
         if (!probe.open(device)) return false;
@@ -1131,6 +1143,8 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_F3) lab.options.foliage = !lab.options.foliage;
                 if (e.key.key == SDLK_F4) lab.options.grass = !lab.options.grass;
                 if (e.key.key == SDLK_P) lab.options.props = !lab.options.props;
+                if (e.key.key == SDLK_O && lab.propsReady)
+                    lab.props.setEnabled(Props::kMegaliths, !lab.props.enabled(Props::kMegaliths));
                 if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
                 if (e.key.key == SDLK_F6) lab.options.surfaceMaps = !lab.options.surfaceMaps;
                 if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;

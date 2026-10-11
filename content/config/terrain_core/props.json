@@ -1,84 +1,530 @@
 {
-  "comment": "Where the mega structures stand (tools/terrain_lab/world_features.py -> <world>_features.json, drawn by terrain_core/props). Models: assets/terrain_core/props (tools/blender/terrain_props.py). `spires`: the canyon steppe's kilometre spires, on the canyon floors, their tops at the level of the high ground round them (the steppe islands, the plateau's rim) within `reach_km`. `bridges`: natural bridges between spires whose tops are alike. `groups`: megaliths by zone, made mega by `height_m`. `singles`: one of a kind. `material`: a ground material (content/config/terrain_core/biomes.json) laid over a kind in world space; otherwise the slope material of the biome it stands in.",
-  "spires": {
-    "kind": "spire",
-    "zones": ["canyon_steppe", "steppe_canyon"],
-    "top_zones": ["steppe", "canyon_steppe", "green_plateau"],
-    "reach_km": 8.0,
-    "per_100km2": 9.0,
-    "min_gap_km": 0.55,
-    "cluster_km": 9.0,
-    "floor_share": 0.4,
-    "min_rise_m": 250,
-    "top_share": [0.94, 1.04],
-    "width": [0.8, 1.2],
-    "wall_slope": 0.35,
-    "wall_gap_m": 350
+  "comment": "Where the mega structures stand (tools/terrain_lab/world_features.py -> <world>_features.json, drawn by terrain_core/props). Models: assets/terrain_core/props (tools/blender/terrain_props.py). `spires`: the canyon steppe's kilometre spires, on the canyon floors, their tops at the level of the high ground round them (the steppe islands, the plateau's rim) within `reach_km`. `bridges`: natural bridges between spires whose tops are alike. `groups`: megaliths by zone, made mega by `height_m`. `singles`: one of a kind. `material`: a ground material (content/config/terrain_core/biomes.json) laid over a kind in world space; otherwise the slope material of the biome it stands in. Sections: `terrain` (large terrain parts), `megaliths`, `buildings` (off); each instance is tagged with its section as `cat`.",
+  "terrain": {
+    "comment": "Large parts of the terrain that are meshes (tools/terrain_lab/world_terrain_parts.py): the canyon's spires with its bridges, rises and ledges, clefts, sea stacks, floating isles, sentinel peaks, and rock forms by zone. The cliff walls are under `cliffs`.",
+    "spires": {
+      "kind": "spire",
+      "zones": [
+        "canyon_steppe",
+        "steppe_canyon"
+      ],
+      "top_zones": [
+        "steppe",
+        "canyon_steppe",
+        "green_plateau"
+      ],
+      "reach_km": 8.0,
+      "per_100km2": 9.0,
+      "min_gap_km": 0.55,
+      "cluster_km": 9.0,
+      "floor_share": 0.4,
+      "min_rise_m": 250,
+      "top_share": [
+        0.94,
+        1.04
+      ],
+      "width": [
+        0.8,
+        1.2
+      ],
+      "wall_slope": 0.35,
+      "wall_gap_m": 350
+    },
+    "bridges": {
+      "kind": "bridge",
+      "gap_km": [
+        0.45,
+        1.5
+      ],
+      "top_diff": 0.07,
+      "share": 0.4,
+      "thickness": [
+        0.85,
+        1.15
+      ]
+    },
+    "canyon_bridges": {
+      "kind": "bridge",
+      "zones": [
+        "canyon_steppe",
+        "steppe_canyon"
+      ],
+      "count": 18,
+      "min_depth_m": 250,
+      "min_gap_m": 250,
+      "max_gap_m": 1600,
+      "rim_diff": 0.08,
+      "spacing_m": 2500,
+      "thickness": [
+        0.45,
+        0.7
+      ]
+    },
+    "rim_ledges": {
+      "kind": "rim_ledge",
+      "zones": [
+        "canyon_steppe",
+        "steppe",
+        "steppe_canyon"
+      ],
+      "count": 45,
+      "drop_slope": 0.6,
+      "rim_m": 400,
+      "below_top_m": 120,
+      "spacing_m": 1600,
+      "size_m": [
+        420,
+        620
+      ],
+      "fall_m": 40
+    },
+    "clefts": {
+      "kind": "rock_blade",
+      "zones": [
+        "black_lands"
+      ],
+      "per_1000km2": 1.6,
+      "edge_m": 1500,
+      "spacing_m": 5000,
+      "gap_m": [
+        70,
+        150
+      ],
+      "size_m": [
+        500,
+        800
+      ]
+    },
+    "sea_stacks": {
+      "kind": "sea_stack",
+      "zones": [
+        "dragon_cliff",
+        "isles",
+        "black_lands"
+      ],
+      "count": 45,
+      "off_m": [
+        120,
+        700
+      ],
+      "max_depth_m": 120,
+      "spacing_m": 2500,
+      "group": [
+        1,
+        4
+      ],
+      "group_m": 220,
+      "height_m": [
+        90,
+        220
+      ]
+    },
+    "floating_isles": {
+      "kind": "floating_isle",
+      "zones": [
+        "dragon_cliff",
+        "golden_desert"
+      ],
+      "count": 7,
+      "off_m": [
+        1200,
+        6000
+      ],
+      "spacing_m": 900,
+      "size_m": [
+        260,
+        420
+      ],
+      "top_m": [
+        280,
+        650
+      ]
+    },
+    "sentinels": {
+      "zone": "black_lands",
+      "from": "river_valley",
+      "kind": "sentinel_peak",
+      "height_m": [
+        820,
+        980
+      ],
+      "gap_m": 700,
+      "inside_m": 900
+    },
+    "groups": [
+      {
+        "kind": "sleeping_troll",
+        "zones": [
+          "white_mountains",
+          "foothills"
+        ],
+        "per_1000km2": 1.2,
+        "size_m": [
+          650,
+          950
+        ],
+        "max_height_m": 2300
+      },
+      {
+        "kind": "tilted_mass",
+        "zones": [
+          "green_plateau"
+        ],
+        "per_1000km2": 0.6,
+        "size_m": [
+          1000,
+          1400
+        ]
+      },
+      {
+        "kind": "hogback",
+        "zones": [
+          "lake_valley",
+          "river_valley",
+          "foothills"
+        ],
+        "per_1000km2": 1.5,
+        "size_m": [
+          700,
+          1050
+        ]
+      }
+    ],
+    "singles": [
+      {
+        "kind": "valley_spire",
+        "zone": "river_valley",
+        "height_m": [
+          800,
+          950
+        ],
+        "near_low": true
+      }
+    ]
   },
-  "bridges": {"kind": "bridge", "gap_km": [0.45, 1.5], "top_diff": 0.07, "share": 0.4, "thickness": [0.85, 1.15]},
-  "groups": [
-    {"kind": "marsh_panel",     "zones": ["great_marshes", "river_marshes"], "per_1000km2": 5,  "cluster": [3, 7], "cluster_m": 450, "size_m": [70, 140]},
-    {"kind": "menhir",          "zones": ["great_marshes", "dark_forest"],   "per_1000km2": 4,  "cluster": [5, 9], "cluster_m": 600, "size_m": [45, 90], "ring": true},
-    {"kind": "colossus_head",   "zones": ["green_plateau"],                  "per_1000km2": 0.8, "size_m": [140, 220]},
-    {"kind": "colossus_hand",   "zones": ["green_plateau", "river_valley"],  "per_1000km2": 0.5, "size_m": [120, 200]},
-    {"kind": "iron_defender",   "zones": ["green_plateau"],                  "per_1000km2": 0.5, "size_m": [90, 140]},
-    {"kind": "cyclopean_block", "zones": ["golden_desert", "green_plateau"], "per_1000km2": 1.5, "cluster": [2, 5], "cluster_m": 500, "size_m": [50, 90]},
-    {"kind": "needle",          "zones": ["black_lands", "isles"],           "per_1000km2": 2.5, "cluster": [2, 6], "cluster_m": 700, "size_m": [250, 550]},
-    {"kind": "portal_tower",    "zones": ["black_lands"],                    "per_1000km2": 0.6, "size_m": [350, 520]},
-    {"kind": "fallen_menhir",   "zones": ["green_plateau", "steppe"],        "per_1000km2": 1.5, "size_m": [25, 45]},
-    {"kind": "giant_stair",     "zones": ["white_mountains"],                "per_1000km2": 0.4, "size_m": [120, 200]},
-    {"kind": "marsh_arch",      "zones": ["great_marshes"],                  "per_1000km2": 0.8, "height_m": [260, 340]},
-    {"kind": "giant_bones",     "zones": ["golden_desert"],                  "per_1000km2": 0.5, "size_m": [300, 420]},
-    {"kind": "sleeping_troll",  "zones": ["white_mountains", "foothills"],   "per_1000km2": 1.2, "size_m": [650, 950], "max_height_m": 2300},
-    {"kind": "tilted_mass",     "zones": ["green_plateau"],                  "per_1000km2": 0.6, "size_m": [1000, 1400]},
-    {"kind": "hogback",         "zones": ["lake_valley", "river_valley", "foothills"], "per_1000km2": 1.5, "size_m": [700, 1050]}
-  ],
-  "canyon_bridges": {"kind": "bridge", "zones": ["canyon_steppe", "steppe_canyon"], "count": 18, "min_depth_m": 250,
-                     "min_gap_m": 250, "max_gap_m": 1600, "rim_diff": 0.08, "spacing_m": 2500, "thickness": [0.45, 0.7]},
-  "ruin_chains": {"zone": "golden_desert", "tower": "ruin_tower", "wall": "ruin_wall", "chains": 5, "length": [1, 6],
-                  "step_m": [600, 1300], "tower_m": [150, 240], "buried": [0.2, 0.5], "walls": 0.6, "wall_buried": [0.1, 0.5],
-                  "edge_m": 1500},
-  "rotunda": {"zone": "green_plateau", "kind": "white_rotunda", "stair": "giant_stair", "size_m": [260, 320], "stair_m": [220, 300], "edge_m": 2500},
-  "sentinels": {"zone": "black_lands", "from": "river_valley", "kind": "sentinel_peak", "height_m": [820, 980], "gap_m": 700, "inside_m": 900},
-  "floating_isles": {"kind": "floating_isle", "zones": ["dragon_cliff", "golden_desert"], "count": 7, "off_m": [1200, 6000],
-                     "spacing_m": 900, "size_m": [260, 420], "top_m": [280, 650]},
-  "sea_stacks": {"kind": "sea_stack", "zones": ["dragon_cliff", "isles", "black_lands"], "count": 45, "off_m": [120, 700],
-                 "max_depth_m": 120, "spacing_m": 2500, "group": [1, 4], "group_m": 220, "height_m": [90, 220]},
-  "rim_ledges": {"kind": "rim_ledge", "zones": ["canyon_steppe", "steppe", "steppe_canyon"], "count": 45, "drop_slope": 0.6,
-                 "rim_m": 400, "below_top_m": 120, "spacing_m": 1600, "size_m": [420, 620], "fall_m": 40},
-  "clefts": {"kind": "rock_blade", "zones": ["black_lands"], "per_1000km2": 1.6, "edge_m": 1500, "spacing_m": 5000,
-             "gap_m": [70, 150], "size_m": [500, 800]},
-  "spiral_isle": {"zone": "dragon_cliff", "tower": "spiral_tower", "piece": "bridge_piece", "height_m": [420, 520], "pieces": 6, "reach_m": 2200},
-  "singles": [
-    {"kind": "valley_spire",    "zone": "river_valley",  "height_m": [800, 950], "near_low": true},
-    {"kind": "mirror_monument", "zone": "golden_desert", "size_m": [280, 340]}
-  ],
+  "megaliths": {
+    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): surreal standing things - rings and stakes out of the ground, Stonehenge-like stones, standing panels, needles, the stone giants. They stand on the terrain; they are not part of it.",
+    "groups": [
+      {
+        "kind": "marsh_panel",
+        "zones": [
+          "great_marshes",
+          "river_marshes"
+        ],
+        "per_1000km2": 5,
+        "cluster": [
+          3,
+          7
+        ],
+        "cluster_m": 450,
+        "size_m": [
+          70,
+          140
+        ]
+      },
+      {
+        "kind": "menhir",
+        "zones": [
+          "great_marshes",
+          "dark_forest"
+        ],
+        "per_1000km2": 4,
+        "cluster": [
+          5,
+          9
+        ],
+        "cluster_m": 600,
+        "size_m": [
+          45,
+          90
+        ],
+        "ring": true
+      },
+      {
+        "kind": "colossus_head",
+        "zones": [
+          "green_plateau"
+        ],
+        "per_1000km2": 0.8,
+        "size_m": [
+          140,
+          220
+        ]
+      },
+      {
+        "kind": "colossus_hand",
+        "zones": [
+          "green_plateau",
+          "river_valley"
+        ],
+        "per_1000km2": 0.5,
+        "size_m": [
+          120,
+          200
+        ]
+      },
+      {
+        "kind": "cyclopean_block",
+        "zones": [
+          "golden_desert",
+          "green_plateau"
+        ],
+        "per_1000km2": 1.5,
+        "cluster": [
+          2,
+          5
+        ],
+        "cluster_m": 500,
+        "size_m": [
+          50,
+          90
+        ]
+      },
+      {
+        "kind": "needle",
+        "zones": [
+          "black_lands",
+          "isles"
+        ],
+        "per_1000km2": 2.5,
+        "cluster": [
+          2,
+          6
+        ],
+        "cluster_m": 700,
+        "size_m": [
+          250,
+          550
+        ]
+      },
+      {
+        "kind": "fallen_menhir",
+        "zones": [
+          "green_plateau",
+          "steppe"
+        ],
+        "per_1000km2": 1.5,
+        "size_m": [
+          25,
+          45
+        ]
+      },
+      {
+        "kind": "marsh_arch",
+        "zones": [
+          "great_marshes"
+        ],
+        "per_1000km2": 0.8,
+        "height_m": [
+          260,
+          340
+        ]
+      },
+      {
+        "kind": "giant_bones",
+        "zones": [
+          "golden_desert"
+        ],
+        "per_1000km2": 0.5,
+        "size_m": [
+          300,
+          420
+        ]
+      }
+    ],
+    "singles": []
+  },
+  "buildings": {
+    "comment": "Buildings (tools/terrain_lab/world_buildings.py): their own piece of work, off until then.",
+    "enabled": false,
+    "ruin_chains": {
+      "zone": "golden_desert",
+      "tower": "ruin_tower",
+      "wall": "ruin_wall",
+      "chains": 5,
+      "length": [
+        1,
+        6
+      ],
+      "step_m": [
+        600,
+        1300
+      ],
+      "tower_m": [
+        150,
+        240
+      ],
+      "buried": [
+        0.2,
+        0.5
+      ],
+      "walls": 0.6,
+      "wall_buried": [
+        0.1,
+        0.5
+      ],
+      "edge_m": 1500
+    },
+    "rotunda": {
+      "zone": "green_plateau",
+      "kind": "white_rotunda",
+      "stair": "giant_stair",
+      "size_m": [
+        260,
+        320
+      ],
+      "stair_m": [
+        220,
+        300
+      ],
+      "edge_m": 2500
+    },
+    "spiral_isle": {
+      "zone": "dragon_cliff",
+      "tower": "spiral_tower",
+      "piece": "bridge_piece",
+      "height_m": [
+        420,
+        520
+      ],
+      "pieces": 6,
+      "reach_m": 2200
+    },
+    "groups": [
+      {
+        "kind": "iron_defender",
+        "zones": [
+          "green_plateau"
+        ],
+        "per_1000km2": 0.5,
+        "size_m": [
+          90,
+          140
+        ]
+      },
+      {
+        "kind": "portal_tower",
+        "zones": [
+          "black_lands"
+        ],
+        "per_1000km2": 0.6,
+        "size_m": [
+          350,
+          520
+        ]
+      },
+      {
+        "kind": "giant_stair",
+        "zones": [
+          "white_mountains"
+        ],
+        "per_1000km2": 0.4,
+        "size_m": [
+          120,
+          200
+        ]
+      }
+    ],
+    "singles": [
+      {
+        "kind": "mirror_monument",
+        "zone": "golden_desert",
+        "size_m": [
+          280,
+          340
+        ]
+      }
+    ]
+  },
   "materials": {
-    "spire": "rock_ochre", "bridge": "rock_ochre", "valley_spire": "rock_dark",
-    "marsh_panel": "rock_mossy", "menhir": "rocky_grey", "fallen_menhir": "rocky_grey",
-    "needle": "rock_dark", "portal_tower": "rock_dark", "mirror_monument": "rock_pale",
-    "colossus_head": "rock_pale", "colossus_hand": "rock_pale", "iron_defender": "rock_dark",
-    "cyclopean_block": "rock_ochre", "giant_stair": "rock_pale",
-    "marsh_arch": "rock_mossy", "giant_bones": "rock_pale", "white_rotunda": "rock_pale", "ruin_tower": "rock_ochre",
-    "ruin_wall": "rock_ochre", "sentinel_peak": "rock_dark", "spiral_tower": "rock_pale", "bridge_piece": "rock_pale",
-    "sleeping_troll": "rocky_grey", "tilted_mass": "rocky_grey", "floating_isle": "rock_pale", "sea_stack": "rock_dark",
-    "rim_ledge": "rock_ochre", "rock_blade": "rock_dark", "hogback": "rocky_grey"
+    "spire": "rock_ochre",
+    "bridge": "rock_ochre",
+    "valley_spire": "rock_dark",
+    "marsh_panel": "rock_mossy",
+    "menhir": "rocky_grey",
+    "fallen_menhir": "rocky_grey",
+    "needle": "rock_dark",
+    "portal_tower": "rock_dark",
+    "mirror_monument": "rock_pale",
+    "colossus_head": "rock_pale",
+    "colossus_hand": "rock_pale",
+    "iron_defender": "rock_dark",
+    "cyclopean_block": "rock_ochre",
+    "giant_stair": "rock_pale",
+    "marsh_arch": "rock_mossy",
+    "giant_bones": "rock_pale",
+    "white_rotunda": "rock_pale",
+    "ruin_tower": "rock_ochre",
+    "ruin_wall": "rock_ochre",
+    "sentinel_peak": "rock_dark",
+    "spiral_tower": "rock_pale",
+    "bridge_piece": "rock_pale",
+    "sleeping_troll": "rocky_grey",
+    "tilted_mass": "rocky_grey",
+    "floating_isle": "rock_pale",
+    "sea_stack": "rock_dark",
+    "rim_ledge": "rock_ochre",
+    "rock_blade": "rock_dark",
+    "hogback": "rocky_grey"
   },
-  "moss": {"marsh_arch": 0.95, "marsh_panel": 0.85, "menhir": 0.6, "fallen_menhir": 0.5, "colossus_head": 0.35,
-           "colossus_hand": 0.35, "iron_defender": 0.25, "giant_stair": 0.3, "valley_spire": 0.45,
-           "sleeping_troll": 0.55, "tilted_mass": 0.75, "floating_isle": 0.9, "hogback": 0.6},
+  "moss": {
+    "marsh_arch": 0.95,
+    "marsh_panel": 0.85,
+    "menhir": 0.6,
+    "fallen_menhir": 0.5,
+    "colossus_head": 0.35,
+    "colossus_hand": 0.35,
+    "iron_defender": 0.25,
+    "giant_stair": 0.3,
+    "valley_spire": 0.45,
+    "sleeping_troll": 0.55,
+    "tilted_mass": 0.75,
+    "floating_isle": 0.9,
+    "hogback": 0.6
+  },
   "moss_material": "grass_dark",
   "cliffs": {
     "comment": "Cliff walls over the steep bands (tools/terrain_lab/world_cliffs.py): `zones`: zone -> slope (rise over run) from which ground is a wall there, or {slope, coast_m}: only within coast_m of the sea. A wall must drop `min_drop_m` within `band_m`. It is pushed out downhill until it stands, `overhang` more at the rim, and never less than `min_push_m` (where the ground is already sheer) plus `overhang_drop` of its drop at the rim; `strata` and `gullies` shape its face; `sink_m`: how deep the skin's edge lies under the ground; `skirt_m`: how far the tile borders hang down (no cracks between tiles at different detail); `apron_m`: how far below the foot scree is banked against the wall, `scree_share` of the drop high (at most `scree_max_m`).",
-    "zones": {"canyon_steppe": 0.7, "steppe": 0.7, "steppe_canyon": 0.7, "green_plateau": 0.8, "dragon_cliff": 0.7, "black_lands": 1.1,
-              "isles": {"slope": 1.8, "coast_m": 300}},
-    "band_m": 300, "min_drop_m": 60, "min_cells": 6, "margin_cells": 2,
-    "overhang": 0.35, "max_push_m": 420, "min_push_m": 14, "overhang_drop": 0.08,
-    "strata": 0.1, "strata_m": 9.0, "gullies": 0.08,
-    "sink_m": 6.0, "grid_m": 20, "skirt_m": 12,
-    "apron_m": 160, "scree_share": 0.06, "scree_max_m": 70,
-    "materials": {"canyon_steppe": "rock_ochre", "steppe": "rock_ochre", "steppe_canyon": "rock_ochre",
-                  "green_plateau": "rock_ochre", "dragon_cliff": "rock_pale", "black_lands": "rock_dark", "isles": "rock_dark", "golden_desert": "rock_ochre", "default": "rocky_grey"}
+    "zones": {
+      "canyon_steppe": 0.7,
+      "steppe": 0.7,
+      "steppe_canyon": 0.7,
+      "green_plateau": 0.8,
+      "dragon_cliff": 0.7,
+      "black_lands": 1.1,
+      "isles": {
+        "slope": 1.8,
+        "coast_m": 300
+      }
+    },
+    "band_m": 300,
+    "min_drop_m": 60,
+    "min_cells": 6,
+    "margin_cells": 2,
+    "overhang": 0.35,
+    "max_push_m": 420,
+    "min_push_m": 14,
+    "overhang_drop": 0.08,
+    "strata": 0.1,
+    "strata_m": 9.0,
+    "gullies": 0.08,
+    "sink_m": 6.0,
+    "grid_m": 20,
+    "skirt_m": 12,
+    "apron_m": 160,
+    "scree_share": 0.06,
+    "scree_max_m": 70,
+    "materials": {
+      "canyon_steppe": "rock_ochre",
+      "steppe": "rock_ochre",
+      "steppe_canyon": "rock_ochre",
+      "green_plateau": "rock_ochre",
+      "dragon_cliff": "rock_pale",
+      "black_lands": "rock_dark",
+      "isles": "rock_dark",
+      "golden_desert": "rock_ochre",
+      "default": "rocky_grey"
+    }
   },
   "min_gap_m": 250,
   "edge_m": 800,

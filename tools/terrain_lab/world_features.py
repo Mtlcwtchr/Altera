@@ -142,103 +142,21 @@ def scale_for(g, m, rng):
     return rng.uniform(*g["height_m"]) / max(m["hi"][2], 1e-3)
 
 
-def place(world, rules, catalogue, seed):
-    rng = np.random.default_rng(seed)
-    zones = world.zones
-    out = []
-    mat = rules.get("materials", {})
+SHARED = {"max_slope": 0.35, "edge_m": 800}
+CATEGORIES = ("terrain", "megaliths", "buildings")
+TAKEN = []   # centres already used this run, so groups of every section keep apart
 
-    moss = rules.get("moss", {})
 
-    def add(kind, name, x, y, yaw, scale, **extra):
-        o = {"m": name, "x": round(float(x), 1), "y": round(float(y), 1), "yaw": round(float(yaw), 4),
-             "s": [round(float(s), 4) for s in scale], "material": mat.get(kind, ""), **extra}
-        if moss.get(kind, 0) > 0:
-            o["moss"] = moss[kind]
-        out.append(o)
-
-    # --- spires: on the canyon floors, tops at the high ground's level ---
-    sp = rules["spires"]
-    canyon = np.isin(zones, sp["zones"])
-    high = np.where(np.isin(zones, sp["top_zones"]), world.hz, -1e4)
-    reach = max(3, int(round(sp["reach_km"] * 1000 / world.cell)))
-    # The high ground round a point: its upper rim, not a lone peak.
-    top = ndimage.maximum_filter(ndimage.uniform_filter(high, 3), size=reach)
-    floor = ndimage.minimum_filter(np.where(canyon, world.hz, 1e4), size=max(3, reach // 3))
-    rise = top - world.hz
-    low = world.hz < floor + sp["floor_share"] * np.maximum(top - floor, 0)
-    ok = canyon & low & (rise > sp["min_rise_m"])
-    # Clear of the walls: a spire on a canyon's slope or at its rim stands with
-    # its foot in the air on the downhill side (and the wall's mesh skin is there).
-    gy, gx = np.gradient(world.hz, world.cell)
-    steep = np.hypot(gx, gy) > sp["wall_slope"]
-    ok &= ndimage.distance_transform_edt(~steep) * world.cell > sp["wall_gap_m"]
-    pts, (ys, xs) = cells_of(world, ok, rng)
-    area_km2 = canyon.sum() * (world.cell / 1000) ** 2
-    count = int(area_km2 / 100 * sp["per_100km2"])
-    # Clusters: a slow noise makes fields of spires and empty stretches.
-    ck = max(2, int(sp["cluster_km"] * 1000 / world.cell))
-    clump = ndimage.gaussian_filter(rng.random(zones.shape), ck / 2)
-    clump = (clump - clump.min()) / max(np.ptp(clump), 1e-6)
-    weights = clump[ys, xs] ** 3 + 0.02
-    spires = poisson(pts, weights, count, sp["min_gap_km"] * 1000, rng)
-    names = models_of(catalogue, sp["kind"])
-    spire_list = []
-    for x, y in spires:
-        i, j = int(y // world.cell), int(x // world.cell)
-        name = names[rng.integers(len(names))]
-        m = catalogue[name]
-        tall = m["hi"][2]
-        ground = world.lowest(x, y, 0.5 * (m["hi"][0] - m["lo"][0]))
-        t = top[i, j] * rng.uniform(*sp["top_share"])
-        if t - ground < sp["min_rise_m"]:
-            continue
-        sz = (t - ground) / tall
-        sxy = sz ** 0.85 * rng.uniform(*sp["width"])   # nearly as built: no squat boulders
-        add("spire", name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), top=round(float(t), 1),
-            ground=round(ground, 1))
-        spire_list.append((x, y, t, ground, sxy * 0.5 * (m["hi"][0] - m["lo"][0])))
-
-    # --- bridges between spires whose tops are alike ---
-    br = rules["bridges"]
-    bnames = models_of(catalogue, br["kind"])
-    used = set()
-    pairs = []
-    for a in range(len(spire_list)):
-        for b in range(a + 1, len(spire_list)):
-            xa, ya, ta, ga, ra = spire_list[a]
-            xb, yb, tb, gb, rb = spire_list[b]
-            d = math.hypot(xb - xa, yb - ya)
-            if not (br["gap_km"][0] * 1000 <= d <= br["gap_km"][1] * 1000):
-                continue
-            rise = min(ta - ga, tb - gb)
-            if abs(ta - tb) > br["top_diff"] * rise:
-                continue
-            pairs.append((d, a, b))
-    rng.shuffle(pairs)
-    want = int(len(spire_list) * br["share"])
-    for d, a, b in pairs:
-        if len(used) // 2 >= want:
-            break
-        if a in used or b in used:
-            continue
-        used |= {a, b}
-        xa, ya, ta, ga, ra = spire_list[a]
-        xb, yb, tb, gb, rb = spire_list[b]
-        rise = min(ta - ga, tb - gb)
-        deck = min(ta, tb) - rng.uniform(0.02, 0.18) * rise
-        th = rng.uniform(*br["thickness"])
-        name = bnames[rng.integers(len(bnames))]
-        add("bridge", name, (xa + xb) / 2, (ya + yb) / 2, math.atan2(yb - ya, xb - xa),
-            (d / 1000.0, th, th * math.sqrt(d / 1000.0)), z=round(float(deck), 1))
-
-    # --- megaliths by zone ---
+def place_groups(world, rules, catalogue, rng, add):
+    """A section's `groups` (clusters by zone) and `singles` (one per zone)."""
+    shared = SHARED
+    taken = TAKEN
+    count = 0
     gx, gy = np.gradient(world.hz, world.cell)
-    flat = np.hypot(gx, gy) < rules["max_slope"]
-    taken = [(o["x"], o["y"]) for o in out]
-    for g in rules["groups"]:
-        inside = np.isin(zones, g["zones"])
-        deep = ndimage.distance_transform_edt(inside) * world.cell > rules["edge_m"]
+    flat = np.hypot(gx, gy) < shared["max_slope"]
+    for g in rules.get("groups", []):
+        inside = np.isin(world.zones, g["zones"])
+        deep = ndimage.distance_transform_edt(inside) * world.cell > shared["edge_m"]
         ok = deep & flat & (world.hz > 1.0) & (world.hz < g.get("max_height_m", 1e9))
         area_km2 = inside.sum() * (world.cell / 1000) ** 2
         n = int(round(area_km2 / 1000 * g["per_1000km2"] * rng.uniform(0.8, 1.2)))
@@ -267,8 +185,8 @@ def place(world, rules, catalogue, seed):
             taken.append((cx, cy))
 
     # --- singles ---
-    for g in rules["singles"]:
-        inside = zones == g["zone"]
+    for g in rules.get("singles", []):
+        inside = world.zones == g["zone"]
         if not inside.any():
             continue
         deep = ndimage.distance_transform_edt(inside) * world.cell
@@ -282,10 +200,38 @@ def place(world, rules, catalogue, seed):
         m = catalogue[name]
         s = scale_for(g, m, rng)
         add(g["kind"], name, x, y, rng.uniform(0, math.tau), (s, s, s))
+        count += 1
+    return count
 
-    # --- composed and one-of-a-kind landmarks ---
-    import world_landmarks
-    world_landmarks.place(world, rules, catalogue, rng, add)
+
+def place(world, rules, catalogue, seed):
+    """Every section that is enabled, each instance tagged with its category
+    ("cat": terrain, megaliths, buildings)."""
+    rng = np.random.default_rng(seed)
+    out = []
+    mat = rules.get("materials", {})
+    moss = rules.get("moss", {})
+    SHARED.update({k: rules[k] for k in ("max_slope", "edge_m") if k in rules})
+    TAKEN.clear()
+    import world_buildings
+    import world_megaliths
+    import world_terrain_parts
+    modules = {"terrain": world_terrain_parts, "megaliths": world_megaliths, "buildings": world_buildings}
+    for cat in CATEGORIES:
+        section = rules.get(cat, {})
+        if not section.get("enabled", True):
+            print(f"{cat}: off (props.json)")
+            continue
+
+        def add(kind, name, x, y, yaw, scale, _cat=cat, **extra):
+            o = {"m": name, "x": round(float(x), 1), "y": round(float(y), 1), "yaw": round(float(yaw), 4),
+                 "s": [round(float(s), 4) for s in scale], "material": mat.get(kind, ""), "cat": _cat, **extra}
+            if moss.get(kind, 0) > 0:
+                o["moss"] = moss[kind]
+            out.append(o)
+            TAKEN.append((float(x), float(y)))
+
+        modules[cat].place(world, section, catalogue, rng, add)
     return out
 
 
@@ -323,10 +269,17 @@ def main():
     items = place(world, rules, catalogue, args.seed)
     if not args.no_cliffs:
         import world_cliffs
-        items += world_cliffs.build(world, rules, args.world + "_cliffs", np.random.default_rng(args.seed))
+        cliffs = world_cliffs.build(world, rules, args.world + "_cliffs", np.random.default_rng(args.seed))
+        for o in cliffs:
+            o["cat"] = "terrain"
+        items += cliffs
     out = Path(args.world + "_features.json")
     out.write_text(json.dumps({"world_m": world.size, "instances": items}, separators=(",", ":")))
     preview(world, args.world, items, catalogue, args.world + "_features_preview.png")
+    cats = {}
+    for o in items:
+        cats[o["cat"]] = cats.get(o["cat"], 0) + 1
+    print("by category: " + ", ".join(f"{k} {v}" for k, v in sorted(cats.items())))
     kinds = {}
     for o in items:
         k = catalogue[o["m"]]["kind"] if o["m"] in catalogue else "cliff"

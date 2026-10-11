@@ -65,6 +65,14 @@ public:
     void drawShadow(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const PlantView& view);
 
     std::size_t instanceCount() const { return instances_.size(); }
+    // The instances' categories, as the features file tags them ("cat"):
+    // the large parts of the terrain, the megaliths, the buildings. Each can
+    // be left out of the drawing.
+    enum Category : std::uint8_t { kTerrain = 0, kMegaliths = 1, kBuildings = 2, kCategories = 3 };
+    static const char* categoryName(int c);
+    void setEnabled(int category, bool on) { enabled_[category] = on; }
+    bool enabled(int category) const { return enabled_[category]; }
+    std::size_t count(int category) const { return counts_[category]; }
     float mossLayer() const { return mossLayer_; }
     std::uint32_t modelCount() const { return std::uint32_t(models_.size()); }
     std::uint32_t drawn() const { return drawn_; }
@@ -97,6 +105,7 @@ private:
         double cx = 0, cy = 0, cz = 0;   // bounding sphere centre
         float radius = 1;
         bool detail = false;          // a cliff tile: refined near the eye
+        std::uint8_t category = kTerrain;
     };
     // A cliff tile's surface split twice and roughened, near the eye: made on
     // the CPU when the eye comes close, dropped when it is long gone.
@@ -148,6 +157,8 @@ private:
     std::uint32_t detailDrawn_ = 0;
     double detailMs_ = 0;
     float mossLayer_ = 0;
+    std::array<bool, kCategories> enabled_{true, true, true};
+    std::array<std::size_t, kCategories> counts_{};
     std::uint32_t drawn_ = 0;
     std::uint64_t triangles_ = 0, gpuBytes_ = 0;
     double cullMs_ = 0;

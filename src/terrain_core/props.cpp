@@ -38,6 +38,11 @@ constexpr float kLevelPixels[2] = {260.0f, 70.0f};
 
 } // namespace
 
+const char* Props::categoryName(int c) {
+    static const char* names[kCategories] = {"terrain", "megaliths", "buildings"};
+    return c >= 0 && c < kCategories ? names[c] : "?";
+}
+
 Props::~Props() {
     for (auto& [i, f] : pending_)
         if (f.valid()) f.wait();
@@ -136,6 +141,9 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         Instance in;
         in.model = std::uint32_t(model);
         in.detail = detail;
+        const std::string cat = o.value("cat", std::string("terrain"));
+        in.category = cat == "megaliths" ? kMegaliths : cat == "buildings" ? kBuildings : kTerrain;
+        ++counts_[in.category];
         in.x = o.value("x", 0.0);
         in.y = o.value("y", 0.0);
         in.yaw = o.value("yaw", 0.0f);
@@ -263,6 +271,7 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
     int builds = 0;
     for (std::uint32_t i = 0; i < instances_.size(); ++i) {
         const Instance& in = instances_[i];
+        if (!enabled_[in.category]) continue;
         const double rx = in.cx - frame.eye.x, ry = in.cy - frame.eye.y, rz = in.cz - frame.eye.z;
         const double d = std::sqrt(rx * rx + ry * ry + rz * rz);
         int level = 0;
