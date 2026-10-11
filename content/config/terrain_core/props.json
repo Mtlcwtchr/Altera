@@ -378,8 +378,8 @@
         ],
         "per_1000km2": 1.2,
         "size_m": [
-          700,
-          1200
+          1400,
+          2200
         ]
       },
       {
@@ -536,7 +536,7 @@
     "switchback": "rock_ochre",
     "loop_arch": "rock_ochre",
     "prism_column": "rock_dark",
-    "white_cube": "rock_pale",
+    "white_cube": "snow",
     "mirror_prism": "rock_pale",
     "giant_spine": "rock_pale",
     "spire_platform": "rock_ochre",
