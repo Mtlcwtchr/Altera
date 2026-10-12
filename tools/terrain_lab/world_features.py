@@ -63,6 +63,7 @@ class World:
         self.zones = load_zones(Path(str(stem) + "_zones.png"))
         rules = json.loads(WORLD_RULES.read_text(encoding="utf-8"))
         self.size = rules["world_km"] * 1000.0
+        self.stem = stem
         # Heights at the zone map's grid, for the searches.
         k = n // self.zones.shape[0]
         self.zk = k
@@ -282,6 +283,13 @@ def main():
     out = Path(args.world + "_features.json")
     out.write_text(json.dumps({"world_m": world.size, "instances": items}, separators=(",", ":")))
     preview(world, args.world, items, catalogue, args.world + "_features_preview.png")
+    import world_megaliths
+    checks = world_megaliths.CHECKS
+    if checks:
+        # The automatic checks (doc/BIOME_PLAN.md 1.5), by element.
+        Path(args.world + "_checks.json").write_text(json.dumps(checks, indent=1))
+        for k, v in checks.items():
+            print(f"checks {k}: " + json.dumps(v))
     cats = {}
     for o in items:
         cats[o["cat"]] = cats.get(o["cat"], 0) + 1

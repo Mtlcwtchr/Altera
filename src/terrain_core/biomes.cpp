@@ -170,6 +170,94 @@ void BiomeMap::generate(const MacroMap& macro, const Params& params, std::uint32
         }
 }
 
+namespace {
+
+// Metres from every texel to the nearest texel of `from` (0 on it): an
+// 8-neighbour chamfer, two passes.
+std::vector<float> distanceTo(const std::vector<std::uint8_t>& from, std::uint32_t n, float cell) {
+    const float far = 1e9f, side = cell, diagonal = cell * 1.41421356f;
+    std::vector<float> d(from.size());
+    for (std::size_t i = 0; i < d.size(); ++i) d[i] = from[i] ? 0.0f : far;
+    auto at = [&](std::uint32_t x, std::uint32_t y) -> float& { return d[std::size_t(y) * n + x]; };
+    for (std::uint32_t y = 0; y < n; ++y)
+        for (std::uint32_t x = 0; x < n; ++x) {
+            float& v = at(x, y);
+            if (x > 0) v = std::min(v, at(x - 1, y) + side);
+            if (y > 0) {
+                v = std::min(v, at(x, y - 1) + side);
+                if (x > 0) v = std::min(v, at(x - 1, y - 1) + diagonal);
+                if (x + 1 < n) v = std::min(v, at(x + 1, y - 1) + diagonal);
+            }
+        }
+    for (std::uint32_t y = n; y-- > 0;)
+        for (std::uint32_t x = n; x-- > 0;) {
+            float& v = at(x, y);
+            if (x + 1 < n) v = std::min(v, at(x + 1, y) + side);
+            if (y + 1 < n) {
+                v = std::min(v, at(x, y + 1) + side);
+                if (x + 1 < n) v = std::min(v, at(x + 1, y + 1) + diagonal);
+                if (x > 0) v = std::min(v, at(x - 1, y + 1) + diagonal);
+            }
+        }
+    return d;
+}
+
+std::vector<std::uint8_t> idsOf(const nlohmann::json& list) {
+    std::vector<std::uint8_t> out;
+    if (list.is_array())
+        for (const auto& v : list) out.push_back(v.get<std::uint8_t>());
+    else if (list.is_number())
+        out.push_back(list.get<std::uint8_t>());
+    return out;
+}
+
+} // namespace
+
+void BiomeMap::shape(const std::filesystem::path& table, double worldSize) {
+    nlohmann::json config;
+    try {
+        std::ifstream in(table);
+        if (!in) return;
+        config = nlohmann::json::parse(in);
+    } catch (const std::exception&) {
+        return;
+    }
+    if (size_ == 0) return;
+    const float cell = float(worldSize / size_);
+    auto mask = [&](const std::vector<std::uint8_t>& want) {
+        std::vector<std::uint8_t> m(ids_.size());
+        for (std::size_t i = 0; i < ids_.size(); ++i)
+            m[i] = std::find(want.begin(), want.end(), ids_[i]) != want.end();
+        return m;
+    };
+    // Bands first: the water's hue counts the band as the biome it was cut from.
+    for (const auto& band : config.value("bands", nlohmann::json::array())) {
+        const auto in = idsOf(band["in"]), toward = idsOf(band["toward"]);
+        const auto id = band.value("id", 0u);
+        const float width = band.value("width_m", 2000.0f);
+        if (in.empty() || toward.empty() || id >= kMaxBiomes) continue;
+        const auto d = distanceTo(mask(toward), size_, cell);
+        for (std::size_t i = 0; i < ids_.size(); ++i)
+            if (std::find(in.begin(), in.end(), ids_[i]) != in.end() && d[i] <= width) ids_[i] = std::uint8_t(id);
+    }
+    const auto hue = config.value("water_hue", nlohmann::json::object());
+    if (hue.contains("red") && hue.contains("blue")) {
+        const auto red = idsOf(hue["red"]), blue = idsOf(hue["blue"]);
+        const float redM = hue.value("red_m", 2500.0f), blueM = hue.value("blue_m", 1500.0f);
+        const auto toBlue = distanceTo(mask(blue), size_, cell);
+        const auto toRed = distanceTo(mask(red), size_, cell);
+        hue_.assign(ids_.size(), 255);
+        for (std::size_t i = 0; i < ids_.size(); ++i) {
+            float v = 1.0f;
+            if (std::find(red.begin(), red.end(), ids_[i]) != red.end())
+                v = 0.5f * std::clamp(1.0f - toBlue[i] / redM, 0.0f, 1.0f);
+            else if (std::find(blue.begin(), blue.end(), ids_[i]) != blue.end())
+                v = 0.5f + 0.5f * std::clamp(toRed[i] / blueM, 0.0f, 1.0f);
+            hue_[i] = std::uint8_t(std::lround(v * 255.0f));
+        }
+    }
+}
+
 bool BiomeMap::save(const std::filesystem::path& png, std::string* why) const {
     engine::world_source::Image image;
     image.width = image.height = size_;

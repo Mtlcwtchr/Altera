@@ -123,6 +123,16 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
             !upload.finish())
             return false;
         gpuBytes_ += std::uint64_t(biomes.size()) * biomes.size();
+        const std::uint8_t none = 255;
+        const bool hue = !biomes.waterHue().empty();
+        ids.width = ids.height = hue ? biomes.size() : 1;
+        waterHue_ = device.makeTexture(ids);
+        if (!waterHue_) return false;
+        engine::Device::Uploader more(device);
+        if (!more.refillRegion(waterHue_.get(), hue ? biomes.waterHue().data() : &none, 0, 0, ids.width, ids.height, 1) ||
+            !more.finish())
+            return false;
+        if (hue) gpuBytes_ += std::uint64_t(biomes.size()) * biomes.size();
     }
     std::vector<std::vector<std::filesystem::path>> layers;
     for (const auto& file : table.materialFiles()) layers.push_back({file});

@@ -17,8 +17,8 @@ struct VertexIn {
     float4 positionYaw : TEXCOORD3;   // instance: eye-relative origin, yaw
     float4 scale : TEXCOORD4;         // instance: scale x, y, z; material layer
     float4 anchor : TEXCOORD5;        // instance: origin x, y wrapped to 4096 m; origin z; variation
-    float4 extra : TEXCOORD6;         // instance: cover (steppe on its tops), a cliff's two biomes (-1: none), mirror
-    float blend : TEXCOORD7;          // a cliff's vertex: how far it wears the second biome
+    float4 extra : TEXCOORD6;         // instance: cover (steppe on its tops), a cliff's two biomes (-1: none; -2: an A-1 slab), mirror
+    float blend : TEXCOORD7;          // a cliff's vertex: how far it wears the second biome; an A-1 slab's: its _EDGE
 };
 
 struct VsOut {
@@ -32,7 +32,9 @@ struct VsOut {
     nointerpolation float cover : TEXCOORD6;    // 0..1: ground on its tops
     nointerpolation float mirror : TEXCOORD9;   // 0..1: mirrors the sky
     float blend : TEXCOORD7;                    // a cliff: the second biome's share
-    nointerpolation float2 biomes : TEXCOORD8;  // a cliff: its two biomes (-1: not a cliff)
+    nointerpolation float2 biomes : TEXCOORD8;  // a cliff: its two biomes (-1: not a cliff; -2: an A-1 slab)
+    float3 local : TEXCOORD10;                  // object space, unscaled (an A-1 slab's material)
+    float3 localNormal : TEXCOORD11;
 };
 
 VsOut propsVs(VertexIn input) {
@@ -52,6 +54,8 @@ VsOut propsVs(VertexIn input) {
     o.mirror = input.extra.w;
     o.blend = input.blend;
     o.biomes = input.extra.yz;
+    o.local = input.position;
+    o.localNormal = input.normal;
     return o;
 }
 
@@ -61,6 +65,13 @@ Texture2DArray<float4> materialNormals : register(t1, space2);
 SamplerState normalSampler : register(s1, space2);
 Texture2DArray<float4> materialProperties : register(t2, space2);
 SamplerState propertySampler : register(s2, space2);
+
+// A magic megalith's own tiles (A-1: hatch, grooves, moss, strokes), hard
+// pixels and soft.
+Texture2DArray<float4> megalithTiles : register(t4, space2);
+SamplerState megalithNearest : register(s4, space2);
+Texture2DArray<float4> megalithTilesSoft : register(t5, space2);
+SamplerState megalithLinear : register(s5, space2);
 
 #define LIGHT_UNIFORMS register(b0, space3)
 #define SHADOW_TEXTURE register(t3, space2)
@@ -81,6 +92,12 @@ cbuffer Biomes : register(b2, space3) {
     float4 biomeStone[32];   // rock layer, ground layer, ground from (normal z), rock below (normal z)
     float4 biomeTint[32];    // the biome's tint, moss on its rock
 };
+
+// Must match terrain_core::MegalithLook: A-1's knobs (megalith_a1.hlsli).
+cbuffer A1 : register(b3, space3) {
+    float4 a1Knobs[9];
+};
+#include "megalith_a1.hlsli"
 
 struct Rock { float3 colour; float3 normal; float ao; };
 
@@ -150,7 +167,17 @@ float4 propsPs(VsOut input) : SV_Target0 {
     const float distance = length(input.view);
     float3 colour, n;
     float ao;
-    if (input.biomes.x >= 0) {
+    const bool slab = input.biomes.x < -1.5;
+    if (slab) {
+        // A-1: its own material, in object space; the slab's foot sits in
+        // the ground's damp (uv.y), as the moss knobs ask.
+        const A1Surface a = a1Surface(input.local, normalize(input.localNormal), input.blend, input.layer.y, n0,
+                                      input.view, bias);
+        colour = a.colour;
+        n = a.normal;
+        ao = 1.0;
+        moss = 0;
+    } else if (input.biomes.x >= 0) {
         // A cliff: the biome on top of it down its wall, the one at its foot
         // low down, the line between them ragged.
         const uint a = uint(input.biomes.x), b = uint(input.biomes.y);
@@ -186,8 +213,10 @@ float4 propsPs(VsOut input) : SV_Target0 {
     // reads in a painting, and a lighter weathered crust on what faces up.
     const float z = input.place.z;
     const float band = sin(z * 0.021 + input.layer.y * 6.0 + sin(z * 0.0047) * 2.0);
-    colour *= 0.9 + 0.12 * band;
-    colour = lerp(colour, colour * float3(1.12, 1.06, 0.98), saturate((n0.z - 0.6) * 2.5) * 0.6);
+    if (!slab) {
+        colour *= 0.9 + 0.12 * band;
+        colour = lerp(colour, colour * float3(1.12, 1.06, 0.98), saturate((n0.z - 0.6) * 2.5) * 0.6);
+    }
     // Moss on what faces up and in the hollows, in patches, more low down
     // where the wet stays (doc/BIOMES_RU.md, 01: by wetness and facing).
     if (moss > 0) {

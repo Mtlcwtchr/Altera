@@ -27,7 +27,7 @@ private:
     Params params_;
     std::uint32_t mapSize_ = 0;
     engine::Texture map_;
-    engine::Sampler nearest_;
+    engine::Sampler nearest_, linearClamp_;
     engine::GraphicsPipeline patches_, ocean_;
     std::uint64_t gpuBytes_ = 0;
 };

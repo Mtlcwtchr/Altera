@@ -67,11 +67,19 @@ public:
     // high ground mountains, wet lowland marsh, dry warm desert.
     void generate(const MacroMap& macro, const Params& params, std::uint32_t size);
     bool save(const std::filesystem::path& png, std::string* why = nullptr) const;
+    // The biome table's "bands" and "water_hue" (biomes.json): a strip of one
+    // biome along its border with another becomes a biome of its own (the
+    // marshes' edge where the dark forest closes in), and the water's hue by
+    // the distance from that border. `worldSize` in metres.
+    void shape(const std::filesystem::path& table, double worldSize);
     std::uint32_t size() const { return size_; }
     const std::vector<std::uint8_t>& ids() const { return ids_; }
+    // One byte a texel (empty: none): 0 the water red (deep in the marsh),
+    // 128 purple (on the border), 255 as it is (blue, the forest's).
+    const std::vector<std::uint8_t>& waterHue() const { return hue_; }
 
 private:
-    std::vector<std::uint8_t> ids_;
+    std::vector<std::uint8_t> ids_, hue_;
     std::uint32_t size_ = 0;
 };
 

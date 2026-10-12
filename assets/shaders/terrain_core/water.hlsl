@@ -31,6 +31,10 @@ SamplerState waterVsSampler : register(s0, space0);
 // The biome ids (terrain_core::Renderer::biomeMap): which still water is marsh.
 Texture2D<float> biomeVs : register(t1, space0);
 SamplerState biomeVsSampler : register(s1, space0);
+// The water's hue (BiomeMap::waterHue): 0 red (the marshes), 0.5 purple (the
+// border with the dark forest), 1 the water's own colour.
+Texture2D<float> hueVs : register(t2, space0);
+SamplerState hueVsSampler : register(s2, space0);
 
 struct PatchIn {
     uint vertex : SV_VertexID;
@@ -50,15 +54,16 @@ struct VsOut {
     nointerpolation float ocean : TEXCOORD7;   // 1: the open ocean beyond the world
     float2 river : TEXCOORD8;              // the river's fall (m per m); how far past its water's edge (m)
     float3 kind : TEXCOORD9;               // how much of it is sea, river, marsh (the rest: a lake)
+    float hue : TEXCOORD10;                // 0 red, 0.5 purple, 1 as it is
 };
 
 int2 wrapSlot(int2 t, uint size) { const int n = int(size); return ((t % n) + n) % n; }
 
 #include "water_map.hlsli"
 
-#define RIVER_SEGMENTS register(t2, space0)
-#define RIVER_TILES register(t3, space0)
-#define RIVER_LIST register(t4, space0)
+#define RIVER_SEGMENTS register(t3, space0)
+#define RIVER_TILES register(t4, space0)
+#define RIVER_LIST register(t5, space0)
 #include "rivers.hlsli"
 
 VsOut waterVs(PatchIn input) {
@@ -83,8 +88,10 @@ VsOut waterVs(PatchIn input) {
         biomeVs.GetDimensions(bw, bh);
         const float2 bt = clamp(floor(metres / worldSize * bw), 0, bw - 1);
         const uint biome = uint(round(biomeVs.SampleLevel(biomeVsSampler, (bt + 0.5) / bw, 0) * 255.0));
-        kind.z = biome == 1u && kind.x < 0.5 ? 1.0 : 0.0;
+        // (17: the marshes' edge where the dark forest closes in, biomes.json "bands")
+        kind.z = (biome == 1u || biome == 17u) && kind.x < 0.5 ? 1.0 : 0.0;
     }
+    const float hue = hueVs.SampleLevel(hueVsSampler, metres / worldSize, 0);
     if (river.found && river.distance < river.halfWidth + channelBank(river) && riverResolved(river, levelSpacing) > 0 &&
         (wet < 0.999 || river.surface > w.x)) {   // a lake's partial edge texel blends towards dry
         // Over dry ground past the water's edge the sheet only fills the
@@ -107,6 +114,7 @@ VsOut waterVs(PatchIn input) {
     o.ocean = 0;
     o.river = riverInfo;
     o.kind = kind;
+    o.hue = kind.x > 0.5 ? 1.0 : hue;
     return o;
 }
 
@@ -132,6 +140,7 @@ VsOut oceanVs(uint id : SV_VertexID) {
     o.ocean = 1;
     o.river = float2(0, -1);
     o.kind = float3(1, 0, 0);
+    o.hue = 1;
     return o;
 }
 
@@ -261,10 +270,19 @@ float4 waterPs(VsOut input) : SV_Target0 {
     // turquoise over the shallows, a lake dark and clear, a river a little
     // green and silty, a marsh brown-green and murky.
     const float3 seaBody = lerp(float3(0.040, 0.190, 0.190), float3(0.010, 0.055, 0.105), saturate(depth / 18.0));
-    const float3 body = (seaBody * sea + float3(0.015, 0.070, 0.085) * lake + float3(0.035, 0.085, 0.070) * riverW +
-                         float3(0.045, 0.050, 0.020) * marsh) * ambient;
+    float3 own = seaBody * sea + float3(0.015, 0.070, 0.085) * lake + float3(0.035, 0.085, 0.070) * riverW +
+                 float3(0.045, 0.050, 0.020) * marsh;
+    // The marshes' water is red (doc/BIOME_PLAN.md 3.1), going purple at the
+    // dark forest and the forest's blue past it.
+    const float hue = saturate(input.hue);
+    if (hue < 0.999) {
+        const float3 red = float3(0.340, 0.034, 0.026), purple = float3(0.150, 0.040, 0.190);
+        own = hue < 0.5 ? lerp(red, purple, hue * 2.0) : lerp(purple, own, (hue - 0.5) * 2.0);
+    }
+    const float3 body = own * ambient;
     // How much of the bed shows: thin water is clear, a marsh's is not.
-    const float murk = 0.22 * sea + 0.18 * lake + 0.35 * riverW + 0.9 * marsh;
+    // (the red water is murky wherever it is, a lake's too)
+    const float murk = lerp(1.2, 0.22 * sea + 0.18 * lake + 0.35 * riverW + 0.9 * marsh, hue);
     const float opacity = 1.0 - exp(-depth * murk);
     // Reflection: the sky (and the sun) by Fresnel; a lake the sharpest mirror.
     const float facing = saturate(dot(n, toEye));
@@ -310,18 +328,21 @@ float4 waterPs(VsOut input) : SV_Target0 {
         const float white = max(rapids * smoothstep(0.4, 0.75, churn) * 0.85, plunge * (0.55 + 0.45 * streak));
         foam = max(foam, white * (0.5 + 0.5 * near));
     }
+    // (the red water is dull: less of the sky in it)
+    reflection *= 0.55 + 0.45 * hue;
     float3 colour = body * opacity * (1.0 - fresnel) + reflection * fresnel;
     float alpha = saturate(max(opacity, plunge * 0.9) * (1.0 - fresnel) + fresnel);
-    // A marsh's floating green: duckweed and algae in rafts, thickest near the
-    // shore, drifting very slowly; matte, it hides the reflection.
+    // A marsh's moss creeping off its banks onto the water, a ragged fringe in
+    // the shallows only: no duckweed on the open red water (doc/BIOME_PLAN.md
+    // 3.1). Matte, it hides the reflection.
     if (marsh > 0) {
         const float2 slow = float2(0.05, 0.03) * lookTime;
         const float raft = noiseD((place + slow) / 6.0).x * 0.55 + noiseD((place - slow) / 1.8 + 9.0).x * 0.3 +
                            noiseD(place / 0.7 + 21.0).x * 0.15;
-        const float weed = smoothstep(0.6, 0.68, raft + 0.15 * smoothstep(2.5, 0.3, depth)) * marsh * 0.95;
-        // (duckweed: a yellow-green skin, freckled close by, even far off - no shimmer)
+        const float weed = smoothstep(0.62, 0.7, raft + 0.4 * smoothstep(0.9, 0.1, depth) - 0.15) * marsh * 0.95;
+        // (moss: a deep green skin, freckled close by, even far off - no shimmer)
         const float freckle = lerp(noiseD(place / 0.35).x, 0.5, saturate(distance / 60.0));
-        const float3 green = float3(0.13, 0.20, 0.035) * (0.75 + 0.5 * freckle) *
+        const float3 green = float3(0.07, 0.13, 0.03) * (0.75 + 0.5 * freckle) *
                              (lightSunColour * sunLight * 0.7 + ambient * 0.9);
         colour = lerp(colour, green, weed);
         alpha = lerp(alpha, 1.0, weed);

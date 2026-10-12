@@ -47,6 +47,21 @@ struct PropsLook {
     float coverLayer = 0;      // the ground laid over what faces up (props.json "cover_material": steppe)
 };
 
+// Must match cbuffer A1 in props.hlsl (megalith_a1.hlsli): the knobs of the
+// A-1 slabs' material, read from its manifest
+// (content/config/terrain_core/megaliths/a1_monolith.material.json).
+struct MegalithLook {
+    static constexpr const char* kKnobs[] = {
+        "moss_coverage", "moss_scale", "moss_softness", "moss_foot_m", "moss_foot_weight", "moss_ledge_weight",
+        "moss_pixel_m", "coverage_jitter", "streak_strength", "moss_tile_m", "stone_saturation", "stone_value",
+        "scratch_strength", "scratch_tile_m", "bump_strength", "bump_distance_m", "stroke_height", "groove_depth",
+        "moss_height", "ao_strength", "ao_distance_m", "cavity_strength", "stone_roughness", "stroke_roughness",
+        "moss_roughness", "specular", "moss_streak_stretch", "moss_edge_weight", "moss_groove_weight", "groove_gate",
+        "moss_fine_scale", "moss_ragged", "groove_warp"};
+    static constexpr std::size_t kStoneTile = 33;   // the hatch's tile, metres (textures.hatch.tile_m)
+    float knobs[36] = {};
+};
+
 class Props {
 public:
     // `ground(x, y)`: the height the terrain is drawn at, for standing models
@@ -109,6 +124,7 @@ private:
         double cx = 0, cy = 0, cz = 0;   // bounding sphere centre
         float radius = 1;
         bool detail = false;          // a cliff tile: refined near the eye
+        bool slab = false;            // an A-1 slab: wears its own material ("look": "a1_monolith")
         std::uint8_t category = kTerrain;
     };
     // A cliff tile's surface split twice and roughened, near the eye: made on
@@ -148,7 +164,11 @@ private:
     std::uint32_t argsCapacity_ = 0, viewDraws_ = 0, shadowDraws_ = 0;
     SDL_GPUTransferBuffer* transfer_ = nullptr;
     std::uint32_t capacity_ = 0;
-    engine::Sampler linear_;
+    engine::Sampler linear_, hardPixels_;
+    // A-1's tiles (hatch, grooves, moss, strokes) and knobs; empty when no
+    // instance wears it.
+    engine::Texture megalithTiles_;
+    MegalithLook megalithLook_{};
     engine::GraphicsPipeline draw_, shadow_;
     std::vector<Gpu> staging_;
     std::vector<std::vector<std::uint32_t>> buckets_;

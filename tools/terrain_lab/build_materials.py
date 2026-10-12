@@ -4,7 +4,8 @@
     python tools/terrain_lab/build_materials.py
 
 Reads content/config/terrain_core/biomes.json, takes each material's base
-colour straight out of the archive (Free/<group>/<name>/<name>_basecolor.png),
+colour straight out of the archive (or, with "file", from the project's own
+pictures: the A-1 hatch for the marshes' red ground) (Free/<group>/<name>/<name>_basecolor.png),
 recolours the ones that ask for it (snow, ash) and writes
 assets/terrain_core/materials/<material>.png. The renderer loads them as one
 texture array in the order of the config. Also extracts the supplied AO,
@@ -64,6 +65,33 @@ def relief_from_height(height, source_normal):
     return normal, Image.fromarray((ao * 255 + 0.5).astype(np.uint8)), strength
 
 
+def own_material(name, spec, manifest):
+    """A material from the project's own pictures rather than the archive:
+    `file` the colour, `height` a picture whose dark is low (e.g. the grooves of
+    the A-1 hatch, inverted with `height_invert`). Normal and AO from the height
+    as for the archive's; roughness `roughness` (0..1) everywhere."""
+    image = Image.open(ROOT / spec["file"]).convert("RGB")
+    if "recolour" in spec:
+        image = recolour(image, spec["recolour"])
+    image.save(OUT / f"{name}.png")
+    if "height" in spec:
+        height = Image.open(ROOT / spec["height"]).convert("L").resize(image.size, Image.BILINEAR)
+        if spec.get("height_invert"):
+            height = Image.fromarray(255 - np.asarray(height))
+    else:
+        height = image.convert("L")
+    flat = np.zeros((image.size[1], image.size[0], 3), np.float32)
+    flat[..., 2] = 1.0
+    normal, ao, strength = relief_from_height(height, flat)
+    rough = Image.new("L", image.size, int(round(spec.get("roughness", 0.8) * 255)))
+    for kind, img in (("ao", ao), ("roughness", rough), ("height", height), ("normal", normal)):
+        img.save(PBR / f"{name}_{kind}.png")
+    Image.merge("RGBA", (ao, rough, height, Image.new("L", image.size, 255))).save(PBR / f"{name}_properties.png")
+    manifest["materials"][name] = {"file": spec["file"], "size": list(image.size), "properties": f"{name}_properties.png",
+                                   "height": spec.get("height"), "normal_strength": round(strength, 1)}
+    print(f"{name:16s} <- {spec['file']} {image.size[0]}x{image.size[1]}")
+
+
 def main():
     config = json.loads(CONFIG.read_text(encoding="utf-8"))
     OUT.mkdir(parents=True, exist_ok=True)
@@ -75,6 +103,9 @@ def main():
                 "renderer_connected": True, "materials": {}}
     with zipfile.ZipFile(ARCHIVE) as archive:
         for name, spec in config["materials"].items():
+            if "file" in spec:
+                own_material(name, spec, manifest)
+                continue
             source = spec["source"]
             group = source.split("_")[0]
             member = f"Free/{group}/{source}/{source}_basecolor.png"

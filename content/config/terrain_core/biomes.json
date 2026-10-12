@@ -1,5 +1,5 @@
 {
-  "comment": "Ground of the terrain core (doc/rework/TERRAIN_REWORK_PLAN.md, stage 2). `materials`: the texture array, each a source picture from new_assets/Free.zip (Free/<group>/<name>/<name>_basecolor.png), optionally recoloured - built into assets/terrain_core/materials by tools/terrain_lab/build_materials.py. `biomes`: by the id the biome map holds (content/config/biomes/fallen_gods.json ids). Each biome is a base material; `patch` - islands of a second material where a noise of `cell_m` metres exceeds 1 - `cover`; `slope` - a material from normal.z `from` (flat side) to `to` (steep side); `high` - a material above `from` metres, full at `to`. `tint` multiplies the biome's colour (1 = as painted). `shore` is laid over every biome within `height_m` of the sea; `sea_floor` below it.",
+  "comment": "Ground of the terrain core (doc/rework/TERRAIN_REWORK_PLAN.md, stage 2). `materials`: the texture array, each a source picture from new_assets/Free.zip (Free/<group>/<name>/<name>_basecolor.png), optionally recoloured - built into assets/terrain_core/materials by tools/terrain_lab/build_materials.py. `biomes`: by the id the biome map holds (content/config/biomes/fallen_gods.json ids). Each biome is a base material; `patch` - islands of a second material where a noise of `cell_m` metres exceeds 1 - `cover`; `slope` - a material from normal.z `from` (flat side) to `to` (steep side); `high` - a material above `from` metres, full at `to`. `tint` multiplies the biome's colour (1 = as painted). `bands`: a strip of biome `in` within `width_m` of biome `toward` becomes biome `id` (terrain_core::BiomeMap::shape); `water_hue`: water over the `red` biomes red, purple at their border with the `blue` ones, as it is past `blue_m` into those. `shore` is laid over every biome within `height_m` of the sea; `sea_floor` below it.",
   "tile_m": 4,
   "materials": {
     "grass_lush":     {"source": "Grass_01"},
@@ -32,13 +32,18 @@
     "sand_beach":     {"source": "Sand_03"},
     "sand_dune":      {"source": "Sand_07"},
     "snow":           {"source": "Sand_05", "recolour": {"saturation": 0.0, "brightness": 1.18, "tint": [0.93, 0.96, 1.0]}},
-    "ash_black":      {"source": "Gravel_02", "recolour": {"saturation": 0.4, "brightness": 0.55, "tint": [1.0, 0.85, 0.85]}}
+    "ash_black":      {"source": "Gravel_02", "recolour": {"saturation": 0.4, "brightness": 0.55, "tint": [1.0, 0.85, 0.85]}},
+    "rock_red_hatch": {"file": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_128.png", "height": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_grooves_128.png", "height_invert": true, "roughness": 0.8}
   },
+  "bands": [
+    {"id": 17, "name": "marsh_edge", "in": [1], "toward": [2], "width_m": 1500, "comment": "the marshes' strip along the dark forest: pools and channels still, the forest closing in (doc/BIOME_PLAN.md 3.1)"}
+  ],
+  "water_hue": {"red": [1, 17], "red_m": 3500, "blue": [2], "blue_m": 1500, "comment": "the marshes' water red, purple at the dark forest, blue past red_m/blue_m metres either side of the border"},
   "shore": {"material": "sand_beach", "height_m": 4},
   "sea_floor": "sand_grey",
   "biomes": [
     {"id": 0,  "name": "sea",               "base": "sand_grey"},
-    {"id": 1,  "name": "great_marshes",     "base": "grass_dark",    "patch": {"material": "grass_olive",  "cell_m": 24,  "cover": 0.40}, "slope": {"material": "dirt_mud",   "from": 0.95, "to": 0.85}, "tint": [0.74, 0.96, 0.58]},
+    {"id": 1,  "name": "great_marshes",     "base": "grass_dark",    "patch": {"material": "dirt_red",     "cell_m": 24,  "cover": 0.22}, "slope": {"material": "rock_red_hatch", "from": 0.95, "to": 0.86}, "tint": [0.86, 0.98, 0.74]},
     {"id": 2,  "name": "dark_forest",       "base": "grass_olive",   "patch": {"material": "dirt_dark",    "cell_m": 32,  "cover": 0.35}, "slope": {"material": "rock_mossy", "from": 0.85, "to": 0.70}, "tint": [0.70, 0.80, 0.68]},
     {"id": 3,  "name": "canyon_steppe",     "base": "grass_dry",     "patch": {"material": "dirt_red",     "cell_m": 96,  "cover": 0.35}, "slope": {"material": "rock_ochre", "from": 0.92, "to": 0.80}},
     {"id": 4,  "name": "golden_desert",     "base": "sand_gold",     "patch": {"material": "sand_dune",    "cell_m": 192, "cover": 0.30}, "slope": {"material": "rock_ochre", "from": 0.88, "to": 0.75}},
@@ -52,6 +57,7 @@
     {"id": 13, "name": "northern_isles",    "base": "grass_olive",   "patch": {"material": "dirt_brown",   "cell_m": 64,  "cover": 0.30}, "slope": {"material": "rock_dark",  "from": 0.90, "to": 0.68}, "high": {"material": "snow", "from": 1800, "to": 2500}},
     {"id": 14, "name": "sky_shards",        "base": "grass_flowers", "patch": {"material": "rock_pale",    "cell_m": 56,  "cover": 0.30}, "slope": {"material": "rock_pale",  "from": 0.85, "to": 0.70}, "tint": [0.95, 0.95, 1.05]},
     {"id": 15, "name": "south_unassigned",  "base": "grass_meadow",  "patch": {"material": "dirt_brown",   "cell_m": 64,  "cover": 0.30}, "slope": {"material": "rock_grey",  "from": 0.85, "to": 0.70}},
+    {"id": 17, "name": "marsh_edge",        "base": "grass_dark",    "patch": {"material": "dirt_dark",    "cell_m": 32,  "cover": 0.35}, "slope": {"material": "rock_red_hatch", "from": 0.92, "to": 0.80}, "tint": [0.76, 0.88, 0.68]},
     {"id": 16, "name": "stone_desert",      "base": "rock_ochre",    "patch": {"material": "dirt_red",     "cell_m": 128, "cover": 0.35}, "slope": {"material": "rock_ochre", "from": 0.88, "to": 0.72}, "tint": [1.04, 0.86, 0.70]}
   ]
 }

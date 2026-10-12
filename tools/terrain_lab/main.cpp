@@ -554,6 +554,7 @@ struct Lab {
             biomes.generate(macro, options.params, 1024);
             biomes.save(options.out / ("generated_biomes_" + std::to_string(options.params.seed) + ".png"), &why);
         }
+        biomes.shape(groundFile, options.params.worldSize);
         std::printf("biome map %u^2 (%s) in %.0f ms, %zu materials\n", biomes.size(),
                     options.biomes.empty() ? "generated" : "imported", msSince(biomeStart), table.materialFiles().size());
         if (!rivers.open(device, riverSegments, options.params.worldSize, &why)) {

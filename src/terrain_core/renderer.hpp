@@ -75,6 +75,9 @@ public:
     std::uint64_t gpuBytes() const { return gpuBytes_; }
     SDL_GPUTexture* clipmap() const { return clipmap_.get(); }
     SDL_GPUTexture* biomeMap() const { return biomeMap_.get(); }
+    // The water's hue by the biome map (BiomeMap::waterHue; one texel of 255
+    // when the table asks for none).
+    SDL_GPUTexture* waterHue() const { return waterHue_.get(); }
     SDL_GPUTexture* materials() const { return materials_.get(); }
     SDL_GPUTexture* materialNormals() const { return materialNormals_.get(); }
     SDL_GPUTexture* materialProperties() const { return materialProperties_.get(); }
@@ -96,7 +99,7 @@ private:
     std::uint32_t macroMips_ = 1;
     engine::Texture macro_, clipmap_;
     engine::Sampler nearest_, repeat_;
-    engine::Texture biomeMap_, materials_, materialNormals_, materialProperties_;
+    engine::Texture biomeMap_, waterHue_, materials_, materialNormals_, materialProperties_;
     GroundUniforms ground_{};
     engine::ComputePipeline generate_;
     engine::GraphicsPipeline terrain_;

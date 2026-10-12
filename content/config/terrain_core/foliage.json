@@ -1,5 +1,5 @@
 {
- "comment": "Trees and bushes of the terrain core (the 'trees' module; the grass cover is its own module, terrain_core::Grass). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover].",
+ "comment": "Trees and bushes of the terrain core (the 'trees' module; the grass cover is its own module, terrain_core::Grass). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover]. The great marshes (1) grow nothing but grass and moss; their edge by the dark forest (17, biomes.json bands) has the forest closing in (broadleaf stands in for the marshes' gnarled trees until those exist).",
  "models": {
   "grass01": {
    "source": "retro_nature_pack/models/glTF/grass/grass01.glb",
@@ -437,28 +437,7 @@
   }
  ],
  "biomes": {
-  "1": {
-   "shrubs": [
-    0.25,
-    0,
-    0
-   ],
-   "bushes": [
-    0.08,
-    0,
-    0
-   ],
-   "broadleaf": [
-    0.06,
-    300,
-    0.35
-   ],
-   "saplings": [
-    0.03,
-    0,
-    0
-   ]
-  },
+  "1": {},
   "2": {
    "conifers": [
     0.85,
@@ -656,6 +635,28 @@
    ],
    "saplings": [
     0.15,
+    0,
+    0
+   ]
+  },
+  "17": {
+   "conifers": [
+    0.4,
+    600,
+    0.55
+   ],
+   "broadleaf": [
+    0.14,
+    300,
+    0.4
+   ],
+   "saplings": [
+    0.15,
+    0,
+    0
+   ],
+   "shrubs": [
+    0.08,
     0,
     0
    ]

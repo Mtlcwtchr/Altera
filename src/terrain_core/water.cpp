@@ -46,6 +46,8 @@ bool Water::open(engine::Device& device, const Params& params, const WaterMap& m
     sampling.min_filter = sampling.mag_filter = SDL_GPU_FILTER_NEAREST;
     sampling.address_mode_u = sampling.address_mode_v = sampling.address_mode_w = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
     nearest_ = device.makeSampler(sampling);
+    sampling.min_filter = sampling.mag_filter = SDL_GPU_FILTER_LINEAR;
+    linearClamp_ = device.makeSampler(sampling);
 
     engine::PipelineWanted wanted;
     wanted.shaderFile = "terrain_core/water.hlsl";
@@ -88,9 +90,12 @@ void Water::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, Render
     SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
     SDL_PushGPUFragmentUniformData(commands, 1, &wl, sizeof(wl));
     // The water map, and the biome map: which still water is a marsh's.
+    // And the water's hue: red in the marshes, purple at the dark forest.
     SDL_GPUTexture* biomes = terrain.biomeMap() ? terrain.biomeMap() : map_.get();
-    const SDL_GPUTextureSamplerBinding vertex[2] = {{map_.get(), nearest_.get()}, {biomes, nearest_.get()}};
-    SDL_BindGPUVertexSamplers(pass, 0, vertex, 2);
+    SDL_GPUTexture* hue = terrain.waterHue() ? terrain.waterHue() : biomes;
+    const SDL_GPUTextureSamplerBinding vertex[3] = {{map_.get(), nearest_.get()}, {biomes, nearest_.get()},
+                                                    {hue, linearClamp_.get()}};
+    SDL_BindGPUVertexSamplers(pass, 0, vertex, 3);
     const auto rivers = terrain.rivers()->buffers();
     SDL_BindGPUVertexStorageBuffers(pass, 0, rivers.data(), 3);
     SDL_BindGPUFragmentSamplers(pass, 0, fragment, 2);

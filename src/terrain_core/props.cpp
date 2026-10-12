@@ -203,6 +203,7 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         in.moss = std::clamp(o.value("moss", 0.0f), 0.0f, 1.0f);
         in.cover = std::clamp(o.value("cover", 0.0f), 0.0f, 1.0f);
         in.mirror = std::clamp(o.value("mirror", 0.0f), 0.0f, 1.0f);
+        in.slab = o.value("look", std::string()) == "a1_monolith";
         // A cliff tile: the two biomes it wears (world_cliffs.py), by id.
         if (o.contains("biomes") && o["biomes"].size() == 2)
             for (int k = 0; k < 2; ++k)
@@ -236,6 +237,32 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     }
     if (instances_.empty()) return fail("no instances in " + featuresFile.string());
 
+    // A-1's material: its manifest beside the biome table, its tiles at one
+    // size in engine/ beside the model (tools/terrain_lab/import_megalith.py).
+    if (std::any_of(instances_.begin(), instances_.end(), [](const Instance& i) { return i.slab; })) {
+        const auto manifest = materialsJson.parent_path() / "megaliths" / "a1_monolith.material.json";
+        const auto root = materialsJson.parent_path().parent_path().parent_path().parent_path();
+        nlohmann::json mat;
+        try {
+            std::ifstream in(manifest);
+            if (!in) return fail("cannot read " + manifest.string());
+            mat = nlohmann::json::parse(in);
+        } catch (const std::exception& e) {
+            return fail(manifest.string() + ": " + e.what());
+        }
+        std::vector<std::vector<std::filesystem::path>> tiles;
+        for (const char* key : {"hatch", "grooves", "moss", "strokes"}) {
+            const std::filesystem::path file = mat["textures"][key].value("file", std::string());
+            tiles.push_back({root / file.parent_path() / "engine" / (std::string(key) + ".png")});
+        }
+        megalithTiles_ = device.loadArrayMipped(tiles, true);
+        if (!megalithTiles_) return fail("A-1 tiles (run tools/terrain_lab/import_megalith.py): " + device.error());
+        const auto knobs = mat.value("knobs", nlohmann::json::object());
+        for (std::size_t k = 0; k < std::size(MegalithLook::kKnobs); ++k)
+            megalithLook_.knobs[k] = knobs.value(MegalithLook::kKnobs[k], 0.0f);
+        megalithLook_.knobs[MegalithLook::kStoneTile] = mat["textures"]["hatch"].value("tile_m", 36.0f);
+    }
+
     {
         engine::Device::Uploader upload(device);
         vertices_ = upload.add(SDL_GPU_BUFFERUSAGE_VERTEX, allVertices.data(), allVertices.size() * sizeof(Vertex));
@@ -263,6 +290,11 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     sampling.enable_anisotropy = true;
     sampling.max_anisotropy = 8.0f;
     linear_ = device.makeSampler(sampling);
+    // A-1's tiles: hard pixels up close, smooth mips far off.
+    sampling.min_filter = sampling.mag_filter = SDL_GPU_FILTER_NEAREST;
+    sampling.enable_anisotropy = false;
+    hardPixels_ = device.makeSampler(sampling);
+    if (!hardPixels_) return fail("props sampler: " + std::string(SDL_GetError()));
 
     engine::PipelineWanted wanted;
     wanted.shaderFile = "terrain_core/props.hlsl";
@@ -293,7 +325,8 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
     wanted.depthBiasConstant = -2.0f;
     wanted.depthBiasSlope = -2.5f;
     shadow_ = device.makePipeline(wanted);
-    if (!vertices_ || !indices_ || !gpuInstances_ || !args_ || !transfer_ || !linear_ || !draw_ || !shadow_)
+    if (!vertices_ || !indices_ || !gpuInstances_ || !args_ || !transfer_ || !linear_ || !hardPixels_ || !draw_ ||
+        !shadow_)
         return fail("props GPU objects: " + device.error());
     buckets_.assign(models_.size() * kLevels, {});
     return true;
@@ -321,7 +354,7 @@ Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
     // the haze softens but does not swallow (seen from across its biome).
     g.anchor[3] = float(i % 97) / 97.0f + (in.category == kMegaliths ? 2.0f : 0.0f);
     g.extra[0] = in.cover;
-    g.extra[1] = float(in.biomes[0]);
+    g.extra[1] = in.slab ? -2.0f : float(in.biomes[0]);
     g.extra[2] = float(in.biomes[1]);
     g.extra[3] = in.mirror;
     return g;
@@ -643,11 +676,16 @@ void Props::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const 
     SDL_PushGPUFragmentUniformData(commands, 0, &light, sizeof(light));
     SDL_PushGPUFragmentUniformData(commands, 1, &look, sizeof(look));
     SDL_PushGPUFragmentUniformData(commands, 2, &cliffBiomes_, sizeof(cliffBiomes_));
-    const SDL_GPUTextureSamplerBinding textures[4] = {{materials, linear_.get()},
+    SDL_PushGPUFragmentUniformData(commands, 3, &megalithLook_, sizeof(megalithLook_));
+    // (no A-1 in this world: any array stands in for its tiles)
+    SDL_GPUTexture* tiles = megalithTiles_ ? megalithTiles_.get() : materials;
+    const SDL_GPUTextureSamplerBinding textures[6] = {{materials, linear_.get()},
                                                       {normals, linear_.get()},
                                                       {properties, linear_.get()},
-                                                      {shadowAtlas, shadowSampler}};
-    SDL_BindGPUFragmentSamplers(pass, 0, textures, 4);
+                                                      {shadowAtlas, shadowSampler},
+                                                      {tiles, hardPixels_.get()},
+                                                      {tiles, linear_.get()}};
+    SDL_BindGPUFragmentSamplers(pass, 0, textures, 6);
     drawBatches(pass, viewBatches_, 0, viewDraws_);
 }
 

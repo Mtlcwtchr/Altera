@@ -298,7 +298,7 @@
     }
   },
   "megaliths": {
-    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): one kind per biome, none repeated elsewhere; the isles and the crescent have none. `heroes`: zone -> {kind, count, share of the biome's extent as height}. `prism_row`: towering prisms along a border. `cube_cluster`: huge white cubes. `coast_spikes`: spikes all along a coast. `groups` / `singles`: as elsewhere.",
+    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): one kind per biome, none repeated elsewhere; the isles and the crescent have none. `heroes`: zone -> {kind, count, share of the biome's extent as height}. `prism_row`: towering prisms along a border (none now: the marshes have A-1). `cube_cluster`: huge white cubes. `coast_spikes`: spikes all along a coast. `groups` / `singles`: as elsewhere. `a1_monoliths`: the giant slabs A-1 in loose rows on the dry ground of the marshes (world_megaliths.a1_monoliths; rows, spacing and scale from the asset manifest; the slab is drawn in its own material, \"look\").",
     "heroes": {
       "zones": {
         "white_mountains": {
@@ -320,19 +320,6 @@
       "edge_share": 0.12,
       "spacing_share": 0.3,
       "max_slope": 0.3
-    },
-    "prism_row": {
-      "kind": "prism_column",
-      "zone": "great_marshes",
-      "along": "dark_forest",
-      "depth_m": 900,
-      "count": 7,
-      "gap_m": 650,
-      "share": 0.06,
-      "height_m": [
-        1100,
-        2600
-      ]
     },
     "cube_cluster": {
       "kind": "white_cube",
@@ -364,23 +351,6 @@
       ]
     },
     "groups": [
-      {
-        "kind": "marsh_panel",
-        "zones": [
-          "great_marshes",
-          "river_marshes"
-        ],
-        "per_1000km2": 8,
-        "cluster": [
-          3,
-          7
-        ],
-        "cluster_m": 450,
-        "size_m": [
-          70,
-          160
-        ]
-      },
       {
         "kind": "colossus_head",
         "zones": [
@@ -450,7 +420,31 @@
         ],
         "near_low": true
       }
-    ]
+    ],
+    "a1_monoliths": {
+      "kind": "a1_monolith",
+      "look": "a1_monolith",
+      "manifest": "content/config/terrain_core/megaliths/a1_monolith.asset.json",
+      "zones": [
+        "great_marshes",
+        "river_marshes"
+      ],
+      "edge_m": 250,
+      "water_gap_m": 40,
+      "max_relief_m": 10,
+      "min_height_m": 5,
+      "sink_m": 2,
+      "min_gap_m": 420,
+      "lateral_m": 90,
+      "tries": 8,
+      "try_step_m": 70,
+      "visibility": {
+        "points": 400,
+        "nearest": 6,
+        "range_m": 12000,
+        "need": 0.7
+      }
+    }
   },
   "buildings": {
     "comment": "Buildings (tools/terrain_lab/world_buildings.py): their own piece of work, off until then.",
