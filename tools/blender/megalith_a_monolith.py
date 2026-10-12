@@ -1,24 +1,26 @@
-"""Magic megalith A-1, blockout stage: the giant monolith slabs.
+"""Magic megalith A-1: the giant monolith slabs (doc/BIOME_PLAN.md, kind A:
+blockout -> sculpt -> material, user approval at each step).
 
 Reference (user, 12.10): thick rectangular monoliths standing in rows on a green plain
 to the horizon; the sides sweep out in a long concave flare into the grass (on the giant
 in the foreground the flare starts at about half height and is stronger on one side),
-the tops are cut flat but slanted and chipped. This stage settles only the shape:
-proportions, silhouette and foot. No lattice, no sculpt, no material yet
-(doc/BIOME_PLAN.md, kind A: blockout -> sculpt -> material, user approval at each step).
+the tops are cut flat but slanted and chipped.
 
-The user picked the giant's shape and proportions (12.10): every monolith in the field is
-that giant at about the same size (the game may rescale them). 1.8 m human figures give
-the scale; copies of the giant, turned and mirrored, run in rows to the horizon.
-PSX profile: low poly, flat shading, no smoothing.
+Blockout (approved 12.10): the giant's shape and proportions; every monolith in the field
+is a variation of that giant at about the same size (the game may rescale them): thickness,
+foot flare, top cut and bend differ, the copies turn any way and lean up to 7 degrees.
+Sculpt: surface relief on the same silhouettes (see sculpted_loops). No material yet.
+1.8 m human figures give the scale. PSX profile: low poly, flat shading, no smoothing.
 
-    blender -b -P tools/blender/megalith_a_monolith_blockout.py
-    blender -b -P tools/blender/megalith_a_monolith_blockout.py -- --no-render
+    blender -b -P tools/blender/megalith_a_monolith.py                      # sculpt stage
+    blender -b -P tools/blender/megalith_a_monolith.py -- --stage blockout
+    blender -b -P tools/blender/megalith_a_monolith.py -- --no-render
 """
 import argparse
 import math
 import random
 import sys
+import zlib
 from pathlib import Path
 
 import bpy
@@ -26,8 +28,9 @@ import bmesh
 from mathutils import Vector
 
 ROOT = Path(__file__).resolve().parents[2]
-BLEND = ROOT / "assets/terrain_core/megaliths/a_monolith/monolith_blockout.blend"
+ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a_monolith"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
+STAGE = "sculpt"
 
 STONE = (0.60, 0.61, 0.56, 1)
 FIELD_STONE = (0.55, 0.53, 0.50, 1)
@@ -68,6 +71,99 @@ def ring(x0, x1, y0, y1, chamfer):
             (x0, y1 - c), (x0, y0 + c), (x0 + c, y0), (x1 - c, y0)]
 
 
+COLS = 6    # raised slab columns on a broad face (2 on a narrow face)
+BAND = 22.0  # m, height of one band of raised slabs
+GAP = 0.025  # share of a side between the two vertices of a column edge: the step face
+
+
+def side_samples(cols):
+    """(u, column) along one side; every column edge is two close vertices so steps stay sharp."""
+    out = [(0.0, 0)]
+    for k in range(1, cols):
+        out += [(k / cols - GAP / 2, k - 1), (k / cols + GAP / 2, k)]
+    return out
+
+
+def perimeter(x0, x1, y0, y1, chamfer):
+    """The chamfered rectangle resampled, counter-clockwise. Yields (x, y, outward normal, side,
+    column on that side); corners are their own one-piece sides."""
+    c = min(chamfer, (x1 - x0) * 0.22, (y1 - y0) * 0.22)
+    r = 0.7071
+    segs = [((x1, y0 + c), (x1, y1 - c), 2, (1, 0), "E"), ((x1, y1 - c), (x1 - c, y1), 1, (r, r), "NE"),
+            ((x1 - c, y1), (x0 + c, y1), COLS, (0, 1), "N"), ((x0 + c, y1), (x0, y1 - c), 1, (-r, r), "NW"),
+            ((x0, y1 - c), (x0, y0 + c), 2, (-1, 0), "W"), ((x0, y0 + c), (x0 + c, y0), 1, (-r, -r), "SW"),
+            ((x0 + c, y0), (x1 - c, y0), COLS, (0, -1), "S"), ((x1 - c, y0), (x1, y0 + c), 1, (r, -r), "SE")]
+    out = []
+    for (ax, ay), (bx, by), n, nrm, side in segs:
+        for u, col in side_samples(n):
+            out.append((ax + (bx - ax) * u, ay + (by - ay) * u, nrm, side, col))
+    return out
+
+
+def cell_hash(*key):
+    """Stable 0..1 per key (str hash is salted per process, crc32 is not)."""
+    return random.Random(zlib.crc32(repr(key).encode())).random()
+
+
+def sculpt_heights(v):
+    """Ring heights (z, band index): dense through the flare, and a pair at every band edge
+    (the lower ring keeps the band below, the upper one 1.5 m higher takes the band above)."""
+    H = v["H"]
+    pairs = {}
+    zb = BAND
+    while zb < H - 10:
+        pairs[zb], pairs[zb + 1.5] = int(zb / BAND) - 1, int(zb / BAND)
+        zb += BAND
+    flare = [(i / 14) ** 1.5 * v["tf"] * H for i in range(15)]
+    flare = [z for z in flare if z == 0.0 or min(abs(z - q) for q in pairs) > 3.0]
+    return sorted([(z, int(z / BAND)) for z in flare] + list(pairs.items()))
+
+
+def sculpted_loops(bm, v, extents, ch, sx, sy):
+    """Sculpt stage, still PSX: a denser cage (2-3k tris) displaced by hand-set rules.
+    - every face is cut into a grid of great blocks (columns x 22 m bands); a block stands
+      proud by 0 / 1.5 / 3 m (narrow faces 0 / 1.2 m), with sharp ledges between blocks: the
+      ground for the lattice pattern of the material stage;
+    - the blocks fade into the flare, which slumps into the grass in slow lumps;
+    - corners broken away in rare runs (notches 2-6 m deep), clean on the flare;
+    - the top cut torn: jagged rim plus the big chip."""
+    from mathutils import noise
+    H, seed = v["H"], v.get("seed", 0)
+    o = Vector((seed * 17.3, seed * 5.1, seed * 9.7))
+    rings = [(-v.get("sink", SINK), 0)] + sculpt_heights(v) + [(H, None)]
+    loops = []
+    for i, (z, bnd) in enumerate(rings):
+        t = max(z, 0.0) / H
+        x0, x1, y0, y1 = extents(t)
+        loop = []
+        for k, (x, y, (nxv, nyv), side, col) in enumerate(perimeter(x0, x1, y0, y1, ch)):
+            foot = max(0.0, 1.0 - z / (v["tf"] * H * 0.55))
+            d = 1.4 * noise.noise(Vector((x, y, z)) / 140.0 + o)                 # slow swell
+            d += foot * 4.5 * noise.noise(Vector((x, y, z)) / 30.0 + o)          # slumped foot
+            if bnd is not None and len(side) == 1 and z < H - 8:
+                if side in ("N", "S"):
+                    step = int(cell_hash(seed, side, col, bnd) * 3) * 1.5
+                else:
+                    step = int(cell_hash(seed, side, col, bnd // 2) * 2) * 1.2
+                d += step * (1.0 - foot) ** 2
+            if len(side) == 2:                                                   # corners: broken runs
+                n = noise.noise(Vector((z / 26.0, k * 3.7, 0.0)) + o)
+                if n > 0.3:
+                    d -= (2.0 + 4.0 * (n - 0.3) / 0.7) * (1.0 - foot)
+            if z <= 0.0:
+                d = 0.0
+            px, py = x + nxv * d, y + nyv * d
+            if bnd is None and i == len(rings) - 1:  # torn top rim, slanted, the big chip on one corner run
+                pz = H + sx * px + sy * py + 4.5 * noise.noise(Vector((px, py, 0.0)) / 18.0 + o)
+                if side in ("E", "SE") or (side == "S" and col >= COLS - 2):
+                    pz -= v["chip"] * (0.6 + 0.4 * cell_hash(seed, "chip", k))
+            else:
+                pz = z
+            loop.append(bm.verts.new((px, py, pz)))
+        loops.append(loop)
+    return loops
+
+
 def slab(name, v, mat):
     W, D, H = v["W"], v["D"], v["H"]
     hw, hd = W / 2, D / 2
@@ -84,7 +180,9 @@ def slab(name, v, mat):
     ch = 0.08 * D
     bm = bmesh.new()
     loops = []
-    for i, t in enumerate([-v.get("sink", SINK) / H] + T):
+    if STAGE == "sculpt":
+        loops = sculpted_loops(bm, v, extents, ch, sx, sy)
+    for i, t in enumerate([] if loops else [-v.get("sink", SINK) / H] + T):
         x0, x1, y0, y1 = extents(max(t, 0.0))
         pts = ring(x0, x1, y0, y1, ch)
         if i == len(T):  # top: slanted cut, one corner chipped
@@ -210,7 +308,7 @@ def build():
 
     # variations of the giant; a sheet of the first six side by side for comparison
     rnd = random.Random(7)
-    kinds = [slab(f"giant_var_{k:02d}", variation(rnd), field_stone) for k in range(12)]
+    kinds = [slab(f"giant_var_{k:02d}", dict(variation(rnd), seed=k + 1), field_stone) for k in range(12)]
     for k in range(6):
         x = -650 + k * 260
         link(f"sheet_{k:02d}", kinds[k], (x, -700, ground_height(x, -700) - 1.0), coll=sheet,
@@ -249,7 +347,7 @@ def setup_render():
     sun.energy = 2.4
     sun.angle = math.radians(2)
     ob = bpy.data.objects.new("sun", sun)
-    ob.rotation_euler = (math.radians(50), 0, math.radians(-35))
+    ob.rotation_euler = (math.radians(68), 0, math.radians(-62))
     bpy.context.scene.collection.objects.link(ob)
     world = bpy.data.worlds.new("sky")
     world.use_nodes = True
@@ -277,6 +375,8 @@ VIEWS = [
     ("03_side_profiles", (680, -30, 40), (0, 0, 110), 30, {"lineup"}),
     ("04_reference_shot", (-150, -172, 1.6), (20, 810, 110), 22, {"field"}),
     ("05_variation_sheet", (0, -1520, 40), (0, -700, 120), 20, {"sheet"}),
+    ("06_close_face", (-150, -230, 40), (0, 0, 110), 35, {"lineup"}),
+    ("07_close_top", (150, -260, 330), (0, 0, 262), 35, set()),
 ]
 
 
@@ -291,7 +391,7 @@ def render_views(render):
         sc.camera = cam
         for c in toggled:
             c.hide_render = c.name not in shown
-        sc.render.filepath = str(SHOTS / f"a1_monolith_blockout_{name}.png")
+        sc.render.filepath = str(SHOTS / f"a1_monolith_{STAGE}_{name}.png")
         bpy.ops.render.render(write_still=True)
         print("wrote", sc.render.filepath)
     for c in toggled:
@@ -303,13 +403,17 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
+    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="sculpt")
     args = ap.parse_args(argv)
+    global STAGE
+    STAGE = args.stage
     build()
     setup_render()
     render_views(not args.no_render)
-    BLEND.parent.mkdir(parents=True, exist_ok=True)
-    bpy.ops.wm.save_as_mainfile(filepath=str(BLEND))
-    print("saved", BLEND)
+    blend = ASSET_DIR / f"monolith_{STAGE}.blend"
+    blend.parent.mkdir(parents=True, exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=str(blend))
+    print("saved", blend)
 
 
 main()
