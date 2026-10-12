@@ -1,11 +1,14 @@
-"""Magic megalith A-1, blockout stage: the giant rectangular monolith slabs.
+"""Magic megalith A-1, blockout stage: the giant monolith slabs.
 
-Reference (user, 12.10): huge flat slabs standing in rows on a green plain, slightly
-widening at the bottom where the hem runs into the grass. This stage settles only the
-shape: proportions, silhouette and foot. No lattice, no sculpt, no material yet
+Reference (user, 12.10): thick rectangular monoliths standing in rows on a green plain
+to the horizon; the sides sweep out in a long concave flare into the grass (on the giant
+in the foreground the flare starts at about half height and is stronger on one side),
+the tops are cut flat but slanted and chipped. This stage settles only the shape:
+proportions, silhouette and foot. No lattice, no sculpt, no material yet
 (doc/BIOME_PLAN.md, kind A: blockout -> sculpt -> material, user approval at each step).
 
-Three proportion variants stand side by side with 1.8 m human figures for scale.
+Three proportion variants stand side by side with 1.8 m human figures for scale, and a
+field of smaller copies runs in rows to the horizon behind them.
 PSX profile: low poly, flat shading, no smoothing.
 
     blender -b -P tools/blender/megalith_a_monolith_blockout.py
@@ -13,6 +16,7 @@ PSX profile: low poly, flat shading, no smoothing.
 """
 import argparse
 import math
+import random
 import sys
 from pathlib import Path
 
@@ -25,25 +29,29 @@ BLEND = ROOT / "assets/terrain_core/megaliths/a_monolith/monolith_blockout.blend
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
 
 STONE = (0.60, 0.61, 0.56, 1)
-GROUND = (0.46, 0.62, 0.30, 1)
+FIELD_STONE = (0.55, 0.53, 0.50, 1)
+GROUND = (0.28, 0.55, 0.16, 1)
 HUMAN = (0.95, 0.10, 0.05, 1)
 
-# name, x, y, depth D, width W, height H, top taper, lean (deg, around X)
-VARIANTS = [
-    ("A_stele_1_4_9", -125.0, -70.0, 12.0, 48.0, 108.0, 0.06, 0.0),
-    ("B_broad_1_4_5", 0.0, 0.0, 16.0, 64.0, 80.0, 0.04, 0.0),
-    ("C_blade_1_3_14", 110.0, 70.0, 10.0, 28.0, 140.0, 0.08, 1.5),
-]
-SINK = 4.0          # hem goes this far under the ground
-FLARE_W = 0.16      # hem flare as share of width (each side)
-FLARE_D = 0.45      # hem flare as share of depth (each side): the slab gets a real foot
-HEM = 0.13          # hem height as share of H
-# hem profile: (height share of the hem, flare share); concave, the curve meets the slab tangentially
-HEM_PROFILE = [(0.0, 1.0), (0.18, 0.62), (0.42, 0.30), (0.70, 0.10), (1.0, 0.0)]
+SINK = 4.0  # the foot goes this far under the ground
+# height samples (share of H), denser low where the flare curves
+T = [0.0, 0.03, 0.07, 0.12, 0.18, 0.25, 0.33, 0.42, 0.52, 0.63, 0.75, 0.87, 1.0]
 
-
-def clear():
-    bpy.ops.wm.read_factory_settings(use_empty=True)
+# Each variant:
+#   W, D, H        width, depth, height (m)
+#   flare          extra half-width at the ground per side (-x, +x, -y, +y), as share of W or D
+#   tf, p          the flare dies out at tf*H, with curve power p (bigger p = more concave)
+#   top            the slab widens again near the top by this share
+#   slant          top cut slope (deg around y, deg around x); chip = one top corner knocked down (m)
+#   bend           sideways drift of the top as share of H; lean in degrees around x
+VARIANTS = {
+    "A_block": dict(pos=(-185, -60), W=42, D=24, H=95, flare=(0.30, 0.30, 0.45, 0.45), tf=0.45, p=2.0,
+                    top=0.05, slant=(4, 2), chip=6, bend=0.0, lean=0.0),
+    "B_giant": dict(pos=(0, 0), W=95, D=62, H=280, flare=(0.60, 0.22, 0.50, 0.40), tf=0.62, p=2.4,
+                    top=0.0, slant=(3, -1.5), chip=12, bend=0.03, lean=0.0),
+    "C_slab": dict(pos=(185, 60), W=48, D=16, H=125, flare=(0.22, 0.22, 0.65, 0.65), tf=0.36, p=2.0,
+                   top=0.06, slant=(-6, 0), chip=5, bend=0.0, lean=1.5),
+}
 
 
 def material(name, rgba):
@@ -56,32 +64,38 @@ def material(name, rgba):
     return m
 
 
-def ring(hw, hd, chamfer):
-    """Rectangle with chamfered corners, 8 points, counter-clockwise."""
-    c = min(chamfer, hw * 0.45, hd * 0.45)
-    return [(hw, -hd + c), (hw, hd - c), (hw - c, hd), (-hw + c, hd),
-            (-hw, hd - c), (-hw, -hd + c), (-hw + c, -hd), (hw - c, -hd)]
+def ring(x0, x1, y0, y1, chamfer):
+    """Rectangle from x0..x1, y0..y1 with chamfered corners, 8 points, counter-clockwise."""
+    c = min(chamfer, (x1 - x0) * 0.22, (y1 - y0) * 0.22)
+    return [(x1, y0 + c), (x1, y1 - c), (x1 - c, y1), (x0 + c, y1),
+            (x0, y1 - c), (x0, y0 + c), (x0 + c, y0), (x1 - c, y0)]
 
 
-def slab(name, D, W, H, taper, mat):
+def slab(name, v, mat):
+    W, D, H = v["W"], v["D"], v["H"]
     hw, hd = W / 2, D / 2
-    fw, fd = W * FLARE_W, D * FLARE_D
-    hem = H * HEM
-    ch = 0.10 * D
-    rings = [(-SINK, hw + fw, hd + fd)]
-    for t, f in HEM_PROFILE:
-        rings.append((t * hem, hw + fw * f, hd + fd * f))
-    # body tapers slightly to the top; a mid ring keeps the long faces from being one quad
-    tw, td = hw * (1 - taper), hd * (1 - taper * 0.5)
-    rings.append((hem + (H - hem) * 0.55, hw + (tw - hw) * 0.55, hd + (td - hd) * 0.55))
-    top_c = 0.18 * D
-    rings.append((H - top_c, tw, td))
-    rings.append((H, tw - top_c * 0.6, td - top_c * 0.6))
+    fx0, fx1, fy0, fy1 = v["flare"][0] * W, v["flare"][1] * W, v["flare"][2] * D, v["flare"][3] * D
+    tf, p, top = v["tf"], v["p"], v["top"]
+    sx, sy = math.tan(math.radians(v["slant"][0])), math.tan(math.radians(v["slant"][1]))
 
+    def extents(t):
+        f = max(0.0, 1.0 - t / tf) ** p
+        g = 1.0 + top * max(0.0, (t - 0.7) / 0.3) ** 2
+        off = v["bend"] * H * t * t
+        return (-hw * g - fx0 * f + off, hw * g + fx1 * f + off, -hd * g - fy0 * f, hd * g + fy1 * f)
+
+    ch = 0.08 * D
     bm = bmesh.new()
     loops = []
-    for z, w, d in rings:
-        loops.append([bm.verts.new((x, y, z)) for x, y in ring(w, d, ch)])
+    for i, t in enumerate([-SINK / H] + T):
+        x0, x1, y0, y1 = extents(max(t, 0.0))
+        pts = ring(x0, x1, y0, y1, ch)
+        if i == len(T):  # top: slanted cut, one corner chipped
+            loop = [bm.verts.new((x, y, H + sx * x + sy * y - (v["chip"] if k in (0, 7) else 0.0)))
+                    for k, (x, y) in enumerate(pts)]
+        else:
+            loop = [bm.verts.new((x, y, t * H)) for x, y in pts]
+        loops.append(loop)
     for a, b in zip(loops, loops[1:]):
         n = len(a)
         for i in range(n):
@@ -92,90 +106,118 @@ def slab(name, D, W, H, taper, mat):
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
-    for p in me.polygons:
-        p.use_smooth = False
+    for poly in me.polygons:
+        poly.use_smooth = False
+    me.materials.append(mat)
+    return me
+
+
+def link(name, me, loc, rot_z=0.0, lean=0.0, scale=1.0, coll=None):
     ob = bpy.data.objects.new(name, me)
-    ob.data.materials.append(mat)
-    bpy.context.collection.objects.link(ob)
+    ob.location = loc
+    ob.rotation_euler = (math.radians(lean), 0, rot_z)
+    ob.scale = (scale, scale, scale)
+    (coll or bpy.context.collection).objects.link(ob)
     return ob
 
 
-def human(name, loc, mat):
-    """1.8 m low-poly figure: legs, torso, head boxes."""
+def human(name, loc, mat, coll=None, seated=False):
+    """1.8 m low-poly figure (about 1.0 m seated): legs, torso, head boxes."""
+    parts = ([((0.45, 0.70, 0.30), (0, 0.2, 0.15)), ((0.48, 0.28, 0.60), (0, 0, 0.60)),
+              ((0.22, 0.22, 0.24), (0, 0, 1.02))] if seated else
+             [((0.42, 0.25, 0.85), (0, 0, 0.425)), ((0.50, 0.28, 0.65), (0, 0, 1.18)),
+              ((0.22, 0.22, 0.25), (0, 0, 1.66))])
     bm = bmesh.new()
-    for (sx, sy, sz), (cx, cy, cz) in [((0.42, 0.25, 0.85), (0, 0, 0.425)),
-                                       ((0.50, 0.28, 0.65), (0, 0, 1.18)),
-                                       ((0.22, 0.22, 0.25), (0, 0, 1.66))]:
+    for (sx, sy, sz), (cx, cy, cz) in parts:
         r = bmesh.ops.create_cube(bm, size=1.0)
-        for v in r["verts"]:
-            v.co = Vector((v.co.x * sx + cx, v.co.y * sy + cy, v.co.z * sz + cz))
+        for vert in r["verts"]:
+            vert.co = Vector((vert.co.x * sx + cx, vert.co.y * sy + cy, vert.co.z * sz + cz))
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
-    ob = bpy.data.objects.new(name, me)
-    ob.location = loc
-    ob.data.materials.append(mat)
-    bpy.context.collection.objects.link(ob)
-    return ob
+    me.materials.append(mat)
+    return link(name, me, loc, coll=coll)
 
 
 def ground_height(x, y):
-    """Plain with soft rolls and a low mound of earth around each foot."""
+    """Plain with soft rolls and a low mound of earth around each lineup foot."""
     h = 1.2 * math.sin(x * 0.011) * math.cos(y * 0.014) + 0.6 * math.sin(x * 0.031 + y * 0.022)
-    for _, vx, vy, D, W, H, _, _ in VARIANTS:
-        rx, ry = W * 0.85, D * 2.6
+    for v in VARIANTS.values():
+        vx, vy = v["pos"]
+        rx, ry = v["W"] * 1.0, v["D"] * 2.2
         q = ((x - vx) / rx) ** 2 + ((y - vy) / ry) ** 2
-        h += 2.5 * math.exp(-q * 1.6)
+        h += 3.0 * math.exp(-q * 1.6)
     return h
 
 
 def ground(mat):
-    size_x, size_y, step = 900.0, 900.0, 6.0
-    nx, ny = int(size_x / step), int(size_y / step)
+    size, step, cy = 8000.0, 20.0, 3000.0
+    n = int(size / step)
     bm = bmesh.new()
     grid = []
-    for j in range(ny + 1):
+    for j in range(n + 1):
         row = []
-        for i in range(nx + 1):
-            x = -size_x / 2 + i * step
-            y = -size_y / 2 + j * step + 150.0
+        for i in range(n + 1):
+            x, y = -size / 2 + i * step, -size / 2 + j * step + cy
             row.append(bm.verts.new((x, y, ground_height(x, y))))
         grid.append(row)
-    for j in range(ny):
-        for i in range(nx):
+    for j in range(n):
+        for i in range(n):
             bm.faces.new((grid[j][i], grid[j][i + 1], grid[j + 1][i + 1], grid[j + 1][i]))
     me = bpy.data.meshes.new("ground")
     bm.to_mesh(me)
     bm.free()
-    ob = bpy.data.objects.new("ground", me)
-    ob.data.materials.append(mat)
-    bpy.context.collection.objects.link(ob)
-    return ob
+    me.materials.append(mat)
+    return link("ground", me, (0, 0, 0))
+
+
+def collection(name):
+    c = bpy.data.collections.new(name)
+    bpy.context.scene.collection.children.link(c)
+    return c
 
 
 def build():
-    clear()
-    stone, grass, red = material("stone_blockout", STONE), material("ground_blockout", GROUND), material("human", HUMAN)
+    bpy.ops.wm.read_factory_settings(use_empty=True)
+    stone, field_stone = material("stone_blockout", STONE), material("field_stone_blockout", FIELD_STONE)
+    grass, red = material("ground_blockout", GROUND), material("human", HUMAN)
     ground(grass)
-    made = []
-    for name, x, y, D, W, H, taper, lean in VARIANTS:
-        ob = slab(name, D, W, H, taper, stone)
-        ob.location = (x, y, 0)
-        ob.rotation_euler = (math.radians(lean), 0, 0)
-        made.append(ob)
-        # figures at the hem's outer edge on the camera side, and one at mid-width
-        hd = D / 2 * (1 + 2 * FLARE_D)
-        for k, dx in enumerate((-W * 0.25, W * 0.18)):
-            px, py = x + dx, y - hd - 2.0 - k * 3
-            human(f"human_{name}_{k}", (px, py, ground_height(px, py)), red)
-    # a walker in the foreground of the eye-level view
-    human("human_walker", (-9.0, -62.0, ground_height(-9.0, -62.0)), red)
-    # report
-    for ob in made:
-        me = ob.data
-        print(f"{ob.name}: tris {sum(len(p.vertices) - 2 for p in me.polygons)}, "
-              f"dims {tuple(round(v, 1) for v in ob.dimensions)}")
-    return made
+    lineup, field, people = collection("lineup"), collection("field"), collection("people")
+    meshes = {}
+    for name, v in VARIANTS.items():
+        meshes[name] = slab(name, v, stone)
+        x, y = v["pos"]
+        # the giant stays in every shot; A and C sit out the reference shot
+        link(name, meshes[name], (x, y, 0), lean=v["lean"], coll=people if name == "B_giant" else lineup)
+        # figures at the outer edge of the foot on the camera side
+        hd = v["D"] / 2 + v["flare"][2] * v["D"]
+        for k, dx in enumerate((-v["W"] * 0.25, v["W"] * 0.18)):
+            px, py = x + dx, y - hd - 3.0 - k * 4
+            human(f"human_{name}_{k}", (px, py, ground_height(px, py)), red, coll=lineup)
+    # two people sitting on the grass in the foreground of the reference shot
+    for k, dx in enumerate((0.0, 1.1)):
+        px, py = -136.0 + dx, -152.0
+        human(f"human_seated_{k}", (px, py, ground_height(px, py)), red, coll=people, seated=True)
+
+    # field: copies of A and C, smaller, in loose rows to the horizon
+    fa, fc = slab("field_A", VARIANTS["A_block"], field_stone), slab("field_C", VARIANTS["C_slab"], field_stone)
+    rnd = random.Random(7)
+    count = 0
+    for r in range(16):
+        y = 380 + r * 230 + rnd.uniform(-40, 40)
+        x = -3200 + rnd.uniform(0, 200)
+        while x < 3200:
+            x += rnd.uniform(150, 320)
+            if abs(x) < 320 and y < 500:
+                continue
+            me = fa if rnd.random() < 0.6 else fc
+            px, py = x, y + rnd.uniform(-35, 35)
+            link(f"field_{count:03d}", me, (px, py, ground_height(px, py) - 1.0),
+                 rot_z=math.radians(rnd.uniform(-18, 18)), scale=rnd.uniform(0.55, 1.15), coll=field)
+            count += 1
+    for name, me in meshes.items():
+        print(f"{name}: tris {sum(len(p.vertices) - 2 for p in me.polygons)}")
+    print("field copies:", count)
 
 
 def setup_render():
@@ -187,52 +229,57 @@ def setup_render():
         except TypeError as e:
             print("engine:", e)
     sc.render.resolution_x, sc.render.resolution_y = 1600, 900
-    sc.render.film_transparent = False
     sc.render.image_settings.file_format = "PNG"
-    # low afternoon sun from the left-front, cool sky fill
+    # afternoon sun from the left-front, deep blue sky fill
     sun = bpy.data.lights.new("sun", "SUN")
-    sun.energy = 2.2
+    sun.energy = 2.4
     sun.angle = math.radians(2)
     ob = bpy.data.objects.new("sun", sun)
-    ob.rotation_euler = (math.radians(55), 0, math.radians(-40))
-    bpy.context.collection.objects.link(ob)
+    ob.rotation_euler = (math.radians(50), 0, math.radians(-35))
+    bpy.context.scene.collection.objects.link(ob)
     world = bpy.data.worlds.new("sky")
     world.use_nodes = True
     bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
-    bg.inputs["Color"].default_value = (0.55, 0.64, 0.74, 1)
-    bg.inputs["Strength"].default_value = 0.45
+    bg.inputs["Color"].default_value = (0.20, 0.32, 0.62, 1)
+    bg.inputs["Strength"].default_value = 0.8
     sc.world = world
 
 
-def camera(name, loc, target, lens=35):
+def camera(name, loc, target, lens):
     cam = bpy.data.cameras.new(name)
     cam.lens = lens
-    cam.clip_end = 5000
+    cam.clip_end = 8000
     ob = bpy.data.objects.new(name, cam)
     ob.location = loc
-    d = Vector(target) - Vector(loc)
-    ob.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
-    bpy.context.collection.objects.link(ob)
+    ob.rotation_euler = (Vector(target) - Vector(loc)).to_track_quat("-Z", "Y").to_euler()
+    bpy.context.scene.collection.objects.link(ob)
     return ob
 
 
+# name, camera, target, lens, show the lineup (A, C and their figures), show the field
 VIEWS = [
-    ("01_front_all", (0, -480, 40), (0, 0, 60), 35),
-    ("02_three_quarter", (330, -400, 80), (-10, 0, 55), 35),
-    ("03_side_profiles", (430, -10, 30), (-20, 0, 60), 30),
-    ("04_human_eye_under_B", (-16, -78, 1.7), (2, -5, 36), 18),
+    ("01_front_all", (0, -760, 60), (0, 0, 120), 35, True, True),
+    ("02_three_quarter", (430, -600, 110), (0, 0, 100), 35, True, False),
+    ("03_side_profiles", (680, -30, 40), (0, 0, 110), 30, True, False),
+    ("04_reference_shot", (-150, -172, 1.6), (20, 810, 110), 22, False, True),
 ]
 
 
-def render_views():
+def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
-    for name, loc, target, lens in VIEWS:
+    lineup, field = bpy.data.collections["lineup"], bpy.data.collections["field"]
+    for name, loc, target, lens, show_lineup, show_field in VIEWS:
         cam = camera("cam_" + name, loc, target, lens)
+        if not render:
+            continue
         sc.camera = cam
+        lineup.hide_render = not show_lineup
+        field.hide_render = not show_field
         sc.render.filepath = str(SHOTS / f"a1_monolith_blockout_{name}.png")
         bpy.ops.render.render(write_still=True)
         print("wrote", sc.render.filepath)
+    lineup.hide_render = field.hide_render = False
     sc.camera = bpy.data.objects["cam_" + VIEWS[0][0]]
 
 
@@ -243,11 +290,7 @@ def main():
     args = ap.parse_args(argv)
     build()
     setup_render()
-    if not args.no_render:
-        render_views()
-    else:
-        for name, loc, target, lens in VIEWS:
-            camera("cam_" + name, loc, target, lens)
+    render_views(not args.no_render)
     BLEND.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(BLEND))
     print("saved", BLEND)
