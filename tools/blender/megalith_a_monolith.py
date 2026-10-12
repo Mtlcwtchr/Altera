@@ -192,7 +192,7 @@ MOSS_KNOBS = {  # name: default
     "stone_saturation": 0.6,   # red of the stone: 1 as painted, lower is duller (toward brown)
     "stone_value": 0.9,        # brightness of the stone
     "scratch_strength": 0.85,  # pale scratch dashes over the stone
-    "scratch_tile_m": 40.0,    # metres per scratch tile (off the stone tile, so they never line up)
+    "scratch_tile_m": 60.0,    # metres per scratch tile (off the stone tile, so they never line up)
     "moss_streak_stretch": 7.0,  # patches this many times taller than wide: moss runs in bands
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
     "moss_groove_weight": 0.8, # moss seeping along the grooves of the hatch grid
@@ -287,22 +287,28 @@ def hatch_texture():
 
 
 def scratch_texture():
-    """Pale scratch dashes (mask, white on black): short strokes, mostly up-down, some across,
-    a few slanted, in loose clusters, like the light nicks on the reference stone."""
+    """Pale strokes (mask, white on black): long sweeping dashes, mostly up-down with a lean,
+    some across, drifting slightly as they go, thick in the middle and thinning to the ends,
+    like the light pen strokes on the reference stone."""
     import numpy as np
     n = TEX
     rng = np.random.default_rng(33)
     img = np.zeros((n, n, 3))
-    centres = rng.integers(0, n, (14, 2))
-    for _ in range(170):
-        cy, cx = centres[rng.integers(0, len(centres))] if rng.random() < 0.65 else rng.integers(0, n, 2)
-        y, x = (cy + rng.normal(0, 18)) % n, (cx + rng.normal(0, 18)) % n
-        kind = rng.random()
-        dy, dx = (1.0, rng.uniform(-0.08, 0.08)) if kind < 0.7 else                  ((rng.uniform(-0.08, 0.08), 1.0) if kind < 0.95 else (rng.uniform(0.4, 1), rng.uniform(-1, 1)))
-        ln, val = rng.integers(6, 26), rng.uniform(170, 255)
-        for k in range(ln):  # 2 px wide at draw size = one full texel once saved at half size
-            for oy, ox in ((0, 0), (0, 1), (1, 0), (1, 1)):
-                img[int(y + dy * k + oy) % n, int(x + dx * k + ox) % n] = val * (0.7 if k in (0, ln - 1) else 1.0)
+    for _ in range(26):
+        y, x = rng.uniform(0, n, 2)
+        ang = rng.normal(np.pi / 2, 0.12) if rng.random() < 0.8 else rng.normal(0.0, 0.1)
+        ln, val, width = int(rng.integers(70, 170)), rng.uniform(180, 255), rng.uniform(1.8, 3.4)
+        bend = rng.normal(0, 0.003)
+        for k in range(ln):
+            ang += bend
+            y, x = y + np.sin(ang), x + np.cos(ang)
+            taper = np.sin(np.pi * (k + 0.5) / ln) ** 0.6  # thick middle, thin ends
+            w = max(1.0, width * taper)
+            for oy in range(-int(w), int(w) + 1):
+                for ox in range(-int(w), int(w) + 1):
+                    if oy * oy + ox * ox <= w * w * 0.6:
+                        py, px = int(y + oy) % n, int(x + ox) % n
+                        img[py, px] = np.maximum(img[py, px], val * (0.55 + 0.45 * taper))
     return save_image("monolith_scratches_128", img)
 
 
