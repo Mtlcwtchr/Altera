@@ -1,7 +1,7 @@
 """Magic megalith A-2: the carved stele (doc/BIOME_PLAN.md, kind A:
 blockout -> sculpt -> material, user approval at each step).
 
-Reference (user, 12.10): one very tall dark rectangular stele standing straight up, its
+Reference (user, 12.10, painting: green sky, red moon): one very tall dark rectangular stele standing straight up, its
 section almost square (the side face looks narrow, but the slab is thick and blocky), about
 4.5-5 times taller than wide. Flat top with a slightly uneven edge, no slant. No flare at
 the foot (unlike A-1): the walls drop almost sheer into the ground, the foot only has a torn
@@ -34,9 +34,9 @@ SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
 STAGE = "blockout"
 
 STONE = (0.10, 0.13, 0.11, 1)      # dark green-black, kept light enough to read the form
-GROUND = (0.30, 0.27, 0.23, 1)     # stony waste
+GROUND = (0.25, 0.25, 0.20, 1)     # stony waste with a mossy tint
 BOULDER = (0.24, 0.23, 0.21, 1)
-MOUNTAIN = (0.22, 0.24, 0.23, 1)
+MOUNTAIN = (0.26, 0.29, 0.27, 1)
 WATER = (0.10, 0.62, 0.56, 1)
 HUMAN = (0.95, 0.10, 0.05, 1)
 
@@ -51,16 +51,28 @@ LINEUP_Y = -2000.0
 #   tiers       number of stacked tiers (joints are uneven in height)
 #   lip         how far the ragged foot edge juts out (m)
 #   top_rough   uneven top edge (m); chip = one top corner knocked down (m)
-#   pond        pond radius as share of max(W, D)
+#   pond        pond radius as share of W; the pond lies in front of and left of the stele,
+#               whose foot stands at its back edge (as on the reference)
 VARIANTS = {
-    "V1_block": dict(W=40, D=34, H=180, taper=0.02, tiers=6, lip=1.2, top_rough=0.8, chip=0, pond=1.15),
-    "V2_tall": dict(W=38, D=30, H=190, taper=0.03, tiers=7, lip=1.0, top_rough=1.0, chip=3, pond=1.2),
-    "V3_slender": dict(W=34, D=24, H=192, taper=0.015, tiers=8, lip=0.8, top_rough=0.7, chip=0, pond=1.3),
-    "V4_heavy": dict(W=46, D=42, H=190, taper=0.04, tiers=9, lip=1.6, top_rough=1.4, chip=5, pond=1.05),
+    "V1_block": dict(W=40, D=34, H=180, taper=0.02, tiers=6, lip=1.2, top_rough=0.8, chip=0, pond=1.8),
+    "V2_tall": dict(W=38, D=30, H=190, taper=0.03, tiers=7, lip=1.0, top_rough=1.0, chip=3, pond=1.9),
+    "V3_slender": dict(W=34, D=24, H=192, taper=0.015, tiers=8, lip=0.8, top_rough=0.7, chip=0, pond=2.1),
+    "V4_heavy": dict(W=46, D=42, H=190, taper=0.04, tiers=9, lip=1.6, top_rough=1.4, chip=5, pond=1.6),
 }
 HERO = "V2_tall"
 LINEUP_X = {"V1_block": -300, "V2_tall": -100, "V3_slender": 100, "V4_heavy": 300}
-PONDS = []  # (x, y, r) filled by build()
+PONDS = []  # (cx, cy, rx, ry) filled by build()
+# the reference camera: like the painting, verticals kept parallel (level camera, frame shifted
+# up), long lens from 370 m out and a little right, so the right side face just shows
+REF_CAM = (74.0, -366.0, 37.0)
+REF_SHIFT = 0.22
+
+
+def pond_of(x, y, v):
+    """Oval pond in front of and left of the stele standing at (x, y): centre and radii."""
+    r = v["pond"] * v["W"]
+    rx, ry = r, r * 0.9
+    return x - 0.6 * v["W"], y - ry * 0.8, rx, ry
 
 
 def material(name, rgba, rough=0.9, emit=0.0):
@@ -156,7 +168,7 @@ def stele(name, v, mat, seed):
     rings.append(ring(hw + v["lip"] * 0.6, hd + v["lip"] * 0.6, 1.2, jit=v["lip"] * 0.9, zjit=0.8, rnd=rnd))
     rings.append(ring(hw, hd, 3.0, jit=0.35, zjit=1.0, rnd=rnd))
     cx = cy = 0.0
-    g, inset = 0.9, 0.9  # groove half height and depth
+    g, inset = 0.7, 0.5  # groove half height and depth: tiers only hinted at
     z_prev = 3.0
     for z in joints + [None]:
         top = H - 2.5 if z is None else z - g
@@ -228,17 +240,17 @@ def h_noise(x, y):
 
 
 def ground_height(x, y):
-    """Stony waste, flattened around each pond: a round pan sunk under the ground with a low rim."""
+    """Stony waste, flattened around each pond: an oval pan sunk under the ground with a low rim."""
     h = h_noise(x, y)
-    for px, py, r in PONDS:
-        d = math.hypot(x - px, y - py) / r
+    for px, py, rx, ry in PONDS:
+        d = math.hypot((x - px) / rx, (y - py) / ry)
         if d < 2.2:
             flat = min(1.0, max(0.0, (2.2 - d) / 0.9))
             h = h * (1 - flat)
             if d < 1.0:
                 h -= POND_DEPTH * (1 - d ** 6)
             else:
-                h += 0.6 * math.exp(-((d - 1.12) / 0.12) ** 2)
+                h += 1.0 * math.exp(-((d - 1.12) / 0.12) ** 2)
     return h
 
 
@@ -253,10 +265,10 @@ def axis(lo, hi, coarse, fine_bands, fine):
 
 
 def ground(mat):
-    bands_x = [(px - r * 2.4, px + r * 2.4) for px, py, r in PONDS]
-    bands_y = [(py - r * 2.4, py + r * 2.4) for px, py, r in PONDS]
-    xs = axis(-6000, 6000, 30.0, bands_x, 3.0)
-    ys = axis(-6000, 6000, 30.0, bands_y, 3.0)
+    bands_x = [(px - rx * 2.4, px + rx * 2.4) for px, py, rx, ry in PONDS]
+    bands_y = [(py - ry * 2.4, py + ry * 2.4) for px, py, rx, ry in PONDS]
+    xs = axis(-7000, 7000, 30.0, bands_x, 3.0)
+    ys = axis(-7000, 7000, 30.0, bands_y, 3.0)
     bm = bmesh.new()
     grid = [[bm.verts.new((x, y, ground_height(x, y))) for x in xs] for y in ys]
     for j in range(len(ys) - 1):
@@ -266,35 +278,52 @@ def ground(mat):
     return link("ground", mesh_from("ground", bm, mat), (0, 0, 0))
 
 
-def pond(name, x, y, r, mat, rnd, coll):
+def pond(name, x, y, rx, ry, mat, rnd, coll):
     bm = bmesh.new()
-    n = 28
-    rim = [bm.verts.new((math.cos(a) * r * rnd.uniform(0.97, 1.05), math.sin(a) * r * rnd.uniform(0.97, 1.05), 0))
+    n = 32
+    rim = [bm.verts.new((math.cos(a) * rx * rnd.uniform(0.97, 1.05), math.sin(a) * ry * rnd.uniform(0.97, 1.05), 0))
            for a in (2 * math.pi * k / n for k in range(n))]
     bm.faces.new(rim)
     return link(name, mesh_from(name, bm, mat), (x, y, WATER_Z), coll=coll)
 
 
+def peak(name, loc, r1, hgt, mat, rnd, coll, flat=0.0):
+    """Jagged low-poly peak; flat > 0 cuts it into a mesa with a top that wide (share of r1)."""
+    bm = bmesh.new()
+    bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=r1, radius2=r1 * flat, depth=1.0)
+    for vert in bm.verts:
+        if vert.co.z > 0:
+            j = 0.15 * r1 if flat else 60
+            vert.co = Vector((vert.co.x + rnd.uniform(-j, j), vert.co.y + rnd.uniform(-j, j),
+                              hgt + rnd.uniform(-0.03, 0.03) * hgt))
+        else:
+            vert.co = Vector((vert.co.x * rnd.uniform(0.8, 1.2), vert.co.y * rnd.uniform(0.8, 1.2), -20))
+    bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges], cuts=1)
+    for vert in bm.verts:
+        if 0 < vert.co.z < hgt * 0.97:
+            vert.co += Vector((rnd.uniform(-0.12, 0.12) * r1, rnd.uniform(-0.12, 0.12) * r1,
+                               rnd.uniform(-0.1, 0.1) * hgt))
+    link(name, mesh_from(name, bm, mat), loc, coll=coll)
+
+
 def mountains(mat, rnd, coll):
-    """A ring of jagged peaks far away (4.6-5.8 km): small next to the stele."""
-    for k in range(46):
-        a = 2 * math.pi * k / 46 + rnd.uniform(-0.05, 0.05)
-        d = rnd.uniform(4600, 5800)
-        bm = bmesh.new()
-        bmesh.ops.create_cone(bm, cap_ends=True, segments=7, radius1=rnd.uniform(350, 700), radius2=0,
-                              depth=1.0)
-        hgt = rnd.uniform(180, 420)
-        for vert in bm.verts:
-            if vert.co.z > 0:
-                vert.co = Vector((rnd.uniform(-60, 60), rnd.uniform(-60, 60), hgt))
-            else:
-                vert.co = Vector((vert.co.x * rnd.uniform(0.8, 1.2), vert.co.y * rnd.uniform(0.8, 1.2), -20))
-        bmesh.ops.subdivide_edges(bm, edges=[e for e in bm.edges], cuts=1)
-        for vert in bm.verts:
-            if 0 < vert.co.z < hgt:
-                vert.co += Vector((rnd.uniform(-50, 50), rnd.uniform(-50, 50), rnd.uniform(-40, 40)))
-        link(f"mountain_{k:02d}", mesh_from(f"mountain_{k:02d}", bm, mat),
-             (math.cos(a) * d, math.sin(a) * d, 0), coll=coll)
+    """As on the reference: the stele stands in a wide valley between two jagged ridges
+    (1-1.6 km off to each side), a flat-topped mesa closing it far behind, low peaks around."""
+    k = 0
+    for side in (-1, 1):
+        y = -1300.0
+        while y < 3800:
+            x = side * rnd.uniform(950, 1600) + (side * 200 if y > 2000 else 0)
+            peak(f"ridge_{k:03d}", (x, y, 0), rnd.uniform(300, 520), rnd.uniform(220, 520), mat, rnd, coll)
+            y += rnd.uniform(160, 320)
+            k += 1
+    peak("mesa", (300, 6500, 0), 900, 500, mat, rnd, coll, flat=0.75)
+    peak("mesa_far", (-900, 5200, 0), 700, 300, mat, rnd, coll, flat=0.6)
+    for j in range(30):  # low far ring for the other views
+        a = 2 * math.pi * j / 30 + rnd.uniform(-0.05, 0.05)
+        d = rnd.uniform(4800, 5800)
+        peak(f"far_{j:02d}", (math.cos(a) * d, math.sin(a) * d, 0), rnd.uniform(400, 700), rnd.uniform(150, 320),
+             mat, rnd, coll)
 
 
 def human(name, loc, mat, coll=None):
@@ -342,9 +371,9 @@ def build():
                 mountain=material("mountain_blockout", MOUNTAIN), water=material("water_blockout", WATER, rough=0.08),
                 human=material("human", HUMAN))
     for name, v in VARIANTS.items():
-        PONDS.append((LINEUP_X[name], LINEUP_Y, v["pond"] * max(v["W"], v["D"])))
+        PONDS.append(pond_of(LINEUP_X[name], LINEUP_Y, v))
     hv = VARIANTS[HERO]
-    PONDS.append((0.0, 0.0, hv["pond"] * max(hv["W"], hv["D"])))
+    PONDS.append(pond_of(0.0, 0.0, hv))
     ground(mats["ground"])
 
     hero, lineup, fallen, land = collection("hero"), collection("lineup"), collection("fallen"), collection("land")
@@ -356,36 +385,40 @@ def build():
     for name, v in VARIANTS.items():
         x, y = LINEUP_X[name], LINEUP_Y
         link(name, meshes[name], (x, y, 0), coll=lineup)
-        r = v["pond"] * max(v["W"], v["D"])
-        pond(f"pond_{name}", x, y, r, mats["water"], rnd, lineup)
+        cx, cy, rx, ry = pond_of(x, y, v)
+        pond(f"pond_{name}", cx, cy, rx, ry, mats["water"], rnd, lineup)
         foot_debris(name, x, y, v, stone, rnd, lineup)
         # figures on the pond rim on the camera side, one wading near the foot
-        for k, (dx, dy) in enumerate(((-6, -r - 3), (5, -r - 4), (v["W"] * 0.3, -v["D"] / 2 - 5))):
-            px, py = x + dx, y + dy
+        spots = ((cx - 6, cy - ry - 3), (cx + 5, cy - ry - 4), (x + v["W"] * 0.3, y - v["D"] / 2 - 5))
+        for k, (px, py) in enumerate(spots):
             human(f"human_{name}_{k}", (px, py, max(ground_height(px, py), WATER_Z - 0.5)), mats["human"], lineup)
     scatter_boulders(kinds, 0, LINEUP_Y, 60, 900, 260, rnd, lineup, "lineup")
 
     # the hero for the reference shot: the tall variant in its pond on the waste
     link("hero_" + HERO, meshes[HERO], (0, 0, 0), coll=hero)
-    r = hv["pond"] * max(hv["W"], hv["D"])
-    pond("pond_hero", 0, 0, r, mats["water"], rnd, hero)
+    cx, cy, rx, ry = pond_of(0.0, 0.0, hv)
+    pond("pond_hero", cx, cy, rx, ry, mats["water"], rnd, hero)
     foot_debris("hero", 0, 0, hv, stone, rnd, hero)
-    scatter_boulders(kinds, 0, 0, r * 1.3, 1800, 520, rnd, hero, "hero")
-    for k, (px, py) in enumerate(((-14, -r - 4), (-11, -r - 5))):
+    scatter_boulders(kinds, cx, cy, rx * 1.35, 1800, 560, rnd, hero, "hero")
+    for k, (px, py) in enumerate(((cx - 14, cy - ry - 4), (cx - 11, cy - ry - 5))):
         human(f"human_hero_{k}", (px, py, ground_height(px, py)), mats["human"], hero)
-    # option: the long dark band is a slab lying on the ground to the right of the foot
-    L = hv["H"] * 0.9
+    # option: the long dark band is a low slab lying on the ground, running right from the foot
+    L = hv["H"] * 1.2
     bm = bmesh.new()
     res = bmesh.ops.create_cube(bm, size=1.0)
     for vert in res["verts"]:
-        vert.co = Vector((vert.co.x * L, vert.co.y * hv["D"] * 0.55, vert.co.z * 5.0))
+        vert.co = Vector((vert.co.x * L, vert.co.y * hv["D"] * 0.5, vert.co.z * 6.0))
     lying = mesh_from("lying_slab", bm, stone)
-    link("lying_slab", lying, (hv["W"] / 2 + r * 0.6 + L / 2, 8, 0.5), rot=(0, 0, math.radians(-4)), coll=fallen)
-    # red moon low in the green sky, right of the stele in the reference shot
+    link("lying_slab", lying, (hv["W"] / 2 + L / 2 + 1.0, 4, 1.0), rot=(0, 0, math.radians(-2)), coll=fallen)
+    # big red moon right of the stele top in the reference shot: 6 deg right of the view,
+    # 24 deg up, about 3.7 deg across
+    cam = Vector(REF_CAM)
+    yaw = math.atan2(-cam.y, -cam.x) - math.radians(6)
+    el, dist = math.radians(24), 7000.0
+    loc = cam + dist * Vector((math.cos(el) * math.cos(yaw), math.cos(el) * math.sin(yaw), math.sin(el)))
     bm = bmesh.new()
-    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=260)
-    link("moon", mesh_from("moon", bm, material("moon", (0.75, 0.06, 0.03, 1), emit=1.2)),
-         (1300, 5200, 3600), coll=land)
+    bmesh.ops.create_uvsphere(bm, u_segments=24, v_segments=12, radius=dist * math.tan(math.radians(1.85)))
+    link("moon", mesh_from("moon", bm, material("moon", (0.75, 0.04, 0.02, 1), emit=1.4)), loc, coll=land)
 
 
 # ---------------------------------------------------------------- shots
@@ -407,7 +440,7 @@ def setup_render():
     sun.angle = math.radians(1.5)
     ob = bpy.data.objects.new("sun", sun)
     el = math.radians(22)
-    d = Vector((math.cos(el), 0.35, -math.sin(el))).normalized()
+    d = Vector((math.cos(el), 0.12, -math.sin(el))).normalized()
     ob.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
     sc.collection.objects.link(ob)
     world = bpy.data.worlds.new("sky")
@@ -438,9 +471,9 @@ VIEWS = [
     ("01_lineup_front", (0, Y - 780, 45), (0, Y, 95), 32, 0, {"lineup"}),
     ("02_lineup_three_quarter", (-560, Y - 560, 140), (0, Y, 80), 32, 0, {"lineup"}),
     ("03_proportions_ortho", (0, Y - 700, 100), (0, Y, 100), 50, 760, {"lineup"}),
-    ("04_foot_close", (-55, Y - 85, 9), (-100, Y, 10), 30, 0, {"lineup"}),
-    ("05_reference_shot", (-20, -215, 16.0), (0, 0, 88), 24, 0, {"hero"}),
-    ("06_reference_lying_slab", (-20, -215, 16.0), (0, 0, 88), 24, 0, {"hero", "fallen"}),
+    ("04_foot_close", (-50, Y - 200, 14), (-110, Y - 30, 16), 35, 0, {"lineup"}),
+    ("05_reference_shot", REF_CAM, (0, 0, REF_CAM[2]), 50, 0, {"hero"}),
+    ("06_reference_lying_slab", REF_CAM, (0, 0, REF_CAM[2]), 50, 0, {"hero", "fallen"}),
     ("07_hero_wide", (-380, -560, 30), (40, 0, 85), 30, 0, {"hero"}),
 ]
 
@@ -456,6 +489,7 @@ def render_views(render):
         sc.camera = cam
         portrait = "reference" in name  # the reference composition is upright
         sc.render.resolution_x, sc.render.resolution_y = (900, 1600) if portrait else (1600, 900)
+        cam.data.shift_y = REF_SHIFT if portrait else 0.0
         for c in toggled:
             c.hide_render = c.name not in shown
         bpy.data.collections["land"].hide_render = bool(ortho)  # far peaks would fill an ortho frame
