@@ -236,7 +236,11 @@ def side_ts(L, step):
     return [0.0, 0.5, 1.3] + [1.3 + (L - 2.6) * k / n for k in range(1, n)] + [L - 1.3, L - 0.5]
 
 
-def sculpted_stele(name, v, mat, seed):
+def sculpted_stele(name, v, mat, seed, low=False):
+    """low=False: the dense bake source (every chip, pit, crack and the gentle unevenness of the
+    faces). low=True: the game mesh from the same wear events, keeping only what makes the
+    silhouette (big chips off corners and the top, the joints, spalls, the waterline); flat parts
+    are truly flat and get dissolved into big faces, the rest goes to the normal map."""
     rnd = random.Random(seed)
     W, D, H = v["W"], v["D"], v["H"]
     off = Vector((rnd.uniform(-100, 100), rnd.uniform(-100, 100), rnd.uniform(-100, 100)))
@@ -277,30 +281,30 @@ def sculpted_stele(name, v, mat, seed):
         sx, sy = rnd.choice(corners)
         z = H * (rnd.random() ** 0.7 if rnd.random() < 0.5 else 1 - rnd.random() ** 0.6)
         hw, hd = half(z)
-        chips.append((Vector((sx * hw, sy * hd, z)), rnd.uniform(1.2, 4.5), rnd.uniform(0.4, 1.8)))
+        chips.append((Vector((sx * hw, sy * hd, z)), rnd.uniform(1.2, 4.5), rnd.uniform(0.4, 1.8), "corner"))
     for _ in range(18):  # the top edge, broken down
         t = rnd.random()
         hw, hd = half(H)
         side = rnd.randrange(4)
         p = [(-hw + 2 * hw * t, -hd), (hw, -hd + 2 * hd * t), (hw - 2 * hw * t, hd), (-hw, hd - 2 * hd * t)][side]
-        chips.append((Vector((p[0], p[1], H)), rnd.uniform(2.0, 6.5), rnd.uniform(0.8, 3.2)))
+        chips.append((Vector((p[0], p[1], H)), rnd.uniform(2.0, 6.5), rnd.uniform(0.8, 3.2), "top"))
     for j in joints:  # the joint lips crumble
         for _ in range(rnd.randint(3, 6)):
             hw, hd = half(j)
             side, t = rnd.randrange(4), rnd.random()
             p = [(-hw + 2 * hw * t, -hd), (hw, -hd + 2 * hd * t), (hw - 2 * hw * t, hd), (-hw, hd - 2 * hd * t)][side]
-            chips.append((Vector((p[0], p[1], j + rnd.uniform(-0.8, 0.8))), rnd.uniform(1.0, 3.0), rnd.uniform(0.3, 1.0)))
+            chips.append((Vector((p[0], p[1], j + rnd.uniform(-0.8, 0.8))), rnd.uniform(1.0, 3.0), rnd.uniform(0.3, 1.0), "lip"))
     for _ in range(14):  # shallow pits on the faces
         z = rnd.uniform(4, H - 6)
         hw, hd = half(z)
         side, t = rnd.randrange(4), rnd.uniform(0.15, 0.85)
         p = [(-hw + 2 * hw * t, -hd), (hw, -hd + 2 * hd * t), (hw - 2 * hw * t, hd), (-hw, hd - 2 * hd * t)][side]
-        chips.append((Vector((p[0], p[1], z)), rnd.uniform(1.5, 3.5), rnd.uniform(0.3, 0.8)))
+        chips.append((Vector((p[0], p[1], z)), rnd.uniform(1.5, 3.5), rnd.uniform(0.3, 0.8), "pit"))
     for zf in (0.38, 0.71):  # two big spalls off a corner
         sx, sy = rnd.choice(corners)
         z = H * zf + rnd.uniform(-8, 8)
         hw, hd = half(z)
-        chips.append((Vector((sx * hw, sy * hd, z)), rnd.uniform(7.0, 10.0), rnd.uniform(2.5, 3.8)))
+        chips.append((Vector((sx * hw, sy * hd, z)), rnd.uniform(7.0, 10.0), rnd.uniform(2.5, 3.8), "spall"))
 
     # cracks: jagged vertical runs on the faces, from the top or a joint down 15-50 m
     cracks = []
@@ -309,6 +313,11 @@ def sculpted_stele(name, v, mat, seed):
         z1 = rnd.choice(joints + [H, H])
         z0 = max(2.0, z1 - rnd.uniform(15, 50))
         cracks.append((side, z0, z1, rnd.uniform(0.2, 0.8), rnd.uniform(0.6, 1.1), rnd.random() * 100))
+
+    if low:  # fine wear goes to the normal map
+        chips = [c for c in chips if c[3] in ("top", "spall") or (c[3] == "corner" and c[1] >= 2.2)]
+        cracks = []
+    chips = [c[:3] for c in chips]
 
     def crack_t(c, z):
         side, z0, z1, t0, depth, ph = c
@@ -327,21 +336,28 @@ def sculpted_stele(name, v, mat, seed):
     def inward(p, side, t, at_corner):
         """How far (m) this surface point is worn in, and how far it drops (top edge)."""
         z = p.z
-        d = 0.14 * fbm(Vector((p.x, p.y, z)) * 0.08 + off)  # the faces are not planes
+        d = 0.0 if low else 0.14 * fbm(Vector((p.x, p.y, z)) * 0.08 + off)  # the faces are not planes
         # corners worn round and chunky, more at the top and the foot
-        age = 1.0 + 1.2 * math.exp(-z / 25.0) + 1.0 * math.exp(-(H - z) / 30.0)
+        # (the game mesh wears them in 7 m pieces, so each piece stays flat and dissolves)
+        zc = math.floor((z + 2.3 * side) / 7.0) * 7.0 + 3.5 if low else z
+        age = 1.0 + 1.2 * math.exp(-zc / 25.0) + 1.0 * math.exp(-(H - zc) / 30.0)
         if at_corner < 2.0:
-            q = 0.5 + 0.5 * noise.noise(Vector((z * 0.12, side * 7.3, 3.1)) + off)
+            q = 0.5 + 0.5 * noise.noise(Vector((zc * 0.12, side * 7.3, 3.1)) + off)
             d += age * (0.25 + 0.75 * round(q * 3) / 3) * (1 - at_corner / 2.0) ** 1.5
         # tier joints: an uneven groove
         for j in joints:
+            if low:  # a plain groove; its uneven edge is in the normal map
+                if abs(z - j) < 0.5:
+                    d += 0.6
+                continue
             gw = 0.8 * (1 + 0.5 * noise.noise(Vector((t * 0.2, j, 1.7)) + off))
             u = abs(z - j) / max(gw, 0.2)
             if u < 1:
                 d += 0.7 * (1 - u * u) * (0.6 + 0.8 * abs(noise.noise(Vector((t * 0.3, j, 5.5)) + off)))
         # the waterline gnawed in
         if -1.5 < z < 3.5:
-            d += math.exp(-((z - 0.6) / 1.1) ** 2) * (0.9 + 0.6 * noise.noise(Vector((p.x, p.y, 0)) * 0.2 + off))
+            wob = 0.0 if low else 0.6 * noise.noise(Vector((p.x, p.y, 0)) * 0.2 + off)
+            d += math.exp(-((z - 0.6) / 1.1) ** 2) * (0.9 + wob)
         drop = top_drop(p)
         for c, r, depth in chips:
             dist = (p - c).length
@@ -395,7 +411,7 @@ def sculpted_stele(name, v, mat, seed):
         ring_pts = []
         for p in rim:
             q = centre + (p - centre) * f
-            q.z = H + 0.35 * fbm(Vector((q.x, q.y, 0)) * 0.12 + off)
+            q.z = H + (0.0 if low else 0.35 * fbm(Vector((q.x, q.y, 0)) * 0.12 + off))
             q.z -= top_drop(q)
             ring_pts.append(q)
         loops_pts.append(ring_pts)
@@ -407,17 +423,44 @@ def sculpted_stele(name, v, mat, seed):
         for i in range(m):
             bm.faces.new((a[i], a[(i + 1) % m], b[(i + 1) % m], b[i]))
     bm.faces.new(list(reversed(loops[0])))
-    cv = bm.verts.new(centre + Vector((0, 0, 0.3 * noise.noise(off))))
+    cv = bm.verts.new(centre + Vector((0, 0, 0.0 if low else 0.3 * noise.noise(off))))
     for i in range(m):
         bm.faces.new((loops[-1][i], loops[-1][(i + 1) % m], cv))
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     me = mesh_from(name, bm, mat)
-    # smooth over the gentle unevenness, keep the chips and corners hard
-    me.shade_smooth()
-    me.set_sharp_from_angle(angle=math.radians(22))
+    if low:
+        me = retopo(me, LOW_TRIS)
+    if not low:
+        # smooth over the gentle unevenness, keep the chips and corners hard
+        me.shade_smooth()
+        me.set_sharp_from_angle(angle=math.radians(22))
     print(f"{name} sculpt: verts {len(me.vertices)}, tris {sum(len(p.vertices) - 2 for p in me.polygons)}, "
           f"chips {len(chips)}, cracks {len(cracks)}")
     return me
+
+
+LOW_TRIS = 2500
+
+
+def retopo(me, target):
+    """Game mesh: collapse the flat-faced low mesh down to about target triangles. Collapse keeps
+    the density where the chips and joints are and lays big, well-shaped triangles over the flat
+    faces (planar dissolve made long needle fans, bad for shading and shadows)."""
+    tris = sum(len(p.vertices) - 2 for p in me.polygons)
+    ob = bpy.data.objects.new("_retopo", me)
+    bpy.context.scene.collection.objects.link(ob)
+    mod = ob.modifiers.new("collapse", "DECIMATE")
+    mod.decimate_type = "COLLAPSE"
+    mod.ratio = min(1.0, target / tris)
+    mod.use_collapse_triangulate = True
+    dg = bpy.context.evaluated_depsgraph_get()
+    out = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    out.name = me.name
+    bpy.data.objects.remove(ob)
+    bpy.data.meshes.remove(me)
+    for p in out.polygons:
+        p.use_smooth = False
+    return out
 
 
 def frange(a, b, step):
@@ -611,7 +654,8 @@ def build():
 
     meshes = {name: stele(name, v, stone, zlib.crc32(name.encode())) for name, v in VARIANTS.items()}
     if STAGE == "sculpt":  # only the approved variant goes on
-        meshes[HERO] = sculpted_stele(HERO + "_sculpt", hv, stone, zlib.crc32(HERO.encode()))
+        high = sculpted_stele(HERO + "_high", hv, stone, zlib.crc32(HERO.encode()))
+        meshes[HERO] = sculpted_stele(HERO + "_low", hv, stone, zlib.crc32(HERO.encode()), low=True)
     for name, v in (VARIANTS.items() if STAGE == "blockout" else ()):
         x, y = LINEUP_X[name], LINEUP_Y
         link(name, meshes[name], (x, y, 0), coll=lineup)
@@ -628,6 +672,20 @@ def build():
     # an old stone: it has settled a touch out of plumb
     lean = (math.radians(0.5), math.radians(-0.4), 0.0) if STAGE == "sculpt" else (0.0, 0.0, 0.0)
     link("hero_" + HERO, meshes[HERO], (0, 0, 0), rot=lean, coll=hero)
+    wire = collection("wire")
+    if STAGE == "sculpt":
+        bake = collection("bake_source")  # the dense mesh the normal map is baked from
+        link("hero_" + HERO + "_high", high, (0, 0, 0), rot=lean, coll=bake)
+        bake.hide_render = True
+        bpy.context.view_layer.layer_collection.children["bake_source"].hide_viewport = True
+        wob = link("hero_wire", meshes[HERO], (0, 0, 0), rot=lean, coll=wire)
+        mod = wob.modifiers.new("wire", "WIREFRAME")
+        mod.thickness = 0.15
+        mod.use_replace = True
+        mod.use_even_offset = False
+        wob.data = wob.data  # shared mesh; the wire material goes on the object slot
+        wob.material_slots[0].link = "OBJECT"
+        wob.material_slots[0].material = material("wire", (0.02, 0.02, 0.02, 1), emit=0.0)
     cx, cy, rx, ry = pond_of(0.0, 0.0, hv)
     pond("pond_hero", cx, cy, rx, ry, mats["water"], rnd, hero)
     foot_debris("hero", 0, 0, hv, stone, rnd, hero)
@@ -718,13 +776,15 @@ SCULPT_VIEWS = [
     ("04_close_middle", (-60, -110, 100), (0, 0, 85), 35, 0, {"hero"}),
     ("05_foot_waterline", (-45, -80, 6), (0, 0, 4), 35, 0, {"hero"}),
     ("06_back_left", (-230, 200, 40), (0, 0, 95), 30, 0, {"hero"}),
+    ("07_wire_three_quarter", (210, -260, 60), (0, 0, 90), 32, 0, {"hero", "wire"}),
+    ("08_wire_top", (70, -95, 205), (0, 0, 180), 35, 0, {"hero", "wire"}),
 ]
 
 
 def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
-    toggled = [bpy.data.collections[n] for n in ("hero", "lineup", "fallen")]
+    toggled = [bpy.data.collections[n] for n in ("hero", "lineup", "fallen", "wire")]
     views = VIEWS if STAGE == "blockout" else SCULPT_VIEWS
     for name, loc, target, lens, ortho, shown in views:
         cam = camera("cam_" + name, loc, target, lens, ortho)
