@@ -17,6 +17,7 @@ Material: red hatched stone with moss laid on by noise (see the material stage s
     blender -b -P tools/blender/megalith_a_monolith.py -- --stage sculpt
     blender -b -P tools/blender/megalith_a_monolith.py -- --stage blockout
     blender -b -P tools/blender/megalith_a_monolith.py -- --no-render
+    blender -b -P tools/blender/megalith_a_monolith.py -- --no-render --export   # game copy + manifests
 """
 import argparse
 import math
@@ -33,6 +34,8 @@ ROOT = Path(__file__).resolve().parents[2]
 ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a_monolith"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
 STAGE = "sculpt"
+VARIANT_PARAMS = []  # filled by build(): the giant, then its 12 variations
+CONFIG_DIR = ROOT / "content/config/terrain_core/megaliths"
 
 STONE = (0.60, 0.61, 0.56, 1)
 FIELD_STONE = (0.55, 0.53, 0.50, 1)
@@ -487,9 +490,9 @@ def stone_material(hatch, grooves, moss, scratches):
     fine.inputs["Detail"].default_value = 3.0
     fine.inputs["Distortion"].default_value = 1.2
     ragged = math("MULTIPLY", math("SUBTRACT", fine.outputs["Fac"], 0.5), math("MULTIPLY", knob["moss_ragged"], 2.0))
-    # corners, block edges and ledges: baked per vertex into "edge" (see uv_project); it fades
+    # corners, block edges and ledges: baked per vertex into "_edge" (see uv_project); it fades
     # across the neighbouring faces, so the ragged noise lets moss spill off the ledges in clumps
-    edge_attr = node("ShaderNodeAttribute", attribute_name="edge")
+    edge_attr = node("ShaderNodeAttribute", attribute_name="_edge")
     on_edge = math("MULTIPLY", edge_attr.outputs["Fac"], knob["moss_edge_weight"])
     s = math("ADD", math("ADD", spread, foot), math("ADD", math("ADD", ledge, nudge), math("ADD", on_edge, ragged)))
     edge = math("SUBTRACT", 1.15, knob["moss_coverage"])
@@ -556,7 +559,7 @@ def stone_material(hatch, grooves, moss, scratches):
 
 def uv_project(me):
     """UVs: each face projected on its dominant axis, TILE_M metres per tile, v up the stone.
-    Also bakes "edge" per vertex: 1 around the narrow faces, which are the step faces between
+    Also bakes "_edge" per vertex: 1 around the narrow faces, which are the step faces between
     raised blocks, the ledge strips at band edges and the chamfered corners, so moss can sit
     on corners and ledges and run in lines between the blocks."""
     bm = bmesh.new()
@@ -569,7 +572,7 @@ def uv_project(me):
             for vert in f.verts:
                 edge[vert.index] = 1.0
     bm.free()
-    attr = me.attributes.new("edge", "FLOAT", "POINT")
+    attr = me.attributes.new("_edge", "FLOAT", "POINT")  # leading _: glTF exports it as _EDGE
     attr.data.foreach_set("value", edge)
     uv = me.uv_layers.new(name="UVMap")
     for poly in me.polygons:
@@ -733,7 +736,9 @@ def build():
 
     # variations of the giant; a sheet of the first six side by side for comparison
     rnd = random.Random(7)
-    kinds = [slab(f"giant_var_{k:02d}", dict(variation(rnd), seed=k + 1), field_stone) for k in range(12)]
+    params = [dict(variation(rnd), seed=k + 1) for k in range(12)]
+    kinds = [slab(f"giant_var_{k:02d}", params[k], field_stone) for k in range(12)]
+    VARIANT_PARAMS[:] = [dict(VARIANTS["B_giant"], seed=0)] + params
     for k in range(6):
         x = -650 + k * 260
         link(f"sheet_{k:02d}", kinds[k], (x, -700, ground_height(x, -700) - 1.0), coll=sheet,
@@ -825,17 +830,103 @@ def render_views(render):
     sc.camera = bpy.data.objects["cam_" + VIEWS[0][0]]
 
 
+def export():
+    """The game copy: the giant and its 12 variations as one glTF (one mesh node each, Z up as
+    authored, metres, flat normals, UVs, the per-vertex "_edge" attribute as _EDGE), the four
+    tiles next to it, and the two manifests in content/config/terrain_core/megaliths/."""
+    import json
+    sc = bpy.context.scene
+    coll = bpy.data.collections.new("export")
+    sc.collection.children.link(coll)
+    names = ["B_giant"] + [f"giant_var_{k:02d}" for k in range(12)]
+    objs = [link(f"a1_monolith_{k:02d}", bpy.data.meshes[n], (0, 0, 0), coll=coll) for k, n in enumerate(names)]
+    for o in sc.objects:
+        o.select_set(o in objs)
+    bpy.context.view_layer.objects.active = objs[0]
+    out = ASSET_DIR / "a1_monolith.gltf"
+    bpy.ops.export_scene.gltf(filepath=str(out), export_format="GLTF_SEPARATE", use_selection=True,
+                              export_yup=True, export_apply=True, export_normals=True,
+                              export_attributes=True, export_materials="NONE")
+    variants = []
+    for o, n, prm in zip(objs, names, VARIANT_PARAMS):
+        me = o.data
+        lo = [min(v.co[i] for v in me.vertices) for i in range(3)]
+        hi = [max(v.co[i] for v in me.vertices) for i in range(3)]
+        variants.append({
+            "node": o.name, "source_mesh": n, "seed": prm["seed"],
+            "tris": sum(len(p.vertices) - 2 for p in me.polygons),
+            "bounds_m": [[round(x, 2) for x in lo], [round(x, 2) for x in hi]],
+            "shape": {k: ([round(x, 3) for x in v] if isinstance(v, tuple) else round(v, 3) if isinstance(v, float) else v)
+                      for k, v in prm.items() if k not in ("pos", "seed")}})
+    for o in objs:
+        bpy.data.objects.remove(o)
+    bpy.data.collections.remove(coll)
+    rel = lambda p: str(p.relative_to(ROOT)).replace("\\", "/")
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    asset = {
+        "comment": "Magic megalith A-1, the giant monolith slabs (doc/megaliths/A1_MONOLITH.md). Generated by "
+                   "tools/blender/megalith_a_monolith.py -- --export; edit the script, not this file.",
+        "id": "a1_monolith", "kind": "A", "approved": "2026-10-12",
+        "model": rel(out), "blend": rel(ASSET_DIR / "monolith_material.blend"),
+        "units": "metres, Z up in Blender (glTF is Y up)", "origin": "centre of the foot at ground level",
+        "material": "a1_monolith.material.json",
+        "variants": variants,
+        "placement": {
+            "scale": [0.8, 1.15], "rotation_deg": [0, 360], "lean_deg": 7, "mirror_x": True,
+            "sink_m": 16.0, "foot": "skirt",
+            "field": {"row_gap_m": 680, "row_jitter_m": 120, "spacing_m": [480, 950], "rows_to_km": 7},
+            "note": "all copies about the giant's size; the shape is fixed, rules pick place, turn and scale"},
+        "budget": {"tris_per_variant": [min(v["tris"] for v in variants), max(v["tris"] for v in variants)],
+                   "style_profile_A": [1500, 4000]},
+    }
+    (CONFIG_DIR / "a1_monolith.asset.json").write_text(json.dumps(asset, indent=2, ensure_ascii=False) + "\n")
+    material = {
+        "comment": "Material of A-1 (doc/megaliths/A1_MONOLITH.md). Generated by tools/blender/megalith_a_monolith.py; "
+                   "the Blender node tree in the .blend is the reference implementation.",
+        "id": "a1_monolith_hatch_moss",
+        "projection": "box (triplanar) in object space, blend 0.15; hard pixels (nearest)",
+        "textures": {
+            "hatch": {"file": rel(ASSET_DIR / "monolith_hatch_128.png"), "tile_m": TILE_M,
+                      "what": "red hatched stone: strokes and a wobbly broken groove grid"},
+            "grooves": {"file": rel(ASSET_DIR / "monolith_hatch_grooves_128.png"), "tile_m": TILE_M,
+                        "filter": "linear", "what": "soft mask of the hatch grooves (same layout as hatch)"},
+            "moss": {"file": rel(ASSET_DIR / "monolith_moss_128.png"), "tile_m": MOSS_KNOBS["moss_tile_m"],
+                     "what": "moss clumps"},
+            "strokes": {"file": rel(ASSET_DIR / "monolith_strokes_256.png"), "tile_m": MOSS_KNOBS["scratch_tile_m"],
+                        "what": "pale hairline strokes, mostly up-down (mask)"}},
+        "vertex_attributes": {"_EDGE": "1 around step faces (ledges, block edges, corners), fades across faces"},
+        "per_object": "Object Info Random: noise offset (x731, x377) and coverage nudge",
+        "knobs": MOSS_KNOBS,
+        "layers": [
+            "stone = hatch, darkened by stretched-noise streaks, slow light/dark drift (noise 0.012/m), "
+            "dulled toward brown (stone_saturation, stone_value), pale strokes mixed in (scratch_strength)",
+            "moss mask = stepped(snap moss_pixel_m) banded noise (z stretched moss_streak_stretch) "
+            "+ foot (below moss_foot_m) + up-facing ledges + _EDGE*moss_edge_weight + fine fray (moss_ragged) "
+            "+ per-object nudge, thresholded at 1.15-moss_coverage +- moss_softness; "
+            "max with grooves seeping (warped groove mask gated by the noise)",
+            "base colour = mix(stone, moss, mask) x shape AO x cavity",
+            "height = strokes*stroke_height - grooves*(1-mask)*groove_depth + mask*(0.45+moss luma)*moss_height "
+            "-> bump normal (bump_strength, bump_distance_m)",
+            "roughness = stone_roughness / stroke_roughness on strokes / moss_roughness under moss; specular knob"],
+    }
+    (CONFIG_DIR / "a1_monolith.material.json").write_text(json.dumps(material, indent=2, ensure_ascii=False) + "\n")
+    print("exported", out, "and manifests in", CONFIG_DIR)
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
     ap.add_argument("--stage", choices=("blockout", "sculpt", "material"), default="material")
+    ap.add_argument("--export", action="store_true", help="also write the glTF and the manifests (material stage)")
     args = ap.parse_args(argv)
     global STAGE
     STAGE = args.stage
     build()
     setup_render()
     render_views(not args.no_render)
+    if args.export and STAGE == "material":
+        export()
     blend = ASSET_DIR / f"monolith_{STAGE}.blend"
     blend.parent.mkdir(parents=True, exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
