@@ -84,7 +84,7 @@ def slab(name, v, mat):
     ch = 0.08 * D
     bm = bmesh.new()
     loops = []
-    for i, t in enumerate([-SINK / H] + T):
+    for i, t in enumerate([-v.get("sink", SINK) / H] + T):
         x0, x1, y0, y1 = extents(max(t, 0.0))
         pts = ring(x0, x1, y0, y1, ch)
         if i == len(T):  # top: slanted cut, one corner chipped
@@ -109,10 +109,10 @@ def slab(name, v, mat):
     return me
 
 
-def link(name, me, loc, rot_z=0.0, lean=0.0, scale=1.0, coll=None):
+def link(name, me, loc, rot_z=0.0, lean=0.0, scale=1.0, coll=None, tilt_y=0.0):
     ob = bpy.data.objects.new(name, me)
     ob.location = loc
-    ob.rotation_euler = (math.radians(lean), 0, rot_z)
+    ob.rotation_euler = (math.radians(lean), math.radians(tilt_y), rot_z)
     ob.scale = (scale, scale, scale)
     (coll or bpy.context.collection).objects.link(ob)
     return ob
@@ -148,7 +148,7 @@ def ground_height(x, y):
 
 
 def ground(mat):
-    size, step, cy = 8000.0, 20.0, 3000.0
+    size, step, cy = 10000.0, 20.0, 2000.0
     n = int(size / step)
     bm = bmesh.new()
     grid = []
@@ -168,6 +168,18 @@ def ground(mat):
     return link("ground", me, (0, 0, 0))
 
 
+def variation(rnd):
+    """The giant with its width-to-height kept, everything else nudged: thickness, how hard and
+    to which side the foot flares, the slant and chip of the top cut, a sideways bend."""
+    b = VARIANTS["B_giant"]
+    fl = [f * rnd.uniform(0.6, 1.4) for f in b["flare"]]
+    if rnd.random() < 0.5:  # the strong flare goes to the other side
+        fl[0], fl[1] = fl[1], fl[0]
+    return dict(b, D=b["D"] * rnd.uniform(0.7, 1.35), flare=tuple(fl), tf=b["tf"] * rnd.uniform(0.85, 1.15),
+                p=rnd.uniform(2.0, 2.8), top=rnd.uniform(0.0, 0.04), slant=(rnd.uniform(-9, 9), rnd.uniform(-5, 5)),
+                chip=rnd.uniform(0, 28), bend=rnd.uniform(-0.04, 0.05), sink=16.0)
+
+
 def collection(name):
     c = bpy.data.collections.new(name)
     bpy.context.scene.collection.children.link(c)
@@ -179,7 +191,7 @@ def build():
     stone, field_stone = material("stone_blockout", STONE), material("field_stone_blockout", FIELD_STONE)
     grass, red = material("ground_blockout", GROUND), material("human", HUMAN)
     ground(grass)
-    lineup, field, people = collection("lineup"), collection("field"), collection("people")
+    lineup, field, people, sheet = collection("lineup"), collection("field"), collection("people"), collection("sheet")
     meshes = {}
     for name, v in VARIANTS.items():
         meshes[name] = slab(name, v, stone)
@@ -196,9 +208,14 @@ def build():
         px, py = -136.0 + dx, -152.0
         human(f"human_seated_{k}", (px, py, ground_height(px, py)), red, coll=people, seated=True)
 
-    # field: copies of the giant at about its size, turned and mirrored, in loose rows to the horizon
-    fb = slab("field_B", VARIANTS["B_giant"], field_stone)
+    # variations of the giant; a sheet of the first six side by side for comparison
     rnd = random.Random(7)
+    kinds = [slab(f"giant_var_{k:02d}", variation(rnd), field_stone) for k in range(12)]
+    for k in range(6):
+        x = -650 + k * 260
+        link(f"sheet_{k:02d}", kinds[k], (x, -700, ground_height(x, -700) - 1.0), coll=sheet,
+             rot_z=math.radians(-50 + k * 20), lean=rnd.uniform(-7, 7), tilt_y=rnd.uniform(-7, 7))
+    # field: variations at about the giant's size, turned any way, leaning a little, in loose rows
     count = 0
     for r in range(9):
         y = 1000 + r * 680 + rnd.uniform(-120, 120)
@@ -206,8 +223,9 @@ def build():
         while x < 3800:
             x += rnd.uniform(480, 950)
             px, py = x, y + rnd.uniform(-150, 150)
-            ob = link(f"field_{count:03d}", fb, (px, py, ground_height(px, py) - 1.0),
-                      rot_z=math.radians(rnd.uniform(-35, 35)), scale=rnd.uniform(0.8, 1.15), coll=field)
+            ob = link(f"field_{count:03d}", rnd.choice(kinds), (px, py, ground_height(px, py) - 1.0),
+                      rot_z=math.radians(rnd.uniform(0, 360)), scale=rnd.uniform(0.8, 1.15), coll=field,
+                      lean=rnd.uniform(-7, 7), tilt_y=rnd.uniform(-7, 7))
             if rnd.random() < 0.5:
                 ob.scale.x = -ob.scale.x
             count += 1
@@ -252,30 +270,32 @@ def camera(name, loc, target, lens):
     return ob
 
 
-# name, camera, target, lens, show the lineup (A, C and their figures), show the field
+# name, camera, target, lens, collections shown besides the giant and the seated pair
 VIEWS = [
-    ("01_front_all", (0, -760, 60), (0, 0, 120), 35, True, True),
-    ("02_three_quarter", (430, -600, 110), (0, 0, 100), 35, True, False),
-    ("03_side_profiles", (680, -30, 40), (0, 0, 110), 30, True, False),
-    ("04_reference_shot", (-150, -172, 1.6), (20, 810, 110), 22, False, True),
+    ("01_front_all", (0, -760, 60), (0, 0, 120), 35, {"lineup", "field"}),
+    ("02_three_quarter", (430, -600, 110), (0, 0, 100), 35, {"lineup"}),
+    ("03_side_profiles", (680, -30, 40), (0, 0, 110), 30, {"lineup"}),
+    ("04_reference_shot", (-150, -172, 1.6), (20, 810, 110), 22, {"field"}),
+    ("05_variation_sheet", (0, -1520, 40), (0, -700, 120), 20, {"sheet"}),
 ]
 
 
 def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
-    lineup, field = bpy.data.collections["lineup"], bpy.data.collections["field"]
-    for name, loc, target, lens, show_lineup, show_field in VIEWS:
+    toggled = [bpy.data.collections[n] for n in ("lineup", "field", "sheet")]
+    for name, loc, target, lens, shown in VIEWS:
         cam = camera("cam_" + name, loc, target, lens)
         if not render:
             continue
         sc.camera = cam
-        lineup.hide_render = not show_lineup
-        field.hide_render = not show_field
+        for c in toggled:
+            c.hide_render = c.name not in shown
         sc.render.filepath = str(SHOTS / f"a1_monolith_blockout_{name}.png")
         bpy.ops.render.render(write_still=True)
         print("wrote", sc.render.filepath)
-    lineup.hide_render = field.hide_render = False
+    for c in toggled:
+        c.hide_render = False
     sc.camera = bpy.data.objects["cam_" + VIEWS[0][0]]
 
 
