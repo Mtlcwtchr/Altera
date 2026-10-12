@@ -7,8 +7,9 @@ the tops are cut flat but slanted and chipped. This stage settles only the shape
 proportions, silhouette and foot. No lattice, no sculpt, no material yet
 (doc/BIOME_PLAN.md, kind A: blockout -> sculpt -> material, user approval at each step).
 
-Three proportion variants stand side by side with 1.8 m human figures for scale, and a
-field of smaller copies runs in rows to the horizon behind them.
+The user picked the giant's shape and proportions (12.10): every monolith in the field is
+that giant at about the same size (the game may rescale them). 1.8 m human figures give
+the scale; copies of the giant, turned and mirrored, run in rows to the horizon.
 PSX profile: low poly, flat shading, no smoothing.
 
     blender -b -P tools/blender/megalith_a_monolith_blockout.py
@@ -45,12 +46,8 @@ T = [0.0, 0.03, 0.07, 0.12, 0.18, 0.25, 0.33, 0.42, 0.52, 0.63, 0.75, 0.87, 1.0]
 #   slant          top cut slope (deg around y, deg around x); chip = one top corner knocked down (m)
 #   bend           sideways drift of the top as share of H; lean in degrees around x
 VARIANTS = {
-    "A_block": dict(pos=(-185, -60), W=42, D=24, H=95, flare=(0.30, 0.30, 0.45, 0.45), tf=0.45, p=2.0,
-                    top=0.05, slant=(4, 2), chip=6, bend=0.0, lean=0.0),
     "B_giant": dict(pos=(0, 0), W=95, D=62, H=280, flare=(0.60, 0.22, 0.50, 0.40), tf=0.62, p=2.4,
                     top=0.0, slant=(3, -1.5), chip=12, bend=0.03, lean=0.0),
-    "C_slab": dict(pos=(185, 60), W=48, D=16, H=125, flare=(0.22, 0.22, 0.65, 0.65), tf=0.36, p=2.0,
-                   top=0.06, slant=(-6, 0), chip=5, bend=0.0, lean=1.5),
 }
 
 
@@ -199,21 +196,20 @@ def build():
         px, py = -136.0 + dx, -152.0
         human(f"human_seated_{k}", (px, py, ground_height(px, py)), red, coll=people, seated=True)
 
-    # field: copies of A and C, smaller, in loose rows to the horizon
-    fa, fc = slab("field_A", VARIANTS["A_block"], field_stone), slab("field_C", VARIANTS["C_slab"], field_stone)
+    # field: copies of the giant at about its size, turned and mirrored, in loose rows to the horizon
+    fb = slab("field_B", VARIANTS["B_giant"], field_stone)
     rnd = random.Random(7)
     count = 0
-    for r in range(16):
-        y = 380 + r * 230 + rnd.uniform(-40, 40)
-        x = -3200 + rnd.uniform(0, 200)
-        while x < 3200:
-            x += rnd.uniform(150, 320)
-            if abs(x) < 320 and y < 500:
-                continue
-            me = fa if rnd.random() < 0.6 else fc
-            px, py = x, y + rnd.uniform(-35, 35)
-            link(f"field_{count:03d}", me, (px, py, ground_height(px, py) - 1.0),
-                 rot_z=math.radians(rnd.uniform(-18, 18)), scale=rnd.uniform(0.55, 1.15), coll=field)
+    for r in range(9):
+        y = 1000 + r * 680 + rnd.uniform(-120, 120)
+        x = -3800 + rnd.uniform(0, 400)
+        while x < 3800:
+            x += rnd.uniform(480, 950)
+            px, py = x, y + rnd.uniform(-150, 150)
+            ob = link(f"field_{count:03d}", fb, (px, py, ground_height(px, py) - 1.0),
+                      rot_z=math.radians(rnd.uniform(-35, 35)), scale=rnd.uniform(0.8, 1.15), coll=field)
+            if rnd.random() < 0.5:
+                ob.scale.x = -ob.scale.x
             count += 1
     for name, me in meshes.items():
         print(f"{name}: tris {sum(len(p.vertices) - 2 for p in me.polygons)}")
