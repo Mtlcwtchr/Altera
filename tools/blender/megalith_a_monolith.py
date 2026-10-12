@@ -191,7 +191,7 @@ MOSS_KNOBS = {  # name: default
     "moss_tile_m": 22.0,       # metres per moss tile
     "stone_saturation": 0.6,   # red of the stone: 1 as painted, lower is duller (toward brown)
     "stone_value": 0.9,        # brightness of the stone
-    "scratch_strength": 0.85,  # pale scratch dashes over the stone
+    "scratch_strength": 0.7,   # pale scratch dashes over the stone
     "scratch_tile_m": 60.0,    # metres per scratch tile (off the stone tile, so they never line up)
     "moss_streak_stretch": 7.0,  # patches this many times taller than wide: moss runs in bands
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
@@ -213,10 +213,11 @@ def tileable(rng, n, fmin, fmax):
     return (h - h.min()) / (h.max() - h.min())
 
 
-def save_image(name, img):
+def save_image(name, img, pixel=None):
     import numpy as np
-    n = img.shape[0] // PIXEL
-    img = img[:n * PIXEL, :n * PIXEL].reshape(n, PIXEL, n, PIXEL, 3).mean(axis=(1, 3))
+    px = PIXEL if pixel is None else pixel
+    n = img.shape[0] // px
+    img = img[:n * px, :n * px].reshape(n, px, n, px, 3).mean(axis=(1, 3))
     img = np.clip(np.round(img / 6.0) * 6.0, 0, 255)  # posterize a little: retro, not smooth
     rgba = np.concatenate([img.astype(np.float32) / 255.0, np.ones((n, n, 1), np.float32)], 2)
     im = bpy.data.images.new(name, n, n, alpha=False)
@@ -294,11 +295,11 @@ def scratch_texture():
     n = TEX
     rng = np.random.default_rng(33)
     img = np.zeros((n, n, 3))
-    for _ in range(26):
+    for _ in range(95):
         y, x = rng.uniform(0, n, 2)
-        ang = rng.normal(np.pi / 2, 0.12) if rng.random() < 0.8 else rng.normal(0.0, 0.1)
-        ln, val, width = int(rng.integers(70, 170)), rng.uniform(210, 255), rng.uniform(1.0, 1.6)
-        bend = rng.normal(0, 0.003)
+        ang = rng.normal(np.pi / 2, 0.05) if rng.random() < 0.9 else rng.normal(0.0, 0.05)
+        ln, val, width = int(rng.integers(70, 170)), rng.uniform(190, 255), 1.0
+        bend = rng.normal(0, 0.0015)
         for k in range(ln):
             ang += bend
             y, x = y + np.sin(ang), x + np.cos(ang)
@@ -309,7 +310,7 @@ def scratch_texture():
                     if oy * oy + ox * ox <= w * w * 0.6:
                         py, px = int(y + oy) % n, int(x + ox) % n
                         img[py, px] = np.maximum(img[py, px], val * (0.55 + 0.45 * taper))
-    return save_image("monolith_scratches_128", img)
+    return save_image("monolith_strokes_256", img, pixel=1)  # full size: hairline strokes
 
 
 def moss_texture():
