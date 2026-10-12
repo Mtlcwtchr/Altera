@@ -636,14 +636,15 @@ def build():
     scatter_boulders(kinds, cx, cy, rx * 1.35, 1800, 560, rnd, hero, "hero")
     for k, (px, py) in enumerate(((cx - 14, cy - ry - 4), (cx - 11, cy - ry - 5))):
         human(f"human_hero_{k}", (px, py, ground_height(px, py)), mats["human"], hero)
-    # option: the long dark band is a low slab lying on the ground, running right from the foot
+    # blockout option only: the long dark band as a lying slab (user, 12.10: it is the shadow)
     L = hv["H"] * 1.2
     bm = bmesh.new()
     res = bmesh.ops.create_cube(bm, size=1.0)
     for vert in res["verts"]:
         vert.co = Vector((vert.co.x * L, vert.co.y * hv["D"] * 0.5, vert.co.z * 6.0))
     lying = mesh_from("lying_slab", bm, stone)
-    link("lying_slab", lying, (hv["W"] / 2 + L / 2 + 1.0, 4, 1.0), rot=(0, 0, math.radians(-2)), coll=fallen)
+    if STAGE == "blockout":
+        link("lying_slab", lying, (hv["W"] / 2 + L / 2 + 1.0, 4, 1.0), rot=(0, 0, math.radians(-2)), coll=fallen)
     # big red moon right of the stele top in the reference shot: 6 deg right of the view,
     # 24 deg up, about 3.7 deg across
     cam = Vector(REF_CAM)
