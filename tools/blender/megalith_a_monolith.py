@@ -178,13 +178,13 @@ TILE_M = 36.0   # metres covered by one stone tile
 TEX = 256       # texture size, px
 
 MOSS_KNOBS = {  # name: default
-    "moss_coverage": 0.3,      # 0 none .. 1 all
+    "moss_coverage": 0.12,     # 0 none .. 1 all
     "moss_scale": 0.06,        # noise frequency per metre (0.06 = ~17 m patches)
     "moss_softness": 0.06,     # edge width of a patch
     "moss_foot_m": 95.0,       # moss thickens below this height
     "moss_foot_weight": 0.3,   # how much the foot adds
     "moss_ledge_weight": 0.45, # how much up-facing faces add
-    "moss_pixel_m": 1.4,       # mask pixel size, m (retro blocky edges)
+    "moss_pixel_m": 0.7,       # mask pixel size, m (retro blocky edges)
     "coverage_jitter": 0.3,    # per-object random spread of coverage
     "streak_strength": 0.55,   # dark red streaks running down
     "moss_tile_m": 22.0,       # metres per moss tile
@@ -192,6 +192,9 @@ MOSS_KNOBS = {  # name: default
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
     "moss_groove_weight": 0.8, # moss seeping along the grooves of the hatch grid
     "groove_gate": 0.68,       # 0 every groove .. 1 almost none: where the seeping happens
+    "moss_fine_scale": 0.3,    # small noise that frays every moss edge (per metre)
+    "moss_ragged": 0.4,        # how hard the small noise frays the edges
+    "groove_warp": 0.012,      # how far the seeping wanders off the groove lines (tiles)
 }
 
 
@@ -268,7 +271,13 @@ def hatch_texture():
                     img[p] = img[p] * (1 - al) + np.array(col) * al
                 for d in (-1, 0, 1, 2):
                     grooves[((o + d) % n, t) if axis == 0 else (t, (o + d) % n)] = 255
-    return save_image("monolith_hatch_256", img), save_image("monolith_hatch_grooves_256", grooves)
+    # soften the groove mask so the shader can eat into it with noise instead of following lines
+    f = np.fft.fftfreq(n)
+    fx, fy = np.meshgrid(f, f)
+    blur = np.exp(-(fx ** 2 + fy ** 2) * (2 * np.pi * 2.5) ** 2 / 2)
+    g = np.real(np.fft.ifft2(np.fft.fft2(grooves[..., 0]) * blur))
+    g = np.clip(g / max(g.max(), 1e-6), 0, 1) * 255
+    return save_image("monolith_hatch_256", img), save_image("monolith_hatch_grooves_256", np.repeat(g[..., None], 3, 2))
 
 
 def moss_texture():
@@ -410,17 +419,38 @@ def stone_material(hatch, grooves, moss):
     ledge = math("MULTIPLY", map_range(nz.outputs["Z"], 0.35, 0.9, 0.0, 1.0), knob["moss_ledge_weight"])
     nudge = math("MULTIPLY", math("SUBTRACT", rand, 0.5), knob["coverage_jitter"])
     spread = map_range(moss_n.outputs["Fac"], 0.32, 0.68, 0.0, 1.0)  # noise sits near 0.5: stretch it
-    # corners, block edges and ledges: baked per face into the "edge" attribute (see uv_project)
+    # small noise that frays every edge of the moss
+    fine = node("ShaderNodeTexNoise")
+    L(snap.outputs["Vector"], fine.inputs["Vector"])
+    L(knob["moss_fine_scale"], fine.inputs["Scale"])
+    fine.inputs["Detail"].default_value = 3.0
+    fine.inputs["Distortion"].default_value = 1.2
+    ragged = math("MULTIPLY", math("SUBTRACT", fine.outputs["Fac"], 0.5), math("MULTIPLY", knob["moss_ragged"], 2.0))
+    # corners, block edges and ledges: baked per vertex into "edge" (see uv_project); it fades
+    # across the neighbouring faces, so the ragged noise lets moss spill off the ledges in clumps
     edge_attr = node("ShaderNodeAttribute", attribute_name="edge")
     on_edge = math("MULTIPLY", edge_attr.outputs["Fac"], knob["moss_edge_weight"])
-    s = math("ADD", math("ADD", spread, foot), math("ADD", math("ADD", ledge, nudge), on_edge))
+    s = math("ADD", math("ADD", spread, foot), math("ADD", math("ADD", ledge, nudge), math("ADD", on_edge, ragged)))
     edge = math("SUBTRACT", 1.15, knob["moss_coverage"])
     mask = map_range(s, math("SUBTRACT", edge, knob["moss_softness"]), math("ADD", edge, knob["moss_softness"]), 0.0, 1.0)
     # moss seeping along the hatch grooves, in runs where the banded noise lets it through
-    groove = node("ShaderNodeTexImage", image=grooves, interpolation="Closest", projection="BOX", projection_blend=0.15)
-    L(stone_v.outputs["Vector"], groove.inputs["Vector"])
+    wobble = node("ShaderNodeTexNoise")
+    L(shifted.outputs["Vector"], wobble.inputs["Vector"])
+    wobble.inputs["Scale"].default_value = 0.08
+    centred = node("ShaderNodeVectorMath", operation="SUBTRACT")
+    L(wobble.outputs["Color"], centred.inputs[0])
+    centred.inputs[1].default_value = (0.5, 0.5, 0.5)
+    warp = node("ShaderNodeVectorMath", operation="SCALE")
+    L(centred.outputs["Vector"], warp.inputs[0])
+    L(knob["groove_warp"], warp.inputs["Scale"])
+    warped = node("ShaderNodeVectorMath", operation="ADD")
+    L(stone_v.outputs["Vector"], warped.inputs[0])
+    L(warp.outputs["Vector"], warped.inputs[1])
+    groove = node("ShaderNodeTexImage", image=grooves, interpolation="Linear", projection="BOX", projection_blend=0.15)
+    L(warped.outputs["Vector"], groove.inputs["Vector"])
     gate = map_range(spread, knob["groove_gate"], math("ADD", knob["groove_gate"], 0.15), 0.0, 1.0)
-    seep = math("MULTIPLY", math("MULTIPLY", groove.outputs["Color"], gate), knob["moss_groove_weight"])
+    along = math("ADD", math("MULTIPLY", groove.outputs["Color"], gate), ragged)
+    seep = math("MULTIPLY", map_range(along, 0.45, 0.6, 0.0, 1.0), knob["moss_groove_weight"])
     mask = math("MAXIMUM", mask, seep)
     L(mix(mask, stone_col, moss_tex.outputs["Color"]), bsdf.inputs["Base Color"])
     return m
@@ -428,20 +458,21 @@ def stone_material(hatch, grooves, moss):
 
 def uv_project(me):
     """UVs: each face projected on its dominant axis, TILE_M metres per tile, v up the stone.
-    Also bakes "edge" per face: 1 on the narrow faces, which are exactly the step faces between
+    Also bakes "edge" per vertex: 1 around the narrow faces, which are the step faces between
     raised blocks, the ledge strips at band edges and the chamfered corners, so moss can sit
     on corners and ledges and run in lines between the blocks."""
     bm = bmesh.new()
     bm.from_mesh(me)
-    bm.faces.ensure_lookup_table()
-    narrow = []
+    edge = [0.0] * len(bm.verts)
     for f in bm.faces:
         shortest = min(e.calc_length() for e in f.edges)
         turn = max((f.normal.angle(o.normal, 0.0) for e in f.edges for o in e.link_faces if o is not f), default=0.0)
-        narrow.append(1.0 if shortest < 6.0 and turn > 0.45 else 0.0)  # a real step, not a seam
+        if shortest < 6.0 and turn > 0.45:  # a real step, not a seam
+            for vert in f.verts:
+                edge[vert.index] = 1.0
     bm.free()
-    attr = me.attributes.new("edge", "FLOAT", "FACE")
-    attr.data.foreach_set("value", narrow)
+    attr = me.attributes.new("edge", "FLOAT", "POINT")
+    attr.data.foreach_set("value", edge)
     uv = me.uv_layers.new(name="UVMap")
     for poly in me.polygons:
         nx, ny, nz = (abs(c) for c in poly.normal)
