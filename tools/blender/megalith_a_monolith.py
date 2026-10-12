@@ -191,8 +191,20 @@ MOSS_KNOBS = {  # name: default
     "moss_tile_m": 22.0,       # metres per moss tile
     "stone_saturation": 0.6,   # red of the stone: 1 as painted, lower is duller (toward brown)
     "stone_value": 0.9,        # brightness of the stone
-    "scratch_strength": 0.6,   # pale scratch dashes over the stone
+    "scratch_strength": 0.7,   # pale scratch dashes over the stone
     "scratch_tile_m": 60.0,    # metres per scratch tile (off the stone tile, so they never line up)
+    "bump_strength": 1.0,      # overall relief of the surface (normal)
+    "bump_distance_m": 0.3,    # how tall the relief reads, m
+    "stroke_height": 0.6,      # pale strokes stand proud as thin ridges, also under the moss
+    "groove_depth": 0.7,       # hatch grooves sink in
+    "moss_height": 1.0,        # moss sits on top as a cushion, lumpy by its own texture
+    "ao_strength": 0.6,        # occlusion from the surrounding shape (EEVEE AO node)
+    "ao_distance_m": 6.0,      # reach of that occlusion, m
+    "cavity_strength": 0.45,   # grooves and the moss edges darkened from the relief itself
+    "stone_roughness": 0.78,
+    "stroke_roughness": 0.55,  # the strokes are a bit glossier, worn smooth
+    "moss_roughness": 1.0,
+    "specular": 0.3,
     "moss_streak_stretch": 7.0,  # patches this many times taller than wide: moss runs in bands
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
     "moss_groove_weight": 0.8, # moss seeping along the grooves of the hatch grid
@@ -295,7 +307,7 @@ def scratch_texture():
     n = TEX
     rng = np.random.default_rng(33)
     img = np.zeros((n, n, 3))
-    for _ in range(300):
+    for _ in range(95):
         y, x = rng.uniform(0, n, 2)
         ang = rng.normal(np.pi / 2, 0.05) if rng.random() < 0.9 else rng.normal(0.0, 0.05)
         ln, val, width = int(rng.integers(70, 170)), rng.uniform(190, 255), 1.0
@@ -337,10 +349,9 @@ def stone_material(hatch, grooves, moss, scratches):
     m.use_nodes = True
     nt = m.node_tree
     bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
-    bsdf.inputs["Roughness"].default_value = 1.0
     for key in ("Specular IOR Level", "Specular"):
         if key in bsdf.inputs:
-            bsdf.inputs[key].default_value = 0.0
+            pass  # set from the "specular" knob below
     N = nt.nodes.new
     L = nt.links.new
 
@@ -502,7 +513,44 @@ def stone_material(hatch, grooves, moss, scratches):
     along = math("ADD", math("MULTIPLY", groove.outputs["Color"], gate), ragged)
     seep = math("MULTIPLY", map_range(along, 0.45, 0.6, 0.0, 1.0), knob["moss_groove_weight"])
     mask = math("MAXIMUM", mask, seep)
-    L(mix(mask, stone_col, moss_tex.outputs["Color"]), bsdf.inputs["Base Color"])
+    base = mix(mask, stone_col, moss_tex.outputs["Color"])
+
+    # relief: strokes stand proud (and keep lifting the moss laid over them), hatch grooves sink,
+    # moss is a lumpy cushion on top; one height field drives normal, cavity and roughness
+    groove_flat = node("ShaderNodeTexImage", image=grooves, interpolation="Linear", projection="BOX", projection_blend=0.15)
+    L(stone_v.outputs["Vector"], groove_flat.inputs["Vector"])
+    moss_luma = node("ShaderNodeRGBToBW")
+    L(moss_tex.outputs["Color"], moss_luma.inputs[0])
+    strokes = scr.outputs["Color"]
+    h_stroke = math("MULTIPLY", strokes, knob["stroke_height"])
+    h_groove = math("MULTIPLY", math("MULTIPLY", groove_flat.outputs["Color"], math("SUBTRACT", 1.0, mask)),
+                    knob["groove_depth"])
+    h_moss = math("MULTIPLY", math("MULTIPLY", mask, math("ADD", 0.45, moss_luma.outputs[0])), knob["moss_height"])
+    height = math("ADD", math("SUBTRACT", h_stroke, h_groove), h_moss)
+    bump = node("ShaderNodeBump")
+    L(knob["bump_strength"], bump.inputs["Strength"])
+    L(knob["bump_distance_m"], bump.inputs["Distance"])
+    L(height, bump.inputs["Height"])
+    L(bump.outputs["Normal"], bsdf.inputs["Normal"])
+    # AO: the shape's own occlusion times a cavity term from the relief (grooves, moss rims)
+    ao = node("ShaderNodeAmbientOcclusion")
+    L(knob["ao_distance_m"], ao.inputs["Distance"])
+    L(bump.outputs["Normal"], ao.inputs["Normal"])
+    shape_ao = map_range(ao.outputs["AO"], 0.0, 1.0, math("SUBTRACT", 1.0, knob["ao_strength"]), 1.0)
+    rim = math("MULTIPLY", math("MULTIPLY", mask, math("SUBTRACT", 1.0, mask)), 4.0)  # 1 at moss edges
+    cavity = math("SUBTRACT", 1.0, math("MULTIPLY", math("ADD", h_groove, math("MULTIPLY", rim, 0.35)),
+                                        knob["cavity_strength"]))
+    shade_ao = node("ShaderNodeVectorMath", operation="SCALE")
+    L(base, shade_ao.inputs[0])
+    L(math("MULTIPLY", shape_ao, cavity), shade_ao.inputs["Scale"])
+    L(shade_ao.outputs["Vector"], bsdf.inputs["Base Color"])
+    # roughness: stone, glossier strokes, matte moss
+    rough_stone = map_range(strokes, 0.0, 1.0, knob["stone_roughness"], knob["stroke_roughness"])
+    rough = map_range(mask, 0.0, 1.0, rough_stone, knob["moss_roughness"])
+    L(rough, bsdf.inputs["Roughness"])
+    for key in ("Specular IOR Level", "Specular"):
+        if key in bsdf.inputs:
+            L(knob["specular"], bsdf.inputs[key])
     return m
 
 
@@ -754,6 +802,7 @@ VIEWS = [
     ("05_variation_sheet", (0, -1520, 40), (0, -700, 120), 20, {"sheet"}),
     ("06_close_face", (-150, -230, 40), (0, 0, 110), 35, {"lineup"}),
     ("07_close_top", (150, -260, 330), (0, 0, 262), 35, set()),
+    ("08_relief_detail", (-62, -95, 22), (-18, -38, 30), 35, set()),
 ]
 
 
