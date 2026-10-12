@@ -175,7 +175,8 @@ def sculpted_loops(bm, v, extents, ch, sx, sy):
 # offset and coverage nudge from Object Info > Random, so copies never repeat.
 
 TILE_M = 36.0   # metres covered by one stone tile
-TEX = 256       # texture size, px
+TEX = 256       # texture size drawn, px
+PIXEL = 2       # saved at TEX / PIXEL: each saved texel is a PIXEL x PIXEL block, chunkier pixels
 
 MOSS_KNOBS = {  # name: default
     "moss_coverage": 0.12,     # 0 none .. 1 all
@@ -188,6 +189,8 @@ MOSS_KNOBS = {  # name: default
     "coverage_jitter": 0.3,    # per-object random spread of coverage
     "streak_strength": 0.55,   # dark red streaks running down
     "moss_tile_m": 22.0,       # metres per moss tile
+    "stone_saturation": 0.6,   # red of the stone: 1 as painted, lower is duller (toward brown)
+    "stone_value": 0.9,        # brightness of the stone
     "moss_streak_stretch": 7.0,  # patches this many times taller than wide: moss runs in bands
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
     "moss_groove_weight": 0.8, # moss seeping along the grooves of the hatch grid
@@ -210,7 +213,8 @@ def tileable(rng, n, fmin, fmax):
 
 def save_image(name, img):
     import numpy as np
-    n = img.shape[0]
+    n = img.shape[0] // PIXEL
+    img = img[:n * PIXEL, :n * PIXEL].reshape(n, PIXEL, n, PIXEL, 3).mean(axis=(1, 3))
     img = np.clip(np.round(img / 6.0) * 6.0, 0, 255)  # posterize a little: retro, not smooth
     rgba = np.concatenate([img.astype(np.float32) / 255.0, np.ones((n, n, 1), np.float32)], 2)
     im = bpy.data.images.new(name, n, n, alpha=False)
@@ -277,7 +281,7 @@ def hatch_texture():
     blur = np.exp(-(fx ** 2 + fy ** 2) * (2 * np.pi * 2.5) ** 2 / 2)
     g = np.real(np.fft.ifft2(np.fft.fft2(grooves[..., 0]) * blur))
     g = np.clip(g / max(g.max(), 1e-6), 0, 1) * 255
-    return save_image("monolith_hatch_256", img), save_image("monolith_hatch_grooves_256", np.repeat(g[..., None], 3, 2))
+    return save_image("monolith_hatch_128", img), save_image("monolith_hatch_grooves_128", np.repeat(g[..., None], 3, 2))
 
 
 def moss_texture():
@@ -296,7 +300,7 @@ def moss_texture():
         y, x = rng.integers(0, n, 2)
         for k in range(rng.integers(2, 7)):
             img[(y + k) % n, (x + (k // 2) * rng.choice((-1, 1))) % n] = (14, 22, 8)
-    return save_image("monolith_moss_256", img)
+    return save_image("monolith_moss_128", img)
 
 
 def stone_material(hatch, grooves, moss):
@@ -388,7 +392,17 @@ def stone_material(hatch, grooves, moss):
     shade = node("ShaderNodeVectorMath", operation="SCALE")
     L(streaked, shade.inputs[0])
     put(shade.inputs["Scale"], map_range(drift.outputs["Fac"], 0.3, 0.7, 0.72, 1.18))
-    stone_col = shade.outputs["Vector"]
+    # dull the red toward a warm brown of the same brightness (plain desaturation goes pink)
+    luma = node("ShaderNodeRGBToBW")
+    L(shade.outputs["Vector"], luma.inputs[0])
+    brown = node("ShaderNodeVectorMath", operation="SCALE")
+    brown.inputs[0].default_value = (1.25, 0.82, 0.6)
+    L(luma.outputs[0], brown.inputs["Scale"])
+    dulled = mix(math("SUBTRACT", 1.0, knob["stone_saturation"]), shade.outputs["Vector"], brown.outputs["Vector"])
+    dim = node("ShaderNodeVectorMath", operation="SCALE")
+    L(dulled, dim.inputs[0])
+    L(knob["stone_value"], dim.inputs["Scale"])
+    stone_col = dim.outputs["Vector"]
     # moss mask: pixel-snapped banded noise + foot + ledges + edges + per-object nudge, then grooves
     shifted = node("ShaderNodeVectorMath", operation="ADD")
     L(coords.outputs["Object"], shifted.inputs[0])
