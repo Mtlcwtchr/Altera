@@ -742,13 +742,17 @@ TIERS = {}           # filled by sculpted_stele: joints of the hero
 
 # material knobs (the game reads them from the manifest later)
 KNOBS = dict(
-    carving_relief_m=0.10,     # how far the figures stand out
+    carving_relief_m=0.32,     # how far the bas-relief figures stand out (rounded masses)
     carving_groove_m=0.12,     # how deep the outlines and features are cut
-    carving_wear=0.4,         # 0 = crisp everywhere, 1 = mostly worn away
+    carving_wear=0.3,         # 0 = crisp everywhere, 1 = mostly worn away
     carving_albedo=0.6,       # how much the carving shows in colour (it is mostly felt in the normal)
-    scratch_count=3200,
-    scratch_depth_m=0.035,
-    scratch_darkness=0.8,
+    scratch_count=7500,
+    scratch_depth_m=0.045,
+    scratch_darkness=0.85,
+    symbols_per_panel=22,      # small drawn symbols cut over the figures
+    soot=0.65,                 # darker toward the foot, as after a fire
+    soot_height_m=120.0,       # how high the soot reaches (tongues go higher)
+    contrast=1.35,
     streak_strength=0.45,      # dark runs below the joints and the top
     lichen=0.25,               # pale green-grey speckle
     grain=0.07,
@@ -934,16 +938,36 @@ class Carver:
         rnd = self.rnd
         lean = rnd.uniform(-0.06, 0.06)
         self.raise_ell(ox, oz, s, lean * 2, 0.88, 0.09, 0.11, lvl=1.0, flip=flip)
-        self.raise_line(ox, oz, s, [(lean * 1.6, 0.76), (lean, 0.48), (0.0, 0.38)], 0.1, 0.8, flip)
-        self.raise_line(ox, oz, s, [(0.0, 0.4), (0.05, 0.2), (0.07, 0.0)], 0.045, 0.7, flip)
-        self.raise_line(ox, oz, s, [(0.0, 0.4), (-0.06, 0.2), (-0.05, 0.0)], 0.045, 0.7, flip)
+        self.raise_line(ox, oz, s, [(lean * 1.6, 0.76), (lean, 0.48), (0.0, 0.38)], 0.13, 0.9, flip)
+        self.raise_ell(ox, oz, s, lean * 1.2, 0.6, 0.15, 0.2, rot=lean, lvl=1.0, flip=flip)
+        self.raise_line(ox, oz, s, [(0.0, 0.4), (0.06, 0.2), (0.08, 0.0)], 0.06, 0.8, flip)
+        self.raise_line(ox, oz, s, [(0.0, 0.4), (-0.07, 0.2), (-0.06, 0.0)], 0.06, 0.8, flip)
         arm = [(lean * 1.6, 0.72), (0.2, 0.68), (0.3, 0.5), (0.22, 0.36)]
-        self.raise_line(ox, oz, s, arm, 0.03, 0.9, flip)
-        self.raise_line(ox, oz, s, [(lean * 1.6, 0.72), (-0.14, 0.6), (-0.1, 0.45), (-0.18, 0.32)], 0.03, 0.6, flip)
+        self.raise_line(ox, oz, s, arm, 0.04, 0.95, flip)
+        self.raise_line(ox, oz, s, [(lean * 1.6, 0.72), (-0.14, 0.6), (-0.1, 0.45), (-0.18, 0.32)], 0.04, 0.75, flip)
         self.eye(ox, oz, s, lean * 2 + 0.02, 0.9, 0.035, flip)
         for k in range(rnd.randint(1, 3)):  # folds of a robe
             y = 0.62 - k * 0.08
             self.curve(ox, oz, s, (-0.08, y), (-0.02, y - 0.04), (0.04, y - 0.04), (0.1, y + 0.01), 1.0, flip)
+
+    def symbol(self, u, z, s):
+        """One small drawn sign: a stroke, an arc, a chevron, a cross, a hooked line, a ring."""
+        rnd = self.rnd
+        k = rnd.randrange(6)
+        if k == 0:
+            self.groove(u, z, s, [(0, -1), (0.2, 1)], 0.8)
+        elif k == 1:
+            self.curve(u, z, s, (-0.8, -0.6), (-0.8, 1.2), (0.8, 1.2), (0.8, -0.6), 0.8)
+        elif k == 2:
+            self.groove(u, z, s, [(-0.8, 0.8), (0, -0.8), (0.8, 0.8)], 0.8)
+        elif k == 3:
+            self.groove(u, z, s, [(-0.8, 0), (0.8, 0)], 0.8)
+            self.groove(u, z, s, [(0, -0.9), (0, 0.9)], 0.8)
+        elif k == 4:
+            self.groove(u, z, s, [(0, -1), (0, 0.6), (0.6, 1.0), (0.9, 0.6)], 0.8)
+        else:
+            self.curve(u, z, s, (-0.7, 0), (-0.7, 1.0), (0.7, 1.0), (0.7, 0), 0.8)
+            self.curve(u, z, s, (-0.7, 0), (-0.7, -1.0), (0.7, -1.0), (0.7, 0), 0.8)
 
     def glyph_band(self, u0, u1, z0, rows=2, cell=1.4):
         """Rows of small glyphs between incised rules, like a written border."""
@@ -991,10 +1015,10 @@ class Carver:
             a, b = rnd.uniform(4, 9), rnd.uniform(5, 11)
             self.raise_ell(rnd.uniform(u0 + a, u1 - a), rnd.uniform(z0 + b * 0.6, top - b * 0.6), 1, 0, 0,
                            a, b, rot=rnd.uniform(-0.6, 0.6), lvl=rnd.choice((0.35, 0.45, 0.55)))
-        for _ in range(rnd.choice((1, 1, 2))):  # standing figures
+        for _ in range(rnd.choice((2, 2, 3))):  # standing figures, the bas-relief proper
             s = min(h - 4.5, rnd.uniform(13, 22))
-            self.figure(rnd.uniform(u0 + 0.2 * w, u1 - 0.2 * w), z0 + 0.4, s, rnd.choice((-1, 1)))
-        for _ in range(rnd.randint(4, 7)):  # heads, overlapping like a collage
+            self.figure(rnd.uniform(u0 + 0.15 * w, u1 - 0.15 * w), z0 + 0.4, s, rnd.choice((-1, 1)))
+        for _ in range(rnd.randint(3, 5)):  # heads, overlapping like a collage
             s = rnd.uniform(4.5, 9.5)
             ox, oz = rnd.uniform(u0 + s * 0.45, u1 - s * 0.45), rnd.uniform(z0 + s * 0.55, top - s * 0.55)
             if rnd.random() < 0.55:
@@ -1003,6 +1027,8 @@ class Carver:
                 self.split_face(ox, oz, s)
         for _ in range(rnd.randint(1, 3)):
             self.meander(u0, u1, z0, top)
+        for _ in range(KNOBS["symbols_per_panel"]):  # symbols scratched in over everything
+            self.symbol(rnd.uniform(u0 + 1, u1 - 1), rnd.uniform(z0 + 1, top), rnd.uniform(0.25, 0.6))
 
 
 def carve(rnd, W, D, H, joints):
@@ -1016,9 +1042,11 @@ def carve(rnd, W, D, H, joints):
         z0, z1 = bounds[k] + 1.0, bounds[k + 1] - 1.0
         for s in range(4):
             cv.panel(starts[s] + 1.2, starts[s] + lens[s] - 1.2, z0, z1)
-    R = blur(cv.R, 1)
+    mask = blur(cv.R, 1)
+    # bas-relief: each mass swells toward its middle (cut edge, rounded body)
+    R = mask * (0.35 + 0.65 * np.clip(blur(mask, 6) * 1.4, 0, 1))
     # the outline of every raised mass is cut in: Picasso's line round the shapes
-    gy, gx = np.gradient(R)
+    gy, gx = np.gradient(mask)
     edge = np.clip(np.hypot(gx, gy) * 2.2, 0, 1)
     G = np.maximum(blur(cv.G, 1) * 1.2, edge)
     return R, np.clip(G, 0, 1)
@@ -1151,20 +1179,27 @@ def make_maps(sc, low_ob, high_ob, v):
     curv = np.gradient(n1[:, :, 0], axis=1) + np.gradient(n1[:, :, 1], axis=0)
     cav = np.clip(-blur(curv, 1) * 6.0, 0, 1)
 
-    ao = np.clip(ao_bake, 0, 1) * (1 - 0.55 * G) * (1 - 0.4 * cav) * (1 - 0.35 * S) * (1 - 0.1 * ST)
+    ao = np.clip(ao_bake, 0, 1) * (1 - 0.6 * G) * (1 - 0.45 * cav) * (1 - 0.45 * S) * (1 - 0.1 * ST)
     ao = np.clip(ao, 0, 1)
 
-    dark = np.array((0.055, 0.075, 0.062), np.float32)
-    mid = np.array((0.15, 0.19, 0.16), np.float32)
-    col = dark + (mid - dark) * (mott[:, :, None] ** 1.6)
+    dark = np.array((0.04, 0.075, 0.05), np.float32)
+    mid = np.array((0.15, 0.205, 0.16), np.float32)
+    mc = np.clip(0.5 + (mott - 0.5) * KNOBS["contrast"] * 1.6, 0, 1)
+    col = dark + (mid - dark) * (mc[:, :, None] ** 1.5)
     ca = KNOBS["carving_albedo"]
-    col *= (1 + ca * 0.5 * R)[:, :, None]                       # raised masses catch a little
+    col *= (1 + ca * 0.9 * R)[:, :, None]                       # the figures catch the light
+    # soot: darker toward the foot as if a fire burned round it, in licking tongues
+    tongue = vnoise(rng, 14, 260) * 0.7 + vnoise(rng, 40, 90) * 0.3
+    reach = KNOBS["soot_height_m"] * (0.55 + 0.9 * tongue)
+    soot = np.clip(1.0 - vz / reach, 0, 1) ** 1.3 * KNOBS["soot"]
+    col *= (1 - 0.88 * soot)[:, :, None]
     col *= (1 - ca * 0.9 * G)[:, :, None]                       # cut lines hold dirt
     col = col + (np.array((0.24, 0.29, 0.25), np.float32) - col) * (lich * 0.6)[:, :, None]
     col *= (1 - KNOBS["streak_strength"] * ST)[:, :, None]
     col *= (1 - KNOBS["scratch_darkness"] * S)[:, :, None]      # black scratches
     col *= (1 + KNOBS["grain"] * (grain - 0.5) * 2)[:, :, None]
-    rough = 0.84 - 0.12 * R + 0.06 * G - 0.22 * ST + 0.08 * S + 0.05 * (grain - 0.5) - 0.06 * lich
+    rough = (0.84 - 0.14 * R + 0.06 * G - 0.22 * ST + 0.08 * S + 0.05 * (grain - 0.5) - 0.06 * lich
+             + 0.08 * soot)  # soot is matte
 
     imgs = dict(
         base=save_map("stele_basecolor_2048", col, True),
