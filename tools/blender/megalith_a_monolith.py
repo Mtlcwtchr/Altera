@@ -297,7 +297,7 @@ def scratch_texture():
     for _ in range(26):
         y, x = rng.uniform(0, n, 2)
         ang = rng.normal(np.pi / 2, 0.12) if rng.random() < 0.8 else rng.normal(0.0, 0.1)
-        ln, val, width = int(rng.integers(70, 170)), rng.uniform(180, 255), rng.uniform(1.8, 3.4)
+        ln, val, width = int(rng.integers(70, 170)), rng.uniform(210, 255), rng.uniform(1.0, 1.6)
         bend = rng.normal(0, 0.003)
         for k in range(ln):
             ang += bend
