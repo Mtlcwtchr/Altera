@@ -13,10 +13,13 @@ tiers (here only the tiers are hinted at: no carving, no material yet).
 
 Blockout (approved 12.10): four proportion variants side by side with 1.8 m figures, plus a
 shot repeating the reference composition; V2_tall chosen, the band to the right is its shadow.
-Sculpt: wear of the ages on V2 only (see sculpted_stele); the carved silhouettes and glyphs will
-be texture and normal map, not mesh.
+Sculpt (12.10): wear of the ages on V2 only (see sculpted_stele); retopo to a 2500-tri game mesh,
+the dense mesh kept as the bake source.
+Material: AO, roughness and normal carry the look (see the material section): worn, barely
+showing Picasso-like carved silhouettes and glyphs, black scratches cut in, dark runs.
 
-    blender -b -P tools/blender/megalith_a2_carved_stele.py                      # sculpt stage
+    blender -b -P tools/blender/megalith_a2_carved_stele.py                      # material stage
+    blender -b -P tools/blender/megalith_a2_carved_stele.py -- --stage sculpt
     blender -b -P tools/blender/megalith_a2_carved_stele.py -- --stage blockout
     blender -b -P tools/blender/megalith_a2_carved_stele.py -- --no-render
 """
@@ -34,7 +37,7 @@ from mathutils import Vector, noise
 ROOT = Path(__file__).resolve().parents[2]
 ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a2_carved_stele"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
-STAGE = "sculpt"
+STAGE = "material"
 
 STONE = (0.10, 0.13, 0.11, 1)      # dark green-black, kept light enough to read the form
 GROUND = (0.25, 0.25, 0.20, 1)     # stony waste with a mossy tint
@@ -253,6 +256,7 @@ def sculpted_stele(name, v, mat, seed, low=False):
     for k in range(n - 1):
         acc += w[k]
         joints.append(H * acc / sum(w))
+    TIERS["joints"] = joints
     shifts, cx, cy = [], 0.0, 0.0
     for k in range(n):
         shifts.append((cx, cy))
@@ -338,8 +342,8 @@ def sculpted_stele(name, v, mat, seed, low=False):
         z = p.z
         d = 0.0 if low else 0.14 * fbm(Vector((p.x, p.y, z)) * 0.08 + off)  # the faces are not planes
         # corners worn round and chunky, more at the top and the foot
-        # (the game mesh wears them in 7 m pieces, so each piece stays flat and dissolves)
-        zc = math.floor((z + 2.3 * side) / 7.0) * 7.0 + 3.5 if low else z
+        # (in 7 m pieces, so each piece stays flat on the game mesh and the bake matches it)
+        zc = math.floor((z + 2.3 * side) / 7.0) * 7.0 + 3.5
         age = 1.0 + 1.2 * math.exp(-zc / 25.0) + 1.0 * math.exp(-(H - zc) / 30.0)
         if at_corner < 2.0:
             q = 0.5 + 0.5 * noise.noise(Vector((zc * 0.12, side * 7.3, 3.1)) + off)
@@ -653,9 +657,10 @@ def build():
     kinds = [boulder(f"boulder_kind_{k}", mats["boulder"], rnd) for k in range(8)]
 
     meshes = {name: stele(name, v, stone, zlib.crc32(name.encode())) for name, v in VARIANTS.items()}
-    if STAGE == "sculpt":  # only the approved variant goes on
+    if STAGE != "blockout":  # only the approved variant goes on
         high = sculpted_stele(HERO + "_high", hv, stone, zlib.crc32(HERO.encode()))
         meshes[HERO] = sculpted_stele(HERO + "_low", hv, stone, zlib.crc32(HERO.encode()), low=True)
+        uv_unwrap(meshes[HERO], hv["W"], hv["D"], hv["H"])
     for name, v in (VARIANTS.items() if STAGE == "blockout" else ()):
         x, y = LINEUP_X[name], LINEUP_Y
         link(name, meshes[name], (x, y, 0), coll=lineup)
@@ -670,14 +675,15 @@ def build():
 
     # the hero for the reference shot: the tall variant in its pond on the waste
     # an old stone: it has settled a touch out of plumb
-    lean = (math.radians(0.5), math.radians(-0.4), 0.0) if STAGE == "sculpt" else (0.0, 0.0, 0.0)
+    lean = (math.radians(0.5), math.radians(-0.4), 0.0) if STAGE != "blockout" else (0.0, 0.0, 0.0)
     link("hero_" + HERO, meshes[HERO], (0, 0, 0), rot=lean, coll=hero)
     wire = collection("wire")
-    if STAGE == "sculpt":
+    if STAGE != "blockout":
         bake = collection("bake_source")  # the dense mesh the normal map is baked from
         link("hero_" + HERO + "_high", high, (0, 0, 0), rot=lean, coll=bake)
         bake.hide_render = True
         bpy.context.view_layer.layer_collection.children["bake_source"].hide_viewport = True
+    if STAGE == "sculpt":
         wob = link("hero_wire", meshes[HERO], (0, 0, 0), rot=lean, coll=wire)
         mod = wob.modifiers.new("wire", "WIREFRAME")
         mod.thickness = 0.15
@@ -689,7 +695,7 @@ def build():
     cx, cy, rx, ry = pond_of(0.0, 0.0, hv)
     pond("pond_hero", cx, cy, rx, ry, mats["water"], rnd, hero)
     foot_debris("hero", 0, 0, hv, stone, rnd, hero)
-    if STAGE == "sculpt":
+    if STAGE != "blockout":
         fallen_pieces("hero", 0, 0, hv, stone, rnd, hero)
     scatter_boulders(kinds, cx, cy, rx * 1.35, 1800, 560, rnd, hero, "hero")
     for k, (px, py) in enumerate(((cx - 14, cy - ry - 4), (cx - 11, cy - ry - 5))):
@@ -714,6 +720,505 @@ def build():
     link("moon", mesh_from("moon", bm, material("moon", (0.75, 0.04, 0.02, 1), emit=1.4)), loc, coll=land)
 
 
+# ---------------------------------------------------------------- material: carved dark stone
+# One 2048 atlas for the whole stele at about 10 px/m: the four sides unwrapped as one strip
+# round the stone (u = metres along the perimeter, v = height), the top as its own island.
+# Maps: basecolor (sRGB), normal (OpenGL tangent: baked from the dense mesh, then the carving,
+# the scratches and the grain laid on), AO (baked plus cavities), roughness.
+# The carving: worn, barely showing Picasso-like silhouettes (profiles with a frontal eye, split
+# faces, standing figures, bands of glyphs), raised a little with incised outlines; black
+# scratches cut into it, mostly up and down; dark runs below the joints.
+
+TEX = 2048
+PXM = 10.0           # pixels per metre
+U0, Z0 = 8.0, 2.0    # side strip: u_px = U0 + u_m * PXM, v_px = (z + Z0) * PXM
+TOP_U, TOP_V = 1420.0, 140.0
+
+
+def strip_u(u):
+    """Atlas pixel column of perimeter metre u."""
+    return U0 + u * PXM
+TIERS = {}           # filled by sculpted_stele: joints of the hero
+
+# material knobs (the game reads them from the manifest later)
+KNOBS = dict(
+    carving_relief_m=0.10,     # how far the figures stand out
+    carving_groove_m=0.12,     # how deep the outlines and features are cut
+    carving_wear=0.4,         # 0 = crisp everywhere, 1 = mostly worn away
+    carving_albedo=0.6,       # how much the carving shows in colour (it is mostly felt in the normal)
+    scratch_count=3200,
+    scratch_depth_m=0.035,
+    scratch_darkness=0.8,
+    streak_strength=0.45,      # dark runs below the joints and the top
+    lichen=0.25,               # pale green-grey speckle
+    grain=0.07,
+)
+
+
+def perim_u(side, x, y, W, D):
+    return [x + W / 2, W + (y + D / 2), W + D + (W / 2 - x), 2 * W + D + (D / 2 - y)][side]
+
+
+def ring_u(x, y, W, D):
+    """Perimeter metres of a point: where the ray from the axis through it meets the rectangle.
+    Continuous round the corners (worn corners do not fold onto a neighbour side's pixels)."""
+    t = 1.0 / max(abs(x) / (W / 2), abs(y) / (D / 2), 1e-6)
+    bx, by = x * t, y * t
+    if abs(by + D / 2) < 1e-4:
+        return perim_u(0, bx, by, W, D)
+    if abs(bx - W / 2) < 1e-4:
+        return perim_u(1, bx, by, W, D)
+    if abs(by - D / 2) < 1e-4:
+        return perim_u(2, bx, by, W, D)
+    return perim_u(3, bx, by, W, D)
+
+
+def uv_unwrap(me, W, D, H):
+    """The sides as one strip round the stone (one seam, at the front-left corner), the top
+    faces onto the top island."""
+    per = 2 * (W + D)
+    uvl = me.uv_layers.new(name="UVMap")
+    for poly in me.polygons:
+        nz = poly.normal.z
+        top = nz > 0.65 and poly.center.z > H - 20
+        us = [ring_u(me.vertices[me.loops[li].vertex_index].co.x, me.vertices[me.loops[li].vertex_index].co.y, W, D)
+              for li in poly.loop_indices]
+        if max(us) - min(us) > per / 2:  # a face on the seam goes past the end of the strip
+            us = [u + per if u < per / 2 else u for u in us]
+        for li, um in zip(poly.loop_indices, us):
+            co = me.vertices[me.loops[li].vertex_index].co
+            if top:
+                u, v = TOP_U + (co.x + W / 2) * PXM, TOP_V + (co.y + D / 2) * PXM
+            else:
+                u, v = strip_u(um), (max(co.z, -Z0 + 0.2) + Z0) * PXM
+            uvl.data[li].uv = (u / TEX, v / TEX)
+
+
+# --- small raster toolkit (numpy; rows = v going up, as Blender stores pixels)
+
+def vnoise(rng, cx, cy=None, size=TEX):
+    """Smooth value noise with cells cx by cy pixels, 0..1."""
+    import numpy as np
+    cy = cy or cx
+    gh, gw = int(size / cy) + 3, int(size / cx) + 3
+    g = rng.random((gh, gw)).astype(np.float32)
+    ys = np.arange(size, dtype=np.float32) / cy
+    xs = np.arange(size, dtype=np.float32) / cx
+    y0, x0 = ys.astype(int), xs.astype(int)
+    fy, fx = ys - y0, xs - x0
+    fy, fx = fy * fy * (3 - 2 * fy), fx * fx * (3 - 2 * fx)
+    a = g[y0][:, x0] * (1 - fx) + g[y0][:, x0 + 1] * fx
+    b = g[y0 + 1][:, x0] * (1 - fx) + g[y0 + 1][:, x0 + 1] * fx
+    return a * (1 - fy[:, None]) + b * fy[:, None]
+
+
+def blur(img, r):
+    """Box blur, run twice (about Gaussian)."""
+    import numpy as np
+    k = 2 * r + 1
+    for _ in range(2):
+        for t in (False, True):
+            a = img.T if t else img
+            c = np.cumsum(np.pad(a, ((r + 1, r), (0, 0)), mode="edge"), axis=0)
+            a = (c[k:] - c[:-k]) / k
+            img = a.T if t else a
+    return img.astype(np.float32)
+
+
+def stamp(img, pts, r, val=1.0):
+    """Draw a thick line through pts (N x 2, px) into img with a rounded profile (max)."""
+    import numpy as np
+    if len(pts) < 2:
+        return
+    seg = np.diff(pts, axis=0)
+    n = np.maximum(1, (np.linalg.norm(seg, axis=1) / max(0.5, r * 0.35)).astype(int))
+    p = np.concatenate([pts[i] + seg[i] * (np.arange(n[i])[:, None] / n[i]) for i in range(len(seg))] + [pts[-1:]])
+    ri = int(math.ceil(r))
+    for dy in range(-ri, ri + 1):
+        for dx in range(-ri, ri + 1):
+            d = math.hypot(dx, dy)
+            if d > r:
+                continue
+            prof = val * (1 - (d / (r + 0.5)) ** 2)
+            xs = np.round(p[:, 0] + dx).astype(int)
+            ys = np.round(p[:, 1] + dy).astype(int)
+            ok = (xs >= 0) & (xs < TEX) & (ys >= 0) & (ys < TEX)
+            np.maximum.at(img, (ys[ok], xs[ok]), prof)
+
+
+def ellipse(img, c, a, b, rot=0.0, val=1.0):
+    import numpy as np
+    m = int(max(a, b)) + 2
+    x0, x1 = max(0, int(c[0]) - m), min(TEX, int(c[0]) + m)
+    y0, y1 = max(0, int(c[1]) - m), min(TEX, int(c[1]) + m)
+    if x0 >= x1 or y0 >= y1:
+        return
+    yy, xx = np.mgrid[y0:y1, x0:x1].astype(np.float32)
+    dx, dy = xx - c[0], yy - c[1]
+    cs, sn = math.cos(rot), math.sin(rot)
+    q = ((dx * cs + dy * sn) / a) ** 2 + ((-dx * sn + dy * cs) / b) ** 2
+    sub = img[y0:y1, x0:x1]
+    np.maximum(sub, np.where(q <= 1, val, 0).astype(np.float32), out=sub)
+
+
+def bez(p0, p1, p2, p3, n=24):
+    import numpy as np
+    t = np.linspace(0, 1, n)[:, None]
+    p0, p1, p2, p3 = (np.array(p, dtype=np.float32) for p in (p0, p1, p2, p3))
+    return (1 - t) ** 3 * p0 + 3 * (1 - t) ** 2 * t * p1 + 3 * (1 - t) * t * t * p2 + t ** 3 * p3
+
+
+# --- the carving, drawn in metres on one face panel and placed on the strip
+
+class Carver:
+    def __init__(self, rnd):
+        import numpy as np
+        self.R = np.zeros((TEX, TEX), np.float32)   # raised plateaus
+        self.G = np.zeros((TEX, TEX), np.float32)   # incised lines
+        self.rnd = rnd
+
+    def P(self, u, z):
+        return (strip_u(u), (z + Z0) * PXM)
+
+    def pts(self, ox, oz, s, local, flip=1.0):
+        import numpy as np
+        return np.array([self.P(ox + flip * x * s, oz + y * s) for x, y in local], dtype=np.float32)
+
+    def groove(self, ox, oz, s, local, w=1.0, flip=1.0):
+        stamp(self.G, self.pts(ox, oz, s, local, flip), w)
+
+    def curve(self, ox, oz, s, a, b, c, d, w=1.0, flip=1.0):
+        import numpy as np
+        pts = bez(*[(ox + flip * x * s, oz + y * s) for x, y in (a, b, c, d)])
+        stamp(self.G, np.array([self.P(x, y) for x, y in pts], dtype=np.float32), w)
+
+    def raise_ell(self, ox, oz, s, cx, cy, a, b, rot=0.0, lvl=1.0, flip=1.0):
+        ellipse(self.R, self.P(ox + flip * cx * s, oz + cy * s), a * s * PXM, b * s * PXM, rot * flip, lvl)
+
+    def raise_line(self, ox, oz, s, local, r, lvl=1.0, flip=1.0):
+        stamp(self.R, self.pts(ox, oz, s, local, flip), r * s * PXM, lvl)
+
+    def eye(self, ox, oz, s, cx, cy, w, flip=1.0):
+        """Frontal almond eye with a pupil, the Picasso eye set into a profile too."""
+        self.curve(ox, oz, s, (cx - w, cy), (cx - w * 0.4, cy + w * 0.55), (cx + w * 0.4, cy + w * 0.55), (cx + w, cy), 1.0, flip)
+        self.curve(ox, oz, s, (cx - w, cy), (cx - w * 0.4, cy - w * 0.45), (cx + w * 0.4, cy - w * 0.45), (cx + w, cy), 1.0, flip)
+        self.raise_ell(ox, oz, s, cx, cy, w * 0.22, w * 0.22, lvl=0.4, flip=flip)
+
+    def profile_head(self, ox, oz, s, flip):
+        rnd = self.rnd
+        self.raise_ell(ox, oz, s, -0.05, 0.0, 0.36, 0.5, rot=rnd.uniform(-0.2, 0.2), lvl=rnd.choice((0.7, 1.0)), flip=flip)
+        prof = [(0.0, 0.52), (0.28, 0.38), (0.36, 0.14), (0.52, 0.0), (0.36, -0.05), (0.42, -0.17),
+                (0.3, -0.21), (0.35, -0.31), (0.1, -0.5)]
+        prof = [(x + rnd.uniform(-0.03, 0.03), y) for x, y in prof]
+        self.groove(ox, oz, s, prof, 1.2, flip)
+        self.eye(ox, oz, s, 0.16, 0.13, 0.11, flip)
+        self.curve(ox, oz, s, (-0.12, 0.12), (-0.2, 0.05), (-0.18, -0.06), (-0.08, -0.04), 1.0, flip)  # ear
+        for k in range(rnd.randint(2, 5)):  # hair running back
+            y = 0.42 - k * 0.09
+            self.curve(ox, oz, s, (0.0, y + 0.1), (-0.2, y + 0.12), (-0.35, y - 0.05), (-0.42, y - 0.25), 1.0, flip)
+
+    def split_face(self, ox, oz, s):
+        rnd = self.rnd
+        self.raise_ell(ox, oz, s, 0.0, 0.0, 0.32, 0.5, lvl=0.7)
+        self.raise_ell(ox, oz, s, 0.1, -0.04, 0.24, 0.42, rot=0.15, lvl=1.0)  # the half pushed out of line
+        self.groove(ox, oz, s, [(0.02, 0.5), (-0.03, 0.2), (0.05, 0.0), (-0.02, -0.25), (0.04, -0.5)], 1.2)
+        self.eye(ox, oz, s, -0.14, 0.1, 0.1)
+        self.eye(ox, oz, s, 0.15, 0.2, 0.07)
+        self.groove(ox, oz, s, [(0.0, 0.22), (0.1, -0.08), (-0.03, -0.12)], 1.0)
+        self.curve(ox, oz, s, (-0.12, -0.26), (-0.04, -0.32), (0.06, -0.3), (0.12, -0.22), 1.0)
+        if rnd.random() < 0.6:  # a second profile cut into the cheek
+            self.groove(ox, oz, s, [(0.32, 0.3), (0.4, 0.05), (0.5, -0.02), (0.38, -0.1), (0.3, -0.4)], 1.0)
+
+    def figure(self, ox, oz, s, flip):
+        """Standing figure, foot at (ox, oz), s tall: big simple masses, a turned head, long arms."""
+        rnd = self.rnd
+        lean = rnd.uniform(-0.06, 0.06)
+        self.raise_ell(ox, oz, s, lean * 2, 0.88, 0.09, 0.11, lvl=1.0, flip=flip)
+        self.raise_line(ox, oz, s, [(lean * 1.6, 0.76), (lean, 0.48), (0.0, 0.38)], 0.1, 0.8, flip)
+        self.raise_line(ox, oz, s, [(0.0, 0.4), (0.05, 0.2), (0.07, 0.0)], 0.045, 0.7, flip)
+        self.raise_line(ox, oz, s, [(0.0, 0.4), (-0.06, 0.2), (-0.05, 0.0)], 0.045, 0.7, flip)
+        arm = [(lean * 1.6, 0.72), (0.2, 0.68), (0.3, 0.5), (0.22, 0.36)]
+        self.raise_line(ox, oz, s, arm, 0.03, 0.9, flip)
+        self.raise_line(ox, oz, s, [(lean * 1.6, 0.72), (-0.14, 0.6), (-0.1, 0.45), (-0.18, 0.32)], 0.03, 0.6, flip)
+        self.eye(ox, oz, s, lean * 2 + 0.02, 0.9, 0.035, flip)
+        for k in range(rnd.randint(1, 3)):  # folds of a robe
+            y = 0.62 - k * 0.08
+            self.curve(ox, oz, s, (-0.08, y), (-0.02, y - 0.04), (0.04, y - 0.04), (0.1, y + 0.01), 1.0, flip)
+
+    def glyph_band(self, u0, u1, z0, rows=2, cell=1.4):
+        """Rows of small glyphs between incised rules, like a written border."""
+        rnd = self.rnd
+        import numpy as np
+        for r in range(rows + 1):
+            z = z0 + r * cell
+            stamp(self.G, np.array([self.P(u0, z), self.P(u1, z)], dtype=np.float32), 1.0)
+        for r in range(rows):
+            u = u0 + 0.3
+            while u < u1 - cell * 0.6:
+                w = cell * rnd.uniform(0.55, 0.9)
+                cz = z0 + r * cell + cell * 0.5
+                k = rnd.randrange(6)
+                s = cell * 0.35
+                if k == 0:
+                    self.groove(u + w / 2, cz, s, [(0, -1), (0, 1)], 1.0)
+                elif k == 1:
+                    self.curve(u + w / 2, cz, s, (-0.8, -0.6), (-0.8, 1.2), (0.8, 1.2), (0.8, -0.6), 1.0)
+                elif k == 2:
+                    self.groove(u + w / 2, cz, s, [(-0.8, 0.8), (0, -0.8), (0.8, 0.8)], 1.0)
+                elif k == 3:
+                    self.raise_ell(u + w / 2, cz, s, 0, 0, 0.6, 0.6, lvl=0.6)
+                elif k == 4:
+                    self.groove(u + w / 2, cz, s, [(-0.8, 0), (0.8, 0)], 1.0)
+                    self.groove(u + w / 2, cz, s, [(0, -0.9), (0, 0.9)], 1.0)
+                else:
+                    self.curve(u + w / 2, cz, s, (-0.8, 0.8), (0.9, 0.9), (-0.9, -0.9), (0.8, -0.8), 1.0)
+                u += w + cell * 0.25
+
+    def meander(self, u0, u1, z0, z1):
+        rnd = self.rnd
+        a = (rnd.uniform(u0, u1), rnd.uniform(z0, z1))
+        d = (rnd.uniform(u0, u1), rnd.uniform(z0, z1))
+        b = (rnd.uniform(u0, u1), rnd.uniform(z0, z1))
+        c = (rnd.uniform(u0, u1), rnd.uniform(z0, z1))
+        self.curve(0, 0, 1, a, b, c, d, rnd.choice((1.0, 1.5)))
+
+    def panel(self, u0, u1, z0, z1):
+        rnd = self.rnd
+        w, h = u1 - u0, z1 - z0
+        self.glyph_band(u0, u1, z1 - 2 * 1.4 - 0.4)
+        top = z1 - 3.6
+        for _ in range(rnd.randint(3, 5)):  # big low plates behind, the relief in layers
+            a, b = rnd.uniform(4, 9), rnd.uniform(5, 11)
+            self.raise_ell(rnd.uniform(u0 + a, u1 - a), rnd.uniform(z0 + b * 0.6, top - b * 0.6), 1, 0, 0,
+                           a, b, rot=rnd.uniform(-0.6, 0.6), lvl=rnd.choice((0.35, 0.45, 0.55)))
+        for _ in range(rnd.choice((1, 1, 2))):  # standing figures
+            s = min(h - 4.5, rnd.uniform(13, 22))
+            self.figure(rnd.uniform(u0 + 0.2 * w, u1 - 0.2 * w), z0 + 0.4, s, rnd.choice((-1, 1)))
+        for _ in range(rnd.randint(4, 7)):  # heads, overlapping like a collage
+            s = rnd.uniform(4.5, 9.5)
+            ox, oz = rnd.uniform(u0 + s * 0.45, u1 - s * 0.45), rnd.uniform(z0 + s * 0.55, top - s * 0.55)
+            if rnd.random() < 0.55:
+                self.profile_head(ox, oz, s, rnd.choice((-1, 1)))
+            else:
+                self.split_face(ox, oz, s)
+        for _ in range(rnd.randint(1, 3)):
+            self.meander(u0, u1, z0, top)
+
+
+def carve(rnd, W, D, H, joints):
+    """All panels: every tier on every face (a panel can run round a corner a little)."""
+    import numpy as np
+    cv = Carver(rnd)
+    bounds = [1.2] + list(joints) + [H - 1.5]
+    starts = [0.0, W, W + D, 2 * W + D]
+    lens = [W, D, W, D]
+    for k in range(len(bounds) - 1):
+        z0, z1 = bounds[k] + 1.0, bounds[k + 1] - 1.0
+        for s in range(4):
+            cv.panel(starts[s] + 1.2, starts[s] + lens[s] - 1.2, z0, z1)
+    R = blur(cv.R, 1)
+    # the outline of every raised mass is cut in: Picasso's line round the shapes
+    gy, gx = np.gradient(R)
+    edge = np.clip(np.hypot(gx, gy) * 2.2, 0, 1)
+    G = np.maximum(blur(cv.G, 1) * 1.2, edge)
+    return R, np.clip(G, 0, 1)
+
+
+def scratches(rnd, n):
+    """Black scratches: mostly up and down, some aslant, thin, a few long."""
+    import numpy as np
+    S = np.zeros((TEX, TEX), np.float32)
+    for _ in range(n):
+        x, y = rnd.uniform(0, TEX), rnd.uniform(0, TEX)
+        ang = math.radians(90 + (rnd.gauss(0, 6) if rnd.random() < 0.93 else rnd.uniform(-35, 35)))
+        ln = rnd.uniform(8, 60) * (3 if rnd.random() < 0.08 else 1)
+        k = max(3, int(ln / 6))
+        pts = []
+        for i in range(k + 1):
+            t = i / k
+            wob = rnd.uniform(-0.6, 0.6)
+            pts.append((x + math.cos(ang) * ln * t + wob, y + math.sin(ang) * ln * t))
+        stamp(S, np.array(pts, dtype=np.float32), rnd.choice((0.6, 0.6, 0.9, 1.3)), rnd.uniform(0.6, 1.0))
+    return S
+
+
+def streaks(rng, joints, H):
+    """Dark runs below each joint and the top, fading downward."""
+    import numpy as np
+    n = vnoise(rng, 5, 160)
+    n2 = vnoise(rng, 3, 60)
+    mask = np.clip((n * 0.7 + n2 * 0.3 - 0.52) * 4.0, 0, 1)
+    v = (np.arange(TEX, dtype=np.float32) / PXM) - Z0  # height of each row (m)
+    fade = np.zeros(TEX, np.float32)
+    for j in list(joints) + [H]:
+        below = j - v
+        fade = np.maximum(fade, np.where(below > 0, np.exp(-below / 9.0), 0))
+    return mask * fade[:, None]
+
+
+def bake_maps(sc, low_ob, high_ob):
+    """Cycles: tangent normal from the dense mesh onto the game mesh, and AO; returns arrays."""
+    import numpy as np
+    keep = {o.name: o.hide_render for o in sc.objects}
+    for o in sc.objects:
+        o.hide_render = o not in (low_ob, high_ob)
+    lc = bpy.context.view_layer.layer_collection.children["bake_source"]
+    lc.hide_viewport = False
+    high_ob.users_collection[0].hide_render = False
+    try:
+        sc.render.engine = "CYCLES"
+    except TypeError as e:
+        print("engine:", e)
+    sc.cycles.device = "CPU"
+    tmp = bpy.data.materials.new("bake_target")
+    tmp.use_nodes = True
+    node = tmp.node_tree.nodes.new("ShaderNodeTexImage")
+    tmp.node_tree.nodes.active = node
+    old = list(low_ob.data.materials)
+    low_ob.data.materials.clear()
+    low_ob.data.materials.append(tmp)
+    for o in sc.objects:
+        o.select_set(o in (low_ob, high_ob))
+    bpy.context.view_layer.objects.active = low_ob
+    bk = sc.render.bake
+    bk.use_selected_to_active = True
+    bk.cage_extrusion = 0.5  # small: flat faces split at the corners, a big cage hits the next face
+    bk.max_ray_distance = 2.6
+    bk.margin = 8
+    out = {}
+    for kind, samples in (("NORMAL", 1), ("AO", 24)):
+        img = bpy.data.images.new(f"bake_{kind}", TEX, TEX, float_buffer=True)
+        img.colorspace_settings.name = "Non-Color"
+        node.image = img
+        sc.cycles.samples = samples
+        bpy.ops.object.bake(type=kind, normal_space="TANGENT")
+        out[kind] = np.array(img.pixels[:], dtype=np.float32).reshape(TEX, TEX, 4)
+        print("baked", kind)
+    low_ob.data.materials.clear()
+    for m in old:
+        low_ob.data.materials.append(m)
+    for o in sc.objects:
+        o.hide_render = keep.get(o.name, False)
+    high_ob.users_collection[0].hide_render = True
+    lc.hide_viewport = True
+    return out["NORMAL"], out["AO"][:, :, 0]
+
+
+def save_map(name, arr, srgb):
+    """arr: TEX x TEX x 3 (or x 1) in 0..1, rows going up; written as 8-bit PNG next to the blend."""
+    import numpy as np
+    if arr.ndim == 2:
+        arr = np.repeat(arr[:, :, None], 3, axis=2)
+    rgba = np.concatenate([np.clip(arr, 0, 1), np.ones((TEX, TEX, 1), np.float32)], axis=2)
+    img = bpy.data.images.new(name, TEX, TEX)
+    img.colorspace_settings.name = "sRGB" if srgb else "Non-Color"
+    img.pixels.foreach_set(rgba.astype(np.float32).ravel())
+    img.filepath_raw = str(ASSET_DIR / f"{name}.png")
+    img.file_format = "PNG"
+    img.save()
+    print("saved", img.filepath_raw)
+    return img
+
+
+def make_maps(sc, low_ob, high_ob, v):
+    import numpy as np
+    W, D, H = v["W"], v["D"], v["H"]
+    joints = TIERS["joints"]
+    rnd = random.Random(23)
+    rng = np.random.default_rng(23)
+    n_bake, ao_bake = bake_maps(sc, low_ob, high_ob)
+    R, G = carve(rnd, W, D, H, joints)
+    # wear the carving away in patches, more low down where the water reached
+    wear = vnoise(rng, 90) * 0.6 + vnoise(rng, 28) * 0.4
+    vz = (np.arange(TEX, dtype=np.float32) / PXM - Z0)[:, None]
+    keep = np.clip((wear - KNOBS["carving_wear"] * 0.6) * 2.5, 0.08, 1.0) * np.clip(0.4 + vz / 40.0, 0.4, 1.0)
+    R, G = R * keep, G * keep
+    S = scratches(rnd, KNOBS["scratch_count"])
+    ST = streaks(rng, joints, H)
+    grain = rng.random((TEX, TEX)).astype(np.float32)
+    mott = vnoise(rng, 40) * 0.5 + vnoise(rng, 12) * 0.3 + vnoise(rng, 4) * 0.2
+    lich = np.clip((vnoise(rng, 6) * 0.6 + vnoise(rng, 20) * 0.4 - (1.0 - KNOBS["lichen"] * 0.5)) * 6, 0, 1)
+
+    # height of the fine detail (m) -> tangent normal, laid over the baked one (whiteout blend)
+    h = (KNOBS["carving_relief_m"] * R - KNOBS["carving_groove_m"] * G - KNOBS["scratch_depth_m"] * S
+         + 0.012 * (grain - 0.5))
+    dhv, dhu = np.gradient(h * PXM)  # slope per metre
+    n2 = np.dstack([-dhu, -dhv, np.ones_like(h)])
+    n1 = n_bake[:, :, :3] * 2 - 1
+    n = np.dstack([n1[:, :, 0] + n2[:, :, 0], n1[:, :, 1] + n2[:, :, 1], n1[:, :, 2] * n2[:, :, 2]])
+    n /= np.linalg.norm(n, axis=2, keepdims=True) + 1e-6
+    # cavity from the baked normal (chips, cracks of the dense mesh)
+    curv = np.gradient(n1[:, :, 0], axis=1) + np.gradient(n1[:, :, 1], axis=0)
+    cav = np.clip(-blur(curv, 1) * 6.0, 0, 1)
+
+    ao = np.clip(ao_bake, 0, 1) * (1 - 0.55 * G) * (1 - 0.4 * cav) * (1 - 0.35 * S) * (1 - 0.1 * ST)
+    ao = np.clip(ao, 0, 1)
+
+    dark = np.array((0.055, 0.075, 0.062), np.float32)
+    mid = np.array((0.15, 0.19, 0.16), np.float32)
+    col = dark + (mid - dark) * (mott[:, :, None] ** 1.6)
+    ca = KNOBS["carving_albedo"]
+    col *= (1 + ca * 0.5 * R)[:, :, None]                       # raised masses catch a little
+    col *= (1 - ca * 0.9 * G)[:, :, None]                       # cut lines hold dirt
+    col = col + (np.array((0.24, 0.29, 0.25), np.float32) - col) * (lich * 0.6)[:, :, None]
+    col *= (1 - KNOBS["streak_strength"] * ST)[:, :, None]
+    col *= (1 - KNOBS["scratch_darkness"] * S)[:, :, None]      # black scratches
+    col *= (1 + KNOBS["grain"] * (grain - 0.5) * 2)[:, :, None]
+    rough = 0.84 - 0.12 * R + 0.06 * G - 0.22 * ST + 0.08 * S + 0.05 * (grain - 0.5) - 0.06 * lich
+
+    imgs = dict(
+        base=save_map("stele_basecolor_2048", col, True),
+        normal=save_map("stele_normal_2048", n * 0.5 + 0.5, False),
+        ao=save_map("stele_ao_2048", ao, False),
+        rough=save_map("stele_roughness_2048", np.clip(rough, 0.3, 1.0), False),
+    )
+    return imgs
+
+
+def stele_material(imgs):
+    m = bpy.data.materials.new("stele_material")
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
+
+    def tex(img):
+        nd = nt.nodes.new("ShaderNodeTexImage")
+        nd.image = img
+        nd.interpolation = "Closest"  # chunky pixels
+        return nd
+
+    base, nrm, ao, rough = tex(imgs["base"]), tex(imgs["normal"]), tex(imgs["ao"]), tex(imgs["rough"])
+    mul = nt.nodes.new("ShaderNodeMix")
+    mul.data_type = "RGBA"
+    mul.blend_type = "MULTIPLY"
+    mul.inputs["Factor"].default_value = 1.0
+    nt.links.new(base.outputs["Color"], mul.inputs["A"])
+    nt.links.new(ao.outputs["Color"], mul.inputs["B"])
+    nt.links.new(mul.outputs["Result"], bsdf.inputs["Base Color"])
+    nt.links.new(rough.outputs["Color"], bsdf.inputs["Roughness"])
+    nm = nt.nodes.new("ShaderNodeNormalMap")
+    nt.links.new(nrm.outputs["Color"], nm.inputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    return m
+
+
+def debris_material():
+    """The fallen pieces: the same dark stone, procedural (no UVs on the chunks)."""
+    m = bpy.data.materials.new("stele_debris")
+    m.use_nodes = True
+    nt = m.node_tree
+    bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
+    nz = nt.nodes.new("ShaderNodeTexNoise")
+    nz.inputs["Scale"].default_value = 0.6
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (0.006, 0.009, 0.007, 1)
+    ramp.color_ramp.elements[1].color = (0.03, 0.04, 0.033, 1)
+    nt.links.new(nz.outputs["Fac"], ramp.inputs["Fac"])
+    nt.links.new(ramp.outputs["Color"], bsdf.inputs["Base Color"])
+    bsdf.inputs["Roughness"].default_value = 0.85
+    return m
+
+
 # ---------------------------------------------------------------- shots
 
 def setup_render():
@@ -733,14 +1238,14 @@ def setup_render():
     sun.angle = math.radians(1.5)
     ob = bpy.data.objects.new("sun", sun)
     el = math.radians(22)
-    d = Vector((math.cos(el), 0.12, -math.sin(el))).normalized()
+    d = Vector((math.cos(el), 0.3, -math.sin(el))).normalized()
     ob.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
     sc.collection.objects.link(ob)
     world = bpy.data.worlds.new("sky")
     world.use_nodes = True
     bg = next(n for n in world.node_tree.nodes if n.type == "BACKGROUND")
     bg.inputs["Color"].default_value = (0.30, 0.45, 0.28, 1)  # green sky
-    bg.inputs["Strength"].default_value = 0.45
+    bg.inputs["Strength"].default_value = 0.6
     sc.world = world
 
 
@@ -779,13 +1284,22 @@ SCULPT_VIEWS = [
     ("07_wire_three_quarter", (210, -260, 60), (0, 0, 90), 32, 0, {"hero", "wire"}),
     ("08_wire_top", (70, -95, 205), (0, 0, 180), 35, 0, {"hero", "wire"}),
 ]
+MATERIAL_VIEWS = [
+    ("01_reference_shot", REF_CAM, (0, 0, REF_CAM[2]), 50, 0, {"hero"}),
+    ("02_three_quarter", (210, -260, 60), (0, 0, 90), 32, 0, {"hero"}),
+    ("03_close_middle", (-60, -110, 100), (0, 0, 85), 35, 0, {"hero"}),
+    ("04_relief_detail", (-14, -48, 40), (-2, 0, 38), 35, 0, {"hero"}),
+    ("05_close_top", (70, -95, 205), (0, 0, 180), 35, 0, {"hero"}),
+    ("06_foot_waterline", (-45, -80, 6), (0, 0, 6), 35, 0, {"hero"}),
+    ("07_back_left", (-230, 200, 40), (0, 0, 95), 30, 0, {"hero"}),
+]
 
 
 def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
     toggled = [bpy.data.collections[n] for n in ("hero", "lineup", "fallen", "wire")]
-    views = VIEWS if STAGE == "blockout" else SCULPT_VIEWS
+    views = {"blockout": VIEWS, "sculpt": SCULPT_VIEWS, "material": MATERIAL_VIEWS}[STAGE]
     for name, loc, target, lens, ortho, shown in views:
         cam = camera("cam_" + name, loc, target, lens, ortho)
         if not render:
@@ -809,11 +1323,21 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
-    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="sculpt")
+    ap.add_argument("--stage", choices=("blockout", "sculpt", "material"), default="material")
     args = ap.parse_args(argv)
     global STAGE
     STAGE = args.stage
+    ASSET_DIR.mkdir(parents=True, exist_ok=True)
     build()
+    if STAGE == "material":
+        sc = bpy.context.scene
+        low_ob, high_ob = bpy.data.objects["hero_" + HERO], bpy.data.objects["hero_" + HERO + "_high"]
+        mat = stele_material(make_maps(sc, low_ob, high_ob, VARIANTS[HERO]))
+        low_ob.data.materials[0] = mat
+        deb = debris_material()
+        for o in bpy.data.collections["hero"].objects:
+            if o.name.startswith(("chunk_hero", "piece_hero")):
+                o.data.materials[0] = deb
     setup_render()
     render_views(not args.no_render)
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
