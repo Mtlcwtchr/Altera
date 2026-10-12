@@ -191,7 +191,7 @@ MOSS_KNOBS = {  # name: default
     "moss_tile_m": 22.0,       # metres per moss tile
     "stone_saturation": 0.6,   # red of the stone: 1 as painted, lower is duller (toward brown)
     "stone_value": 0.9,        # brightness of the stone
-    "scratch_strength": 0.7,   # pale scratch dashes over the stone
+    "scratch_strength": 0.6,   # pale scratch dashes over the stone
     "scratch_tile_m": 60.0,    # metres per scratch tile (off the stone tile, so they never line up)
     "moss_streak_stretch": 7.0,  # patches this many times taller than wide: moss runs in bands
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
@@ -295,7 +295,7 @@ def scratch_texture():
     n = TEX
     rng = np.random.default_rng(33)
     img = np.zeros((n, n, 3))
-    for _ in range(95):
+    for _ in range(300):
         y, x = rng.uniform(0, n, 2)
         ang = rng.normal(np.pi / 2, 0.05) if rng.random() < 0.9 else rng.normal(0.0, 0.05)
         ln, val, width = int(rng.integers(70, 170)), rng.uniform(190, 255), 1.0
