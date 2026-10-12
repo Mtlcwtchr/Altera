@@ -11,10 +11,13 @@ A long dark straight band runs from the foot to the right (a shadow, or a slab l
 both are shown). The surface is all carved relief with horizontal joints, as if stacked in
 tiers (here only the tiers are hinted at: no carving, no material yet).
 
-Blockout: four proportion variants side by side with 1.8 m figures, plus a shot repeating the
-reference composition (from below, stele in the middle, the pond at its foot).
+Blockout (approved 12.10): four proportion variants side by side with 1.8 m figures, plus a
+shot repeating the reference composition; V2_tall chosen, the band to the right is its shadow.
+Sculpt: wear of the ages on V2 only (see sculpted_stele); the carved silhouettes and glyphs will
+be texture and normal map, not mesh.
 
-    blender -b -P tools/blender/megalith_a2_carved_stele.py
+    blender -b -P tools/blender/megalith_a2_carved_stele.py                      # sculpt stage
+    blender -b -P tools/blender/megalith_a2_carved_stele.py -- --stage blockout
     blender -b -P tools/blender/megalith_a2_carved_stele.py -- --no-render
 """
 import argparse
@@ -26,12 +29,12 @@ from pathlib import Path
 
 import bpy
 import bmesh
-from mathutils import Vector
+from mathutils import Vector, noise
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a2_carved_stele"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
-STAGE = "blockout"
+STAGE = "sculpt"
 
 STONE = (0.10, 0.13, 0.11, 1)      # dark green-black, kept light enough to read the form
 GROUND = (0.25, 0.25, 0.20, 1)     # stony waste with a mossy tint
@@ -212,6 +215,231 @@ def stele(name, v, mat, seed):
     return me
 
 
+# ---------------------------------------------------------------- sculpt: wear of the ages
+# The carving (human silhouettes, glyphs) goes to the texture and the normal map later; the
+# mesh only carries what reads from afar: knocked corners and edges, broken tier joints, cracks,
+# a few spalls, the waterline gnawed in, the top broken, a slight lean of an old stone.
+
+def fbm(p, octaves=3):
+    s, a, f = 0.0, 1.0, 1.0
+    for _ in range(octaves):
+        s += a * noise.noise(p * f)
+        a *= 0.5
+        f *= 2.0
+    return s
+
+
+def side_ts(L, step):
+    """Samples along one side: dense near both corners (so the corner can be worn round and
+    chipped), even in between; the end corner belongs to the next side."""
+    n = max(2, math.ceil((L - 2.6) / step))
+    return [0.0, 0.5, 1.3] + [1.3 + (L - 2.6) * k / n for k in range(1, n)] + [L - 1.3, L - 0.5]
+
+
+def sculpted_stele(name, v, mat, seed):
+    rnd = random.Random(seed)
+    W, D, H = v["W"], v["D"], v["H"]
+    off = Vector((rnd.uniform(-100, 100), rnd.uniform(-100, 100), rnd.uniform(-100, 100)))
+
+    # tier joints as in the blockout, each a little off from the one below
+    n = v["tiers"]
+    w = [rnd.uniform(0.8, 1.25) for _ in range(n)]
+    w[0] *= 1.35
+    joints, acc = [], 0.0
+    for k in range(n - 1):
+        acc += w[k]
+        joints.append(H * acc / sum(w))
+    shifts, cx, cy = [], 0.0, 0.0
+    for k in range(n):
+        shifts.append((cx, cy))
+        cx += rnd.uniform(-0.6, 0.6)
+        cy += rnd.uniform(-0.6, 0.6)
+
+    def tier_of(z):
+        return sum(1 for j in joints if z > j)
+
+    def half(z):
+        s = 1.0 - v["taper"] * max(z, 0.0) / H
+        return W / 2 * s, D / 2 * s
+
+    # ring heights: every 2 m, plus tight rings around each joint and the waterline
+    zs = set(round(z, 2) for z in frange(0.0, H - 0.01, 2.0))
+    for j in joints:
+        zs.update(round(j + dz, 2) for dz in (-1.6, -0.8, -0.3, 0.3, 0.8, 1.6))
+    zs.update((-SINK, -1.0, -0.4, 0.3, 1.0, H - 0.8, H))
+    zs = sorted(zs)
+
+    # wear events: chips on the corners (more near the top and the foot), on the top edge,
+    # along the joints, a few pits on the faces, two big spalls
+    corners = [(-1, -1), (1, -1), (1, 1), (-1, 1)]
+    chips = []
+    for _ in range(46):
+        sx, sy = rnd.choice(corners)
+        z = H * (rnd.random() ** 0.7 if rnd.random() < 0.5 else 1 - rnd.random() ** 0.6)
+        hw, hd = half(z)
+        chips.append((Vector((sx * hw, sy * hd, z)), rnd.uniform(1.2, 4.5), rnd.uniform(0.4, 1.8)))
+    for _ in range(18):  # the top edge, broken down
+        t = rnd.random()
+        hw, hd = half(H)
+        side = rnd.randrange(4)
+        p = [(-hw + 2 * hw * t, -hd), (hw, -hd + 2 * hd * t), (hw - 2 * hw * t, hd), (-hw, hd - 2 * hd * t)][side]
+        chips.append((Vector((p[0], p[1], H)), rnd.uniform(2.0, 6.5), rnd.uniform(0.8, 3.2)))
+    for j in joints:  # the joint lips crumble
+        for _ in range(rnd.randint(3, 6)):
+            hw, hd = half(j)
+            side, t = rnd.randrange(4), rnd.random()
+            p = [(-hw + 2 * hw * t, -hd), (hw, -hd + 2 * hd * t), (hw - 2 * hw * t, hd), (-hw, hd - 2 * hd * t)][side]
+            chips.append((Vector((p[0], p[1], j + rnd.uniform(-0.8, 0.8))), rnd.uniform(1.0, 3.0), rnd.uniform(0.3, 1.0)))
+    for _ in range(14):  # shallow pits on the faces
+        z = rnd.uniform(4, H - 6)
+        hw, hd = half(z)
+        side, t = rnd.randrange(4), rnd.uniform(0.15, 0.85)
+        p = [(-hw + 2 * hw * t, -hd), (hw, -hd + 2 * hd * t), (hw - 2 * hw * t, hd), (-hw, hd - 2 * hd * t)][side]
+        chips.append((Vector((p[0], p[1], z)), rnd.uniform(1.5, 3.5), rnd.uniform(0.3, 0.8)))
+    for zf in (0.38, 0.71):  # two big spalls off a corner
+        sx, sy = rnd.choice(corners)
+        z = H * zf + rnd.uniform(-8, 8)
+        hw, hd = half(z)
+        chips.append((Vector((sx * hw, sy * hd, z)), rnd.uniform(7.0, 10.0), rnd.uniform(2.5, 3.8)))
+
+    # cracks: jagged vertical runs on the faces, from the top or a joint down 15-50 m
+    cracks = []
+    for _ in range(5):
+        side = rnd.randrange(4)
+        z1 = rnd.choice(joints + [H, H])
+        z0 = max(2.0, z1 - rnd.uniform(15, 50))
+        cracks.append((side, z0, z1, rnd.uniform(0.2, 0.8), rnd.uniform(0.6, 1.1), rnd.random() * 100))
+
+    def crack_t(c, z):
+        side, z0, z1, t0, depth, ph = c
+        return t0 + 0.06 * noise.noise(Vector((z * 0.08, ph, 0))) + 0.02 * math.sin(z * 0.7 + ph)
+
+    def top_drop(p):
+        """How far the top surface is broken down at this point by the top edge chips."""
+        drop = 0.0
+        for c, r, depth in chips:
+            if c.z >= H - 0.1:
+                dist = Vector((p.x - c.x, p.y - c.y)).length
+                if dist < r:
+                    drop += 0.8 * depth * min(1.0, (1 - dist / r) * 3.0)
+        return drop * min(1.0, max(0.0, (p.z - (H - 8.0)) / 8.0))
+
+    def inward(p, side, t, at_corner):
+        """How far (m) this surface point is worn in, and how far it drops (top edge)."""
+        z = p.z
+        d = 0.14 * fbm(Vector((p.x, p.y, z)) * 0.08 + off)  # the faces are not planes
+        # corners worn round and chunky, more at the top and the foot
+        age = 1.0 + 1.2 * math.exp(-z / 25.0) + 1.0 * math.exp(-(H - z) / 30.0)
+        if at_corner < 2.0:
+            q = 0.5 + 0.5 * noise.noise(Vector((z * 0.12, side * 7.3, 3.1)) + off)
+            d += age * (0.25 + 0.75 * round(q * 3) / 3) * (1 - at_corner / 2.0) ** 1.5
+        # tier joints: an uneven groove
+        for j in joints:
+            gw = 0.8 * (1 + 0.5 * noise.noise(Vector((t * 0.2, j, 1.7)) + off))
+            u = abs(z - j) / max(gw, 0.2)
+            if u < 1:
+                d += 0.7 * (1 - u * u) * (0.6 + 0.8 * abs(noise.noise(Vector((t * 0.3, j, 5.5)) + off)))
+        # the waterline gnawed in
+        if -1.5 < z < 3.5:
+            d += math.exp(-((z - 0.6) / 1.1) ** 2) * (0.9 + 0.6 * noise.noise(Vector((p.x, p.y, 0)) * 0.2 + off))
+        drop = top_drop(p)
+        for c, r, depth in chips:
+            dist = (p - c).length
+            if dist < r:
+                k = depth * min(1.0, (1 - dist / r) * 3.0)  # flat-bottomed flake, steep broken wall
+                if c.z < H - 0.1:
+                    d += k
+                else:
+                    d += k * 0.6
+        for c in cracks:
+            if c[0] == side and c[1] < z < c[2]:
+                L = (W if side % 2 == 0 else D)
+                u = abs(t / L - crack_t(c, z)) * L / 0.9
+                if u < 1:
+                    d += c[4] * (1 - u)
+        return max(d, -0.3), drop
+
+    # build the side rings
+    side_fs = [[t / L0 for t in side_ts(L0, 1.8)] for L0 in (W, D, W, D)]
+    loops_pts = []
+    for z in zs:
+        hw, hd = half(z)
+        k = tier_of(z)
+        sx0, sy0 = shifts[min(k, n - 1)]
+        pts = []
+        cs = [(-hw, -hd), (hw, -hd), (hw, hd), (-hw, hd)]
+        nrm = [Vector((0, -1, 0)), Vector((1, 0, 0)), Vector((0, 1, 0)), Vector((-1, 0, 0))]
+        for s in range(4):
+            (x0, y0), (x1, y1) = cs[s], cs[(s + 1) % 4]
+            L = math.hypot(x1 - x0, y1 - y0)
+            for f in side_fs[s]:  # same samples on every ring, scaled with the taper
+                t = f * L
+                base = Vector((x0 + (x1 - x0) * f + sx0, y0 + (y1 - y0) * f + sy0, z))
+                at_corner = min(t, L - t)
+                nv = nrm[s] if t > 0 else (nrm[s] + nrm[(s - 1) % 4]).normalized() * 1.2
+                if z < -0.5:  # under the ground: plain
+                    pts.append(base)
+                    continue
+                d, drop = inward(base, s, t, at_corner)
+                p = base - nv * d
+                p.z -= drop
+                pts.append(p)
+        loops_pts.append(pts)
+
+    # the top: the last ring pulled inward in steps, broken and uneven, then the centre
+    top = loops_pts[-1]
+    centre = sum(top, Vector()) / len(top)
+    centre.z = H
+    rim = [Vector((p.x, p.y, H)) for p in top]  # the edge before it broke, for the inner rings
+    for f in (0.9, 0.78, 0.64, 0.5, 0.36, 0.22, 0.1):
+        ring_pts = []
+        for p in rim:
+            q = centre + (p - centre) * f
+            q.z = H + 0.35 * fbm(Vector((q.x, q.y, 0)) * 0.12 + off)
+            q.z -= top_drop(q)
+            ring_pts.append(q)
+        loops_pts.append(ring_pts)
+
+    bm = bmesh.new()
+    loops = [[bm.verts.new(p) for p in r] for r in loops_pts]
+    m = len(loops[0])
+    for a, b in zip(loops, loops[1:]):
+        for i in range(m):
+            bm.faces.new((a[i], a[(i + 1) % m], b[(i + 1) % m], b[i]))
+    bm.faces.new(list(reversed(loops[0])))
+    cv = bm.verts.new(centre + Vector((0, 0, 0.3 * noise.noise(off))))
+    for i in range(m):
+        bm.faces.new((loops[-1][i], loops[-1][(i + 1) % m], cv))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = mesh_from(name, bm, mat)
+    # smooth over the gentle unevenness, keep the chips and corners hard
+    me.shade_smooth()
+    me.set_sharp_from_angle(angle=math.radians(22))
+    print(f"{name} sculpt: verts {len(me.vertices)}, tris {sum(len(p.vertices) - 2 for p in me.polygons)}, "
+          f"chips {len(chips)}, cracks {len(cracks)}")
+    return me
+
+
+def frange(a, b, step):
+    x = a
+    while x <= b:
+        yield x
+        x += step
+
+
+def fallen_pieces(tag, x, y, v, mat, rnd, coll):
+    """What fell off over the ages: big angular pieces round the foot, in and out of the water,
+    a few further out where they rolled."""
+    for k in range(14):
+        a = rnd.uniform(0, 2 * math.pi)
+        d = rnd.uniform(0.55, 1.0) * max(v["W"], v["D"]) * (1.0 if k < 10 else rnd.uniform(1.4, 2.4))
+        px, py = x + math.cos(a) * d, y + math.sin(a) * d
+        s = rnd.uniform(1.5, 6.0) if k < 10 else rnd.uniform(1.0, 3.0)
+        me = chunk(f"piece_{tag}_{k}", (s, s * rnd.uniform(0.5, 1.1), s * rnd.uniform(0.35, 0.8)), mat, rnd)
+        link(f"piece_{tag}_{k}", me, (px, py, ground_height(px, py) + s * 0.1),
+             rot=(rnd.uniform(-0.6, 0.6), rnd.uniform(-0.6, 0.6), rnd.uniform(0, math.pi)), coll=coll)
+
+
 def chunk(name, size, mat, rnd):
     """A broken block: a box with its corners knocked about."""
     bm = bmesh.new()
@@ -366,7 +594,7 @@ def scatter_boulders(kinds, cx, cy, r0, r1, count, rnd, coll, tag):
 
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
-    stone = material("stele_blockout", STONE)
+    stone = material(f"stele_{STAGE}", STONE)
     mats = dict(ground=material("ground_blockout", GROUND), boulder=material("boulder_blockout", BOULDER),
                 mountain=material("mountain_blockout", MOUNTAIN), water=material("water_blockout", WATER, rough=0.08),
                 human=material("human", HUMAN))
@@ -382,7 +610,9 @@ def build():
     kinds = [boulder(f"boulder_kind_{k}", mats["boulder"], rnd) for k in range(8)]
 
     meshes = {name: stele(name, v, stone, zlib.crc32(name.encode())) for name, v in VARIANTS.items()}
-    for name, v in VARIANTS.items():
+    if STAGE == "sculpt":  # only the approved variant goes on
+        meshes[HERO] = sculpted_stele(HERO + "_sculpt", hv, stone, zlib.crc32(HERO.encode()))
+    for name, v in (VARIANTS.items() if STAGE == "blockout" else ()):
         x, y = LINEUP_X[name], LINEUP_Y
         link(name, meshes[name], (x, y, 0), coll=lineup)
         cx, cy, rx, ry = pond_of(x, y, v)
@@ -395,10 +625,14 @@ def build():
     scatter_boulders(kinds, 0, LINEUP_Y, 60, 900, 260, rnd, lineup, "lineup")
 
     # the hero for the reference shot: the tall variant in its pond on the waste
-    link("hero_" + HERO, meshes[HERO], (0, 0, 0), coll=hero)
+    # an old stone: it has settled a touch out of plumb
+    lean = (math.radians(0.5), math.radians(-0.4), 0.0) if STAGE == "sculpt" else (0.0, 0.0, 0.0)
+    link("hero_" + HERO, meshes[HERO], (0, 0, 0), rot=lean, coll=hero)
     cx, cy, rx, ry = pond_of(0.0, 0.0, hv)
     pond("pond_hero", cx, cy, rx, ry, mats["water"], rnd, hero)
     foot_debris("hero", 0, 0, hv, stone, rnd, hero)
+    if STAGE == "sculpt":
+        fallen_pieces("hero", 0, 0, hv, stone, rnd, hero)
     scatter_boulders(kinds, cx, cy, rx * 1.35, 1800, 560, rnd, hero, "hero")
     for k, (px, py) in enumerate(((cx - 14, cy - ry - 4), (cx - 11, cy - ry - 5))):
         human(f"human_hero_{k}", (px, py, ground_height(px, py)), mats["human"], hero)
@@ -476,13 +710,22 @@ VIEWS = [
     ("06_reference_lying_slab", REF_CAM, (0, 0, REF_CAM[2]), 50, 0, {"hero", "fallen"}),
     ("07_hero_wide", (-380, -560, 30), (40, 0, 85), 30, 0, {"hero"}),
 ]
+SCULPT_VIEWS = [
+    ("01_reference_shot", REF_CAM, (0, 0, REF_CAM[2]), 50, 0, {"hero"}),
+    ("02_three_quarter", (210, -260, 60), (0, 0, 90), 32, 0, {"hero"}),
+    ("03_close_top", (70, -95, 205), (0, 0, 180), 35, 0, {"hero"}),
+    ("04_close_middle", (-60, -110, 100), (0, 0, 85), 35, 0, {"hero"}),
+    ("05_foot_waterline", (-45, -80, 6), (0, 0, 4), 35, 0, {"hero"}),
+    ("06_back_left", (-230, 200, 40), (0, 0, 95), 30, 0, {"hero"}),
+]
 
 
 def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
     toggled = [bpy.data.collections[n] for n in ("hero", "lineup", "fallen")]
-    for name, loc, target, lens, ortho, shown in VIEWS:
+    views = VIEWS if STAGE == "blockout" else SCULPT_VIEWS
+    for name, loc, target, lens, ortho, shown in views:
         cam = camera("cam_" + name, loc, target, lens, ortho)
         if not render:
             continue
@@ -498,14 +741,17 @@ def render_views(render):
         print("wrote", sc.render.filepath)
     for c in toggled + [bpy.data.collections["land"]]:
         c.hide_render = False
-    sc.camera = bpy.data.objects["cam_" + VIEWS[4][0]]
+    sc.camera = bpy.data.objects["cam_" + next(v[0] for v in views if "reference" in v[0])]
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
+    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="sculpt")
     args = ap.parse_args(argv)
+    global STAGE
+    STAGE = args.stage
     build()
     setup_render()
     render_views(not args.no_render)
