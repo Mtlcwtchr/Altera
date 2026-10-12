@@ -10,8 +10,8 @@ Blockout (approved 12.10): the giant's shape and proportions; every monolith in 
 is a variation of that giant at about the same size (the game may rescale them): thickness,
 foot flare, top cut and bend differ, the copies turn any way and lean up to 7 degrees.
 Sculpt (approved 12.10): surface relief on the same silhouettes (see sculpted_loops).
-Material: PSX lattice tile and vertex colours (see the material stage section).
-1.8 m human figures give the scale. PSX profile: low poly, flat shading, no smoothing.
+Material: red hatched stone with moss laid on by noise (see the material stage section).
+1.8 m human figures give the scale. Retro look: low poly, flat shading, hard texture pixels.
 
     blender -b -P tools/blender/megalith_a_monolith.py                      # material stage
     blender -b -P tools/blender/megalith_a_monolith.py -- --stage sculpt
@@ -166,84 +166,125 @@ def sculpted_loops(bm, v, extents, ch, sx, sy):
     return loops
 
 
-# --- material stage: PSX profile -----------------------------------------------
-# One 128 px tile drawn in a 16-colour palette (no dithering, nearest filtering) carries the
-# lattice: a schematic grid of grooves with traces, pads and sunken chips, on rust-brown stone.
-# Big-scale colour rides on vertex colours the PS1 way (texture x vertex colour x 2, 0.5 is
-# neutral): moss climbing the foot, red and green streaks running down from the ledges.
+# --- material stage --------------------------------------------------------------
+# Rough retro look after the reference, not a strict PSX pipeline: low-res tiles with hard
+# pixels. Two textures: red hatched stone (uneven strokes and a wobbly broken grid) and moss.
+# The material lays moss over the stone by a noise mask (pixel-snapped, thicker on the foot
+# and on up-facing ledges) and runs dark red streaks down the body. Every knob is a labelled
+# Value node in the material ("moss_coverage", "moss_scale", ...); each object gets its own
+# offset and coverage nudge from Object Info > Random, so copies never repeat.
 
-TILE_M = 48.0  # metres covered by one texture tile: lattice cells of 6 m
-PALETTE = [  # sRGB 0..255
-    (20, 14, 12), (45, 26, 18), (92, 40, 22), (120, 52, 28), (146, 68, 34), (170, 88, 44),
-    (196, 118, 60), (224, 150, 70), (150, 34, 22), (186, 52, 30), (48, 70, 24), (78, 104, 34),
-    (112, 134, 46), (100, 88, 40), (28, 44, 22), (210, 170, 120)]
-DARKEST, DARK, RUST, HL, ORANGE, RED, RED2, MOSS, MOSS2, DEEP, PALE = 0, 1, (2, 3, 4, 5), 6, 7, 8, 9, 10, 11, 14, 15
+TILE_M = 36.0   # metres covered by one stone tile
+TEX = 256       # texture size, px
+
+MOSS_KNOBS = {  # name: default
+    "moss_coverage": 0.5,      # 0 none .. 1 all
+    "moss_scale": 0.06,        # noise frequency per metre (0.06 = ~17 m patches)
+    "moss_softness": 0.06,     # edge width of a patch
+    "moss_foot_m": 95.0,       # moss thickens below this height
+    "moss_foot_weight": 0.3,   # how much the foot adds
+    "moss_ledge_weight": 0.45, # how much up-facing faces add
+    "moss_pixel_m": 1.4,       # mask pixel size, m (retro blocky edges)
+    "coverage_jitter": 0.3,    # per-object random spread of coverage
+    "streak_strength": 0.55,   # dark red streaks running down
+    "moss_tile_m": 22.0,       # metres per moss tile
+}
 
 
-def lattice_texture():
+def tileable(rng, n, fmin, fmax):
+    """Isotropic noise that wraps: white noise band-passed to fmin..fmax periods per tile."""
     import numpy as np
-    n, cell = 128, 16
-    rng = np.random.default_rng(11)
-    yy, xx = np.mgrid[0:n, 0:n]
-    h = np.zeros((n, n))
-    for amp, fmin, fmax in ((1.0, 1, 4), (0.35, 5, 14)):  # tileable: whole periods only
-        for _ in range(6):
-            fx, fy = rng.integers(fmin, fmax, 2) * rng.choice([-1, 1], 2)
-            h += amp * rng.uniform(0.3, 1.0) * np.sin(2 * np.pi * (fx * xx + fy * yy) / n + rng.uniform(0, 6.3))
-    h = (h - h.min()) / (h.max() - h.min())
-    img = np.array(RUST)[np.minimum((h * 4).astype(int), 3)]
-    img[h > 0.80] = MOSS
-    img[h > 0.90] = MOSS2
-    # grid grooves with a lit lower/right lip, a few segments missing
-    for a in range(n // cell):
-        for b in range(n // cell):
-            if rng.random() < 0.82:
-                img[a * cell, b * cell:(b + 1) * cell] = DARKEST
-                img[(a * cell + 1) % n, b * cell:(b + 1) * cell] = HL
-            if rng.random() < 0.82:
-                img[a * cell:(a + 1) * cell, b * cell] = DARKEST
-                img[a * cell:(a + 1) * cell, (b * cell + 1) % n] = HL
-    # inside each cell: traces ending in pads, or a sunken chip
-    for a in range(n // cell):
-        for b in range(n // cell):
-            y0, x0 = a * cell, b * cell
-            if rng.random() < 0.22:
-                h_, w_ = rng.integers(3, 6), rng.integers(5, 10)
-                cy, cx = y0 + rng.integers(3, cell - h_ - 1), x0 + rng.integers(3, cell - w_ - 1)
-                img[cy:cy + h_, cx:cx + w_] = DARK
-                img[cy, cx:cx + w_] = DARKEST
-                img[cy:cy + h_, cx] = DARKEST
-                continue
-            for _ in range(rng.integers(1, 4)):
-                off, s, ln = rng.integers(4, cell - 3), rng.integers(3, 8), rng.integers(4, 10)
-                if rng.random() < 0.5:
-                    img[y0 + off, x0 + s:x0 + min(s + ln, cell - 2)] = DARK
-                    py, px = y0 + off, x0 + min(s + ln, cell - 3)
-                else:
-                    img[y0 + s:y0 + min(s + ln, cell - 2), x0 + off] = DARK
-                    py, px = y0 + min(s + ln, cell - 3), x0 + off
-                img[py - 1:py + 2, px - 1:px + 2] = DARKEST
-                img[py, px] = ORANGE if rng.random() < 0.7 else PALE
-    # drips running down from the grooves (rows grow downward in the image = down the stone)
-    for _ in range(14):
-        x, y, ln = rng.integers(0, n), rng.integers(0, n // cell) * cell + 2, rng.integers(8, 40)
-        col = (RED, RED2) if rng.random() < 0.55 else (MOSS, DEEP)
-        for k in range(ln):
-            img[(y + k) % n, x] = col[0] if k < ln * 0.7 else col[1]
-    rgba = np.concatenate([np.array(PALETTE, dtype=np.float32)[img] / 255.0, np.ones((n, n, 1), np.float32)], 2)
-    im = bpy.data.images.new("monolith_lattice_128", n, n, alpha=False)
+    f = np.fft.fftfreq(n) * n
+    r = np.hypot(*np.meshgrid(f, f))
+    band = ((r >= fmin) & (r <= fmax)) / np.maximum(r, 1.0)
+    h = np.real(np.fft.ifft2(np.fft.fft2(rng.normal(size=(n, n))) * band))
+    return (h - h.min()) / (h.max() - h.min())
+
+
+def save_image(name, img):
+    import numpy as np
+    n = img.shape[0]
+    img = np.clip(np.round(img / 6.0) * 6.0, 0, 255)  # posterize a little: retro, not smooth
+    rgba = np.concatenate([img.astype(np.float32) / 255.0, np.ones((n, n, 1), np.float32)], 2)
+    im = bpy.data.images.new(name, n, n, alpha=False)
     im.pixels.foreach_set(rgba[::-1].ravel())  # Blender rows run bottom-up
-    path = ASSET_DIR / "monolith_lattice_128.png"
+    path = ASSET_DIR / f"{name}.png"
     path.parent.mkdir(parents=True, exist_ok=True)
     im.filepath_raw = str(path)
     im.file_format = "PNG"
     im.save()
-    print("texture", path, "colours", len(np.unique(img)))
+    print("texture", path)
     return im
 
 
-def psx_material(image):
-    m = bpy.data.materials.new("monolith_psx")
+def hatch_texture():
+    """Red hatched stone: dark red ground, a mass of short vertical strokes, fewer cross strokes,
+    and a wobbly, broken grid of grooves with uneven spacing."""
+    import numpy as np
+    n = TEX
+    rng = np.random.default_rng(21)
+    base = tileable(rng, n, 1, 5)
+    ramp = np.array([(70, 18, 12), (96, 26, 16), (122, 34, 20), (148, 44, 26)], float)
+    img = ramp[np.minimum((base * 4).astype(int), 3)] + rng.normal(0, 7, (n, n, 1))
+
+    def stroke(x, y, ln, col, alpha, vertical=True, width=1):
+        for k in range(ln):
+            if rng.random() < 0.08:
+                x += rng.choice((-1, 1))
+            for w in range(width):
+                yy, xx = ((y + k) % n, (x + w) % n) if vertical else ((x + w) % n, (y + k) % n)
+                img[yy, xx] = img[yy, xx] * (1 - alpha) + np.array(col) * alpha
+
+    cols = [(30, 8, 6), (150, 42, 26), (186, 62, 36), (205, 98, 52), (14, 6, 5)]
+    probs = [0.33, 0.3, 0.2, 0.05, 0.12]
+    for _ in range(1200):
+        c = cols[rng.choice(5, p=probs)]
+        stroke(rng.integers(0, n), rng.integers(0, n), rng.integers(3, 18), c, rng.uniform(0.45, 0.85),
+               width=2 if rng.random() < 0.15 else 1)
+    for _ in range(900):
+        stroke(rng.integers(0, n), rng.integers(0, n), rng.integers(3, 12), cols[rng.choice((0, 1, 2, 4))],
+               rng.uniform(0.4, 0.8), vertical=False)
+    # wobbly broken grid: rows and columns at uneven spacing, gaps in runs
+    for axis, gap in ((0, (10, 26)), (1, (10, 30))):
+        pos = 0
+        while True:
+            pos += rng.integers(*gap)
+            if pos >= n - 6:
+                break
+            f, ph, on = rng.integers(1, 4), rng.uniform(0, 6.3), True
+            for t in range(n):
+                if rng.random() < 0.03:
+                    on = not on if rng.random() < 0.6 else on
+                if not on:
+                    continue
+                o = pos + int(round(1.6 * np.sin(2 * np.pi * f * t / n + ph)))
+                for d, col, al in ((0, (20, 6, 5), 0.85), (1, (34, 10, 7), 0.6), (2, (184, 74, 42), 0.45)):
+                    p = ((o + d) % n, t) if axis == 0 else (t, (o + d) % n)
+                    img[p] = img[p] * (1 - al) + np.array(col) * al
+    return save_image("monolith_hatch_256", img)
+
+
+def moss_texture():
+    """Moss: clumps in several greens, light and dark speckles, a few holes of red stone."""
+    import numpy as np
+    n = TEX
+    rng = np.random.default_rng(5)
+    v = 0.6 * tileable(rng, n, 2, 7) + 0.4 * tileable(rng, n, 9, 30)
+    ramp = np.array([(28, 46, 16), (46, 72, 22), (70, 100, 30), (98, 124, 38), (132, 150, 52)], float)
+    img = ramp[np.minimum((v * 5).astype(int), 4)] + rng.normal(0, 6, (n, n, 1))
+    img[v < 0.1] = (96, 32, 20)
+    for _ in range(1800):
+        y, x = rng.integers(0, n, 2)
+        img[y, x] = (166, 176, 66) if rng.random() < 0.6 else (16, 28, 10)
+    for _ in range(260):
+        y, x = rng.integers(0, n, 2)
+        for k in range(rng.integers(2, 7)):
+            img[(y + k) % n, (x + (k // 2) * rng.choice((-1, 1))) % n] = (14, 22, 8)
+    return save_image("monolith_moss_256", img)
+
+
+def stone_material(hatch, moss):
+    m = bpy.data.materials.new("monolith_hatch_moss")
     m.use_nodes = True
     nt = m.node_tree
     bsdf = next(n for n in nt.nodes if n.type == "BSDF_PRINCIPLED")
@@ -251,44 +292,117 @@ def psx_material(image):
     for key in ("Specular IOR Level", "Specular"):
         if key in bsdf.inputs:
             bsdf.inputs[key].default_value = 0.0
-    tex = nt.nodes.new("ShaderNodeTexImage")
-    tex.image = image
-    tex.interpolation = "Closest"
-    vcol = nt.nodes.new("ShaderNodeVertexColor")
-    vcol.layer_name = "Col"
-    mul = nt.nodes.new("ShaderNodeVectorMath")
-    mul.operation = "MULTIPLY"
-    x2 = nt.nodes.new("ShaderNodeVectorMath")
-    x2.operation = "SCALE"
-    x2.inputs["Scale"].default_value = 2.0
-    nt.links.new(tex.outputs["Color"], mul.inputs[0])
-    nt.links.new(vcol.outputs["Color"], mul.inputs[1])
-    nt.links.new(mul.outputs["Vector"], x2.inputs[0])
-    # moss: the tile's brightness tinted green, laid over by the per-vertex moss mask
-    luma = nt.nodes.new("ShaderNodeRGBToBW")
-    green = nt.nodes.new("ShaderNodeVectorMath")
-    green.operation = "MULTIPLY"
-    green.inputs[1].default_value = (0.55, 1.45, 0.38)
-    mask = nt.nodes.new("ShaderNodeVertexColor")
-    mask.layer_name = "Moss"
-    mix = nt.nodes.new("ShaderNodeMix")
-    mix.data_type = "RGBA"
-    pin = {i.identifier: i for i in mix.inputs}
-    nt.links.new(tex.outputs["Color"], luma.inputs[0])
-    nt.links.new(luma.outputs[0], green.inputs[0])
-    nt.links.new(mask.outputs["Color"], pin["Factor_Float"])
-    nt.links.new(x2.outputs["Vector"], pin["A_Color"])
-    nt.links.new(green.outputs["Vector"], pin["B_Color"])
-    nt.links.new(next(o for o in mix.outputs if o.identifier == "Result_Color"), bsdf.inputs["Base Color"])
+    N = nt.nodes.new
+    L = nt.links.new
+
+    def node(kind, **props):
+        nd = N(kind)
+        for k, val in props.items():
+            setattr(nd, k, val)
+        return nd
+
+    def put(sock, val):
+        if isinstance(val, bpy.types.NodeSocket):
+            L(val, sock)
+        else:
+            sock.default_value = val
+
+    def math(op, a, b=0.0, clamp=False):
+        nd = node("ShaderNodeMath", operation=op, use_clamp=clamp)
+        put(nd.inputs[0], a)
+        put(nd.inputs[1], b)
+        return nd.outputs[0]
+
+    def map_range(val, a, b, c, d):
+        nd = node("ShaderNodeMapRange")
+        for key, x in (("Value", val), ("From Min", a), ("From Max", b), ("To Min", c), ("To Max", d)):
+            put(nd.inputs[key], x)
+        return nd.outputs["Result"]
+
+    def mix(fac, a, b, blend="MIX"):
+        nd = node("ShaderNodeMix", data_type="RGBA", blend_type=blend)
+        pin = {i.identifier: i for i in nd.inputs}
+        put(pin["Factor_Float"], fac)
+        put(pin["A_Color"], a)
+        put(pin["B_Color"], b)
+        return next(o for o in nd.outputs if o.identifier == "Result_Color")
+
+    knob = {}
+    for i, (name, val) in enumerate(MOSS_KNOBS.items()):
+        nd = node("ShaderNodeValue", name=name, label=name)
+        nd.outputs[0].default_value = val
+        nd.location = (-1400, 400 - i * 90)
+        knob[name] = nd.outputs[0]
+
+    coords = node("ShaderNodeTexCoord")
+    info = node("ShaderNodeObjectInfo")
+    rand = info.outputs["Random"]
+    # stone and moss: box-projected in object space, so the slanted flare does not stretch them;
+    # the moss tile has its own scale so it never lines up with the stone grid
+    stone_v = node("ShaderNodeVectorMath", operation="SCALE")
+    L(coords.outputs["Object"], stone_v.inputs[0])
+    stone_v.inputs["Scale"].default_value = 1.0 / TILE_M
+    stone = node("ShaderNodeTexImage", image=hatch, interpolation="Closest", projection="BOX", projection_blend=0.15)
+    L(stone_v.outputs["Vector"], stone.inputs["Vector"])
+    moss_v = node("ShaderNodeVectorMath", operation="SCALE")
+    L(coords.outputs["Object"], moss_v.inputs[0])
+    put(moss_v.inputs["Scale"], math("DIVIDE", 1.0, knob["moss_tile_m"]))
+    moss_tex = node("ShaderNodeTexImage", image=moss, interpolation="Closest", projection="BOX", projection_blend=0.15)
+    L(moss_v.outputs["Vector"], moss_tex.inputs["Vector"])
+    # streaks: noise stretched down the stone, darkening toward old blood red
+    stretch = node("ShaderNodeMapping")
+    L(coords.outputs["Object"], stretch.inputs["Vector"])
+    stretch.inputs["Scale"].default_value = (0.12, 0.12, 0.006)
+    off = node("ShaderNodeCombineXYZ")
+    put(off.inputs[0], math("MULTIPLY", rand, 731.0))
+    put(off.inputs[1], math("MULTIPLY", rand, 377.0))
+    L(off.outputs[0], stretch.inputs["Location"])
+    streak_n = node("ShaderNodeTexNoise")
+    L(stretch.outputs["Vector"], streak_n.inputs["Vector"])
+    streak_n.inputs["Scale"].default_value = 1.0
+    streak = math("MULTIPLY", map_range(streak_n.outputs["Fac"], 0.52, 0.72, 0.0, 1.0), knob["streak_strength"])
+    streaked = mix(streak, stone.outputs["Color"], (0.42, 0.13, 0.10, 1.0), blend="MULTIPLY")
+    # slow light/dark drift over tens of metres hides the tile repeat
+    drift = node("ShaderNodeTexNoise")
+    drift_v = node("ShaderNodeVectorMath", operation="ADD")
+    L(coords.outputs["Object"], drift_v.inputs[0])
+    L(off.outputs[0], drift_v.inputs[1])
+    L(drift_v.outputs["Vector"], drift.inputs["Vector"])
+    drift.inputs["Scale"].default_value = 0.012
+    shade = node("ShaderNodeVectorMath", operation="SCALE")
+    L(streaked, shade.inputs[0])
+    put(shade.inputs["Scale"], map_range(drift.outputs["Fac"], 0.3, 0.7, 0.72, 1.18))
+    stone_col = shade.outputs["Vector"]
+    # moss mask: pixel-snapped noise + foot + ledges + per-object nudge
+    shifted = node("ShaderNodeVectorMath", operation="ADD")
+    L(coords.outputs["Object"], shifted.inputs[0])
+    L(off.outputs[0], shifted.inputs[1])
+    snap = node("ShaderNodeVectorMath", operation="SNAP")
+    L(shifted.outputs["Vector"], snap.inputs[0])
+    L(knob["moss_pixel_m"], snap.inputs[1])
+    moss_n = node("ShaderNodeTexNoise")
+    L(snap.outputs["Vector"], moss_n.inputs["Vector"])
+    L(knob["moss_scale"], moss_n.inputs["Scale"])
+    moss_n.inputs["Detail"].default_value = 6.0
+    moss_n.inputs["Roughness"].default_value = 0.62
+    sep = node("ShaderNodeSeparateXYZ")
+    L(coords.outputs["Object"], sep.inputs[0])
+    foot = math("MULTIPLY", map_range(sep.outputs["Z"], 0.0, knob["moss_foot_m"], 1.0, 0.0), knob["moss_foot_weight"])
+    geo = node("ShaderNodeNewGeometry")
+    nz = node("ShaderNodeSeparateXYZ")
+    L(geo.outputs["Normal"], nz.inputs[0])
+    ledge = math("MULTIPLY", map_range(nz.outputs["Z"], 0.35, 0.9, 0.0, 1.0), knob["moss_ledge_weight"])
+    nudge = math("MULTIPLY", math("SUBTRACT", rand, 0.5), knob["coverage_jitter"])
+    spread = map_range(moss_n.outputs["Fac"], 0.32, 0.68, 0.0, 1.0)  # noise sits near 0.5: stretch it
+    s = math("ADD", math("ADD", spread, foot), math("ADD", ledge, nudge))
+    edge = math("SUBTRACT", 1.15, knob["moss_coverage"])
+    mask = map_range(s, math("SUBTRACT", edge, knob["moss_softness"]), math("ADD", edge, knob["moss_softness"]), 0.0, 1.0)
+    L(mix(mask, stone_col, moss_tex.outputs["Color"]), bsdf.inputs["Base Color"])
     return m
 
 
-def paint(me, v):
-    """UVs: each face projected on its dominant axis, TILE_M metres per tile, v up the stone.
-    Vertex colours: red/green streaks down the body, dark ground contact; a second layer\n    "Moss" masks the green over the foot and in patches."""
-    from mathutils import noise
-    H, seed = v["H"], v.get("seed", 0)
-    o = Vector((seed * 7.7, seed * 3.3, seed * 1.9))
+def uv_project(me):
+    """UVs: each face projected on its dominant axis, TILE_M metres per tile, v up the stone."""
     uv = me.uv_layers.new(name="UVMap")
     for poly in me.polygons:
         nx, ny, nz = (abs(c) for c in poly.normal)
@@ -300,22 +414,6 @@ def paint(me, v):
                 uv.data[li].uv = (co.y / TILE_M, co.z / TILE_M)
             else:
                 uv.data[li].uv = (co.x / TILE_M, co.z / TILE_M)
-    attr = me.color_attributes.new("Col", "BYTE_COLOR", "POINT")
-    moss_attr = me.color_attributes.new("Moss", "BYTE_COLOR", "POINT")
-    red_c, green_c = Vector((0.85, 0.30, 0.22)), Vector((0.30, 0.66, 0.26))
-    for vert in me.vertices:
-        x, y, z = vert.co
-        c = Vector((0.5, 0.5, 0.5))
-        foot = min(1.0, max(0.0, 1.0 - z / (v["tf"] * H * 0.6)))
-        moss = min(1.0, max(0.0, foot * 1.2 + 0.7 * noise.noise(Vector((x, y, z)) / 30.0 + o) - 0.15))
-        moss_attr.data[vert.index].color = (moss, moss, moss, 1.0)
-        streak = noise.noise(Vector(((x + y) / 9.0, seed * 3.1, z / 260.0)))
-        if streak > 0.2:
-            amount = min(1.0, (streak - 0.2) / 0.5) * (0.35 + 0.65 * z / H)
-            hue = red_c if noise.noise(Vector(((x - y) / 30.0, 5.0 + seed, z / 500.0))) > -0.1 else green_c
-            c = c.lerp(hue, amount)
-        c *= 0.7 + 0.3 * min(1.0, max(z, 0.0) / 14.0)
-        attr.data[vert.index].color = (c.x, c.y, c.z, 1.0)  # linear: the shader multiplies as-is
 
 
 def slab(name, v, mat):
@@ -358,7 +456,7 @@ def slab(name, v, mat):
     for poly in me.polygons:
         poly.use_smooth = False
     if STAGE == "material":
-        paint(me, v)
+        uv_project(me)
     me.materials.append(mat)
     return me
 
@@ -443,7 +541,7 @@ def collection(name):
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     if STAGE == "material":
-        stone = field_stone = psx_material(lattice_texture())
+        stone = field_stone = stone_material(hatch_texture(), moss_texture())
     else:
         stone, field_stone = material("stone_blockout", STONE), material("field_stone_blockout", FIELD_STONE)
     grass, red = material("ground_blockout", GROUND), material("human", HUMAN)
