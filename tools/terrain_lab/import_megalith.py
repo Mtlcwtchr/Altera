@@ -86,6 +86,9 @@ def write_mesh(path, position, normal, uv, blend, indices):
 def import_asset(manifest_path, catalogue):
     asset = json.loads(manifest_path.read_text(encoding="utf-8"))
     ident = asset["id"]
+    if str(asset.get("engine", "")).startswith("pending"):  # e.g. A-2: its UV-atlas material is not in yet
+        print(f"{ident}: skipped, {asset['engine']}")
+        return
     meshes = read_gltf(ROOT / asset["model"])
     for name in [n for n, m in catalogue.items() if m["kind"] == ident]:
         del catalogue[name]
