@@ -191,6 +191,8 @@ MOSS_KNOBS = {  # name: default
     "moss_tile_m": 22.0,       # metres per moss tile
     "stone_saturation": 0.6,   # red of the stone: 1 as painted, lower is duller (toward brown)
     "stone_value": 0.9,        # brightness of the stone
+    "scratch_strength": 0.85,  # pale scratch dashes over the stone
+    "scratch_tile_m": 40.0,    # metres per scratch tile (off the stone tile, so they never line up)
     "moss_streak_stretch": 7.0,  # patches this many times taller than wide: moss runs in bands
     "moss_edge_weight": 0.4,   # how much corners, block edges and ledges add
     "moss_groove_weight": 0.8, # moss seeping along the grooves of the hatch grid
@@ -284,6 +286,26 @@ def hatch_texture():
     return save_image("monolith_hatch_128", img), save_image("monolith_hatch_grooves_128", np.repeat(g[..., None], 3, 2))
 
 
+def scratch_texture():
+    """Pale scratch dashes (mask, white on black): short strokes, mostly up-down, some across,
+    a few slanted, in loose clusters, like the light nicks on the reference stone."""
+    import numpy as np
+    n = TEX
+    rng = np.random.default_rng(33)
+    img = np.zeros((n, n, 3))
+    centres = rng.integers(0, n, (14, 2))
+    for _ in range(170):
+        cy, cx = centres[rng.integers(0, len(centres))] if rng.random() < 0.65 else rng.integers(0, n, 2)
+        y, x = (cy + rng.normal(0, 18)) % n, (cx + rng.normal(0, 18)) % n
+        kind = rng.random()
+        dy, dx = (1.0, rng.uniform(-0.08, 0.08)) if kind < 0.7 else                  ((rng.uniform(-0.08, 0.08), 1.0) if kind < 0.95 else (rng.uniform(0.4, 1), rng.uniform(-1, 1)))
+        ln, val = rng.integers(6, 26), rng.uniform(170, 255)
+        for k in range(ln):  # 2 px wide at draw size = one full texel once saved at half size
+            for oy, ox in ((0, 0), (0, 1), (1, 0), (1, 1)):
+                img[int(y + dy * k + oy) % n, int(x + dx * k + ox) % n] = val * (0.7 if k in (0, ln - 1) else 1.0)
+    return save_image("monolith_scratches_128", img)
+
+
 def moss_texture():
     """Moss: clumps in several greens, light and dark speckles, a few holes of red stone."""
     import numpy as np
@@ -303,7 +325,7 @@ def moss_texture():
     return save_image("monolith_moss_128", img)
 
 
-def stone_material(hatch, grooves, moss):
+def stone_material(hatch, grooves, moss, scratches):
     m = bpy.data.materials.new("monolith_hatch_moss")
     m.use_nodes = True
     nt = m.node_tree
@@ -402,7 +424,14 @@ def stone_material(hatch, grooves, moss):
     dim = node("ShaderNodeVectorMath", operation="SCALE")
     L(dulled, dim.inputs[0])
     L(knob["stone_value"], dim.inputs["Scale"])
-    stone_col = dim.outputs["Vector"]
+    # pale scratch dashes, a warm light tone over the dulled stone
+    scr_v = node("ShaderNodeVectorMath", operation="SCALE")
+    L(coords.outputs["Object"], scr_v.inputs[0])
+    put(scr_v.inputs["Scale"], math("DIVIDE", 1.0, knob["scratch_tile_m"]))
+    scr = node("ShaderNodeTexImage", image=scratches, interpolation="Closest", projection="BOX", projection_blend=0.15)
+    L(scr_v.outputs["Vector"], scr.inputs["Vector"])
+    stone_col = mix(math("MULTIPLY", scr.outputs["Color"], knob["scratch_strength"]), dim.outputs["Vector"],
+                    (0.46, 0.21, 0.13, 1.0))  # linear: a light warm clay
     # moss mask: pixel-snapped banded noise + foot + ledges + edges + per-object nudge, then grooves
     shifted = node("ShaderNodeVectorMath", operation="ADD")
     L(coords.outputs["Object"], shifted.inputs[0])
@@ -625,7 +654,7 @@ def collection(name):
 def build():
     bpy.ops.wm.read_factory_settings(use_empty=True)
     if STAGE == "material":
-        stone = field_stone = stone_material(*hatch_texture(), moss_texture())
+        stone = field_stone = stone_material(*hatch_texture(), moss_texture(), scratch_texture())
     else:
         stone, field_stone = material("stone_blockout", STONE), material("field_stone_blockout", FIELD_STONE)
     grass, red = material("ground_blockout", GROUND), material("human", HUMAN)
