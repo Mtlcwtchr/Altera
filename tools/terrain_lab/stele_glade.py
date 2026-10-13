@@ -225,9 +225,10 @@ def main():
 
     # The pond (the asset's, in the stele's frame turned by yaw) and the pools.
     cs, sn = math.cos(yaw), math.sin(yaw)
-    pcx, pcy = pond["centre_m"]
+    # (scaled by the rule: a small pool the stele stands in, or the asset's pond)
+    pcx, pcy = (v * rule.get("pond_offset_scale", 1.0) for v in pond["centre_m"])
     pond_c = (x + pcx * cs - pcy * sn, y + pcx * sn + pcy * cs)
-    prx, pry = pond["radii_m"]
+    prx, pry = (v * rule.get("pond_scale", 1.0) for v in pond["radii_m"])
     cell64 = world.size / files.items["skeleton"]["arr"].shape[0] if "skeleton" in files.items else 64.0
     pools = []
     want = int(rng.integers(rule["pools"][0], rule["pools"][1] + 1))
@@ -255,6 +256,13 @@ def main():
     # `max_fill_m` up, softly, so where the glade runs against a slope the
     # slope stays and the flat simply ends at it.
     change = (target - H) * blend
+    if not rule.get("ease_glade", True):
+        # The land as it is (user, 13.10): only a small level pad under the
+        # pool, so its water holds on the slope.
+        dpad = np.hypot(X + x - pond_c[0], Y + y - pond_c[1])
+        pad = max(prx, pry) + rule.get("pad_m", 45.0)
+        level = float(np.median(H[dpad < pad]))
+        change = (level - H) * (1 - smoothstep(pad, pad + 60.0, dpad))
     cut, fill = rule.get("max_cut_m", 8.0), rule.get("max_fill_m", 4.0)
     change = np.where(change < 0, -cut * np.tanh(-change / cut), fill * np.tanh(change / fill))
     Hn = H + change
