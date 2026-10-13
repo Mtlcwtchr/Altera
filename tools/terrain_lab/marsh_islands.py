@@ -189,17 +189,20 @@ def thermal_erode(g, cell, talus, iterations, rate):
 
 
 def raise_mound(h, cell, x, y, level, mound, erosion, rng):
-    """A hill of the marshes into `h` round (x, y): a domed top of
-    `top_radius_m`, a steep raw flank `flank_m` down to below the water, a
-    little rough noise, then thermal erosion (`erosion`) on a fine grid slumps
-    the flank into a talus apron and softens the top. Returns the mask of
-    texels it raised above the water."""
+    """An island of the marshes into `h` round (x, y): ground rising gently
+    out of the water over `radius_m` (its shore wobbling by `wobble`) to a
+    crest set `crest_offset` of the way towards one side, `facing` - long
+    and easy behind it, shorter and steeper below it (the side a hill's
+    terraces take) - a little rough noise, then thermal erosion (`erosion`)
+    on a fine grid softening what came out too steep. Returns the mask of
+    texels it raised above the water, its height and its facing."""
     H = rng.uniform(*mound["height_m"])
-    rt = rng.uniform(*mound["top_radius_m"])
-    flank = rng.uniform(*mound["flank_m"])
+    R = rng.uniform(*mound["radius_m"])
+    facing = rng.uniform(0, math.tau)
+    off = rng.uniform(*mound["crest_offset"]) * R
     wob = smooth_noise(rng)
     talus = erosion["talus"]
-    reach = rt * (1 + mound.get("wobble", 0.2)) + flank + H / talus + 4 * cell
+    reach = R * (1 + mound.get("wobble", 0.2)) + 4 * cell
     r0, r1 = max(int((y - reach) / cell), 0), min(int((y + reach) / cell) + 2, h.shape[0])
     c0, c1 = max(int((x - reach) / cell), 0), min(int((x + reach) / cell) + 2, h.shape[1])
     sub = max(int(round(cell / erosion["fine_m"])), 1)
@@ -211,10 +214,18 @@ def raise_mound(h, cell, x, y, level, mound, erosion, rng):
     px, py = (cc + 0.5) * cell - x, (rr + 0.5) * cell - y
     r = np.hypot(px, py)
     theta = np.arctan2(py, px)
-    edge = rt * (1 + mound.get("wobble", 0.2) * wob(theta))
-    t = r / edge
-    dome = mound["dome"]
-    z = np.where(t <= 1, 1 - dome * t * t, (1 - dome) * np.clip(1 - (r - edge) / flank, 0, 1))
+    shore = R * (1 + mound.get("wobble", 0.2) * wob(theta))
+    # From the crest: how far along each way to the shore (a ray from a point
+    # inside a circle of the shore's radius there), and the share of it gone.
+    ox, oy = off * math.cos(facing), off * math.sin(facing)
+    dx, dy = px - ox, py - oy
+    d = np.hypot(dx, dy)
+    ux, uy = dx / np.maximum(d, 1e-6), dy / np.maximum(d, 1e-6)
+    b = ox * ux + oy * uy
+    along = -b + np.sqrt(np.maximum(b * b + shore * shore - off * off, 1e-6))
+    t = np.clip(d / along, 0, 1.5)
+    u = np.clip(1 - t, 0, 1)
+    z = u * u * (3 - 2 * u)
     raw = rng.normal(size=r.shape).astype(np.float32)
     bumps = ndimage.gaussian_filter(raw, mound["noise_scale_m"] / fine * 0.3)
     bumps /= max(float(np.abs(bumps).max()), 1e-6)
@@ -227,7 +238,7 @@ def raise_mound(h, cell, x, y, level, mound, erosion, rng):
     np.maximum(win, coarse, out=win)
     mask = np.zeros(h.shape, bool)
     mask[r0:r1, c0:c1] = coarse > level + 0.2
-    return mask, H
+    return mask, H, facing
 
 
 def bilinear(h, cell):
@@ -238,7 +249,7 @@ def bilinear(h, cell):
     return ground
 
 
-def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segments=112):
+def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segments=112, water=None):
     """The terraces of a hill already in `h`: the centre moved to its peak,
     the levels from just over the peak down by `risers`, and each wall's
     contour round the peak (the outermost crossing of its level on each of
@@ -258,6 +269,10 @@ def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segm
     past = np.arange(len(rs))[None, :] > np.argmin(prof, 1)[:, None]
     prof = np.where(past, -np.inf, prof)
     top = float(prof.max()) + 0.15
+    if water is not None and "top_share" in rule:
+        # The benches part way down the slope, not round the crest: the
+        # highest at `top_share` of the way from the water up to it.
+        top = water + (top - water) * rng.uniform(*rule["top_share"])
     levels = top - np.concatenate([np.cumsum(risers[::-1])[::-1], [0.0]])
     n = len(risers)
     rho = np.zeros((n, segments))
@@ -284,10 +299,10 @@ def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segm
     return x, y, theta, rho, levels, ramp
 
 
-def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng):
+def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng, facing):
     """A hill's terraces as fine relief (src/terrain_core/relief.hpp): the
     ground round (x, y) at `relief.texel_m` a texel, the worn hill (the
-    heightfield's own ground) with benches along a flank or two - inside wall
+    heightfield's own ground) with benches down its steep side - inside wall
     k's contour `rho[k]` the slope filled up to `levels[k + 1]`, the riser
     `riser_width_m` wide (on the ramp spread over most of the tread), every
     wall's line wandering a little, each step tapering out into the slope at
@@ -315,11 +330,10 @@ def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng):
     wander *= rel["wander_m"] / max(float(np.abs(wander).max()), 1e-6)
     ramp_t = ring(ramp)
     n = len(rho)
-    # Natural benches, not a ziggurat: the steps run along one or two flanks
-    # (`sectors`, each `sector_deg` round), every step its own stretch of it,
-    # tapering out into the plain slope at both ends over `end_deg`.
-    sectors = [(rng.uniform(0, math.tau), math.radians(rng.uniform(*rel["sector_deg"])))
-               for _ in range(int(rng.integers(rel["sectors"][0], rel["sectors"][1] + 1)))]
+    # Natural benches, not a ziggurat: the steps run along the island's one
+    # steep side (`facing`, `sector_deg` round), every step its own stretch
+    # of it, tapering out into the plain slope at both ends over `end_deg`.
+    sectors = [(facing, math.radians(rng.uniform(*rel["sector_deg"])))]
     end = math.radians(rel["end_deg"])
     def stretch(k):
         reach_ = np.zeros_like(r)
@@ -341,25 +355,40 @@ def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng):
         tread = rk - (ring(rho[k + 1]) if k + 1 < n else 0.0)
         width = rel["riser_width_m"] + ramp_t * np.maximum(tread * 0.85 - rel["riser_width_m"], 0)
         a = np.clip((rk - r) / width + 0.5, 0, 1)
-        a = a * a * (3 - 2 * a) * stretch(k)
+        part = stretch(k)
+        a = a * a * (3 - 2 * a) * part
         # The bench: the slope inside this wall filled up to its level.
         level = levels[k + 1] + bumps
         height = height + (np.maximum(height, level) - height) * a
         cover = np.maximum(cover, a)
         # The check: the hill's own ground inside this wall, past the next,
         # stays under this tread.
-        inner = ring(rho[k + 1]) if k + 1 < n else np.zeros_like(r)
-        on = (r < rk - width) & (r > inner + 1.0)
+        # (above the highest bench the hill goes on up as it is)
+        inner = ring(rho[k + 1]) if k + 1 < n else None
+        on = (r < rk - width) & (r > inner + 1.0) & (part > 0.5) if inner is not None else np.zeros_like(r, bool)
         if on.any():
             poke = max(poke, float((natural[on] - levels[k + 1]).max()))
     # The weight: whole over the benches, easing out to the plain hill.
-    w = ndimage.maximum_filter(cover, size=int(2 * rel["blend_m"] / t) + 1)
+    # (only where the benches changed the ground: elsewhere the generator's
+    # own smooth hill, not this bilinear copy of it)
+    changed = np.clip((height - natural) / 0.1, 0, 1)
+    w = ndimage.maximum_filter(changed, size=int(rel["blend_m"] / t) + 1)
     w = ndimage.uniform_filter(w, size=int(rel["blend_m"] / t) + 1)
     w = np.clip(w * 1.5, 0, 1)
     w[[0, -1], :] = 0
     w[:, [0, -1]] = 0
     base = float(np.round(levels[0]))
-    return (x0, y0, t, base, (height - base).astype(np.float16), w.astype(np.float16)), poke
+    # Where the benches are (what the slope was filled up to make them).
+    filled = (height - natural) > 0.1
+    where = (float(px[filled].mean()), float(py[filled].mean()), float(np.hypot(px[filled] - px[filled].mean(), py[filled] - py[filled].mean()).max())) if filled.any() else None
+    # Only the window the benches need (with a texel of nothing round it).
+    rows, cols = np.nonzero(w > 0)
+    if len(rows):
+        a0, a1 = max(rows.min() - 1, 0), min(rows.max() + 2, m)
+        b0, b1 = max(cols.min() - 1, 0), min(cols.max() + 2, m)
+        height, w = height[a0:a1, b0:b1], w[a0:a1, b0:b1]
+        x0, y0 = x0 + b0 * t, y0 + a0 * t
+    return (x0, y0, t, base, (height - base).astype(np.float16), w.astype(np.float16)), poke, where
 
 
 def write_relief(path, patches):
@@ -565,13 +594,13 @@ def main():
         want = int(round(area * spec["per_km2"]))
         for x, y in poisson_sites(world, core, want, spec["gap_m"], rng, taken):
             m = spec["mound"]
-            R = m["top_radius_m"][1] * (1 + m.get("wobble", 0.2)) + m["flank_m"][1]
+            R = m["radius_m"][1] * (1 + m.get("wobble", 0.2))
             if any(math.hypot(x - t[0], y - t[1]) < R + t[2] for t in taken):
                 continue
             level = waterline_at(x, y)
-            mask, H = raise_mound(h, cell, x, y, level, m, erosion, rng)
+            mask, H, facing = raise_mound(h, cell, x, y, level, m, erosion, rng)
             taken.append((x, y, R + spec["gap_m"] * 0.25))
-            mounds.append({"kind": kind, "x": x, "y": y, "R": R + H / erosion["talus"], "H": H, "land": mask,
+            mounds.append({"kind": kind, "x": x, "y": y, "R": R, "H": H, "facing": facing, "land": mask,
                            "level": level, "spec": spec})
     for kind in ("islets",):
         spec = rule[kind]
@@ -650,9 +679,9 @@ def main():
                   for _ in range(int(mesh_rng.integers(spec["cliff_sides"][0], spec["cliff_sides"][1] + 1)))]
         ramp_at = mesh_rng.uniform(0, math.tau) if spec.get("ramp") else None
         x, y, theta, rho, levels, ramp = terrace_rings(h, cell, q["x"], q["y"], q["R"], np.array(risers), prule,
-                                                       cliffs, ramp_at, mesh_rng)
-        patch, poke_ = terrace_relief(h, cell, x, y, theta, rho, levels, ramp, prule, mesh_rng)
-        if poke_ > 0.1:
+                                                       cliffs, ramp_at, mesh_rng, water=q["level"])
+        patch, poke_, benches = terrace_relief(h, cell, x, y, theta, rho, levels, ramp, prule, mesh_rng, q["facing"])
+        if poke_ > 0.5:
             # Not a hill to cut (it leans on rising land, the ground breaks
             # through a tread): it stays a grassy knoll.
             q["kind"] = "knolls"
@@ -661,7 +690,8 @@ def main():
         pokes.append(poke_)
         relief.append(patch)
         q.update(x=x, y=y, risers=risers, cliffs=cliffs, ramp=ramp_at is not None,
-                 top=float(levels[-1]), terrace_from=float(levels[0]), terrace_r=float(rho[0].max()))
+                 top=float(levels[-1]), terrace_from=float(levels[0]), terrace_r=float(rho[0].max()),
+                 benches=benches)
         hills.append(q)
     relief_file = Path(stem + "_relief.bin")
     write_relief(relief_file, relief)
@@ -708,7 +738,9 @@ def main():
                       "ramp": "ramp" in q["prof"] if "prof" in q else q["ramp"],
                       **({"mesh": q["mesh"]} if "mesh" in q else {}),
                       **({"hill_m": round(q["H"], 1), "terraces_from": round(q["terrace_from"], 1),
-                          "terraces_r": round(q["terrace_r"], 1)} if "H" in q else {})}
+                          "terraces_r": round(q["terrace_r"], 1), "facing_deg": round(math.degrees(q["facing"]) % 360, 1),
+                          "benches": [round(v, 1) for v in q["benches"]] if q.get("benches") else None}
+                         if "H" in q else {})}
                      for q in hills],
            "knolls": [{"x": round(q["x"], 1), "y": round(q["y"], 1), "R": round(q["R"], 1), "hill_m": round(q["H"], 1)}
                       for q in mounds if q["kind"] == "knolls"],

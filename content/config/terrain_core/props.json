@@ -452,7 +452,7 @@
       "spacing_scale": 2.8
     },
     "marsh_islands": {
-      "comment": "The marshes' layout (tools/terrain_lab/marsh_islands.py, before world_features.py; marshes/MARSHES_REQUIREMENTS.md). `landform`: the shallow floor - water at `water_level_m`, pools `water_depth_m` deep covering `wet_share` of it in patches of `pool_km`, hummocks `hummock_m`. `monoliths`: `count` A-1 slabs at `scale` over the whole valley, at least `edge_m` inside it and `gap_m` apart, each on a flat pad `pad_height_m` over the water, `pad_margin_m` wider than its foot, eased into the ground over `pad_blend_m`. `hills` and `islets`: `per_km2`, `gap_m` apart, `steps` risers making `top_m` (each at least `riser_min_m`), treads `tread_m`, top radius `r_top_m`, outline wobbling by `wobble`; on `cliff_sides` sectors `cliff_width_deg` wide the treads shrink by `cliff_squeeze` (one cliff into the water); a hill with `ramp` has one sector `ramp_width_deg` wide with gentle steps. `checks`: the water's share over `window_m` windows should lie in `water_share`. `forest_pools`: red pools in the forest's edge, `wet_share` of it at the border thinning to none `width_m` in, only where the slope is under `max_slope`. The hills' steps are meshes (marsh_hill_mesh.py, `mesh_sink_m`, `mesh_rough_m`); the ground under them is raised `ground_inset_m` inside their outline. With `riser_m` each step is its own height in that range (user 13.10: 0.3-0.7 of a man's height). User 13.10 (v6): the floor rolls (`landform.roll_m` over `roll_km`, easing out at the pools); `hills` are mounds (`mound`: `height_m`, a domed top of `top_radius_m` falling by `dome`, a raw flank `flank_m`, rough `noise_m`) worn down by thermal erosion (`erosion`: slopes over `talus` slide, `iterations` x `rate`, on a `fine_m` grid), and their worn tops cut into `steps` terraces of `riser_m` by the ground's contours (no more than `terrace_share` of the hill, treads at least `min_tread_m`); `knolls` are the same mounds, lower and grassy. User 13.10 (v8): the hills' terraces are fine relief, not meshes (`hills.relief`: the ground at `texel_m` a texel, risers `riser_width_m` wide, wall lines wandering `wander_m` over `wander_scale_m`, treads uneven by `tread_noise_m`, eased into the hill over `blend_m`; <world>_relief.bin, src/terrain_core/relief.hpp). User 13.10 (v10): natural benches, not rings - the steps run along `relief.sectors` flanks of `sector_deg` each, every step its own stretch (`stagger`), tapering out over `end_deg`.",
+      "comment": "The marshes' layout (tools/terrain_lab/marsh_islands.py, before world_features.py; marshes/MARSHES_REQUIREMENTS.md). `landform`: the shallow floor - water at `water_level_m`, pools `water_depth_m` deep covering `wet_share` of it in patches of `pool_km`, hummocks `hummock_m`. `monoliths`: `count` A-1 slabs at `scale` over the whole valley, at least `edge_m` inside it and `gap_m` apart, each on a flat pad `pad_height_m` over the water, `pad_margin_m` wider than its foot, eased into the ground over `pad_blend_m`. `hills` and `islets`: `per_km2`, `gap_m` apart, `steps` risers making `top_m` (each at least `riser_min_m`), treads `tread_m`, top radius `r_top_m`, outline wobbling by `wobble`; on `cliff_sides` sectors `cliff_width_deg` wide the treads shrink by `cliff_squeeze` (one cliff into the water); a hill with `ramp` has one sector `ramp_width_deg` wide with gentle steps. `checks`: the water's share over `window_m` windows should lie in `water_share`. `forest_pools`: red pools in the forest's edge, `wet_share` of it at the border thinning to none `width_m` in, only where the slope is under `max_slope`. The hills' steps are meshes (marsh_hill_mesh.py, `mesh_sink_m`, `mesh_rough_m`); the ground under them is raised `ground_inset_m` inside their outline. With `riser_m` each step is its own height in that range (user 13.10: 0.3-0.7 of a man's height). User 13.10 (v6): the floor rolls (`landform.roll_m` over `roll_km`, easing out at the pools); `hills` are mounds (`mound`: `height_m`, a domed top of `top_radius_m` falling by `dome`, a raw flank `flank_m`, rough `noise_m`) worn down by thermal erosion (`erosion`: slopes over `talus` slide, `iterations` x `rate`, on a `fine_m` grid), and their worn tops cut into `steps` terraces of `riser_m` by the ground's contours (no more than `terrace_share` of the hill, treads at least `min_tread_m`); `knolls` are the same mounds, lower and grassy. User 13.10 (v8): the hills' terraces are fine relief, not meshes (`hills.relief`: the ground at `texel_m` a texel, risers `riser_width_m` wide, wall lines wandering `wander_m` over `wander_scale_m`, treads uneven by `tread_noise_m`, eased into the hill over `blend_m`; <world>_relief.bin, src/terrain_core/relief.hpp). User 13.10 (v10): natural benches, not rings - the steps run along `relief.sectors` flanks of `sector_deg` each, every step its own stretch (`stagger`), tapering out over `end_deg`. User 13.10 (v11): hills and knolls are islands rising gently out of the water (`mound`: `radius_m`, a crest `crest_offset` of the way towards one side, long and easy behind it, steeper below it); a hill's benches only on that steep side (`relief.sector_deg`). v11b: the benches lie part way down the steep side, the highest at `hills.top_share` of the way from the water up to the crest.",
       "kind": "a1_monolith",
       "manifest": "content/config/terrain_core/megaliths/a1_monolith.asset.json",
       "zones": [
@@ -523,30 +523,29 @@
           0.5,
           1.2
         ],
-        "terrace_share": 0.5,
-        "min_tread_m": 3.0,
+        "terrace_share": 0.55,
+        "min_tread_m": 5.0,
         "cliff_sides": [
           0,
           1
         ],
-        "ramp": true,
+        "ramp": false,
         "ramp_width_deg": 45,
         "mound": {
           "height_m": [
-            9,
-            16
+            6,
+            12
           ],
-          "top_radius_m": [
-            55,
-            110
+          "radius_m": [
+            110,
+            220
           ],
-          "dome": 0.45,
-          "flank_m": [
-            10,
-            22
+          "crest_offset": [
+            0.25,
+            0.45
           ],
-          "wobble": 0.2,
-          "noise_m": 1.2,
+          "wobble": 0.25,
+          "noise_m": 0.6,
           "noise_scale_m": 30
         },
         "relief": {
@@ -556,17 +555,17 @@
           "wander_m": 0.6,
           "wander_scale_m": 7,
           "tread_noise_m": 0.06,
-          "sectors": [
-            1,
-            2
-          ],
           "sector_deg": [
-            80,
-            170
+            100,
+            160
           ],
-          "end_deg": 25,
-          "stagger": 0.35
-        }
+          "end_deg": 15,
+          "stagger": 0.2
+        },
+        "top_share": [
+          0.5,
+          0.75
+        ]
       },
       "islets": {
         "per_km2": 0.5,
@@ -621,20 +620,19 @@
         "gap_m": 500,
         "mound": {
           "height_m": [
-            3,
-            8
+            2.5,
+            6
           ],
-          "top_radius_m": [
-            30,
-            80
+          "radius_m": [
+            60,
+            140
           ],
-          "dome": 0.5,
-          "flank_m": [
-            8,
-            16
+          "crest_offset": [
+            0.1,
+            0.35
           ],
           "wobble": 0.25,
-          "noise_m": 0.8,
+          "noise_m": 0.5,
           "noise_scale_m": 25
         }
       },
