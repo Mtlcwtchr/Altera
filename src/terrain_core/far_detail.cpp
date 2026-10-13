@@ -23,11 +23,13 @@ bool makeFarUniforms(const std::filesystem::path& file, const std::vector<Foliag
     }
     out.range[0] = config.value("start_m", 150.0f);
     out.range[1] = config.value("full_m", 400.0f);
+    out.range[2] = config.value("meadow_start_m", 100.0f);
+    out.range[3] = config.value("meadow_full_m", 170.0f);
     out.strength[0] = config.value("erosion", 1.0f);
     out.strength[1] = config.value("strata", 0.6f);
     out.strength[2] = config.value("cavity", 1.0f);
     out.strength[3] = config.value("mottle", 1.0f);
-    out.strength2[0] = config.value("sward", 1.0f);
+    out.strength2[0] = config.value("meadow", 1.0f);
     out.strength2[1] = config.value("canopy", 1.0f);
 
     // The canopy: each named tree layer with the rules and seed foliage.cpp

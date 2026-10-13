@@ -170,7 +170,7 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         normal = normalize(float3(-s.y + surface.slope.x * relief, -s.z + surface.slope.y * relief, 1));
         // Past a hundred and fifty metres or so: what the mesh and the
         // textures can no longer show, painted (far_detail.hlsli).
-        if (debugLevels != 5 && dot(input.view, input.view) > farRange.x * farRange.x) {
+        if (debugLevels != 5 && dot(input.view, input.view) > min(farRange.x, farRange.z) * min(farRange.x, farRange.z)) {
             const float levelSpacing = groundWorld.y * float(1u << input.level);
             const float curvature = farCurvature(input.slots.xy, input.local, input.level, height, levelSpacing);
             float2 farSlope = 0;

@@ -11,7 +11,10 @@
 //   cavity   the clipmap's own curvature at the drawn level: hollows dark,
 //            crests pale - the shapes the mesh has, made legible;
 //   mottle   a coarse unevenness of colour over hundreds of metres;
-//   sward    grass that covers its soil when looked at along the ground;
+//   meadow   grass past the tufts (they end at about 128 m), from its own,
+//            nearer distance: tuft grain, pale tips along the ground and
+//            dark feet and soil from above, gusts rolling across it with the
+//            wind, the low sun through the blades;
 //   canopy   forest as crowns on the ground wherever the tree layers grow -
 //            the same biome rules, cluster noise, cells and hashes as
 //            foliage_spawn.hlsl, so a crown is painted where a tree stands,
@@ -23,9 +26,9 @@
 
 // Must match terrain_core::FarUniforms.
 cbuffer Far : register(b3, space3) {
-    float4 farRange;              // start m, full m, -, -
+    float4 farRange;              // start m, full m; the meadow's start m, full m
     float4 farStrength;           // erosion, strata, cavity, mottle
-    float4 farStrength2;          // sward, canopy, canopy layer count, -
+    float4 farStrength2;          // meadow, canopy, canopy layer count, -
     float4 canopyColour[4];       // rgb, min normal z
     float4 canopyShape[4];        // candidate cell (m), crown radius (m), -, -
     float4 canopyRules[4 * 32];   // per layer and biome: density, log2 cluster cell, cover, seed (bits)
@@ -164,16 +167,56 @@ FarCanopy farCanopy(GroundPoint p, float normalZ, float3 toEye, float pixelMetre
     return o;
 }
 
+// Grass past its tufts (grass.hpp: rings out to 128 m), as paint. What
+// makes a far meadow read as grass rather than green ground: grain of tufts
+// and clumps; along the ground only the pale tips show, from above the dark
+// feet and the soil between; the wind combs it in gusts that roll across;
+// against a low sun the blades glow. `grass` is how much of the ground is
+// grass (the same share the tufts grow by).
+void farMeadow(GroundPoint p, float3 normal, float3 toEye, float distance, float grass,
+               inout float3 colour, inout float2 slope) {
+    const float on = smoothstep(farRange.z, max(farRange.w, farRange.z + 1.0), distance);
+    const float g = grass * on * farStrength2.x * smoothstep(0.6, 0.75, normal.z);
+    if (g <= 0) return;
+    const float grazing = 1.0 - saturate(dot(toEye, normal) * 2.5);
+    float shade = lerp(0.88, 1.1, grazing);
+    // Tufts and clumps, one to thirty metres; each size fades to its mean
+    // (cellNoise) before it could shimmer.
+    shade *= 0.84 + 0.32 * (cellNoise(p, 2, 721u) * 0.3 + cellNoise(p, 4, 727u) * 0.35 + cellNoise(p, 6, 701u) * 0.35);
+    // Gusts: broad bands rolling downwind, a finer ripple in them, the
+    // combed blades turning their pale side up.
+    const float2 metres = (float2(p.base) + p.sub) * groundWorld.y;
+    const float2 wind = dot(lightWindDirection, lightWindDirection) > 1e-4 ? normalize(lightWindDirection) : float2(1, 0);
+    const float along = dot(metres, wind), across = dot(metres, float2(-wind.y, wind.x));
+    const float gust = sin(along * 0.045 - lightTime * 1.6 + sin(across * 0.013) * 2.0) * 0.5 + 0.5;
+    const float ripple = sin(along * 0.12 - lightTime * 2.7 + across * 0.035) * 0.5 + 0.5;
+    const float pixelMetres = max(p.footprint * groundWorld.y, 1e-3);
+    const float rippleFade = saturate(52.0 / (pixelMetres * 6.0) - 1.0);
+    const float wave = gust * 0.7 + (ripple - 0.5) * 0.3 * rippleFade;
+    shade *= 1.0 + 0.16 * (wave - 0.5) * (0.4 + 0.6 * saturate(lightWind));
+    // Seen along it, the grass is all blade: richer, and the stones and soil
+    // patches of the material under it half hidden.
+    const float luma = dot(colour, float3(0.3, 0.5, 0.2));
+    float3 sward = lerp(luma.xxx, colour, 1.0 + 0.35 * grazing);
+    // Against a low sun the blades glow at their edges.
+    const float back = pow(saturate(dot(-toEye, lightSun)), 6.0) * grazing * saturate(lightSunAbove);
+    sward *= 1.0 + back * float3(0.35, 0.45, 0.12);
+    colour = lerp(colour, sward * shade, g);
+    // Blades for the light: a grain of tilts, gone where it is under a pixel.
+    slope += (float2(cellNoise(p, 1, 731u), cellNoise(p, 1, 737u)) - 0.5) * 0.5 * g;
+}
+
 // What it paints: `colour` and the ground's gradient `slope` (dz/dx, dz/dy,
 // added to the mesh's). `curvature` from farCurvature; `grass` how much of the
 // ground is grass.
 void farDetail(GroundPoint p, float height, float3 normal, float3 view, float curvature, float grass,
                inout float3 colour, inout float2 slope) {
     const float distance = length(view);
+    const float3 toEye = -view / max(distance, 1e-3);
+    farMeadow(p, normal, toEye, distance, grass, colour, slope);
     const float on = smoothstep(farRange.x, max(farRange.y, farRange.x + 1.0), distance);
     if (on <= 0) return;
     const float pixelMetres = max(p.footprint * groundWorld.y, 1e-3);
-    const float3 toEye = -view / max(distance, 1e-3);
     const float steepness = saturate((1.0 - normal.z) * 3.0);
 
     // Gullies down the fall line, three sizes; each fades as its waves near
@@ -237,15 +280,6 @@ void farDetail(GroundPoint p, float height, float3 normal, float3 view, float cu
         const float k = farStrength.w * on;
         colour *= 1.0 + 0.3 * m * k;
         colour *= lerp(1.0, lerp(float3(1.05, 1.0, 0.92), float3(0.95, 1.0, 1.05), b), 0.6 * k);
-    }
-
-    // Grass seen along the ground: the blades hide the soil.
-    if (farStrength2.x > 0 && grass > 0) {
-        const float grazing = 1.0 - saturate(dot(toEye, normal) * 3.0);
-        const float luma = dot(colour, float3(0.3, 0.5, 0.2));
-        const float3 sward = lerp(luma.xxx, colour, 1.3) * 1.06;
-        const float clumps = cellNoise(p, 5, 701u) * 0.6 + cellNoise(p, 4, 709u) * 0.4;
-        colour = lerp(colour, sward * (0.88 + 0.24 * clumps), grass * (0.35 + 0.65 * grazing) * farStrength2.x * on);
     }
 
     // The forest's roof over everything.
