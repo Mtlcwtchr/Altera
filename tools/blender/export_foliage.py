@@ -169,6 +169,10 @@ def main():
                                                                     hi[1] - lo[1], hi[2] - lo[2]))
         except Exception as error:   # one bad model must not stop the rest
             print("FAILED", job["name"], error)
+    # (a partial build - build_foliage.py --only - adds to the report, never drops the rest)
+    old = out / "report.json"
+    if jobs.get("partial") and old.exists():
+        report = {**json.loads(old.read_text()), **report}
     (out / "report.json").write_text(json.dumps(report, indent=1))
 
 

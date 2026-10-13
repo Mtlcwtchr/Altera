@@ -356,4 +356,8 @@ def place(world, rules, catalogue, rng, add):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     counts["groups"] = wf.place_groups(world, rules, catalogue, rng, add)
+    # The carved stele A-2 in its glade (world_stele.py), on its own draws so
+    # the rest stays as it was.
+    import world_stele
+    counts["a2_stele"] = world_stele.place(world, catalogue, np.random.default_rng(18), add, CHECKS)
     return counts

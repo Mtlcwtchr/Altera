@@ -22,6 +22,14 @@ its glTF, and writes:
 
 The material itself (projection, knobs) is read by the renderer straight from
 the material manifest.
+
+An asset whose manifest says "engine": "uv_atlas" (A-2, the carved stele)
+wears baked maps on its own UVs instead: its vertices keep the glTF's UVs
+(uv = atlas texcoord, blend = 0), its `debris` pieces become models
+<id>_debris_<k> too, and engine/ gets the three layers the renderer loads as
+one array at the maps' own size - basecolor.png (sRGB as baked),
+normal.png (OpenGL tangent space) and surface.png (R = AO, G = roughness);
+no alpha anywhere (a platform image loader may premultiply it).
 """
 import argparse
 import json
@@ -60,6 +68,7 @@ def read_gltf(path):
         meshes[node["name"]] = {
             "position": accessor(at["POSITION"]).astype(np.float64),
             "normal": accessor(at["NORMAL"]).astype(np.float64),
+            "uv": accessor(at["TEXCOORD_0"]).astype(np.float64) if "TEXCOORD_0" in at else None,
             "edge": accessor(at["_EDGE"]).astype(np.float64) if "_EDGE" in at else None,
             "indices": accessor(prim["indices"]).astype(np.uint32),
         }
@@ -83,12 +92,42 @@ def write_mesh(path, position, normal, uv, blend, indices):
     return lo, hi
 
 
+def import_atlas_asset(asset, manifest_path, catalogue):
+    """A-2 and the like: own UVs, baked maps (see the module's doc)."""
+    ident = asset["id"]
+    meshes = read_gltf(ROOT / asset["model"])
+    for name in [n for n, m in catalogue.items() if m["kind"] in (ident, ident + "_debris")]:
+        del catalogue[name]
+    models = [(f"{ident}_{k:02d}", ident, v) for k, v in enumerate(asset["variants"])]
+    models += [(f"{ident}_debris_{k}", ident + "_debris", v) for k, v in enumerate(asset.get("debris", []))]
+    for name, kind, entry in models:
+        m = meshes[entry["node"]]
+        pos = y_up_to_z_up(m["position"])
+        nrm = y_up_to_z_up(m["normal"])
+        uv = m["uv"]
+        for level in range(3):
+            lo, hi = write_mesh(PROPS / f"{name}_lod{level}.mesh", pos, nrm, uv, np.zeros(len(pos)), m["indices"])
+        tris = len(m["indices"]) // 3
+        catalogue[name] = {"kind": kind, "lo": [round(float(a), 2) for a in lo], "hi": [round(float(a), 2) for a in hi],
+                           "triangles": [tris, tris, tris]}
+        print(f"{name}: {tris} triangles, {lo.round(1)} .. {hi.round(1)}")
+    material = json.loads((manifest_path.parent / asset["material"]).read_text(encoding="utf-8"))
+    tex = material["textures"]
+    out = ROOT / Path(asset["model"]).parent / "engine"
+    out.mkdir(exist_ok=True)
+    Image.open(ROOT / tex["basecolor"]["file"]).convert("RGB").save(out / "basecolor.png")
+    Image.open(ROOT / tex["normal"]["file"]).convert("RGB").save(out / "normal.png")
+    ao = np.asarray(Image.open(ROOT / tex["ao"]["file"]).convert("L"))
+    rough = np.asarray(Image.open(ROOT / tex["roughness"]["file"]).convert("L"))
+    Image.fromarray(np.dstack([ao, rough, np.zeros_like(ao)]), "RGB").save(out / "surface.png")
+    print(f"{ident}: {len(models)} models, maps in {out.relative_to(ROOT)}")
+
+
 def import_asset(manifest_path, catalogue):
     asset = json.loads(manifest_path.read_text(encoding="utf-8"))
     ident = asset["id"]
-    if str(asset.get("engine", "")).startswith("pending"):  # e.g. A-2: its UV-atlas material is not in yet
-        print(f"{ident}: skipped, {asset['engine']}")
-        return
+    if asset.get("engine") == "uv_atlas":
+        return import_atlas_asset(asset, manifest_path, catalogue)
     meshes = read_gltf(ROOT / asset["model"])
     for name in [n for n, m in catalogue.items() if m["kind"] == ident]:
         del catalogue[name]

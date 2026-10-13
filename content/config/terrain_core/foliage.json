@@ -1,5 +1,5 @@
 {
- "comment": "Trees and bushes of the terrain core (the 'trees' module; the grass cover is its own module, terrain_core::Grass). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover]. The great marshes (1) grow nothing but grass and moss; their edge by the dark forest (17, biomes.json bands) has the forest closing in (broadleaf stands in for the marshes' gnarled trees until those exist).",
+ "comment": "Trees and bushes of the terrain core (the 'trees' module; the grass cover is its own module, terrain_core::Grass). `models`: source model and texture inside the unpacked new_assets archives (.cache/foliage_src), built by tools/terrain_lab/build_foliage.py into assets/terrain_core/foliage. `layers`: what is scattered together - one candidate per `spacing_m` cell out to `range_m` from the eye, one of `models` by hash, scaled within `scale`, nowhere steeper than `min_normal_z`; Heavy models belong in short-range layers (`saplings`, 300+ triangles, out to 400 m), cheap cards in the long ones (trees, 52 triangles, to 3.5 km). `max_count` caps the instances one frame may draw. `biomes`: per biome id (content/config/biomes/fallen_gods.json) and layer, [density - the chance a candidate is placed; cluster_m - size of the noise patches it grows in, 0 for evenly; cover - the share of the ground those patches cover]. The great marshes (1) grow nothing but grass and moss; their edge by the dark forest (17, biomes.json bands) has the forest closing in (broadleaf stands in for the marshes' gnarled trees until those exist). The stele's glade (18, tools/terrain_lab/stele_glade.py) has only dead trees, here and there: crooked bare trunks with broken limbs made by tools/blender/dead_trees.py (assets/source/dead_trees).",
  "models": {
   "grass01": {
    "source": "retro_nature_pack/models/glTF/grass/grass01.glb",
@@ -280,6 +280,26 @@
   "tree36": {
    "source": "tree_pack_1.1/models/tree36.fbx",
    "texture": "tree_pack_1.1/textures/tree36.png"
+  },
+  "dead01": {
+   "source": "../../assets/source/dead_trees/dead01.glb",
+   "texture": "../../assets/source/dead_trees/bark.png"
+  },
+  "dead02": {
+   "source": "../../assets/source/dead_trees/dead02.glb",
+   "texture": "../../assets/source/dead_trees/bark.png"
+  },
+  "dead03": {
+   "source": "../../assets/source/dead_trees/dead03.glb",
+   "texture": "../../assets/source/dead_trees/bark.png"
+  },
+  "dead04": {
+   "source": "../../assets/source/dead_trees/dead04.glb",
+   "texture": "../../assets/source/dead_trees/bark.png"
+  },
+  "dead05": {
+   "source": "../../assets/source/dead_trees/dead05.glb",
+   "texture": "../../assets/source/dead_trees/bark.png"
   }
  },
  "layers": [
@@ -434,6 +454,24 @@
    ],
    "min_normal_z": 0.82,
    "max_count": 120000
+  },
+  {
+   "name": "dead_trees",
+   "spacing_m": 22,
+   "range_m": 1600,
+   "models": [
+    "dead01",
+    "dead02",
+    "dead03",
+    "dead04",
+    "dead05"
+   ],
+   "scale": [
+    0.8,
+    1.25
+   ],
+   "min_normal_z": 0.8,
+   "max_count": 8000
   }
  ],
  "biomes": {
@@ -657,6 +695,18 @@
    ],
    "shrubs": [
     0.08,
+    0,
+    0
+   ]
+  },
+  "18": {
+   "dead_trees": [
+    0.16,
+    0,
+    0
+   ],
+   "shrubs": [
+    0.04,
     0,
     0
    ]

@@ -3,11 +3,15 @@
 
     python tools/terrain_lab/build_foliage.py            # what foliage.json names
     python tools/terrain_lab/build_foliage.py --all      # every model in the packs, with thumbnails
+    python tools/terrain_lab/build_foliage.py --only dead01 dead02   # just these (foliage.json names)
 
 Unpacks the archives into .cache/foliage_src, has Blender (in the background,
 tools/blender/export_foliage.py) turn each model into a .mesh and a .png in
 assets/terrain_core/foliage, and with --all writes a contact sheet of every
 model to .cache/foliage_thumbs/sheet.png.
+
+A model in foliage.json may carry `tint` [r, g, b] (multiplied into its
+picture) and `desaturate` 0..1, to recolour a pack's picture.
 """
 import argparse
 import json
@@ -77,6 +81,7 @@ def sheet(thumbs, report):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true")
+    ap.add_argument("--only", nargs="+", help="build just these models of foliage.json")
     args = ap.parse_args()
     unpack()
     if args.all:
@@ -87,10 +92,11 @@ def main():
         config = json.loads(CONFIG.read_text(encoding="utf-8"))
         jobs = [{"name": name, "source": str(SRC / spec["source"]),
                  "texture": str(SRC / spec["texture"]) if spec.get("texture") else None}
-                for name, spec in config["models"].items()]
+                for name, spec in config["models"].items() if not args.only or name in args.only]
         thumbs, out = None, OUT
     job_file = ROOT / ".cache" / "foliage_jobs.json"
-    job_file.write_text(json.dumps({"out": str(out), "thumbs": str(thumbs) if thumbs else None, "jobs": jobs}))
+    job_file.write_text(json.dumps({"out": str(out), "thumbs": str(thumbs) if thumbs else None, "jobs": jobs,
+                                    "partial": bool(args.only)}))
     run = subprocess.run([str(BLENDER), "--background", "--factory-startup", "--python",
                           str(ROOT / "tools" / "blender" / "export_foliage.py"), "--", str(job_file)],
                          capture_output=True, text=True)
@@ -103,10 +109,22 @@ def main():
     if not args.all:
         # One size for the texture array; nearest, so the painted pixels stay crisp.
         from PIL import Image
+        import numpy as np
+        built = {j["name"] for j in jobs}
         for png in out.glob("*.png"):
+            if png.stem not in built:
+                continue
             image = Image.open(png).convert("RGBA")
             if image.size != (256, 256):
-                image.resize((256, 256), Image.NEAREST).save(png)
+                image = image.resize((256, 256), Image.NEAREST)
+            spec = config["models"].get(png.stem, {})
+            if "tint" in spec or "desaturate" in spec:
+                a = np.asarray(image).astype(np.float32)
+                grey = a[..., :3] @ np.array([0.299, 0.587, 0.114], np.float32)
+                a[..., :3] += (grey[..., None] - a[..., :3]) * spec.get("desaturate", 0.0)
+                a[..., :3] *= np.array(spec.get("tint", [1, 1, 1]), np.float32)
+                image = Image.fromarray(np.clip(a, 0, 255).astype(np.uint8), "RGBA")
+            image.save(png)
     if thumbs:
         sheet(thumbs, json.loads((out / "report.json").read_text()))
         print("contact sheet:", thumbs / "sheet.png")

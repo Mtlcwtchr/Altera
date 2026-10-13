@@ -1358,17 +1358,47 @@ def render_views(render):
 CONFIG_DIR = ROOT / "content/config/terrain_core/megaliths"
 
 
+DEBRIS_KINDS = 4
+
+
+def debris_piece(name, k, mat):
+    """A piece that fell off the stele: a broken block about 4 m (scaled when placed), its
+    faces mapped onto the carved, sooty low part of the atlas (box projection), so a piece
+    shows the same stone, carving and scratches."""
+    rnd = random.Random(101 + k)
+    me = chunk(name, (4.0, 4.0 * rnd.uniform(0.55, 1.0), 4.0 * rnd.uniform(0.4, 0.75)), mat, rnd)
+    uvl = me.uv_layers.new(name="UVMap")
+    du = rnd.uniform(5, 2 * (VARIANTS[HERO]["W"] + VARIANTS[HERO]["D"]) - 10)
+    dz = rnd.uniform(14, 40)
+    for poly in me.polygons:
+        n = poly.normal
+        for li in poly.loop_indices:
+            co = me.vertices[me.loops[li].vertex_index].co
+            if abs(n.z) > max(abs(n.x), abs(n.y)):
+                a, b = co.x, co.y
+            elif abs(n.x) > abs(n.y):
+                a, b = co.y, co.z
+            else:
+                a, b = co.x, co.z
+            uvl.data[li].uv = (strip_u(du + a) / TEX, (dz + b + Z0) * PXM / TEX)
+    return me
+
+
 def export(v):
-    """The game copy: the game mesh as one glTF (one node, Z up as authored, metres, flat
-    normals, the atlas UVs), and the two manifests in content/config/terrain_core/megaliths/."""
+    """The game copy: the game mesh and the debris pieces as one glTF (a node each, Z up as
+    authored, metres, flat normals, the atlas UVs), and the two manifests in
+    content/config/terrain_core/megaliths/."""
     import json
     sc = bpy.context.scene
     me = bpy.data.objects["hero_" + HERO].data
     coll = bpy.data.collections.new("export")
     sc.collection.children.link(coll)
     ob = link("a2_carved_stele", me, (0, 0, 0), coll=coll)
+    mat = me.materials[0] if me.materials else None
+    pieces = [link(f"a2_carved_stele_debris_{k}", debris_piece(f"a2_debris_{k}", k, mat), (0, 0, 0), coll=coll)
+              for k in range(DEBRIS_KINDS)]
     for o in sc.objects:
-        o.select_set(o is ob)
+        o.select_set(o is ob or o in pieces)
     bpy.context.view_layer.objects.active = ob
     out = ASSET_DIR / "a2_carved_stele.gltf"
     bpy.ops.export_scene.gltf(filepath=str(out), export_format="GLTF_SEPARATE", use_selection=True,
@@ -1377,6 +1407,13 @@ def export(v):
     lo = [min(p.co[i] for p in me.vertices) for i in range(3)]
     hi = [max(p.co[i] for p in me.vertices) for i in range(3)]
     tris = sum(len(p.vertices) - 2 for p in me.polygons)
+    debris = []
+    for o in pieces:
+        dm = o.data
+        debris.append({"node": o.name, "tris": sum(len(p.vertices) - 2 for p in dm.polygons),
+                       "bounds_m": [[round(min(q.co[i] for q in dm.vertices), 2) for i in range(3)],
+                                    [round(max(q.co[i] for q in dm.vertices), 2) for i in range(3)]]})
+        bpy.data.objects.remove(o)
     bpy.data.objects.remove(ob)
     bpy.data.collections.remove(coll)
     rel = lambda p: str(p.relative_to(ROOT)).replace("\\", "/")
@@ -1394,6 +1431,7 @@ def export(v):
                       "bounds_m": [[round(x, 2) for x in lo], [round(x, 2) for x in hi]],
                       "shape": {k: v[k] for k in ("W", "D", "H", "taper", "tiers")},
                       "tier_joints_m": [round(j, 2) for j in TIERS["joints"]]}],
+        "debris": debris,
         "bake_source": {"object": "hero_" + HERO + "_high", "collection": "bake_source",
                         "tris": sum(len(p.vertices) - 2 for p in bpy.data.objects["hero_" + HERO + "_high"].data.polygons)},
         "placement": {
@@ -1403,15 +1441,16 @@ def export(v):
                               "water_m": WATER_Z, "depth_m": POND_DEPTH, "rim_m": 1.0,
                               "note": "oval pond in front of and left of the stele (in its own frame, -y is the "
                                       "front face), the foot at its back edge; turquoise water"},
-                     "debris": "2-4 broken chunks at the foot half in the water, about 14 fallen pieces "
-                               "round it (1.5-6 m), a few rolled further out"},
+                     "debris": {"count": [14, 18], "size_m": [1.5, 6.0], "near_share": 0.7,
+                       "near_m": [0.55, 1.0], "far_m": [1.4, 2.4],
+                       "note": "pieces round the foot (radius in widths of the stele), in and out of the "
+                               "water, a few rolled further out; kinds from `debris`, model is about 4 m"}},
             "setting": "a wide stony valley between jagged ridges, boulders, open sky; seen from everywhere "
                        "in its biome (190 m)",
             "shadow": "a low sun from the left throws the long straight shadow band to the right of the "
                       "foot, as on the reference; the band is the shadow, not geometry"},
         "budget": {"tris": tris, "style_profile_A": [1500, 4000]},
-        "engine": "pending: needs the UV-atlas PBR path in import_megalith.py and the props renderer "
-                  "(doc/megaliths/A2_CARVED_STELE.md, the in-game section)",
+        "engine": "uv_atlas",
     }
     (CONFIG_DIR / "a2_carved_stele.asset.json").write_text(json.dumps(asset, indent=2, ensure_ascii=False) + "\n",
                                                           encoding="utf-8")
