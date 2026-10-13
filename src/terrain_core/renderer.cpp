@@ -316,6 +316,7 @@ void Renderer::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, con
     SDL_PushGPUFragmentUniformData(commands, 0, &look, sizeof(look));
     SDL_PushGPUFragmentUniformData(commands, 1, &ground_, sizeof(ground_));
     SDL_PushGPUFragmentUniformData(commands, 2, &light, sizeof(light));
+    SDL_PushGPUFragmentUniformData(commands, 3, &far_, sizeof(far_));
     const SDL_GPUTextureSamplerBinding clip{clipmap_.get(), nearest_.get()};
     SDL_BindGPUVertexSamplers(pass, 0, &clip, 1);
     const SDL_GPUTextureSamplerBinding fragment[6] = {

@@ -8,6 +8,7 @@
 
 #include "engine/render/device.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/far_detail.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -83,6 +84,8 @@ public:
     SDL_GPUTexture* materialProperties() const { return materialProperties_.get(); }
     std::uint32_t biomeSize() const { return ground_.biomeSize; }
     const GroundUniforms& ground() const { return ground_; }
+    // The far ground's painted detail (far_detail.hpp); none set: off.
+    void setFar(const FarUniforms& paint) { far_ = paint; }
     // The river graph: the generator cuts the beds, the ground paints the
     // thin ones. Must be set (an empty one will do) before anything is drawn.
     void setRivers(const Rivers* rivers) { rivers_ = rivers; }
@@ -101,6 +104,7 @@ private:
     engine::Sampler nearest_, repeat_;
     engine::Texture biomeMap_, waterHue_, materials_, materialNormals_, materialProperties_;
     GroundUniforms ground_{};
+    FarUniforms far_{};
     engine::ComputePipeline generate_;
     engine::GraphicsPipeline terrain_;
     engine::Buffer indices_;

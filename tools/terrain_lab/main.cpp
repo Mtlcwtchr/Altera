@@ -30,6 +30,7 @@
 #include "terrain_core/drainage.hpp"
 #include "terrain_core/dlss.hpp"
 #include "terrain_core/erosion.hpp"
+#include "terrain_core/far_detail.hpp"
 #include "terrain_core/foliage.hpp"
 #include "terrain_core/grass.hpp"
 #include "terrain_core/props.hpp"
@@ -111,6 +112,7 @@ struct Options {
     bool foliage = true;          // the trees module (trees and bushes)
     bool grass = true;            // the grass cover
     bool props = true;            // the mega structures (P)
+    bool farDetail = true;        // the far ground's painted detail (far_detail.json; --no-far)
     std::string propsCategories;  // --props-cats terrain,megaliths,buildings: only these (O toggles megaliths)
     double propsDetail = 1400;    // --props-detail M: cliffs nearer than this are refined (0: never)
     fs::path features;            // --features: <world>_features.json; empty: beside a <world>_final.r16 heightmap
@@ -206,6 +208,7 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
         else if (a == "--no-grass") o.grass = false;
         else if (a == "--no-props") o.props = false;
+        else if (a == "--no-far") o.farDetail = false;
         else if (a == "--features") o.features = next();
         else if (a == "--props-detail") o.propsDetail = std::atof(next());
         else if (a == "--props-cats") o.propsCategories = next();
@@ -597,6 +600,17 @@ struct Lab {
                         layer.enabled = ("," + options.foliageLayers + ",").find("," + layer.name + ",") != std::string::npos;
                 std::printf("foliage: %zu layers, %u models, %.1f MB, in %.0f ms\n", foliage.layers().size(), foliage.modelCount(),
                             double(foliage.gpuBytes()) / (1 << 20), msSince(foliageStart));
+            }
+            if (options.farDetail) {
+                // The far ground's paint; its forest canopy follows the tree layers.
+                FarUniforms paint;
+                std::string farWhy;
+                const std::vector<FoliageLayer> none;
+                if (makeFarUniforms(foliageFile.parent_path() / "far_detail.json", foliageReady ? foliage.layers() : none,
+                                    options.params.seed, paint, &farWhy))
+                    renderer.setFar(paint);
+                else
+                    std::fprintf(stderr, "far detail off: %s\n", farWhy.c_str());
             }
         }
         {

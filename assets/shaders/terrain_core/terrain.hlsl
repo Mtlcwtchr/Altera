@@ -117,6 +117,8 @@ cbuffer Look : register(b0, space3) {
     float lookPad;
 };
 
+#include "far_detail.hlsli"
+
 float3 levelTint(uint level) {
     const float3 tints[8] = {float3(1, 0.3, 0.3), float3(1, 0.7, 0.2), float3(0.9, 1, 0.3), float3(0.3, 1, 0.4),
                              float3(0.3, 0.9, 1), float3(0.3, 0.5, 1), float3(0.7, 0.3, 1), float3(1, 0.3, 0.8)};
@@ -153,6 +155,15 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         // where a texel of it is smaller than a pixel (the mips flatten it anyway).
         const float relief = maps ? 1.0 - saturate(p.footprint / 24.0) : 0.0;
         normal = normalize(float3(-s.y + surface.slope.x * relief, -s.z + surface.slope.y * relief, 1));
+        // Past a hundred and fifty metres or so: what the mesh and the
+        // textures can no longer show, painted (far_detail.hlsli).
+        if (debugLevels != 5 && dot(input.view, input.view) > farRange.x * farRange.x) {
+            const float levelSpacing = groundWorld.y * float(1u << input.level);
+            const float curvature = farCurvature(input.slots.xy, input.local, input.level, height, levelSpacing);
+            float2 farSlope = 0;
+            farDetail(p, height, surfaceNormal, input.view, curvature, surface.grass, colour, farSlope);
+            normal = normalize(normal / normal.z + float3(-farSlope, 0));
+        }
     }
     // The river graph: banks damp near the water; and a river this level's
     // mesh is too coarse to cut (the generator leaves it) painted instead,
