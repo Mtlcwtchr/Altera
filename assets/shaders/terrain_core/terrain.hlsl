@@ -105,6 +105,10 @@ SamplerState clipPsSampler : register(s0, space2);
 #define RIVER_LIST register(t8, space2)
 #include "rivers.hlsli"
 
+#define RELIEF_PATCHES register(t9, space2)
+#define RELIEF_TEXELS register(t10, space2)
+#include "relief.hlsli"
+
 cbuffer Look : register(b0, space3) {
     float3 lookUnusedSun;      // the light is lighting.hlsli's now
     float lookUnusedHaze;
@@ -130,13 +134,22 @@ float4 terrainPs(VsOut input) : SV_Target0 {
     if (input.morph > 0 && input.level + 1 < lookLevels)
         s = lerp(s, bilinear(clipPs, clipPsSampler, lookClipSize, input.slots.zw, input.local * 0.5, input.level + 1), input.morph);
     const float height = s.x;
-    float3 normal = normalize(float3(-s.y, -s.z, 1));
-    const float3 surfaceNormal = normal;
-
     GroundPoint p;
     p.base = input.origin << input.level;
     p.sub = input.local * float(1u << input.level);
     p.footprint = max(length(ddx(p.sub)), length(ddy(p.sub)));
+    {
+        // The fine relief (a marsh hill's low terraces) where this level's
+        // mesh is too coarse to hold it: its slopes - and so its rock and its
+        // light - in the shading, filtered over the pixel.
+        const float levelSpacing = groundWorld.y * float(1u << input.level);
+        float weight, texel;
+        const float3 fine = reliefShade(p.base, p.sub, groundWorld.y, p.footprint * groundWorld.y, weight, texel);
+        const float fade = weight * saturate(levelSpacing / texel - 0.5);
+        if (fade > 0) s.yz = lerp(s.yz, fine.yz, fade);
+    }
+    float3 normal = normalize(float3(-s.y, -s.z, 1));
+    const float3 surfaceNormal = normal;
     float3 colour;
     if ((lookFlags & 1u) != 0 && debugLevels != 5) {
         // The ground module off: colour by height and slope only.

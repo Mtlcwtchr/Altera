@@ -329,6 +329,8 @@ void Renderer::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, con
     SDL_BindGPUFragmentSamplers(pass, 0, fragment, 6);
     const auto rivers = rivers_->buffers();
     SDL_BindGPUFragmentStorageBuffers(pass, 0, rivers.data(), 3);
+    const auto relief = (relief_ ? relief_ : &noRelief_)->buffers();
+    SDL_BindGPUFragmentStorageBuffers(pass, 3, relief.data(), 2);
     drawSet(pass, view_);
 }
 

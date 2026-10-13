@@ -68,3 +68,31 @@ float3 applyRelief(float3 h, int2 u, float spacing, float levelSpacing) {
     }
     return h;
 }
+
+// For the ground's shading, where the mesh is too coarse to hold the steps:
+// the fine relief's (height, dh/dx, dh/dy) and its weight at a point -
+// `base` + `sub` in the finest spacing's texels - filtered over the pixel's
+// `footprint` (metres). `texel`: the patch's (metres).
+float3 reliefShade(int2 base, float2 sub, float spacing, float footprint, out float weight, out float texel) {
+    uint count, stride;
+    reliefPatches.GetDimensions(count, stride);
+    float3 h = 0;
+    weight = 0;
+    texel = 1.0;
+    for (uint k = 0; k < count; ++k) {
+        const ReliefPatch p = reliefPatches[k];
+        const float2 q = (float2(base - p.origin) + sub) * (spacing / p.texel);
+        if (any(q < 0.0) || any(q >= float2(p.size))) continue;
+        const float f = footprint / p.texel;
+        const float2 v = reliefAt(p, q, f);
+        if (v.y <= 0.0) continue;
+        const float d = max(0.75, f);
+        const float gx = (reliefAt(p, q + float2(d, 0), f).x - reliefAt(p, q - float2(d, 0), f).x) / (2.0 * d * p.texel);
+        const float gy = (reliefAt(p, q + float2(0, d), f).x - reliefAt(p, q - float2(0, d), f).x) / (2.0 * d * p.texel);
+        h = lerp(h, float3(p.base + v.x, gx, gy), saturate(v.y));
+        weight = max(weight, saturate(v.y));
+        texel = p.texel;
+        if (weight >= 1.0) break;
+    }
+    return h;
+}

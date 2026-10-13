@@ -52,7 +52,7 @@ bool Relief::load(const std::filesystem::path& file, double spacing, std::string
 }
 
 bool Relief::open(engine::Device& device, std::string* why) {
-    const auto usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ;
+    const auto usage = SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ | SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
     const Patch none{};
     const std::uint32_t zero = 0;
     patchBuffer_ = device.uploadBuffer(usage, patches_.empty() ? &none : patches_.data(),

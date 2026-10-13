@@ -12,7 +12,8 @@
 // metres), f32 texel (metres), f32 base (metres), u32 width, height, then
 // width * height pairs of f16 (height over base, weight 0..1), row 0 south.
 //
-// On the GPU two read-only storage buffers, bound together and in this
+// On the GPU two read-only storage buffers (the generator and the ground's
+// shading read them), bound together and in this
 // order: the patches (32 bytes each; an empty set is one patch of no size)
 // and their texels (u32: height half low, weight half high).
 
