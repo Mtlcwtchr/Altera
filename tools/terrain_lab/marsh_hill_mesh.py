@@ -44,7 +44,7 @@ def build(prof, rule, level, rng, segments=56):
     z = level + rule["shelf_m"]
     sink = rule.get("mesh_sink_m", 2.0)
     rough = rule.get("mesh_rough_m", 2.5)
-    tris = []
+    tris, wts = [], []   # triangles and their vertices' moss-edge weights
     for k in range(len(risers)):
         bottom = z - (sink if k == 0 else 0.6)
         top = z + risers[k]
@@ -57,26 +57,33 @@ def build(prof, rule, level, rng, segments=56):
         r2 = r0 - ramp * treads[k] * 0.85 + rng.uniform(-0.4, 0.4, segments) * rough
         r1 = 0.5 * (r0 + r2) + mid_j
         rings = [(r0, np.full(segments, bottom)), (r1, np.full(segments, 0.5 * (bottom + top))), (r2, np.full(segments, top))]
+        # Moss gathers at a step's foot and along its brink, frayed by noise.
+        weights = [rng.uniform(0.6, 1.0, segments), rng.uniform(0.0, 0.35, segments), rng.uniform(0.4, 1.0, segments)]
         # The tread: flat at `top` from the wall's top in to the next riser.
         if k + 1 < len(risers):
             r3 = inner + rng.uniform(-rough, rough, segments) * 0.5
             r3 = np.minimum(r3, r2 - 1.0)
             rings.append((r3, np.full(segments, top)))
+            weights.append(rng.uniform(0.0, 0.4, segments))
         rings_xyz = [np.stack([r * np.cos(theta), r * np.sin(theta), zz], 1) for r, zz in rings]
-        for a, b in zip(rings_xyz, rings_xyz[1:]):
+        for (a, wa), (b, wb) in zip(zip(rings_xyz, weights), zip(rings_xyz[1:], weights[1:])):
             for i in range(segments):
                 j = (i + 1) % segments
                 tris.append((a[i], a[j], b[j]))
+                wts.append((wa[i], wa[j], wb[j]))
                 tris.append((a[i], b[j], b[i]))
+                wts.append((wa[i], wb[j], wb[i]))
         if k + 1 == len(risers):
             # The top: a fan to the centre, slightly domed.
             c = np.array([0.0, 0.0, top + 0.3])
             last = rings_xyz[-1]
             for i in range(segments):
                 tris.append((last[i], last[(i + 1) % segments], c))
+                wts.append((weights[-1][i], weights[-1][(i + 1) % segments], 0.0))
         radius = inner
         z = top
     t = np.array(tris, np.float64)
+    w = np.array(wts, np.float64)
     # Faces out and up: flip any triangle whose normal looks inward or down.
     n = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
     centre = t.mean(1)
@@ -85,12 +92,14 @@ def build(prof, rule, level, rng, segments=56):
     want = np.where(flat[:, None], np.array([0, 0, 1.0]), outward)
     flip = (n * want).sum(1) < 0
     t[flip] = t[flip][:, [0, 2, 1]]
-    return t
+    w[flip] = w[flip][:, [0, 2, 1]]
+    return t, w
 
 
-def write(path, tris, ground_z):
+def write(path, tris, ground_z, weights=None):
     """FOLM v2, flat-shaded (each triangle its own vertices). uv.x: darker at
-    the foot of a wall; uv.y: height share up the hill; blend 0."""
+    the foot of a wall; uv.y: height share up the hill; blend: where moss
+    gathers (a step's foot and brink), read by props.hlsl."""
     tris = np.asarray(tris, np.float64)
     pos = tris.reshape(-1, 3)
     n = np.cross(tris[:, 1] - tris[:, 0], tris[:, 2] - tris[:, 0])
@@ -100,7 +109,8 @@ def write(path, tris, ground_z):
     share = np.clip((pos[:, 2] - zmin) / (zmax - zmin), 0, 1)
     ao = np.where(nrm[:, 2] < 0.5, 0.75 + 0.25 * share, 1.0)
     uv = np.stack([ao, share], 1)
-    v = np.concatenate([pos, nrm, uv, np.zeros((len(pos), 1))], 1).astype("<f4")
+    blend = np.zeros(len(pos)) if weights is None else np.asarray(weights, np.float64).reshape(-1)
+    v = np.concatenate([pos, nrm, uv, blend[:, None]], 1).astype("<f4")
     idx = np.arange(len(pos), dtype="<u4")
     with open(path, "wb") as f:
         f.write(b"FOLM")

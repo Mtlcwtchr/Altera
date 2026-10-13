@@ -220,10 +220,25 @@ float4 propsPs(VsOut input) : SV_Target0 {
     // Moss on what faces up and in the hollows, in patches, more low down
     // where the wet stays (doc/BIOMES_RU.md, 01: by wetness and facing).
     if (moss > 0) {
-        const float patches = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 20.0), layer), bias + 2).g;
+        float patches = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 20.0), layer), bias + 2).g;
         const float up = saturate((n0.z + 0.15) * 1.6);
         const float wet = lerp(1.0, 0.55, saturate(input.uv.y * 1.4)) + (1.0 - input.uv.x) * 0.6;
-        const float m = smoothstep(0.35, 0.65, moss * up * wet + (patches - 0.45) * 0.8);
+        float grow = moss * up * wet;
+        // On a cliff wall moss also runs in bands along the foot and the
+        // brink (a marsh hill's mesh carries them in `blend`: 1 at a step's
+        // foot and top) and hangs down the face in streaks.
+        if (input.biomes.x >= 0) {
+            // (the noise from the rock's height map: a red rock's green
+            // channel is near black and would starve the moss)
+            patches = materialProperties.SampleBias(propertySampler, float3(input.place.xy / (rockTile * 20.0), layer), bias + 2).b;
+            const float edge = input.biomes.x == input.biomes.y ? input.blend : 0.0;
+            const float2 down = float2((input.place.x + input.place.y) / (rockTile * 1.6), input.place.z / (rockTile * 9.0));
+            const float streak = materialProperties.SampleBias(propertySampler, float3(down, layer), bias + 1).b;
+            grow = max(grow, moss * (1.1 * edge + 0.8 * smoothstep(0.45, 0.65, streak)) * lerp(1.2, 0.8, saturate(input.uv.y)));
+        }
+        // (the height map's noise sits lower than a colour channel's)
+        const float m = input.biomes.x >= 0 ? smoothstep(0.28, 0.5, grow + (patches - 0.3) * 0.9)
+                                           : smoothstep(0.35, 0.65, grow + (patches - 0.45) * 0.8);
         if (m > 0) {
             const float3 green = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 1.5), rockMossLayer), bias).rgb;
             colour = lerp(colour, green * 0.85, m);

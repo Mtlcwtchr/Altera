@@ -381,10 +381,10 @@ def main():
     mesh_rng = np.random.default_rng(args.seed * 7919 + 97)
     triangles = 0
     for k, q in enumerate(hills):
-        tris = marsh_hill_mesh.build(q["prof"], q["rule"], q["level"], mesh_rng)
+        tris, weights = marsh_hill_mesh.build(q["prof"], q["rule"], q["level"], mesh_rng)
         q["mesh"] = f"hill_{k:03d}"
         for lod in range(3):
-            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, q["level"] - 2.0)
+            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, q["level"] - 2.0, weights)
         triangles += n_tris
     print(f"hill meshes: {len(hills)} in {mesh_dir.name}/, {triangles} triangles")
 
