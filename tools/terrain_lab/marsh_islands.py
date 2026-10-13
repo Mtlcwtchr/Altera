@@ -287,11 +287,11 @@ def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segm
 def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng):
     """A hill's terraces as fine relief (src/terrain_core/relief.hpp): the
     ground round (x, y) at `relief.texel_m` a texel, the worn hill (the
-    heightfield's own ground) with its top cut into steps - the tread inside
-    wall k's contour `rho[k]` at `levels[k + 1]`, the riser `riser_width_m`
-    wide (on the ramp spread over most of the tread), every wall's line
-    wandering a little - eased back into the plain hill over `blend_m` past
-    the outer wall. Returns the patch (x0, y0, texel, base, heights, weights)
+    heightfield's own ground) with benches along a flank or two - inside wall
+    k's contour `rho[k]` the slope filled up to `levels[k + 1]`, the riser
+    `riser_width_m` wide (on the ramp spread over most of the tread), every
+    wall's line wandering a little, each step tapering out into the slope at
+    its ends - eased back into the plain hill over `blend_m`. Returns the patch (x0, y0, texel, base, heights, weights)
     and the most the hill's own ground rises over a tread (the check)."""
     rel = rule["relief"]
     t = rel["texel_m"]
@@ -315,34 +315,47 @@ def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng):
     wander *= rel["wander_m"] / max(float(np.abs(wander).max()), 1e-6)
     ramp_t = ring(ramp)
     n = len(rho)
-    z = np.zeros((m, m))
-    inside0 = None
+    # Natural benches, not a ziggurat: the steps run along one or two flanks
+    # (`sectors`, each `sector_deg` round), every step its own stretch of it,
+    # tapering out into the plain slope at both ends over `end_deg`.
+    sectors = [(rng.uniform(0, math.tau), math.radians(rng.uniform(*rel["sector_deg"])))
+               for _ in range(int(rng.integers(rel["sectors"][0], rel["sectors"][1] + 1)))]
+    end = math.radians(rel["end_deg"])
+    def stretch(k):
+        reach_ = np.zeros_like(r)
+        for at, width in sectors:
+            half = 0.5 * width * rng.uniform(1 - rel["stagger"], 1.0)
+            mid = at + rng.uniform(-1, 1) * rel["stagger"] * 0.5 * width * 0.5
+            d = np.abs((th - mid + math.pi) % math.tau - math.pi)
+            e = np.clip((half - d) / end, 0, 1)
+            reach_ = np.maximum(reach_, e * e * (3 - 2 * e))
+        return reach_
+    height = natural.copy()
     poke = -np.inf
+    # Treads a little uneven, a hand's breadth at most.
+    bumps = ndimage.gaussian_filter(rng.normal(size=(m, m)), 2.5 / t)
+    bumps *= rel["tread_noise_m"] / max(float(np.abs(bumps).max()), 1e-6)
+    cover = np.zeros_like(r)
     for k in range(n):
         rk = ring(rho[k]) + wander * (1.0 + 0.3 * k)
         tread = rk - (ring(rho[k + 1]) if k + 1 < n else 0.0)
         width = rel["riser_width_m"] + ramp_t * np.maximum(tread * 0.85 - rel["riser_width_m"], 0)
         a = np.clip((rk - r) / width + 0.5, 0, 1)
-        a = a * a * (3 - 2 * a)
-        if k == 0:
-            inside0 = a
-        else:
-            z += (levels[k + 1] - levels[k]) * a
+        a = a * a * (3 - 2 * a) * stretch(k)
+        # The bench: the slope inside this wall filled up to its level.
+        level = levels[k + 1] + bumps
+        height = height + (np.maximum(height, level) - height) * a
+        cover = np.maximum(cover, a)
         # The check: the hill's own ground inside this wall, past the next,
         # stays under this tread.
         inner = ring(rho[k + 1]) if k + 1 < n else np.zeros_like(r)
         on = (r < rk - width) & (r > inner + 1.0)
         if on.any():
             poke = max(poke, float((natural[on] - levels[k + 1]).max()))
-    # Treads a little uneven, a hand's breadth at most.
-    bumps = ndimage.gaussian_filter(rng.normal(size=(m, m)), 2.5 / t)
-    bumps *= rel["tread_noise_m"] / max(float(np.abs(bumps).max()), 1e-6)
-    terr = levels[1] + z + bumps
-    height = natural + (terr - natural) * inside0
-    # The weight: whole over the terraces, easing out to the plain hill.
-    edge = ring(rho[0]) + wander
-    w = np.clip(1 - (r - edge - 2.0) / rel["blend_m"], 0, 1)
-    w = w * w * (3 - 2 * w)
+    # The weight: whole over the benches, easing out to the plain hill.
+    w = ndimage.maximum_filter(cover, size=int(2 * rel["blend_m"] / t) + 1)
+    w = ndimage.uniform_filter(w, size=int(rel["blend_m"] / t) + 1)
+    w = np.clip(w * 1.5, 0, 1)
     w[[0, -1], :] = 0
     w[:, [0, -1]] = 0
     base = float(np.round(levels[0]))
