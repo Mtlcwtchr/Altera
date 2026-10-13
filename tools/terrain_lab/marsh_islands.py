@@ -89,6 +89,13 @@ def island_profile(rng, r_top, rule):
     """Treads (widths, m) and risers (heights, m) from the water up, and the
     shape: the outline's wobble, the cliff sides."""
     steps = int(rng.integers(rule["steps"][0], rule["steps"][1] + 1))
+    if "riser_m" in rule:
+        # Each step its own height (the user: 0.3-0.7 of a man's height).
+        risers = rng.uniform(*rule["riser_m"], steps)
+        treads = rng.uniform(*rule["tread_m"], steps)
+        cliffs = [(rng.uniform(0, math.tau), rng.uniform(*rule["cliff_width_deg"]) * math.pi / 180)
+                  for _ in range(int(rng.integers(rule["cliff_sides"][0], rule["cliff_sides"][1] + 1)))]
+        return {"risers": risers, "treads": treads, "wobble": smooth_noise(rng), "cliffs": cliffs, "r_top": r_top}
     total = rng.uniform(*rule["top_m"])
     cuts = np.sort(rng.uniform(0, 1, steps - 1))
     risers = np.diff(np.concatenate([[0], cuts, [1]])) * total

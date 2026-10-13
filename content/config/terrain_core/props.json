@@ -452,7 +452,7 @@
       "spacing_scale": 2.8
     },
     "marsh_islands": {
-      "comment": "The marshes' layout (tools/terrain_lab/marsh_islands.py, before world_features.py; marshes/MARSHES_REQUIREMENTS.md). `landform`: the shallow floor - water at `water_level_m`, pools `water_depth_m` deep covering `wet_share` of it in patches of `pool_km`, hummocks `hummock_m`. `monoliths`: `count` A-1 slabs at `scale` over the whole valley, at least `edge_m` inside it and `gap_m` apart, each on a flat pad `pad_height_m` over the water, `pad_margin_m` wider than its foot, eased into the ground over `pad_blend_m`. `hills` and `islets`: `per_km2`, `gap_m` apart, `steps` risers making `top_m` (each at least `riser_min_m`), treads `tread_m`, top radius `r_top_m`, outline wobbling by `wobble`; on `cliff_sides` sectors `cliff_width_deg` wide the treads shrink by `cliff_squeeze` (one cliff into the water); a hill with `ramp` has one sector `ramp_width_deg` wide with gentle steps. `checks`: the water's share over `window_m` windows should lie in `water_share`. `forest_pools`: red pools in the forest's edge, `wet_share` of it at the border thinning to none `width_m` in, only where the slope is under `max_slope`. The hills' steps are meshes (marsh_hill_mesh.py, `mesh_sink_m`, `mesh_rough_m`); the ground under them is raised `ground_inset_m` inside their outline.",
+      "comment": "The marshes' layout (tools/terrain_lab/marsh_islands.py, before world_features.py; marshes/MARSHES_REQUIREMENTS.md). `landform`: the shallow floor - water at `water_level_m`, pools `water_depth_m` deep covering `wet_share` of it in patches of `pool_km`, hummocks `hummock_m`. `monoliths`: `count` A-1 slabs at `scale` over the whole valley, at least `edge_m` inside it and `gap_m` apart, each on a flat pad `pad_height_m` over the water, `pad_margin_m` wider than its foot, eased into the ground over `pad_blend_m`. `hills` and `islets`: `per_km2`, `gap_m` apart, `steps` risers making `top_m` (each at least `riser_min_m`), treads `tread_m`, top radius `r_top_m`, outline wobbling by `wobble`; on `cliff_sides` sectors `cliff_width_deg` wide the treads shrink by `cliff_squeeze` (one cliff into the water); a hill with `ramp` has one sector `ramp_width_deg` wide with gentle steps. `checks`: the water's share over `window_m` windows should lie in `water_share`. `forest_pools`: red pools in the forest's edge, `wet_share` of it at the border thinning to none `width_m` in, only where the slope is under `max_slope`. The hills' steps are meshes (marsh_hill_mesh.py, `mesh_sink_m`, `mesh_rough_m`); the ground under them is raised `ground_inset_m` inside their outline. With `riser_m` each step is its own height in that range (user 13.10: 0.3-0.7 of a man's height).",
       "kind": "a1_monolith",
       "manifest": "content/config/terrain_core/megaliths/a1_monolith.asset.json",
       "zones": [
@@ -483,7 +483,7 @@
       ],
       "cliff_squeeze": 0.92,
       "shelf_m": 0.4,
-      "riser_soft_m": 8,
+      "riser_soft_m": 4,
       "tread_noise_m": 0.6,
       "edge_blend_m": 650,
       "landform": {
@@ -523,19 +523,23 @@
         ],
         "riser_min_m": 2.0,
         "tread_m": [
-          14,
-          34
+          6,
+          18
         ],
         "r_top_m": [
-          40,
-          110
+          25,
+          70
         ],
         "cliff_sides": [
           1,
           2
         ],
         "ramp": true,
-        "ramp_width_deg": 45
+        "ramp_width_deg": 45,
+        "riser_m": [
+          0.5,
+          1.2
+        ]
       },
       "islets": {
         "per_km2": 0.5,
@@ -550,8 +554,8 @@
         ],
         "riser_min_m": 1.5,
         "tread_m": [
-          8,
-          16
+          4,
+          10
         ],
         "r_top_m": [
           15,
@@ -560,6 +564,10 @@
         "cliff_sides": [
           0,
           1
+        ],
+        "riser_m": [
+          0.5,
+          1.0
         ]
       },
       "checks": {
@@ -578,7 +586,9 @@
         "pool_km": 0.5,
         "max_slope": 0.05
       },
-      "ground_inset_m": 14
+      "ground_inset_m": 14,
+      "mesh_rough_m": 1.2,
+      "mesh_sink_m": 1.0
     }
   },
   "buildings": {
