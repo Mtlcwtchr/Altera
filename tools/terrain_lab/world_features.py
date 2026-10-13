@@ -269,6 +269,7 @@ def main():
     ap.add_argument("--sea", type=float, default=0.13)
     ap.add_argument("--seed", type=int, default=7)
     ap.add_argument("--no-cliffs", action="store_true", help="leave out the cliff walls")
+    ap.add_argument("--workers", type=int, default=4, help="parallel cliff builders (bounds peak memory)")
     args = ap.parse_args()
     rules = json.loads(RULES.read_text(encoding="utf-8"))
     catalogue = json.loads(CATALOGUE.read_text(encoding="utf-8"))
@@ -276,10 +277,19 @@ def main():
     items = place(world, rules, catalogue, args.seed)
     if not args.no_cliffs:
         import world_cliffs
-        cliffs = world_cliffs.build(world, rules, args.world + "_cliffs", np.random.default_rng(args.seed))
+        cliffs = world_cliffs.build(world, rules, args.world + "_cliffs", np.random.default_rng(args.seed), workers=args.workers)
         for o in cliffs:
             o["cat"] = "terrain"
         items += cliffs
+    # The marshes' terraced hills (marsh_islands.py): their steps as meshes,
+    # worn as the marshes' own cliffs.
+    marsh = Path(args.world + "_marsh_islands.json")
+    if marsh.exists():
+        layout = json.loads(marsh.read_text(encoding="utf-8"))
+        for q in layout.get("hills", []):
+            if "mesh" in q:
+                items.append({"m": q["mesh"], "dir": layout["mesh_dir"], "x": q["x"], "y": q["y"], "z": 0.0, "yaw": 0.0,
+                              "s": [1.0, 1.0, 1.0], "biomes": [1, 1], "cat": "terrain"})
     out = Path(args.world + "_features.json")
     out.write_text(json.dumps({"world_m": world.size, "instances": items}, separators=(",", ":")))
     preview(world, args.world, items, catalogue, args.world + "_features_preview.png")

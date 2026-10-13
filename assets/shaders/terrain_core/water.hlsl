@@ -276,7 +276,7 @@ float4 waterPs(VsOut input) : SV_Target0 {
     // dark forest and the forest's blue past it.
     const float hue = saturate(input.hue);
     if (hue < 0.999) {
-        const float3 red = float3(0.340, 0.034, 0.026), purple = float3(0.150, 0.040, 0.190);
+        const float3 red = float3(0.620, 0.070, 0.050), purple = float3(0.260, 0.070, 0.330);
         own = hue < 0.5 ? lerp(red, purple, hue * 2.0) : lerp(purple, own, (hue - 0.5) * 2.0);
     }
     const float3 body = own * ambient;
@@ -329,7 +329,7 @@ float4 waterPs(VsOut input) : SV_Target0 {
         foam = max(foam, white * (0.5 + 0.5 * near));
     }
     // (the red water is dull: less of the sky in it)
-    reflection *= 0.55 + 0.45 * hue;
+    reflection *= 0.2 + 0.8 * hue;
     float3 colour = body * opacity * (1.0 - fresnel) + reflection * fresnel;
     float alpha = saturate(max(opacity, plunge * 0.9) * (1.0 - fresnel) + fresnel);
     // A marsh's moss creeping off its banks onto the water, a ragged fringe in

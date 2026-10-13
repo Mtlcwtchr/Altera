@@ -74,8 +74,8 @@ public:
     void shape(const std::filesystem::path& table, double worldSize);
     std::uint32_t size() const { return size_; }
     const std::vector<std::uint8_t>& ids() const { return ids_; }
-    // One byte a texel (empty: none): 0 the water red (deep in the marsh),
-    // 128 purple (on the border), 255 as it is (blue, the forest's).
+    // One byte a texel (empty: none): 0 the water red (the marshes), 128
+    // purple, 255 as it is (blue in the forest, the sea's at a delta).
     const std::vector<std::uint8_t>& waterHue() const { return hue_; }
 
 private:

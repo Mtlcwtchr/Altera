@@ -183,9 +183,13 @@ def water_mask(world):
     and the sea."""
     n = world.zones.shape[0]
     wet = world.hz <= 0.5
+    skeleton = Path(str(world.stem) + "_water_skeleton.png")
     for name in ("_water_preview.png", "_water_skeleton.png"):
         f = Path(str(world.stem) + name)
         if not f.exists():
+            continue
+        # (a preview older than the skeleton - marsh_islands.py dried cells since - is stale)
+        if name == "_water_preview.png" and skeleton.exists() and f.stat().st_mtime < skeleton.stat().st_mtime:
             continue
         im = np.asarray(Image.open(f).convert("RGB")).astype(np.int32)[::-1]
         if name == "_water_preview.png":
@@ -214,7 +218,9 @@ def a1_monoliths(world, rules, catalogue, rng, add):
     r = rules["a1_monoliths"]
     asset = json.loads((ROOT / r["manifest"]).read_text(encoding="utf-8"))
     pl = asset["placement"]
-    field = pl["field"]
+    field = dict(pl["field"])
+    field["row_gap_m"] *= r.get("row_gap_scale", 1.0)
+    field["spacing_m"] = [v * r.get("spacing_scale", 1.0) for v in field["spacing_m"]]
     names = _names(catalogue, r["kind"])
     inside = np.isin(world.zones, r["zones"])
     depth = ndimage.distance_transform_edt(inside) * world.cell
@@ -241,8 +247,10 @@ def a1_monoliths(world, rules, catalogue, rng, add):
                 out.append((x + u * c - v * si, y + u * si + v * c))
         return out
 
-    def judge(x, y, yaw, m, s):
-        """(None, its numbers) when the slab may stand here, else (why not, None)."""
+    def judge(x, y, yaw, m, s, level=None):
+        """(None, its numbers) when the slab may stand here, else (why not, None).
+        `level`: on an island, its water's level - the footprint must stand
+        above it (the water grid is too coarse for an island's top)."""
         i, j = cell(x, y)
         if not inside[i, j] or depth[i, j] < r["edge_m"]:
             return "edge", None
@@ -251,7 +259,7 @@ def a1_monoliths(world, rules, catalogue, rng, add):
             a, b = cell(fx, fy)
             if not inside[a, b]:
                 return "edge", None
-            if wet_near[a, b]:
+            if level is None and wet_near[a, b]:
                 return "water", None
         # Stood as the lab stands it: the lowest ground under 0.7 of its reach.
         reach = 0.5 * max((m["hi"][0] - m["lo"][0]) * s, (m["hi"][1] - m["lo"][1]) * s)
@@ -263,11 +271,28 @@ def a1_monoliths(world, rules, catalogue, rng, add):
         # Hanging: the skirt's bottom must be under the ground everywhere.
         if (ground - bottom).min() < 0.3:
             return "hanging", None
+        if level is not None and ground.min() < level + 0.5:
+            return "water", None
         if ground.max() - ground.min() > r["max_relief_m"]:
             return "slope", None
         if base + r["sink_m"] < r["min_height_m"]:
             return "low", None
         return None, {"base": round(base, 1), "relief_m": round(float(ground.max() - ground.min()), 1)}
+
+    islands = Path(str(world.stem) + "_marsh_islands.json")
+    if islands.exists():
+        # Each slab on the island raised for it (marsh_islands.py): its
+        # variant, scale and turn were chosen there, to fit the island's top.
+        placed, why_not = [], {}
+        for q in json.loads(islands.read_text(encoding="utf-8"))["islands"]:
+            why, check = judge(q["x"], q["y"], q["yaw"], catalogue[q["m"]], q["s"], q["level"])
+            if why is not None:
+                why_not[why] = why_not.get(why, 0) + 1
+                continue
+            placed.append({"x": q["x"], "y": q["y"], "m": q["m"], "s": q["s"], "yaw": q["yaw"], **check,
+                           "top": round(check["base"] + catalogue[q["m"]]["hi"][2] * q["s"], 1), "salt": 0})
+        return finish(world, r, inside, wet, source, placed, why_not, add, rng,
+                      json.loads(islands.read_text(encoding="utf-8")).get("rows_deg", 0))
 
     order = list(rng.permutation(len(names)))
     placed, why_not = [], {}
@@ -287,7 +312,7 @@ def a1_monoliths(world, rules, catalogue, rng, add):
                 x, y = d * tt + nrm * (row_off + lateral)
                 name = names[order[len(placed) % len(names)]]
                 m = catalogue[name]
-                s = float(rng.uniform(*pl["scale"]))
+                s = float(rng.uniform(*r.get("scale", pl["scale"])))
                 yaw = float(rng.uniform(0, math.tau))
                 why, check = judge(x, y, yaw, m, s)
                 if why is None and any((x - q["x"]) ** 2 + (y - q["y"]) ** 2 < r["min_gap_m"] ** 2 for q in placed):
@@ -299,6 +324,11 @@ def a1_monoliths(world, rules, catalogue, rng, add):
             if why is not None:
                 why_not[why] = why_not.get(why, 0) + 1
             t += rng.uniform(*field["spacing_m"])
+    return finish(world, r, inside, wet, source, placed, why_not, add, rng, math.degrees(theta))
+
+
+def finish(world, r, inside, wet, source, placed, why_not, add, rng, rows_deg):
+    """Adds the slabs and writes their checks (doc/BIOME_PLAN.md 1.5)."""
     for q in placed:
         add(r["kind"], q["m"], q["x"], q["y"], q["yaw"], (q["s"], q["s"], q["s"]), sink=r["sink_m"], look=r["look"])
 
@@ -311,7 +341,7 @@ def a1_monoliths(world, rules, catalogue, rng, add):
         "moved_along_row": sum(1 for q in placed if q["salt"] > 0),
         "relief_under_foot_m_max": max((q["relief_m"] for q in placed), default=0),
         "visibility": vis,
-        "rows_deg": round(math.degrees(theta), 1),
+        "rows_deg": round(rows_deg, 1),
     }
     return len(placed)
 

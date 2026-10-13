@@ -242,17 +242,21 @@ void BiomeMap::shape(const std::filesystem::path& table, double worldSize) {
     }
     const auto hue = config.value("water_hue", nlohmann::json::object());
     if (hue.contains("red") && hue.contains("blue")) {
+        // Red over the `red` biomes (the marshes), but the ordinary water
+        // within `sea_m` of the sea (a delta's mouth); over the `blue` ones
+        // (the dark forest) red at the border, purple, blue `blue_m` in.
         const auto red = idsOf(hue["red"]), blue = idsOf(hue["blue"]);
-        const float redM = hue.value("red_m", 2500.0f), blueM = hue.value("blue_m", 1500.0f);
-        const auto toBlue = distanceTo(mask(blue), size_, cell);
+        const float blueM = hue.value("blue_m", 3000.0f), seaM = hue.value("sea_m", 0.0f);
         const auto toRed = distanceTo(mask(red), size_, cell);
+        std::vector<float> toSea;
+        if (seaM > 0) toSea = distanceTo(mask({0}), size_, cell);
         hue_.assign(ids_.size(), 255);
         for (std::size_t i = 0; i < ids_.size(); ++i) {
             float v = 1.0f;
             if (std::find(red.begin(), red.end(), ids_[i]) != red.end())
-                v = 0.5f * std::clamp(1.0f - toBlue[i] / redM, 0.0f, 1.0f);
+                v = seaM > 0 ? std::clamp(1.0f - toSea[i] / seaM, 0.0f, 1.0f) : 0.0f;
             else if (std::find(blue.begin(), blue.end(), ids_[i]) != blue.end())
-                v = 0.5f + 0.5f * std::clamp(toRed[i] / blueM, 0.0f, 1.0f);
+                v = std::clamp(toRed[i] / blueM, 0.0f, 1.0f);
             hue_[i] = std::uint8_t(std::lround(v * 255.0f));
         }
     }
