@@ -96,6 +96,84 @@ def build(prof, rule, level, rng, segments=56):
     return t, w
 
 
+def build_on_ground(theta, rho, levels, ramp, rule, ground, rng):
+    """Terraces cut into a hill already in the heightfield: wall k stands on
+    the ground's contour `rho[k]` (segments, metres from the centre) at
+    `levels[k]` and rises to `levels[k + 1]`; a flat tread runs in from its
+    top to the next wall, the last level is the top. Every tread lies over
+    ground lower than itself (the contours are the outermost crossings), so
+    the hill shows only through the walls. `ground(x, y)` (local metres) is
+    the heightfield's own ground: the outermost wall's foot sinks into it.
+
+    Returns triangles, their vertices' moss weights and the check samples
+    (the outer foot's height over the ground, the ground over each tread)."""
+    segments = len(theta)
+    n = len(rho)
+    rough = rule.get("mesh_rough_m", 1.2)
+    sink = rule.get("mesh_sink_m", 1.0)
+    cos, sin = np.cos(theta), np.sin(theta)
+    # Each wall's foot a little out from its contour, its top leaning in or
+    # out of it; on the ramp the top steps back over most of the tread.
+    r0 = [rho[k] + rng.uniform(0, rough, segments) for k in range(n)]
+    tread = [rho[k] - (rho[k + 1] if k + 1 < n else 0) for k in range(n)]
+    r2 = []
+    for k in range(n):
+        top = rho[k] + rng.uniform(-rough, rough, segments) * 0.6 - ramp * tread[k] * 0.85
+        top = np.minimum(top, r0[k] + 0.5)
+        if k + 1 < n:
+            top = np.maximum(top, r0[k + 1] + 1.5)
+        r2.append(np.maximum(top, 1.0))
+    tris, wts = [], []
+    foot_gap, tread_poke = [], []
+    for k in range(n):
+        lo, hi = levels[k], levels[k + 1]
+        if k == 0:
+            bottom = np.minimum(ground(r0[0] * cos, r0[0] * sin) - sink, lo - 0.3)
+            foot_gap.append(bottom - ground(r0[0] * cos, r0[0] * sin))
+        else:
+            bottom = np.full(segments, lo - 0.6)
+        mid = 0.5 * (r0[k] + r2[k]) + rng.uniform(-rough, rough, segments) * 0.5
+        rings = [(r0[k], bottom), (mid, 0.5 * (bottom + hi)), (r2[k], np.full(segments, hi))]
+        # Moss gathers at a step's foot and along its brink, frayed by noise.
+        weights = [rng.uniform(0.6, 1.0, segments), rng.uniform(0.0, 0.35, segments), rng.uniform(0.4, 1.0, segments)]
+        if k + 1 < n:
+            # The tread in to the next wall's foot (the same ring: no gap).
+            rings.append((r0[k + 1], np.full(segments, hi)))
+            weights.append(rng.uniform(0.0, 0.4, segments))
+            inner = r0[k + 1]
+        else:
+            inner = np.zeros(segments)
+        for t in (0.0, 0.25, 0.5, 0.75, 0.98):
+            r = r2[k] + (inner - r2[k]) * t
+            tread_poke.append(ground(r * cos, r * sin) - hi)
+        rings_xyz = [np.stack([r * cos, r * sin, zz], 1) for r, zz in rings]
+        for (a, wa), (b, wb) in zip(zip(rings_xyz, weights), zip(rings_xyz[1:], weights[1:])):
+            for i in range(segments):
+                j = (i + 1) % segments
+                tris.append((a[i], a[j], b[j]))
+                wts.append((wa[i], wa[j], wb[j]))
+                tris.append((a[i], b[j], b[i]))
+                wts.append((wa[i], wb[j], wb[i]))
+        if k + 1 == n:
+            # The top: a fan to the centre, slightly domed.
+            c = np.array([0.0, 0.0, hi + 0.3])
+            last = rings_xyz[-1]
+            for i in range(segments):
+                tris.append((last[i], last[(i + 1) % segments], c))
+                wts.append((weights[-1][i], weights[-1][(i + 1) % segments], 0.0))
+    t = np.array(tris, np.float64)
+    w = np.array(wts, np.float64)
+    n_ = np.cross(t[:, 1] - t[:, 0], t[:, 2] - t[:, 0])
+    centre = t.mean(1)
+    outward = np.concatenate([centre[:, :2], np.zeros((len(t), 1))], 1)
+    flat = np.abs(n_[:, 2]) > 0.7 * np.linalg.norm(n_, axis=1)
+    want = np.where(flat[:, None], np.array([0, 0, 1.0]), outward)
+    flip = (n_ * want).sum(1) < 0
+    t[flip] = t[flip][:, [0, 2, 1]]
+    w[flip] = w[flip][:, [0, 2, 1]]
+    return t, w, {"foot_gap": np.concatenate(foot_gap), "tread_poke": np.concatenate(tread_poke)}
+
+
 def write(path, tris, ground_z, weights=None):
     """FOLM v2, flat-shaded (each triangle its own vertices). uv.x: darker at
     the foot of a wall; uv.y: height share up the hill; blend: where moss

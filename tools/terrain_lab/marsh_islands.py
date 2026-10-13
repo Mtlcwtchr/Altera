@@ -164,6 +164,126 @@ def raise_island(h, cell, x, y, level, prof, rule):
     return mask, (r0, r1, c0, c1)
 
 
+NEIGHBOURS = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
+
+
+def thermal_erode(g, cell, talus, iterations, rate):
+    """Thermal erosion: wherever the ground stands steeper than `talus`
+    (rise over run) above a neighbour, a share `rate` of the excess slides
+    down to the lower neighbours, in proportion to how much each is below."""
+    H, W = g.shape
+    g = g.copy()
+    drop = [talus * cell * math.hypot(dr, dc) for dr, dc in NEIGHBOURS]
+    for _ in range(iterations):
+        p = np.pad(g, 1, mode="edge")
+        ex = np.stack([np.maximum(g - p[1 + dr:1 + dr + H, 1 + dc:1 + dc + W] - d, 0)
+                       for (dr, dc), d in zip(NEIGHBOURS, drop)])
+        total = ex.sum(0)
+        move = rate * ex.max(0)
+        share = np.where(total > 0, move / np.maximum(total, 1e-9), 0)
+        gain = np.zeros_like(p)
+        for i, (dr, dc) in enumerate(NEIGHBOURS):
+            gain[1 + dr:1 + dr + H, 1 + dc:1 + dc + W] += ex[i] * share
+        g += gain[1:-1, 1:-1] - move
+    return g
+
+
+def raise_mound(h, cell, x, y, level, mound, erosion, rng):
+    """A hill of the marshes into `h` round (x, y): a domed top of
+    `top_radius_m`, a steep raw flank `flank_m` down to below the water, a
+    little rough noise, then thermal erosion (`erosion`) on a fine grid slumps
+    the flank into a talus apron and softens the top. Returns the mask of
+    texels it raised above the water."""
+    H = rng.uniform(*mound["height_m"])
+    rt = rng.uniform(*mound["top_radius_m"])
+    flank = rng.uniform(*mound["flank_m"])
+    wob = smooth_noise(rng)
+    talus = erosion["talus"]
+    reach = rt * (1 + mound.get("wobble", 0.2)) + flank + H / talus + 4 * cell
+    r0, r1 = max(int((y - reach) / cell), 0), min(int((y + reach) / cell) + 2, h.shape[0])
+    c0, c1 = max(int((x - reach) / cell), 0), min(int((x + reach) / cell) + 2, h.shape[1])
+    sub = max(int(round(cell / erosion["fine_m"])), 1)
+    fine = cell / sub
+    fr = r0 + (np.arange((r1 - r0) * sub) + 0.5) / sub - 0.5
+    fc = c0 + (np.arange((c1 - c0) * sub) + 0.5) / sub - 0.5
+    rr, cc = np.meshgrid(fr, fc, indexing="ij")
+    orig = ndimage.map_coordinates(h, [rr, cc], order=1, mode="nearest")
+    px, py = (cc + 0.5) * cell - x, (rr + 0.5) * cell - y
+    r = np.hypot(px, py)
+    theta = np.arctan2(py, px)
+    edge = rt * (1 + mound.get("wobble", 0.2) * wob(theta))
+    t = r / edge
+    dome = mound["dome"]
+    z = np.where(t <= 1, 1 - dome * t * t, (1 - dome) * np.clip(1 - (r - edge) / flank, 0, 1))
+    raw = rng.normal(size=r.shape).astype(np.float32)
+    bumps = ndimage.gaussian_filter(raw, mound["noise_scale_m"] / fine * 0.3)
+    bumps /= max(float(np.abs(bumps).max()), 1e-6)
+    # From a metre under the water (the pools round its foot stay) up to H.
+    mound_z = level - 1.0 + (H + 1.0) * z + mound["noise_m"] * bumps * np.clip(z * 3, 0, 1)
+    g = thermal_erode(np.maximum(orig, mound_z), fine, talus, erosion["iterations"], erosion["rate"])
+    g = np.maximum(orig, g)
+    coarse = g.reshape(r1 - r0, sub, c1 - c0, sub).mean(axis=(1, 3))
+    win = h[r0:r1, c0:c1]
+    np.maximum(win, coarse, out=win)
+    mask = np.zeros(h.shape, bool)
+    mask[r0:r1, c0:c1] = coarse > level + 0.2
+    return mask, H
+
+
+def bilinear(h, cell):
+    """The heightfield's ground at world metres, as the renderer reads it."""
+    def ground(x, y):
+        x, y = np.asarray(x, np.float64), np.asarray(y, np.float64)
+        return ndimage.map_coordinates(h, [y / cell - 0.5, x / cell - 0.5], order=1, mode="nearest")
+    return ground
+
+
+def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segments=56):
+    """The terraces of a hill already in `h`: the centre moved to its peak,
+    the levels from just over the peak down by `risers`, and each wall's
+    contour round the peak (the outermost crossing of its level on each of
+    `segments` rays), squeezed together on the cliff sides."""
+    ground = bilinear(h, cell)
+    # The peak, on a 2 m grid round (x, y).
+    look = min(reach * 0.5, 100.0)
+    gy, gx = np.mgrid[-look:look:2.0, -look:look:2.0]
+    z = ground(x + gx, y + gy)
+    i = int(np.argmax(z))
+    x, y = x + float(gx.flat[i]), y + float(gy.flat[i])
+    theta = np.linspace(0, math.tau, segments, endpoint=False)
+    rs = np.arange(0, reach, 0.5)
+    prof = ground(x + np.cos(theta)[:, None] * rs, y + np.sin(theta)[:, None] * rs)
+    # Each ray ends at its lowest ground: past it the land rising again is
+    # not this hill's (a valley's side, a neighbour).
+    past = np.arange(len(rs))[None, :] > np.argmin(prof, 1)[:, None]
+    prof = np.where(past, -np.inf, prof)
+    top = float(prof.max()) + 0.15
+    levels = top - np.concatenate([np.cumsum(risers[::-1])[::-1], [0.0]])
+    n = len(risers)
+    rho = np.zeros((n, segments))
+    for k in range(n):
+        above = prof >= levels[k]
+        last = np.where(above.any(1), above.shape[1] - 1 - np.argmax(above[:, ::-1], 1), 0)
+        nxt = np.minimum(last + 1, len(rs) - 1)
+        a, b = prof[np.arange(segments), last], prof[np.arange(segments), nxt]
+        frac = np.clip((a - levels[k]) / np.maximum(a - b, 1e-6), 0, 1)
+        rho[k] = rs[last] + frac * (rs[nxt] - rs[last])
+    cl = cliffness(theta, cliffs)
+    rho[1:] = rho[0] - (rho[0] - rho[1:]) * (1 - cl * rule["cliff_squeeze"])
+    # Treads at least `min_tread_m` (less on a cliff side), the top not to a
+    # point: a wall too close to the one above moves out, downhill, where
+    # the ground under its tread stays lower still.
+    gap = rule["min_tread_m"] * (1 - cl) + 0.8 * cl
+    rho[-1] = np.maximum(rho[-1], 3.0)
+    for k in range(n - 2, -1, -1):
+        rho[k] = np.maximum(rho[k], rho[k + 1] + gap)
+    ramp = np.zeros(segments)
+    if ramp_at is not None:
+        d = np.abs((theta - ramp_at + math.pi) % math.tau - math.pi)
+        ramp = np.clip(1.5 - 1.5 * d / (rule["ramp_width_deg"] * math.pi / 360), 0, 1) * (1 - cl)
+    return x, y, theta, rho, levels, ramp
+
+
 def reshape_marsh(world, h, skeleton, rule, rng):
     """A shallow wetland floor with moss hummocks and occasional red shelves.
 
@@ -207,6 +327,11 @@ def reshape_marsh(world, h, skeleton, rule, rng):
     near = ndimage.distance_transform_edt(~marsh, return_distances=False, return_indices=True)
     waterline = waterline[near[0], near[1]]
     target = waterline + 1.0 + config.get("hummock_m", 2.0) * pools
+    if config.get("roll_m"):
+        # Low rolling rises over the meadow, easing out towards the pools.
+        roll = noise(config["roll_km"])
+        shore = np.clip((pools - threshold) / 0.25, 0, 1)
+        target += config["roll_m"] * roll * roll * shore * shore * (3 - 2 * shore)
     target[wet] = waterline[wet] - config.get("water_depth_m", 1.8) * (0.45 + 0.55 * (1 - pools[wet]))
     shelf = np.clip((broad - 0.70) / 0.26, 0, 0.999) * 3
     fraction = shelf - np.floor(shelf)
@@ -340,7 +465,25 @@ def main():
     # between them; neither on a slab's pad.
     taken = [(p["x"], p["y"], p["R"] + 150) for p in pads]
     hills = []
-    for kind in ("hills", "islets"):
+    erosion = rule["erosion"]
+    # The hills first stand in the heightfield as mounds worn down by thermal
+    # erosion (`mound`, `erosion`); the terraced ones get their steps cut into
+    # the worn top as meshes once the ground is final. `knolls` stay grassy.
+    mounds = []
+    for kind in ("hills", "knolls"):
+        spec = rule[kind]
+        want = int(round(area * spec["per_km2"]))
+        for x, y in poisson_sites(world, core, want, spec["gap_m"], rng, taken):
+            m = spec["mound"]
+            R = m["top_radius_m"][1] * (1 + m.get("wobble", 0.2)) + m["flank_m"][1]
+            if any(math.hypot(x - t[0], y - t[1]) < R + t[2] for t in taken):
+                continue
+            level = waterline_at(x, y)
+            mask, H = raise_mound(h, cell, x, y, level, m, erosion, rng)
+            taken.append((x, y, R + spec["gap_m"] * 0.25))
+            mounds.append({"kind": kind, "x": x, "y": y, "R": R + H / erosion["talus"], "H": H, "land": mask,
+                           "level": level, "spec": spec})
+    for kind in ("islets",):
         spec = rule[kind]
         prule = dict(rule, **spec)
         want = int(round(area * spec["per_km2"]))
@@ -380,25 +523,10 @@ def main():
         skel_south[forest_wet] = [0, 0, 255]
         print(f"forest edge: {int(forest_wet.sum())} pool cells")
 
-    # The hills' meshes: the crisp red steps (marsh_hill_mesh.py).
-    mesh_dir = Path(stem + "_marsh_hills")
-    if mesh_dir.exists():
-        shutil.rmtree(mesh_dir)
-    mesh_dir.mkdir()
-    mesh_rng = np.random.default_rng(args.seed * 7919 + 97)
-    triangles = 0
-    for k, q in enumerate(hills):
-        tris, weights = marsh_hill_mesh.build(q["prof"], q["rule"], q["level"], mesh_rng)
-        q["mesh"] = f"hill_{k:03d}"
-        for lod in range(3):
-            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, q["level"] - 2.0, weights)
-        triangles += n_tris
-    print(f"hill meshes: {len(hills)} in {mesh_dir.name}/, {triangles} triangles")
-
-    # Every 64 m cell under a pad or a hill is dry; its texels outside them
-    # are a mossy shelf just above the water, so no dry pit is left.
+    # Every 64 m cell under a pad, a hill or a knoll is dry; its texels outside
+    # them are a mossy shelf just above the water, so no dry pit is left.
     land = np.zeros(h.shape, bool)
-    for q in pads + hills:
+    for q in pads + hills + mounds:
         land |= q.pop("land")
     dry64 = land.reshape(n64, f, n64, f).any(axis=(1, 3))
     newly = dry64 & wet64
@@ -406,8 +534,61 @@ def main():
         blk = h[a * f:(a + 1) * f, b * f:(b + 1) * f]
         np.maximum(blk, level64[a, b] + 0.5 + rule["shelf_m"], out=blk)
     wet64 &= ~dry64
-    raw = np.clip(np.round((h / args.height_range + args.sea) * 65535.0), 0, 65535).astype("<u2")
-    raw.tofile(final)
+    # The ground as the lab will read it back (16-bit), for the terraces.
+    q16 = np.clip(np.round((h / args.height_range + args.sea) * 65535.0), 0, 65535)
+    h = (q16 / 65535.0 - args.sea) * args.height_range
+
+    # The hills' meshes: the crisp red steps (marsh_hill_mesh.py) - on an
+    # islet round a flat top, on a hill cut into its worn top by its contours.
+    mesh_dir = Path(stem + "_marsh_hills")
+    if mesh_dir.exists():
+        shutil.rmtree(mesh_dir)
+    mesh_dir.mkdir()
+    mesh_rng = np.random.default_rng(args.seed * 7919 + 97)
+    triangles = 0
+    gaps, pokes, dropped = [], [], 0
+    for q in mounds:
+        if q["kind"] != "hills":
+            continue
+        spec = q["spec"]
+        prule = dict(rule, **spec)
+        risers = list(mesh_rng.uniform(*spec["riser_m"], int(mesh_rng.integers(spec["steps"][0], spec["steps"][1] + 1))))
+        # The steps keep to the worn top: no more than `terrace_share` of the hill.
+        while len(risers) > spec["steps"][0] and sum(risers) > spec["terrace_share"] * q["H"]:
+            risers.pop()
+        cliffs = [(mesh_rng.uniform(0, math.tau), mesh_rng.uniform(*rule["cliff_width_deg"]) * math.pi / 180)
+                  for _ in range(int(mesh_rng.integers(spec["cliff_sides"][0], spec["cliff_sides"][1] + 1)))]
+        ramp_at = mesh_rng.uniform(0, math.tau) if spec.get("ramp") else None
+        x, y, theta, rho, levels, ramp = terrace_rings(h, cell, q["x"], q["y"], q["R"], np.array(risers), prule,
+                                                       cliffs, ramp_at, mesh_rng)
+        ground = bilinear(h, cell)
+        tris, weights, chk = marsh_hill_mesh.build_on_ground(theta, rho, levels, ramp, prule,
+                                                             lambda a, b: ground(x + a, y + b), mesh_rng)
+        gap_, poke_ = float(chk["foot_gap"].max()), float(chk["tread_poke"].max())
+        if gap_ > 0.05 or poke_ > 0.1:
+            # Not a hill to cut (it leans on rising land, the ground breaks
+            # through a tread): it stays a grassy knoll.
+            q["kind"] = "knolls"
+            dropped += 1
+            continue
+        gaps.append(gap_)
+        pokes.append(poke_)
+        q.update(x=x, y=y, mesh=f"hill_{len(hills):03d}", risers=risers, cliffs=cliffs, ramp=ramp_at is not None,
+                 top=float(levels[-1]), terrace_from=float(levels[0]))
+        hills.append(q)
+        for lod in range(3):
+            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, levels[0] - 1.0, weights)
+        triangles += n_tris
+    for k, q in enumerate(hills):
+        if "prof" in q:
+            tris, weights = marsh_hill_mesh.build(q["prof"], q["rule"], q["level"], mesh_rng)
+            q["mesh"] = f"islet_{k:03d}"
+            for lod in range(3):
+                n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, q["level"] - 2.0, weights)
+            triangles += n_tris
+    print(f"hill meshes: {len(hills)} in {mesh_dir.name}/, {triangles} triangles; terraced hills: outer foot over the "
+          f"ground at most {max(gaps, default=0):+.2f} m, ground over a tread at most {max(pokes, default=0):+.2f} m")
+    q16.astype("<u2").tofile(final)
     img = skel_south[::-1].copy()
     img[np.nonzero(newly[::-1])] = 0
     Image.fromarray(img).save(skel)
@@ -420,7 +601,10 @@ def main():
     checks = {"windows": int(len(shares)), "water_share_mean": round(float(shares.mean()), 3) if len(shares) else 0,
               "water_share_p10_p90": [round(float(np.percentile(shares, p)), 3) for p in (10, 90)] if len(shares) else [],
               "windows_in_range": round(float(((shares >= lo) & (shares <= hi)).mean()), 3) if len(shares) else 0,
-              "range": [lo, hi]}
+              "range": [lo, hi],
+              "terraces": {"hills": len(gaps), "foot_over_ground_max_m": round(max(gaps, default=0), 2),
+                           "ground_over_tread_max_m": round(max(pokes, default=0), 2),
+                           "left_uncut": dropped}}
 
     out = {"comment": "The marshes' layout (tools/terrain_lab/marsh_islands.py): `islands` the A-1 slabs' pads, which "
                       "world_megaliths.py stands a slab on; `hills` the terraced hills and islets.",
@@ -429,14 +613,19 @@ def main():
                         "top": round(q["top"], 1), "m": q["m"], "s": round(q["s"], 4), "yaw": round(q["yaw"], 4)}
                        for q in pads],
            "hills": [{"kind": q["kind"], "x": round(q["x"], 1), "y": round(q["y"], 1), "R": round(q["R"], 1),
-                      "top": round(q["top"], 1), "steps": len(q["prof"]["risers"]),
-                      "risers_m": [round(float(v), 1) for v in q["prof"]["risers"]],
-                      "cliff_sides": len(q["prof"]["cliffs"]), "ramp": "ramp" in q["prof"], "mesh": q["mesh"]}
+                      "top": round(q["top"], 1), "steps": len(q["prof"]["risers"] if "prof" in q else q["risers"]),
+                      "risers_m": [round(float(v), 1) for v in (q["prof"]["risers"] if "prof" in q else q["risers"])],
+                      "cliff_sides": len(q["prof"]["cliffs"] if "prof" in q else q["cliffs"]),
+                      "ramp": "ramp" in q["prof"] if "prof" in q else q["ramp"], "mesh": q["mesh"],
+                      **({"hill_m": round(q["H"], 1), "terraces_from": round(q["terrace_from"], 1)} if "H" in q else {})}
                      for q in hills],
+           "knolls": [{"x": round(q["x"], 1), "y": round(q["y"], 1), "R": round(q["R"], 1), "hill_m": round(q["H"], 1)}
+                      for q in mounds if q["kind"] == "knolls"],
            "mesh_dir": mesh_dir.name}
     out_json.write_text(json.dumps(out, indent=1), encoding="utf-8")
     n_h = sum(q["kind"] == "hills" for q in hills)
-    print(f"{len(pads)} slab pads (gap {gap:.0f} m), {n_h} terraced hills, {len(hills) - n_h} islets; "
+    print(f"{len(pads)} slab pads (gap {gap:.0f} m), {n_h} terraced hills, {len(out['knolls'])} knolls, "
+          f"{len(hills) - n_h} islets; "
           f"{int(newly.sum())} pool cells made dry; water {checks['water_share_mean']:.0%} on average, "
           f"{checks['windows_in_range']:.0%} of 2 km windows within {lo:.0%}-{hi:.0%} -> {out_json.name}")
 
