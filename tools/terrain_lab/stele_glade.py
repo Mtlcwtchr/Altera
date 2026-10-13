@@ -214,7 +214,10 @@ def main():
     ring = (q > 1.05) & (q < 1.45)
     A = np.stack([np.ones(ring.sum()), X[ring], Y[ring]], 1)
     a, b, c = np.linalg.lstsq(A, H[ring], rcond=None)[0]
-    level = float(a)
+    # the glade's level: the ground under the stele itself (the ring's plane
+    # gives only the fall, which is eased)
+    level = float(np.median(H[r < rule["flat_m"]]))
+    a = level
     plane = a + rule["keep_slope"] * (b * X + c * Y)
     hum = (value_noise(rng, H.shape, 2) - 0.5) * 2 * rule["hummock_m"]
     target = plane + hum
@@ -248,15 +251,22 @@ def main():
         w = 1 - smoothstep(o["r"] + rule["pool_flat_m"], o["r"] + rule["pool_flat_m"] + 60, d)
         target = target + (o["level"] - target) * w
     blend = 1 - smoothstep(1.0, 1.0 + rule["blend_m"] / R, q)
-    Hn = H + (target - H) * blend
+    # Never carve the hills away: the change is held to `max_cut_m` down and
+    # `max_fill_m` up, softly, so where the glade runs against a slope the
+    # slope stays and the flat simply ends at it.
+    change = (target - H) * blend
+    cut, fill = rule.get("max_cut_m", 8.0), rule.get("max_fill_m", 4.0)
+    change = np.where(change < 0, -cut * np.tanh(-change / cut), fill * np.tanh(change / fill))
+    Hn = H + change
     # pond: an oval sinking `pond_depth_m` under the flat
     u = (X + x - pond_c[0]) * cs + (Y + y - pond_c[1]) * sn
     v = -(X + x - pond_c[0]) * sn + (Y + y - pond_c[1]) * cs
     dp = np.hypot(u / prx, v / pry)
-    Hn = np.minimum(Hn, level - rule["pond_depth_m"] * smoothstep(1.0, 0.7, dp))
+    # (only inside the oval: outside it the cut would cap all the land at the water's level)
+    Hn = np.minimum(Hn, np.where(dp < 1.0, level - rule["pond_depth_m"] * smoothstep(1.0, 0.7, dp), np.inf))
     for o in pools:
         d = np.hypot(X + x - o["x"], Y + y - o["y"]) / o["r"]
-        Hn = np.minimum(Hn, o["level"] - rule["pool_depth_m"] * smoothstep(1.0, 0.6, d))
+        Hn = np.minimum(Hn, np.where(d < 1.0, o["level"] - rule["pool_depth_m"] * smoothstep(1.0, 0.6, d), np.inf))
 
     windows, originals = {}, {}
     written = np.clip(np.round((Hn / hr + sea) * 65535.0), 0, 65535).astype(np.uint16)
