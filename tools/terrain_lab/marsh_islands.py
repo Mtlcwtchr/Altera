@@ -284,6 +284,83 @@ def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segm
     return x, y, theta, rho, levels, ramp
 
 
+def terrace_relief(h, cell, x, y, theta, rho, levels, ramp, rule, rng):
+    """A hill's terraces as fine relief (src/terrain_core/relief.hpp): the
+    ground round (x, y) at `relief.texel_m` a texel, the worn hill (the
+    heightfield's own ground) with its top cut into steps - the tread inside
+    wall k's contour `rho[k]` at `levels[k + 1]`, the riser `riser_width_m`
+    wide (on the ramp spread over most of the tread), every wall's line
+    wandering a little - eased back into the plain hill over `blend_m` past
+    the outer wall. Returns the patch (x0, y0, texel, base, heights, weights)
+    and the most the hill's own ground rises over a tread (the check)."""
+    rel = rule["relief"]
+    t = rel["texel_m"]
+    reach = float(rho[0].max()) + rel["blend_m"] + 4 * t
+    x0, y0 = math.floor((x - reach) / t) * t, math.floor((y - reach) / t) * t
+    m = int(math.ceil(2 * reach / t)) + 1
+    gy, gx = np.mgrid[0:m, 0:m]
+    px, py = x0 + (gx + 0.5) * t, y0 + (gy + 0.5) * t
+    natural = bilinear(h, cell)(px, py)
+    r = np.hypot(px - x, py - y)
+    th = np.arctan2(py - y, px - x) % math.tau
+    seg = len(theta)
+    u = th / math.tau * seg
+    i0 = np.floor(u).astype(int) % seg
+    i1 = (i0 + 1) % seg
+    f = u - np.floor(u)
+    def ring(a):
+        return a[i0] * (1 - f) + a[i1] * f
+    # Each wall's line wanders a little over a few metres (no lathe turned).
+    wander = ndimage.gaussian_filter(rng.normal(size=(m, m)), rel["wander_scale_m"] / t)
+    wander *= rel["wander_m"] / max(float(np.abs(wander).max()), 1e-6)
+    ramp_t = ring(ramp)
+    n = len(rho)
+    z = np.zeros((m, m))
+    inside0 = None
+    poke = -np.inf
+    for k in range(n):
+        rk = ring(rho[k]) + wander * (1.0 + 0.3 * k)
+        tread = rk - (ring(rho[k + 1]) if k + 1 < n else 0.0)
+        width = rel["riser_width_m"] + ramp_t * np.maximum(tread * 0.85 - rel["riser_width_m"], 0)
+        a = np.clip((rk - r) / width + 0.5, 0, 1)
+        a = a * a * (3 - 2 * a)
+        if k == 0:
+            inside0 = a
+        else:
+            z += (levels[k + 1] - levels[k]) * a
+        # The check: the hill's own ground inside this wall, past the next,
+        # stays under this tread.
+        inner = ring(rho[k + 1]) if k + 1 < n else np.zeros_like(r)
+        on = (r < rk - width) & (r > inner + 1.0)
+        if on.any():
+            poke = max(poke, float((natural[on] - levels[k + 1]).max()))
+    # Treads a little uneven, a hand's breadth at most.
+    bumps = ndimage.gaussian_filter(rng.normal(size=(m, m)), 2.5 / t)
+    bumps *= rel["tread_noise_m"] / max(float(np.abs(bumps).max()), 1e-6)
+    terr = levels[1] + z + bumps
+    height = natural + (terr - natural) * inside0
+    # The weight: whole over the terraces, easing out to the plain hill.
+    edge = ring(rho[0]) + wander
+    w = np.clip(1 - (r - edge - 2.0) / rel["blend_m"], 0, 1)
+    w = w * w * (3 - 2 * w)
+    w[[0, -1], :] = 0
+    w[:, [0, -1]] = 0
+    base = float(np.round(levels[0]))
+    return (x0, y0, t, base, (height - base).astype(np.float16), w.astype(np.float16)), poke
+
+
+def write_relief(path, patches):
+    """<world>_relief.bin (src/terrain_core/relief.hpp)."""
+    import struct
+    with open(path, "wb") as fh:
+        fh.write(b"RELF")
+        fh.write(struct.pack("<II", 1, len(patches)))
+        for x0, y0, t, base, hz, w in patches:
+            fh.write(struct.pack("<ddffII", x0, y0, t, base, hz.shape[1], hz.shape[0]))
+            pair = np.stack([hz.view("<u2"), w.view("<u2")], -1).astype("<u2")
+            fh.write(pair.tobytes())
+
+
 def reshape_marsh(world, h, skeleton, rule, rng):
     """A shallow wetland floor with moss hummocks and occasional red shelves.
 
@@ -546,7 +623,7 @@ def main():
     mesh_dir.mkdir()
     mesh_rng = np.random.default_rng(args.seed * 7919 + 97)
     triangles = 0
-    gaps, pokes, dropped = [], [], 0
+    gaps, pokes, dropped, relief = [], [], 0, []
     for q in mounds:
         if q["kind"] != "hills":
             continue
@@ -561,31 +638,23 @@ def main():
         ramp_at = mesh_rng.uniform(0, math.tau) if spec.get("ramp") else None
         x, y, theta, rho, levels, ramp = terrace_rings(h, cell, q["x"], q["y"], q["R"], np.array(risers), prule,
                                                        cliffs, ramp_at, mesh_rng)
-        ground = bilinear(h, cell)
-        # The same terraces at a half and a quarter of the segments for the
-        # far levels of detail (the same draws: the same rock, coarser).
-        state = mesh_rng.bit_generator.state
-        lods = []
-        for step in (1, 2, 4):
-            mesh_rng.bit_generator.state = state
-            lods.append(marsh_hill_mesh.build_on_ground(theta[::step], rho[:, ::step], levels, ramp[::step], prule,
-                                                        lambda a, b: ground(x + a, y + b), mesh_rng))
-        tris, weights, chk = lods[0]
-        gap_, poke_ = float(chk["foot_gap"].max()), float(chk["tread_poke"].max())
-        if gap_ > 0.05 or poke_ > 0.1:
+        patch, poke_ = terrace_relief(h, cell, x, y, theta, rho, levels, ramp, prule, mesh_rng)
+        if poke_ > 0.1:
             # Not a hill to cut (it leans on rising land, the ground breaks
             # through a tread): it stays a grassy knoll.
             q["kind"] = "knolls"
             dropped += 1
             continue
-        gaps.append(gap_)
         pokes.append(poke_)
-        q.update(x=x, y=y, mesh=f"hill_{len(hills):03d}", risers=risers, cliffs=cliffs, ramp=ramp_at is not None,
-                 top=float(levels[-1]), terrace_from=float(levels[0]))
+        relief.append(patch)
+        q.update(x=x, y=y, risers=risers, cliffs=cliffs, ramp=ramp_at is not None,
+                 top=float(levels[-1]), terrace_from=float(levels[0]), terrace_r=float(rho[0].max()))
         hills.append(q)
-        for lod, (t_, w_, _) in enumerate(lods):
-            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", t_, levels[0] - 1.0, w_)
-            triangles += n_tris if lod == 0 else 0
+    relief_file = Path(stem + "_relief.bin")
+    write_relief(relief_file, relief)
+    texels = sum(p[4].size for p in relief)
+    print(f"fine relief: {len(relief)} terraced hills at {rule['hills']['relief']['texel_m']:g} m a texel, "
+          f"{texels / 1e6:.1f} M texels ({texels * 4 / 2**20:.0f} MB) -> {relief_file.name}")
     for k, q in enumerate(hills):
         if "prof" in q:
             tris, weights = marsh_hill_mesh.build(q["prof"], q["rule"], q["level"], mesh_rng)
@@ -593,8 +662,8 @@ def main():
             for lod in range(3):
                 n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, q["level"] - 2.0, weights)
             triangles += n_tris
-    print(f"hill meshes: {len(hills)} in {mesh_dir.name}/, {triangles} triangles; terraced hills: outer foot over the "
-          f"ground at most {max(gaps, default=0):+.2f} m, ground over a tread at most {max(pokes, default=0):+.2f} m")
+    print(f"islet meshes: {sum('prof' in q for q in hills)} in {mesh_dir.name}/, {triangles} triangles; terraced hills: "
+          f"ground over a tread at most {max(pokes, default=0):+.2f} m, {dropped} left uncut (knolls)")
     q16.astype("<u2").tofile(final)
     img = skel_south[::-1].copy()
     img[np.nonzero(newly[::-1])] = 0
@@ -609,7 +678,7 @@ def main():
               "water_share_p10_p90": [round(float(np.percentile(shares, p)), 3) for p in (10, 90)] if len(shares) else [],
               "windows_in_range": round(float(((shares >= lo) & (shares <= hi)).mean()), 3) if len(shares) else 0,
               "range": [lo, hi],
-              "terraces": {"hills": len(gaps), "foot_over_ground_max_m": round(max(gaps, default=0), 2),
+              "terraces": {"hills": len(pokes), "in": "fine relief",
                            "ground_over_tread_max_m": round(max(pokes, default=0), 2),
                            "left_uncut": dropped}}
 
@@ -623,8 +692,10 @@ def main():
                       "top": round(q["top"], 1), "steps": len(q["prof"]["risers"] if "prof" in q else q["risers"]),
                       "risers_m": [round(float(v), 1) for v in (q["prof"]["risers"] if "prof" in q else q["risers"])],
                       "cliff_sides": len(q["prof"]["cliffs"] if "prof" in q else q["cliffs"]),
-                      "ramp": "ramp" in q["prof"] if "prof" in q else q["ramp"], "mesh": q["mesh"],
-                      **({"hill_m": round(q["H"], 1), "terraces_from": round(q["terrace_from"], 1)} if "H" in q else {})}
+                      "ramp": "ramp" in q["prof"] if "prof" in q else q["ramp"],
+                      **({"mesh": q["mesh"]} if "mesh" in q else {}),
+                      **({"hill_m": round(q["H"], 1), "terraces_from": round(q["terrace_from"], 1),
+                          "terraces_r": round(q["terrace_r"], 1)} if "H" in q else {})}
                      for q in hills],
            "knolls": [{"x": round(q["x"], 1), "y": round(q["y"], 1), "R": round(q["R"], 1), "hill_m": round(q["H"], 1)}
                       for q in mounds if q["kind"] == "knolls"],

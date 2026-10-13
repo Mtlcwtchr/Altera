@@ -13,6 +13,7 @@
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
+#include "terrain_core/relief.hpp"
 #include "terrain_core/rivers.hpp"
 
 #include <cstdint>
@@ -89,6 +90,8 @@ public:
     // The river graph: the generator cuts the beds, the ground paints the
     // thin ones. Must be set (an empty one will do) before anything is drawn.
     void setRivers(const Rivers* rivers) { rivers_ = rivers; }
+    // The fine relief laid over the ground (relief.hpp); none set: none.
+    void setRelief(const Relief* relief) { relief_ = relief; }
     const Rivers* rivers() const { return rivers_; }
     // Render pixels per screen pixel (DLSS: below 1): the ground's materials
     // pick their mip for the screen, as upscaling wants (a negative LOD bias).
@@ -96,6 +99,8 @@ public:
 
 private:
     const Rivers* rivers_ = nullptr;
+    const Relief* relief_ = nullptr;
+    Relief noRelief_;
     engine::Device* device_ = nullptr;
     Params params_;
     std::uint32_t macroSize_ = 0;

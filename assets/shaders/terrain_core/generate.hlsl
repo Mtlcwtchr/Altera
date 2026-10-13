@@ -3,7 +3,8 @@
 // that index modulo the clipmap size (toroidal), so a window that slides by a
 // texel only ever regenerates the one strip that came into view.
 //
-// Then the rivers (rivers.hlsli): within reach of the river graph the ground
+// Then the fine relief (relief.hlsli: windows a metre a texel), then the
+// rivers (rivers.hlsli): within reach of the river graph the ground
 // becomes a bed under the water's surface and banks rising from it, cut at
 // this level's own resolution - a brook only where a texel is small enough
 // to hold it (further out the ground's shader paints it instead).
@@ -14,6 +15,10 @@
 #define RIVER_TILES register(t2, space0)
 #define RIVER_LIST register(t3, space0)
 #include "rivers.hlsli"
+
+#define RELIEF_PATCHES register(t4, space0)
+#define RELIEF_TEXELS register(t5, space0)
+#include "relief.hlsli"
 
 RWTexture2D<float4> clipLevel : register(u0, space1);
 
@@ -73,6 +78,8 @@ void generateCs(uint3 id : SV_DispatchThreadID) {
     const int2 t = rectOrigin + int2(id.xy);
     float3 h = terrainHeight(t);
     const float levelSpacing = spacing * float(1u << level);
+    // The fine relief over it (a marsh hill's terraces), then the rivers.
+    h = applyRelief(h, t << level, spacing, levelSpacing);
     h = carveRiver(h, float2(t << level) * spacing, levelSpacing);
     const int n = int(clipSize);
     const int2 slot = ((t % n) + n) % n;

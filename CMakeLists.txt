@@ -537,6 +537,7 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/ground_height.cpp
             src/terrain_core/water.cpp
             src/terrain_core/rivers.cpp
+            src/terrain_core/relief.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(campfire_terrain_core PUBLIC src)

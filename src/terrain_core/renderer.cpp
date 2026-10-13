@@ -162,6 +162,7 @@ bool Renderer::open(engine::Device& device, const Params& params, const MacroMap
     compute.shaderFile = "terrain_core/generate.hlsl";
     compute.entry = "generateCs";
     generate_ = device.makeCompute(compute);
+    if (!noRelief_.open(device)) return false;
 
     engine::PipelineWanted wanted;
     wanted.shaderFile = "terrain_core/terrain.hlsl";
@@ -218,6 +219,8 @@ std::uint64_t Renderer::generate(SDL_GPUCommandBuffer* commands, const std::vect
         SDL_BindGPUComputeSamplers(pass, 0, &macro, 1);
         const auto rivers = rivers_->buffers();
         SDL_BindGPUComputeStorageBuffers(pass, 0, rivers.data(), 3);
+        const auto relief = (relief_ ? relief_ : &noRelief_)->buffers();
+        SDL_BindGPUComputeStorageBuffers(pass, 3, relief.data(), 2);
         for (const Rect& r : rects) {
             if (r.level != level) continue;
             GenerateUniforms u{};

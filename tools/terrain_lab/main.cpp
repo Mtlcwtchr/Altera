@@ -352,6 +352,7 @@ struct Lab {
     WaterMap waterMap;
     std::vector<RiverSegment> riverSegments;
     Rivers rivers;   // the river graph on the GPU (empty with the water off)
+    Relief relief;   // the fine relief beside the heightmap (<world>_relief.bin), if any
     ShadowAtlas shadows;
     Sky sky;
     Clouds clouds;
@@ -569,6 +570,23 @@ struct Lab {
         riverSegments.clear();
         riverSegments.shrink_to_fit();
         renderer.setRivers(&rivers);
+        {
+            // The fine relief beside an imported world's heightmap (a marsh
+            // hill's terraces, tools/terrain_lab/marsh_islands.py).
+            const std::string hm = options.heightmap.string();
+            const std::string tail = "_final.r16";
+            if (hm.size() > tail.size() && hm.compare(hm.size() - tail.size(), tail.size(), tail) == 0) {
+                const fs::path file = hm.substr(0, hm.size() - tail.size()) + "_relief.bin";
+                if (fs::exists(file)) {
+                    if (!relief.load(file, options.params.spacing, &why) || !relief.open(device, &why)) {
+                        std::fprintf(stderr, "relief: %s\n", why.c_str());
+                        return false;
+                    }
+                    renderer.setRelief(&relief);
+                    std::printf("fine relief: %zu patches, %.1f MB\n", relief.count(), double(relief.gpuBytes()) / (1 << 20));
+                }
+            }
+        }
         if (!renderer.open(device, options.params, macro, table, biomes)) { std::fprintf(stderr, "renderer: %s\n", device.error().c_str()); return false; }
         {
             const auto foliageStart = Clock::now();
