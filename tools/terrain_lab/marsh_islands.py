@@ -238,7 +238,7 @@ def bilinear(h, cell):
     return ground
 
 
-def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segments=56):
+def terrace_rings(h, cell, x, y, reach, risers, rule, cliffs, ramp_at, rng, segments=112):
     """The terraces of a hill already in `h`: the centre moved to its peak,
     the levels from just over the peak down by `risers`, and each wall's
     contour round the peak (the outermost crossing of its level on each of
@@ -562,8 +562,15 @@ def main():
         x, y, theta, rho, levels, ramp = terrace_rings(h, cell, q["x"], q["y"], q["R"], np.array(risers), prule,
                                                        cliffs, ramp_at, mesh_rng)
         ground = bilinear(h, cell)
-        tris, weights, chk = marsh_hill_mesh.build_on_ground(theta, rho, levels, ramp, prule,
-                                                             lambda a, b: ground(x + a, y + b), mesh_rng)
+        # The same terraces at a half and a quarter of the segments for the
+        # far levels of detail (the same draws: the same rock, coarser).
+        state = mesh_rng.bit_generator.state
+        lods = []
+        for step in (1, 2, 4):
+            mesh_rng.bit_generator.state = state
+            lods.append(marsh_hill_mesh.build_on_ground(theta[::step], rho[:, ::step], levels, ramp[::step], prule,
+                                                        lambda a, b: ground(x + a, y + b), mesh_rng))
+        tris, weights, chk = lods[0]
         gap_, poke_ = float(chk["foot_gap"].max()), float(chk["tread_poke"].max())
         if gap_ > 0.05 or poke_ > 0.1:
             # Not a hill to cut (it leans on rising land, the ground breaks
@@ -576,9 +583,9 @@ def main():
         q.update(x=x, y=y, mesh=f"hill_{len(hills):03d}", risers=risers, cliffs=cliffs, ramp=ramp_at is not None,
                  top=float(levels[-1]), terrace_from=float(levels[0]))
         hills.append(q)
-        for lod in range(3):
-            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", tris, levels[0] - 1.0, weights)
-        triangles += n_tris
+        for lod, (t_, w_, _) in enumerate(lods):
+            n_tris = marsh_hill_mesh.write(mesh_dir / f"{q['mesh']}_lod{lod}.mesh", t_, levels[0] - 1.0, w_)
+            triangles += n_tris if lod == 0 else 0
     for k, q in enumerate(hills):
         if "prof" in q:
             tris, weights = marsh_hill_mesh.build(q["prof"], q["rule"], q["level"], mesh_rng)

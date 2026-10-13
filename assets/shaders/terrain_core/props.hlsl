@@ -101,11 +101,12 @@ cbuffer A1 : register(b3, space3) {
 
 struct Rock { float3 colour; float3 normal; float ao; };
 
-// One scale of the material from three sides, normals blended the UDN way.
-Rock triplanar(float3 p, float3 n, float layer, float tile, float bias) {
+// One scale of the material from three sides, normals blended the UDN way;
+// `tile`: across (x, y) and up (z) - unequal stretches it along the beds.
+Rock triplanar(float3 p, float3 n, float layer, float2 tile, float bias) {
     float3 w = pow(abs(n), 4.0);
     w /= dot(w, 1.0);
-    const float2 uvX = p.yz / tile, uvY = p.xz / tile, uvZ = p.xy / tile;
+    const float2 uvX = p.yz / tile, uvY = p.xz / tile, uvZ = p.xy / tile.x;
     Rock r;
     r.colour = materials.SampleBias(materialSampler, float3(uvX, layer), bias).rgb * w.x +
                materials.SampleBias(materialSampler, float3(uvY, layer), bias).rgb * w.y +
@@ -139,9 +140,8 @@ Rock stone(float3 place, float3 n0, float layer, float distance, float bias) {
 // A biome on a cliff: its rock on the walls, its ground on what faces up
 // (the plateau's grass to the brink of its cliffs; on the ledges down the
 // wall only in patches), in its tint. `height`: how far up the wall, 0..1.
-Rock cliffStone(uint id, float3 place, float3 n0, float height, float distance, float bias) {
+Rock cliffGround(uint id, Rock r, float3 place, float3 n0, float height, float distance, float bias) {
     const float4 s = biomeStone[id];
-    Rock r = stone(place, n0, s.x, distance, bias);
     float up = smoothstep(s.w, s.z, n0.z);
     if (up > 0) {
         const float patches = materials.SampleBias(materialSampler, float3(place.xy / (rockTile * 12.0), s.y), bias + 3).g;
@@ -157,6 +157,63 @@ Rock cliffStone(uint id, float3 place, float3 n0, float height, float distance, 
     }
     r.colour *= biomeTint[id].rgb;
     return r;
+}
+
+Rock cliffStone(uint id, float3 place, float3 n0, float height, float distance, float bias) {
+    return cliffGround(id, stone(place, n0, biomeStone[id].x, distance, bias), place, n0, height, distance, bias);
+}
+
+// Value noise (a hash on a lattice, smoothed between) for the terraces.
+float hash12(float2 p) {
+    float3 q = frac(p.xyx * 0.1031);
+    q += dot(q, q.yzx + 33.33);
+    return frac((q.x + q.y) * q.z);
+}
+float valueNoise(float2 p) {
+    const float2 i = floor(p);
+    float2 f = frac(p);
+    f = f * f * (3.0 - 2.0 * f);
+    return lerp(lerp(hash12(i), hash12(i + float2(1, 0)), f.x), lerp(hash12(i + float2(0, 1)), hash12(i + 1.0), f.x), f.y);
+}
+float fbm3(float2 p) {
+    return valueNoise(p) * 0.55 + valueNoise(p * 2.03 + 7.1) * 0.3 + valueNoise(p * 4.07 + 3.7) * 0.15;
+}
+
+// A marsh terrace's wall (tools/terrain_lab/marsh_hill_mesh.py): red bedded
+// rock. The biome's rock stretched along the beds; beds a hand high, each
+// its own red, rust or burgundy, rounded by the weather (their tops lean up
+// to the light, their feet undercut and dark); burgundy flecks; now and then
+// a dark joint down the face.
+Rock terraceStone(uint id, float3 place, float3 n0, float height, float distance, float bias) {
+    const float layer = biomeStone[id].x;
+    const float warp = (fbm3(place.xy * 0.35) - 0.5) * 0.35;
+    const float3 p = float3(place.xy, place.z + warp);
+    const Rock broad = triplanar(p, n0, layer, float2(rockTile * 2.5, rockTile * 1.0), bias);
+    const Rock near = triplanar(p, n0, layer, float2(rockTile * 0.6, rockTile * 0.22), bias);
+    const float t = saturate(1.0 - distance / 400.0);
+    Rock r;
+    r.colour = lerp(broad.colour, near.colour * 0.6 + broad.colour * 0.4, t);
+    r.normal = normalize(lerp(broad.normal, near.normal, t * 0.7));
+    r.ao = lerp(broad.ao, near.ao, t);
+    const float wall = 1.0 - smoothstep(0.55, 0.8, n0.z);
+    if (wall > 0) {
+        const float bedH = 0.21;
+        const float z = p.z / bedH;
+        const float bed = frac(z);
+        const float tone = hash12(float2(floor(z), 17.0));
+        float3 tint = tone < 0.55 ? float3(1.0, 1.0, 1.0) : tone < 0.8 ? float3(1.12, 0.9, 0.72) : float3(0.62, 0.36, 0.38);
+        tint *= 0.9 + 0.2 * valueNoise(float2((place.x + place.y) * 0.8, floor(z)));
+        // Burgundy flecks in the stone, a few dark joints down it.
+        const float fleck = smoothstep(0.74, 0.8, valueNoise(place.xy * 2.7 + place.z * 3.1));
+        tint = lerp(tint, float3(0.48, 0.16, 0.2), fleck * 0.8);
+        const float joint = valueNoise(float2((place.x - place.y) * 1.3, place.z * 0.25));
+        const float crack = (1.0 - smoothstep(0.0, 0.035, abs(joint - 0.5))) * step(0.45, valueNoise(place.xy * 0.4));
+        r.colour = lerp(r.colour, r.colour * tint * (1.0 - 0.55 * crack), wall);
+        const float3 tilt = float3(0, 0, 1) * (smoothstep(0.0, 1.0, bed) - 0.45) * 1.1;
+        r.normal = normalize(r.normal + tilt * wall);
+        r.ao *= lerp(1.0, lerp(0.6, 1.0, smoothstep(0.0, 0.3, bed)) * (1.0 - 0.4 * crack), wall);
+    }
+    return cliffGround(id, r, place, n0, height, distance, bias);
 }
 
 float4 propsPs(VsOut input) : SV_Target0 {
@@ -181,13 +238,16 @@ float4 propsPs(VsOut input) : SV_Target0 {
         // A cliff: the biome on top of it down its wall, the one at its foot
         // low down, the line between them ragged.
         const uint a = uint(input.biomes.x), b = uint(input.biomes.y);
+        // (a marsh terrace's mesh writes its moss weights as 2 + weight)
+        const bool terrace = input.blend > 1.5;
         float wb = 0;
-        if (a != b) {
+        if (a != b && !terrace) {
             const float patches = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 20.0) + input.place.z / (rockTile * 30.0), biomeStone[a].x), bias + 2).g;
             wb = smoothstep(0.3, 0.7, input.blend + (patches - 0.5) * 0.6);
         }
         Rock r = (Rock)0;
-        if (wb < 0.99) r = cliffStone(a, input.place, n0, input.uv.y, distance, bias);
+        if (terrace) r = terraceStone(a, input.place, n0, input.uv.y, distance, bias);
+        else if (wb < 0.99) r = cliffStone(a, input.place, n0, input.uv.y, distance, bias);
         if (wb > 0.01) {
             const Rock rb = cliffStone(b, input.place, n0, input.uv.y, distance, bias);
             if (wb >= 0.99) r = rb;
@@ -237,11 +297,35 @@ float4 propsPs(VsOut input) : SV_Target0 {
             grow = max(grow, moss * (1.1 * edge + 0.8 * smoothstep(0.45, 0.65, streak)) * lerp(1.2, 0.8, saturate(input.uv.y)));
         }
         // (the height map's noise sits lower than a colour channel's)
-        const float m = input.biomes.x >= 0 ? smoothstep(0.28, 0.5, grow + (patches - 0.3) * 0.9)
-                                           : smoothstep(0.35, 0.65, grow + (patches - 0.45) * 0.8);
+        float m = input.biomes.x >= 0 ? smoothstep(0.28, 0.5, grow + (patches - 0.3) * 0.9)
+                                     : smoothstep(0.35, 0.65, grow + (patches - 0.45) * 0.8);
+        float lush = 0.5;
+        if (input.blend > 1.5 && input.biomes.x >= 0) {
+            // A marsh terrace: moss where it holds by nature - cushions at a
+            // wall's foot in the wet, along the brink and spilling over the
+            // lip, on the ledges and in the cracks and undercuts, more on
+            // the side out of the sun and low down; ragged at its edge, in
+            // drifts of a few metres with tufts and gaps of a hand.
+            const float edge = input.blend - 2.0;
+            const float upward = saturate(n0.z * 1.3 + 0.05);
+            const float2 sunXY = normalize(lightSun.xy + 1e-4);
+            const float shade = saturate(0.5 - 0.5 * dot(normalize(n0.xy + 1e-4), sunXY)) * (1.0 - upward);
+            const float low = 1.0 - saturate(input.uv.y * 1.6);
+            const float drift = fbm3(input.place.xy * 0.22 + input.place.z * 0.13);
+            const float tuft = fbm3(input.place.xy * 1.9 + float2(input.place.z * 2.3, -input.place.z * 1.1));
+            const float wallness = 1.0 - smoothstep(0.6, 0.85, n0.z);
+            const float g = (edge * 0.85 + upward * 0.06 + (shade * 0.3 + low * 0.12 + (1.0 - ao) * 0.45) * wallness) * moss / 0.7;
+            const float v = g + (drift - 0.5) * 0.6 + (tuft - 0.5) * 0.35;
+            m = smoothstep(0.52, 0.6, v);
+            lush = saturate((v - 0.52) * 3.0) * 0.6 + tuft * 0.4;
+            n = normalize(lerp(n, normalize(n0 + float3(0, 0, 0.6)), m * 0.5));
+            ao = lerp(ao, 1.0, m * 0.5);
+        }
         if (m > 0) {
             const float3 green = materials.SampleBias(materialSampler, float3(input.place.xy / (rockTile * 1.5), rockMossLayer), bias).rgb;
-            colour = lerp(colour, green * 0.85, m);
+            // Old moss deep and dark, its living edge and the tufts fresher.
+            const float3 tone = lerp(float3(0.7, 0.78, 0.55), float3(1.08, 1.16, 0.72), lush);
+            colour = lerp(colour, green * 0.85 * (input.blend > 1.5 ? tone : 1.0), m);
         }
     }
     // Steppe on the tops: the islands and the spires' flat crowns carry the
