@@ -13,8 +13,8 @@ User: the stone is polished like a mirror (material stage).
 Blockout: proportion variants side by side with 1.8 m figures, plus a shot repeating the
 reference composition; V1_ref chosen (14.10), 190 m.
 Sculpt: one game mesh (about 3.3k tris, no separate dense mesh): the cut block keeps big flat
-planes (the mirror) with chamfered edges and a few flat-bottomed chips; the right flank is a smooth
-weathered skin flaring down to the foot, fallen blocks as fractured hulls.
+planes (the mirror) with chamfered edges and a few flat-bottomed chips; the right side wall slants
+out toward the foot with rare folds and pits, fallen blocks as fractured hulls at its foot.
 
     blender -b -P tools/blender/megalith_a3_mirror_gate.py                      # sculpt stage
     blender -b -P tools/blender/megalith_a3_mirror_gate.py -- --stage blockout
@@ -298,39 +298,45 @@ def chunk_pts(rnd, x0, x1, y0, y1, z0, z1, n=14, flat=None, knock=0.25):
     return pts
 
 
-def flank(v, bm, seed):
-    """The right flank as one smooth, slightly weathered skin (user, 14.10: no stuck-on heap of
-    stones, a smooth worn transition down to the boulders): a loft of rings flaring out toward
-    the foot, nudged only by slow noise and faint wind-cut bands."""
+def right_ext(v, z):
+    """How far the right side wall leans out past the frame at height z (user, 14.10: the side
+    face itself goes down at a slight slant, no step)."""
+    t = 1.0 - min(max(z, 0.0), v["H"]) / v["H"]
+    return v["crag"] * v["W"] * t ** 1.2
+
+
+def sloped_block(v, bm, seed):
+    """The cut block with its right side wall slanting out toward the foot as one face: rare
+    folds (soft vertical creases, ridged noise stretched up the height) and, from chip_cutters,
+    rare pits. The front face simply widens with it; the left wall flares as before."""
     W, D, H = v["W"], v["D"], v["H"]
-    N, levels = 20, 44
+    K = 10                       # segments across the side wall
     off = Vector((seed % 97, seed % 89, seed % 83)) * 1.7
+    zs = [-SINK] + [H * (j / 40) for j in range(41)]
     rings = []
-    for j in range(levels + 1):
-        z = -SINK + (H * 0.985 + SINK) * (j / levels) ** 0.9
+    for z in zs:
         t = 1.0 - max(z, 0.0) / H
-        ext = v["crag"] * W * (0.10 + 0.90 * t ** 2.6)
-        x0, x1 = W / 2 - 0.08 * W, W / 2 + ext + 0.5
-        y0, y1 = -D / 2 + 2.5 + 0.06 * W * (1 - t), D / 2 + 0.25 * D * t
-        cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
-        amp = 0.035 * W * (0.4 + t)
-        ring = []
-        for i in range(N):
-            a = 2 * math.pi * i / N
-            c, s = math.cos(a), math.sin(a)
-            px = cx + rx * math.copysign(abs(c) ** 0.5, c)
-            py = cy + ry * math.copysign(abs(s) ** 0.5, s)
-            p = Vector((px, py, z))
-            d = fbm(p * 0.018 + off, 2) * amp + 0.35 * math.sin(z * 0.45 + 2.0 * fbm(p * 0.05 + off, 1))
-            ring.append(bm.verts.new((px + c * d, py + s * d, z)))
-        rings.append(ring)
+        xl = -W / 2 - v["flare"] * W * t ** 1.5
+        xr = W / 2 + right_ext(v, z)
+        y0, y1 = -D / 2, D / 2
+        ring = [(xl, y0, z)]
+        for k in range(K + 1):
+            y = y0 + (y1 - y0) * k / K
+            q = Vector((y * 0.07, z * 0.011, 0.0)) + off
+            fold = 0.55 - abs(noise.noise(q))                      # ridged: creases and folds
+            fold *= 0.5 + 0.5 * noise.noise(Vector((y * 0.02, z * 0.004, 3.0)) + off)  # rare
+            edge = 0.35 if k in (0, K) else 1.0                    # keep the corners near true
+            ring.append((xr + 1.6 * (0.4 + t) * fold * edge, y, z))
+        ring.append((xl, y1, z))
+        rings.append([bm.verts.new(p) for p in ring])
+    m = len(rings[0])
     for a, b in zip(rings, rings[1:]):
-        for i in range(N):
-            bm.faces.new((a[i], a[(i + 1) % N], b[(i + 1) % N], b[i]))
+        for i in range(m):
+            f = bm.faces.new((a[i], a[(i + 1) % m], b[(i + 1) % m], b[i]))
+            if 1 <= i < K + 1:   # the side wall
+                f.material_index = 2
     bm.faces.new(list(reversed(rings[0])))
-    top = bm.verts.new((sum(p.co.x for p in rings[-1]) / N, sum(p.co.y for p in rings[-1]) / N, H * 0.99))
-    for i in range(N):
-        bm.faces.new((rings[-1][i], rings[-1][(i + 1) % N], top))
+    bm.faces.new(rings[-1])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
 
@@ -343,7 +349,7 @@ def rubble_chunks(v, bm, rnd):
             (0.80, 0.55, 0.30, 0.42), (1.55, -0.25, 0.10, 0.08), (1.20, -0.50, 0.08, 0.06),
             (1.75, 0.05, 0.07, 0.05), (0.40, -0.55, 0.05, 0.04)]
     for k, (fx, fy, r, hz) in enumerate(heap):
-        x = W / 2 + fx * s * 0.8
+        x = W / 2 + right_ext(v, 0.0) * 0.8 + fx * s * 0.6   # at the foot of the slanted wall
         y = -D / 2 + fy * D + 0.2 * D
         rx, ry, rz = r * s * rnd.uniform(0.9, 1.2), r * s * rnd.uniform(0.8, 1.1), hz * s
         hull(bm, chunk_pts(rnd, x - rx, x + rx, y - ry, y + ry, -1.5, rz * 1.4, n=16,
@@ -365,14 +371,23 @@ def chip_cutters(v, rnd):
     for _ in range(5):   # the arch's front lips, low (worn by passage) and a couple high
         z = H * 0.55 * rnd.random() ** 1.8
         spots.append((cx + rnd.choice((-r, r)), yf, z, rnd.uniform(0.8, 2.0)))
-    for _ in range(4):   # the right front edge where the falling rock struck
-        spots.append((W / 2, yf, H * rnd.uniform(0.05, 0.7), rnd.uniform(1.5, 3.2)))
+    for _ in range(3):   # the right front edge
+        z = H * rnd.uniform(0.05, 0.7)
+        spots.append((W / 2 + right_ext(v, z), yf, z, rnd.uniform(1.5, 3.2)))
+    pits = []
+    for _ in range(9):   # rare pits in the slanted side wall: rounded dents, not chips
+        z = H * rnd.random() ** 1.4
+        pits.append((W / 2 + right_ext(v, z) + 0.6, rnd.uniform(-0.4, 0.4) * D, z, rnd.uniform(1.2, 3.5)))
     spots.append((-W / 2, yf, H, 3.0))           # top corners
     spots.append((W / 2, D / 2, H, 4.0))
     bm = bmesh.new()
     for x, y, z, s in spots:
         hull(bm, [(x + rnd.uniform(-s, s), y + rnd.uniform(-s, s), z + rnd.uniform(-s, s) * 1.6)
                   for _ in range(9)])
+    for x, y, z, s in pits:
+        hull(bm, [(x + s * 0.7 * u.x, y + s * u.y, z + s * 1.3 * u.z)
+                  for u in (Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), rnd.gauss(0, 1))).normalized()
+                            for _ in range(16))])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return bm
 
@@ -382,19 +397,16 @@ def sculpted_gate(name, v, stone, void, rock):
     rnd = random.Random(seed)
     W, D, H = v["W"], v["D"], v["H"]
     bm = bmesh.new()
-    block(v, bm)
+    sloped_block(v, bm, seed)
     ob = link(name + "_block", mesh_from(name + "_block", bm, [stone, void, rock]), (0, 0, 0))
     cut = link(name + "_cut", arch_cutter(v, name + "_cut", void), (0, 0, 0))
     chips = link(name + "_chips", mesh_from(name + "_chips", chip_cutters(v, rnd), stone), (0, 0, 0))
-    bm = bmesh.new()
-    flank(v, bm, seed)
-    rag = link(name + "_crag", mesh_from(name + "_crag", bm, rock), (0, 0, 0))
-    for label, op, other in (("arch", "DIFFERENCE", cut), ("chips", "DIFFERENCE", chips), ("crag", "UNION", rag)):
+    for label, op, other in (("arch", "DIFFERENCE", cut), ("chips", "DIFFERENCE", chips)):
         mod = ob.modifiers.new(label, "BOOLEAN")
         mod.operation = op
         mod.solver = "EXACT"
         mod.object = other
-        mod.use_self = label != "arch"   # chips and splinters overlap each other
+        mod.use_self = label == "chips"   # the chips overlap each other
         mod.use_hole_tolerant = label == "chips"
         try:
             mod.material_mode = "TRANSFER"
@@ -410,11 +422,11 @@ def sculpted_gate(name, v, stone, void, rock):
     bev.harden_normals = False
     dg = bpy.context.evaluated_depsgraph_get()
     me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
-    for o in (ob, cut, chips, rag):
+    for o in (ob, cut, chips):
         bpy.data.objects.remove(o)
     bm = bmesh.new()
     bm.from_mesh(me)
-    for f in bm.faces:   # the weathered flank shades smooth, the cut planes and the boulders flat
+    for f in bm.faces:   # the folded side wall shades smooth, the cut planes and the boulders flat
         f.smooth = f.material_index == 2
     n0 = len(bm.faces)
     rubble_chunks(v, bm, rnd)
