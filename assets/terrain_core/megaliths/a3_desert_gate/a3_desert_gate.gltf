@@ -37,67 +37,67 @@
 		{
 			"bufferView":0,
 			"componentType":5126,
-			"count":5337,
+			"count":2809,
 			"max":[
-				74.47611999511719,
+				74.0255126953125,
 				190,
-				26.947465896606445
+				26.957645416259766
 			],
 			"min":[
 				-24.1200008392334,
-				-4.995598793029785,
-				-16.80599021911621
+				-4.972532272338867,
+				-17.94420623779297
 			],
 			"type":"VEC3"
 		},
 		{
 			"bufferView":1,
 			"componentType":5126,
-			"count":5337,
+			"count":2809,
 			"type":"VEC3"
 		},
 		{
 			"bufferView":2,
 			"componentType":5126,
-			"count":5337,
+			"count":2809,
 			"type":"VEC2"
 		},
 		{
 			"bufferView":3,
 			"componentType":5123,
-			"count":10851,
+			"count":6651,
 			"type":"SCALAR"
 		}
 	],
 	"bufferViews":[
 		{
 			"buffer":0,
-			"byteLength":64044,
+			"byteLength":33708,
 			"byteOffset":0,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":64044,
-			"byteOffset":64044,
+			"byteLength":33708,
+			"byteOffset":33708,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":42696,
-			"byteOffset":128088,
+			"byteLength":22472,
+			"byteOffset":67416,
 			"target":34962
 		},
 		{
 			"buffer":0,
-			"byteLength":21702,
-			"byteOffset":170784,
+			"byteLength":13302,
+			"byteOffset":89888,
 			"target":34963
 		}
 	],
 	"buffers":[
 		{
-			"byteLength":192488,
+			"byteLength":103192,
 			"uri":"a3_desert_gate.bin"
 		}
 	]

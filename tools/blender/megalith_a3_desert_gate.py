@@ -15,7 +15,7 @@ Blockout: proportion variants side by side with 1.8 m figures, plus a shot repea
 reference composition; V1_ref chosen (14.10), 190 m.
 Sculpt: one game mesh (about 3.6k tris, no separate dense mesh): the cut block keeps big flat
 planes with chamfered edges and a few flat-bottomed chips; the right side wall slants out toward
-the foot with rare folds and pits, fallen blocks as fractured hulls at its foot.
+the foot with rare soft folds and a few small corner chips, fallen blocks as fractured hulls at its foot.
 Material (approved 14.10): see the material section.
 
     blender -b -P tools/blender/megalith_a3_desert_gate.py                      # material stage
@@ -311,8 +311,7 @@ def right_ext(v, z):
 
 def sloped_block(v, bm, seed):
     """The cut block with its right side wall slanting out toward the foot as one face: rare
-    folds (soft vertical creases, ridged noise stretched up the height) and, from chip_cutters,
-    rare pits. The front face simply widens with it; the left wall flares as before."""
+    folds (soft vertical creases, ridged noise stretched up the height). The front face simply widens with it; the left wall flares as before."""
     W, D, H = v["W"], v["D"], v["H"]
     K = 10                       # segments across the side wall
     off = Vector((seed % 97, seed % 89, seed % 83)) * 1.7
@@ -361,37 +360,18 @@ def rubble_chunks(v, bm, rnd):
 
 
 def chip_cutters(v, rnd):
-    """Flat-bottomed wedges biting the frame's edges: most low and on the crag side, a couple at
-    the top corners and on the arch's lip."""
+    """A few small flat-bottomed chips on the corners only (user, 14.10: no holes in the faces):
+    the top corners and a couple on the outer vertical edges."""
     W, D, H = v["W"], v["D"], v["H"]
-    r = v["open_w"] * W / 2
-    cx = W * 0.03
-    yf = -D / 2
-    spots = []
-    for _ in range(5):   # the outer left front edge, mostly low
-        z = H * rnd.random() ** 2.2
-        xl = -W / 2 - v["flare"] * W * (1 - z / H) ** 1.5
-        spots.append((xl, yf, z, rnd.uniform(1.0, 2.6)))
-    for _ in range(5):   # the arch's front lips, low (worn by passage) and a couple high
-        z = H * 0.55 * rnd.random() ** 1.8
-        spots.append((cx + rnd.choice((-r, r)), yf, z, rnd.uniform(0.8, 2.0)))
-    for _ in range(3):   # the right front edge
-        z = H * rnd.uniform(0.05, 0.7)
-        spots.append((W / 2 + right_ext(v, z), yf, z, rnd.uniform(1.5, 3.2)))
-    pits = []
-    for _ in range(9):   # rare pits in the slanted side wall: rounded dents, not chips
-        z = H * rnd.random() ** 1.4
-        pits.append((W / 2 + right_ext(v, z) + 0.6, rnd.uniform(-0.4, 0.4) * D, z, rnd.uniform(1.2, 3.5)))
-    spots.append((-W / 2, yf, H, 3.0))           # top corners
-    spots.append((W / 2, D / 2, H, 4.0))
+    yf, yb = -D / 2, D / 2
+    xl = lambda z: -W / 2 - v["flare"] * W * (1 - z / H) ** 1.5
+    xr = lambda z: W / 2 + right_ext(v, z)
+    spots = [(xl(H), yf, H, 1.6), (xr(H), yb, H, 1.8),          # top corners
+             (xl(H * 0.22), yf, H * 0.22, 1.2), (xr(H * 0.48), yf, H * 0.48, 1.3)]   # outer edges
     bm = bmesh.new()
     for x, y, z, s in spots:
-        hull(bm, [(x + rnd.uniform(-s, s), y + rnd.uniform(-s, s), z + rnd.uniform(-s, s) * 1.6)
+        hull(bm, [(x + rnd.uniform(-s, s), y + rnd.uniform(-s, s), z + rnd.uniform(-s, s) * 1.4)
                   for _ in range(9)])
-    for x, y, z, s in pits:
-        hull(bm, [(x + s * 0.7 * u.x, y + s * u.y, z + s * 1.3 * u.z)
-                  for u in (Vector((rnd.gauss(0, 1), rnd.gauss(0, 1), rnd.gauss(0, 1))).normalized()
-                            for _ in range(16))])
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     return bm
 

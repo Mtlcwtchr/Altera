@@ -13,16 +13,16 @@
     {
       "node": "a3_desert_gate",
       "source_mesh": "V1_ref.002",
-      "tris": 3617,
+      "tris": 2217,
       "bounds_m": [
         [
           -24.12,
-          -26.95,
-          -5.0
+          -26.96,
+          -4.97
         ],
         [
-          74.48,
-          16.81,
+          74.03,
+          17.94,
           190.0
         ]
       ],
@@ -56,7 +56,7 @@
     "setting": "open sand, dunes beyond, blue sky; seen from everywhere in its biome (190 m)"
   },
   "budget": {
-    "tris": 3617,
+    "tris": 2217,
     "style_profile_A": [
       1500,
       4000
