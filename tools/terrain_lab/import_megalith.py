@@ -117,9 +117,12 @@ def import_atlas_asset(asset, manifest_path, catalogue):
     out.mkdir(exist_ok=True)
     Image.open(ROOT / tex["basecolor"]["file"]).convert("RGB").save(out / "basecolor.png")
     Image.open(ROOT / tex["normal"]["file"]).convert("RGB").save(out / "normal.png")
-    ao = np.asarray(Image.open(ROOT / tex["ao"]["file"]).convert("L"))
-    rough = np.asarray(Image.open(ROOT / tex["roughness"]["file"]).convert("L"))
-    Image.fromarray(np.dstack([ao, rough, np.zeros_like(ao)]), "RGB").save(out / "surface.png")
+    if "surface" in tex:  # A-3: AO, roughness (and metallic) already packed
+        Image.open(ROOT / tex["surface"]["file"]).convert("RGB").save(out / "surface.png")
+    else:
+        ao = np.asarray(Image.open(ROOT / tex["ao"]["file"]).convert("L"))
+        rough = np.asarray(Image.open(ROOT / tex["roughness"]["file"]).convert("L"))
+        Image.fromarray(np.dstack([ao, rough, np.zeros_like(ao)]), "RGB").save(out / "surface.png")
     print(f"{ident}: {len(models)} models, maps in {out.relative_to(ROOT)}")
 
 

@@ -9,7 +9,8 @@ elsewhere (doc/BIOMES_RU.md; the user's list of 2026-10-11):
 - the green shore at the desert's edge: a cluster of huge white cubes;
 - the plain: the remains of giants - heads, hands, a spine, fallen iron
   defenders;
-- the golden desert: one mirroring prism, the rest giant remains - spines,
+- the golden desert: the gate A-3 (doc/megaliths/A3_DESERT_GATE.md, it took the
+  mirroring prism's place 2026-10-14), the rest giant remains - spines,
   ribcages, hands, iron defenders;
 - the black coast: grey spikes all along it;
 - the river valley: one towering straight grey spire (a tower will stand on it).
@@ -390,4 +391,7 @@ def place(world, rules, catalogue, rng, add):
     # the rest stays as it was.
     import world_stele
     counts["a2_stele"] = world_stele.place(world, catalogue, np.random.default_rng(18), add, CHECKS)
+    # The desert gate A-3 (world_gate.py): the golden desert's one magic megalith.
+    import world_gate
+    counts["a3_gate"] = world_gate.place(world, catalogue, np.random.default_rng(34), add, CHECKS)
     return counts

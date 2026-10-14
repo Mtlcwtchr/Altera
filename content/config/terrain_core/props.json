@@ -298,18 +298,13 @@
     }
   },
   "megaliths": {
-    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): one kind per biome, none repeated elsewhere; the isles and the crescent have none. `heroes`: zone -> {kind, count, share of the biome's extent as height}. `prism_row`: towering prisms along a border (none now: the marshes have A-1). `cube_cluster`: huge white cubes. `coast_spikes`: spikes all along a coast. `groups` / `singles`: as elsewhere. `a1_monoliths`: the giant slabs A-1 in loose rows on the dry ground of the marshes (world_megaliths.a1_monoliths; rows, spacing and scale from the asset manifest; the slab is drawn in its own material, \"look\").",
+    "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): one kind per biome, none repeated elsewhere; the isles and the crescent have none. `heroes`: zone -> {kind, count, share of the biome's extent as height}. `prism_row`: towering prisms along a border (none now: the marshes have A-1). `cube_cluster`: huge white cubes. `coast_spikes`: spikes all along a coast. `groups` / `singles`: as elsewhere. `a1_monoliths`: the giant slabs A-1 in loose rows on the dry ground of the marshes (world_megaliths.a1_monoliths; rows, spacing and scale from the asset manifest; the slab is drawn in its own material, \"look\"). The golden desert's one magic megalith is the gate A-3 (world_gate.py, rules in its asset manifest), no hero there.",
     "heroes": {
       "zones": {
         "white_mountains": {
           "kind": "mega_ring",
           "count": 1,
           "share": 0.08
-        },
-        "golden_desert": {
-          "kind": "mirror_prism",
-          "count": 1,
-          "share": 0.09
         }
       },
       "share": 0.08,

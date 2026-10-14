@@ -1,23 +1,27 @@
-"""Magic megalith A-3: the mirror gate of the golden desert (doc/BIOME_PLAN.md 3.4, kind A:
-blockout -> sculpt -> material, user approval at each step).
+"""Magic megalith A-3: the gate of the golden desert (doc/BIOME_PLAN.md 3.4, kind A:
+blockout -> sculpt -> material, user approval at each step; doc/megaliths/A3_DESERT_GATE.md).
 
-Reference (user, 14.10, painting; assets/terrain_core/megaliths/a3_mirror_gate/reference.jpg):
+Reference (user, 14.10, painting; assets/terrain_core/megaliths/a3_desert_gate/reference.jpg):
 a very tall pale slab standing straight up on a flat pale-yellow plain under a blue sky, about
 5 times taller than wide, flat top. Its front face is a thin frame round one tall narrow
 round-arched opening, black inside (a deep dark passage), running from the ground almost to the
 top; a tiny figure stands in it. The left wall is clean and cut, a touch thicker toward the foot;
 the right flank behind the frame is raw broken rock that widens downward into a craggy foot with
 fallen blocks. Shallow water sheets lie round the base. A cloaked figure in the foreground.
-User: the stone is polished like a mirror (material stage).
+User: first "polished like a mirror", then (material stage, 14.10) no mirror after all: plain
+worn white stone, a little covered in sand dust.
 
 Blockout: proportion variants side by side with 1.8 m figures, plus a shot repeating the
 reference composition; V1_ref chosen (14.10), 190 m.
-Sculpt: one game mesh (about 3.3k tris, no separate dense mesh): the cut block keeps big flat
-planes (the mirror) with chamfered edges and a few flat-bottomed chips; the right side wall slants
-out toward the foot with rare folds and pits, fallen blocks as fractured hulls at its foot.
+Sculpt: one game mesh (about 3.6k tris, no separate dense mesh): the cut block keeps big flat
+planes with chamfered edges and a few flat-bottomed chips; the right side wall slants out toward
+the foot with rare folds and pits, fallen blocks as fractured hulls at its foot.
+Material (approved 14.10): see the material section.
 
-    blender -b -P tools/blender/megalith_a3_mirror_gate.py                      # sculpt stage
-    blender -b -P tools/blender/megalith_a3_mirror_gate.py -- --stage blockout
+    blender -b -P tools/blender/megalith_a3_desert_gate.py                      # material stage
+    blender -b -P tools/blender/megalith_a3_desert_gate.py -- --no-render --export   # game copy + manifests
+    blender -b -P tools/blender/megalith_a3_desert_gate.py -- --stage sculpt
+    blender -b -P tools/blender/megalith_a3_desert_gate.py -- --stage blockout
 """
 import argparse
 import math
@@ -31,7 +35,7 @@ import bmesh
 from mathutils import Matrix, Vector, noise
 
 ROOT = Path(__file__).resolve().parents[2]
-ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a3_mirror_gate"
+ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a3_desert_gate"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
 STAGE = "material"
 
@@ -944,11 +948,91 @@ def render_views(render):
     sc.camera = bpy.data.objects["cam_" + next(v[0] for v in views if "reference" in v[0])]
 
 
+CONFIG_DIR = ROOT / "content/config/terrain_core/megaliths"
+IDENT = "a3_desert_gate"
+
+
+def export(v):
+    """The game copy: the game mesh as one glTF node (Z up as authored, metres, its own normals,
+    the atlas UVs) and the two manifests in content/config/terrain_core/megaliths/."""
+    import json
+    sc = bpy.context.scene
+    me = bpy.data.objects["hero_" + HERO].data
+    coll = bpy.data.collections.new("export")
+    sc.collection.children.link(coll)
+    ob = link(IDENT, me, (0, 0, 0), coll=coll)
+    for o in sc.objects:
+        o.select_set(o is ob)
+    bpy.context.view_layer.objects.active = ob
+    out = ASSET_DIR / f"{IDENT}.gltf"
+    bpy.ops.export_scene.gltf(filepath=str(out), export_format="GLTF_SEPARATE", use_selection=True,
+                              export_yup=True, export_apply=True, export_normals=True,
+                              export_texcoords=True, export_materials="NONE")
+    lo = [min(p.co[i] for p in me.vertices) for i in range(3)]
+    hi = [max(p.co[i] for p in me.vertices) for i in range(3)]
+    bpy.data.objects.remove(ob)
+    bpy.data.collections.remove(coll)
+    rel = lambda p: str(p.relative_to(ROOT)).replace("\\", "/")
+    CONFIG_DIR.mkdir(parents=True, exist_ok=True)
+    asset = {
+        "comment": "Magic megalith A-3, the gate of the golden desert (doc/megaliths/A3_DESERT_GATE.md). Generated "
+                   "by tools/blender/megalith_a3_desert_gate.py -- --export; edit the script, not this file.",
+        "id": IDENT, "kind": "A", "approved": "2026-10-14",
+        "model": rel(out), "blend": rel(ASSET_DIR / "gate_material.blend"),
+        "reference": rel(ASSET_DIR / "reference.jpg"),
+        "units": "metres, Z up in Blender (glTF is Y up)",
+        "origin": "centre of the foot at ground level; the front (the arch) faces -y",
+        "material": f"{IDENT}.material.json",
+        "variants": [{"node": IDENT, "source_mesh": me.name, "tris": tris(me),
+                      "bounds_m": [[round(x, 2) for x in lo], [round(x, 2) for x in hi]],
+                      "shape": {k: v[k] for k in ("W", "D", "H", "open_w", "lintel", "niche", "crag")}}],
+        "placement": {
+            "count": "one in the world (unique)", "zone": "golden_desert", "scale": 1.0,
+            "sink_m": 0.5, "foot_below_origin_m": SINK,
+            "site": {"flat_radius_m": 160, "max_relief_m": 6.0, "edge_depth_share": 0.15,
+                     "candidates": 60, "eye_points": 400, "range_m": 30000,
+                     "note": "flat sand deep in the biome, not on a dune crest; the candidate seen from most "
+                             "of the biome wins (BIOME_PLAN 3.4: the monument seen from >= 80 % of it)"},
+            "turn": "the arch faces the biome's centre of mass (most of it sees the passage)",
+            "setting": "open sand, dunes beyond, blue sky; seen from everywhere in its biome (190 m)"},
+        "budget": {"tris": tris(me), "style_profile_A": [1500, 4000]},
+        "engine": "uv_atlas",
+    }
+    (CONFIG_DIR / f"{IDENT}.asset.json").write_text(json.dumps(asset, indent=2, ensure_ascii=False) + "\n",
+                                                    encoding="utf-8")
+    material = {
+        "comment": "Material of A-3 (doc/megaliths/A3_DESERT_GATE.md). Generated by "
+                   "tools/blender/megalith_a3_desert_gate.py; the maps are final, the knobs are what made them "
+                   "(the painted materials gate_paint_* stay in the blend).",
+        "id": IDENT + "_pbr",
+        "projection": "the mesh's own UVs: one smart-UV atlas for the whole gate",
+        "atlas": {"size_px": TEX, "unwrap": "smart UV project, 50 deg, margin 0.004"},
+        "filter": "nearest (hard pixels); mip maps fine",
+        "textures": {
+            "basecolor": {"file": rel(ASSET_DIR / "gate_basecolor_2048.png"), "space": "sRGB",
+                          "what": "worn white stone, ivory mottling, faint grey veins, pits a touch darker, "
+                                  "a film of sand dust, dust patches on what faces up and at the foot, the "
+                                  "passage black; no AO in it; true albedo (no gain needed)"},
+            "normal": {"file": rel(ASSET_DIR / "gate_normal_2048.png"), "space": "linear",
+                       "convention": "tangent space, OpenGL (+Y up), MikkTSpace from the glTF UVs",
+                       "what": "the worn relief: coarse pitting and fine grit"},
+            "surface": {"file": rel(ASSET_DIR / "gate_surface_2048.png"), "space": "linear",
+                        "what": "R = baked AO (multiply into ambient), G = roughness (worn 0.78, dust rougher), "
+                                "B = metallic (0)"}},
+        "metallic": 0.0,
+        "knobs": KNOBS,
+    }
+    (CONFIG_DIR / f"{IDENT}.material.json").write_text(json.dumps(material, indent=2, ensure_ascii=False) + "\n",
+                                                       encoding="utf-8")
+    print("exported", out, "and manifests in", CONFIG_DIR)
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
     ap.add_argument("--stage", choices=("blockout", "sculpt", "material"), default="material")
+    ap.add_argument("--export", action="store_true", help="also write the glTF and the manifests (material stage)")
     args = ap.parse_args(argv)
     global STAGE
     STAGE = args.stage
@@ -958,6 +1042,8 @@ def main():
         make_material(bpy.data.objects["hero_" + HERO])
     setup_render()
     render_views(not args.no_render)
+    if args.export and STAGE == "material":
+        export(VARIANTS[HERO])
     blend = ASSET_DIR / f"gate_{STAGE}.blend"
     bpy.ops.wm.save_as_mainfile(filepath=str(blend))
     print("saved", blend)
