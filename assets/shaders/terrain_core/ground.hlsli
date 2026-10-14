@@ -43,7 +43,7 @@ cbuffer Ground : GROUND_UNIFORMS {
     float4 groundGlobals;       // shore material, shore height, sea floor material, log2(tile in level-0 texels)
     uint4 groundSizes;          // biome map size, -, -, -
     float4 groundWorld;         // world size, spacing, texture scale (0 = 1), -
-    float4 materialGrass[8];    // per material layer: how much of it is grass, 0..1
+    float4 materialGrass[16];   // per material layer: how much of it is grass, 0..1
 };
 
 #include "biome_pick.hlsli"

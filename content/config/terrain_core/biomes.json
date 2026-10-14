@@ -34,7 +34,8 @@
     "snow":           {"source": "Sand_05", "recolour": {"saturation": 0.0, "brightness": 1.18, "tint": [0.93, 0.96, 1.0]}},
     "ash_black":      {"source": "Gravel_02", "recolour": {"saturation": 0.4, "brightness": 0.55, "tint": [1.0, 0.85, 0.85]}},
     "rock_red_terrace": {"source": "Rocky_05", "recolour": {"saturation": 0.55, "brightness": 0.95, "tint": [1.3, 0.5, 0.42]}, "comment": "the marshes' terrace rock: red with dark maroon flecks, near A-1's colour but its own grain"},
-    "rock_red_hatch": {"file": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_128.png", "height": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_grooves_128.png", "height_invert": true, "roughness": 0.8}
+    "rock_red_hatch": {"file": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_128.png", "height": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_grooves_128.png", "height_invert": true, "roughness": 0.8},
+    "crust_ochre":    {"file": "assets/terrain_core/materials/own/crust_ochre_128.png", "height": "assets/terrain_core/materials/own/crust_ochre_height_128.png", "roughness": 0.9, "comment": "cracked dry clay of the canyon floors (tools/terrain_lab/make_crust.py)"}
   },
   "bands": [
     {"id": 17, "name": "forest_edge", "in": [2], "toward": [1], "width_m": 2500, "comment": "the dark forest's thinned edge by the marshes, red pools still lying in it (marshes/MARSHES_REQUIREMENTS.md 6)"}
@@ -60,6 +61,9 @@
     {"id": 15, "name": "south_unassigned",  "base": "grass_meadow",  "patch": {"material": "dirt_brown",   "cell_m": 64,  "cover": 0.30}, "slope": {"material": "rock_grey",  "from": 0.85, "to": 0.70}},
     {"id": 17, "name": "forest_edge",       "base": "grass_olive",   "patch": {"material": "dirt_dark",    "cell_m": 32,  "cover": 0.30}, "slope": {"material": "rock_mossy", "from": 0.85, "to": 0.70}, "tint": [0.74, 0.86, 0.68]},
     {"id": 16, "name": "stone_desert",      "base": "rock_ochre",    "patch": {"material": "dirt_red",     "cell_m": 128, "cover": 0.35}, "slope": {"material": "rock_ochre", "from": 0.88, "to": 0.72}, "tint": [1.04, 0.86, 0.70]},
-    {"id": 18, "name": "stele_glade",       "base": "dirt_mud",      "patch": {"material": "grass_dark",   "cell_m": 20,  "cover": 0.30}, "slope": {"material": "rock_mossy", "from": 0.88, "to": 0.74}, "tint": [0.62, 0.72, 0.60], "comment": "the damp glade of the carved stele A-2 in the dark forest (tools/terrain_lab/stele_glade.py): mud, dark grass in tufts, pools, dead trees"}
+    {"id": 18, "name": "stele_glade",       "base": "dirt_mud",      "patch": {"material": "grass_dark",   "cell_m": 20,  "cover": 0.30}, "slope": {"material": "rock_mossy", "from": 0.88, "to": 0.74}, "tint": [0.62, 0.72, 0.60], "comment": "the damp glade of the carved stele A-2 in the dark forest (tools/terrain_lab/stele_glade.py): mud, dark grass in tufts, pools, dead trees"},
+    {"id": 19, "name": "mesa_pocket",       "base": "grass_meadow",  "patch": {"material": "grass_flowers","cell_m": 32,  "cover": 0.12}, "slope": {"material": "rock_ochre", "from": 0.92, "to": 0.80}, "tint": [0.96, 1.0, 0.84], "comment": "green pockets with the damp on the canyon steppe's mesa tops (steppe_ground.py, BIOME_PLAN 3.3)"},
+    {"id": 20, "name": "canyon_floor",      "base": "crust_ochre",   "patch": {"material": "dirt_pebbles", "cell_m": 48,  "cover": 0.25}, "slope": {"material": "rock_ochre", "from": 0.90, "to": 0.76}, "tint": [1.0, 0.94, 0.86], "comment": "cracked dry crust on the canyons' flat floors (steppe_ground.py)"},
+    {"id": 21, "name": "gravel_field",      "base": "gravel_pale",   "patch": {"material": "dirt_pebbles", "cell_m": 64,  "cover": 0.35}, "slope": {"material": "rock_ochre", "from": 0.88, "to": 0.72}, "tint": [1.04, 0.90, 0.76], "comment": "the stone desert's rubble fields (steppe_ground.py)"}
   ]
 }

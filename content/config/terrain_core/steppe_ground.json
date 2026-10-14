@@ -1,0 +1,16 @@
+{
+  "comment": "The canyon steppe's and the stone desert's ground (doc/BIOME_PLAN.md 3.3), painted into <world>_biomes.png by tools/terrain_lab/steppe_ground.py on the biome map's grid. `rel` is where a cell stands between the lowest (0) and the highest (1) ground within `rel_window_m`; `slope` rise over run of the ground smoothed over a cell; `wet` how far the cell lies in a hollow of the ground round it (0 on crests, 1 in the deepest hollows within `wet_window_m`). Each layer paints its `biome` over the biomes `in`, where its noise (cells of `noise_m`) weighs over its threshold.",
+  "rel_window_m": 2000,
+  "wet_window_m": 600,
+  "layers": [
+    {"name": "mesa_pocket", "biome": 19, "in": [3], "slope_max": 0.24, "rel_min": 0.55,
+     "share": [0.10, 0.30], "noise_m": 380, "wet_weight": 0.45, "min_top_cells": 4,
+     "comment": "green pockets with the damp on the mesas' tops: 10-30% of each top (a connected flat high stretch), drawn by noise weighted towards its hollows"},
+    {"name": "canyon_floor", "biome": 20, "in": [3, 16], "slope_max": 0.2, "rel_max": 0.3, "wet_max": 0.85,
+     "cover": 0.6, "noise_m": 520,
+     "comment": "cracked dry crust on the canyons' floors and the approaches: flat low ground, not the wettest hollows (the beds)"},
+    {"name": "gravel_field", "biome": 21, "in": [16], "slope_max": 0.35, "rel_min": 0.25, "rel_max": 0.85,
+     "cover": 0.3, "noise_m": 1500,
+     "comment": "the stone desert's rubble fields: broad patches over the gentle middle ground"}
+  ]
+}

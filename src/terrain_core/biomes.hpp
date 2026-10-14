@@ -21,6 +21,8 @@
 namespace terrain_core {
 
 constexpr std::uint32_t kMaxBiomes = 32;
+// Layers of the material array the ground's uniforms describe.
+constexpr std::uint32_t kMaxMaterials = 64;
 
 // One biome as the fragment shader reads it. Material indices are layers of
 // the material array as floats, -1 for "none".
@@ -43,7 +45,7 @@ struct GroundUniforms {
     float textureScale;   // footprint multiplier for the materials' mip (0 = 1): under DLSS, output over render
     float pad4;
     // Per material layer: how much of it is grass (the grass cover grows there).
-    float materialGrass[kMaxBiomes];
+    float materialGrass[kMaxMaterials];
 };
 
 class BiomeTable {

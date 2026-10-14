@@ -1133,6 +1133,16 @@
       "properties": "rock_red_hatch_properties.png",
       "height": "assets/terrain_core/megaliths/a_monolith/monolith_hatch_grooves_128.png",
       "normal_strength": 2.0
+    },
+    "crust_ochre": {
+      "file": "assets/terrain_core/materials/own/crust_ochre_128.png",
+      "size": [
+        128,
+        128
+      ],
+      "properties": "crust_ochre_properties.png",
+      "height": "assets/terrain_core/materials/own/crust_ochre_height_128.png",
+      "normal_strength": 2.0
     }
   }
 }

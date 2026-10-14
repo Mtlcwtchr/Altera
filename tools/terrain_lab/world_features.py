@@ -295,6 +295,8 @@ def main():
     preview(world, args.world, items, catalogue, args.world + "_features_preview.png")
     import world_megaliths
     checks = world_megaliths.CHECKS
+    import steppe_checks
+    checks["steppe"] = steppe_checks.run(world, items, catalogue, args.world)
     if checks:
         # The automatic checks (doc/BIOME_PLAN.md 1.5), by element.
         Path(args.world + "_checks.json").write_text(json.dumps(checks, indent=1))

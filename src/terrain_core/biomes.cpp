@@ -53,7 +53,7 @@ bool BiomeTable::load(const std::filesystem::path& json, const Params& params, s
     for (const auto& [name, spec] : config["materials"].items()) {
         // Grass unless said otherwise: every grass_* material, and whatever
         // carries "grass": 0..1.
-        if (files_.size() < kMaxBiomes)
+        if (files_.size() < kMaxMaterials)
             uniforms_.materialGrass[files_.size()] = spec.value("grass", name.rfind("grass", 0) == 0 ? 1.0f : 0.0f);
         layer[name] = float(files_.size());
         files_.push_back(root / "assets" / "terrain_core" / "materials" / (name + ".png"));
