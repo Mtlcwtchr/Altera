@@ -13,8 +13,8 @@ User: the stone is polished like a mirror (material stage).
 Blockout: proportion variants side by side with 1.8 m figures, plus a shot repeating the
 reference composition; V1_ref chosen (14.10), 190 m.
 Sculpt: one game mesh (about 3.3k tris, no separate dense mesh): the cut block keeps big flat
-planes (the mirror) with chamfered edges and a few flat-bottomed chips; the right flank is a cliff
-of convex splinters stepping out toward the foot, fallen blocks as fractured hulls.
+planes (the mirror) with chamfered edges and a few flat-bottomed chips; the right flank is a smooth
+weathered skin flaring down to the foot, fallen blocks as fractured hulls.
 
     blender -b -P tools/blender/megalith_a3_mirror_gate.py                      # sculpt stage
     blender -b -P tools/blender/megalith_a3_mirror_gate.py -- --stage blockout
@@ -298,31 +298,40 @@ def chunk_pts(rnd, x0, x1, y0, y1, z0, z1, n=14, flat=None, knock=0.25):
     return pts
 
 
-def crag_chunks(v, bm, rnd):
-    """The broken right flank as a cliff of tall splinters (columnar breaks, as painted): each band
-    up the height is split into side-by-side columns, the outer ones shorter, so the flank steps
-    out toward the foot; bands overlap so it reads as one broken wall, not a pile of blocks."""
+def flank(v, bm, seed):
+    """The right flank as one smooth, slightly weathered skin (user, 14.10: no stuck-on heap of
+    stones, a smooth worn transition down to the boulders): a loft of rings flaring out toward
+    the foot, nudged only by slow noise and faint wind-cut bands."""
     W, D, H = v["W"], v["D"], v["H"]
-    z = -SINK
-    while z < H * 0.97:
-        h = rnd.uniform(24, 42)
-        z1 = min(z + h, H * 0.985)
-        tm = 1.0 - max((z + z1) / 2, 0.0) / H
-        ext = v["crag"] * W * (0.12 + 0.88 * tm ** 2.6)
-        y0 = -D / 2 + 2.5 + 0.06 * W * (1 - tm)
-        y1 = D / 2 + 0.25 * D * tm
-        x_in, x_out = W / 2 - 0.08 * W, W / 2 + ext + 0.5
-        cols = 1 + int(3 * tm ** 1.5)
-        edges = sorted([x_in, x_out] + [rnd.uniform(x_in, x_out) for _ in range(cols - 1)])
-        for k in range(cols):
-            a, b = edges[k], edges[k + 1]
-            pad = 0.25 * (b - a) + 0.6
-            out = k / max(cols - 1, 1)          # 0 inner .. 1 outer
-            top = z + (z1 - z) * (1.0 - 0.45 * out * rnd.uniform(0.6, 1.0))
-            yk0 = y0 + rnd.uniform(0, 2.0) + out * rnd.uniform(-1.5, 3.0)
-            hull(bm, chunk_pts(rnd, a - pad, b + pad * 0.3, yk0, y1 - rnd.uniform(0, 0.2 * D),
-                               z - 2.0, top, n=10 + int(6 * tm), knock=0.12))
-        z = z + h * rnd.uniform(0.55, 0.7)
+    N, levels = 20, 44
+    off = Vector((seed % 97, seed % 89, seed % 83)) * 1.7
+    rings = []
+    for j in range(levels + 1):
+        z = -SINK + (H * 0.985 + SINK) * (j / levels) ** 0.9
+        t = 1.0 - max(z, 0.0) / H
+        ext = v["crag"] * W * (0.10 + 0.90 * t ** 2.6)
+        x0, x1 = W / 2 - 0.08 * W, W / 2 + ext + 0.5
+        y0, y1 = -D / 2 + 2.5 + 0.06 * W * (1 - t), D / 2 + 0.25 * D * t
+        cx, cy, rx, ry = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
+        amp = 0.035 * W * (0.4 + t)
+        ring = []
+        for i in range(N):
+            a = 2 * math.pi * i / N
+            c, s = math.cos(a), math.sin(a)
+            px = cx + rx * math.copysign(abs(c) ** 0.5, c)
+            py = cy + ry * math.copysign(abs(s) ** 0.5, s)
+            p = Vector((px, py, z))
+            d = fbm(p * 0.018 + off, 2) * amp + 0.35 * math.sin(z * 0.45 + 2.0 * fbm(p * 0.05 + off, 1))
+            ring.append(bm.verts.new((px + c * d, py + s * d, z)))
+        rings.append(ring)
+    for a, b in zip(rings, rings[1:]):
+        for i in range(N):
+            bm.faces.new((a[i], a[(i + 1) % N], b[(i + 1) % N], b[i]))
+    bm.faces.new(list(reversed(rings[0])))
+    top = bm.verts.new((sum(p.co.x for p in rings[-1]) / N, sum(p.co.y for p in rings[-1]) / N, H * 0.99))
+    for i in range(N):
+        bm.faces.new((rings[-1][i], rings[-1][(i + 1) % N], top))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
 
 
 def rubble_chunks(v, bm, rnd):
@@ -378,7 +387,7 @@ def sculpted_gate(name, v, stone, void, rock):
     cut = link(name + "_cut", arch_cutter(v, name + "_cut", void), (0, 0, 0))
     chips = link(name + "_chips", mesh_from(name + "_chips", chip_cutters(v, rnd), stone), (0, 0, 0))
     bm = bmesh.new()
-    crag_chunks(v, bm, rnd)
+    flank(v, bm, seed)
     rag = link(name + "_crag", mesh_from(name + "_crag", bm, rock), (0, 0, 0))
     for label, op, other in (("arch", "DIFFERENCE", cut), ("chips", "DIFFERENCE", chips), ("crag", "UNION", rag)):
         mod = ob.modifiers.new(label, "BOOLEAN")
@@ -405,10 +414,13 @@ def sculpted_gate(name, v, stone, void, rock):
         bpy.data.objects.remove(o)
     bm = bmesh.new()
     bm.from_mesh(me)
+    for f in bm.faces:   # the weathered flank shades smooth, the cut planes and the boulders flat
+        f.smooth = f.material_index == 2
     n0 = len(bm.faces)
     rubble_chunks(v, bm, rnd)
     for f in list(bm.faces)[n0:]:
         f.material_index = 2
+        f.smooth = False
     # nothing under the sand: drop faces wholly below the sink line
     gone = [f for f in bm.faces if all(p.co.z < -SINK + 0.6 for p in f.verts)]
     bmesh.ops.delete(bm, geom=gone, context="FACES")
@@ -416,8 +428,6 @@ def sculpted_gate(name, v, stone, void, rock):
     out = bpy.data.meshes.new(name)
     bm.to_mesh(out)
     bm.free()
-    for p in out.polygons:
-        p.use_smooth = False
     for m in me.materials:
         out.materials.append(m)
     bpy.data.meshes.remove(me)
