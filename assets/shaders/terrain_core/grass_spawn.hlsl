@@ -117,19 +117,24 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     const float reach = tuftWidth * cellSize;
     if (boxOutside(float3(rel - reach, heightLow), float3(rel + reach, heightHigh + tuftHeight * 1.5))) return;
 
-    // Size, by where in the ring it stands: grows in over the inner overlap,
-    // sinks out over the outer one.
-    float size = 1.0 - smoothstep(outer * 0.8, outer, distance);
-    if (inner > 0) size *= smoothstep(inner * 0.8, inner, distance);
-    if (size <= 0.02) return;
+    // Over the overlaps the rings hand over by thinning, not shrinking: a
+    // tuft here stays full size or is not there, with the chance this ring
+    // has at its distance; the next ring's chance is the rest, so the cover
+    // stays whole and no band of short, sparse grass rings the eye.
+    float keep = 1.0 - smoothstep(outer * 0.8, outer, distance);
+    if (inner > 0) keep *= smoothstep(inner * 0.8, inner, distance);
+    if (unit(hashCell(cell, seed + 303u)) >= keep) return;
+    const float size = 1.0;
 
     const float2 t0 = camTexelFrac + rel / spacing0;
     GroundPoint p;
     p.base = camTexel + int2(floor(t0));
     p.sub = t0 - floor(t0);
     // The ground as a pixel at this distance sees it, so the tuft is the
-    // colour the ground is painted here and not a sharper one.
-    p.footprint = max(distance / pixelScale, cellSize) / spacing0;
+    // colour the ground is painted here and not a sharper one - smoothly with
+    // the distance, not stepping with the rings' cells (a ring a shade greyer
+    // than the next is a ring you see).
+    p.footprint = max(distance / pixelScale, 0.16 + distance * 0.02) / spacing0;
     const float4 hg = heightAt(p.base, p.sub, distance);
     float wet;
     if (waterAt(waterMap, waterSampler, (float2(p.base) + p.sub) * spacing0, spawnWorldSize, spawnWaterMapSize, wet).x >
