@@ -115,9 +115,10 @@ def canyon_spires(world, rules, catalogue, rng, add):
         if sp.get("base_slope_max"):
             # A peak stands on gentle ground, its foot nowhere over a drop
             # (steppe_checks.py's measure: the shaft's foot ring).
-            rim = [world.height(x + 0.55 * radius * math.cos(b_), y + 0.55 * radius * math.sin(b_))
+            rc = sxy * max(abs(m["lo"][0]), abs(m["lo"][1]), abs(m["hi"][0]), abs(m["hi"][1]))
+            rim = [world.height(x + 0.55 * rc * math.cos(b_), y + 0.55 * rc * math.sin(b_))
                    for b_ in np.linspace(0, math.tau, 16, endpoint=False)]
-            if (max(rim) - min(rim)) / (1.1 * radius) > sp["base_slope_max"]:
+            if (max(rim) - min(rim)) / (1.1 * rc) > sp["base_slope_max"]:
                 continue
             ground = min(ground, min(rim))
         add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, (t - ground) / tall), top=round(float(t), 1),

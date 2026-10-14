@@ -73,6 +73,32 @@ def noise(shape, cell_px, rng, octaves=3, order=1):
     return out / total
 
 
+def hex_cells(shape, across_px, warp_px, rng):
+    """Each point's hex (pointy, `across_px` between flats) on coordinates
+    pushed about by a noise of `warp_px` (weathered, not ruled): the centre's
+    row and column and a value 0..1 of its own for the hex."""
+    sz = across_px / math.sqrt(3.0)
+    y, x = np.mgrid[0:shape[0], 0:shape[1]].astype(np.float32)
+    y = y + (noise(shape, across_px * 1.5, rng, 2, 3) - 0.5) * 2.0 * warp_px
+    x = x + (noise(shape, across_px * 1.5, rng, 2, 3) - 0.5) * 2.0 * warp_px
+    q = (math.sqrt(3.0) / 3.0 * x - y / 3.0) / sz
+    rr = (2.0 / 3.0 * y) / sz
+    # cube rounding
+    cx_, cz_ = q, rr
+    cy_ = -cx_ - cz_
+    rx, ry, rz = np.round(cx_), np.round(cy_), np.round(cz_)
+    dx, dy, dz = np.abs(rx - cx_), np.abs(ry - cy_), np.abs(rz - cz_)
+    fx = (dx > dy) & (dx > dz)
+    fz = ~fx & (dz >= dy)
+    rx = np.where(fx, -ry - rz, rx)
+    rz = np.where(fz, -rx - ry, rz)
+    hy = np.clip(np.round(sz * 1.5 * rz), 0, shape[0] - 1).astype(np.int32)
+    hx = np.clip(np.round(sz * math.sqrt(3.0) * (rx + rz / 2.0)), 0, shape[1] - 1).astype(np.int32)
+    key = (rx.astype(np.int64) * 73856093) ^ (rz.astype(np.int64) * 19349663) ^ int(rng.integers(1 << 30))
+    val = ((key * 2654435761) % 1000003).astype(np.float32) / 1000003.0
+    return hy, hx, val
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--world", default="terrain_lab_out/world")
@@ -315,6 +341,42 @@ def main():
     zi = np.where(c_ == 3, floor + Hm[lab_] * rise[lab_] * t_ ** ic["peak_pow"], zi)
     zi = np.where(c_ == 4, floor + rise[lab_] * np.sqrt(t_), zi)
     zi = np.where(isl, zi, floor)
+
+    # --- the hexes: the land fell in slabs ------------------------------
+    # (user 14.10) As if the heights stood on a hex grid: the tops and their
+    # edges broke off in big dense slabs along it, leaving straight walls at
+    # different heights; an edge hex fell whole and lies as a heap at the
+    # foot. Read at each hex's centre, on a warped grid (time wore it).
+    hx_ = r["hexes"]
+    gh = np.random.default_rng(args.seed * 104729 + 53)
+    hy_, hxx, hv = hex_cells(h.shape, hx_["across_m"] / cell, hx_["warp_m"] / cell, gh)
+    in_c = isl[hy_, hxx] & (din[hy_, hxx] >= hx_["keep_in_m"])
+    near_edge = np.exp(-din[hy_, hxx] / hx_["edge_m"])
+    # an edge hex fallen whole (not the box's edge, not the peaks)
+    lab_c = lab_[hy_, hxx]
+    fallen = in_c & (cls[lab_c] == 1) & ~touch[lab_c] & (hv < hx_["collapse_share"] * near_edge)
+    # the others dropped by a slab or two, more of them near the edges
+    v2 = (hv * 7.31) % 1.0
+    drops = (v2 < hx_["drop_share"] + hx_["edge_drop_share"] * near_edge).astype(np.float32)
+    drops += ((v2 * 3.7) % 1.0 < hx_["second_drop_share"] * near_edge) * drops
+    slab = hx_["drop_m"][0] + (hx_["drop_m"][1] - hx_["drop_m"][0]) * ((hv * 13.7) % 1.0)
+    zc = zi[hy_, hxx] - drops * slab
+    zc = np.maximum(zc, floor + hx_["min_over_floor_m"])
+    hexed = region & np.isin(cls[lab_c], (1, 2)) & (cls[lab_] != 3)
+    isl_h = np.where(region & (cls[lab_] != 3), in_c & ~fallen, isl)
+    zi = np.where(hexed & isl_h, zc, zi)
+    # the fallen hexes' heaps: a share of what fell, a cone over the hex
+    hh = np.maximum(zi[hy_, hxx] - floor, 0.0) * hx_["heap_share"]
+    dc = np.hypot((np.mgrid[0:h.shape[0], 0:1][0] - hy_).astype(np.float32),
+                  (np.mgrid[0:1, 0:h.shape[1]][1] - hxx).astype(np.float32)) * cell / (hx_["across_m"] * 0.75)
+    heaps = np.where(fallen | (isl & ~isl_h & region), hh * np.clip(1.0 - dc, 0.0, 1.0) ** 0.8, 0.0)
+    del dc
+    lab_ = np.where(isl_h, lab_, 0)
+    isl = isl_h
+    zi = np.where(isl, zi, floor)
+    low_all = ~isl
+    din = (nd.distance_transform_edt(isl) * cell).astype(np.float32)
+    c_ = cls[lab_]
     # (a wall's top read from its own island, so the riser stays sheer)
     _, (ey, ex) = nd.distance_transform_edt(~isl, return_indices=True)
     zext = zi[ey, ex]
@@ -332,7 +394,11 @@ def main():
     lift = np.floor(lift / fl["step_m"]) * fl["step_m"]
     # (the small steps a little softer than the walls: a step of a few metres
     # sharper than a cell speckles the shading as the eye moves)
-    lift = nd.gaussian_filter(lift, fl["step_soft_cells"])
+    # The fallen blocks lie as blocks: the ledges read on a small hex grid.
+    by_, bx_, _ = hex_cells(h.shape, hx_["block_across_m"] / cell, hx_["warp_m"] / cell * 0.5, gh)
+    lift = lift[by_, bx_]
+    del by_, bx_
+    lift = nd.gaussian_filter(np.maximum(lift, heaps), fl["step_soft_cells"])
     pk = r["peaks"]
     wall_h = np.maximum(zext - floor, 0.0)
     cand = low_all & region & (dwall >= pk["wall_m"][0]) & (dwall <= pk["wall_m"][1]) & (clear > 0.9)
@@ -495,10 +561,10 @@ def main():
     gy2, gx2 = np.gradient(new, cell)
     sl2 = np.hypot(gx2, gy2)
     del gy2, gx2
-    # A gentle rise: ground between 0.2 and 0.7 off the washes, fans and the
+    # A gentle rise: ground between 0.2 and 0.7 off the washes, fans, heaps and the
     # walls' own rounded edges (a cell either side of a sheer step).
     steep_near = nd.binary_dilation(sl2 > 0.7, iterations=1)
-    gentle = inner & (sl2 > 0.2) & (sl2 < 0.7) & ~steep_near & ~washed
+    gentle = inner & (sl2 > 0.2) & (sl2 < 0.7) & ~steep_near & ~washed & ~(heaps > 2.0)   # (the heaps are meant)
     flr = low_all & inner
     flab, fn = nd.label(flr)
     fsz = np.bincount(flab.ravel())[1:] if fn else np.array([0])

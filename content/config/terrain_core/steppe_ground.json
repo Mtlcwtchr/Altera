@@ -259,6 +259,24 @@
       "comment": "automatic: gentle_share = ground between slope 0.2 and 0.7 off walls, washes and fans (the user wants no gentle rises), floor_connected = share of the canyon floor in its largest piece",
       "gentle_max": 0.08,
       "floor_connected_min": 0.85
+    },
+    "hexes": {
+      "comment": "the land fell in slabs as if its heights stood on a hex grid (user 14.10): hexes across_m between flats on coordinates warped by warp_m; a hex is land if its centre is, keep_in_m in from the edge; edge hexes (weighted by exp(-depth/edge_m)) fall whole with collapse_share and lie as a heap heap_share of the fall high; the others drop by a slab drop_m with drop_share (+ edge_drop_share near the edge), a second with second_drop_share; never lower than min_over_floor_m over the floor; the floor's fallen blocks read on hexes block_across_m",
+      "across_m": 150,
+      "warp_m": 16,
+      "keep_in_m": 0,
+      "edge_m": 160,
+      "collapse_share": 0.35,
+      "heap_share": 0.22,
+      "drop_share": 0.18,
+      "edge_drop_share": 0.45,
+      "second_drop_share": 0.35,
+      "drop_m": [
+        20,
+        60
+      ],
+      "min_over_floor_m": 25,
+      "block_across_m": 55
     }
   }
 }
