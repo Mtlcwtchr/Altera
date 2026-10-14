@@ -11,11 +11,8 @@
 //   cavity   the clipmap's own curvature at the drawn level: hollows dark,
 //            crests pale - the shapes the mesh has, made legible;
 //   mottle   a coarse unevenness of colour over hundreds of metres;
-//   blades   grass near the eye (nearBlades, called on its own): single
-//            blades, tufts and combed clumps as strokes, each size fading to
-//            its mean before it could shimmer - there are no grass plants;
-//   meadow   grass further off, from its own nearer distance: tuft
-//            grain, pale tips along the ground and
+//   meadow   grass past the tufts (they end at about 128 m), from its own,
+//            nearer distance: tuft grain, pale tips along the ground and
 //            dark feet and soil from above, gusts rolling across it with the
 //            wind, the low sun through the blades;
 //   canopy   forest as crowns on the ground wherever the tree layers grow -
@@ -31,7 +28,7 @@
 cbuffer Far : register(b3, space3) {
     float4 farRange;              // start m, full m; the meadow's start m, full m
     float4 farStrength;           // erosion, strata, cavity, mottle
-    float4 farStrength2;          // meadow, canopy, canopy layer count, near blades
+    float4 farStrength2;          // meadow, canopy, canopy layer count, -
     float4 canopyColour[4];       // rgb, min normal z
     float4 canopyShape[4];        // candidate cell (m), crown radius (m), -, -
     float4 canopyRules[4 * 32];   // per layer and biome: density, log2 cluster cell, cover, seed (bits)
@@ -170,12 +167,12 @@ FarCanopy farCanopy(GroundPoint p, float normalZ, float3 toEye, float pixelMetre
     return o;
 }
 
-// Grass past the blades (nearBlades), as paint. What
+// Grass past its tufts (grass.hpp: rings out to 128 m), as paint. What
 // makes a far meadow read as grass rather than green ground: grain of tufts
 // and clumps; along the ground only the pale tips show, from above the dark
 // feet and the soil between; the wind combs it in gusts that roll across;
 // against a low sun the blades glow. `grass` is how much of the ground is
-// grass (the material's grass share).
+// grass (the same share the tufts grow by).
 void farMeadow(GroundPoint p, float3 normal, float3 toEye, float distance, float grass,
                inout float3 colour, inout float2 slope) {
     const float on = smoothstep(farRange.z, max(farRange.w, farRange.z + 1.0), distance);
@@ -207,89 +204,6 @@ void farMeadow(GroundPoint p, float3 normal, float3 toEye, float distance, float
     colour = lerp(colour, sward * shade, g);
     // Blades for the light: a grain of tilts, gone where it is under a pixel.
     slope += (float2(cellNoise(p, 1, 731u), cellNoise(p, 1, 737u)) - 0.5) * 0.5 * g;
-}
-
-// Grass near the eye, as paint too: there are no grass plants, the ground is
-// the grass. Seen from above, blades in three sizes - single blades a few
-// centimetres long, the tufts they stand in, the combed clumps - each a stroke
-// leaning downwind and swaying with it, pale towards its tip, the shaded
-// blades under them dark between; the gaps close as the look flattens (along
-// the ground only blades show). Each size fades to its mean before it could
-// shimmer, so further off this is the ground's own colour and the meadow
-// above takes over.
-
-// Cells of 1/k level-0 texel at p: exact integer cell and fraction.
-void bladeCell(GroundPoint p, int k, out int2 c, out float2 f) {
-    const float2 s = p.sub * float(k);
-    const float2 w = floor(s);
-    c = p.base * k + int2(w);
-    f = s - w;
-}
-
-// Two blades a cell of 1/k texel, each at most a cell long (so the 3x3 cells
-// round hold every blade that reaches this one): x how much of the pixel the
-// top blade covers, y how far up it (0 foot, 1 tip), zw its direction.
-float4 bladeField(GroundPoint p, int k, uint seed, float2 wind, float sway, float aa) {
-    int2 c;
-    float2 f;
-    bladeCell(p, k, c, f);
-    float4 best = float4(0, 0, wind);
-    [unroll] for (int j = -1; j <= 1; ++j)
-        [unroll] for (int i = -1; i <= 1; ++i)
-            [unroll] for (int b = 0; b < 2; ++b) {
-                const uint h = groundHash(c + int2(i, j), seed + uint(b) * 131u);
-                const float2 root = float2(i, j) + float2(h & 0xffu, (h >> 8) & 0xffu) / 256.0;
-                float sn, cs;
-                sincos((float((h >> 16) & 0xffu) / 256.0 - 0.5) * 2.4 + sway, sn, cs);
-                const float2 dir = wind * cs + float2(-wind.y, wind.x) * sn;
-                const float len = 0.6 + 0.4 * float(h >> 24) / 256.0;
-                const float2 q = f - root;
-                const float t = dot(q, dir) / len;
-                const float halfWidth = 0.2 * (1.0 - 0.75 * saturate(t));
-                const float cover = saturate((halfWidth - abs(dot(q, float2(-dir.y, dir.x)))) / aa + 0.5) *
-                                    saturate(t * len / aa + 0.5) * saturate((1.0 - t) * len / aa + 0.5);
-                if (cover > best.x) best = float4(cover, saturate(t), dir);
-            }
-    return best;
-}
-
-void nearBlades(GroundPoint p, float3 normal, float3 view, float grass, inout float3 colour, inout float2 slope) {
-    const float g = grass * farStrength2.w * smoothstep(0.6, 0.75, normal.z);
-    const float pixelMetres = max(p.footprint * groundWorld.y, 1e-4);
-    if (g <= 0 || pixelMetres > 0.25) return;
-    const float distance = length(view);
-    const float3 toEye = -view / max(distance, 1e-3);
-    const float grazing = 1.0 - saturate(dot(toEye, normal) * 2.5);
-    const float2 wind = dot(lightWindDirection, lightWindDirection) > 1e-4 ? normalize(lightWindDirection) : float2(1, 0);
-    const float2 metres = (float2(p.base) + p.sub) * groundWorld.y;
-    const float along = dot(metres, wind), across = dot(metres, float2(-wind.y, wind.x));
-    const float sway = 0.35 * sin(along * 0.8 - lightTime * 2.2 + across * 0.2) * (0.3 + 0.7 * saturate(lightWind));
-    // Between the top blades: the shaded ones under them, closing up as the
-    // look flattens.
-    const float gap = lerp(0.56, 0.92, grazing);
-    const float mean = 0.4 * 1.0 + 0.6 * gap;
-    float shade = 1.0, tips = 0;
-    // Blades (3 cm cells), tufts (12.5 cm), combed clumps (50 cm).
-    const int sizes[3] = {16, 4, 1};
-    const float contrast[3] = {1.0, 0.7, 0.45};
-    [unroll] for (int s = 0; s < 3; ++s) {
-        const float cellMetres = groundWorld.y / float(sizes[s]);
-        const float pixelCells = pixelMetres / cellMetres;
-        const float fade = saturate((pixelCells - 0.12) / 0.35);
-        if (fade >= 1.0) continue;
-        const float4 blade = bladeField(p, sizes[s], 811u + uint(s) * 37u, wind, sway, max(pixelCells, 0.02));
-        const float lit = 0.82 + 0.38 * blade.y;
-        const float v = lerp(gap, lit, blade.x) / mean;
-        shade *= lerp(1.0, v, contrast[s] * (1.0 - fade));
-        if (s == 0) tips = blade.x * blade.y * blade.y * (1.0 - fade);
-        // The blades lean: a grain of tilts for the light.
-        slope += blade.zw * (blade.y - 0.5) * 0.7 * blade.x * contrast[s] * (1.0 - fade) * g;
-    }
-    // Clumps a little apart in hue, the tips going straw-pale.
-    const float hue = cellNoise(p, 0, 743u);
-    float3 grassColour = colour * lerp(float3(0.95, 1.02, 1.04), float3(1.05, 0.99, 0.90), hue) * shade;
-    grassColour = lerp(grassColour, grassColour * float3(1.10, 1.07, 0.80), tips * 0.6);
-    colour = lerp(colour, grassColour, g);
 }
 
 // What it paints: `colour` and the ground's gradient `slope` (dz/dx, dz/dy,

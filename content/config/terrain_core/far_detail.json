@@ -1,5 +1,5 @@
 {
- "comment": "The far ground's painted detail (assets/shaders/terrain_core/far_detail.hlsli): past `start_m` from the eye, fully on by `full_m`, the ground gets what its mesh and its 4 m textures can no longer show - gullies cut down the slopes and ridges worn light (`erosion`), bedding bands in the steep rock (`strata`), the ground's hollows dark and its crests pale from the clipmap's own curvature (`cavity`), a coarse mottle (`mottle`), grass further off as paint, from its own nearer `meadow_start_m`..`meadow_full_m`: tuft grain, pale tips along the ground, gusts rolling with the wind, the low sun through the blades (`meadow`), and forest as a canopy of crowns painted on the ground (`canopy`) wherever the tree layers named under `canopy_layers` grow - by the same biome rules, cluster noise and seed as foliage.json, so the painted forest is where the trees are and carries on past their 3.5 km range. Each canopy layer: [r, g, b] - the mean colour of its trees' textures. Grass near the eye is paint too, not plants (`blades`): single blades, tufts and combed clumps as strokes leaning downwind, pale at the tip, each size fading to its mean before it could shimmer, until the meadow takes over. Nothing here has to agree from frame to frame or with the geometry: it is paint. 0 switches a part off.",
+ "comment": "The far ground's painted detail (assets/shaders/terrain_core/far_detail.hlsli): past `start_m` from the eye, fully on by `full_m`, the ground gets what its mesh and its 4 m textures can no longer show - gullies cut down the slopes and ridges worn light (`erosion`), bedding bands in the steep rock (`strata`), the ground's hollows dark and its crests pale from the clipmap's own curvature (`cavity`), a coarse mottle (`mottle`), grass past the real tufts (they end at 128 m) as paint, from its own nearer `meadow_start_m`..`meadow_full_m`: tuft grain, pale tips along the ground, gusts rolling with the wind, the low sun through the blades (`meadow`), and forest as a canopy of crowns painted on the ground (`canopy`) wherever the tree layers named under `canopy_layers` grow - by the same biome rules, cluster noise and seed as foliage.json, so the painted forest is where the trees are and carries on past their 3.5 km range. Each canopy layer: [r, g, b] - the mean colour of its trees' textures. Nothing here has to agree from frame to frame or with the geometry: it is paint. 0 switches a part off.",
  "start_m": 150,
  "full_m": 400,
  "erosion": 1.0,
@@ -7,10 +7,9 @@
  "cavity": 1.0,
  "mottle": 1.0,
  "meadow": 1.0,
- "meadow_start_m": 30,
- "meadow_full_m": 80,
+ "meadow_start_m": 100,
+ "meadow_full_m": 170,
  "canopy": 1.0,
- "blades": 1.0,
  "canopy_layers": {
   "conifers": [0.17, 0.21, 0.13],
   "broadleaf": [0.21, 0.26, 0.11],

@@ -31,7 +31,6 @@ bool makeFarUniforms(const std::filesystem::path& file, const std::vector<Foliag
     out.strength[3] = config.value("mottle", 1.0f);
     out.strength2[0] = config.value("meadow", 1.0f);
     out.strength2[1] = config.value("canopy", 1.0f);
-    out.strength2[3] = config.value("blades", 1.0f);
 
     // The canopy: each named tree layer with the rules and seed foliage.cpp
     // spawns it by (Foliage::spawn: seed * 977 + layer index * 7919).

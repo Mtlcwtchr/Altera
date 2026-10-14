@@ -168,12 +168,6 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         // where a texel of it is smaller than a pixel (the mips flatten it anyway).
         const float relief = maps ? 1.0 - saturate(p.footprint / 24.0) : 0.0;
         normal = normalize(float3(-s.y + surface.slope.x * relief, -s.z + surface.slope.y * relief, 1));
-        // Grass near the eye is paint as well: blades, tufts, clumps (far_detail.hlsli).
-        if (debugLevels != 5 && surface.grass > 0.01 && farStrength2.w > 0) {
-            float2 bladeSlope = 0;
-            nearBlades(p, surfaceNormal, input.view, surface.grass, colour, bladeSlope);
-            normal = normalize(normal / normal.z + float3(-bladeSlope, 0));
-        }
         // Past a hundred and fifty metres or so: what the mesh and the
         // textures can no longer show, painted (far_detail.hlsli).
         if (debugLevels != 5 && dot(input.view, input.view) > min(farRange.x, farRange.z) * min(farRange.x, farRange.z)) {
