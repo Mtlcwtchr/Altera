@@ -11,8 +11,12 @@ fallen blocks. Shallow water sheets lie round the base. A cloaked figure in the 
 User: the stone is polished like a mirror (material stage).
 
 Blockout: proportion variants side by side with 1.8 m figures, plus a shot repeating the
-reference composition.
+reference composition; V1_ref chosen (14.10), 190 m.
+Sculpt: one game mesh (about 3.3k tris, no separate dense mesh): the cut block keeps big flat
+planes (the mirror) with chamfered edges and a few flat-bottomed chips; the right flank is a cliff
+of convex splinters stepping out toward the foot, fallen blocks as fractured hulls.
 
+    blender -b -P tools/blender/megalith_a3_mirror_gate.py                      # sculpt stage
     blender -b -P tools/blender/megalith_a3_mirror_gate.py -- --stage blockout
 """
 import argparse
@@ -29,10 +33,11 @@ from mathutils import Matrix, Vector, noise
 ROOT = Path(__file__).resolve().parents[2]
 ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a3_mirror_gate"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
-STAGE = "blockout"
+STAGE = "sculpt"
 
 STONE = (0.80, 0.84, 0.88, 1)      # pale, cool: the polished stone takes the sky's blue
 VOID = (0.004, 0.004, 0.006, 1)    # the passage
+ROCK = (0.74, 0.79, 0.85, 1)       # the broken flank: same stone, rougher
 SAND = (0.85, 0.72, 0.30, 1)
 WATER = (0.30, 0.50, 0.75, 1)
 HUMAN = (0.95, 0.10, 0.05, 1)
@@ -252,6 +257,174 @@ def gate(name, v, stone, void):
     return out
 
 
+# ---------------------------------------------------------------- sculpt (V1 approved 14.10)
+# The cut block stays cut: big flat planes (they are the mirror), edges chamfered by a polisher,
+# a few flat-bottomed chips where the frame met the falling rock and at the foot and the top.
+# The broken flank and the fallen blocks are fractured rock: planar facets of convex chunks
+# (as the painting's crag: sheer splinters, steps, slabs), not lumpy noise.
+
+CHAMFER = 0.45   # polished edge chamfer (m)
+
+
+def hull(bm_dst, pts):
+    """Convex hull of the points added to bm_dst (a chunk of fractured rock: all faces planar)."""
+    tmp = bmesh.new()
+    vs = [tmp.verts.new(p) for p in pts]
+    bmesh.ops.convex_hull(tmp, input=vs)
+    for v in [v for v in tmp.verts if not v.link_faces]:
+        tmp.verts.remove(v)
+    me = bpy.data.meshes.new("_hull")
+    tmp.to_mesh(me)
+    tmp.free()
+    bm_dst.from_mesh(me)
+    bpy.data.meshes.remove(me)
+
+
+def chunk_pts(rnd, x0, x1, y0, y1, z0, z1, n=14, flat=None, knock=0.25):
+    """Points scattered over a box's surface, so the hull is a broken block with big facets;
+    flat='-y' keeps one face of it a clean plane (a piece of the cut, polished frame)."""
+    pts = []
+    for _ in range(n):
+        p = [rnd.uniform(x0, x1), rnd.uniform(y0, y1), rnd.uniform(z0, z1)]
+        ax = rnd.randrange(3)
+        lo, hi = ((x0, x1), (y0, y1), (z0, z1))[ax]
+        p[ax] = lo if rnd.random() < 0.5 else hi
+        # knock the corners in: bigger facets
+        p[ax] += (rnd.uniform(0, knock) * (hi - lo)) * (1 if p[ax] == lo else -1)
+        pts.append(p)
+    if flat == "-y":
+        for k in range(5):
+            pts.append([rnd.uniform(x0, x1), y0, rnd.uniform(z0, z1)])
+    return pts
+
+
+def crag_chunks(v, bm, rnd):
+    """The broken right flank as a cliff of tall splinters (columnar breaks, as painted): each band
+    up the height is split into side-by-side columns, the outer ones shorter, so the flank steps
+    out toward the foot; bands overlap so it reads as one broken wall, not a pile of blocks."""
+    W, D, H = v["W"], v["D"], v["H"]
+    z = -SINK
+    while z < H * 0.97:
+        h = rnd.uniform(24, 42)
+        z1 = min(z + h, H * 0.985)
+        tm = 1.0 - max((z + z1) / 2, 0.0) / H
+        ext = v["crag"] * W * (0.12 + 0.88 * tm ** 2.6)
+        y0 = -D / 2 + 2.5 + 0.06 * W * (1 - tm)
+        y1 = D / 2 + 0.25 * D * tm
+        x_in, x_out = W / 2 - 0.08 * W, W / 2 + ext + 0.5
+        cols = 1 + int(3 * tm ** 1.5)
+        edges = sorted([x_in, x_out] + [rnd.uniform(x_in, x_out) for _ in range(cols - 1)])
+        for k in range(cols):
+            a, b = edges[k], edges[k + 1]
+            pad = 0.25 * (b - a) + 0.6
+            out = k / max(cols - 1, 1)          # 0 inner .. 1 outer
+            top = z + (z1 - z) * (1.0 - 0.45 * out * rnd.uniform(0.6, 1.0))
+            yk0 = y0 + rnd.uniform(0, 2.0) + out * rnd.uniform(-1.5, 3.0)
+            hull(bm, chunk_pts(rnd, a - pad, b + pad * 0.3, yk0, y1 - rnd.uniform(0, 0.2 * D),
+                               z - 2.0, top, n=10 + int(6 * tm), knock=0.12))
+        z = z + h * rnd.uniform(0.55, 0.7)
+
+
+def rubble_chunks(v, bm, rnd):
+    """Fallen blocks heaped at the right foot, the biggest against the crag; two are pieces of the
+    cut frame (one clean face)."""
+    W, D = v["W"], v["D"]
+    s = v["rubble"] * W
+    heap = [(0.55, 0.10, 0.40, 0.55), (0.95, -0.10, 0.30, 0.38), (1.30, 0.15, 0.24, 0.26),
+            (0.80, 0.55, 0.30, 0.42), (1.55, -0.25, 0.10, 0.08), (1.20, -0.50, 0.08, 0.06),
+            (1.75, 0.05, 0.07, 0.05), (0.40, -0.55, 0.05, 0.04)]
+    for k, (fx, fy, r, hz) in enumerate(heap):
+        x = W / 2 + fx * s * 0.8
+        y = -D / 2 + fy * D + 0.2 * D
+        rx, ry, rz = r * s * rnd.uniform(0.9, 1.2), r * s * rnd.uniform(0.8, 1.1), hz * s
+        hull(bm, chunk_pts(rnd, x - rx, x + rx, y - ry, y + ry, -1.5, rz * 1.4, n=16,
+                           flat="-y" if k in (4, 6) else None))
+
+
+def chip_cutters(v, rnd):
+    """Flat-bottomed wedges biting the frame's edges: most low and on the crag side, a couple at
+    the top corners and on the arch's lip."""
+    W, D, H = v["W"], v["D"], v["H"]
+    r = v["open_w"] * W / 2
+    cx = W * 0.03
+    yf = -D / 2
+    spots = []
+    for _ in range(5):   # the outer left front edge, mostly low
+        z = H * rnd.random() ** 2.2
+        xl = -W / 2 - v["flare"] * W * (1 - z / H) ** 1.5
+        spots.append((xl, yf, z, rnd.uniform(1.0, 2.6)))
+    for _ in range(5):   # the arch's front lips, low (worn by passage) and a couple high
+        z = H * 0.55 * rnd.random() ** 1.8
+        spots.append((cx + rnd.choice((-r, r)), yf, z, rnd.uniform(0.8, 2.0)))
+    for _ in range(4):   # the right front edge where the falling rock struck
+        spots.append((W / 2, yf, H * rnd.uniform(0.05, 0.7), rnd.uniform(1.5, 3.2)))
+    spots.append((-W / 2, yf, H, 3.0))           # top corners
+    spots.append((W / 2, D / 2, H, 4.0))
+    bm = bmesh.new()
+    for x, y, z, s in spots:
+        hull(bm, [(x + rnd.uniform(-s, s), y + rnd.uniform(-s, s), z + rnd.uniform(-s, s) * 1.6)
+                  for _ in range(9)])
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    return bm
+
+
+def sculpted_gate(name, v, stone, void, rock):
+    seed = zlib.crc32(name.encode())
+    rnd = random.Random(seed)
+    W, D, H = v["W"], v["D"], v["H"]
+    bm = bmesh.new()
+    block(v, bm)
+    ob = link(name + "_block", mesh_from(name + "_block", bm, [stone, void, rock]), (0, 0, 0))
+    cut = link(name + "_cut", arch_cutter(v, name + "_cut", void), (0, 0, 0))
+    chips = link(name + "_chips", mesh_from(name + "_chips", chip_cutters(v, rnd), stone), (0, 0, 0))
+    bm = bmesh.new()
+    crag_chunks(v, bm, rnd)
+    rag = link(name + "_crag", mesh_from(name + "_crag", bm, rock), (0, 0, 0))
+    for label, op, other in (("arch", "DIFFERENCE", cut), ("chips", "DIFFERENCE", chips), ("crag", "UNION", rag)):
+        mod = ob.modifiers.new(label, "BOOLEAN")
+        mod.operation = op
+        mod.solver = "EXACT"
+        mod.object = other
+        mod.use_self = label != "arch"   # chips and splinters overlap each other
+        mod.use_hole_tolerant = label == "chips"
+        try:
+            mod.material_mode = "TRANSFER"
+        except (AttributeError, TypeError):
+            pass
+    # the polisher's chamfer on the cut stone only (crag edges stay sharp: angle limit and the
+    # chips' fresh breaks are short)
+    bev = ob.modifiers.new("chamfer", "BEVEL")
+    bev.width = CHAMFER
+    bev.segments = 1
+    bev.limit_method = "ANGLE"
+    bev.angle_limit = math.radians(60)
+    bev.harden_normals = False
+    dg = bpy.context.evaluated_depsgraph_get()
+    me = bpy.data.meshes.new_from_object(ob.evaluated_get(dg))
+    for o in (ob, cut, chips, rag):
+        bpy.data.objects.remove(o)
+    bm = bmesh.new()
+    bm.from_mesh(me)
+    n0 = len(bm.faces)
+    rubble_chunks(v, bm, rnd)
+    for f in list(bm.faces)[n0:]:
+        f.material_index = 2
+    # nothing under the sand: drop faces wholly below the sink line
+    gone = [f for f in bm.faces if all(p.co.z < -SINK + 0.6 for p in f.verts)]
+    bmesh.ops.delete(bm, geom=gone, context="FACES")
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    out = bpy.data.meshes.new(name)
+    bm.to_mesh(out)
+    bm.free()
+    for p in out.polygons:
+        p.use_smooth = False
+    for m in me.materials:
+        out.materials.append(m)
+    bpy.data.meshes.remove(me)
+    print(f"{name}: sculpt, tris {tris(out)}")
+    return out
+
+
 # ---------------------------------------------------------------- the land
 
 def ground_height(x, y):
@@ -322,8 +495,11 @@ def build():
     hero, lineup = collection("hero"), collection("lineup")
     rnd = random.Random(7)
 
-    meshes = {name: gate(name, v, stone, void) for name, v in VARIANTS.items()}
-    for name, v in VARIANTS.items():
+    rock = material(f"rock_{STAGE}", ROCK, rough=0.3)
+    meshes = {name: gate(name, v, stone, void) for name, v in VARIANTS.items()} if STAGE == "blockout" else {}
+    if STAGE != "blockout":
+        meshes[HERO] = sculpted_gate(HERO, VARIANTS[HERO], stone, void, rock)
+    for name, v in (VARIANTS.items() if STAGE == "blockout" else ()):
         x, y = LINEUP_X[name], LINEUP_Y
         link(name, meshes[name], (x, y, 0), coll=lineup)
         cx = x + v["W"] * 0.03
@@ -333,6 +509,16 @@ def build():
 
     hv = VARIANTS[HERO]
     link("hero_" + HERO, meshes[HERO], (0, 0, 0), coll=hero)
+    wire = collection("wire")
+    if STAGE == "sculpt":
+        wob = link("hero_wire", meshes[HERO], (0, 0, 0), coll=wire)
+        mod = wob.modifiers.new("wire", "WIREFRAME")
+        mod.thickness = 0.12
+        mod.use_replace = True
+        mod.use_even_offset = False
+        for slot in wob.material_slots:
+            slot.link = "OBJECT"
+            slot.material = material("wire", (0.02, 0.02, 0.02, 1))
     water_sheet("water_hero", 0, -hv["D"] * 0.35, hv, water, rnd, hero)
     human("human_hero_door", (hv["W"] * 0.03, -hv["D"] / 2 + 4, 0), red, hero)
     # the cloaked figure near the camera, left of the gate, as in the painting
@@ -413,13 +599,24 @@ VIEWS = [
     ("06_hero_back_left", (-260, 300, 50), (0, 0, 90), 32, 0, {"hero"}),
     ("07_opening_foot", (-25, -110, 6), (2, 0, 22), 30, 0, {"hero"}),
 ]
+SCULPT_VIEWS = [
+    ("01_reference_shot", REF_CAM, (6, 0, REF_CAM[2]), 50, 0, {"hero"}),
+    ("02_right_crag", (300, -260, 40), (20, 0, 80), 32, 0, {"hero"}),
+    ("03_crag_close_low", (95, -95, 12), (28, 0, 22), 32, 0, {"hero"}),
+    ("04_top_close", (-60, -95, 200), (0, 0, 182), 35, 0, {"hero"}),
+    ("05_opening_foot", (-25, -110, 6), (2, 0, 22), 30, 0, {"hero"}),
+    ("06_back_left", (-260, 300, 50), (0, 0, 90), 32, 0, {"hero"}),
+    ("07_wire_right_crag", (300, -260, 40), (20, 0, 80), 32, 0, {"hero", "wire"}),
+    ("08_wire_crag_close_low", (95, -95, 12), (28, 0, 22), 32, 0, {"hero", "wire"}),
+]
 
 
 def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
-    toggled = [bpy.data.collections[n] for n in ("hero", "lineup")]
-    for name, loc, target, lens, ortho, shown in VIEWS:
+    toggled = [bpy.data.collections[n] for n in ("hero", "lineup", "wire")]
+    views = {"blockout": VIEWS, "sculpt": SCULPT_VIEWS}[STAGE]
+    for name, loc, target, lens, ortho, shown in views:
         portrait = "reference" in name
         cam = camera("cam_" + name, loc, target, lens, ortho, level=portrait)
         if not render:
@@ -434,14 +631,14 @@ def render_views(render):
         print("wrote", sc.render.filepath)
     for c in toggled:
         c.hide_render = False
-    sc.camera = bpy.data.objects["cam_04_reference_shot"]
+    sc.camera = bpy.data.objects["cam_" + next(v[0] for v in views if "reference" in v[0])]
 
 
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
-    ap.add_argument("--stage", choices=("blockout",), default="blockout")
+    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="sculpt")
     args = ap.parse_args(argv)
     global STAGE
     STAGE = args.stage
