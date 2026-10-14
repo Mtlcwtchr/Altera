@@ -248,7 +248,9 @@ def place(world, rules, catalogue, seed):
         if grow > 0:
             inside = ndimage.binary_dilation(inside, iterations=grow)
         last = inside.shape[0] - 1
-        kept = [o for o in out if not inside[min(max(int(o["y"] / world.cell), 0), last), min(max(int(o["x"] / world.cell), 0), last)]]
+        keep = set(clear.get("keep", []))
+        kept = [o for o in out if catalogue.get(o["m"], {}).get("kind") in keep
+                or not inside[min(max(int(o["y"] / world.cell), 0), last), min(max(int(o["x"] / world.cell), 0), last)]]
         print(f"clear_zones: {len(out) - len(kept)} parts dropped in {', '.join(clear['zones'])}")
         out = kept
     return out

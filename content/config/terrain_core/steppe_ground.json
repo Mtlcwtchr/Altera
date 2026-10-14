@@ -149,7 +149,7 @@
       ]
     },
     "islands": {
-      "comment": "what the crumbling left: an island whose widest point (inner radius) reaches mesa_r_m is a mesa, walkable, its wall stepped once by a bench bench_m wide at bench_rise of its height where it is bench_min_r_m wide (over bench_share of the walls); narrower down to column_r_m: a stone column at column_rise of the tops' height, or (peak_share) worn to a peak at peak_rise (profile power peak_pow); the crumbs below that: a peak (crumb_peak_share) or a heap of rubble rubble_m high. The burnt grass only in the hearts of mesas of heart_km2 or more, heart_m (or heart_share of its inner radius) in from the edge",
+      "comment": "what the crumbling left: an island whose widest point (inner radius) reaches mesa_r_m is a mesa, walkable, its wall stepped once by a bench bench_m wide at bench_rise of its height where it is bench_min_r_m wide (over bench_share of the walls); narrower down to column_r_m: a stone column at column_rise of the tops' height, or (peak_share) worn to a peak at peak_rise (profile power peak_pow); the crumbs below that: a peak (crumb_peak_share) or a heap of rubble rubble_m high. The burnt grass only in the hearts of mesas of heart_km2 or more, heart_m (or heart_share of its inner radius) in from the edge; each mesa (not on the region's edge) shifted by tier_shift tiers (chances tier_shift_p) so the plateaus stand at different heights (user 14.10)",
       "mesa_r_m": 120,
       "column_r_m": 30,
       "peak_share": 0.35,
@@ -159,8 +159,8 @@
         0.9
       ],
       "column_rise": [
-        0.85,
-        1.03
+        0.65,
+        1.3
       ],
       "peak_pow": 0.9,
       "rubble_m": [
@@ -179,7 +179,19 @@
       "bench_min_r_m": 200,
       "heart_km2": 1.5,
       "heart_m": 150,
-      "heart_share": 0.55
+      "heart_share": 0.55,
+      "tier_shift": [
+        -1,
+        0,
+        1,
+        2
+      ],
+      "tier_shift_p": [
+        0.25,
+        0.25,
+        0.3,
+        0.2
+      ]
     },
     "floor": {
       "comment": "the canyon's stony floor: fallen blocks round the walls' feet as ledges step_m a step, up to block_m high at a wall fading over block_reach_m (block_far_m anywhere), cells of block_cell_m; the old river's bed kept clear clear_m from its middle; the steps softened over step_soft_cells (sharper ones speckle the shading in motion)",
@@ -192,7 +204,7 @@
       "step_soft_cells": 1.4
     },
     "peaks": {
-      "comment": "peaks on the floor, alone and in groups (`group`), wall_m from the islands, more of them near (near_m), per_km2 of floor, gap_m apart: radius_m, rise_m high but at most of_wall of the wall there, profile power pow (1: a cone)",
+      "comment": "peaks on the floor, alone and in groups (`group`), wall_m from the islands, more of them near (near_m), per_km2 of floor, gap_m apart: radius_m, rise_m high but at most of_wall of the wall there, profile power pow (1: a cone); `mesh`: the peak is a canyon_pinnacle mesh (props.json spires, sites 'relief') and the ground keeps a foot `foot` of its height, `room` times its radius for the mesh's width",
       "wall_m": [
         25,
         600
@@ -213,7 +225,10 @@
         140
       ],
       "of_wall": 0.85,
-      "pow": 0.75
+      "pow": 0.75,
+      "mesh": true,
+      "foot": 0.1,
+      "room": 1.6
     },
     "washes": {
       "comment": "the last streams: runoff of the finished ground (D8, 64 m); a wash where min_km2 drains through on the floor, width_per_sqrt_km2_m * sqrt(area) wide (width_m), depth_m + depth_per_doubling_m per doubling (at most max_depth_m), bent by bend_m; a fan fan_h_m high, fan_per_sqrt_km2_m * sqrt(area) out (fan_r_m), fan_gap_m apart, where a wash leaves a cleft for open floor or reaches the old river's bed (with mouth_min_km2); washes and fans painted dry_wash where they cover mark_share of a 64 m cell",

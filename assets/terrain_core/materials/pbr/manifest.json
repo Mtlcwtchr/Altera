@@ -1348,6 +1348,47 @@
         ]
       },
       "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
+    },
+    "earth_ochre": {
+      "source": "Dirt_08",
+      "size": [
+        128,
+        128
+      ],
+      "maps": {
+        "ao": {
+          "file": "earth_ochre_ao.png",
+          "source": "Free/Dirt/Dirt_08/Dirt_08_ambientocclusion.png",
+          "source_sha256": "ac48987c3f060782e3a2a14a392c595f24f9c330ce97595307af396186718953",
+          "derived": "cavities of the height map (the source AO is white)"
+        },
+        "roughness": {
+          "file": "earth_ochre_roughness.png",
+          "source": "Free/Dirt/Dirt_08/Dirt_08_roughness.png",
+          "source_sha256": "7ccca3e8631808221a16216fac4e6b305baf909efc0a299068526e3b298fa68d"
+        },
+        "height": {
+          "file": "earth_ochre_height.png",
+          "source": "Free/Dirt/Dirt_08/Dirt_08_height.png",
+          "source_sha256": "9818c5b207c7b7cd3c807f81bc84043c7ecf1378f20ffbf58cff01ff83c9c023"
+        },
+        "normal": {
+          "file": "earth_ochre_normal.png",
+          "source": "Free/Dirt/Dirt_08/Dirt_08_normal.png",
+          "source_sha256": "6495be6d25ba647addd0144da5dc49af418c2ddc264b475324576927f469201d",
+          "derived": "source normal + normal from the height map, strength 13.5"
+        }
+      },
+      "properties": "earth_ochre_properties.png",
+      "recolour": {
+        "saturation": 1.25,
+        "tint": [
+          2.15,
+          1.58,
+          1.08
+        ]
+      },
+      "note": "Source surface maps retained for recoloured snow/ash; no physical snow/ash surface inferred."
     }
   }
 }

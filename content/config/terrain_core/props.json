@@ -18,7 +18,8 @@
       "min_gap_km": 0.55,
       "cluster_km": 9.0,
       "floor_share": 0.4,
-      "min_rise_m": 120,
+      "min_rise_m": 30,
+      "base_slope_max": 0.33,
       "top_share": [
         0.5,
         1.08
@@ -953,7 +954,10 @@
       "steppe_canyon"
     ],
     "margin_m": 300,
-    "comment": "14.10 (user): every placed part (pinnacles, slab rubble, megaliths) taken out of these zones while their geography is worked out (tools/terrain_lab/steppe_relief.py); the cliff walls stay. Dropped after the placing, so the rest of the world keeps its draws"
+    "keep": [
+      "canyon_pinnacle"
+    ],
+    "comment": "14.10 (user): the floor's peaks stay (`keep`: canyon_pinnacle on steppe_relief.py's peak sites); every other placed part (pinnacles, slab rubble, megaliths) taken out of these zones while their geography is worked out (tools/terrain_lab/steppe_relief.py); the cliff walls stay. Dropped after the placing, so the rest of the world keeps its draws"
   },
   "min_gap_m": 250,
   "edge_m": 800,

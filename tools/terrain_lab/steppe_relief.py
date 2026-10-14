@@ -286,9 +286,13 @@ def main():
     gi = np.random.default_rng(args.seed * 104729 + 23)
     cls = np.zeros(nis + 1, np.int8)        # 1 mesa, 2 column, 3 peak, 4 rubble
     rise = np.ones(nis + 1, np.float32)
+    lift_t = np.zeros(nis + 1, np.float32)
     for i in range(1, nis + 1):
         if touch[i] or Ri[i] >= ic["mesa_r_m"]:
             cls[i] = 1
+            # each island its own height: tiers up or down (user 14.10)
+            if not touch[i]:
+                lift_t[i] = gi.choice(ic["tier_shift"], p=ic["tier_shift_p"]) * r["tier_m"]
         elif Ri[i] >= ic["column_r_m"]:
             cls[i] = 3 if gi.random() < ic["peak_share"] else 2
             rise[i] = gi.uniform(*(ic["peak_rise"] if cls[i] == 3 else ic["column_rise"]))
@@ -305,6 +309,7 @@ def main():
     bh = ic["bench_rise"][0] + (ic["bench_rise"][1] - ic["bench_rise"][0]) * unit(noise(h.shape, 1200 / cell, rng, 2, 3))
     bench = (c_ == 1) & (Ri[lab_] >= ic["bench_min_r_m"]) & bgate & (din < bw)
     bench = nd.binary_opening(bench, iterations=1)
+    top = np.where(c_ == 1, np.maximum(top + lift_t[lab_], floor + r["min_drop_m"]), top)
     zi = np.where(bench, floor + bh * (top - floor), top)
     zi = np.where(c_ == 2, floor + Hm[lab_] * rise[lab_], zi)
     zi = np.where(c_ == 3, floor + Hm[lab_] * rise[lab_] * t_ ** ic["peak_pow"], zi)
@@ -371,12 +376,13 @@ def main():
             for k2 in (2, 3, 5):
                 lob = lob + gp.uniform(0.08, 0.3) * np.sin(k2 * ang + gp.uniform(0, math.tau))
             d = np.hypot(yy_ - y, xx_ - x) / (rad * lob)
-            prof = tall * np.clip(1.0 - d, 0.0, 1.0) ** pk["pow"]
+            # (as a mesh, `mesh`: the ground keeps only its foot of broken rock)
+            prof = tall * (pk["foot"] if pk.get("mesh") else 1.0) * np.clip(1.0 - d, 0.0, 1.0) ** pk["pow"]
             np.maximum(lift[y0_:y1_, x0_:x1_], prof, out=lift[y0_:y1_, x0_:x1_])
             peaks.append({"x": round((x0 + x + 0.5) * cell, 1), "y": round((y0 + y + 0.5) * cell, 1),
                           "radius_m": round(rad * cell, 1), "rise_m": round(float(tall), 1),
                           "floor_m": round(float(floor[y, x]), 1), "top_m": round(float(floor[y, x] + tall), 1),
-                          "room_m": round(rad * cell, 1)})
+                          "room_m": round(rad * cell * pk.get("room", 1.0), 1)})
     scree = r["scree_m"] * np.exp(-dwall / r["scree_reach_m"]) * low_all
     base = floor + np.maximum(lift, scree)
     # Sheer walls: across `wall_m`, by the signed distance to the islands' edge.

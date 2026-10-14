@@ -109,9 +109,19 @@ def canyon_spires(world, rules, catalogue, rng, add):
             sxy = min(sxy, sp["room_share"] * room / (0.5 * (m["hi"][0] - m["lo"][0])))
             ground = world.lowest(x, y, sxy * 0.5 * (m["hi"][0] - m["lo"][0]))
             sz = (t - ground) / tall
-        add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), top=round(float(t), 1),
-            ground=round(ground, 1))
+            if t - ground < sp["min_rise_m"]:
+                continue
         radius = sxy * 0.5 * (m["hi"][0] - m["lo"][0])
+        if sp.get("base_slope_max"):
+            # A peak stands on gentle ground, its foot nowhere over a drop
+            # (steppe_checks.py's measure: the shaft's foot ring).
+            rim = [world.height(x + 0.55 * radius * math.cos(b_), y + 0.55 * radius * math.sin(b_))
+                   for b_ in np.linspace(0, math.tau, 16, endpoint=False)]
+            if (max(rim) - min(rim)) / (1.1 * radius) > sp["base_slope_max"]:
+                continue
+            ground = min(ground, min(rim))
+        add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, (t - ground) / tall), top=round(float(t), 1),
+            ground=round(ground, 1))
         spire_list.append((x, y, t, ground, radius))
         FEET.append((x, y, radius, ground))
         # Lesser pinnacles round a big one, each its own size (the user, 14.10).
@@ -126,6 +136,8 @@ def canyon_spires(world, rules, catalogue, rng, add):
                     sm = catalogue[sn]
                     rise = (t - ground) * rng.uniform(*sat["rise"])
                     s_z = rise / sm["hi"][2]
+                    if s_z <= 0:
+                        break
                     s_xy = s_z ** 0.85 * rng.uniform(*sp["width"])
                     sr = s_xy * 0.5 * (sm["hi"][0] - sm["lo"][0])
                     ring = [world.height(sx + math.cos(b_) * sr, sy + math.sin(b_) * sr)
