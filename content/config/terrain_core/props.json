@@ -30,7 +30,7 @@
       "wall_slope": 0.35,
       "wall_gap_m": 350,
       "rise_kind": "spiral_rise",
-      "rise_share": 0.15,
+      "rise_share": 0.0,
       "satellites": {
         "count": [
           0,
@@ -59,7 +59,7 @@
         1.5
       ],
       "top_diff": 0.07,
-      "share": 0.4,
+      "share": 0.0,
       "thickness": [
         0.85,
         1.15
@@ -84,7 +84,8 @@
         0.7
       ],
       "odd_kind": "ribbon_bridge",
-      "odd_share": 0.3
+      "odd_share": 0.3,
+      "enabled": false
     },
     "rim_ledges": {
       "kind": "rim_ledge",
@@ -102,7 +103,8 @@
         420,
         620
       ],
-      "fall_m": 40
+      "fall_m": 40,
+      "enabled": false
     },
     "clefts": {
       "kind": "rock_blade",
@@ -244,7 +246,8 @@
       "width": [
         1.4,
         2.2
-      ]
+      ],
+      "enabled": false
     },
     "spire_islands": {
       "comment": "Small islands on the spires at different heights, bridged to each other and to the steppe islands (the heart of the canyon biome).",
@@ -268,7 +271,8 @@
       "thickness": [
         0.25,
         0.4
-      ]
+      ],
+      "enabled": false
     },
     "canyon_islands": {
       "comment": "The canyon's mesa islands: rims lined with spire-like boulder rock; between neighbours, spires of every size carrying bridges and ribbons.",
@@ -314,7 +318,8 @@
         0.3,
         0.45
       ],
-      "foot_reach_m": 180
+      "foot_reach_m": 180,
+      "enabled": false
     },
     "canyon_debris": {
       "kind": "slab_rubble",
@@ -339,7 +344,8 @@
       "max_fall": 0.6,
       "sink": 0.18,
       "comment": "heaps of broken slabs round the canyon's pinnacles and the buttes (steppe_relief.json): per_100m of the host's radius (count limits), in a ring of `*_ring` radii out from its axis, scaled by the host (host_per_scale_m of radius a unit, `scale` limits), sunk `sink` of their height; dropped where the ground falls more than max_fall of their height under them"
-    }
+    },
+    "comment_off": "14.10 (user): bridges, ribbons, platforms, switchbacks, rim ledges and the canyon islands' bridges are off (enabled false, bridges.share 0, spires.rise_share 0) while the pinnacles and columns themselves are worked out"
   },
   "megaliths": {
     "comment": "Megaliths (tools/terrain_lab/world_megaliths.py): one kind per biome, none repeated elsewhere; the isles and the crescent have none. `heroes`: zone -> {kind, count, share of the biome's extent as height}. `prism_row`: towering prisms along a border (none now: the marshes have A-1). `cube_cluster`: huge white cubes. `coast_spikes`: spikes all along a coast. `groups` / `singles`: as elsewhere. `a1_monoliths`: the giant slabs A-1 in loose rows on the dry ground of the marshes (world_megaliths.a1_monoliths; rows, spacing and scale from the asset manifest; the slab is drawn in its own material, \"look\"). The golden desert's one magic megalith is the gate A-3 (world_gate.py, rules in its asset manifest), no hero there.",
@@ -885,36 +891,44 @@
       "dark_forest": 0.6,
       "northern_isles": 0.3
     },
-    "flute_m": 60.0,
+    "flute_m": 45.0,
     "styles": {
-      "comment": "per biome of biomes.json, the face of its walls: `strata` ledges' strength, `strata_m` a bed (its period is 2 pi of it), `slab` how much a bed is a slab (lip at its top, undercut below) rather than a wave, `gullies` runnels, `flutes` deep vertical grooves (cells of `flute_m`); the user's canyon references doc/NewRef/steppe",
+      "comment": "per biome of biomes.json, the face of its walls: `strata` ledges' strength, `strata_m` a bed (its period is 2 pi of it), `slab` how much a bed is a slab (lip at its top, undercut below) rather than a wave, `gullies` runnels, `flutes` deep vertical grooves (cells of `flute_m`), `overhang` and `overhang_drop` as the cliffs' own (0: the wall stands straight, user 14.10 for the canyon); the user's canyon references doc/NewRef/steppe",
       "canyon_steppe": {
-        "strata": 0.5,
-        "strata_m": 17.0,
-        "slab": 1.0,
-        "gullies": 0.1,
-        "flutes": 0.45
+        "strata": 0.06,
+        "strata_m": 9.0,
+        "slab": 0.0,
+        "gullies": 0.22,
+        "flutes": 0.55,
+        "overhang": 0.0,
+        "overhang_drop": 0.0
       },
       "stone_desert": {
-        "strata": 0.5,
-        "strata_m": 17.0,
-        "slab": 1.0,
-        "gullies": 0.1,
-        "flutes": 0.45
+        "strata": 0.06,
+        "strata_m": 9.0,
+        "slab": 0.0,
+        "gullies": 0.22,
+        "flutes": 0.55,
+        "overhang": 0.0,
+        "overhang_drop": 0.0
       },
       "mesa_pocket": {
-        "strata": 0.5,
-        "strata_m": 17.0,
-        "slab": 1.0,
-        "gullies": 0.1,
-        "flutes": 0.45
+        "strata": 0.06,
+        "strata_m": 9.0,
+        "slab": 0.0,
+        "gullies": 0.22,
+        "flutes": 0.55,
+        "overhang": 0.0,
+        "overhang_drop": 0.0
       },
       "canyon_floor": {
-        "strata": 0.5,
-        "strata_m": 17.0,
-        "slab": 1.0,
-        "gullies": 0.1,
-        "flutes": 0.45
+        "strata": 0.06,
+        "strata_m": 9.0,
+        "slab": 0.0,
+        "gullies": 0.22,
+        "flutes": 0.55,
+        "overhang": 0.0,
+        "overhang_drop": 0.0
       }
     }
   },

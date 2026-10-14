@@ -236,9 +236,16 @@ def fields(h, zones, biomes, c, rules, origin=(0, 0)):
     # keeps a floor instead of being closed by its two walls.
     tw = np.clip((bh - zfoot) / np.maximum(ztop - zfoot, 1.0), 0, 1)
     over = cr["overhang"]
+    over_drop = cr["overhang_drop"]
+    st = cr.get("_style")
+    if st is not None:
+        # Per biome: the canyon's walls stand straight, no rim overhanging.
+        bb = biomes[band].astype(np.int64)
+        over = st["overhang"][bb]
+        over_drop = st["overhang_drop"][bb]
     # (a noise of the world, not of the block: the blocks agree where they meet)
     wander = 3.5 * (_vnoise((cols + origin[1] + 0.5) * c, (rows + origin[0] + 0.5) * c, 3.0 * c, 7) - 0.5)
-    base = cr["min_push_m"] * np.clip(1.0 + 0.45 * wander, 0.3, 2.0) + cr["overhang_drop"] * (ztop - zfoot) * tw * tw
+    base = cr["min_push_m"] * np.clip(1.0 + 0.45 * wander, 0.3, 2.0) + over_drop * (ztop - zfoot) * tw * tw
     run = foot_k * c
     reach = np.minimum(np.maximum(run * (1 + over * tw * tw), base), cr["max_push_m"])
     cap = np.where(rise_k > steps, np.inf, (foot_k + cr.get("gap_share", 0.8) * 0.5 * (rise_k - foot_k)) * c)
@@ -695,7 +702,7 @@ def build(world, rules, out_dir, rng=None, biomes_path=None, workers=None):
         # Per-biome face styles as tables by biome id (the rest the defaults).
         names = {b["name"]: b["id"] for b in json.loads(BIOMES.read_text(encoding="utf-8"))["biomes"]}
         table = {k: np.full(256, cr.get(k, 0.0) if k != "slab" and k != "flutes" else 0.0, np.float32)
-                 for k in ("strata", "strata_m", "slab", "gullies", "flutes")}
+                 for k in ("strata", "strata_m", "slab", "gullies", "flutes", "overhang", "overhang_drop")}
         for name, style in cr["styles"].items():
             if name in names and name != "comment":
                 for k, v in style.items():

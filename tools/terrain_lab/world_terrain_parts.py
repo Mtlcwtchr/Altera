@@ -692,7 +692,7 @@ def place(world, rules, catalogue, rng, add):
                      ("clefts", clefts), ("sea_stacks", sea_stacks), ("floating_isles", floating_isles),
                      ("sentinels", sentinels), ("switchbacks", switchbacks), ("spire_islands", spire_islands),
                      ("canyon_islands", canyon_islands), ("canyon_debris", canyon_debris)):
-        if name in rules:
+        if name in rules and rules[name].get("enabled", True):
             counts[name] = fn(world, rules, catalogue, rng, add)
     counts["groups"] = wf.place_groups(world, rules, catalogue, rng, add)
     return counts
