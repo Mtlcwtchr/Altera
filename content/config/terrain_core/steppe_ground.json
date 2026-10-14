@@ -89,31 +89,71 @@
     "roll_km": 0.8,
     "comment": "floor: the region's low ground within window_m (+ washes wash_m, negative = cut); tops: the land smoothed over top_smooth_m, at least min_drop_m over the floor, cut into flat tiers tier_m high, each riser over `riser` of a tier, levels drifting by `drift` of a tier over drift_km, treads rolling roll_m; canyons: the ground below low_rel of the span, and ridges of a warped noise (trunk_km, branch_km weighted `branch`) over `cover` of the rest, sheer walls over wall_m, scree scree_m high reaching scree_reach_m out",
     "top_smooth_m": 250,
-    "min_drop_m": 120,
-    "trunk_km": 4.0,
-    "branch_km": 1.6,
-    "branch": 0.93,
-    "low_rel": 0.08,
-    "cover": 0.22,
+    "min_drop_m": 160,
+    "low_rel": 0.0,
     "wall_m": 40,
     "scree_m": 35,
     "scree_reach_m": 90,
     "tier_m": 110,
     "buttes": {
-      "min_gap_m": 700,
-      "keep": 0.7,
-      "clear_m": 220,
       "radius_m": [
-        110,
-        320
+        90,
+        230
       ],
       "rise": [
-        0.8,
-        1.35
+        0.85,
+        1.02
       ],
-      "min_rise_m": 260,
+      "min_rise_m": 180,
       "stepped": 0.4,
-      "comment": "columns on the canyon floor: a candidate every min_gap_m kept with `keep`, at least clear_m from the walls; radius_m, rise as a share of the mesas' height over the floor there (at least min_rise_m), `stepped` of them stepped once"
+      "comment": "a butte: radius_m, rise as a share of the walls' height there (at least min_rise_m), `stepped` of them stepped once"
+    },
+    "rivers": {
+      "min_km2": 0.35,
+      "depth_m": 140,
+      "depth_per_doubling_m": 45,
+      "depth_of_span": 0.85,
+      "width_per_sqrt_km2_m": 230,
+      "width_m": [
+        90,
+        1000
+      ],
+      "wander": 0.25,
+      "wander_km": 0.9,
+      "floor_smooth_m": 60,
+      "wash_width_m": 30,
+      "comment": "the canyons are old rivers' valleys: runoff of the smoothed land (rumpled by route_noise_m over route_noise_km so the rivers wander and gather) to the region's edge (priority flood, D8 on 64 m); a channel where more than min_km2 drains through, its bed depth_m + depth_per_doubling_m per doubling of that area under the filled land (at most depth_of_span of the region's span), its valley width_per_sqrt_km2_m * sqrt(area) wide (width_m limits), the edge wandering by `wander` over wander_km; the floor smoothed over floor_smooth_m, a wash wash_width_m wide down the middle; the valleys bent by bend_m over bend_km; the floor between channels blended from their beds over blend_m; the valley's edge rounded over edge_smooth_m and roughened by edge_rough over edge_km",
+      "route_noise_m": 60,
+      "route_noise_km": 1.6,
+      "bend_m": 140,
+      "bend_km": 1.2,
+      "blend_m": 160,
+      "edge_smooth_m": 45,
+      "edge_rough": 0.35,
+      "edge_km": 0.35
+    },
+    "remnants": {
+      "look_m": 450,
+      "wall_m": [
+        80,
+        360
+      ],
+      "top_share": [
+        0.3,
+        0.68
+      ],
+      "off_channel_m": 60,
+      "per_km2": 4.0,
+      "min_gap_m": 260,
+      "butte_wall_m": 100,
+      "butte_share": 0.4,
+      "pinnacle_rise": [
+        0.55,
+        1.0
+      ],
+      "comment": "remnants of the banks: floor points wall_m from the walls with top_share of high ground round them within look_m (spur ends, bays at side valleys' mouths), off the channel; best first, per_km2 of floor, min_gap_m apart; those with butte_wall_m of room become buttes (butte_share), the rest pinnacle sites for the meshes (top at pinnacle_rise of the walls' height); a site needs min_room_m of ground no steeper than site_slope round it on the finished relief",
+      "site_slope": 0.3,
+      "min_room_m": 35
     }
   }
 }

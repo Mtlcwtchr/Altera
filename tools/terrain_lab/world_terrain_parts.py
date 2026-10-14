@@ -72,6 +72,15 @@ def canyon_spires(world, rules, catalogue, rng, add):
     clump = (clump - clump.min()) / max(np.ptp(clump), 1e-6)
     weights = clump[ys, xs] ** 3 + 0.02
     spires = poisson(pts, weights, count, sp["min_gap_km"] * 1000, rng)
+    tops, rooms = {}, {}
+    relief = Path(str(world.stem) + "_steppe_relief.json")
+    if sp.get("sites") == "relief" and relief.exists():
+        # The remnants of the old rivers' banks (steppe_relief.py): spur ends
+        # and bays where the walls fell back - there, not anywhere on the floor.
+        sites = json.loads(relief.read_text(encoding="utf-8")).get("pinnacles", [])
+        spires = [(q["x"], q["y"]) for q in sites]
+        tops = {(q["x"], q["y"]): q["top_m"] for q in sites}
+        rooms = {(q["x"], q["y"]): q.get("room_m", 1e9) for q in sites}
     names = _names(catalogue, sp["kind"])
     spire_list = SPIRES
     spire_list.clear()
@@ -87,11 +96,19 @@ def canyon_spires(world, rules, catalogue, rng, add):
         m = catalogue[name]
         tall = m["hi"][2]
         ground = world.lowest(x, y, 0.5 * (m["hi"][0] - m["lo"][0]))
-        t = top[i, j] * rng.uniform(*sp["top_share"])
+        t = tops.get((x, y))
+        if t is None:
+            t = top[i, j] * rng.uniform(*sp["top_share"])
         if t - ground < sp["min_rise_m"]:
             continue
         sz = (t - ground) / tall
         sxy = sz ** 0.85 * rng.uniform(*sp["width"])   # nearly as built: no squat boulders
+        room = rooms.get((x, y))
+        if room is not None:
+            # A remnant fits the floor between it and the wall it fell from.
+            sxy = min(sxy, sp["room_share"] * room / (0.5 * (m["hi"][0] - m["lo"][0])))
+            ground = world.lowest(x, y, sxy * 0.5 * (m["hi"][0] - m["lo"][0]))
+            sz = (t - ground) / tall
         add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), top=round(float(t), 1),
             ground=round(ground, 1))
         radius = sxy * 0.5 * (m["hi"][0] - m["lo"][0])
