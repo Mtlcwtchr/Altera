@@ -1156,6 +1156,41 @@ def canyon_pinnacle(rng, seed):
     return o
 
 
+def slab_rubble(rng, seed):
+    """Fallen rock at a pinnacle's or a column's foot (the user, 14.10: stony
+    debris round them): a heap of broken slabs of the same bedded rock - flat
+    blocks of every size leaning on each other, chipped corners, a few small
+    ones thrown wide. About 40 m across, 12 m high; scaled per instance."""
+    parts = []
+    big = rng.randint(3, 6)
+    for k in range(big + rng.randint(3, 7)):
+        small = k >= big
+        s = rng.uniform(0.25, 0.5) if small else rng.uniform(0.6, 1.0)
+        size = (rng.uniform(9, 18) * s, rng.uniform(6, 13) * s, rng.uniform(2.5, 6.0) * s)
+        r = rng.uniform(0, 1) ** 0.7 * (22 if small else 11)
+        a = rng.uniform(0, math.tau)
+        z = size[2] * 0.3 + (0 if small else rng.uniform(0, 4))
+        rot = (rng.uniform(-0.6, 0.6), rng.uniform(-0.6, 0.6), rng.uniform(0, math.tau))
+        o = ab.block(f"slab_{k}", size, (math.cos(a) * r, math.sin(a) * r, z), rot,
+                     subdivisions=1, taper=rng.uniform(0, 0.15), round_edges=0.04)
+        # A corner knocked off.
+        bm = bmesh.new()
+        bm.from_mesh(o.data)
+        c = Vector((rng.choice((-1, 1)) * size[0] * 0.4, rng.choice((-1, 1)) * size[1] * 0.4, size[2] * 0.4))
+        geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+        res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=c, plane_no=c.normalized(), clear_outer=True)
+        edges = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+        if edges:
+            bmesh.ops.holes_fill(bm, edges=edges, sides=0)
+        for v in bm.verts:
+            v.co += noise.noise_vector(v.co / 6.0 + Vector((seed, k, 0))) * 0.6
+        bm.to_mesh(o.data)
+        bm.free()
+        parts.append(o)
+    o = ab.join(parts, "slab_rubble")
+    return o
+
+
 NEW = {
     "spire": (spire, 26000),
     "bridge": (bridge, 9000),
@@ -1190,6 +1225,7 @@ NEW = {
     "spire_platform": (spire_platform, 5000),
     "ribbon_spiral": (ribbon_spiral, 16000),
     "canyon_pinnacle": (canyon_pinnacle, 7000),
+    "slab_rubble": (slab_rubble, 1600),
 }
 
 
@@ -1380,7 +1416,7 @@ ALL = {"spire": 6, "bridge": 3, "valley_spire": 1,
        "rim_ledge": 4, "rock_blade": 4, "hogback": 3,
        "mega_ring": 3, "mega_stake": 4, "trilithon": 3, "pierced_ring": 2,
        "spiral_rise": 3, "ribbon_bridge": 3, "switchback": 3, "loop_arch": 2,
-       "prism_column": 4, "white_cube": 4, "mirror_prism": 1, "giant_spine": 3, "spire_platform": 5, "ribbon_spiral": 3, "canyon_pinnacle": 8,
+       "prism_column": 4, "white_cube": 4, "mirror_prism": 1, "giant_spine": 3, "spire_platform": 5, "ribbon_spiral": 3, "canyon_pinnacle": 8, "slab_rubble": 6,
        "menhir": 3, "fallen_menhir": 2, "marsh_panel": 3, "colossus_head": 2, "colossus_hand": 1,
        "needle": 3, "portal_tower": 2, "mirror_monument": 1, "iron_defender": 1, "cyclopean_block": 2,
        "giant_stair": 1}

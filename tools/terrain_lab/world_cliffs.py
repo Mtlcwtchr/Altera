@@ -508,7 +508,9 @@ def tile(f, ti, tj, origin, c, cr):
         R = hf > z
         beds = 0.65 * np.sin(z / strata_p + wobble) + 0.35 * np.sin(z / (strata_p * 2.7) + 1.0)
         if np.any(slab_a > 0):
-            f_ = np.mod(z / (strata_p * math.tau) + wobble / math.tau, 1.0)
+            # Beds of uneven thickness, as the pinnacles' slabs.
+            f_ = np.mod(z / (strata_p * math.tau) + wobble / math.tau
+                        + 0.18 * np.sin(z / (strata_p * 4.3) + 2.0 * wobble), 1.0)
             beds = beds * (1.0 - slab_a) + slab_a * (2.0 * f_ * f_ - 1.0)
         mod = 1.0 + strata_a * beds + gully
         Rp = R[pidx]

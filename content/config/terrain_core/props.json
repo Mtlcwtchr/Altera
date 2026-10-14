@@ -20,17 +20,34 @@
       "floor_share": 0.4,
       "min_rise_m": 250,
       "top_share": [
-        0.94,
-        1.04
+        0.5,
+        1.08
       ],
       "width": [
-        0.8,
-        1.2
+        0.7,
+        1.5
       ],
       "wall_slope": 0.35,
       "wall_gap_m": 350,
       "rise_kind": "spiral_rise",
-      "rise_share": 0.15
+      "rise_share": 0.15,
+      "satellites": {
+        "count": [
+          0,
+          3
+        ],
+        "dist": [
+          1.8,
+          4.5
+        ],
+        "rise": [
+          0.12,
+          0.45
+        ],
+        "slope_max": 0.3,
+        "gap_m": 25,
+        "comment": "lesser pinnacles round each big one: count, distance in the big one's radii, height as a share of its rise; ground under them no steeper than slope_max, gap_m clear of other feet"
+      }
     },
     "bridges": {
       "kind": "bridge",
@@ -261,7 +278,7 @@
       "floor_cells": 25,
       "above_floor_m": 100,
       "min_cells": 4,
-      "rock_kind": "spire",
+      "rock_kind": "canyon_pinnacle",
       "rock_gap_m": 200,
       "rock_out_m": 20,
       "rock_above_m": [
@@ -295,6 +312,30 @@
         0.45
       ],
       "foot_reach_m": 180
+    },
+    "canyon_debris": {
+      "kind": "slab_rubble",
+      "per_100m": 5,
+      "count": [
+        3,
+        12
+      ],
+      "pinnacle_ring": [
+        0.8,
+        2.0
+      ],
+      "butte_ring": [
+        0.95,
+        1.5
+      ],
+      "host_per_scale_m": 45,
+      "scale": [
+        0.5,
+        4.0
+      ],
+      "max_fall": 0.6,
+      "sink": 0.18,
+      "comment": "heaps of broken slabs round the canyon's pinnacles and the buttes (steppe_relief.json): per_100m of the host's radius (count limits), in a ring of `*_ring` radii out from its axis, scaled by the host (host_per_scale_m of radius a unit, `scale` limits), sunk `sink` of their height; dropped where the ground falls more than max_fall of their height under them"
     }
   },
   "megaliths": {
@@ -774,7 +815,8 @@
     "mirror_prism": "rock_pale",
     "giant_spine": "rock_pale",
     "spire_platform": "rock_orange",
-    "ribbon_spiral": "rock_orange"
+    "ribbon_spiral": "rock_orange",
+    "slab_rubble": "rock_orange"
   },
   "moss": {
     "marsh_arch": 0.95,
@@ -840,36 +882,36 @@
       "dark_forest": 0.6,
       "northern_isles": 0.3
     },
-    "flute_m": 70.0,
+    "flute_m": 60.0,
     "styles": {
       "comment": "per biome of biomes.json, the face of its walls: `strata` ledges' strength, `strata_m` a bed (its period is 2 pi of it), `slab` how much a bed is a slab (lip at its top, undercut below) rather than a wave, `gullies` runnels, `flutes` deep vertical grooves (cells of `flute_m`); the user's canyon references doc/NewRef/steppe",
       "canyon_steppe": {
-        "strata": 0.32,
-        "strata_m": 11.0,
-        "slab": 0.7,
-        "gullies": 0.12,
-        "flutes": 0.35
+        "strata": 0.5,
+        "strata_m": 17.0,
+        "slab": 1.0,
+        "gullies": 0.1,
+        "flutes": 0.45
       },
       "stone_desert": {
-        "strata": 0.32,
-        "strata_m": 11.0,
-        "slab": 0.7,
-        "gullies": 0.12,
-        "flutes": 0.35
+        "strata": 0.5,
+        "strata_m": 17.0,
+        "slab": 1.0,
+        "gullies": 0.1,
+        "flutes": 0.45
       },
       "mesa_pocket": {
-        "strata": 0.32,
-        "strata_m": 11.0,
-        "slab": 0.7,
-        "gullies": 0.12,
-        "flutes": 0.35
+        "strata": 0.5,
+        "strata_m": 17.0,
+        "slab": 1.0,
+        "gullies": 0.1,
+        "flutes": 0.45
       },
       "canyon_floor": {
-        "strata": 0.32,
-        "strata_m": 11.0,
-        "slab": 0.7,
-        "gullies": 0.12,
-        "flutes": 0.35
+        "strata": 0.5,
+        "strata_m": 17.0,
+        "slab": 1.0,
+        "gullies": 0.1,
+        "flutes": 0.45
       }
     }
   },

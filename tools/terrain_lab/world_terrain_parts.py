@@ -11,7 +11,9 @@ content/config/terrain_core/props.json. Each function takes the world, that
 section, the model catalogue, a random generator and `add(kind, name, x, y,
 yaw, scale, **extra)`.
 """
+import json
 import math
+from pathlib import Path
 
 import numpy as np
 from scipy import ndimage
@@ -73,6 +75,7 @@ def canyon_spires(world, rules, catalogue, rng, add):
     names = _names(catalogue, sp["kind"])
     spire_list = SPIRES
     spire_list.clear()
+    FEET.clear()
     # Some of them are spiral rises: a ramp winding round the column to its top.
     rises = _names(catalogue, sp["rise_kind"]) if sp.get("rise_kind") else []
     for x, y in spires:
@@ -91,7 +94,34 @@ def canyon_spires(world, rules, catalogue, rng, add):
         sxy = sz ** 0.85 * rng.uniform(*sp["width"])   # nearly as built: no squat boulders
         add(kind, name, x, y, rng.uniform(0, math.tau), (sxy, sxy, sz), top=round(float(t), 1),
             ground=round(ground, 1))
-        spire_list.append((x, y, t, ground, sxy * 0.5 * (m["hi"][0] - m["lo"][0])))
+        radius = sxy * 0.5 * (m["hi"][0] - m["lo"][0])
+        spire_list.append((x, y, t, ground, radius))
+        FEET.append((x, y, radius, ground))
+        # Lesser pinnacles round a big one, each its own size (the user, 14.10).
+        sat = sp.get("satellites")
+        if sat and kind == "spire":
+            for _ in range(int(rng.integers(sat["count"][0], sat["count"][1] + 1))):
+                for _try in range(6):
+                    a = rng.uniform(0, math.tau)
+                    d = radius * rng.uniform(*sat["dist"])
+                    sx, sy = x + math.cos(a) * d, y + math.sin(a) * d
+                    sn = names[rng.integers(len(names))]
+                    sm = catalogue[sn]
+                    rise = (t - ground) * rng.uniform(*sat["rise"])
+                    s_z = rise / sm["hi"][2]
+                    s_xy = s_z ** 0.85 * rng.uniform(*sp["width"])
+                    sr = s_xy * 0.5 * (sm["hi"][0] - sm["lo"][0])
+                    ring = [world.height(sx + math.cos(b_) * sr, sy + math.sin(b_) * sr)
+                            for b_ in np.linspace(0, math.tau, 8, endpoint=False)]
+                    if (max(ring) - min(ring)) / (2 * sr) > sat["slope_max"]:
+                        continue
+                    if any(math.hypot(fx - sx, fy - sy) < fr + sr + sat["gap_m"] for fx, fy, fr, _ in FEET):
+                        continue
+                    g_ = world.lowest(sx, sy, sr)
+                    add("spire", sn, sx, sy, rng.uniform(0, math.tau), (s_xy, s_xy, s_z), top=round(float(g_ + rise), 1),
+                        ground=round(g_, 1))
+                    FEET.append((sx, sy, sr, g_))
+                    break
 
     # --- bridges between spires whose tops are alike ---
     br = rules["bridges"]
@@ -412,6 +442,7 @@ def switchbacks(world, rules, catalogue, rng, add):
 
 
 SPIRES = []   # (x, y, top, ground, radius) of the spires canyon_spires placed this run
+FEET = []     # (x, y, radius, ground) of every pinnacle on the floor: their debris goes round them
 
 
 def spire_islands(world, rules, catalogue, rng, add):
@@ -602,6 +633,40 @@ def canyon_islands(world, rules, catalogue, rng, add):
     return ways
 
 
+def canyon_debris(world, rules, catalogue, rng, add):
+    """Stony debris round the canyon's pinnacles and round the buttes cut into
+    its relief (steppe_relief.py, <world>_steppe_relief.json): heaps of broken
+    slabs in a ring about the foot, sized by the host, sunk into the ground;
+    a heap whose ground falls away under it more than it is high is dropped."""
+    r = rules["canyon_debris"]
+    names = _names(catalogue, r["kind"])
+    hosts = [(x, y, rad, r["pinnacle_ring"]) for x, y, rad, _ in FEET]
+    relief = Path(str(world.stem) + "_steppe_relief.json")
+    if relief.exists():
+        for b in json.loads(relief.read_text(encoding="utf-8")).get("buttes", []):
+            hosts.append((b["x"], b["y"], b["radius_m"], r["butte_ring"]))
+    placed = 0
+    for x, y, rad, ring in hosts:
+        n = int(np.clip(round(r["per_100m"] * rad / 100.0 * rng.uniform(0.7, 1.3)), *r["count"]))
+        for _ in range(n):
+            name = names[rng.integers(len(names))]
+            m = catalogue[name]
+            half = 0.5 * max(m["hi"][0] - m["lo"][0], m["hi"][1] - m["lo"][1])
+            sc = float(np.clip(rad / r["host_per_scale_m"] * rng.uniform(0.5, 1.4), *r["scale"]))
+            a = rng.uniform(0, math.tau)
+            d = rad * rng.uniform(*ring) + half * sc
+            px, py = x + math.cos(a) * d, y + math.sin(a) * d
+            hs = [world.height(px + math.cos(b_) * half * sc, py + math.sin(b_) * half * sc)
+                  for b_ in np.linspace(0, math.tau, 8, endpoint=False)]
+            tall = m["hi"][2] * sc
+            if max(hs) - min(hs) > tall * r["max_fall"]:
+                continue
+            z = min(hs) - tall * r["sink"]
+            add(r["kind"], name, px, py, rng.uniform(0, math.tau), (sc, sc, sc * rng.uniform(0.8, 1.2)), z=round(z, 1))
+            placed += 1
+    return placed
+
+
 def place(world, rules, catalogue, rng, add):
     """Every terrain part the section names; returns how many of each."""
     import world_features as wf
@@ -609,7 +674,7 @@ def place(world, rules, catalogue, rng, add):
     for name, fn in (("spires", canyon_spires), ("canyon_bridges", canyon_bridges), ("rim_ledges", rim_ledges),
                      ("clefts", clefts), ("sea_stacks", sea_stacks), ("floating_isles", floating_isles),
                      ("sentinels", sentinels), ("switchbacks", switchbacks), ("spire_islands", spire_islands),
-                     ("canyon_islands", canyon_islands)):
+                     ("canyon_islands", canyon_islands), ("canyon_debris", canyon_debris)):
         if name in rules:
             counts[name] = fn(world, rules, catalogue, rng, add)
     counts["groups"] = wf.place_groups(world, rules, catalogue, rng, add)
