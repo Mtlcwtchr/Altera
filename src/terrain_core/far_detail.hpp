@@ -22,7 +22,7 @@ constexpr std::uint32_t kFarCanopyLayers = 4;
 struct FarUniforms {
     float range[4]{};          // start m, full m; the meadow's start m, full m
     float strength[4]{};       // erosion, strata, cavity, mottle
-    float strength2[4]{};      // meadow, canopy, canopy layer count, -
+    float strength2[4]{};      // meadow, canopy, canopy layer count, near blades
     float canopyColour[kFarCanopyLayers][4]{};   // rgb, min normal z
     float canopyShape[kFarCanopyLayers][4]{};    // candidate cell (m), crown radius (m), -, -
     float canopyRules[kFarCanopyLayers][kMaxBiomes][4]{};   // density, log2 cluster cell, cover, seed (as uint bits)

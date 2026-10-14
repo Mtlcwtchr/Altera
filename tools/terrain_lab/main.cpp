@@ -32,7 +32,6 @@
 #include "terrain_core/erosion.hpp"
 #include "terrain_core/far_detail.hpp"
 #include "terrain_core/foliage.hpp"
-#include "terrain_core/grass.hpp"
 #include "terrain_core/props.hpp"
 #include "terrain_core/post.hpp"
 #include "terrain_core/lighting.hpp"
@@ -106,11 +105,11 @@ struct Options {
     fs::path erodeOut;        // --erode: weather the macro map, write it here, exit
     ErosionSettings erosion;
     // Modules: each can be left out from the command line or toggled live
-    // (F2 ground materials, F3 trees, 1..9 a tree layer, F4 grass, F5 style).
+    // (F2 ground materials, F3 trees, 1..9 a tree layer, F5 style). Grass is
+    // the ground's own paint (far_detail.hlsli), not a module of its own.
     bool groundMaterials = true;
     bool surfaceMaps = true;      // the materials' normal and AO maps (F6)
     bool foliage = true;          // the trees module (trees and bushes)
-    bool grass = true;            // the grass cover
     bool props = true;            // the mega structures (P)
     bool farDetail = true;        // the far ground's painted detail (far_detail.json; --no-far)
     std::string propsCategories;  // --props-cats terrain,megaliths,buildings: only these (O toggles megaliths)
@@ -206,7 +205,6 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--no-ground") o.groundMaterials = false;
         else if (a == "--no-surface") o.surfaceMaps = false;
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
-        else if (a == "--no-grass") o.grass = false;
         else if (a == "--no-props") o.props = false;
         else if (a == "--no-far") o.farDetail = false;
         else if (a == "--features") o.features = next();
@@ -320,7 +318,6 @@ struct FrameStats {
     std::uint32_t patches = 0, triangles = 0, rects = 0, misses = 0, nodes = 0;
     std::uint64_t texels = 0;
     std::uint64_t foliageInstances = 0, foliageTriangles = 0, foliageCandidates = 0;
-    std::uint64_t grassTufts = 0, grassCandidates = 0;
     std::uint64_t propsDrawn = 0, propsTriangles = 0;
     double propsCullMs = 0;
     double x = 0, y = 0, z = 0, ground = 0;
@@ -338,8 +335,6 @@ struct Lab {
     Renderer renderer;
     Foliage foliage;
     bool foliageReady = false;
-    Grass grass;
-    bool grassReady = false;
     Props props;
     bool propsReady = false;
     Post post;
@@ -592,9 +587,6 @@ struct Lab {
             const auto foliageStart = Clock::now();
             const fs::path foliageFile = assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "foliage.json";
             foliageReady = foliage.open(device, options.params, foliageFile, renderer.ground(), &why);
-            const fs::path spriteDir = assets.parent_path() / "terrain_core" / "grass";
-            grassReady = grass.open(device, options.params, GrassSettings{}, spriteDir, &why);
-            if (!grassReady) std::fprintf(stderr, "grass off: %s\n", why.c_str());
             postReady = post.open(device);
             if (postReady) dlssComposite.open(device);
             {
@@ -828,22 +820,6 @@ struct Lab {
             s.foliageTriangles = foliage.drawnTriangles();
             s.foliageCandidates = foliage.candidates();
         }
-        if (grassReady && options.grass && waterReady) {
-            GrassFrame g;
-            g.eye = camera.eye;
-            g.frustum = frustumFrom(unjittered);
-            g.pixelScale = float(double(targets.height()) * 0.5 / std::tan(camera.fovY * 0.5));
-            for (int i = 0; i < 3; ++i) {
-                g.sunDirection[i] = light.sun[i];
-                g.skyColour[i] = light.zenith[i];
-            }
-            GroundUniforms ground = renderer.ground();
-            grass.spawn(commands, g, renderer.clipmap(), renderer.biomeMap(), renderer.materials(),
-                        renderer.materialNormals(), renderer.materialProperties(), water.map(), water.mapSize(), rivers,
-                        ground, light);
-            s.grassTufts = grass.tufts();
-            s.grassCandidates = grass.candidates();
-        }
         if (propsReady && options.props) {
             PropsFrame f;
             f.eye = camera.eye;
@@ -919,7 +895,6 @@ struct Lab {
                        renderer.materialProperties(), shadows.texture(), shadows.sampler());
         }
         if (foliageReady && options.foliage) foliage.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
-        if (grassReady && options.grass) grass.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
         if (waterReady && options.water)
             water.draw(commands, pass, renderer, view, light, shadows.texture(), shadows.sampler(), camera.eye, float(seconds));
         SDL_EndGPURenderPass(pass);
@@ -1176,7 +1151,6 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_F1) lab.options.debugLevels = (lab.options.debugLevels + 1) % 6;
                 if (e.key.key == SDLK_F2) lab.options.groundMaterials = !lab.options.groundMaterials;
                 if (e.key.key == SDLK_F3) lab.options.foliage = !lab.options.foliage;
-                if (e.key.key == SDLK_F4) lab.options.grass = !lab.options.grass;
                 if (e.key.key == SDLK_P) lab.options.props = !lab.options.props;
                 if (e.key.key == SDLK_O && lab.propsReady)
                     lab.props.setEnabled(Props::kMegaliths, !lab.props.enabled(Props::kMegaliths));
@@ -1313,7 +1287,7 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 std::snprintf(where, sizeof where, "x %.0f y %.0f agl %.0f, speed %.0f m/s (M: map)", s.x, s.y, agl, speed);
             // Which modules are on: G ground materials, F foliage and its layers (1..9).
             std::string modules = std::string(lab.options.groundMaterials ? "G" : "g") + (lab.options.surfaceMaps ? "S" : "s") +
-                                  (lab.options.grass ? " Gr" : " gr") + (lab.options.light.shadows ? " Sh" : " sh") +
+                                  (lab.options.light.shadows ? " Sh" : " sh") +
                                   (lab.options.light.clouds ? " Cl" : " cl") + (lab.options.light.windOn ? " W" : " w") +
                                   (lab.options.foliage ? " T:" : " t:");
             if (lab.foliageReady)
@@ -1322,9 +1296,9 @@ int runInteractive(Lab& lab, SDL_Window* window) {
             modules += " | " + lab.dlss.status();
             char title[640];
             std::snprintf(title, sizeof title,
-                          "terrain_lab | %.0f fps %.2f ms | %02d:%02d | grass %llu | trees %llu %.2fM tris | [%s] style %s | %s %s",
+                          "terrain_lab | %.0f fps %.2f ms | %02d:%02d | trees %llu %.2fM tris | [%s] style %s | %s %s",
                           1000.0 / mean, mean, int(lab.options.light.timeOfDay),
-                          int(std::fmod(lab.options.light.timeOfDay, 1.0) * 60.0), (unsigned long long)s.grassTufts,
+                          int(std::fmod(lab.options.light.timeOfDay, 1.0) * 60.0),
                           (unsigned long long)s.foliageInstances,
                           double(s.foliageTriangles) / 1e6, modules.c_str(), Post::name(lab.options.post), where,
                           s.misses ? "| COVERAGE MISS" : "");
