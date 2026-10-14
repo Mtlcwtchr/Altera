@@ -447,37 +447,31 @@ def sculpted_gate(name, v, stone, void, rock):
     return out
 
 
-# ---------------------------------------------------------------- material: mirror-polished stone
-# User, 14.10: worn rough stone with relief, separate blocks of it polished to a mirror. Painted procedurally in object space (metres)
-# with labelled knobs, then baked in Cycles onto one 2048 atlas (smart UV islands) for the game:
-# basecolor (sRGB), normal (OpenGL tangent: the polisher's slow waviness that bends reflections),
-# and surface (R = AO, G = roughness, B = mirror, i.e. metallic). Desert, so no moss: its place
-# is taken by sand dust laid by noise (on what faces up, in a drift at the foot), with the same
-# kind of knobs. A sand-blasted matte band at the foot, jagged at its top.
+# ---------------------------------------------------------------- material: worn white stone
+# User, 14.10: no mirror after all; plain worn white stone, a little covered in sand dust.
+# Painted procedurally in object space (metres) with labelled knobs, then baked in Cycles onto
+# one 2048 atlas (smart UV islands) for the game: basecolor (sRGB), normal (OpenGL tangent: the
+# worn relief) and surface (R = AO, G = roughness, B = metallic, kept 0). Desert, so no moss:
+# its place is taken by sand dust laid by noise (on what faces up, in a drift at the foot), with
+# the same kind of knobs. A sand-blasted band at the foot, jagged at its top.
 
 TEX = 2048
 KNOBS = dict(
-    blocks=0.32,            # share of the polished mirror blocks on the cut faces (the rest is worn)
-    side_blocks=0.14,       # the same on the slanted side wall and the fallen blocks
-    block_m=13.0,           # size of a block (m): warped 3D cells, irregular, not a grid
-    mirror=0.9,             # metallic of a polished block: 0 plain stone .. 1 a mirror
-    polish=0.05,            # roughness of a polished block
-    worn_rough=0.62,        # roughness of the worn stone
-    worn_mirror=0.04,       # what is left of the shine on the worn stone
+    rough=0.78,             # roughness of the worn stone
     relief_m=0.12,          # depth of the worn stone's relief (pitting and grit) in the normal map
-    veins=0.6,              # faint grey-blue veins in the stone
-    mottle=0.6,             # soft cool-white to ivory mottling
+    veins=0.4,              # faint grey veins in the stone
+    mottle=0.5,             # soft white to ivory mottling
     grain=0.07,             # chunky texel grain (retro)
-    abrasion=1.0,           # the sand-blasted band at the foot (no polish survives there)
+    abrasion=1.0,           # the sand-blasted band at the foot: duller, warmer, rougher
     abrasion_m=14.0,        # its mean height (m); its top edge is jagged by noise
-    dust=0.45,              # sand dust on what faces up and in a drift at the foot
+    dust_film=0.18,         # thin film of sand dust over everything
+    dust=0.65,              # sand dust patches on what faces up and in a drift at the foot
     dust_scale=0.045,       # dust patch size (1/m)
     dust_foot_m=5.0,        # height of the dust drift at the foot
-    waviness=0.04,          # the polisher's slow waves on a polished block (bends the reflection)
 )
-STONE_COOL = (0.74, 0.79, 0.84)
-STONE_IVORY = (0.86, 0.83, 0.74)
-VEIN = (0.46, 0.52, 0.60)
+STONE_COOL = (0.72, 0.71, 0.68)
+STONE_IVORY = (0.78, 0.74, 0.64)
+VEIN = (0.55, 0.55, 0.54)
 DUST = (0.78, 0.66, 0.40)
 
 
@@ -574,43 +568,16 @@ def paint(m, side):
     dust = g.math("MULTIPLY", g.math("MAXIMUM", up, foot), patch)
     dust = g.math("MULTIPLY", dust, g.math("MULTIPLY", g.knob("dust"), 2.0), clamp=True)
     base = g.mix(base, DUST, dust)
-    # worn and polished (user, 14.10): the whole figure is worn rough stone with relief, and
-    # separate irregular blocks of it (3D Voronoi cells, warped, not a grid) kept their mirror
-    # polish, standing a hair proud of the worn stone round them, their borders chipped
-    warp = g.node("ShaderNodeVectorMath", Vector=co)
-    warp.operation = "ADD"
-    wv = g.node("ShaderNodeTexNoise", Vector=co, Scale=0.04, Detail=2.0)
-    wsc = g.node("ShaderNodeVectorMath", Vector=wv.outputs["Color"])
-    wsc.operation = "SCALE"
-    wsc.inputs["Scale"].default_value = 9.0
-    nt.links.new(wsc.outputs["Vector"], warp.inputs[1])
-    bs = g.math("DIVIDE", 1.0, g.knob("block_m"))
-    vo = g.node("ShaderNodeTexVoronoi", Vector=warp.outputs["Vector"], Scale=bs)
-    ve = g.node("ShaderNodeTexVoronoi", Vector=warp.outputs["Vector"], Scale=bs)
-    ve.feature = "DISTANCE_TO_EDGE"
-    rnd_cell = g.node("ShaderNodeSeparateColor", Color=vo.outputs["Color"]).outputs["Red"]
-    share = g.knob("side_blocks" if side else "blocks")
-    polished = g.mrange(rnd_cell, g.math("SUBTRACT", 1.0, share), g.math("SUBTRACT", 1.005, share))
-    polished = g.math("MULTIPLY", polished, g.mrange(ve.outputs["Distance"], 0.02, 0.05))     # chipped rims
-    polished = g.math("MULTIPLY", polished, g.mrange(g.noise(co, 0.35, 3.0), 0.22, 0.30))     # worn specks
-    polished = g.math("MULTIPLY", polished, g.math("SUBTRACT", 1.0, ab), clamp=True)          # not in the sand-blast
-    polished = g.math("MULTIPLY", polished, g.math("SUBTRACT", 1.0, dust), clamp=True)
-    # worn stone: rough, with relief (coarse pitting and fine grit), a touch darker and warmer
+    # worn white stone with relief (coarse pitting and fine grit), no polish left (user, 14.10:
+    # no mirror), under a thin film of sand dust
     relief = g.math("ADD", g.math("MULTIPLY", g.noise(co, 0.9, 4.0), 0.6), g.math("MULTIPLY", g.noise(co, 0.18, 3.0), 0.4))
-    worn_tint = g.mix(base, (0.66, 0.63, 0.58), 0.25)
-    base = g.mix(worn_tint, base, polished)
-    rough_worn = g.math("ADD", g.knob("worn_rough"), g.math("MULTIPLY", g.math("SUBTRACT", relief, 0.5), 0.3))
-    rough_worn = g.math("ADD", rough_worn, g.math("MULTIPLY", ab, 0.2))
-    rough_worn = g.math("MAXIMUM", rough_worn, g.math("MULTIPLY", dust, 0.9), clamp=True)
-    rough = g.math("ADD", g.math("MULTIPLY", rough_worn, g.math("SUBTRACT", 1.0, polished)),
-                   g.math("MULTIPLY", g.knob("polish"), polished), clamp=True)
-    metal = g.math("ADD", g.math("MULTIPLY", g.knob("worn_mirror"), g.math("SUBTRACT", 1.0, polished)),
-                   g.math("MULTIPLY", g.knob("mirror"), polished), clamp=True)
-    # height: worn relief below, polished blocks a flat plateau with the polisher's slow wave
-    plateau = g.math("ADD", 1.0, g.math("MULTIPLY", g.noise(co, 0.05, 2.0), g.knob("waviness")))
-    height = g.math("ADD", g.math("MULTIPLY", relief, g.math("SUBTRACT", 1.0, polished)),
-                    g.math("MULTIPLY", plateau, polished))
-    bump = g.node("ShaderNodeBump", Height=height, Strength=1.0)
+    base = g.mix(base, (0.62, 0.60, 0.56), g.math("MULTIPLY", g.mrange(relief, 0.55, 0.3), 0.35))   # pits a touch darker
+    base = g.mix(base, DUST, g.knob("dust_film"))
+    rough = g.math("ADD", g.knob("rough"), g.math("MULTIPLY", g.math("SUBTRACT", relief, 0.5), 0.25))
+    rough = g.math("ADD", rough, g.math("MULTIPLY", ab, 0.15))
+    rough = g.math("MAXIMUM", rough, g.math("MULTIPLY", dust, 0.92), clamp=True)
+    metal = g.math("MULTIPLY", 0.0, 0.0)          # plain stone: the bake keeps a metallic channel at 0
+    bump = g.node("ShaderNodeBump", Height=relief, Strength=1.0)
     nt.links.new(g.knob("relief_m"), bump.inputs["Distance"])
     bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
     for k, v in (("Base Color", base), ("Roughness", rough), ("Metallic", metal), ("Normal", bump.outputs["Normal"])):
@@ -870,7 +837,7 @@ def setup_render():
             print("engine:", e)
     sc.render.image_settings.file_format = "PNG"
     sc.view_settings.view_transform = "Standard"
-    try:   # the mirror needs real reflections of the land, not only of the sky
+    try:   # the water sheets reflect the gate
         sc.eevee.use_raytracing = True
         sc.eevee.ray_tracing_options.resolution_scale = "1"
     except (AttributeError, TypeError) as e:
