@@ -10,7 +10,9 @@ run by world_features.py on what it has placed:
 - a bridge's ends land: each outer part of the span meets a spire's shaft
   (up to 40 m under its top), a spire's platform at the deck's height, or
   ground no more than `land_m` below the deck (or above it: into the wall);
-- the mesa pockets' share per top, from steppe_ground.py's report.
+- the burnt grass hearts and dry washes, from steppe_ground.py's report;
+- the relief's own: no gentle rises, the canyon floor in one piece
+  (steppe_relief.py's `checks`).
 """
 
 import json
@@ -100,9 +102,14 @@ def run(world, items, catalogue, stem, hang_m=0.3, slope_max=0.35, land_m=25.0):
     report = Path(str(stem) + "_steppe_ground.json")
     if report.exists():
         ground = json.loads(report.read_text(encoding="utf-8"))
-        out["mesa_pocket"] = ground["layers"].get("mesa_pocket")
+        out["grass_heart"] = ground["layers"].get("grass_heart")
+        out["dry_wash"] = ground["layers"].get("dry_wash")
         out["ground_ok"] = ground.get("ok")
     else:
-        out["mesa_pocket"] = "no steppe ground: run tools/terrain_lab/steppe_ground.py"
-    out["ok"] = bool(hanging == 0 and steep == 0 and through == 0 and out.get("ground_ok", False))
+        out["grass_heart"] = "no steppe ground: run tools/terrain_lab/steppe_ground.py"
+    # The relief's own (steppe_relief.py): no gentle rises, the floor one piece.
+    relief = Path(str(stem) + "_steppe_relief.json")
+    out["relief"] = json.loads(relief.read_text(encoding="utf-8")).get("checks") if relief.exists() else None
+    out["ok"] = bool(hanging == 0 and steep == 0 and through == 0 and out.get("ground_ok", False)
+                     and (out["relief"] or {}).get("ok", False))
     return out

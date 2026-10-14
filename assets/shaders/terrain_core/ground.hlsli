@@ -160,6 +160,15 @@ Surface material(float layer, GroundPoint p, float wander) {
     const float4 props = lerp(pa, pb, t);
     o.ao = props.r;
     o.height = props.b;
+    // Once its texels are about a pixel (the crust's cracks), a material's
+    // height map no longer decides a blend: picking texel by texel there
+    // speckles the patches' edges as the eye moves (user 14.10: no flicker).
+    // So do its normals and cavities: a pebble's lit and shaded sides a pixel
+    // each are a sparkle, not a texture (user 14.10: no flicker in motion).
+    const float fine = smoothstep(float(1 << tile) / 96.0, float(1 << tile) / 12.0, p.footprint);
+    o.height = lerp(o.height, 0.5, fine);
+    o.slope *= 1.0 - 0.75 * fine;
+    o.ao = lerp(o.ao, materialProperties.SampleLevel(propertySampler, float3(0.5, 0.5, layer), 7).r, fine);
     return o;
 }
 

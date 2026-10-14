@@ -239,6 +239,18 @@ def place(world, rules, catalogue, seed):
             TAKEN.append((float(x), float(y)))
 
         modules[cat].place(world, section, catalogue, rng, add)
+    # Zones cleared of every placed part (the cliffs are not placed here):
+    # dropped after the placing, so the rest of the world keeps its draws.
+    clear = rules.get("clear_zones", {})
+    if clear.get("zones"):
+        inside = np.isin(world.zones, clear["zones"])
+        grow = int(clear.get("margin_m", 0) / world.cell)
+        if grow > 0:
+            inside = ndimage.binary_dilation(inside, iterations=grow)
+        last = inside.shape[0] - 1
+        kept = [o for o in out if not inside[min(max(int(o["y"] / world.cell), 0), last), min(max(int(o["x"] / world.cell), 0), last)]]
+        print(f"clear_zones: {len(out) - len(kept)} parts dropped in {', '.join(clear['zones'])}")
+        out = kept
     return out
 
 

@@ -37,6 +37,7 @@ from pathlib import Path
 import numpy as np
 from PIL import Image
 from scipy import ndimage as nd
+from scipy.spatial import cKDTree
 
 ROOT = Path(__file__).resolve().parents[2]
 RULES = ROOT / "content" / "config" / "terrain_core" / "steppe_ground.json"
@@ -48,7 +49,15 @@ def smoothstep(a, b, x):
     return t * t * (3 - 2 * t)
 
 
-def noise(shape, cell_px, rng, octaves=3):
+def unit(a):
+    """A noise stretched over 0..1 by its own 2nd and 98th percentiles."""
+    lo_, hi_ = np.percentile(a, [2, 98])
+    return np.clip((a - lo_) / max(hi_ - lo_, 1e-6), 0.0, 1.0)
+
+
+def noise(shape, cell_px, rng, octaves=3, order=1):
+    """Value noise; `order` 3 for one whose contours are drawn (thresholds,
+    steps): the bilinear one's run straight along its grid."""
     out = np.zeros(shape, np.float32)
     amp, total = 1.0, 0.0
     for o in range(octaves):
@@ -58,7 +67,7 @@ def noise(shape, cell_px, rng, octaves=3):
         y = np.arange(shape[0], dtype=np.float32) / scale
         x = np.arange(shape[1], dtype=np.float32) / scale
         yy, xx = np.meshgrid(y, x, indexing="ij")
-        out += amp * nd.map_coordinates(grid, (yy, xx), order=1, mode="nearest")
+        out += amp * nd.map_coordinates(grid, (yy, xx), order=order, mode="nearest")
         total += amp
         amp *= 0.5
     return out / total
@@ -215,106 +224,294 @@ def main():
     floor = np.where(valley, bed_f, lo)
     floor = np.minimum(floor, lo + span)          # never over the high ground
     floor = nd.gaussian_filter(floor, rv["floor_smooth_m"] / cell)
-    # The dry bed itself: a shallow wash down the valley's middle.
-    floor = floor - r["wash_m"] * (1.0 - smoothstep(0.0, rv["wash_width_m"], dist)) * valley
     # The tops: the smoothed land at least `min_drop_m` over the floor, cut
     # into flat tiers; the levels drift slowly so a step is not a contour.
+    # A tier's riser is a cliff `riser_cells` wide, not a ramp (user 14.10:
+    # sharp stone terraces instead of gentle rises).
     top = np.maximum(nd.gaussian_filter(s, r["top_smooth_m"] / cell), floor + r["min_drop_m"])
     drift = (noise(h.shape, r["drift_km"] * 1000 / cell, rng, 2) - 0.5) * r["drift"]
-    qt = (top - floor) / r["tier_m"] + drift
-    step = np.floor(qt) + smoothstep(1.0 - r["riser"], 1.0, qt - np.floor(qt))
-    top = floor + np.maximum((step - drift) * r["tier_m"], r["min_drop_m"])
+    tier = nd.gaussian_filter(np.floor((top - floor) / r["tier_m"] + drift), r["riser_cells"])
+    top = floor + np.maximum((tier - drift) * r["tier_m"], r["min_drop_m"])
     roll = (noise(h.shape, r["roll_km"] * 1000 / cell, rng, 3) - 0.5) * r["roll_m"]
     top = top + roll
-    # Sheer walls: across `wall_m`, by the signed distance to the canyon's edge;
-    # a bank of scree at the foot.
-    sd = (nd.distance_transform_edt(~canyon) - nd.distance_transform_edt(canyon)) * cell
-    up = smoothstep(-r["wall_m"] * 0.5, r["wall_m"] * 0.5, sd)
-    scree = r["scree_m"] * np.exp(-np.maximum(-sd, 0.0) / r["scree_reach_m"]) * (sd < 0)
-    new = floor + scree + (top - floor - scree) * up
 
-    # --- remnants: what the rivers left of their banks -------------------
-    # Where the walls retreated round a valley - the ends of the spurs between
-    # two rivers, the bays at the mouths of side valleys - pieces of the bank
-    # stood on, weathered and turned to stone (IMG_9830, IMG_9825): a point of
-    # the floor near a wall with high ground on much of its round.
-    rm = r["remnants"]
-    regc = region[::sk, ::sk][:ny, :nx]
-    cv = canyon[::sk, ::sk][:ny, :nx]
-    topfrac = nd.uniform_filter((~cv).astype(np.float32), max(3, int(rm["look_m"] / cell_c) | 1))
-    dwall = nd.distance_transform_edt(cv) * cell_c
-    dchan = nd.distance_transform_edt(~chan) * cell_c
-    cand = cv & regc & (dwall >= rm["wall_m"][0]) & (dwall <= rm["wall_m"][1])
-    cand &= (topfrac >= rm["top_share"][0]) & (topfrac <= rm["top_share"][1]) & (dchan > rm["off_channel_m"])
+    # --- the drought: the high ground crumbled into islands ---------------
+    # (user 14.10) After the water cut the valleys, the dry broke the banks
+    # up: cracks along a warped Voronoi net split the tops into islands, the
+    # small net only near the canyons, where the crumbling began.
+    cr = r["cracks"]
+    gk = np.random.default_rng(args.seed * 7919 + 11)
+    to_canyon = nd.distance_transform_edt(~canyon) * cell
+    yy0, xx0 = np.mgrid[0:h.shape[0], 0:h.shape[1]].astype(np.float32)
+    crack = np.zeros(h.shape, bool)
+    for lv in cr["levels"]:
+        cpx = lv["cell_m"] / cell
+        gh_, gw_ = int(h.shape[0] / cpx) + 3, int(h.shape[1] / cpx) + 3
+        jy = (np.arange(gh_)[:, None] - 1 + gk.uniform(0.15, 0.85, (gh_, gw_))) * cpx
+        jx = (np.arange(gw_)[None, :] - 1 + gk.uniform(0.15, 0.85, (gh_, gw_))) * cpx
+        tree = cKDTree(np.stack([jy.ravel(), jx.ravel()], 1))
+        wp = lv["warp_m"] / cell
+        qy = yy0 + (noise(h.shape, lv["cell_m"] * 0.7 / cell, gk, 3, 3) - 0.5) * 2.0 * wp
+        qx = xx0 + (noise(h.shape, lv["cell_m"] * 0.7 / cell, gk, 3, 3) - 0.5) * 2.0 * wp
+        dd, _ = tree.query(np.stack([qy.ravel(), qx.ravel()], 1), k=2, workers=-1)
+        border = ((dd[:, 1] - dd[:, 0]) * 0.5 * cell).reshape(h.shape).astype(np.float32)
+        del dd, qy, qx
+        wn = unit(noise(h.shape, lv["cell_m"] * 0.5 / cell, gk, 2, 3))
+        half = 0.5 * (lv["width_m"][0] + (lv["width_m"][1] - lv["width_m"][0]) * wn)
+        gn = noise(h.shape, lv["cell_m"] * 1.3 / cell, gk, 2, 3)
+        gate = gn < np.quantile(gn[region], lv["open"])
+        near = to_canyon < lv.get("near_m", 1e9) * (0.6 + 0.8 * wn)
+        crack |= (border < half) & gate & near
+    del yy0, xx0
+    crack = nd.binary_opening(crack & ~canyon, iterations=1)      # no one-cell slits
+    low_all = canyon | crack
+
+    # --- the islands, by what the crumbling left of them ------------------
+    # Wide enough to walk on: a mesa (terraced, the wall stepped by a bench);
+    # narrower: a stone column, or worn to a peak; the crumbs: a peak or a
+    # heap of rubble. (A piece of the box's own edge stays a mesa.)
+    ic = r["islands"]
+    isl = ~low_all
+    lab_, nis = nd.label(isl)
+    din = (nd.distance_transform_edt(isl) * cell).astype(np.float32)
+    ids = np.arange(1, nis + 1)
+    Ri = np.zeros(nis + 1, np.float32)
+    Ri[1:] = nd.maximum(din, lab_, ids)
+    area = np.zeros(nis + 1)
+    area[1:] = nd.sum(isl, lab_, ids) * cell * cell
+    Hm = np.zeros(nis + 1, np.float32)
+    Hm[1:] = nd.mean(top - floor, lab_, ids)
+    touch = np.zeros(nis + 1, bool)
+    touch[np.unique(lab_[isl & nd.binary_dilation(~region, iterations=2)])] = True
+    gi = np.random.default_rng(args.seed * 104729 + 23)
+    cls = np.zeros(nis + 1, np.int8)        # 1 mesa, 2 column, 3 peak, 4 rubble
+    rise = np.ones(nis + 1, np.float32)
+    for i in range(1, nis + 1):
+        if touch[i] or Ri[i] >= ic["mesa_r_m"]:
+            cls[i] = 1
+        elif Ri[i] >= ic["column_r_m"]:
+            cls[i] = 3 if gi.random() < ic["peak_share"] else 2
+            rise[i] = gi.uniform(*(ic["peak_rise"] if cls[i] == 3 else ic["column_rise"]))
+        else:
+            cls[i] = 3 if gi.random() < ic["crumb_peak_share"] else 4
+            rise[i] = gi.uniform(*ic["peak_rise"]) if cls[i] == 3 else gi.uniform(*ic["rubble_m"])
+    c_ = cls[lab_]
+    t_ = np.clip(din / np.maximum(Ri[lab_], 1.0), 0.0, 1.0)
+    # A mesa's wall stepped once by a bench where its island is big enough:
+    # two sheer risers with a ledge between, the ledge broken here and there.
+    bw = ic["bench_m"][0] + (ic["bench_m"][1] - ic["bench_m"][0]) * unit(noise(h.shape, 300 / cell, rng, 3, 3))
+    bn = noise(h.shape, 900 / cell, rng, 2, 3)
+    bgate = bn < np.quantile(bn[region], ic["bench_share"])
+    bh = ic["bench_rise"][0] + (ic["bench_rise"][1] - ic["bench_rise"][0]) * unit(noise(h.shape, 1200 / cell, rng, 2, 3))
+    bench = (c_ == 1) & (Ri[lab_] >= ic["bench_min_r_m"]) & bgate & (din < bw)
+    bench = nd.binary_opening(bench, iterations=1)
+    zi = np.where(bench, floor + bh * (top - floor), top)
+    zi = np.where(c_ == 2, floor + Hm[lab_] * rise[lab_], zi)
+    zi = np.where(c_ == 3, floor + Hm[lab_] * rise[lab_] * t_ ** ic["peak_pow"], zi)
+    zi = np.where(c_ == 4, floor + rise[lab_] * np.sqrt(t_), zi)
+    zi = np.where(isl, zi, floor)
+    # (a wall's top read from its own island, so the riser stays sheer)
+    _, (ey, ex) = nd.distance_transform_edt(~isl, return_indices=True)
+    zext = zi[ey, ex]
+    del ey, ex
+
+    # --- the canyon's floor: stony, with peaks --------------------------
+    # Round the walls' feet the blocks that fell: low ledges a step or two
+    # high; peaks of every size standing alone and in small groups, more of
+    # them near the walls; the dry bed of the main valley kept clear.
+    fl = r["floor"]
+    dwall = (nd.distance_transform_edt(low_all) * cell).astype(np.float32)
+    clear = smoothstep(0.0, fl["clear_m"], dist - half_w * 0.35)
+    amp = fl["block_m"] * np.exp(-dwall / fl["block_reach_m"]) + fl["block_far_m"]
+    lift = amp * unit(noise(h.shape, fl["block_cell_m"] / cell, rng, 3, 3)) * clear
+    lift = np.floor(lift / fl["step_m"]) * fl["step_m"]
+    # (the small steps a little softer than the walls: a step of a few metres
+    # sharper than a cell speckles the shading as the eye moves)
+    lift = nd.gaussian_filter(lift, fl["step_soft_cells"])
+    pk = r["peaks"]
+    wall_h = np.maximum(zext - floor, 0.0)
+    cand = low_all & region & (dwall >= pk["wall_m"][0]) & (dwall <= pk["wall_m"][1]) & (clear > 0.9)
     ys_, xs_ = np.nonzero(cand)
-    score = topfrac[ys_, xs_] + 0.15 * rng.random(len(ys_))
-    keep_n = int(rm["per_km2"] * (cv & regc).sum() * cell_c * cell_c / 1e6)
-    g = np.random.default_rng(args.seed * 104729 + 17)
-    taken = []
-    buttes = 0
-    placed, sites = [], []
-    gap = rm["min_gap_m"]
-    for k_ in np.argsort(-score):
-        if len(taken) >= keep_n:
+    want = int(pk["per_km2"] * (low_all & region).sum() * cell * cell / 1e6)
+    gp = np.random.default_rng(args.seed * 104729 + 31)
+    wgt_ = np.exp(-dwall[ys_, xs_] / pk["near_m"])
+    order_ = gp.choice(len(ys_), size=min(len(ys_), want * 4), replace=False, p=wgt_ / wgt_.sum()) if len(ys_) else []
+    peaks, taken = [], []
+    gcell = pk["gap_m"] / cell
+    grid_ = {}
+    def free(y, x, gap):
+        gy0, gx0 = int(y // gcell), int(x // gcell)
+        for a_ in range(gy0 - 1, gy0 + 2):
+            for b_ in range(gx0 - 1, gx0 + 2):
+                for (qy_, qx_) in grid_.get((a_, b_), ()):
+                    if (qy_ - y) ** 2 + (qx_ - x) ** 2 < gap * gap:
+                        return False
+        return True
+    for k_ in order_:
+        if len(peaks) >= want:
             break
-        yc, xc = ys_[k_], xs_[k_]
-        px, py = (xc + 0.5) * cell_c, (yc + 0.5) * cell_c
-        if any((px - qx) ** 2 + (py - qy) ** 2 < gap * gap for qx, qy in taken):
-            continue
-        taken.append((px, py))
-        y, x = min(int(py / cell), h.shape[0] - 1), min(int(px / cell), h.shape[1] - 1)
-        height_here = float(top[y, x] - floor[y, x])
-        if dwall[yc, xc] >= rm["butte_wall_m"] and g.random() < rm["butte_share"]:
-            # A butte: the bank's piece as a column of the land, cliff-skinned.
-            bt = r["buttes"]
-            rad = min(g.uniform(*bt["radius_m"]), dwall[yc, xc] * 0.7) / cell
-            rise = max(height_here * g.uniform(*bt["rise"]), bt["min_rise_m"])
-            w = int(rad * 1.6) + 4
-            y0_, y1_, x0_, x1_ = max(y - w, 0), min(y + w, h.shape[0]), max(x - w, 0), min(x + w, h.shape[1])
+        y, x = int(ys_[k_]), int(xs_[k_])
+        for j_ in range(int(gp.integers(pk["group"][0], pk["group"][1] + 1))):
+            if j_:
+                a_ = gp.uniform(0, math.tau)
+                y = int(ys_[k_] + math.sin(a_) * gp.uniform(1.0, 2.2) * pk["radius_m"][1] / cell)
+                x = int(xs_[k_] + math.cos(a_) * gp.uniform(1.0, 2.2) * pk["radius_m"][1] / cell)
+                if not (0 <= y < h.shape[0] and 0 <= x < h.shape[1]) or not cand[y, x]:
+                    continue
+            if not free(y, x, gcell * (0.5 if j_ else 1.0)):
+                continue
+            grid_.setdefault((int(y // gcell), int(x // gcell)), []).append((y, x))
+            rad = gp.uniform(*pk["radius_m"]) / cell
+            tall = min(gp.uniform(*pk["rise_m"]), max(pk["of_wall"] * float(wall_h[y, x]), pk["rise_m"][0]))
+            w = int(rad * 1.4) + 2
+            y0_, y1_, x0_, x1_ = max(y - w, 0), min(y + w + 1, h.shape[0]), max(x - w, 0), min(x + w + 1, h.shape[1])
             yy_, xx_ = np.mgrid[y0_:y1_, x0_:x1_]
             ang = np.arctan2(yy_ - y, xx_ - x)
             lob = 1.0
             for k2 in (2, 3, 5):
-                lob = lob + g.uniform(0.04, 0.14) * np.sin(k2 * ang + g.uniform(0, math.tau))
+                lob = lob + gp.uniform(0.08, 0.3) * np.sin(k2 * ang + gp.uniform(0, math.tau))
             d = np.hypot(yy_ - y, xx_ - x) / (rad * lob)
-            edge = r["wall_m"] / cell / rad
-            body = 1.0 - smoothstep(1.0 - edge, 1.0, d)
-            prof = body * rise
-            if g.random() < bt["stepped"]:
-                k3 = g.uniform(0.55, 0.8)
-                upper = 1.0 - smoothstep(k3 - edge, k3, d)
-                share = g.uniform(0.6, 0.8)
-                prof = body * rise * share + upper * rise * (1.0 - share)
-            win_ = new[y0_:y1_, x0_:x1_]
-            np.maximum(win_, floor[y0_:y1_, x0_:x1_] + prof, out=win_)
-            buttes += 1
-            placed.append({"x": round((x0 + x + 0.5) * cell, 1), "y": round((y0 + y + 0.5) * cell, 1),
-                           "radius_m": round(rad * cell, 1), "rise_m": round(float(rise), 1)})
-        else:
-            sites.append({"x": round((x0 + x + 0.5) * cell, 1), "y": round((y0 + y + 0.5) * cell, 1),
-                          "floor_m": round(float(floor[y, x]), 1),
-                          "top_m": round(float(floor[y, x] + height_here * g.uniform(*rm["pinnacle_rise"])), 1),
-                          "room_m": round(float(dwall[yc, xc]), 1)})
-    # The pinnacle sites checked on the finished ground: room to the nearest
-    # steep ground (walls, scree, a butte's foot) at 16 m, too little dropped.
-    gyf, gxf = np.gradient(new, cell)
-    clear = nd.distance_transform_edt(np.hypot(gxf, gyf) <= rm["site_slope"]) * cell
-    del gyf, gxf
-    kept = []
-    for q in sites:
-        y, x = int(q["y"] / cell) - y0, int(q["x"] / cell) - x0
-        room = float(clear[y, x])
-        if room >= rm["min_room_m"]:
-            q["room_m"] = round(room, 1)
-            q["floor_m"] = round(float(new[y, x]), 1)
-            kept.append(q)
-    if args.stats:
-        rooms_ = [float(clear[int(q["y"] / cell) - y0, int(q["x"] / cell) - x0]) for q in sites]
-        sl_ = np.hypot(*np.gradient(new, cell))
-        print("site rooms", np.percentile(rooms_, [10, 50, 90]).round() if rooms_ else None,
-              "floor steep share", round(float((sl_[canyon & region] > rm["site_slope"]).mean()), 3),
-              "floor-only steep", round(float((sl_[canyon & region & (sd < -150)] > rm["site_slope"]).mean()), 3))
-    sites = kept
+            prof = tall * np.clip(1.0 - d, 0.0, 1.0) ** pk["pow"]
+            np.maximum(lift[y0_:y1_, x0_:x1_], prof, out=lift[y0_:y1_, x0_:x1_])
+            peaks.append({"x": round((x0 + x + 0.5) * cell, 1), "y": round((y0 + y + 0.5) * cell, 1),
+                          "radius_m": round(rad * cell, 1), "rise_m": round(float(tall), 1),
+                          "floor_m": round(float(floor[y, x]), 1), "top_m": round(float(floor[y, x] + tall), 1),
+                          "room_m": round(rad * cell, 1)})
+    scree = r["scree_m"] * np.exp(-dwall / r["scree_reach_m"]) * low_all
+    base = floor + np.maximum(lift, scree)
+    # Sheer walls: across `wall_m`, by the signed distance to the islands' edge.
+    sd = (nd.distance_transform_edt(isl) - nd.distance_transform_edt(~isl)) * cell
+    up = smoothstep(-r["wall_m"] * 0.5, r["wall_m"] * 0.5, sd)
+    new = base + np.maximum(zext - base, 0.0) * up
+
+    # --- the last streams: dry washes and their mouths -------------------
+    # The rain that still falls ran off the finished ground (D8 on the coarse
+    # grid again); where enough of it gathered on the floor a shallow wash
+    # is cut; where a wash leaves a narrow cleft for the open floor, or runs
+    # into the old river's bed, its last load spread as a fan: the dried-up
+    # mouths of the last streams (user 14.10).
+    ws = r["washes"]
+    nc = new[sk // 2::sk, sk // 2::sk][:ny, :nx].astype(np.float64)
+    nyc, nxc = nc.shape
+    regc = region[sk // 2::sk, sk // 2::sk][:nyc, :nxc]
+    seen = ~regc.copy()
+    edge_ = seen & nd.binary_dilation(regc, structure=np.ones((3, 3)))
+    tie = noise(nc.shape, 4.0, g0, 2).ravel()
+    filled = nc.copy()
+    heap = [(float(filled.flat[i_]), float(tie[i_]), int(i_)) for i_ in np.flatnonzero(edge_)]
+    heapq.heapify(heap)
+    recv2 = np.full(nyc * nxc, -1, np.int64)
+    order = []
+    while heap:
+        z_, _t, i_ = heapq.heappop(heap)
+        yy_, xx_ = divmod(i_, nxc)
+        for dy, dx in nbr:
+            y_, x_ = yy_ + dy, xx_ + dx
+            if 0 <= y_ < nyc and 0 <= x_ < nxc and not seen[y_, x_]:
+                seen[y_, x_] = True
+                j_ = y_ * nxc + x_
+                filled.flat[j_] = max(filled.flat[j_], z_ + 1e-3)
+                recv2[j_] = i_
+                order.append(j_)
+                heapq.heappush(heap, (float(filled.flat[j_]), float(tie[j_]), j_))
+    acc2 = np.full(nyc * nxc, cell_c * cell_c / 1e6)
+    for j_ in reversed(order):
+        if recv2[j_] >= 0:
+            acc2[recv2[j_]] += acc2[j_]
+    lowc = low_all[sk // 2::sk, sk // 2::sk][:nyc, :nxc]
+    wash = (acc2.reshape(nyc, nxc) >= ws["min_km2"]) & lowc & regc
+    # The mouths: a wash cell whose water leaves a cleft (the cracks) for open
+    # floor, or reaches the old river's bed.
+    crc = crack[sk // 2::sk, sk // 2::sk][:nyc, :nxc]
+    chc = chan[:nyc, :nxc]
+    fans = []
+    gf = np.random.default_rng(args.seed * 104729 + 41)
+    for j_ in np.flatnonzero(wash.ravel()):
+        rcv = recv2[j_]
+        if rcv < 0:
+            continue
+        a2 = acc2[j_]
+        yj, xj = divmod(j_, nxc)
+        yr, xr = divmod(rcv, nxc)
+        out_of_cleft = crc[yj, xj] and not crc[yr, xr]
+        into_bed = (not chc[yj, xj]) and chc[yr, xr] and a2 >= ws["mouth_min_km2"]
+        if out_of_cleft or into_bed:
+            fans.append((yj, xj, yr - yj, xr - xj, a2))
+    fan_lift = np.zeros(h.shape, np.float32)
+    kept_fans = []
+    for yj, xj, dy, dx, a2 in fans:
+        cy, cx = (yj + 0.5) * sk, (xj + 0.5) * sk
+        if any((cy - qy) ** 2 + (cx - qx) ** 2 < (ws["fan_gap_m"] / cell) ** 2 for qy, qx in kept_fans):
+            continue
+        kept_fans.append((cy, cx))
+        rad = float(np.clip(ws["fan_per_sqrt_km2_m"] * math.sqrt(a2), *ws["fan_r_m"])) / cell
+        tall = gf.uniform(*ws["fan_h_m"])
+        w = int(rad) + 2
+        y0_, y1_, x0_, x1_ = max(int(cy) - w, 0), min(int(cy) + w + 1, h.shape[0]), max(int(cx) - w, 0), min(int(cx) + w + 1, h.shape[1])
+        yy_, xx_ = np.mgrid[y0_:y1_, x0_:x1_].astype(np.float32)
+        vy, vx = yy_ - cy, xx_ - cx
+        dn = np.hypot(vy, vx)
+        cosang = (vy * dy + vx * dx) / np.maximum(dn * math.hypot(dy, dx), 1e-6)
+        prof = tall * np.clip(1.0 - dn / rad, 0.0, 1.0) ** 1.5 * smoothstep(-0.35, 0.35, cosang)
+        np.maximum(fan_lift[y0_:y1_, x0_:x1_], prof, out=fan_lift[y0_:y1_, x0_:x1_])
+    new = new + fan_lift * (1.0 - up)
+    # The washes on the fine grid: bent like the valleys, shallow, wider and
+    # deeper downstream.
+    wm = np.zeros(h.shape, bool)
+    sub = wm[sk // 2::sk, sk // 2::sk]
+    sub[: wash.shape[0], : wash.shape[1]] = wash[: sub.shape[0], : sub.shape[1]]
+    wd, (wy_, wx_) = nd.distance_transform_edt(~wm, return_indices=True)
+    wd = wd.astype(np.float32) * cell + (noise(h.shape, 250 / cell, rng, 2, 3) - 0.5) * 2.0 * ws["bend_m"]
+    wa = acc2.reshape(nyc, nxc)[np.clip(wy_ // sk, 0, nyc - 1), np.clip(wx_ // sk, 0, nxc - 1)]
+    del wy_, wx_
+    wwid = np.clip(ws["width_per_sqrt_km2_m"] * np.sqrt(wa), *ws["width_m"]) * 0.5
+    wdep = np.clip(ws["depth_m"] + ws["depth_per_doubling_m"] * np.log2(np.maximum(wa / ws["min_km2"], 1.0)), 0, ws["max_depth_m"])
+    cut = wdep * (1.0 - smoothstep(0.0, wwid + cell, wd)) * (1.0 - up) * wm.any()
+    new = new - cut
+    washed = (cut > 0.8) | (fan_lift > 1.5)
+
+    # --- marks for the ground (steppe_ground.py) and the numbers ---------
+    # The burnt grass only in the hearts of the biggest islands.
+    heart = (c_ == 1) & (area[lab_] >= ic["heart_km2"] * 1e6) & (din >= np.maximum(ic["heart_m"], ic["heart_share"] * Ri[lab_]))
+    heart &= ~bench & region
+    marks = {}
+    for name_, m_ in (("heart", heart), ("wash", washed)):
+        blk = np.zeros(((b1 - b0) * k, (c1 - c0) * k), np.float32)
+        hh_, ww_ = min(blk.shape[0], m_.shape[0]), min(blk.shape[1], m_.shape[1])
+        blk[:hh_, :ww_] = m_[:hh_, :ww_]
+        frac = blk.reshape(b1 - b0, k, c1 - c0, k).mean(axis=(1, 3))
+        full = np.zeros(biomes.shape, np.uint8)
+        full[b0:b1, c0:c1] = frac >= ws["mark_share"] if name_ == "wash" else frac >= 0.5
+        marks[name_] = full[::-1]        # back to the biome picture's rows (north first)
+    np.savez_compressed(args.world + "_steppe_marks.npz", **marks)
+    sites = peaks
+    inner = weight > 0.99
+    gy2, gx2 = np.gradient(new, cell)
+    sl2 = np.hypot(gx2, gy2)
+    del gy2, gx2
+    # A gentle rise: ground between 0.2 and 0.7 off the washes, fans and the
+    # walls' own rounded edges (a cell either side of a sheer step).
+    steep_near = nd.binary_dilation(sl2 > 0.7, iterations=1)
+    gentle = inner & (sl2 > 0.2) & (sl2 < 0.7) & ~steep_near & ~washed
+    flr = low_all & inner
+    flab, fn = nd.label(flr)
+    fsz = np.bincount(flab.ravel())[1:] if fn else np.array([0])
+    in_region = np.zeros(nis + 1, bool)
+    in_region[np.unique(lab_[isl & inner])] = True
+    col_ids = [i for i in range(1, nis + 1) if cls[i] == 2 and in_region[i]]
+    placed = [{"x": round((x0 + cx_ + 0.5) * cell, 1), "y": round((y0 + cy_ + 0.5) * cell, 1),
+               "radius_m": round(float(Ri[i]), 1), "rise_m": round(float(Hm[i] * rise[i]), 1)}
+              for i, (cy_, cx_) in zip(col_ids, nd.center_of_mass(isl, lab_, col_ids))] if col_ids else []
+    counts = {name_: int(((cls == ci) & in_region).sum()) for ci, name_ in ((1, "mesas"), (2, "columns"), (3, "peaks"), (4, "rubble"))}
+    stats = {"islands": counts, "floor_peaks": len(peaks), "fans": len(kept_fans),
+             "wash_km": round(float(wm.sum()) * cell * sk / 1000, 1),
+             "heart_km2": round(float(heart.sum()) * cell * cell / 1e6, 2),
+             "island_share": round(float(isl[inner].mean()), 3),
+             "walls_share": round(float((sl2[inner] > 0.7).mean()), 3),
+             "gentle_share": round(float(gentle.sum() / max(inner.sum(), 1)), 3),
+             "floor_connected": round(float(fsz.max() / max(fsz.sum(), 1)), 3)}
+    stats["ok"] = bool(stats["gentle_share"] <= r["checks"]["gentle_max"] and stats["floor_connected"] >= r["checks"]["floor_connected_min"])
+    print("steppe relief checks: " + json.dumps(stats))
     if args.stats:
         print(f"canyon share {canyon[region].mean():.2f}, top over floor median {np.median((top - floor)[region]):.0f} m, "
               f"span median {np.median(span[region]):.0f} m")
@@ -339,14 +536,14 @@ def main():
             marsh_json.write_text(json.dumps(record, indent=1), encoding="utf-8")
             synced = True
 
-    Path(args.world + "_steppe_relief.json").write_text(json.dumps({"buttes": placed, "pinnacles": sites}, indent=1))
+    Path(args.world + "_steppe_relief.json").write_text(json.dumps({"buttes": placed, "pinnacles": sites, "checks": stats}, indent=1))
     moved = np.abs(out - h)[weight > 0.5]
     gy, gx = np.gradient(out, cell)
     sl = np.hypot(gx, gy)[weight > 0.99]
     print(f"steppe relief: box {y1 - y0}x{x1 - x0} cells, span median {np.median(span[weight > 0.5]):.0f} m, "
           f"moved median {np.median(moved):.0f} m (95% {np.percentile(moved, 95):.0f} m), "
           f"walls (slope > 0.7) {np.mean(sl > 0.7) * 100:.0f}%, flat (< 0.1) {np.mean(sl < 0.1) * 100:.0f}%, "
-          f"buttes {buttes}, pinnacle sites {len(sites)}, channels {int(chan.sum())} cells, marsh base synced {synced}")
+          f"columns {len(placed)}, floor peaks {len(sites)}, channels {int(chan.sum())} cells, marsh base synced {synced}")
 
 
 if __name__ == "__main__":

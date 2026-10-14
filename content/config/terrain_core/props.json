@@ -893,8 +893,9 @@
     },
     "flute_m": 45.0,
     "styles": {
-      "comment": "per biome of biomes.json, the face of its walls: `strata` ledges' strength, `strata_m` a bed (its period is 2 pi of it), `slab` how much a bed is a slab (lip at its top, undercut below) rather than a wave, `gullies` runnels, `flutes` deep vertical grooves (cells of `flute_m`), `overhang` and `overhang_drop` as the cliffs' own (0: the wall stands straight, user 14.10 for the canyon); the user's canyon references doc/NewRef/steppe",
+      "comment": "per biome of biomes.json, the face of its walls: `strata` ledges' strength, `strata_m` a bed (its period is 2 pi of it), `slab` how much a bed is a slab (lip at its top, undercut below) rather than a wave, `gullies` runnels, `flutes` deep vertical grooves (cells of `flute_m`), `overhang` and `overhang_drop` as the cliffs' own (0: the wall stands straight, user 14.10 for the canyon), `apron` a share of the scree bank's reach at the wall's foot (the canyon's walls stand on the floor, user 14.10); the user's canyon references doc/NewRef/steppe",
       "canyon_steppe": {
+        "apron": 0.2,
         "strata": 0.06,
         "strata_m": 9.0,
         "slab": 0.0,
@@ -904,6 +905,7 @@
         "overhang_drop": 0.0
       },
       "stone_desert": {
+        "apron": 0.2,
         "strata": 0.06,
         "strata_m": 9.0,
         "slab": 0.0,
@@ -913,6 +915,17 @@
         "overhang_drop": 0.0
       },
       "mesa_pocket": {
+        "apron": 0.2,
+        "strata": 0.06,
+        "strata_m": 9.0,
+        "slab": 0.0,
+        "gullies": 0.22,
+        "flutes": 0.55,
+        "overhang": 0.0,
+        "overhang_drop": 0.0
+      },
+      "dry_wash": {
+        "apron": 0.2,
         "strata": 0.06,
         "strata_m": 9.0,
         "slab": 0.0,
@@ -922,6 +935,7 @@
         "overhang_drop": 0.0
       },
       "canyon_floor": {
+        "apron": 0.2,
         "strata": 0.06,
         "strata_m": 9.0,
         "slab": 0.0,
@@ -931,6 +945,15 @@
         "overhang_drop": 0.0
       }
     }
+  },
+  "clear_zones": {
+    "zones": [
+      "canyon_steppe",
+      "steppe",
+      "steppe_canyon"
+    ],
+    "margin_m": 300,
+    "comment": "14.10 (user): every placed part (pinnacles, slab rubble, megaliths) taken out of these zones while their geography is worked out (tools/terrain_lab/steppe_relief.py); the cliff walls stay. Dropped after the placing, so the rest of the world keeps its draws"
   },
   "min_gap_m": 250,
   "edge_m": 800,

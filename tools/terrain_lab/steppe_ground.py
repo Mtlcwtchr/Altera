@@ -6,11 +6,12 @@ Paints three biomes of their own into <world>_biomes.png, on its grid (64 m),
 from the heights <world>_final.r16, by the rules in
 content/config/terrain_core/steppe_ground.json:
 
-- canyon_steppe (3) and stone_desert (16) re-sorted by the ground: the steppe's
-  yellow grass on every flat tier above the floor, stone on walls and floor;
-- mesa_pocket (19): pockets on the mesas' flat tops, 10-30% of each top,
-  drawn towards the top's hollows where the damp stays;
-- canyon_floor (20): cracked dry crust on the flat low ground of the canyons.
+- canyon_steppe (3) and stone_desert (16) re-sorted by the ground: the bare dry
+  tops on every flat tier above the floor, stone on walls and floor;
+- mesa_pocket (19): the burnt grass, only in the hearts of the biggest islands
+  (a layer's `mark`: the masks steppe_relief.py leaves in <world>_steppe_marks.npz);
+- canyon_floor (20): cracked dry crust on the flat low ground of the canyons;
+- dry_wash (21): the last streams' dry washes and their fans (mark `wash`).
 
 Their materials and plants are in biomes.json and foliage.json under the same
 ids; the shader blends them into their neighbours like any biome border.
@@ -87,6 +88,9 @@ def main():
     hollow = nd.gaussian_filter(h, sigma) - h          # > 0 in a hollow
     wet = np.clip(hollow / max(np.percentile(np.abs(hollow), 95), 1e-3) * 0.5 + 0.5, 0, 1)
 
+    marks_path = Path(args.world + "_steppe_marks.npz")
+    marks = dict(np.load(marks_path)) if marks_path.exists() else {}
+
     report = {"cell_m": cell, "layers": {}}
     for li, layer in enumerate(rules["layers"]):
         rng = np.random.default_rng(args.seed * 7919 + layer["biome"] * 104729 + li)
@@ -94,6 +98,8 @@ def main():
         cand = np.isin(biomes, layer["in"]) & (slope <= layer.get("slope_max", 9.0)) & (slope >= layer.get("slope_min", 0.0))
         cand &= (rel >= layer.get("rel_min", 0.0)) & (rel <= layer.get("rel_max", 1.0))
         cand &= wet <= layer.get("wet_max", 1.0)
+        if "mark" in layer:
+            cand &= marks[layer["mark"]].astype(bool) if layer["mark"] in marks else False
         paint = np.zeros_like(cand)
         stats = {}
         if "share" in layer:

@@ -297,8 +297,11 @@ def fields(h, zones, biomes, c, rules, origin=(0, 0)):
     dist, (ni, nj) = ndimage.distance_transform_edt(~band, return_indices=True)
     dist *= c
     high_side = h > hi[ni, nj] - 0.2 * drop[ni, nj]
-    apron = ~band & ~high_side & (dist < cr["apron_m"]) & (dist < push[ni, nj] + cr["apron_m"] * 0.5)
-    fall = np.clip(1 - dist / cr["apron_m"], 0, 1)
+    # (per biome `apron`: a share of the reach; the canyon's walls stand on
+    # the floor with hardly any bank, user 14.10)
+    reach_ = cr["apron_m"] * (st["apron"][biomes[ni, nj].astype(np.int64)] if st is not None else 1.0)
+    apron = ~band & ~high_side & (dist < reach_) & (dist < push[ni, nj] + reach_ * 0.5)
+    fall = np.clip(1 - dist / np.maximum(reach_, 1.0), 0, 1)
     lift = np.where(apron, np.clip(cr["scree_share"] * drop[ni, nj], 4.0, cr["scree_max_m"]) * fall ** 1.5 * ends[ni, nj], 0.0)
     out.update(push=push.astype(np.float32), top=top, foot=foot,
                lift=ndimage.gaussian_filter(lift, 1.0).astype(np.float32))
@@ -703,6 +706,7 @@ def build(world, rules, out_dir, rng=None, biomes_path=None, workers=None):
         names = {b["name"]: b["id"] for b in json.loads(BIOMES.read_text(encoding="utf-8"))["biomes"]}
         table = {k: np.full(256, cr.get(k, 0.0) if k != "slab" and k != "flutes" else 0.0, np.float32)
                  for k in ("strata", "strata_m", "slab", "gullies", "flutes", "overhang", "overhang_drop")}
+        table["apron"] = np.ones(256, np.float32)
         for name, style in cr["styles"].items():
             if name in names and name != "comment":
                 for k, v in style.items():
