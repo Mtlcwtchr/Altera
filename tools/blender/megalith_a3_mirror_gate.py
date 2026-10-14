@@ -33,7 +33,7 @@ from mathutils import Matrix, Vector, noise
 ROOT = Path(__file__).resolve().parents[2]
 ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a3_mirror_gate"
 SHOTS = ROOT / "terrain_lab_out/shots_for_user/megaliths"
-STAGE = "sculpt"
+STAGE = "material"
 
 STONE = (0.80, 0.84, 0.88, 1)      # pale, cool: the polished stone takes the sky's blue
 VOID = (0.004, 0.004, 0.006, 1)    # the passage
@@ -447,6 +447,286 @@ def sculpted_gate(name, v, stone, void, rock):
     return out
 
 
+# ---------------------------------------------------------------- material: mirror-polished stone
+# User, 14.10: the stone is polished like a mirror. Painted procedurally in object space (metres)
+# with labelled knobs, then baked in Cycles onto one 2048 atlas (smart UV islands) for the game:
+# basecolor (sRGB), normal (OpenGL tangent: the polisher's slow waviness that bends reflections),
+# and surface (R = AO, G = roughness, B = mirror, i.e. metallic). Desert, so no moss: its place
+# is taken by sand dust laid by noise (on what faces up, in a drift at the foot), with the same
+# kind of knobs. A sand-blasted matte band at the foot, jagged at its top.
+
+TEX = 2048
+KNOBS = dict(
+    mirror=0.72,            # metallic of the polished cut faces: 0 plain stone .. 1 a mirror
+    polish=0.07,            # roughness of the polished faces
+    side_polish=0.24,       # roughness of the slanted folded side wall and the fallen blocks
+    side_mirror=0.45,       # mirror of the side wall and the blocks
+    streaks=0.06,           # faint vertical polishing streaks in the roughness
+    veins=0.6,              # faint grey-blue veins in the stone
+    mottle=0.6,             # soft cool-white to ivory mottling
+    grain=0.07,             # chunky texel grain (retro)
+    abrasion=1.0,           # the sand-blasted matte band at the foot
+    abrasion_m=14.0,        # its mean height (m); its top edge is jagged by noise
+    dust=0.45,              # sand dust on what faces up and in a drift at the foot
+    dust_scale=0.045,       # dust patch size (1/m)
+    dust_foot_m=5.0,        # height of the dust drift at the foot
+    waviness=0.06,          # bump of the polisher's slow waves (bends the reflection)
+)
+STONE_COOL = (0.74, 0.79, 0.84)
+STONE_IVORY = (0.86, 0.83, 0.74)
+VEIN = (0.46, 0.52, 0.60)
+DUST = (0.78, 0.66, 0.40)
+
+
+def _set(nt, sock, v):
+    if hasattr(v, "is_output"):
+        nt.links.new(v, sock)
+    else:
+        sock.default_value = v
+
+
+class Graph:
+    """Small helper to wire shader nodes without the boilerplate."""
+
+    def __init__(self, nt):
+        self.nt = nt
+
+    def node(self, kind, **inputs):
+        nd = self.nt.nodes.new(kind)
+        for k, v in inputs.items():
+            _set(self.nt, nd.inputs[k], v)
+        return nd
+
+    def knob(self, name):
+        nd = self.nt.nodes.new("ShaderNodeValue")
+        nd.label = nd.name = "knob_" + name
+        nd.outputs[0].default_value = KNOBS[name]
+        return nd.outputs[0]
+
+    def math(self, op, a, b=0.0, clamp=False):
+        nd = self.nt.nodes.new("ShaderNodeMath")
+        nd.operation = op
+        nd.use_clamp = clamp
+        _set(self.nt, nd.inputs[0], a)
+        _set(self.nt, nd.inputs[1], b)
+        return nd.outputs[0]
+
+    def mrange(self, x, a, b, c=0.0, d=1.0):
+        nd = self.nt.nodes.new("ShaderNodeMapRange")
+        nd.clamp = True
+        for k, v in (("Value", x), ("From Min", a), ("From Max", b), ("To Min", c), ("To Max", d)):
+            _set(self.nt, nd.inputs[k], v)
+        return nd.outputs["Result"]
+
+    def noise(self, vec, scale, detail=2.0, distortion=0.0):
+        nd = self.node("ShaderNodeTexNoise", Vector=vec, Scale=scale, Detail=detail, Distortion=distortion)
+        return nd.outputs["Fac"]
+
+    def mix(self, a, b, f):
+        nd = self.nt.nodes.new("ShaderNodeMix")
+        nd.data_type = "RGBA"
+        for k, v in (("A", a), ("B", b), ("Factor", f)):
+            if not hasattr(v, "is_output") and k != "Factor":
+                v = (*v, 1.0)
+            _set(self.nt, nd.inputs[k], v)
+        return nd.outputs["Result"]
+
+
+def paint(m, side):
+    """The procedural paint of one material slot: side=False the polished cut stone, True the
+    slanted side wall and the fallen blocks. Returns the channel sockets for the bake."""
+    m.use_nodes = True
+    nt = m.node_tree
+    g = Graph(nt)
+    co = g.node("ShaderNodeTexCoord").outputs["Object"]
+    geo = g.node("ShaderNodeNewGeometry")
+    z = g.node("ShaderNodeSeparateXYZ", Vector=co).outputs["Z"]
+    nz = g.node("ShaderNodeSeparateXYZ", Vector=geo.outputs["Normal"]).outputs["Z"]
+    # stone: soft mottling, faint veins in places, chunky grain
+    mottle = g.math("MULTIPLY", g.mrange(g.noise(co, 0.012, 3.0), 0.3, 0.7), g.knob("mottle"))
+    base = g.mix(STONE_COOL, STONE_IVORY, mottle)
+    vn = g.noise(co, 0.006, 2.0, 3.0)
+    vein = g.mrange(g.math("ABSOLUTE", g.math("SUBTRACT", vn, 0.5)), 0.0, 0.012, 1.0, 0.0)
+    vein = g.math("MULTIPLY", vein, g.mrange(g.noise(co, 0.01), 0.45, 0.6))
+    base = g.mix(base, VEIN, g.math("MULTIPLY", vein, g.knob("veins")))
+    cell = g.node("ShaderNodeVectorMath", Vector=co)
+    cell.operation = "SNAP"
+    cell.inputs[1].default_value = (0.3, 0.3, 0.3)
+    wn = g.node("ShaderNodeTexWhiteNoise", Vector=cell.outputs["Vector"]).outputs["Value"]
+    gr = g.math("ADD", g.math("MULTIPLY", g.math("SUBTRACT", wn, 0.5), g.knob("grain")), 1.0)
+    sc = g.node("ShaderNodeVectorMath", Vector=base)
+    sc.operation = "SCALE"
+    nt.links.new(gr, sc.inputs["Scale"])
+    base = sc.outputs["Vector"]
+    # sand-blasted foot: matte, duller and warmer below a jagged line
+    edge = g.math("ADD", g.knob("abrasion_m"), g.math("MULTIPLY", g.math("SUBTRACT", g.noise(co, 0.03, 3.0), 0.5), 22.0))
+    ab = g.math("MULTIPLY", g.mrange(z, g.math("SUBTRACT", edge, 3.0), g.math("ADD", edge, 3.0), 1.0, 0.0),
+                g.knob("abrasion"))
+    base = g.mix(base, STONE_IVORY, g.math("MULTIPLY", ab, 0.5))
+    # sand dust: on what faces up, and a drift at the foot, both broken up by noise
+    up = g.mrange(nz, 0.35, 0.8)
+    foot = g.mrange(z, 0.0, g.knob("dust_foot_m"), 1.0, 0.0)
+    lo = g.math("SUBTRACT", 0.75, g.math("MULTIPLY", g.knob("dust"), 0.4))
+    patch = g.mrange(g.noise(co, g.knob("dust_scale"), 3.0), lo, g.math("ADD", lo, 0.1))
+    dust = g.math("MULTIPLY", g.math("MAXIMUM", up, foot), patch)
+    dust = g.math("MULTIPLY", dust, g.math("MULTIPLY", g.knob("dust"), 2.0), clamp=True)
+    base = g.mix(base, DUST, dust)
+    # roughness and mirror
+    sv = g.node("ShaderNodeVectorMath", Vector=co)
+    sv.operation = "MULTIPLY"
+    sv.inputs[1].default_value = (1.0, 1.0, 0.02)          # long up the height: polishing streaks
+    streak = g.math("MULTIPLY", g.noise(sv.outputs["Vector"], 0.6, 1.0), g.knob("streaks"))
+    rough = g.math("ADD", g.knob("side_polish" if side else "polish"), streak)
+    rough = g.math("ADD", rough, g.math("MULTIPLY", ab, 0.45))
+    rough = g.math("MAXIMUM", rough, g.math("MULTIPLY", dust, 0.9), clamp=True)
+    metal = g.math("MULTIPLY", g.knob("side_mirror" if side else "mirror"),
+                   g.math("SUBTRACT", 1.0, g.math("MULTIPLY", ab, 0.75)), clamp=True)
+    metal = g.math("MULTIPLY", metal, g.math("SUBTRACT", 1.0, dust), clamp=True)
+    # the polisher's slow waves (on the side wall a coarser rippling)
+    bump = g.node("ShaderNodeBump", Height=g.noise(co, 0.12 if side else 0.05, 2.0))
+    nt.links.new(g.knob("waviness"), bump.inputs["Strength"])
+    bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
+    for k, v in (("Base Color", base), ("Roughness", rough), ("Metallic", metal), ("Normal", bump.outputs["Normal"])):
+        nt.links.new(v, bsdf.inputs[k])
+    return dict(base=base, rough=rough, metal=metal)
+
+
+def uv_unwrap(ob):
+    for o in bpy.context.scene.objects:
+        o.select_set(o is ob)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=math.radians(50), island_margin=0.004, area_weight=0.0)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def bake_all(ob, channels):
+    """Cycles: EMIT bakes of the painted channels, NORMAL (tangent) and AO, every slot into one
+    image per pass. Returns numpy arrays TEX x TEX x 4."""
+    import numpy as np
+    sc = bpy.context.scene
+    try:
+        sc.render.engine = "CYCLES"
+    except TypeError as e:
+        print("engine:", e)
+    sc.cycles.device = "CPU"
+    keep = {o.name: o.hide_render for o in sc.objects}
+    for o in sc.objects:
+        o.hide_render = o is not ob
+        o.select_set(o is ob)
+    bpy.context.view_layer.objects.active = ob
+    sc.render.bake.use_selected_to_active = False
+    sc.render.bake.margin = 8
+    out = {}
+    for kind in ("base", "rough", "metal", "NORMAL", "AO"):
+        img = bpy.data.images.new(f"bake_{kind}", TEX, TEX, float_buffer=True)
+        img.colorspace_settings.name = "Non-Color"
+        undo = []
+        for m in ob.data.materials:
+            nt = m.node_tree
+            tn = nt.nodes.new("ShaderNodeTexImage")
+            tn.image = img
+            nt.nodes.active = tn
+            em = prev = None
+            outn = next(nd for nd in nt.nodes if nd.type == "OUTPUT_MATERIAL")
+            src = channels.get(m.name, {}).get(kind)
+            if kind in ("base", "rough", "metal"):
+                em = nt.nodes.new("ShaderNodeEmission")
+                prev = outn.inputs["Surface"].links[0].from_socket if outn.inputs["Surface"].links else None
+                if src is not None:
+                    nt.links.new(src, em.inputs["Color"])
+                else:
+                    em.inputs["Color"].default_value = (0, 0, 0, 1)
+                nt.links.new(em.outputs["Emission"], outn.inputs["Surface"])
+            undo.append((nt, tn, em, outn, prev))
+        if kind in ("base", "rough", "metal"):
+            sc.cycles.samples = 1
+            bpy.ops.object.bake(type="EMIT")
+        else:
+            sc.cycles.samples = 1 if kind == "NORMAL" else 32
+            bpy.ops.object.bake(type=kind, normal_space="TANGENT")
+        out[kind] = np.array(img.pixels[:], dtype=np.float32).reshape(TEX, TEX, 4)
+        for nt, tn, em, outn, prev in undo:
+            nt.nodes.remove(tn)
+            if em:
+                nt.nodes.remove(em)
+                if prev:
+                    nt.links.new(prev, outn.inputs["Surface"])
+        print("baked", kind)
+    for o in sc.objects:
+        o.hide_render = keep.get(o.name, False)
+    return out
+
+
+def save_map(name, arr, srgb):
+    import numpy as np
+    rgba = np.concatenate([np.clip(arr[:, :, :3], 0, 1), np.ones((TEX, TEX, 1), np.float32)], axis=2)
+    img = bpy.data.images.new(name, TEX, TEX)
+    img.colorspace_settings.name = "sRGB" if srgb else "Non-Color"
+    img.pixels.foreach_set(rgba.astype(np.float32).ravel())
+    img.filepath_raw = str(ASSET_DIR / f"{name}.png")
+    img.file_format = "PNG"
+    img.save()
+    print("saved", img.filepath_raw)
+    return img
+
+
+def make_material(ob):
+    """Paint, bake, and put the baked maps on the gate. The painted materials stay in the .blend
+    (gate_paint_*, on a hidden copy) for tuning the knobs."""
+    import numpy as np
+    stone, void, rock = ob.data.materials[0], ob.data.materials[1], ob.data.materials[2]
+    stone.name, rock.name = "gate_paint_stone", "gate_paint_side"
+    channels = {stone.name: paint(stone, False), rock.name: paint(rock, True)}   # void bakes black
+    uv_unwrap(ob)
+    b = bake_all(ob, channels)
+    base = np.clip(b["base"][:, :, :3], 0, 1)
+    void_mask = base.max(axis=2) < 0.02
+    base = np.where(void_mask[:, :, None], VOID[0], base)
+    base_srgb = np.where(base <= 0.0031308, base * 12.92, 1.055 * np.power(base, 1 / 2.4) - 0.055)
+    rough = np.where(void_mask, 0.95, b["rough"][:, :, 0])
+    metal = np.where(void_mask, 0.0, b["metal"][:, :, 0])
+    surface = np.stack([b["AO"][:, :, 0], rough, metal], axis=2)
+    imgs = dict(base=save_map("gate_basecolor_2048", base_srgb, True),
+                normal=save_map("gate_normal_2048", b["NORMAL"], False),
+                surface=save_map("gate_surface_2048", surface, False))
+    keep = bpy.data.objects.new("gate_paint_keeper", ob.data.copy())   # the painted version, hidden
+    keep.hide_render = True
+    bpy.context.scene.collection.objects.link(keep)
+    keep.hide_set(True)
+
+    m = bpy.data.materials.new("gate_material")
+    m.use_nodes = True
+    nt = m.node_tree
+    g = Graph(nt)
+    bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
+
+    def tex(img):
+        nd = nt.nodes.new("ShaderNodeTexImage")
+        nd.image = img
+        nd.interpolation = "Closest"  # chunky pixels
+        return nd
+
+    tb, tn, ts = tex(imgs["base"]), tex(imgs["normal"]), tex(imgs["surface"])
+    sep = g.node("ShaderNodeSeparateColor", Color=ts.outputs["Color"])
+    mul = nt.nodes.new("ShaderNodeMix")
+    mul.data_type = "RGBA"
+    mul.blend_type = "MULTIPLY"
+    mul.inputs["Factor"].default_value = 1.0
+    nt.links.new(tb.outputs["Color"], mul.inputs["A"])
+    nt.links.new(sep.outputs["Red"], mul.inputs["B"])
+    nt.links.new(mul.outputs["Result"], bsdf.inputs["Base Color"])
+    nt.links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+    nt.links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+    nm = g.node("ShaderNodeNormalMap", Color=tn.outputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    ob.data = ob.data.copy()
+    for i in range(len(ob.data.materials)):
+        ob.data.materials[i] = m
+    return m
+
+
 # ---------------------------------------------------------------- the land
 
 def ground_height(x, y):
@@ -563,6 +843,11 @@ def setup_render():
             print("engine:", e)
     sc.render.image_settings.file_format = "PNG"
     sc.view_settings.view_transform = "Standard"
+    try:   # the mirror needs real reflections of the land, not only of the sky
+        sc.eevee.use_raytracing = True
+        sc.eevee.ray_tracing_options.resolution_scale = "1"
+    except (AttributeError, TypeError) as e:
+        print("raytracing:", e)
     # high sun from the right on the camera side: the front frame and the broken flank lit, as painted
     sun = bpy.data.lights.new("sun", "SUN")
     sun.energy = 4.0
@@ -631,13 +916,22 @@ SCULPT_VIEWS = [
     ("07_wire_right_crag", (300, -260, 40), (20, 0, 80), 32, 0, {"hero", "wire"}),
     ("08_wire_crag_close_low", (95, -95, 12), (28, 0, 22), 32, 0, {"hero", "wire"}),
 ]
+MATERIAL_VIEWS = [
+    ("01_reference_shot", REF_CAM, (6, 0, REF_CAM[2]), 50, 0, {"hero"}),
+    ("02_right_three_quarter", (300, -260, 40), (20, 0, 80), 32, 0, {"hero"}),
+    ("03_front_close", (-40, -120, 40), (0, 0, 45), 35, 0, {"hero"}),
+    ("04_side_wall_close", (95, -95, 12), (28, 0, 22), 32, 0, {"hero"}),
+    ("05_opening_foot", (-25, -110, 6), (2, 0, 22), 30, 0, {"hero"}),
+    ("06_top_close", (-60, -95, 200), (0, 0, 182), 35, 0, {"hero"}),
+    ("07_back_left", (-260, 300, 50), (0, 0, 90), 32, 0, {"hero"}),
+]
 
 
 def render_views(render):
     SHOTS.mkdir(parents=True, exist_ok=True)
     sc = bpy.context.scene
     toggled = [bpy.data.collections[n] for n in ("hero", "lineup", "wire")]
-    views = {"blockout": VIEWS, "sculpt": SCULPT_VIEWS}[STAGE]
+    views = {"blockout": VIEWS, "sculpt": SCULPT_VIEWS, "material": MATERIAL_VIEWS}[STAGE]
     for name, loc, target, lens, ortho, shown in views:
         portrait = "reference" in name
         cam = camera("cam_" + name, loc, target, lens, ortho, level=portrait)
@@ -660,12 +954,14 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
-    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="sculpt")
+    ap.add_argument("--stage", choices=("blockout", "sculpt", "material"), default="material")
     args = ap.parse_args(argv)
     global STAGE
     STAGE = args.stage
     ASSET_DIR.mkdir(parents=True, exist_ok=True)
     build()
+    if STAGE == "material":
+        make_material(bpy.data.objects["hero_" + HERO])
     setup_render()
     render_views(not args.no_render)
     blend = ASSET_DIR / f"gate_{STAGE}.blend"
