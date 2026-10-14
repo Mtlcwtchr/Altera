@@ -98,6 +98,22 @@
     "wall_m": 40,
     "scree_m": 35,
     "scree_reach_m": 90,
-    "tier_m": 110
+    "tier_m": 110,
+    "buttes": {
+      "min_gap_m": 700,
+      "keep": 0.7,
+      "clear_m": 220,
+      "radius_m": [
+        110,
+        320
+      ],
+      "rise": [
+        0.8,
+        1.35
+      ],
+      "min_rise_m": 260,
+      "stepped": 0.4,
+      "comment": "columns on the canyon floor: a candidate every min_gap_m kept with `keep`, at least clear_m from the walls; radius_m, rise as a share of the mesas' height over the floor there (at least min_rise_m), `stepped` of them stepped once"
+    }
   }
 }

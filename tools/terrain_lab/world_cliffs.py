@@ -45,6 +45,7 @@ import numpy as np
 from PIL import Image
 from scipy import ndimage
 
+BIOMES = Path(__file__).resolve().parents[2] / "content" / "config" / "terrain_core" / "biomes.json"
 TILE_M = 1024.0
 MARGIN_M = 800.0     # what a tile looks at round it: more than any wall reaches, and the opening measured
 SHIFT = 8            # points of the finest grid beyond the tile's edge (the coarsest cell and the smoothing)
@@ -469,7 +470,19 @@ def tile(f, ti, tj, origin, c, cr):
     ownp = _sample(f["own"], XP, YP, c, origin, 0).astype(np.uint8)
     # The rock's face: ledges by height, wandering; runnels by place along the wall.
     wobble = 2.5 * _vnoise(XP, YP, 260.0, 1)
-    gully = cr["gullies"] * (2.0 * _vnoise(XP, YP, 45.0, 2) - 1.0 + 0.6 * (2.0 * _vnoise(XP, YP, 17.0, 3) - 1.0))
+    # Per biome (`styles`): how strong the ledges, how tall a bed, how much
+    # of a bed is a slab (a lip at its top, undercut below), runnels, flutes.
+    st = cr.get("_style", None)
+    if st is not None:
+        strata_a, strata_p, slab_a, gully_a, flute_a = (st[k][ownp] for k in ("strata", "strata_m", "slab", "gullies", "flutes"))
+    else:
+        strata_a, strata_p, slab_a = cr["strata"], cr["strata_m"], 0.0
+        gully_a, flute_a = cr["gullies"], 0.0
+    gully = gully_a * (2.0 * _vnoise(XP, YP, 45.0, 2) - 1.0 + 0.6 * (2.0 * _vnoise(XP, YP, 17.0, 3) - 1.0))
+    if np.any(flute_a > 0):
+        # Deep narrow vertical grooves between rounded ribs.
+        ridge = 1.0 - np.abs(2.0 * _vnoise(XP, YP, cr.get("flute_m", 70.0), 7) - 1.0)
+        gully = gully - flute_a * ridge ** 3
     fray = 0.06 * (2.0 * _vnoise(XP, YP, 70.0, 4) - 1.0)
 
     sink = cr["sink_m"]
@@ -493,8 +506,11 @@ def tile(f, ti, tj, origin, c, cr):
         g = hp - z
         gt = g + ground_scree
         R = hf > z
-        mod = 1.0 + cr["strata"] * (0.65 * np.sin(z / cr["strata_m"] + wobble)
-                                    + 0.35 * np.sin(z / (cr["strata_m"] * 2.7) + 1.0)) + gully
+        beds = 0.65 * np.sin(z / strata_p + wobble) + 0.35 * np.sin(z / (strata_p * 2.7) + 1.0)
+        if np.any(slab_a > 0):
+            f_ = np.mod(z / (strata_p * math.tau) + wobble / math.tau, 1.0)
+            beds = beds * (1.0 - slab_a) + slab_a * (2.0 * f_ * f_ - 1.0)
+        mod = 1.0 + strata_a * beds + gully
         Rp = R[pidx]
         w = np.where(Rp & (pushp > 0), pushp * mod + sf * 0.5, -1e9)
         src_t = tp
@@ -673,6 +689,17 @@ def build(world, rules, out_dir, rng=None, biomes_path=None, workers=None):
         stem = str(out_dir)
         biomes_path = (stem[:-len("_cliffs")] if stem.endswith("_cliffs") else stem) + "_biomes.png"
     bmap, bk = load_biomes(biomes_path, world.n)
+    if cr.get("styles"):
+        # Per-biome face styles as tables by biome id (the rest the defaults).
+        names = {b["name"]: b["id"] for b in json.loads(BIOMES.read_text(encoding="utf-8"))["biomes"]}
+        table = {k: np.full(256, cr.get(k, 0.0) if k != "slab" and k != "flutes" else 0.0, np.float32)
+                 for k in ("strata", "strata_m", "slab", "gullies", "flutes")}
+        for name, style in cr["styles"].items():
+            if name in names and name != "comment":
+                for k, v in style.items():
+                    if k in table:
+                        table[k][names[name]] = v
+        rules = dict(rules, cliffs=dict(cr, _style=table))
     c = world.size / world.n
     per_tile = int(TILE_M / c)
     zk = world.n // world.zones.shape[0]

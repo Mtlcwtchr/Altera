@@ -19,7 +19,7 @@ from pathlib import Path
 
 import numpy as np
 
-SPIRES = ("spire",)
+SPIRES = ("spire", "canyon_pinnacle")
 BRIDGES = ("bridge", "ribbon_bridge")
 
 

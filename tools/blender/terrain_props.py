@@ -999,6 +999,163 @@ def ribbon_spiral(rng, seed):
     return finish(o, 1.6, 10, 1.0, 2, seed)
 
 
+def _ring_solid(name, rings, apex=None):
+    """A closed mesh from horizontal rings (each a list of (x, y, z), the same
+    count round), joined in order, the bottom capped flat, the top capped flat
+    or closed to `apex`."""
+    bm = bmesh.new()
+    loops = [[bm.verts.new(p) for p in ring] for ring in rings]
+    m = len(loops[0])
+    for a, b in zip(loops, loops[1:]):
+        for i in range(m):
+            j = (i + 1) % m
+            bm.faces.new((a[i], a[j], b[j], b[i]))
+    bm.faces.new(list(reversed(loops[0])))
+    if apex is None:
+        bm.faces.new(loops[-1])
+    else:
+        tip = bm.verts.new(apex)
+        for i in range(m):
+            bm.faces.new((loops[-1][i], loops[-1][(i + 1) % m], tip))
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces[:])
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def _pinnacle_shaft(rng, h, radius, kind, base=(0.0, 0.0)):
+    """One shaft of a canyon pinnacle as rings: bedded rock in slabs of every
+    thickness (some with a lip and an undercut, some sheer, some bitten into),
+    each slab a little off round and turned, cut by deep vertical flutes; the
+    shaft necks and swells, leans and bends a little, and ends by `kind`:
+    needle in a jagged point, column and tower in a broken flat top."""
+    m = 48
+    flutes = rng.randint(4, 6) if kind == "column" else rng.randint(5, 9)
+    phase = rng.uniform(0, math.tau)
+    depth = rng.uniform(0.12, 0.2) if kind == "column" else rng.uniform(0.16, 0.3)
+    lobes = [(rng.randint(1, 3), rng.uniform(0, math.tau), rng.uniform(0.05, 0.16), rng.uniform(-2, 2))
+             for _ in range(3)]
+    bend = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), 0.0)).normalized() * rng.uniform(0.02, 0.08) * h
+    bend2 = Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), 0.0)).normalized() * rng.uniform(0.0, 0.03) * h
+    neck = (rng.uniform(1.0, 2.6), rng.uniform(0, math.tau), rng.uniform(0.06, 0.16))
+    fl_twist = rng.uniform(-0.3, 0.3)
+    p_lip = {"column": 0.25, "needle": 0.45, "tower": 0.5}[kind]
+
+    def section(theta, t):
+        r = 1.0
+        for k, ph, a, drift in lobes:
+            r += a * math.sin(k * theta + ph + drift * t)
+        c = math.cos(flutes * theta + phase + fl_twist * t * math.tau)
+        r -= depth * max(0.0, -c) ** 3
+        return r
+
+    def taper(t):
+        if kind == "needle":
+            base_ = (1.0 - t) ** 0.8 * 0.92 + 0.08 * (1.0 - t)
+        elif kind == "column":
+            base_ = 1.0 - 0.1 * t
+        else:
+            base_ = 1.0 - 0.5 * t ** 1.5
+        return base_ * (1.0 + neck[2] * math.sin(neck[0] * math.tau * t + neck[1]))
+
+    def axis(t):
+        return bend * t * t + bend2 * math.sin(math.pi * t)
+
+    def ring(zz, t, scale, ell, turn, bite):
+        c = axis(t)
+        out = []
+        for i in range(m):
+            th = i / m * math.tau
+            r = scale * section(th, t)
+            if bite is not None:
+                d = math.atan2(math.sin(th - bite[0]), math.cos(th - bite[0]))
+                r *= 1.0 - bite[1] * max(0.0, 1.0 - abs(d) / bite[2]) ** 1.5
+            x, y = math.cos(th) * r * ell[0], math.sin(th) * r * ell[1]
+            x, y = x * math.cos(turn) - y * math.sin(turn), x * math.sin(turn) + y * math.cos(turn)
+            out.append((base[0] + c.x + x, base[1] + c.y + y, zz))
+        return out
+
+    rings = []
+    top = h * (rng.uniform(0.92, 1.0) if kind != "needle" else 1.0)
+    # The foot: a little wider, ragged, into the scree.
+    for zf, flare in ((-0.06 * h, 1.16), (0.0, 1.1)):
+        rings.append(ring(zf, 0.0, radius * taper(0.0) * flare, (1.0, 1.0), 0.0, None))
+    z = 0.0
+    while z < top - 1e-3:
+        thick = h * rng.choice((rng.uniform(0.02, 0.05), rng.uniform(0.05, 0.12)))
+        z1 = min(z + thick, top)
+        ell = (rng.uniform(0.9, 1.1), rng.uniform(0.9, 1.1))
+        turn = rng.uniform(-0.25, 0.25)
+        jitter = rng.uniform(0.93, 1.07)
+        bite = (rng.uniform(0, math.tau), rng.uniform(0.2, 0.4), rng.uniform(0.5, 1.1)) if rng.random() < 0.3 else None
+        if rng.random() < p_lip:
+            steps = ((z + 0.003 * h, rng.uniform(0.86, 0.96)), (z1 - 0.01 * h, rng.uniform(1.03, 1.1)), (z1, 1.0))
+        else:
+            steps = ((z + 0.003 * h, 1.0), (z1, 1.0))
+        for zz, lip in steps:
+            if zz <= z or zz > top:
+                continue
+            t = zz / h
+            rings.append(ring(zz, t, radius * taper(t) * jitter * lip, ell, turn, bite))
+        z = z1
+    apex = None
+    if kind == "needle":
+        c = axis(1.0) + Vector((rng.uniform(-1, 1), rng.uniform(-1, 1), 0.0)) * radius * 0.1
+        apex = (base[0] + c.x, base[1] + c.y, h * rng.uniform(1.03, 1.08))
+    return rings, apex
+
+
+def canyon_pinnacle(rng, seed):
+    """A canyon pinnacle the walker cannot climb (the user's references
+    doc/NewRef/steppe/IMG_9830, IMG_9825): a tall shaft of bedded rock in
+    stacked slabs, lipped and undercut, cut by deep vertical flutes. Variants
+    by `seed`: needles to a jagged point, columns with a broken flat top,
+    slim towers, and a twin of two shafts fused at the foot. 1000 m tall;
+    foot buried 60 m. Built straight from rings: hard, chunky, low poly."""
+    h = SPIRE_H
+    kind = ("needle", "column", "tower", "twin", "needle", "column", "tower", "twin")[seed % 8]
+    parts = []
+    if kind == "twin":
+        r = h * rng.uniform(0.05, 0.07)
+        a = rng.uniform(0, math.tau)
+        d = r * 0.55
+        for k, (sub, hh) in enumerate((("needle", h), ("tower", h * rng.uniform(0.6, 0.8)))):
+            sgn = 1 if k == 0 else -1
+            rings, apex = _pinnacle_shaft(rng, hh, r * (1.0 if k == 0 else 0.85), sub,
+                                          (math.cos(a) * d * sgn, math.sin(a) * d * sgn))
+            parts.append(_ring_solid(f"pinnacle_{k}", rings, apex))
+        o = ab.join(parts, "canyon_pinnacle")
+    else:
+        r = h * {"needle": rng.uniform(0.045, 0.07), "column": rng.uniform(0.09, 0.13),
+                 "tower": rng.uniform(0.06, 0.085)}[kind]
+        rings, apex = _pinnacle_shaft(rng, h, r, kind)
+        o = _ring_solid("canyon_pinnacle", rings, apex)
+        if kind == "column":
+            # The flat top broken: a slanted bite off one side.
+            a = rng.uniform(0, math.tau)
+            no = Vector((math.cos(a) * 0.35, math.sin(a) * 0.35, 1.0)).normalized()
+            bm = bmesh.new()
+            bm.from_mesh(o.data)
+            geom = bm.verts[:] + bm.edges[:] + bm.faces[:]
+            res = bmesh.ops.bisect_plane(bm, geom=geom, plane_co=(math.cos(a) * r * 0.4, math.sin(a) * r * 0.4, h * 0.96),
+                                         plane_no=no, clear_outer=True)
+            edges = [e for e in res["geom_cut"] if isinstance(e, bmesh.types.BMEdge)]
+            if edges:
+                bmesh.ops.holes_fill(bm, edges=edges, sides=0)
+            bm.to_mesh(o.data)
+            bm.free()
+    # Rough knocks all over, small against the slabs and flutes.
+    off = Vector((seed * 5.3 % 71, seed * 2.9 % 67, seed * 7.1 % 61))
+    for v in o.data.vertices:
+        p = v.co / (h * 0.05) + off
+        v.co += noise.noise_vector(p) * h * 0.006
+    o.data.update()
+    return o
+
+
 NEW = {
     "spire": (spire, 26000),
     "bridge": (bridge, 9000),
@@ -1032,6 +1189,7 @@ NEW = {
     "giant_spine": (giant_spine, 14000),
     "spire_platform": (spire_platform, 5000),
     "ribbon_spiral": (ribbon_spiral, 16000),
+    "canyon_pinnacle": (canyon_pinnacle, 7000),
 }
 
 
@@ -1222,7 +1380,7 @@ ALL = {"spire": 6, "bridge": 3, "valley_spire": 1,
        "rim_ledge": 4, "rock_blade": 4, "hogback": 3,
        "mega_ring": 3, "mega_stake": 4, "trilithon": 3, "pierced_ring": 2,
        "spiral_rise": 3, "ribbon_bridge": 3, "switchback": 3, "loop_arch": 2,
-       "prism_column": 4, "white_cube": 4, "mirror_prism": 1, "giant_spine": 3, "spire_platform": 5, "ribbon_spiral": 3,
+       "prism_column": 4, "white_cube": 4, "mirror_prism": 1, "giant_spine": 3, "spire_platform": 5, "ribbon_spiral": 3, "canyon_pinnacle": 8,
        "menhir": 3, "fallen_menhir": 2, "marsh_panel": 3, "colossus_head": 2, "colossus_hand": 1,
        "needle": 3, "portal_tower": 2, "mirror_monument": 1, "iron_defender": 1, "cyclopean_block": 2,
        "giant_stair": 1}

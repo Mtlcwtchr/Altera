@@ -15,11 +15,13 @@ the smoothed land cut into flat tiers `tier_m` high over it, the tier levels
 drifting slowly so a step is not a contour line. The lowest ground is floor;
 a network of canyons (ridges of a warped noise: trunks and branches) takes
 `cover` of the rest down to the floor between sheer walls `wall_m`
-wide, with scree banked at their foot. The change eases in over `feather_m`
-from the region's edge.
+wide, with scree banked at their foot. Buttes (`buttes`): columns of the land
+on the canyon floor, sheer all round, some stepped once, some taller than the
+mesas; their walls too become cliff meshes. The change eases in over
+`feather_m` from the region's edge.
 
 Re-run safe: the heights it replaced are kept in <world>_steppe_relief.npz
-with a digest of what it wrote; a re-run on its own output starts from
+with a digest of what it wrote (the buttes' places in <world>_steppe_relief.json); a re-run on its own output starts from
 them, on anything else (a new world) takes the current heights. The
 marshes' base copy (<world>_final_base.r16) gets the same change when it is
 in step with the heights, so a marsh re-run keeps the mesas.
@@ -27,6 +29,7 @@ in step with the heights, so a marsh re-run keeps the mesas.
 
 import argparse
 import hashlib
+import math
 import json
 from pathlib import Path
 
@@ -161,6 +164,48 @@ def main():
     up = smoothstep(-r["wall_m"] * 0.5, r["wall_m"] * 0.5, sd)
     scree = r["scree_m"] * np.exp(-np.maximum(-sd, 0.0) / r["scree_reach_m"]) * (sd < 0)
     new = floor + scree + (top - floor - scree) * up
+    # Buttes: tall columns of the land itself standing on the canyon floor
+    # (doc/NewRef/steppe/IMG_9830), sheer all round, some stepped once, some
+    # rising over the mesas; their walls become cliff meshes like the rest.
+    bt = r.get("buttes")
+    buttes = 0
+    placed = []
+    if bt:
+        g = np.random.default_rng(args.seed * 104729 + 17)
+        gap = bt["min_gap_m"] / cell
+        deep = canyon & (sd < -bt["clear_m"]) & region
+        cy, cx = np.nonzero(deep[:: int(gap), :: int(gap)])
+        for i in g.permutation(len(cy)):
+            if g.random() > bt["keep"]:
+                continue
+            y = int(cy[i] * int(gap) + g.uniform(0, gap)) % h.shape[0]
+            x = int(cx[i] * int(gap) + g.uniform(0, gap)) % h.shape[1]
+            if not deep[y, x]:
+                continue
+            rad = g.uniform(*bt["radius_m"]) / cell
+            rise = (top[y, x] - floor[y, x]) * g.uniform(*bt["rise"])
+            rise = max(rise, bt["min_rise_m"])
+            w = int(rad * 1.6) + 4
+            y0_, y1_, x0_, x1_ = max(y - w, 0), min(y + w, h.shape[0]), max(x - w, 0), min(x + w, h.shape[1])
+            yy_, xx_ = np.mgrid[y0_:y1_, x0_:x1_]
+            ang = np.arctan2(yy_ - y, xx_ - x)
+            lob = 1.0
+            for k_ in (2, 3, 5):
+                lob = lob + g.uniform(0.04, 0.14) * np.sin(k_ * ang + g.uniform(0, math.tau))
+            d = np.hypot(yy_ - y, xx_ - x) / (rad * lob)
+            edge = r["wall_m"] / cell / rad
+            body = 1.0 - smoothstep(1.0 - edge, 1.0, d)
+            prof = body * rise
+            if g.random() < bt["stepped"]:
+                k2 = g.uniform(0.55, 0.8)
+                upper = 1.0 - smoothstep(k2 - edge, k2, d)
+                prof = body * rise * g.uniform(0.6, 0.8) + upper * rise * (1.0 - g.uniform(0.6, 0.8))
+            win_ = new[y0_:y1_, x0_:x1_]
+            np.maximum(win_, floor[y0_:y1_, x0_:x1_] + prof, out=win_)
+            deep[y0_:y1_, x0_:x1_] &= d > 1.0 + bt["min_gap_m"] / cell / rad * 0.5
+            buttes += 1
+            placed.append({"x": round((x0 + x + 0.5) * cell, 1), "y": round((y0 + y + 0.5) * cell, 1),
+                           "radius_m": round(rad * cell, 1), "rise_m": round(float(rise), 1)})
     if args.stats:
         print(f"canyon share {canyon[region].mean():.2f}, top over floor median {np.median((top - floor)[region]):.0f} m, "
               f"span median {np.median(span[region]):.0f} m")
@@ -185,13 +230,14 @@ def main():
             marsh_json.write_text(json.dumps(record, indent=1), encoding="utf-8")
             synced = True
 
+    Path(args.world + "_steppe_relief.json").write_text(json.dumps({"buttes": placed}, indent=1))
     moved = np.abs(out - h)[weight > 0.5]
     gy, gx = np.gradient(out, cell)
     sl = np.hypot(gx, gy)[weight > 0.99]
     print(f"steppe relief: box {y1 - y0}x{x1 - x0} cells, span median {np.median(span[weight > 0.5]):.0f} m, "
           f"moved median {np.median(moved):.0f} m (95% {np.percentile(moved, 95):.0f} m), "
           f"walls (slope > 0.7) {np.mean(sl > 0.7) * 100:.0f}%, flat (< 0.1) {np.mean(sl < 0.1) * 100:.0f}%, "
-          f"marsh base synced {synced}")
+          f"buttes {buttes}, marsh base synced {synced}")
 
 
 if __name__ == "__main__":

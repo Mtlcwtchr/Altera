@@ -3,7 +3,7 @@
   "terrain": {
     "comment": "Large parts of the terrain that are meshes (tools/terrain_lab/world_terrain_parts.py): the canyon's spires with its bridges, rises and ledges, clefts, sea stacks, floating isles, sentinel peaks, and rock forms by zone. The cliff walls are under `cliffs`.",
     "spires": {
-      "kind": "spire",
+      "kind": "canyon_pinnacle",
       "zones": [
         "canyon_steppe",
         "steppe_canyon"
@@ -732,6 +732,7 @@
   },
   "materials": {
     "spire": "rock_orange",
+    "canyon_pinnacle": "rock_orange",
     "bridge": "rock_orange",
     "valley_spire": "rocky_grey",
     "marsh_panel": "rock_mossy",
@@ -838,6 +839,38 @@
       "great_marshes": 0.7,
       "dark_forest": 0.6,
       "northern_isles": 0.3
+    },
+    "flute_m": 70.0,
+    "styles": {
+      "comment": "per biome of biomes.json, the face of its walls: `strata` ledges' strength, `strata_m` a bed (its period is 2 pi of it), `slab` how much a bed is a slab (lip at its top, undercut below) rather than a wave, `gullies` runnels, `flutes` deep vertical grooves (cells of `flute_m`); the user's canyon references doc/NewRef/steppe",
+      "canyon_steppe": {
+        "strata": 0.32,
+        "strata_m": 11.0,
+        "slab": 0.7,
+        "gullies": 0.12,
+        "flutes": 0.35
+      },
+      "stone_desert": {
+        "strata": 0.32,
+        "strata_m": 11.0,
+        "slab": 0.7,
+        "gullies": 0.12,
+        "flutes": 0.35
+      },
+      "mesa_pocket": {
+        "strata": 0.32,
+        "strata_m": 11.0,
+        "slab": 0.7,
+        "gullies": 0.12,
+        "flutes": 0.35
+      },
+      "canyon_floor": {
+        "strata": 0.32,
+        "strata_m": 11.0,
+        "slab": 0.7,
+        "gullies": 0.12,
+        "flutes": 0.35
+      }
     }
   },
   "min_gap_m": 250,
