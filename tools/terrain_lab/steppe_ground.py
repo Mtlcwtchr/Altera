@@ -6,16 +6,18 @@ Paints three biomes of their own into <world>_biomes.png, on its grid (64 m),
 from the heights <world>_final.r16, by the rules in
 content/config/terrain_core/steppe_ground.json:
 
-- mesa_pocket (19): green pockets on the mesas' flat tops, 10-30% of each top,
+- canyon_steppe (3) and stone_desert (16) re-sorted by the ground: the steppe's
+  yellow grass on every flat tier above the floor, stone on walls and floor;
+- mesa_pocket (19): pockets on the mesas' flat tops, 10-30% of each top,
   drawn towards the top's hollows where the damp stays;
-- canyon_floor (20): cracked dry crust on the flat low ground of the canyons;
-- gravel_field (21): the stone desert's rubble fields on its gentle middle ground.
+- canyon_floor (20): cracked dry crust on the flat low ground of the canyons.
 
 Their materials and plants are in biomes.json and foliage.json under the same
 ids; the shader blends them into their neighbours like any biome border.
 
 Re-run safe: the ids it replaced are kept in <world>_steppe_ground.png
-(0 = untouched) and put back before painting again. The numbers go to
+(0 = untouched) and put back before painting again (run it after
+steppe_relief.py: the tops and floors follow the cut relief). The numbers go to
 <world>_steppe_ground.json and, as `steppe_ground`, into the checks
 world_features.py writes.
 """
@@ -60,10 +62,9 @@ def main():
     biomes_path = Path(args.world + "_biomes.png")
     side_path = Path(args.world + "_steppe_ground.png")
     biomes = np.array(Image.open(biomes_path))
-    ours = {layer["biome"] for layer in rules["layers"]}
     if side_path.exists():
         before = np.array(Image.open(side_path))
-        back = (before > 0) & np.isin(biomes, list(ours))
+        back = before > 0
         biomes[back] = before[back]
     original = biomes.copy()
 
@@ -73,6 +74,7 @@ def main():
     b = biomes.shape[0]
     k = n // b
     h = h.reshape(b, k, b, k).mean(axis=(1, 3))
+    h = h[::-1]   # the heights' rows run south to north, the biome picture's north to south
     cell = world_m / b
 
     gy, gx = np.gradient(nd.uniform_filter(h, 3), cell)
@@ -89,7 +91,7 @@ def main():
     for li, layer in enumerate(rules["layers"]):
         rng = np.random.default_rng(args.seed * 7919 + layer["biome"] * 104729 + li)
         noise = value_noise(biomes.shape, layer["noise_m"] / cell, rng)
-        cand = np.isin(biomes, layer["in"]) & (slope <= layer.get("slope_max", 9.0))
+        cand = np.isin(biomes, layer["in"]) & (slope <= layer.get("slope_max", 9.0)) & (slope >= layer.get("slope_min", 0.0))
         cand &= (rel >= layer.get("rel_min", 0.0)) & (rel <= layer.get("rel_max", 1.0))
         cand &= wet <= layer.get("wet_max", 1.0)
         paint = np.zeros_like(cand)
@@ -129,9 +131,6 @@ def main():
         print(f"{layer['name']:13s} -> {layer['biome']}: " + json.dumps(stats))
 
     side = np.where(biomes != original, original, 0).astype(np.uint8)
-    if side_path.exists():
-        prev = np.array(Image.open(side_path))
-        side = np.where(np.isin(biomes, list(ours)) & (prev > 0), prev, side)
     Image.fromarray(side).save(side_path)
     Image.fromarray(biomes.astype(np.uint8)).save(biomes_path)
     report["ok"] = all(v.get("ok", True) for v in report["layers"].values())

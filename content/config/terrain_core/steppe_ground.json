@@ -1,16 +1,103 @@
 {
-  "comment": "The canyon steppe's and the stone desert's ground (doc/BIOME_PLAN.md 3.3), painted into <world>_biomes.png by tools/terrain_lab/steppe_ground.py on the biome map's grid. `rel` is where a cell stands between the lowest (0) and the highest (1) ground within `rel_window_m`; `slope` rise over run of the ground smoothed over a cell; `wet` how far the cell lies in a hollow of the ground round it (0 on crests, 1 in the deepest hollows within `wet_window_m`). Each layer paints its `biome` over the biomes `in`, where its noise (cells of `noise_m`) weighs over its threshold.",
-  "rel_window_m": 2000,
+  "comment": "The canyon steppe's and the stone desert's ground (doc/BIOME_PLAN.md 3.3), painted into <world>_biomes.png by tools/terrain_lab/steppe_ground.py on the biome map's grid. `rel` is where a cell stands between the lowest (0) and the highest (1) ground within `rel_window_m`; `slope` rise over run of the ground smoothed over a cell; `wet` how far the cell lies in a hollow of the ground round it (0 on crests, 1 in the deepest hollows within `wet_window_m`). Each layer, in order, paints its `biome` over the biomes `in` where the ground fits (`slope_min/max`, `rel_min/max`, `wet_max`) and its noise (cells of `noise_m`) weighs over its threshold (`cover` 1: all of it). `relief`: tools/terrain_lab/steppe_relief.py, the mesas cut into the heights before this.",
+  "rel_window_m": 4000,
   "wet_window_m": 600,
   "layers": [
-    {"name": "mesa_pocket", "biome": 19, "in": [3], "slope_max": 0.24, "rel_min": 0.55,
-     "share": [0.10, 0.30], "noise_m": 380, "wet_weight": 0.45, "min_top_cells": 4,
-     "comment": "green pockets with the damp on the mesas' tops: 10-30% of each top (a connected flat high stretch), drawn by noise weighted towards its hollows"},
-    {"name": "canyon_floor", "biome": 20, "in": [3, 16], "slope_max": 0.2, "rel_max": 0.3, "wet_max": 0.85,
-     "cover": 0.6, "noise_m": 520,
-     "comment": "cracked dry crust on the canyons' floors and the approaches: flat low ground, not the wettest hollows (the beds)"},
-    {"name": "gravel_field", "biome": 21, "in": [16], "slope_max": 0.35, "rel_min": 0.25, "rel_max": 0.85,
-     "cover": 0.3, "noise_m": 1500,
-     "comment": "the stone desert's rubble fields: broad patches over the gentle middle ground"}
-  ]
+    {
+      "name": "stone_walls",
+      "biome": 16,
+      "in": [
+        3
+      ],
+      "slope_min": 0.3,
+      "cover": 1.0,
+      "noise_m": 500,
+      "comment": "the steppe's tops are only its flat high ground: walls and slopes are stone desert"
+    },
+    {
+      "name": "stone_floor",
+      "biome": 16,
+      "in": [
+        3
+      ],
+      "rel_max": 0.3,
+      "cover": 1.0,
+      "noise_m": 500
+    },
+    {
+      "name": "mesa_top",
+      "biome": 3,
+      "in": [
+        16
+      ],
+      "slope_max": 0.3,
+      "rel_min": 0.3,
+      "cover": 1.0,
+      "noise_m": 500,
+      "comment": "every flat tier above the floor wears the steppe's yellow grass"
+    },
+    {
+      "name": "mesa_pocket",
+      "biome": 19,
+      "in": [
+        3
+      ],
+      "slope_max": 0.24,
+      "rel_min": 0.55,
+      "share": [
+        0.1,
+        0.3
+      ],
+      "noise_m": 380,
+      "wet_weight": 0.45,
+      "min_top_cells": 4,
+      "comment": "green pockets with the damp on the mesas' tops: 10-30% of each top (a connected flat high stretch), drawn by noise weighted towards its hollows"
+    },
+    {
+      "name": "canyon_floor",
+      "biome": 20,
+      "in": [
+        3,
+        16
+      ],
+      "slope_max": 0.2,
+      "rel_max": 0.3,
+      "wet_max": 0.85,
+      "cover": 0.6,
+      "noise_m": 520,
+      "comment": "cracked dry crust on the canyons' floors and the approaches: flat low ground, not the wettest hollows (the beds)"
+    }
+  ],
+  "relief": {
+    "biomes": [
+      3,
+      16,
+      19,
+      20,
+      21
+    ],
+    "feather_m": 1200,
+    "smooth_m": 140,
+    "window_m": 5000,
+    "min_span_m": 150,
+    "riser": 0.15,
+    "drift": 0.6,
+    "drift_km": 6,
+    "wash_m": -6,
+    "wash_km": 1.2,
+    "roll_m": 5,
+    "roll_km": 0.8,
+    "comment": "floor: the region's low ground within window_m (+ washes wash_m, negative = cut); tops: the land smoothed over top_smooth_m, at least min_drop_m over the floor, cut into flat tiers tier_m high, each riser over `riser` of a tier, levels drifting by `drift` of a tier over drift_km, treads rolling roll_m; canyons: the ground below low_rel of the span, and ridges of a warped noise (trunk_km, branch_km weighted `branch`) over `cover` of the rest, sheer walls over wall_m, scree scree_m high reaching scree_reach_m out",
+    "top_smooth_m": 250,
+    "min_drop_m": 120,
+    "trunk_km": 4.0,
+    "branch_km": 1.6,
+    "branch": 0.93,
+    "low_rel": 0.08,
+    "cover": 0.22,
+    "wall_m": 40,
+    "scree_m": 35,
+    "scree_reach_m": 90,
+    "tier_m": 110
+  }
 }

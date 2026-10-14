@@ -1,5 +1,5 @@
-"""Cracked clay crust for the canyon floors (doc/BIOME_PLAN.md 3.3): a seamless
-128 px tile (4 m in the ground's tile_m) of dry ochre plates split by cracks.
+"""Cracked orange clay crust for the canyon floors (doc/BIOME_PLAN.md 3.3): a seamless
+128 px tile (4 m in the ground's tile_m) of dry orange plates split by cracks.
 
     python tools/terrain_lab/make_crust.py
 
@@ -87,8 +87,8 @@ def main():
     height = np.clip(height, 0, 1)
 
     # Pale dry ochre clay, dusty on the plates, dark rust in the cracks.
-    clay = np.array([0.80, 0.63, 0.45])
-    dark = np.array([0.36, 0.22, 0.15])
+    clay = np.array([0.86, 0.54, 0.30])
+    dark = np.array([0.40, 0.17, 0.08])
     light = 1.0 + plate_tone[..., None] * 0.10 + mottle[..., None] * 0.16 + grain[..., None] * 0.10 + rim[..., None] * 0.08
     colour = clay[None, None, :] * light
     shade = np.clip(crack * 0.95 + hair * 0.55, 0, 1)[..., None]
