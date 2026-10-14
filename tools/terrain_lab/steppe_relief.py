@@ -365,11 +365,18 @@ def main():
     hexed = region & np.isin(cls[lab_c], (1, 2)) & (cls[lab_] != 3)
     isl_h = np.where(region & (cls[lab_] != 3), in_c & ~fallen, isl)
     zi = np.where(hexed & isl_h, zc, zi)
+    # (a hex's edge rasterised on the 16 m grid leaves single cells standing
+    # proud at its corners: spikes along the rims; a 3 x 3 median takes them)
+    zi = np.where(hexed & isl_h, nd.median_filter(np.where(isl_h, zi, floor), size=3), zi)
+    isl_h &= nd.binary_opening(isl_h, iterations=1) | ~hexed
     # the fallen hexes' heaps: a share of what fell, a cone over the hex
     hh = np.maximum(zi[hy_, hxx] - floor, 0.0) * hx_["heap_share"]
     dc = np.hypot((np.mgrid[0:h.shape[0], 0:1][0] - hy_).astype(np.float32),
                   (np.mgrid[0:1, 0:h.shape[1]][1] - hxx).astype(np.float32)) * cell / (hx_["across_m"] * 0.75)
     heaps = np.where(fallen | (isl & ~isl_h & region), hh * np.clip(1.0 - dc, 0.0, 1.0) ** 0.8, 0.0)
+    # a heap is broken slabs, not sand: lumpy, in blocks
+    lump = unit(noise(h.shape, hx_["heap_lump_m"] / cell, gh, 3, 3))
+    heaps = heaps * (1.0 - hx_["heap_lumps"] + 2.0 * hx_["heap_lumps"] * lump)
     del dc
     lab_ = np.where(isl_h, lab_, 0)
     isl = isl_h
@@ -547,13 +554,14 @@ def main():
     heart = (c_ == 1) & (area[lab_] >= ic["heart_km2"] * 1e6) & (din >= np.maximum(ic["heart_m"], ic["heart_share"] * Ri[lab_]))
     heart &= ~bench & region
     marks = {}
-    for name_, m_ in (("heart", heart), ("wash", washed)):
+    scree_m = (heaps > hx_["heap_mark_m"]) & low_all & region
+    for name_, m_ in (("heart", heart), ("wash", washed), ("scree", scree_m)):
         blk = np.zeros(((b1 - b0) * k, (c1 - c0) * k), np.float32)
         hh_, ww_ = min(blk.shape[0], m_.shape[0]), min(blk.shape[1], m_.shape[1])
         blk[:hh_, :ww_] = m_[:hh_, :ww_]
         frac = blk.reshape(b1 - b0, k, c1 - c0, k).mean(axis=(1, 3))
         full = np.zeros(biomes.shape, np.uint8)
-        full[b0:b1, c0:c1] = frac >= ws["mark_share"] if name_ == "wash" else frac >= 0.5
+        full[b0:b1, c0:c1] = frac >= (ws["mark_share"] if name_ == "wash" else 0.4 if name_ == "scree" else 0.5)
         marks[name_] = full[::-1]        # back to the biome picture's rows (north first)
     np.savez_compressed(args.world + "_steppe_marks.npz", **marks)
     sites = peaks

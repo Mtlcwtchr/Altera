@@ -73,6 +73,20 @@
       "cover": 1.0,
       "noise_m": 300,
       "comment": "the dried-up last streams: their washes and the fans at their mouths (steppe_relief.py's marks)"
+    },
+    {
+      "name": "scree",
+      "biome": 22,
+      "in": [
+        3,
+        16,
+        20,
+        21
+      ],
+      "mark": "scree",
+      "cover": 1.0,
+      "noise_m": 300,
+      "comment": "the heaps of fallen slabs and the walls' feet: broken orange slabs and gravel (user 14.10)"
     }
   ],
   "relief": {
@@ -261,7 +275,7 @@
       "floor_connected_min": 0.85
     },
     "hexes": {
-      "comment": "the land fell in slabs as if its heights stood on a hex grid (user 14.10): hexes across_m between flats on coordinates warped by warp_m; a hex is land if its centre is, keep_in_m in from the edge; edge hexes (weighted by exp(-depth/edge_m)) fall whole with collapse_share and lie as a heap heap_share of the fall high; the others drop by a slab drop_m with drop_share (+ edge_drop_share near the edge), a second with second_drop_share; never lower than min_over_floor_m over the floor; the floor's fallen blocks read on hexes block_across_m",
+      "comment": "the land fell in slabs as if its heights stood on a hex grid (user 14.10): hexes across_m between flats on coordinates warped by warp_m; a hex is land if its centre is, keep_in_m in from the edge; edge hexes (weighted by exp(-depth/edge_m)) fall whole with collapse_share and lie as a heap heap_share of the fall high; the others drop by a slab drop_m with drop_share (+ edge_drop_share near the edge), a second with second_drop_share; never lower than min_over_floor_m over the floor; the floor's fallen blocks read on hexes block_across_m; heaps lumpy by heap_lumps over heap_lump_m, painted scree (biome 22) where over heap_mark_m",
       "across_m": 150,
       "warp_m": 16,
       "keep_in_m": 0,
@@ -276,7 +290,10 @@
         60
       ],
       "min_over_floor_m": 25,
-      "block_across_m": 55
+      "block_across_m": 55,
+      "heap_lump_m": 40,
+      "heap_lumps": 0.35,
+      "heap_mark_m": 4
     }
   }
 }

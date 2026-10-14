@@ -863,7 +863,19 @@
       "river_marshes": 0.55
     },
     "band_m": 300,
+    "rim_cap_m": 1.0,
+    "rim_cap_biomes": [3, 16, 19, 20, 21, 22],
     "min_drop_m": 60,
+    "local_drop": {
+      "m": 48,
+      "min_drop_m": 70,
+      "zones": [
+        "canyon_steppe",
+        "steppe",
+        "steppe_canyon"
+      ],
+      "comment": "in these zones a wall whose ground drops less than min_drop_m within m of it is no mesh (the canyon's small terrace steps stay ground; their meshes ended in teeth along the rims, user 14.10)"
+    },
     "min_cells": 6,
     "margin_cells": 2,
     "overhang": 0.35,
@@ -916,6 +928,16 @@
         "overhang_drop": 0.0
       },
       "mesa_pocket": {
+        "apron": 0.2,
+        "strata": 0.06,
+        "strata_m": 9.0,
+        "slab": 0.0,
+        "gullies": 0.22,
+        "flutes": 0.55,
+        "overhang": 0.0,
+        "overhang_drop": 0.0
+      },
+      "scree": {
         "apron": 0.2,
         "strata": 0.06,
         "strata_m": 9.0,

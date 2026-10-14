@@ -73,6 +73,7 @@ float3 macroSample(float2 texel, uint mip) {
     catmullRom(t.x, wx, dwx);
     catmullRom(t.y, wy, dwy);
     float3 result = 0;
+    float lo = 1e9, hi = -1e9;
     [unroll] for (int j = 0; j < 4; ++j) {
         float row = 0, drow = 0;
         [unroll] for (int i = 0; i < 4; ++i) {
@@ -80,11 +81,18 @@ float3 macroSample(float2 texel, uint mip) {
             const float v = macroMap.SampleLevel(macroSampler, (float2(at) + 0.5) / float(size), float(mip));
             row += wx[i] * v;
             drow += dwx[i] * v;
+            if (i == 1 || i == 2) {
+                if (j == 1 || j == 2) { lo = min(lo, v); hi = max(hi, v); }
+            }
         }
         result.x += wy[j] * row;
         result.y += wy[j] * drow;
         result.z += dwy[j] * row;
     }
+    // Never past the four texels round the point: by a sheer step the
+    // curve overshoots, a lip along every rim and a spike at its corners,
+    // standing over the cliff meshes (user 14.10: no spikes, no seam).
+    result.x = clamp(result.x, lo, hi);
     return result;
 }
 

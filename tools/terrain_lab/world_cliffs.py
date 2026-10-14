@@ -174,6 +174,13 @@ def fields(h, zones, biomes, c, rules, origin=(0, 0)):
     lo = ndimage.minimum_filter(h, reach)
     hi = ndimage.maximum_filter(h, reach)
     band &= (hi - lo) > cr["min_drop_m"]
+    ld = cr.get("local_drop")
+    if ld:
+        # (a step of a few tens of metres between terraces stays ground: a
+        # mesh over it ends in shards and teeth along the rims, user 14.10)
+        k_ = int(ld["m"] / c) * 2 + 1
+        small = (ndimage.maximum_filter(h, k_) - ndimage.minimum_filter(h, k_)) < ld["min_drop_m"]
+        band &= ~(small & np.isin(zones, ld["zones"]))
     band = ndimage.binary_closing(band, iterations=1)
     lab, count = ndimage.label(band)
     if count:
@@ -590,6 +597,17 @@ def tile(f, ti, tj, origin, c, cr):
 
     grads = np.gradient(F, dz, s, s)   # along z, y, x
     levels = []
+    # (no vertex above the highest ground a cell round it, give or take
+    # `rim_cap_m`: thin slivers of the solid along a rim stood up over the
+    # land as teeth, user 14.10)
+    # (only walls whose top wears one of `rim_cap_biomes`: the canyon's
+    # stand straight; elsewhere a rim may overhang past a cell)
+    hcap = ndimage.maximum_filter(f["h"], 3) + cr.get("rim_cap_m", 0.0)
+    capped = None
+    if cr.get("rim_cap_biomes"):
+        if f["band"].any():
+            _, (bi_, bj_) = ndimage.distance_transform_edt(~f["band"], return_indices=True)
+            capped = np.isin(f["top"][bi_, bj_], cr["rim_cap_biomes"]).astype(np.float32)
     for level in range(3):
         m = 1 << level
         sl = (slice(None, None, m), slice(SHIFT - m, SHIFT + per + m + 1, m), slice(SHIFT - m, SHIFT + per + m + 1, m))
@@ -627,6 +645,9 @@ def tile(f, ti, tj, origin, c, cr):
         tris[flip] = tris[flip][:, ::-1]
         tris = tris[np.linalg.norm(fn, axis=1) > 1e-6]
         # What lies wholly under the ground is never seen: left out.
+        if capped is not None:
+            cap_here = _sample(capped, verts[:, 0], verts[:, 1], c, origin, 0) > 0.5
+            verts[:, 2] = np.where(cap_here, np.minimum(verts[:, 2], _sample(hcap, verts[:, 0], verts[:, 1], c, origin, 1)), verts[:, 2])
         buried = verts[:, 2] < _sample(f["h"], verts[:, 0], verts[:, 1], c, origin, 1) - 0.5 * sink
         tris = tris[~buried[tris].all(1)]
         attrs = [N, wb, tv]
