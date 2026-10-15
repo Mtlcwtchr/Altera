@@ -28,7 +28,8 @@ wears baked maps on its own UVs instead: its vertices keep the glTF's UVs
 (uv = atlas texcoord, blend = 0), its `debris` pieces become models
 <id>_debris_<k> too, and engine/ gets the three layers the renderer loads as
 one array at the maps' own size - basecolor.png (sRGB as baked),
-normal.png (OpenGL tangent space) and surface.png (R = AO, G = roughness);
+normal.png (OpenGL tangent space), surface.png (R = AO, G = roughness) and
+detail.png (a small tile repeated, multiplied in x2; flat grey when none);
 no alpha anywhere (a platform image loader may premultiply it).
 """
 import argparse
@@ -123,6 +124,19 @@ def import_atlas_asset(asset, manifest_path, catalogue):
         ao = np.asarray(Image.open(ROOT / tex["ao"]["file"]).convert("L"))
         rough = np.asarray(Image.open(ROOT / tex["roughness"]["file"]).convert("L"))
         Image.fromarray(np.dstack([ao, rough, np.zeros_like(ao)]), "RGB").save(out / "surface.png")
+    # the fourth layer: a small detail tile repeated to the atlas' size (A-4: 4 x 4 tiles a layer,
+    # the shader samples it triplanar), or flat grey (x2 = no change) for the looks without one
+    side = Image.open(out / "basecolor.png").size[0]
+    if "detail" in tex:
+        tile = Image.open(ROOT / tex["detail"]["file"]).convert("RGB")
+        reps = side // tile.size[0]
+        detail = Image.new("RGB", (side, side))
+        for i in range(reps):
+            for j in range(reps):
+                detail.paste(tile, (i * tile.size[0], j * tile.size[1]))
+    else:
+        detail = Image.new("RGB", (side, side), (128, 128, 128))
+    detail.save(out / "detail.png")
     print(f"{ident}: {len(models)} models, maps in {out.relative_to(ROOT)}")
 
 

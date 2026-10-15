@@ -2285,114 +2285,6 @@
    2364
   ]
  },
- "a2_carved_stele_00": {
-  "kind": "a2_carved_stele",
-  "lo": [
-   -19.34,
-   -15.0,
-   -6.0
-  ],
-  "hi": [
-   19.04,
-   15.67,
-   190.09
-  ],
-  "triangles": [
-   2500,
-   2500,
-   2500
-  ]
- },
- "a2_carved_stele_debris_0": {
-  "kind": "a2_carved_stele_debris",
-  "lo": [
-   -2.28,
-   -1.82,
-   -0.87
-  ],
-  "hi": [
-   1.88,
-   1.67,
-   1.04
-  ],
-  "triangles": [
-   12,
-   12,
-   12
-  ]
- },
- "a2_carved_stele_debris_1": {
-  "kind": "a2_carved_stele_debris",
-  "lo": [
-   -1.92,
-   -1.28,
-   -1.24
-  ],
-  "hi": [
-   2.15,
-   1.36,
-   1.31
-  ],
-  "triangles": [
-   12,
-   12,
-   12
-  ]
- },
- "a2_carved_stele_debris_2": {
-  "kind": "a2_carved_stele_debris",
-  "lo": [
-   -2.08,
-   -2.07,
-   -1.27
-  ],
-  "hi": [
-   2.16,
-   2.19,
-   1.22
-  ],
-  "triangles": [
-   12,
-   12,
-   12
-  ]
- },
- "a2_carved_stele_debris_3": {
-  "kind": "a2_carved_stele_debris",
-  "lo": [
-   -2.09,
-   -2.11,
-   -1.37
-  ],
-  "hi": [
-   2.19,
-   2.18,
-   1.44
-  ],
-  "triangles": [
-   12,
-   12,
-   12
-  ]
- },
- "a3_desert_gate_00": {
-  "kind": "a3_desert_gate",
-  "lo": [
-   -24.12,
-   -26.96,
-   -4.97
-  ],
-  "hi": [
-   74.03,
-   17.94,
-   190.0
-  ],
-  "triangles": [
-   2217,
-   2217,
-   2217
-  ]
- },
  "canyon_pinnacle_0": {
   "kind": "canyon_pinnacle",
   "lo": [
@@ -2643,6 +2535,132 @@
    1600,
    400,
    300
+  ]
+ },
+ "a2_carved_stele_00": {
+  "kind": "a2_carved_stele",
+  "lo": [
+   -19.34,
+   -15.0,
+   -6.0
+  ],
+  "hi": [
+   19.04,
+   15.67,
+   190.09
+  ],
+  "triangles": [
+   2500,
+   2500,
+   2500
+  ]
+ },
+ "a2_carved_stele_debris_0": {
+  "kind": "a2_carved_stele_debris",
+  "lo": [
+   -2.28,
+   -1.82,
+   -0.87
+  ],
+  "hi": [
+   1.88,
+   1.67,
+   1.04
+  ],
+  "triangles": [
+   12,
+   12,
+   12
+  ]
+ },
+ "a2_carved_stele_debris_1": {
+  "kind": "a2_carved_stele_debris",
+  "lo": [
+   -1.92,
+   -1.28,
+   -1.24
+  ],
+  "hi": [
+   2.15,
+   1.36,
+   1.31
+  ],
+  "triangles": [
+   12,
+   12,
+   12
+  ]
+ },
+ "a2_carved_stele_debris_2": {
+  "kind": "a2_carved_stele_debris",
+  "lo": [
+   -2.08,
+   -2.07,
+   -1.27
+  ],
+  "hi": [
+   2.16,
+   2.19,
+   1.22
+  ],
+  "triangles": [
+   12,
+   12,
+   12
+  ]
+ },
+ "a2_carved_stele_debris_3": {
+  "kind": "a2_carved_stele_debris",
+  "lo": [
+   -2.09,
+   -2.11,
+   -1.37
+  ],
+  "hi": [
+   2.19,
+   2.18,
+   1.44
+  ],
+  "triangles": [
+   12,
+   12,
+   12
+  ]
+ },
+ "a3_desert_gate_00": {
+  "kind": "a3_desert_gate",
+  "lo": [
+   -24.12,
+   -26.96,
+   -4.97
+  ],
+  "hi": [
+   74.03,
+   17.94,
+   190.0
+  ],
+  "triangles": [
+   2217,
+   2217,
+   2217
+  ]
+ },
+ "a4_canyon_arch_00": {
+  "kind": "a4_canyon_arch",
+  "lo": [
+   -124.68,
+   -251.95,
+   -47.15
+  ],
+  "hi": [
+   187.38,
+   336.68,
+   218.9
+  ],
+  "triangles": [
+   28984,
+   28984,
+   28984
   ]
  }
 }

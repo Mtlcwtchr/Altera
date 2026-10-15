@@ -313,6 +313,10 @@ def main():
         items += c["instances"]
         canyon_checks = c["checks"]
         decor = c.get("decor", [])
+        # the chain of portals A-4 across one of its slots (and the canyon parts inside it out)
+        import world_canyon_arch
+        import world_megaliths
+        items = world_canyon_arch.place(args.world, items, catalogue, world_megaliths.CHECKS)
     out = Path(args.world + "_features.json")
     # (`decor`: binary lists of small rocks beside it, props.hpp)
     out.write_text(json.dumps({"world_m": world.size, "instances": items, "decor": decor}, separators=(",", ":")))
