@@ -182,10 +182,13 @@ def generate(P, seed):
         if rk < I["low_r_m"]:
             drop = min(drop + 1, len(I["drop_weights"]) - 1)
         h_top = max(I["min_top_m"], float(top_field[yk, xk]) - drop * I["tier_m"])
-        nr_max = int(np.clip(rk / I["ring_min_m"], 1, K))
-        nr = 1 if rng.random() < I["sheer_only_p"] else int(rng.integers(1, nr_max + 1))
+        nr_max = int(np.clip(rk / I["ring_min_m"] + 1, 1, K))
+        nr = 1 if (rng.random() < I["sheer_only_p"] or nr_max < 2) else int(rng.integers(2, nr_max + 1))
         # Lowest wall the tallest, the upper steps shorter.
         wts = np.sort(rng.dirichlet(np.ones(nr) * 2.5))[::-1]
+        while nr > 1 and (wts * h_top).min() < I["min_step_m"]:
+            nr -= 1
+            wts = np.sort(rng.dirichlet(np.ones(nr) * 2.5))[::-1]
         steps = wts * h_top
         ws = rng.uniform(*I["ring_w_m"], nr - 1)
         ws = ws * min(1.0, 0.7 * rk / max(1.0, ws.sum()))
@@ -235,7 +238,7 @@ def generate(P, seed):
         hp = H[parent[y, x]] if parent[y, x] > 0 else I["top_m"]
         if r >= Rm["col_min_r_m"] and rng.random() > Rm["col_to_peak"]:
             hc = max(I["min_top_m"], hp - rng.choice([0, 0, 1]) * I["tier_m"] + rng.uniform(-6, 4))
-            rc = r * Rm["col_r_k"]
+            rc = min(r * Rm["col_r_k"], I["walk_r_m"] * 0.9)
             cones_col.append((y, x, rc, hc, Rm["col_power"]))
             columns.append(dict(y=int(y), x=int(x), r_m=rc, h_m=float(hc)))
         else:
@@ -251,8 +254,17 @@ def generate(P, seed):
     # Low stone shelves, away from the beds.
     q = unit(fbm(rng, n, cell, F["shelf_scale_m"], 3))
     lev = np.floor(np.clip((q - (1 - F["shelf_share"])) / F["shelf_share"], 0, 0.999) * F["shelf_levels"] + (q > 1 - F["shelf_share"]))
-    clear = rv["dist"] > rv["bed_w"] + F["shelf_gap_m"]
+    # (the gap wanders, so no shelf edge runs alongside a bed like a canal)
+    clear = rv["dist"] > rv["bed_w"] + F["shelf_gap_m"] * (0.4 + 3.0 * unit(fbm(rng, n, cell, 150.0, 3)))
     rel_shelf = (lev * F["shelf_step_m"] * clear).astype(np.float32)
+    # Broken stone benches at the islands' feet: what the retreating walls
+    # left standing a step or two over the floor, not on every side.
+    Sk = F["skirt"]
+    sw = Sk["w_m"] * (0.2 + 1.6 * unit(fbm(rng, n, cell, Sk["scale_m"], 3)))
+    gate = unit(fbm(rng, n, cell, Sk["scale_m"] * 1.5, 2)) > 1 - Sk["share"]
+    skirt = np.where(d_out < 0.5 * sw, Sk["h_m"][1], np.where(d_out < sw, Sk["h_m"][0], 0.0))
+    skirt = skirt * gate * ~high_any * (rv["dist"] > rv["bed_w"] + F["shelf_gap_m"])
+    rel_shelf = np.maximum(rel_shelf, skirt.astype(np.float32))
 
     # Slabs: the blocky levels snapped to broken slabs (walls follow the
     # slabs' edges, never a smooth contour).
@@ -267,9 +279,24 @@ def generate(P, seed):
     # Hold the cracks and valleys open: a slab may not bridge them.
     blocky_q = np.where(opened | (rel_shelf > 0) | (blocky_q < F["shelf_step_m"] * 0.5), blocky_q,
                         np.minimum(blocky_q, rel_shelf))
+    # No one-cell pits or needles (the warped lookup strays single cells).
+    blocky_q = nd.grey_opening(nd.grey_closing(blocky_q, size=3), size=3)
+    # Pockets of floor shut in by walls (unreachable on foot) silted up to a
+    # little under their lowest rim; the big ones are left as basins.
+    low = blocky_q < 1
+    pl, npl = nd.label(low, structure=np.ones((3, 3)))
+    if npl > 1:
+        pid = np.arange(1, npl + 1)
+        pa = nd.sum(np.ones_like(pl), pl, pid) * cell * cell
+        main_ = pa.argmax() + 1
+        ring = nd.grey_dilation(pl, size=3) * ~low
+        rim = nd.minimum(blocky_q, ring, pid)
+        fill = (pa < F["pocket_fill_m2"]) & (pid != main_)
+        lvl = np.concatenate([[0.0], np.where(fill, np.maximum(0, rim - np.where(pa < 3000, 0.0, 3.0)), 0.0)]).astype(np.float32)
+        blocky_q = np.where(low, lvl[pl], blocky_q)
     # Some slabs dropped by a fraction of a step (broken tops).
     dropk = np.concatenate([[0.0], rng.uniform(0, 1, sy.size)]).astype(np.float32)[slab]
-    blocky_q -= np.where(dropk < Sb["drop_p"], Sb["drop_m"] * (0.4 + dropk / Sb["drop_p"]), 0) * (blocky_q > 8)
+    blocky_q -= np.where(dropk < Sb["drop_p"], Sb["drop_m"] * (0.4 + dropk / Sb["drop_p"]), 0) * (blocky_q > 20) * (e_o < Sb["drop_band_m"])
 
     # Peaks of the floor, crowding round the islands' feet, off the beds.
     Fp = F["peaks"]
@@ -305,7 +332,8 @@ def generate(P, seed):
     d_t, (ty, tx) = edt(~tall, cell, return_indices=True)
     wall = np.maximum(blocky_q, rel_col)[ty, tx]
     a = wall * T["frac"] * (2 * unit(fbm(rng, n, cell, T["scale_m"], 3)))
-    a = np.minimum(a, T["max_m"])
+    # Never up to the wall's top: the last stretch stays a sheer climb.
+    a = np.minimum(np.minimum(a, T["max_m"]), wall - T["clear_m"])
     talus = np.clip(a - d_t * np.tan(np.radians(T["slope_deg"])), 0, None)
     bl, bsy, _ = voronoi(rng, n, cell, T["block_m"])
     bump = np.concatenate([[0.0], rng.uniform(0, 1, bsy.size)]).astype(np.float32)[bl]
@@ -343,7 +371,7 @@ def generate(P, seed):
     wash = (rv["dist"] < rv["bed_w"] * 1.25) & ~high_any
 
     rel = np.maximum.reduce([blocky_q, rel_col, rel_peak, talus, rel_fan])
-    floor_n = F["floor_rough_m"] * fbm(rng, n, cell, 80.0, 3)
+    floor_n = F["floor_rough_m"] * (fbm(rng, n, cell, 80.0, 3) + 0.6 * np.abs(fbm(rng, n, cell, 25.0, 2)))
     h = floor + floor_n * (rel < 1) - inc * (rel < 1) + rel
     h -= h.min()
 

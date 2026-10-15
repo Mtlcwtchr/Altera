@@ -77,12 +77,13 @@
    14,
    50
   ],
-  "sheer_only_p": 0.2,
+  "sheer_only_p": 0.15,
   "ring_noise": 0.45,
   "ring_scale_m": 160,
   "edge_jit_m": 7,
   "edge_jit_scale_m": 40,
-  "top_rough_m": 2.5
+  "top_rough_m": 2.5,
+  "min_step_m": 28
  },
  "remnants": {
   "min_r_m": 3.0,
@@ -109,16 +110,17 @@
   "size_m": 14,
   "warp_m": 5,
   "drop_p": 0.12,
-  "drop_m": 6
+  "drop_m": 6,
+  "drop_band_m": 25
  },
  "floor": {
   "shelf_scale_m": 260,
-  "shelf_share": 0.4,
+  "shelf_share": 0.25,
   "shelf_levels": 2,
   "shelf_step_m": 9,
   "shelf_gap_m": 15,
   "bed_depth_m": 2.0,
-  "floor_rough_m": 1.5,
+  "floor_rough_m": 2.5,
   "peaks": {
    "per_km2": 6,
    "base": 0.15,
@@ -149,8 +151,19 @@
    "slope_deg": 36,
    "scale_m": 120,
    "block_m": 6,
-   "block_h_m": 2.0
-  }
+   "block_h_m": 2.0,
+   "clear_m": 14
+  },
+  "skirt": {
+   "w_m": 70,
+   "scale_m": 160,
+   "share": 0.65,
+   "h_m": [
+    7,
+    16
+   ]
+  },
+  "pocket_fill_m2": 60000
  },
  "grass": {
   "islands": 3,
@@ -165,7 +178,7 @@
    {
     "name": "low",
     "u": 0.5,
-    "v": 0.97,
+    "v": 0.92,
     "z": 25,
     "yaw": 0,
     "pitch": 4
