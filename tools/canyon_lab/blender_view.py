@@ -25,6 +25,9 @@ argv = sys.argv[sys.argv.index("--") + 1:]
 RUN = Path(argv[0]).resolve()
 STEP = int(argv[argv.index("--step") + 1]) if "--step" in argv else 2
 ONLY = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
+GAME = "--game" in argv          # the ground as the game holds it (fine_relief.py)
+SUFFIX = "_game" if GAME else ""
+WALL_TEX = ROOT / "assets" / "terrain_core" / "materials" / "rock_orange.png"
 
 
 def srgb_to_lin(c):
@@ -62,7 +65,60 @@ def ground(h, alb, cell):
     bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
     ca = nt.nodes.new("ShaderNodeVertexColor")
     ca.layer_name = "albedo"
-    nt.links.new(ca.outputs["Color"], bsdf.inputs["Base Color"])
+    # Steep ground wears the rock projected from three sides (triplanar,
+    # world metres), bedding level on every face; the flat keeps its colour.
+    tc = nt.nodes.new("ShaderNodeTexCoord")
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1 / 14.0, 1 / 14.0, 1 / 11.0)
+    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(str(WALL_TEX))
+    tex.projection = "BOX"
+    tex.projection_blend = 0.25
+    tex.interpolation = "Closest"
+    nt.links.new(mp.outputs["Vector"], tex.inputs["Vector"])
+    tint = nt.nodes.new("ShaderNodeMix"); tint.data_type = "RGBA"; tint.blend_type = "MULTIPLY"
+    tint.inputs["Factor"].default_value = 1.0
+    tint.inputs["B"].default_value = (0.62, 0.36, 0.30, 1)
+    nt.links.new(tex.outputs["Color"], tint.inputs["A"])
+    # Beds of different shades by height, and a slow noise, so the tiles of
+    # the texture do not read as brickwork.
+    sp = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(tc.outputs["Object"], sp.inputs[0])
+    wv = nt.nodes.new("ShaderNodeTexWave")
+    wv.wave_type = "BANDS"; wv.bands_direction = "Z"
+    wv.inputs["Scale"].default_value = 0.004
+    wv.inputs["Distortion"].default_value = 6.0
+    wv.inputs["Detail"].default_value = 3.0
+    nt.links.new(tc.outputs["Object"], wv.inputs["Vector"])
+    ns = nt.nodes.new("ShaderNodeTexNoise")
+    ns.inputs["Scale"].default_value = 0.02
+    nt.links.new(tc.outputs["Object"], ns.inputs["Vector"])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (0.55, 0.42, 0.40, 1)
+    ramp.color_ramp.elements[1].color = (1.15, 1.0, 0.92, 1)
+    add = nt.nodes.new("ShaderNodeMath"); add.operation = "ADD"
+    mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"; mul.inputs[1].default_value = 0.5
+    nt.links.new(wv.outputs["Fac"], add.inputs[0])
+    nt.links.new(ns.outputs["Fac"], add.inputs[1])
+    nt.links.new(add.outputs[0], mul.inputs[0])
+    nt.links.new(mul.outputs[0], ramp.inputs[0])
+    shade = nt.nodes.new("ShaderNodeMix"); shade.data_type = "RGBA"; shade.blend_type = "MULTIPLY"
+    shade.inputs["Factor"].default_value = 1.0
+    nt.links.new(tint.outputs["Result"], shade.inputs["A"])
+    nt.links.new(ramp.outputs[0], shade.inputs["B"])
+    geo = nt.nodes.new("ShaderNodeNewGeometry")
+    sz = nt.nodes.new("ShaderNodeSeparateXYZ")
+    nt.links.new(geo.outputs["Normal"], sz.inputs[0])
+    st = nt.nodes.new("ShaderNodeMapRange")
+    st.inputs["From Min"].default_value = 0.75
+    st.inputs["From Max"].default_value = 0.55
+    nt.links.new(sz.outputs[2], st.inputs["Value"])
+    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
+    nt.links.new(st.outputs[0], mix.inputs["Factor"])
+    nt.links.new(ca.outputs["Color"], mix.inputs["A"])
+    nt.links.new(shade.outputs["Result"], mix.inputs["B"])
+    nt.links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 1.0
     me.materials.append(mat)
 
@@ -132,7 +188,7 @@ def main():
         bpy.data.objects.remove(o, do_unlink=True)
     sc = bpy.context.scene
     L = np.load(RUN / "layers.npz")
-    h = L["h"].astype(np.float32)
+    h = np.load(RUN / "h_game.npy") if GAME else L["h"].astype(np.float32)
     n = h.shape[0]
     img = bpy.data.images.load(str(RUN / "albedo.png"))
     px = np.empty(img.size[0] * img.size[1] * 4, np.float32)
@@ -213,7 +269,7 @@ def main():
         co.rotation_euler = (math.radians(90 - v["pitch"]), 0, math.radians(-v["yaw"]))
         coll.objects.link(co)
         sc.camera = co
-        sc.render.filepath = str(RUN / f"view3d_{v['name']}.png")
+        sc.render.filepath = str(RUN / f"view3d_{v['name']}{SUFFIX}.png")
         bpy.ops.render.render(write_still=True)
 
 
