@@ -235,20 +235,6 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         in.radius = 0.5f * std::sqrt(dx * dx + dy * dy + dz * dz);
         instances_.push_back(in);
     }
-    if (instances_.empty()) return fail("no instances in " + featuresFile.string());
-
-    // A-1's material: its manifest beside the biome table, its tiles at one
-    // size in engine/ beside the model (tools/terrain_lab/import_megalith.py).
-    if (std::any_of(instances_.begin(), instances_.end(), [](const Instance& i) { return i.slab; })) {
-        const auto manifest = materialsJson.parent_path() / "megaliths" / "a1_monolith.material.json";
-        const auto root = materialsJson.parent_path().parent_path().parent_path().parent_path();
-        nlohmann::json mat;
-        try {
-            std::ifstream in(manifest);
-            if (!in) return fail("cannot read " + manifest.string());
-            mat = nlohmann::json::parse(in);
-        } catch (const std::exception& e) {
-            return fail(manifest.string() + ": " + e.what());
     // The decor lists: small rocks, each a model turned and scaled, at its height.
     for (const auto& d : features.value("decor", nlohmann::json::array())) {
         const auto file = featuresFile.parent_path() / d.value("file", std::string());
@@ -300,8 +286,22 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
             instances_.push_back(a);
         }
     }
-        }
+    if (instances_.empty()) return fail("no instances in " + featuresFile.string());
     buildGrid();
+
+    // A-1's material: its manifest beside the biome table, its tiles at one
+    // size in engine/ beside the model (tools/terrain_lab/import_megalith.py).
+    if (std::any_of(instances_.begin(), instances_.end(), [](const Instance& i) { return i.slab; })) {
+        const auto manifest = materialsJson.parent_path() / "megaliths" / "a1_monolith.material.json";
+        const auto root = materialsJson.parent_path().parent_path().parent_path().parent_path();
+        nlohmann::json mat;
+        try {
+            std::ifstream in(manifest);
+            if (!in) return fail("cannot read " + manifest.string());
+            mat = nlohmann::json::parse(in);
+        } catch (const std::exception& e) {
+            return fail(manifest.string() + ": " + e.what());
+        }
         std::vector<std::vector<std::filesystem::path>> tiles;
         for (const char* key : {"hatch", "grooves", "moss", "strokes"}) {
             const std::filesystem::path file = mat["textures"][key].value("file", std::string());
@@ -413,6 +413,36 @@ Props::Gpu Props::gpuOf(std::uint32_t i, const PropsFrame& frame) const {
     return g;
 }
 
+void Props::buildGrid() {
+    wide_.clear();
+    std::vector<std::uint32_t> small;
+    double x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
+    for (std::uint32_t i = 0; i < instances_.size(); ++i) {
+        const Instance& in = instances_[i];
+        if (in.radius >= kSmall || in.detail) {
+            wide_.push_back(i);
+            continue;
+        }
+        small.push_back(i);
+        x0 = std::min(x0, in.cx), y0 = std::min(y0, in.cy), x1 = std::max(x1, in.cx), y1 = std::max(y1, in.cy);
+    }
+    gridItems_.clear();
+    gridStart_.assign(1, 0);
+    gridW_ = gridH_ = 0;
+    if (small.empty()) return;
+    gridX0_ = x0, gridY0_ = y0;
+    gridW_ = int((x1 - x0) / kCell) + 1, gridH_ = int((y1 - y0) / kCell) + 1;
+    auto cellOf = [&](std::uint32_t i) {
+        return std::size_t(int((instances_[i].cy - y0) / kCell)) * std::size_t(gridW_) + std::size_t(int((instances_[i].cx - x0) / kCell));
+    };
+    gridStart_.assign(std::size_t(gridW_) * gridH_ + 1, 0);
+    for (auto i : small) ++gridStart_[cellOf(i) + 1];
+    for (std::size_t c = 1; c < gridStart_.size(); ++c) gridStart_[c] += gridStart_[c - 1];
+    gridItems_.resize(small.size());
+    std::vector<std::uint32_t> at(gridStart_.begin(), gridStart_.end() - 1);
+    for (auto i : small) gridItems_[at[cellOf(i)]++] = i;
+}
+
 void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batches) {
     for (auto& b : buckets_) b.clear();
     std::vector<std::uint32_t> refined;
@@ -439,6 +469,7 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
         const std::uint32_t i = k < wideCount ? wide_[k] : near[k - wideCount];
         const Instance& in = instances_[i];
         if (!enabled_[in.category]) continue;
+        if (k >= wideCount && smallTaken >= kMaxSmallDrawn) break;
         const double rx = in.cx - frame.eye.x, ry = in.cy - frame.eye.y, rz = in.cz - frame.eye.z;
         const double d = std::sqrt(rx * rx + ry * ry + rz * rz);
         int level = 0;
@@ -470,44 +501,14 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
                     refined.push_back(i);
                     continue;
                 }
-void Props::buildGrid() {
-    wide_.clear();
-    std::vector<std::uint32_t> small;
-    double x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
-    for (std::uint32_t i = 0; i < instances_.size(); ++i) {
-        const Instance& in = instances_[i];
-        if (in.radius >= kSmall || in.detail) {
-            wide_.push_back(i);
-            continue;
-        }
-        small.push_back(i);
-        x0 = std::min(x0, in.cx), y0 = std::min(y0, in.cy), x1 = std::max(x1, in.cx), y1 = std::max(y1, in.cy);
-    }
-    gridItems_.clear();
-    gridStart_.assign(1, 0);
-    gridW_ = gridH_ = 0;
-    if (small.empty()) return;
-    gridX0_ = x0, gridY0_ = y0;
-    gridW_ = int((x1 - x0) / kCell) + 1, gridH_ = int((y1 - y0) / kCell) + 1;
-    auto cellOf = [&](std::uint32_t i) {
-        return std::size_t(int((instances_[i].cy - y0) / kCell)) * std::size_t(gridW_) + std::size_t(int((instances_[i].cx - x0) / kCell));
-    };
-    gridStart_.assign(std::size_t(gridW_) * gridH_ + 1, 0);
-    for (auto i : small) ++gridStart_[cellOf(i) + 1];
-    for (std::size_t c = 1; c < gridStart_.size(); ++c) gridStart_[c] += gridStart_[c - 1];
-    gridItems_.resize(small.size());
-    std::vector<std::uint32_t> at(gridStart_.begin(), gridStart_.end() - 1);
-    for (auto i : small) gridItems_[at[cellOf(i)]++] = i;
-}
-
             }
         }
         buckets_[in.model * kLevels + level].push_back(i);
+        if (k >= wideCount) ++smallTaken;
     }
     for (std::uint32_t b = 0; b < buckets_.size(); ++b) {
         if (buckets_[b].empty()) continue;
         Batch batch{b / kLevels, b % kLevels, std::uint32_t(staging_.size()), std::uint32_t(buckets_[b].size())};
-        if (k >= wideCount && smallTaken >= kMaxSmallDrawn) break;
         for (auto i : buckets_[b]) staging_.push_back(gpuOf(i, frame));
         batches.push_back(batch);
     }
@@ -542,7 +543,6 @@ double hashCell(std::int64_t x, std::int64_t y, std::int64_t z) {
 
 double valueNoise(double x, double y, double z) {
     const double fx = std::floor(x), fy = std::floor(y), fz = std::floor(z);
-        if (k >= wideCount) ++smallTaken;
     const auto ix = std::int64_t(fx), iy = std::int64_t(fy), iz = std::int64_t(fz);
     auto s = [](double t) { return t * t * (3 - 2 * t); };
     const double u = s(x - fx), v = s(y - fy), w = s(z - fz);

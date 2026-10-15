@@ -182,30 +182,6 @@ Surface material(float layer, GroundPoint p, float wander, int proj = 0) {
     return o;
 }
 
-Surface biomeGround(uint id, GroundPoint p, float height, float normalZ, float wander) {
-    const float4 mats = biomeData[id * 5 + 0];
-    const float4 patch = biomeData[id * 5 + 1];
-    const float4 slope = biomeData[id * 5 + 2];
-    const float4 high = biomeData[id * 5 + 3];
-    const float4 tint = biomeData[id * 5 + 4];
-    Surface ground;
-    if (mats.x < 0) {
-        ground.colour = 0.5; ground.grass = 0; ground.slope = 0; ground.ao = 1; ground.height = 0.5;
-        return ground;
-    }
-    ground = material(mats.x, p, wander);
-    if (mats.y >= 0) {
-        const float n = islands(p, int(patch.x), 101u + id);
-        // Far off the islands are smaller than a pixel: what is left of them
-        // is their share of the ground, not a speckle.
-        const float m = lerp(smoothstep(1.0 - patch.y - 0.10, 1.0 - patch.y + 0.10, n), patch.y,
-                             noiseFade(p, int(patch.x) - 1));
-        if (m > 0) ground = surfaceOver(ground, material(mats.y, p, wander), m);
-    }
-    // Ragged edges for the slope and height layers: the threshold wanders.
-    const float jitter = cellNoise(p, int(groundGlobals.w) + 3, 211u + id) - 0.5;
-    if (mats.z >= 0) {
-        const float m = saturate((slope.x - normalZ + jitter * 0.06) / max(slope.x - slope.y, 1e-3));
 // A slope's rock (user 15.10: canyon walls, no stretched texture): seen from
 // above on the gentle part of it and from the side - across x, across y -
 // on the steep, each by how squarely the ground faces it (sharpened), so a
@@ -240,6 +216,30 @@ Surface slopeMaterial(float layer, GroundPoint p, float wander) {
     return o;
 }
 
+Surface biomeGround(uint id, GroundPoint p, float height, float normalZ, float wander) {
+    const float4 mats = biomeData[id * 5 + 0];
+    const float4 patch = biomeData[id * 5 + 1];
+    const float4 slope = biomeData[id * 5 + 2];
+    const float4 high = biomeData[id * 5 + 3];
+    const float4 tint = biomeData[id * 5 + 4];
+    Surface ground;
+    if (mats.x < 0) {
+        ground.colour = 0.5; ground.grass = 0; ground.slope = 0; ground.ao = 1; ground.height = 0.5;
+        return ground;
+    }
+    ground = material(mats.x, p, wander);
+    if (mats.y >= 0) {
+        const float n = islands(p, int(patch.x), 101u + id);
+        // Far off the islands are smaller than a pixel: what is left of them
+        // is their share of the ground, not a speckle.
+        const float m = lerp(smoothstep(1.0 - patch.y - 0.10, 1.0 - patch.y + 0.10, n), patch.y,
+                             noiseFade(p, int(patch.x) - 1));
+        if (m > 0) ground = surfaceOver(ground, material(mats.y, p, wander), m);
+    }
+    // Ragged edges for the slope and height layers: the threshold wanders.
+    const float jitter = cellNoise(p, int(groundGlobals.w) + 3, 211u + id) - 0.5;
+    if (mats.z >= 0) {
+        const float m = saturate((slope.x - normalZ + jitter * 0.06) / max(slope.x - slope.y, 1e-3));
         if (m > 0) ground = surfaceOver(ground, slopeMaterial(mats.z, p, wander), m);
     }
     if (mats.w >= 0) {

@@ -160,6 +160,8 @@ float4 terrainPs(VsOut input) : SV_Target0 {
             colour = lerp(colour, float3(0.40, 0.36, 0.32), saturate((slope - 0.15) * 5.0));
         }
     } else {
+        groundGradient = s.yz;
+        groundHeight = height;
         const Surface surface = groundSurface(p, height, normal.z, debugLevels == 5);
         // Surface maps (the material's normal and AO) unless switched off (flag 2).
         const bool maps = (lookFlags & 2u) == 0;
@@ -167,8 +169,6 @@ float4 terrainPs(VsOut input) : SV_Target0 {
         // The material's own relief on the terrain's: slopes add. Faded out
         // where a texel of it is smaller than a pixel (the mips flatten it anyway).
         const float relief = maps ? 1.0 - saturate(p.footprint / 24.0) : 0.0;
-        groundGradient = s.yz;
-        groundHeight = height;
         normal = normalize(float3(-s.y + surface.slope.x * relief, -s.z + surface.slope.y * relief, 1));
         // Past a hundred and fifty metres or so: what the mesh and the
         // textures can no longer show, painted (far_detail.hlsli).
