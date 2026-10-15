@@ -23,13 +23,15 @@ Blockout: variants fitted to the slot, each shot from the canyon floor as in the
 import argparse
 import json
 import math
+import random
 import sys
+import zlib
 from pathlib import Path
 
 import bpy
 import bmesh
 import numpy as np
-from mathutils import Vector
+from mathutils import Matrix, Vector
 
 ROOT = Path(__file__).resolve().parents[2]
 ASSET_DIR = ROOT / "assets/terrain_core/megaliths/a4_canyon_arch"
@@ -42,6 +44,8 @@ STONE = (0.15, 0.21, 0.32, 1)      # grey-blue          #6b7d97
 WALL = (0.60, 0.12, 0.025, 1)      # orange-red rock    #cb612b
 SAND = (0.86, 0.50, 0.04, 1)       # bright yellow sand #eebc3a
 FIGURE = (0.02, 0.02, 0.025, 1)
+STONE_DARK = (0.035, 0.05, 0.085, 1)   # niches and soffit ribs
+STONE_WORN = (0.21, 0.27, 0.36, 1)     # paler plates, fallen blocks
 SKY = (0.03, 0.24, 0.85, 1)        # flat bright blue   #3386ef
 
 # The slot (world metres): a straight stretch about 700 m long, 140 m between thick walls 260 m
@@ -264,20 +268,180 @@ def fit(slot, v):
                 half=max(g_deck, g) / 2 + v["embed"])
 
 
-def prism(bm, prof, y0, y1):
+def prism(bm, prof, y0, y1, mat=0):
     """Extrude a profile in the (x, z) plane from y0 to y1."""
     a = [bm.verts.new((x, y0, z)) for x, z in prof]
     b = [bm.verts.new((x, y1, z)) for x, z in prof]
-    bm.faces.new(a[::-1])
-    bm.faces.new(b)
+    faces = [bm.faces.new(a[::-1]), bm.faces.new(b)]
     n = len(prof)
     for i in range(n):
         j = (i + 1) % n
-        bm.faces.new((a[i], a[j], b[j], b[i]))
+        faces.append(bm.faces.new((a[i], a[j], b[j], b[i])))
+    for fc in faces:
+        fc.material_index = mat
+    return faces
 
 
-def box(bm, x0, x1, y0, y1, z0, z1):
-    prism(bm, [(x0, z0), (x1, z0), (x1, z1), (x0, z1)], y0, y1)
+def box(bm, x0, x1, y0, y1, z0, z1, mat=0):
+    return prism(bm, [(x0, z0), (x1, z0), (x1, z1), (x0, z1)], y0, y1, mat)
+
+
+def inside(prof, x, z):
+    """Point in the (x, z) profile polygon (even-odd)."""
+    n, c = len(prof), False
+    for i in range(n):
+        (x1, z1), (x2, z2) = prof[i], prof[(i + 1) % n]
+        if (z1 > z) != (z2 > z) and x < x1 + (z - z1) * (x2 - x1) / (z2 - z1):
+            c = not c
+    return c
+
+
+# ---------------------------------------------------------------- sculpt: the masonry
+# The painting's surface: big plates of different sizes, small rectangular bosses and niches,
+# horizontal courses, a ring of voussoirs, a parapet, blocky works and masts on the deck. Kept to
+# a few big readable shapes with irregular sizes and gaps (weathered, not a circuit board).
+# Material slots: 0 stone, 1 dark (niches, soffit ribs), 2 worn (plates, rubble).
+SCULPT = dict(
+    plates=70,          # big flat plates per face (6-30 m), 0.6-1.6 m proud
+    bosses=150,         # small bosses per face (1.5-6 m), 0.4-2.2 m proud
+    niches=26,          # framed niches per face (3-10 m)
+    courses=4,          # horizontal courses across each face
+    voussoirs=19,       # stones of the ring
+    rubble=14,          # fallen blocks at each foot
+)
+
+
+def masonry(bm, rnd, prof, R, spring, deck, bot, T, reach, rail):
+    def free(x0, x1, z0, z1, margin=1.0):
+        """The rectangle lies on the face (inside the profile) and clear of the ring."""
+        for x in (x0 - margin, x1 + margin, (x0 + x1) / 2):
+            for z in (z0 - margin, z1 + margin, (z0 + z1) / 2):
+                if not inside(prof, x, z):
+                    return False
+                if z > spring and math.hypot(x, z - spring) < R + 12:
+                    return False
+                if z <= spring and abs(x) < R + 12:
+                    return False
+        return True
+
+    for face in (-1, 1):
+        y = face * T / 2
+
+        def proud(x0, x1, z0, z1, d, mat=0):
+            y0, y1 = sorted((y - face * 0.3, y + face * d))
+            box(bm, x0, x1, y0, y1, z0, z1, mat)
+
+        def place(n, wmin, wmax, aspect, tries=40):
+            out = []
+            for _ in range(n):
+                for _ in range(tries):
+                    w = rnd.uniform(wmin, wmax)
+                    h = w * rnd.uniform(*aspect)
+                    x = rnd.uniform(-reach, reach)
+                    z = rnd.uniform(bot + 4, deck - 2)
+                    if free(x - w / 2, x + w / 2, z - h / 2, z + h / 2):
+                        out.append((x - w / 2, x + w / 2, z - h / 2, z + h / 2))
+                        break
+            return out
+
+        for x0, x1, z0, z1 in place(SCULPT["plates"], 6, 30, (0.3, 1.4)):
+            proud(x0, x1, z0, z1, rnd.uniform(0.6, 1.6), 2 if rnd.random() < 0.35 else 0)
+        for x0, x1, z0, z1 in place(SCULPT["bosses"], 1.5, 6, (0.4, 1.8)):
+            proud(x0, x1, z0, z1, rnd.uniform(0.4, 2.2))
+        for x0, x1, z0, z1 in place(SCULPT["niches"], 3, 10, (0.8, 2.2)):
+            # a raised frame round a dark sunk panel
+            t = max(0.5, (x1 - x0) * 0.12)
+            d = rnd.uniform(1.0, 1.8)
+            proud(x0, x1, z1 - t, z1, d)
+            proud(x0, x1, z0, z0 + t, d)
+            proud(x0, x0 + t, z0, z1, d)
+            proud(x1 - t, x1, z0, z1, d)
+            proud(x0 + t, x1 - t, z0 + t, z1 - t, 0.15, 1)
+        # courses: horizontal bands across the piers (and over the crown under the deck)
+        levels = [deck - 3.0] + [rnd.uniform(bot + 15, spring) for _ in range(SCULPT["courses"] - 1)]
+        for z in levels:
+            xs = [float(x) for x in np.arange(-reach - 60, reach + 60, 2.0)
+                  if inside(prof, x, z) and inside(prof, x, z + 2.0)]
+            run = []
+            for x in xs + [None]:
+                if run and (x is None or x - run[-1] > 2.5):
+                    if run[-1] - run[0] > 6:
+                        proud(run[0], run[-1], z, z + 2.0, 1.4)
+                    run = []
+                if x is not None:
+                    run.append(x)
+
+    # the ring: voussoirs of alternating depth and length round the head, jambs in long blocks
+    n = SCULPT["voussoirs"]
+    for k in range(n):
+        t0, t1 = math.pi * (1 - k / n), math.pi * (1 - (k + 1) / n)
+        ext = 7 + (3 if k % 2 else 0) + rnd.uniform(-0.8, 0.8)
+        pts = [(R * math.cos(t0), spring + R * math.sin(t0)),
+               ((R + ext) * math.cos(t0), spring + (R + ext) * math.sin(t0)),
+               ((R + ext) * math.cos(t1), spring + (R + ext) * math.sin(t1)),
+               (R * math.cos(t1), spring + R * math.sin(t1))]
+        d = 2.0 + (k % 2) * 1.2
+        prism(bm, pts, -T / 2 - d, T / 2 + d)
+    z = bot
+    k = 0
+    while z < spring - 1:
+        h = min(spring - z, rnd.uniform(9, 16))
+        w = 7 + (2.5 if k % 2 else 0)
+        for side in (-1, 1):
+            x0, x1 = sorted((side * R, side * (R + w)))
+            box(bm, x0, x1, -T / 2 - 2.2, T / 2 + 2.2, z, z + h)
+        z += h
+        k += 1
+    # ribs under the vault (soffit), dark
+    for yy in np.linspace(-T / 2 + 6, T / 2 - 6, 3):
+        for kk in range(16):
+            t0, t1 = math.pi * kk / 16, math.pi * (kk + 1) / 16
+            pts = [(R * math.cos(t0), spring + R * math.sin(t0)),
+                   ((R - 1.5) * math.cos(t0), spring + (R - 1.5) * math.sin(t0)),
+                   ((R - 1.5) * math.cos(t1), spring + (R - 1.5) * math.sin(t1)),
+                   (R * math.cos(t1), spring + R * math.sin(t1))]
+            prism(bm, pts, float(yy) - 1.2, float(yy) + 1.2, 1)
+    # parapet: a low wall with posts, broken in a few places
+    for y0 in (-T / 2, T / 2 - 1.4):
+        x = -rail
+        while x < rail:
+            L = rnd.uniform(14, 40)
+            if rnd.random() > 0.12:
+                box(bm, x, min(rail, x + L), y0, y0 + 1.4, deck, deck + 2.2)
+            x += L + (rnd.uniform(2, 6) if rnd.random() < 0.15 else 0)
+        for x in np.arange(-rail, rail, rnd.uniform(9, 13)):
+            box(bm, float(x) - 0.6, float(x) + 0.6, y0 - 0.2, y0 + 1.6, deck, deck + 3.4)
+    # works on the deck: stacked blocks over the piers, a few masts
+    for side in (-1, 1):
+        if rnd.random() < 0.25:
+            continue
+        x = side * (R + rnd.uniform(10, 30))
+        z = deck
+        w, dd = rnd.uniform(12, 22), rnd.uniform(14, T - 8)
+        for _ in range(rnd.randint(1, 3)):
+            h = rnd.uniform(5, 14)
+            box(bm, x - w / 2, x + w / 2, -dd / 2, dd / 2, z, z + h, 2 if rnd.random() < 0.4 else 0)
+            z += h
+            w *= rnd.uniform(0.5, 0.85)
+            dd *= rnd.uniform(0.6, 0.9)
+            x += rnd.uniform(-2, 2)
+        for _ in range(rnd.randint(0, 2)):
+            mx = x + rnd.uniform(-w, w)
+            box(bm, mx - 0.4, mx + 0.4, -0.4, 0.4, z, z + rnd.uniform(8, 20))
+    # fallen masonry at each foot of the opening
+    for side in (-1, 1):
+        for _ in range(SCULPT["rubble"]):
+            sz = rnd.uniform(1.5, 6)
+            cx = side * (R - rnd.uniform(0, 14) ** 1.2)
+            cy = rnd.uniform(-T / 2 - 25, T / 2 + 25)
+            cz = bot + 7.0
+            faces = box(bm, cx - sz / 2, cx + sz / 2, cy - sz * 0.4, cy + sz * 0.4, cz, cz + sz * 0.6, 2)
+            vs = {vt for fc in faces for vt in fc.verts}
+            axis = Vector((rnd.random() - 0.5, rnd.random() - 0.5, rnd.random() - 0.5)).normalized()
+            rot = Matrix.Rotation(rnd.uniform(-0.5, 0.5), 3, axis)
+            c = Vector((cx, cy, cz + sz * 0.3))
+            for vt in vs:
+                vt.co = rot @ (vt.co - c) + c
 
 
 def arch(name, slot, v, stone):
@@ -384,12 +548,15 @@ def portal(name, slot, v, stone, along=0.0, p=None, u=None):
     bm = bmesh.new()
     T = v["T"]
     prism(bm, prof, -T / 2, T / 2)
-    if v["parapet"]:
+    if STAGE != "blockout":
+        rnd = random.Random(zlib.crc32(name.encode()))
+        masonry(bm, rnd, prof, R, spring, deck, bot, T, f["gap_deck"] / 2 + 40, f["gap_deck"] / 2 + 4)
+    elif v["parapet"]:
         rail = f["gap_deck"] / 2 + 4
         for y in (-T / 2, T / 2 - 1.6):
             box(bm, -rail, rail, y, y + 1.6, deck, deck + v["parapet"])
     # the ring of the arch stands proud of the face, and a pilaster down each side of the opening
-    for y0, y1 in ((-T / 2 - 2.5, -T / 2), (T / 2, T / 2 + 2.5)):
+    for y0, y1 in (((-T / 2 - 2.5, -T / 2), (T / 2, T / 2 + 2.5)) if STAGE == "blockout" else ()):
         ts = [math.pi * (1 - k / 24) for k in range(25)]
         outer_pts = [((R + 7) * math.cos(t), spring + (R + 7) * math.sin(t)) for t in ts]
         inner_pts = [(R * math.cos(t), spring + R * math.sin(t)) for t in ts]
@@ -398,7 +565,7 @@ def portal(name, slot, v, stone, along=0.0, p=None, u=None):
         box(bm, R, R + 7, y0, y1, bot, spring)
         box(bm, -(R + 7), -R, y0, y1, bot, spring)
     # a few blocks on the deck over the piers, as in the painting
-    for side, h in ((-1, 16), (1, 9)):
+    for side, h in (((-1, 16), (1, 9)) if STAGE == "blockout" else ()):
         x = side * (R + 16)
         box(bm, x - 9, x + 9, -T / 2 + 3, T / 2 - 3, deck, deck + h)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
@@ -598,6 +765,13 @@ def chain_views(slot, line, fs):
     out.append(("aerial", air, c + Vector((0, 0, slot.depth * 0.5)), 30, False))
     top = c + Vector((0, 0, slot.depth + span * 2.2))
     out.append(("plan", top, c + Vector((0, 0.01, 0)), 35, False))
+    if STAGE != "blockout" and len(fs) > 1:
+        # close: the second portal's deck from above
+        g = fs[1]
+        toward = (fs[0]["centre"] - g["centre"]).normalized()
+        side = Vector((toward.y, -toward.x, 0))
+        q = g["centre"] + toward * 70 + side * 50 + Vector((0, 0, g["deck"] + 35))
+        out.append(("deck_close", q, g["centre"] + Vector((0, 0, g["deck"] + 4)), 32, False))
     return out
 
 
@@ -615,7 +789,7 @@ def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
-    ap.add_argument("--stage", choices=("blockout",), default="blockout")
+    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="blockout")
     ap.add_argument("--only", default="")
     args = ap.parse_args(argv)
     global STAGE
@@ -626,7 +800,8 @@ def main():
     slot = Slot()
     print(f"slot: floor {slot.floor:.0f} m, depth {slot.depth:.0f} m, gap at the floor+10 "
           f"{slot.gap(10)[1]:.0f} m")
-    stone = material(f"arch_{STAGE}", STONE, rough=0.8)
+    stone = [material(f"arch_{STAGE}", STONE, rough=0.8), material("arch_dark", STONE_DARK),
+             material("arch_worn", STONE_WORN, rough=0.95)]
     fig = material("figure", FIGURE)
     ground(slot, None, None)
     setup_render(slot)
