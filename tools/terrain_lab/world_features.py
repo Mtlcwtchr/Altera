@@ -307,13 +307,15 @@ def main():
     # The canyon steppe's pinnacles and slab rubble (canyon_features.py: the
     # sandbox's placing on canyon_relief.py's ground), each at its own `z`.
     canyon = Path(args.world + "_canyon_features.json")
-    canyon_checks = None
+    canyon_checks, decor = None, []
     if canyon.exists():
         c = json.loads(canyon.read_text(encoding="utf-8"))
         items += c["instances"]
         canyon_checks = c["checks"]
+        decor = c.get("decor", [])
     out = Path(args.world + "_features.json")
-    out.write_text(json.dumps({"world_m": world.size, "instances": items}, separators=(",", ":")))
+    # (`decor`: binary lists of small rocks beside it, props.hpp)
+    out.write_text(json.dumps({"world_m": world.size, "instances": items, "decor": decor}, separators=(",", ":")))
     preview(world, args.world, items, catalogue, args.world + "_features_preview.png")
     import world_megaliths
     checks = world_megaliths.CHECKS

@@ -19,8 +19,9 @@ How they lie (canyon.json `decor`):
 Each rock lies on the plane of the ground under it, small ones sunk deeper
 (`bury`: share of its height, small..big), never floating; rocks never
 overlap (`gap_k`), keep off pinnacles and ways and off sheer ground.
-Writes decor.json (rock, x, y, z, yaw, tilt, tilt_dir, size, kind; counts,
-checks). --views renders close-ups (blender_view.py --decor).
+Writes decor.json (rock, x, y, z, yaw, tilt, tilt_dir, size, kind, and for
+the client m - rock_<k>_t<bin>_s<turn>, leaning by `tilt_bins_deg` towards +x -
+and m_yaw; counts, checks). --views renders close-ups (blender_view.py --decor).
 """
 
 import argparse
@@ -99,6 +100,17 @@ def main():
         for lod in range(3):
             marsh_hill_mesh.write(mdir / f"rock_{k}_lod{lod}.mesh", t, 0.0)
         shapes.append(dict(hi=float(t[..., 2].max()), r=float(np.hypot(t[..., 0], t[..., 1]).max())))
+        # For the client (its props turn a model about z only): each rock
+        # also leaning by `tilt_bins_deg` towards +x, at four turns of its
+        # own - an instance turned to its slope's downhill then lies on it.
+        for ti, tb in enumerate(D["tilt_bins_deg"]):
+            for si in range(4):
+                a_, b_ = math.radians(tb), si * math.pi / 2
+                rz = np.array([[math.cos(b_), -math.sin(b_), 0], [math.sin(b_), math.cos(b_), 0], [0, 0, 1]])
+                ry = np.array([[math.cos(a_), 0, math.sin(a_)], [0, 1, 0], [-math.sin(a_), 0, math.cos(a_)]])
+                tt = t @ (ry @ rz).T
+                for lod in range(3):
+                    marsh_hill_mesh.write(mdir / f"rock_{k}_t{ti}_s{si}_lod{lod}.mesh", tt, 0.0)
 
     hs = nd.gaussian_filter(h, 1.5)
     gy, gx = np.gradient(hs, cell)
@@ -172,9 +184,14 @@ def main():
         if z + hgt < g0 + 0.1:
             dropped["uneven"] += 1            # (sunk out of sight)
             return False
+        ti = int(np.argmin(np.abs(np.array(D["tilt_bins_deg"]) - tilt)))
+        yaw = float(rng.uniform(0, 360))
+        tilt_dir = float(np.degrees(np.arctan2(-sy, -sx)))
         rocks.append(dict(rock=f"rock_{k}", x=round(x, 2), y=round(y, 2), z=round(z, 2),
-                          yaw=round(float(rng.uniform(0, 360)), 1), tilt=round(tilt, 1),
-                          tilt_dir=round(float(np.degrees(np.arctan2(-sy, -sx))), 1),
+                          yaw=round(yaw, 1), tilt=round(tilt, 1), tilt_dir=round(tilt_dir, 1),
+                          # (the client's: the leaning model and its turn, radians)
+                          m=f"rock_{k}_t{ti}_s{int(rng.integers(4))}",
+                          m_yaw=round(math.radians(tilt_dir if ti > 0 else yaw), 4),
                           size=round(size, 2), kind=kind, out_m=round(z + hgt - g0, 2),
                           under_m=round(float(bury * hgt + resid.min()), 2)))
         grid.setdefault(gk, []).append((x, y, size))

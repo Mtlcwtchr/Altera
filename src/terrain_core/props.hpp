@@ -14,6 +14,14 @@
 //
 // Models: assets/terrain_core/props/<name>_lod<0..2>.mesh, built by
 // tools/blender/terrain_props.py.
+//
+// Small rocks by the hundred thousand (the canyon's decor,
+// tools/terrain_lab/canyon_features.py) come as binary lists the features
+// file names ("decor": [{file, dir, material}]): "DECR", u32 version 1, u32
+// model count, each name (u16 length, bytes); u32 rock count, each f32 x, y
+// (world metres), z, turn (radians), size (metres), u32 model. Everything
+// smaller than kSmall is found through a grid round the eye, not looked at
+// one by one each frame.
 #include "engine/render/device.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
@@ -152,6 +160,7 @@ private:
     bool upload(SDL_GPUCommandBuffer* commands, std::uint32_t instance, const Surface& surface);
     // Takes in the surfaces the workers have finished (all of them, waiting, with `wait`).
     void collect(SDL_GPUCommandBuffer* commands, bool wait);
+    void buildGrid();
     void forget(std::map<std::uint32_t, DetailMesh>::iterator it);
 
     engine::Device* device_ = nullptr;
@@ -167,6 +176,14 @@ private:
     engine::Sampler linear_, hardPixels_;
     // A-1's tiles (hatch, grooves, moss, strokes) and knobs; empty when no
     // instance wears it.
+    // The small instances' grid: cell (row-major from the corner) -> a run of
+    // gridItems_; everything else in wide_, looked at one by one.
+    static constexpr double kCell = 128.0;
+    static constexpr float kSmall = 6.0f;                     // bounding radius, metres
+    static constexpr std::uint32_t kMaxSmallDrawn = 150000;   // per list (view, shadows)
+    std::vector<std::uint32_t> wide_, gridStart_, gridItems_;
+    double gridX0_ = 0, gridY0_ = 0;
+    int gridW_ = 0, gridH_ = 0;
     engine::Texture megalithTiles_;
     MegalithLook megalithLook_{};
     engine::GraphicsPipeline draw_, shadow_;

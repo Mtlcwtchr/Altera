@@ -249,7 +249,59 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
             mat = nlohmann::json::parse(in);
         } catch (const std::exception& e) {
             return fail(manifest.string() + ": " + e.what());
+    // The decor lists: small rocks, each a model turned and scaled, at its height.
+    for (const auto& d : features.value("decor", nlohmann::json::array())) {
+        const auto file = featuresFile.parent_path() / d.value("file", std::string());
+        const auto dir = featuresFile.parent_path() / d.value("dir", std::string());
+        const std::string material = d.value("material", std::string());
+        const float layer = layerOf.count(material) ? layerOf[material] : fallback;
+        std::ifstream in(file, std::ios::binary);
+        char magic[4];
+        std::uint32_t version = 0, names = 0, count = 0;
+        in.read(magic, 4);
+        in.read(reinterpret_cast<char*>(&version), 4);
+        in.read(reinterpret_cast<char*>(&names), 4);
+        if (!in || std::memcmp(magic, "DECR", 4) != 0 || version != 1)
+            return fail(file.string() + ": not a decor list (run tools/terrain_lab/canyon_features.py)");
+        std::vector<int> model(names);
+        for (auto& m : model) {
+            std::uint16_t n = 0;
+            in.read(reinterpret_cast<char*>(&n), 2);
+            std::string name(n, '\0');
+            in.read(name.data(), n);
+            m = modelFor(name, dir, false);
+            if (!in || m < 0) return fail("cannot read model " + name + " in " + dir.string());
         }
+        in.read(reinterpret_cast<char*>(&count), 4);
+        struct Rec { float x, y, z, yaw, size; std::uint32_t model; };
+        std::vector<Rec> recs(count);
+        in.read(reinterpret_cast<char*>(recs.data()), std::streamsize(count * sizeof(Rec)));
+        if (!in) return fail(file.string() + ": truncated");
+        instances_.reserve(instances_.size() + count);
+        for (const Rec& r : recs) {
+            if (r.model >= names) return fail(file.string() + ": bad model index");
+            const Model& m = models_[std::size_t(model[r.model])];
+            Instance a;
+            a.model = std::uint32_t(model[r.model]);
+            a.category = kTerrain;
+            ++counts_[kTerrain];
+            a.x = r.x;
+            a.y = r.y;
+            a.z = r.z;
+            a.yaw = r.yaw;
+            a.sx = a.sy = a.sz = r.size;
+            a.layer = layer;
+            const double c = std::cos(a.yaw), sn = std::sin(a.yaw);
+            const double mx = 0.5 * (m.lo[0] + m.hi[0]) * a.sx, my = 0.5 * (m.lo[1] + m.hi[1]) * a.sy;
+            a.cx = a.x + mx * c - my * sn;
+            a.cy = a.y + mx * sn + my * c;
+            a.cz = a.z + 0.5 * (m.lo[2] + m.hi[2]) * a.sz;
+            a.radius = m.radius * r.size;
+            instances_.push_back(a);
+        }
+    }
+        }
+    buildGrid();
         std::vector<std::vector<std::filesystem::path>> tiles;
         for (const char* key : {"hatch", "grooves", "moss", "strokes"}) {
             const std::filesystem::path file = mat["textures"][key].value("file", std::string());
@@ -269,8 +321,9 @@ bool Props::open(engine::Device& device, const std::filesystem::path& featuresFi
         indices_ = upload.add(SDL_GPU_BUFFERUSAGE_INDEX, allIndices.data(), allIndices.size() * 4);
         if (!upload.finish()) return fail("props upload: " + device.error());
     }
-    // Room for every instance twice: the view's and the shadows' lists.
-    capacity_ = std::uint32_t(instances_.size()) * 2;
+    // Room for every instance twice: the view's and the shadows' lists (of
+    // the small ones only as many as are ever drawn).
+    capacity_ = std::uint32_t(wide_.size() + std::min<std::size_t>(gridItems_.size(), kMaxSmallDrawn)) * 2;
     gpuInstances_ = device.makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, std::size_t(capacity_) * sizeof(Gpu));
     argsCapacity_ = std::uint32_t(models_.size()) * kLevels * 2;
     args_ = device.makeBuffer(SDL_GPU_BUFFERUSAGE_INDIRECT,
@@ -364,7 +417,26 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
     for (auto& b : buckets_) b.clear();
     std::vector<std::uint32_t> refined;
     int builds = 0;
-    for (std::uint32_t i = 0; i < instances_.size(); ++i) {
+    // The wide ones one by one; the small ones from the grid's cells within
+    // reach (as far as kSmall shows minPixels, or the shadows' range).
+    std::vector<std::uint32_t> near;
+    if (gridW_ > 0) {
+        const double reach = shadow ? frame.shadowRange + kSmall
+                                    : double(kSmall) * frame.pixelScale / std::max(frame.minPixels, 0.1f);
+        const int cx0 = std::max(0, int((frame.eye.x - reach - gridX0_) / kCell));
+        const int cy0 = std::max(0, int((frame.eye.y - reach - gridY0_) / kCell));
+        const int cx1 = std::min(gridW_ - 1, int((frame.eye.x + reach - gridX0_) / kCell));
+        const int cy1 = std::min(gridH_ - 1, int((frame.eye.y + reach - gridY0_) / kCell));
+        for (int cy = cy0; cy <= cy1; ++cy)
+            for (int cx = cx0; cx <= cx1; ++cx) {
+                const std::size_t c = std::size_t(cy) * std::size_t(gridW_) + std::size_t(cx);
+                near.insert(near.end(), gridItems_.begin() + gridStart_[c], gridItems_.begin() + gridStart_[c + 1]);
+            }
+    }
+    std::uint32_t smallTaken = 0;
+    const std::size_t wideCount = wide_.size();
+    for (std::size_t k = 0; k < wideCount + near.size(); ++k) {
+        const std::uint32_t i = k < wideCount ? wide_[k] : near[k - wideCount];
         const Instance& in = instances_[i];
         if (!enabled_[in.category]) continue;
         const double rx = in.cx - frame.eye.x, ry = in.cy - frame.eye.y, rz = in.cz - frame.eye.z;
@@ -398,6 +470,36 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
                     refined.push_back(i);
                     continue;
                 }
+void Props::buildGrid() {
+    wide_.clear();
+    std::vector<std::uint32_t> small;
+    double x0 = 1e300, y0 = 1e300, x1 = -1e300, y1 = -1e300;
+    for (std::uint32_t i = 0; i < instances_.size(); ++i) {
+        const Instance& in = instances_[i];
+        if (in.radius >= kSmall || in.detail) {
+            wide_.push_back(i);
+            continue;
+        }
+        small.push_back(i);
+        x0 = std::min(x0, in.cx), y0 = std::min(y0, in.cy), x1 = std::max(x1, in.cx), y1 = std::max(y1, in.cy);
+    }
+    gridItems_.clear();
+    gridStart_.assign(1, 0);
+    gridW_ = gridH_ = 0;
+    if (small.empty()) return;
+    gridX0_ = x0, gridY0_ = y0;
+    gridW_ = int((x1 - x0) / kCell) + 1, gridH_ = int((y1 - y0) / kCell) + 1;
+    auto cellOf = [&](std::uint32_t i) {
+        return std::size_t(int((instances_[i].cy - y0) / kCell)) * std::size_t(gridW_) + std::size_t(int((instances_[i].cx - x0) / kCell));
+    };
+    gridStart_.assign(std::size_t(gridW_) * gridH_ + 1, 0);
+    for (auto i : small) ++gridStart_[cellOf(i) + 1];
+    for (std::size_t c = 1; c < gridStart_.size(); ++c) gridStart_[c] += gridStart_[c - 1];
+    gridItems_.resize(small.size());
+    std::vector<std::uint32_t> at(gridStart_.begin(), gridStart_.end() - 1);
+    for (auto i : small) gridItems_[at[cellOf(i)]++] = i;
+}
+
             }
         }
         buckets_[in.model * kLevels + level].push_back(i);
@@ -405,6 +507,7 @@ void Props::fill(const PropsFrame& frame, bool shadow, std::vector<Batch>& batch
     for (std::uint32_t b = 0; b < buckets_.size(); ++b) {
         if (buckets_[b].empty()) continue;
         Batch batch{b / kLevels, b % kLevels, std::uint32_t(staging_.size()), std::uint32_t(buckets_[b].size())};
+        if (k >= wideCount && smallTaken >= kMaxSmallDrawn) break;
         for (auto i : buckets_[b]) staging_.push_back(gpuOf(i, frame));
         batches.push_back(batch);
     }
@@ -439,6 +542,7 @@ double hashCell(std::int64_t x, std::int64_t y, std::int64_t z) {
 
 double valueNoise(double x, double y, double z) {
     const double fx = std::floor(x), fy = std::floor(y), fz = std::floor(z);
+        if (k >= wideCount) ++smallTaken;
     const auto ix = std::int64_t(fx), iy = std::int64_t(fy), iz = std::int64_t(fz);
     auto s = [](double t) { return t * t * (3 - 2 * t); };
     const double u = s(x - fx), v = s(y - fy), w = s(z - fz);

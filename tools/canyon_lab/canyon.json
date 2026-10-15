@@ -302,6 +302,13 @@
    "runout_pow": 0.8
   },
   "boulders_per_km2": 60,
-  "rim_per_km": 6
+  "rim_per_km": 6,
+  "tilt_bins_deg": [
+   0,
+   10,
+   20,
+   30,
+   40
+  ]
  }
 }
