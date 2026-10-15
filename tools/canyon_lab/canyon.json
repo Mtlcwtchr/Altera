@@ -253,7 +253,8 @@
    "end_th_max_m": 26,
    "mid_th_m": 3.0,
    "jitter_m": 0.25,
-   "mid_th_k": 0.04
+   "mid_th_k": 0.04,
+   "rim_m": 10
   },
   "spirals": {
    "climb_m": [
@@ -274,66 +275,33 @@
    "ground_run_m": 40,
    "embed_m": 1.2,
    "gap_to_rock_max_m": 1.5,
-   "turn_rise_m": 7.5
+   "turn_rise_m": 7.5,
+   "step_up_m": 1.2
   }
  },
  "decor": {
-  "comment": "tools/canyon_lab/decor.py (user 15.10: small decor): see its docstring",
-  "variants": 12,
-  "wall_min_m": 20,
-  "talus_m": 1.0,
-  "wall_foot_m": 8,
-  "masks": {
-   "talus": {
-    "per_ha": 70,
-    "size_m": [
-     0.6,
-     3.5
-    ],
-    "bury": 0.4,
-    "gap_k": 1.1,
-    "max_relief_k": 1.5
-   },
-   "wall_foot": {
-    "per_ha": 90,
-    "size_m": [
-     1.0,
-     5.0
-    ],
-    "bury": 0.25,
-    "gap_k": 1.0,
-    "max_relief_k": 1.0
-   },
-   "floor": {
-    "per_ha": 6,
-    "size_m": [
-     0.3,
-     1.5
-    ],
-    "bury": 0.35,
-    "gap_k": 3.0,
-    "max_relief_k": 0.8
-   },
-   "bench": {
-    "per_ha": 18,
-    "size_m": [
-     0.5,
-     2.5
-    ],
-    "bury": 0.3,
-    "gap_k": 2.0,
-    "max_relief_k": 0.8
-   },
-   "top": {
-    "per_ha": 3,
-    "size_m": [
-     0.5,
-     2.0
-    ],
-    "bury": 0.3,
-    "gap_k": 3.0,
-    "max_relief_k": 0.8
-   }
-  }
+  "comment": "tools/canyon_lab/decor.py v2 (user 15.10: the first scatter looked unnatural): rock shed by the walls, see its docstring",
+  "variants": 16,
+  "size_m": [
+   0.4,
+   7.0
+  ],
+  "alpha": 1.6,
+  "bury": [
+   0.5,
+   0.2
+  ],
+  "gap_k": 0.75,
+  "tilt_max_deg": 45,
+  "falls": {
+   "wall_min_m": 15,
+   "per_wall": 2.5,
+   "spread_m": 10,
+   "rocks": 30,
+   "runout_m": 8,
+   "runout_pow": 0.8
+  },
+  "boulders_per_km2": 60,
+  "rim_per_km": 6
  }
 }

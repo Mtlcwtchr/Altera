@@ -280,15 +280,23 @@ def main():
     if DECOR:
         from mathutils import Matrix, Vector
         rocks = json.loads((RUN / "decor.json").read_text(encoding="utf-8"))["rocks"]
-        # Close views: the biggest rock at a wall's foot, one in the scree,
-        # one on a bench - each from where it is in sight.
+        # Close views: two of the falls at the walls' feet, a lone boulder on
+        # the floor - each from where it is in sight.
         picks = []
-        for mask in ("wall_foot", "talus", "bench"):
-            rs = sorted([r for r in rocks if r["mask"] == mask], key=lambda r: -r["size"])
-            if rs:
-                picks.append(rs[len(rs) // 20])
+        # (the thickest falls, seen from above at a slant; then a boulder)
+        bins = {}
+        for r in rocks:
+            if r["kind"] == "fall":
+                bins.setdefault((int(r["x"] // 30), int(r["y"] // 30)), []).append(r)
+        for key in sorted(bins, key=lambda k: -len(bins[k]))[:12:5]:
+            group = bins[key]
+            picks.append(dict(x=float(np.mean([g["x"] for g in group])), y=float(np.mean([g["y"] for g in group])),
+                              z=float(np.mean([g["z"] for g in group])), size=6.0, view="above"))
+        rs = sorted([r for r in rocks if r["kind"] == "boulder"], key=lambda r: -r["size"])
+        if rs:
+            picks.append(rs[len(rs) // 5])
         for k, r in enumerate(picks):
-            dist = 14 + 4 * r["size"]
+            dist = 28 + 6 * r["size"] if r.get("view") != "above" else 45.0
             gz0 = r["z"] + r["size"] * 0.3
             best = None
             for a in range(0, 360, 20):
@@ -296,7 +304,9 @@ def main():
                 x, y = r["x"] + dist * math.cos(ra), r["y"] + dist * math.sin(ra)
                 if not (0 < x < h.shape[1] * cell and 0 < y < h.shape[0] * cell):
                     continue
-                cz = max(float(h[int(y / cell), int(x / cell)]) + 1.8, gz0 + 4 + r["size"])
+                cz = max(float(h[int(y / cell), int(x / cell)]) + 1.8, gz0 + 9 + 1.5 * r["size"])
+                if r.get("view") == "above":
+                    cz = max(cz, gz0 + 35.0)
                 t = np.linspace(0.05, 0.9, 30)
                 gl = h[np.clip(((y + (r["y"] - y) * t) / cell).astype(int), 0, h.shape[0] - 1),
                        np.clip(((x + (r["x"] - x) * t) / cell).astype(int), 0, h.shape[1] - 1)]

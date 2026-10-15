@@ -268,10 +268,16 @@ def check_bridge(p, q, gap, G, pins, P):
     worst_clear, worst_land_hi, worst_land_lo = 1e9, -1e9, 1e9
     for off in (-w / 2, 0.0, w / 2):
         g = G.at(pts[:, 0] + side[0] * off, pts[:, 1] + side[1] * off)
-        mid = (t > land + 0.04) & (t < 1 - land - 0.04)
+        # (clear by `clear_m` out over the gap; off the rims, where the
+        # ground falls away over a cell or two, only never under it)
+        rim = B["rim_m"] / float(np.linalg.norm(q - p))
+        mid = (t > land + rim) & (t < 1 - land - rim)
+        near_rim = ~mid & (t > land) & (t < 1 - land)
         ends = ~mid & ((t < land * 0.8) | (t > 1 - land * 0.8))
         if mid.any():
             worst_clear = min(worst_clear, float((pts[mid, 2] - g[mid]).min()))
+        if near_rim.any() and float((pts[near_rim, 2] - g[near_rim]).min()) < -0.3:
+            return None
         if ends.any():
             worst_land_hi = max(worst_land_hi, float((g[ends] - pts[ends, 2]).max()))
             worst_land_lo = min(worst_land_lo, float((g[ends] - pts[ends, 2]).min()))
@@ -370,6 +376,8 @@ def spiral_path(inst, G, pins, others, P, rng):
         if g > z + 0.15:
             if len(pts) * ds > S["ground_run_m"]:
                 return None, f"ground over the ledge {g - z:.1f} m at {z - z0:.0f} m up"
+            if g - z > S["step_up_m"]:
+                return None, "a step up its foot"
             z = g + 0.15                      # (still climbing off the scree at its foot)
         pts.append((x, y, z))
         outs.append((math.cos(theta), math.sin(theta)))

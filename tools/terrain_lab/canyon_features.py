@@ -1,5 +1,6 @@
 """The canyon's meshes in the world (user 15.10): the sandbox's analysis and
-placing (tools/canyon_lab/analyze.py, place.py) run on the world's canyon as
+placing (tools/canyon_lab/analyze.py, place.py) and its ways up and across
+(paths.py: spiral ledges round columns, stone bridges) run on the world's canyon as
 canyon_relief.py cut it - pinnacles on the columns' and peaks' sites, heaps
 of slab rubble at the tall ones' feet and along the walls' feet - and turned
 into world_features.json's instances.
@@ -14,6 +15,7 @@ in. Each instance stands at the height the canyon's own ground gives it
 import argparse
 import json
 import math
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -33,7 +35,7 @@ def main():
     mat, moss, cover = rules.get("materials", {}), rules.get("moss", {}), rules.get("cover", {})
     items, checks = [], {}
     for k, run in enumerate(canyon["runs"]):
-        for tool in ("analyze.py", "place.py"):
+        for tool in ("analyze.py", "place.py", "paths.py"):
             subprocess.run([sys.executable, str(LAB / tool), "--dir", run, "--seed", str(args.seed + k)]
                            if tool == "place.py" else [sys.executable, str(LAB / tool), "--dir", run],
                            check=True, stdout=subprocess.DEVNULL)
@@ -49,11 +51,19 @@ def main():
                 if table.get(i["kind"], 0) > 0:
                     o[key] = table[i["kind"]]
             items.append(o)
+        # The bridges and spiral ledges (paths.py): a mesh each, its own heights.
+        ways = json.loads((Path(run) / "paths.json").read_text(encoding="utf-8"))
+        mesh_dir = os.path.relpath(Path(run) / "paths", Path(args.world).parent).replace("\\", "/")
+        for wy in ways["ways"]:
+            items.append({"m": wy["name"], "dir": mesh_dir, "x": round(ox + wy["origin"][0], 2),
+                          "y": round(oy + wy["origin"][1], 2), "z": 0.0, "yaw": 0.0, "s": [1.0, 1.0, 1.0],
+                          "material": mat.get("canyon_pinnacle", "rock_orange"), "cat": "terrain", "canyon": wy["kind"]})
         a = json.loads((Path(run) / "analysis.json").read_text(encoding="utf-8"))
         p = json.loads((Path(run) / "placement.json").read_text(encoding="utf-8"))
         checks[Path(run).name] = {"relief": {key: v["value"] for key, v in a["checks"].items()},
                                   "climb": a["climb"], "placing": {key: v["value"] for key, v in p["checks"].items()},
-                                  "by_role": p["by_role"], "dropped": p["dropped"]}
+                                  "by_role": p["by_role"], "dropped": p["dropped"],
+                                  "ways": {k: v for k, v in ways["result"].items() if k != "spirals_dropped"}}
     out = Path(args.world + "_canyon_features.json")
     out.write_text(json.dumps({"comment": "tools/terrain_lab/canyon_features.py: the canyon's pinnacles and slab rubble, "
                                           "taken in by world_features.py", "instances": items, "checks": checks},
