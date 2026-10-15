@@ -1,0 +1,196 @@
+{
+ "size_m": 4096,
+ "cell_m": 2.0,
+ "seed": 7,
+ "rivers": {
+  "coarse_cell_m": 32,
+  "tilt_m": 60,
+  "rumple_m": 30,
+  "rumple_scale_m": 900,
+  "min_km2": 0.22,
+  "width_per_sqrtkm2_m": 150,
+  "width_m": [
+   60,
+   420
+  ],
+  "wander": 0.25,
+  "wander_scale_m": 400,
+  "warp_scale_m": 500,
+  "warp_m": 70,
+  "bed_w_per_sqrtkm2_m": 6,
+  "bed_w_m": [
+   3,
+   14
+  ],
+  "floor_drop_m": 30,
+  "fans": {
+   "max_km2": 1.2,
+   "ratio": 3.0,
+   "radius_m": [
+    40,
+    110
+   ],
+   "height_m": [
+    1.5,
+    4.0
+   ]
+  }
+ },
+ "cracks": [
+  {
+   "spacing_m": 380,
+   "warp_m": 70,
+   "width_m": [
+    26,
+    64
+   ],
+   "open": 0.6
+  },
+  {
+   "spacing_m": 150,
+   "warp_m": 30,
+   "width_m": [
+    14,
+    30
+   ],
+   "open": 0.45,
+   "near_m": 260
+  }
+ ],
+ "islands": {
+  "walk_r_m": 16,
+  "min_area_m2": 4000,
+  "low_r_m": 40,
+  "top_m": 190,
+  "top_var_m": 25,
+  "top_scale_m": 1500,
+  "min_top_m": 60,
+  "tier_m": 45,
+  "drop_weights": [
+   0.5,
+   0.32,
+   0.18
+  ],
+  "max_rings": 4,
+  "ring_min_m": 28,
+  "ring_w_m": [
+   14,
+   50
+  ],
+  "sheer_only_p": 0.2,
+  "ring_noise": 0.45,
+  "ring_scale_m": 160,
+  "edge_jit_m": 7,
+  "edge_jit_scale_m": 40,
+  "top_rough_m": 2.5
+ },
+ "remnants": {
+  "min_r_m": 3.0,
+  "col_min_r_m": 6,
+  "col_to_peak": 0.4,
+  "col_r_k": 1.15,
+  "col_power": 0.12,
+  "spacing_k": 2.4,
+  "spacing_min_m": 40,
+  "peak_h_frac": [
+   0.3,
+   0.7
+  ],
+  "peak_r_k": 1.7,
+  "peak_power": [
+   0.6,
+   0.9
+  ],
+  "min_area_m2": 500,
+  "stump_p": 0.2,
+  "stump_r_max_m": 16
+ },
+ "slabs": {
+  "size_m": 14,
+  "warp_m": 5,
+  "drop_p": 0.12,
+  "drop_m": 6
+ },
+ "floor": {
+  "shelf_scale_m": 260,
+  "shelf_share": 0.4,
+  "shelf_levels": 2,
+  "shelf_step_m": 9,
+  "shelf_gap_m": 15,
+  "bed_depth_m": 2.0,
+  "floor_rough_m": 1.5,
+  "peaks": {
+   "per_km2": 6,
+   "base": 0.15,
+   "near_bonus": 2.0,
+   "near_m": 90,
+   "min_off_m": 12,
+   "bed_gap_m": 12,
+   "h_m": [
+    10,
+    45
+   ],
+   "r_m": [
+    5,
+    13
+   ],
+   "power": [
+    0.7,
+    1.1
+   ],
+   "satellites": [
+    0,
+    2
+   ]
+  },
+  "talus": {
+   "frac": 0.13,
+   "max_m": 30,
+   "slope_deg": 36,
+   "scale_m": 120,
+   "block_m": 6,
+   "block_h_m": 2.0
+  }
+ },
+ "grass": {
+  "islands": 3,
+  "core": 0.45,
+  "cover": 0.55,
+  "scale_m": 30
+ },
+ "render": {
+  "sun_az": 250,
+  "sun_el": 30,
+  "views": [
+   {
+    "name": "low",
+    "u": 0.5,
+    "v": 0.97,
+    "z": 25,
+    "yaw": 0,
+    "pitch": 4
+   },
+   {
+    "name": "high",
+    "u": 0.15,
+    "v": 0.95,
+    "z": 420,
+    "yaw": 35,
+    "pitch": 18
+   },
+   {
+    "name": "rim",
+    "u": 0.85,
+    "v": 0.6,
+    "z": 260,
+    "yaw": 290,
+    "pitch": 12
+   }
+  ]
+ },
+ "retreat": {
+  "m": 45,
+  "min_k": 0.35,
+  "scale_m": 450
+ }
+}
