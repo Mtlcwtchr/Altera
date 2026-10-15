@@ -58,13 +58,23 @@ HALF = 1200.0                      # the ground built round the site, metres eac
 #   embed      how far the ends run into the walls
 #   drop       how far the cladding runs down the walls below the springing (share of radius)
 #   parapet    height of the parapet (0 = none)
+# The painting itself (arrived 15.10 after V1-V3, assets/.../reference.png) shows a portal, not a
+# thin bridge: a wall of grey-blue masonry closes the slot from the floor to the rim, the deck on
+# top at the rim, and a tall round-headed opening goes through it down to the floor.
+#   portal     the portal form: deck share of depth; open = opening width (share of the gap at the
+#              springing); head = stone over the crown (share of the radius)
+#   second     another portal this far along the slot, away from the reference camera (0 = none)
+PORTALS = {
+    "V4_portal": dict(deck=0.98, T=44, open=0.62, head=0.32, embed=26, parapet=2.6, second=0),
+    "V5_portal_pair": dict(deck=0.98, T=44, open=0.62, head=0.32, embed=26, parapet=2.6, second=360),
+}
 VARIANTS = {
     "V1_ref": dict(deck=0.67, T=46, lintel=0.38, fill=0.96, embed=30, drop=0.9, parapet=2.6),
     "V2_rim": dict(deck=0.93, T=52, lintel=0.30, fill=0.96, embed=36, drop=1.1, parapet=2.6),
     "V3_slender": dict(deck=0.62, T=26, lintel=0.20, fill=0.98, embed=24, drop=0.6, parapet=1.8),
 }
-HERO = "V1_ref"
-REF_RES = (900, 1600)
+HERO = "V4_portal"
+REF_RES = (800, 1600)
 
 
 # ---------------------------------------------------------------- helpers
@@ -274,6 +284,68 @@ def arch(name, slot, v, stone):
     return ob, f
 
 
+def fit_portal(slot, v, along=0.0):
+    deck = v["deck"] * slot.depth
+    R = 0.0
+    spring = deck * 0.6
+    for _ in range(20):
+        off, g = slot.gap(spring, along)
+        R = 0.5 * (R + g * v["open"] / 2)
+        spring = deck - R * (1 + v["head"])
+    off, g = slot.gap(spring, along)
+    _, g_deck = slot.gap(deck, along)
+    return dict(deck=deck, spring=spring, R=R, off=off, gap_spring=g, gap_deck=g_deck, along=along)
+
+
+def portal(name, slot, v, stone, along=0.0):
+    """A wall of masonry closing the slot from below the floor to the deck at the rim, its sides
+    following the walls into the rock, a round-headed opening through it down to the floor."""
+    f = fit_portal(slot, v, along)
+    R, deck, spring, off = f["R"], f["deck"], f["spring"], f["off"]
+    bot = -8.0
+    zs = list(np.arange(deck, bot - 1e-3, -10.0)) + [bot]
+
+    def outer(z, side):
+        w = slot.wall(z, side, along) - off * side
+        return side * max(w + v["embed"], R + 12)
+
+    prof = [(outer(z, -1), z) for z in zs]                     # left side, top down
+    prof += [(-R, bot), (-R, spring)]
+    for k in range(1, 24):
+        t = math.pi * (1 - k / 24)
+        prof.append((R * math.cos(t), spring + R * math.sin(t)))
+    prof += [(R, spring), (R, bot)]
+    prof += [(outer(z, 1), z) for z in zs[::-1]]               # right side, bottom up
+    bm = bmesh.new()
+    T = v["T"]
+    prism(bm, prof, -T / 2, T / 2)
+    if v["parapet"]:
+        p = f["gap_deck"] / 2 + 4
+        for y in (-T / 2, T / 2 - 1.6):
+            box(bm, -p, p, y, y + 1.6, deck, deck + v["parapet"])
+    # the ring of the arch stands proud of the face, and a pilaster down each side of the opening
+    for y0, y1 in ((-T / 2 - 2.5, -T / 2), (T / 2, T / 2 + 2.5)):
+        ts = [math.pi * (1 - k / 24) for k in range(25)]
+        outer_pts = [((R + 7) * math.cos(t), spring + (R + 7) * math.sin(t)) for t in ts]
+        inner_pts = [(R * math.cos(t), spring + R * math.sin(t)) for t in ts]
+        for i in range(24):
+            prism(bm, [inner_pts[i], outer_pts[i], outer_pts[i + 1], inner_pts[i + 1]][::-1], y0, y1)
+        box(bm, R, R + 7, y0, y1, bot, spring)
+        box(bm, -(R + 7), -R, y0, y1, bot, spring)
+    # a few blocks on the deck over the piers, as in the painting
+    for side, h in ((-1, 16), (1, 9)):
+        x = side * (R + 16)
+        box(bm, x - 9, x + 9, -T / 2 + 3, T / 2 - 3, deck, deck + h)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    me = mesh_from(name, bm, stone)
+    loc = slot.u * off + slot.a * along
+    ob = link(name, me, (loc.x, loc.y, 0), (0, 0, math.radians(ACROSS)))
+    print(f"{name}: deck {deck:.0f} m (slot {slot.depth:.0f} m deep), opening {2 * R:.0f} m wide, crown "
+          f"{spring + R:.0f} m, gap at the springing {f['gap_spring']:.0f} m, at the deck {f['gap_deck']:.0f} m, "
+          f"{tris(me)} tris")
+    return ob, f
+
+
 def hooded(name, loc, mat, coll):
     """A small hooded figure: a cloak to the ground and a pointed hood (1.8 m)."""
     bm = bmesh.new()
@@ -302,8 +374,8 @@ def setup_render(slot):
     ob = bpy.data.objects.new("sun", sun)
     # down the slot from behind the reference camera, a little across: the arch's face and the
     # walls ahead lit, as painted
-    el = math.radians(48)
-    d = (slot.a + slot.u * 0.35).normalized() * math.cos(el) + Vector((0, 0, -math.sin(el)))
+    el = math.radians(78)   # high: the slot floor in sun, as painted
+    d = (slot.a + slot.u * 0.15).normalized() * math.cos(el) + Vector((0, 0, -math.sin(el)))
     ob.rotation_euler = d.to_track_quat("-Z", "Y").to_euler()
     sc.collection.objects.link(ob)
     # a weak second sun from across the slot: the painting's walls are lit on both sides
@@ -365,13 +437,33 @@ def views(slot, f):
     for sign, tag in ((-1, "ref"), (1, "ref_back")):
         side = [s for s in on_floor if s[0] * sign > 0]
         if side:
-            s = min(side, key=lambda s: abs(abs(s[0]) - 1.15 * deck) + abs(s[1]) * 2)
-            out.append((f"reference_{tag}", s[2] + eye, mid, 22, True))
+            # as far back along the slot as the arch is still seen (the painting looks a long way
+            # down the floor), near the slot's middle
+            s = max(side, key=lambda s: abs(s[0]) - abs(s[1]) * 3)
+            look = Vector((c.x, c.y, deck * 0.5))
+            out.append((f"reference_{tag}", s[2] + eye, look, 24, True))
             far = max(side, key=lambda s: abs(s[0]))
             out.append((f"floor_far_{tag}", far[2] + eye, mid, 40, False))
     air = slot.u * 170 - slot.a * 230 + Vector((0, 0, slot.depth + 70))
     out.append(("aerial", air, Vector((c.x, c.y, deck * 0.6)), 30, False))
     return out
+
+
+def second_along(slot, f, v):
+    """The second portal: the farthest place down the slot (up to v["second"] + 180 m) whose
+    middle the reference camera sees through the first opening."""
+    c = slot.u * f["off"]
+    mid = Vector((c.x, c.y, f["deck"] - f["R"] * 0.5))
+    on_floor = spots(slot, mid, lambda p, al, lat: p.z < 12 and abs(lat) < 120 and al < 0)
+    eye = max(on_floor, key=lambda s: abs(s[0]) - abs(s[1]) * 3)[2] + Vector((0, 0, 1.7))
+    best = 120.0
+    for along in np.arange(120.0, v["second"] + 181.0, 10.0):
+        g = fit_portal(slot, v, float(along))
+        q = slot.u * g["off"] + slot.a * float(along)
+        if clear(slot, eye, Vector((q.x, q.y, g["spring"])), margin=1.0):
+            best = float(along)
+    print(f"second portal {best:.0f} m down the slot")
+    return best
 
 
 def figures(slot, eye, mid, mat, coll):
@@ -381,7 +473,7 @@ def figures(slot, eye, mid, mat, coll):
     side = Vector((to.y, -to.x, 0))
     for k, (fwd, lat) in enumerate(((22, -2.0), (26, 1.5), (31, -0.4))):
         p = eye + to * fwd + side * lat
-        hooded(f"figure_{k}", (p.x, p.y, slot.at(p) - 0.1), mat, coll)
+        hooded(f"figure_{coll.name}_{k}", (p.x, p.y, slot.at(p) - 0.1), mat, coll)
 
 
 def main():
@@ -404,26 +496,36 @@ def main():
     ground(slot, None, None)
     setup_render(slot)
     sc = bpy.context.scene
-    names = [n for n in VARIANTS if not args.only or n in args.only.split(",")]
+    every = {**PORTALS, **VARIANTS}
+    names = args.only.split(",") if args.only else list(PORTALS)
     built = {}
     for name in names:
         coll = collection(name)
-        ob, f = arch("arch_" + name, slot, VARIANTS[name], stone)
-        bpy.context.scene.collection.objects.unlink(ob)
-        coll.objects.link(ob)
+        v = every[name]
+        obs = []
+        if name in PORTALS:
+            ob, f = portal("arch_" + name, slot, v, stone)
+            obs.append(ob)
+            if v["second"]:
+                obs.append(portal("arch_" + name + "_second", slot, v, stone, second_along(slot, f, v))[0])
+        else:
+            ob, f = arch("arch_" + name, slot, v, stone)
+            obs.append(ob)
+        for ob in obs:
+            bpy.context.scene.collection.objects.unlink(ob)
+            coll.objects.link(ob)
         built[name] = (coll, f)
     figs = collection("figures")
     for name in names:
         coll, f = built[name]
         for vname, loc, target, lens, portrait in views(slot, f):
-            if vname == "reference_ref" and name == HERO:
-                figures(slot, loc, target, fig, figs)
+            if vname == "reference_ref":
+                figures(slot, loc, target, fig, coll)
             cam = camera(f"cam_{name}_{vname}", loc, target, lens)
             if args.no_render:
                 continue
             for n2, (c2, _) in built.items():
                 c2.hide_render = n2 != name
-            figs.hide_render = not vname.startswith("reference")
             sc.camera = cam
             sc.render.resolution_x, sc.render.resolution_y = REF_RES if portrait else (1600, 900)
             sc.render.filepath = str(SHOTS / f"a4_arch_{STAGE}_{name}_{vname}.png")
