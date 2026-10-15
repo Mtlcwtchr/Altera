@@ -28,6 +28,7 @@ ONLY = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
 GAME = "--game" in argv          # the ground as the game holds it (fine_relief.py)
 SUFFIX = "_game" if GAME else ""
 WALL_TEX = ROOT / "assets" / "terrain_core" / "materials" / "rock_orange.png"
+SCREE_TEX = ROOT / "assets" / "terrain_core" / "materials" / "scree_slabs.png"
 
 
 def srgb_to_lin(c):
@@ -35,7 +36,7 @@ def srgb_to_lin(c):
     return np.where(c <= 0.04045, c / 12.92, ((c + 0.055) / 1.055) ** 2.4)
 
 
-def ground(h, alb, cell):
+def ground(h, alb, cell, talus):
     hs = h[::STEP, ::STEP]
     n = hs.shape[0]
     c = cell * STEP
@@ -57,6 +58,9 @@ def ground(h, alb, cell):
     col = np.concatenate([srgb_to_lin(a), np.ones((n * n, 1), np.float32)], 1)
     attr = me.color_attributes.new("albedo", "FLOAT_COLOR", "POINT")
     attr.data.foreach_set("color", col.ravel())
+    t = np.clip(talus[::STEP, ::STEP].reshape(-1) / 2.0, 0, 1).astype(np.float32)
+    ta = me.attributes.new("talus", "FLOAT", "POINT")
+    ta.data.foreach_set("value", t)
     ob = bpy.data.objects.new("ground", me)
     bpy.context.scene.collection.objects.link(ob)
     mat = bpy.data.materials.new("ground")
@@ -66,47 +70,17 @@ def ground(h, alb, cell):
     ca = nt.nodes.new("ShaderNodeVertexColor")
     ca.layer_name = "albedo"
     # Steep ground wears the rock projected from three sides (triplanar,
-    # world metres), bedding level on every face; the flat keeps its colour.
+    # world metres), bedding level on every face; talus wears scree; the
+    # flat keeps its colour.
     tc = nt.nodes.new("ShaderNodeTexCoord")
-    mp = nt.nodes.new("ShaderNodeMapping")
-    mp.inputs["Scale"].default_value = (1 / 14.0, 1 / 14.0, 1 / 11.0)
-    nt.links.new(tc.outputs["Object"], mp.inputs["Vector"])
-    tex = nt.nodes.new("ShaderNodeTexImage")
-    tex.image = bpy.data.images.load(str(WALL_TEX))
-    tex.projection = "BOX"
-    tex.projection_blend = 0.25
-    tex.interpolation = "Closest"
-    nt.links.new(mp.outputs["Vector"], tex.inputs["Vector"])
-    tint = nt.nodes.new("ShaderNodeMix"); tint.data_type = "RGBA"; tint.blend_type = "MULTIPLY"
-    tint.inputs["Factor"].default_value = 1.0
-    tint.inputs["B"].default_value = (0.62, 0.36, 0.30, 1)
-    nt.links.new(tex.outputs["Color"], tint.inputs["A"])
-    # Beds of different shades by height, and a slow noise, so the tiles of
-    # the texture do not read as brickwork.
-    sp = nt.nodes.new("ShaderNodeSeparateXYZ")
-    nt.links.new(tc.outputs["Object"], sp.inputs[0])
-    wv = nt.nodes.new("ShaderNodeTexWave")
-    wv.wave_type = "BANDS"; wv.bands_direction = "Z"
-    wv.inputs["Scale"].default_value = 0.004
-    wv.inputs["Distortion"].default_value = 6.0
-    wv.inputs["Detail"].default_value = 3.0
-    nt.links.new(tc.outputs["Object"], wv.inputs["Vector"])
-    ns = nt.nodes.new("ShaderNodeTexNoise")
-    ns.inputs["Scale"].default_value = 0.02
-    nt.links.new(tc.outputs["Object"], ns.inputs["Vector"])
-    ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].color = (0.55, 0.42, 0.40, 1)
-    ramp.color_ramp.elements[1].color = (1.15, 1.0, 0.92, 1)
-    add = nt.nodes.new("ShaderNodeMath"); add.operation = "ADD"
-    mul = nt.nodes.new("ShaderNodeMath"); mul.operation = "MULTIPLY"; mul.inputs[1].default_value = 0.5
-    nt.links.new(wv.outputs["Fac"], add.inputs[0])
-    nt.links.new(ns.outputs["Fac"], add.inputs[1])
-    nt.links.new(add.outputs[0], mul.inputs[0])
-    nt.links.new(mul.outputs[0], ramp.inputs[0])
-    shade = nt.nodes.new("ShaderNodeMix"); shade.data_type = "RGBA"; shade.blend_type = "MULTIPLY"
-    shade.inputs["Factor"].default_value = 1.0
-    nt.links.new(tint.outputs["Result"], shade.inputs["A"])
-    nt.links.new(ramp.outputs[0], shade.inputs["B"])
+    rockc = triplanar(nt, tc.outputs["Object"], WALL_TEX, 14.0, (0.62, 0.36, 0.30))
+    scree = triplanar(nt, tc.outputs["Object"], SCREE_TEX, 6.0, (0.95, 0.62, 0.48), beds=False)
+    ta = nt.nodes.new("ShaderNodeAttribute")
+    ta.attribute_name = "talus"
+    sm = nt.nodes.new("ShaderNodeMix"); sm.data_type = "RGBA"
+    nt.links.new(ta.outputs["Fac"], sm.inputs["Factor"])
+    nt.links.new(ca.outputs["Color"], sm.inputs["A"])
+    nt.links.new(scree, sm.inputs["B"])
     geo = nt.nodes.new("ShaderNodeNewGeometry")
     sz = nt.nodes.new("ShaderNodeSeparateXYZ")
     nt.links.new(geo.outputs["Normal"], sz.inputs[0])
@@ -116,46 +90,80 @@ def ground(h, alb, cell):
     nt.links.new(sz.outputs[2], st.inputs["Value"])
     mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"
     nt.links.new(st.outputs[0], mix.inputs["Factor"])
-    nt.links.new(ca.outputs["Color"], mix.inputs["A"])
-    nt.links.new(shade.outputs["Result"], mix.inputs["B"])
+    nt.links.new(sm.outputs["Result"], mix.inputs["A"])
+    nt.links.new(rockc, mix.inputs["B"])
     nt.links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
     bsdf.inputs["Roughness"].default_value = 1.0
     me.materials.append(mat)
 
 
+def triplanar(nt, vec, path, scale, tint, beds=True):
+    """Colour socket: `path` projected from three sides at `scale` metres a
+    tile (bedding stays level on every face), multiplied by `tint`, shaded by
+    height beds and a slow noise so the tiles never read as brickwork."""
+    mp = nt.nodes.new("ShaderNodeMapping")
+    mp.inputs["Scale"].default_value = (1 / scale, 1 / scale, 1 / (scale * 0.8))
+    nt.links.new(vec, mp.inputs["Vector"])
+    tex = nt.nodes.new("ShaderNodeTexImage")
+    tex.image = bpy.data.images.load(str(path), check_existing=True)
+    tex.projection = "BOX"
+    tex.projection_blend = 0.6
+    tex.interpolation = "Closest"
+    nt.links.new(mp.outputs["Vector"], tex.inputs["Vector"])
+    tn = nt.nodes.new("ShaderNodeMix"); tn.data_type = "RGBA"; tn.blend_type = "MULTIPLY"
+    tn.inputs["Factor"].default_value = 1.0
+    tn.inputs["B"].default_value = (*tint, 1)
+    nt.links.new(tex.outputs["Color"], tn.inputs["A"])
+    if not beds:
+        return tn.outputs["Result"]
+    wv = nt.nodes.new("ShaderNodeTexWave")
+    wv.wave_type = "BANDS"; wv.bands_direction = "Z"
+    wv.inputs["Scale"].default_value = 0.004
+    wv.inputs["Distortion"].default_value = 6.0
+    wv.inputs["Detail"].default_value = 3.0
+    nt.links.new(vec, wv.inputs["Vector"])
+    ns = nt.nodes.new("ShaderNodeTexNoise")
+    ns.inputs["Scale"].default_value = 0.02
+    nt.links.new(vec, ns.inputs["Vector"])
+    add = nt.nodes.new("ShaderNodeMath"); add.operation = "ADD"
+    half = nt.nodes.new("ShaderNodeMath"); half.operation = "MULTIPLY"; half.inputs[1].default_value = 0.5
+    nt.links.new(wv.outputs["Fac"], add.inputs[0])
+    nt.links.new(ns.outputs["Fac"], add.inputs[1])
+    nt.links.new(add.outputs[0], half.inputs[0])
+    ramp = nt.nodes.new("ShaderNodeValToRGB")
+    ramp.color_ramp.elements[0].color = (0.55, 0.42, 0.40, 1)
+    ramp.color_ramp.elements[1].color = (1.15, 1.0, 0.92, 1)
+    nt.links.new(half.outputs[0], ramp.inputs[0])
+    sh = nt.nodes.new("ShaderNodeMix"); sh.data_type = "RGBA"; sh.blend_type = "MULTIPLY"
+    sh.inputs["Factor"].default_value = 1.0
+    nt.links.new(tn.outputs["Result"], sh.inputs["A"])
+    nt.links.new(ramp.outputs[0], sh.inputs["B"])
+    return sh.outputs["Result"]
+
+
 def rock_material():
+    """The pinnacles' rock: the same rock as the ground's walls, projected in
+    world metres (so a scaled instance keeps the texel size of the walls next
+    to it), the flutes darkened by the mesh's cavity (uv.x)."""
     mat = bpy.data.materials.new("rock")
     mat.use_nodes = True
     nt = mat.node_tree
     bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
     bsdf.inputs["Roughness"].default_value = 1.0
     geo = nt.nodes.new("ShaderNodeNewGeometry")
-    sep = nt.nodes.new("ShaderNodeSeparateXYZ")
-    nt.links.new(geo.outputs["Position"], sep.inputs[0])
-    # Bedded rock: bands by world height, as the ground's walls.
-    m1 = nt.nodes.new("ShaderNodeMath"); m1.operation = "SINE"
-    sc = nt.nodes.new("ShaderNodeMath"); sc.operation = "MULTIPLY"; sc.inputs[1].default_value = 1 / 6.5
-    nt.links.new(sep.outputs[2], sc.inputs[0])
-    nt.links.new(sc.outputs[0], m1.inputs[0])
-    ramp = nt.nodes.new("ShaderNodeValToRGB")
-    ramp.color_ramp.elements[0].position = 0.0
-    ramp.color_ramp.elements[1].position = 1.0
-    ramp.color_ramp.elements[0].color = (*srgb_to_lin(np.array([100, 36, 24]) / 255), 1)
-    ramp.color_ramp.elements[1].color = (*srgb_to_lin(np.array([140, 58, 36]) / 255), 1)
-    mr = nt.nodes.new("ShaderNodeMapRange")
-    mr.inputs["From Min"].default_value = -1
-    nt.links.new(m1.outputs[0], mr.inputs["Value"])
-    nt.links.new(mr.outputs[0], ramp.inputs[0])
-    # Cavity (the mesh's uv.x) darkens the flutes.
+    col = triplanar(nt, geo.outputs["Position"], WALL_TEX, 14.0, (0.56, 0.32, 0.27))
     uv = nt.nodes.new("ShaderNodeUVMap")
     sx = nt.nodes.new("ShaderNodeSeparateXYZ")
     nt.links.new(uv.outputs[0], sx.inputs[0])
-    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"; mix.blend_type = "MULTIPLY"
-    mix.inputs["Factor"].default_value = 0.6
-    nt.links.new(ramp.outputs[0], mix.inputs["A"])
+    cav = nt.nodes.new("ShaderNodeMapRange")
+    cav.inputs["To Min"].default_value = 0.35
+    nt.links.new(sx.outputs[0], cav.inputs["Value"])
     cv = nt.nodes.new("ShaderNodeCombineColor")
     for k in ("Red", "Green", "Blue"):
-        nt.links.new(sx.outputs[0], cv.inputs[k])
+        nt.links.new(cav.outputs[0], cv.inputs[k])
+    mix = nt.nodes.new("ShaderNodeMix"); mix.data_type = "RGBA"; mix.blend_type = "MULTIPLY"
+    mix.inputs["Factor"].default_value = 1.0
+    nt.links.new(col, mix.inputs["A"])
     nt.links.new(cv.outputs[0], mix.inputs["B"])
     nt.links.new(mix.outputs["Result"], bsdf.inputs["Base Color"])
     return mat
@@ -196,7 +204,7 @@ def main():
     alb = px.reshape(img.size[1], img.size[0], 4)[::-1, :, :3] * 255.0     # rows from the top
     inst = json.loads((RUN / "instances.json").read_text(encoding="utf-8"))
     cell = inst["cell_m"]
-    ground(h, alb, cell)
+    ground(h, alb, cell, L["talus"])
     rock = rock_material()
     meshes = {}
     coll = sc.collection

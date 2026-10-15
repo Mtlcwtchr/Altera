@@ -294,6 +294,33 @@ def generate(P, seed):
         fill = (pa < F["pocket_fill_m2"]) & (pid != main_)
         lvl = np.concatenate([[0.0], np.where(fill, np.maximum(0, rim - np.where(pa < 3000, 0.0, 3.0)), 0.0)]).astype(np.float32)
         blocky_q = np.where(low, lvl[pl], blocky_q)
+    # The floor in one piece: a basin of floor cut off by benches gets a
+    # gap broken through the benches towards the nearest open floor (never
+    # through an island).
+    # (connected only through passages a man passes: the floor shrunk by
+    # a few metres first, so a diagonal crack between two benches is no way)
+    low = nd.binary_erosion(blocky_q < 1, iterations=max(1, int(3.0 / cell)))
+    pl, npl = nd.label(low, structure=np.ones((3, 3)))
+    if npl > 1:
+        pa = np.bincount(pl.ravel())[1:]
+        main_ = pa.argmax() + 1
+        dmain, (my, mx_) = nd.distance_transform_edt(pl != main_, return_indices=True)
+        gap = P["floor"]["gap_m"] / cell
+        for c in np.flatnonzero(pa * cell * cell >= F["pocket_fill_m2"]) + 1:
+            if c == main_:
+                continue
+            m = pl == c
+            k = np.argmin(np.where(m, dmain, np.inf))
+            y0, x0 = divmod(k, n)
+            y1, x1 = my[y0, x0], mx_[y0, x0]
+            t = np.linspace(0, 1, int(dmain[y0, x0]) + 2)
+            ly, lx = (y0 + (y1 - y0) * t).astype(int), (x0 + (x1 - x0) * t).astype(int)
+            if blocky_q[ly, lx].max() >= 20:
+                continue
+            cut = np.zeros((n, n), bool)
+            cut[ly, lx] = True
+            cut = nd.distance_transform_edt(~cut) < gap / 2
+            blocky_q = np.where(cut & (blocky_q < 20), 0.0, blocky_q).astype(np.float32)
     # Some slabs dropped by a fraction of a step (broken tops).
     dropk = np.concatenate([[0.0], rng.uniform(0, 1, sy.size)]).astype(np.float32)[slab]
     blocky_q -= np.where(dropk < Sb["drop_p"], Sb["drop_m"] * (0.4 + dropk / Sb["drop_p"]), 0) * (blocky_q > 20) * (e_o < Sb["drop_band_m"])
@@ -328,12 +355,16 @@ def generate(P, seed):
 
     # Talus of fallen blocks under the walls (a fraction of the wall's height).
     T = F["talus"]
-    tall = (blocky_q > 6) | (rel_col > 6)
+    # (piled on whatever lies at the wall's foot - floor or a bench - as
+    # deep as a share of the wall standing over it, never up to its top)
+    tall = (blocky_q > T["wall_from_m"]) | (rel_col > 6)
     d_t, (ty, tx) = edt(~tall, cell, return_indices=True)
-    wall = np.maximum(blocky_q, rel_col)[ty, tx]
-    a = wall * T["frac"] * (2 * unit(fbm(rng, n, cell, T["scale_m"], 3)))
-    # Never up to the wall's top: the last stretch stays a sheer climb.
-    a = np.minimum(np.minimum(a, T["max_m"]), wall - T["clear_m"])
+    drop = np.maximum(blocky_q, rel_col)[ty, tx] - blocky_q
+    a = drop * T["frac"] * (2 * unit(fbm(rng, n, cell, T["scale_m"], 3)))
+    a = np.minimum(np.minimum(a, T["max_m"]), drop - T["clear_m"])
+    # (smoothed: where the nearest wall switches from one to another the
+    # pile would step by metres - a seam no one could walk over)
+    a = nd.gaussian_filter(np.maximum(a, 0), T["smooth_m"] / cell)
     talus = np.clip(a - d_t * np.tan(np.radians(T["slope_deg"])), 0, None)
     bl, bsy, _ = voronoi(rng, n, cell, T["block_m"])
     bump = np.concatenate([[0.0], rng.uniform(0, 1, bsy.size)]).astype(np.float32)[bl]
@@ -367,17 +398,21 @@ def generate(P, seed):
     rel_fan *= ~high_any
 
     # Dry beds cut into the floor.
-    inc = F["bed_depth_m"] * np.clip(1 - (rv["dist"] / rv["bed_w"]) ** 2, 0, 1)
+    # (a shallow bed: never deeper than a quarter of its width, so it stays
+    # a dry wash to walk across, not a trench)
+    inc = np.minimum(F["bed_depth_m"], 0.25 * rv["bed_w"]) * np.clip(1 - (rv["dist"] / rv["bed_w"]) ** 2, 0, 1)
     wash = (rv["dist"] < rv["bed_w"] * 1.25) & ~high_any
 
     # Columns and peaks are meshes (stage 3): the ground keeps only their
     # talus, unless `stamp` asks for the stand-in cones.
     if Rm.get("stamp", True):
-        rel = np.maximum.reduce([blocky_q, rel_col, rel_peak, talus, rel_fan])
+        rel = np.maximum.reduce([blocky_q + talus, rel_col, rel_peak, rel_fan])
     else:
-        rel = np.maximum.reduce([blocky_q, talus, rel_fan])
+        rel = np.maximum(blocky_q + talus, rel_fan)
     floor_n = F["floor_rough_m"] * (fbm(rng, n, cell, 80.0, 3) + 0.6 * np.abs(fbm(rng, n, cell, 25.0, 2)))
-    h = floor + floor_n * (rel < 1) - inc * (rel < 1) + rel
+    # (the floor's roll under everything, the beds fading out under talus and
+    # fans: no seam where a pile of scree starts)
+    h = floor + floor_n * np.clip(1 - rel / 8.0, 0, 1) - inc * np.clip(1 - rel / 2.0, 0, 1) + rel
     h -= h.min()
 
     # --- 6. burnt grass in the hearts of the biggest islands ----------------

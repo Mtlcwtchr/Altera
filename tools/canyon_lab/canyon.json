@@ -146,13 +146,15 @@
    ]
   },
   "talus": {
-   "frac": 0.13,
-   "max_m": 30,
-   "slope_deg": 36,
+   "frac": 0.2,
+   "max_m": 35,
+   "slope_deg": 32,
    "scale_m": 120,
    "block_m": 6,
-   "block_h_m": 2.0,
-   "clear_m": 14
+   "block_h_m": 0.8,
+   "clear_m": 14,
+   "wall_from_m": 20,
+   "smooth_m": 8
   },
   "skirt": {
    "w_m": 70,
@@ -163,7 +165,8 @@
     16
    ]
   },
-  "pocket_fill_m2": 60000
+  "pocket_fill_m2": 60000,
+  "gap_m": 14
  },
  "grass": {
   "islands": 3,

@@ -67,6 +67,7 @@ def main():
     ap.add_argument("--tag", default="dev")
     ap.add_argument("--seed", type=int, default=5)
     ap.add_argument("--views", action="store_true")
+    ap.add_argument("--wall-rubble", type=float, default=0.35, help="share of tall wall points with fallen slabs below")
     args = ap.parse_args()
     out = ROOT / "terrain_lab_out" / "canyon_lab" / args.tag
     sites = json.loads((out / "mesh_sites.json").read_text(encoding="utf-8"))
@@ -101,6 +102,8 @@ def main():
         q = v["ring"]
         n = h.shape[0]
         for t in range(4):
+            if not (0 <= x < n * cell and 0 <= y < n * cell):
+                break
             # The real foot: the model's vertices at its ground level, placed.
             px = x + (q[:, 0] * np.cos(a) - q[:, 1] * np.sin(a)) * s * k
             py = y - (q[:, 0] * np.sin(a) + q[:, 1] * np.cos(a)) * s * k
@@ -110,14 +113,14 @@ def main():
             z = float(g_ring.min()) - 0.3                      # sunk so no side of the foot is in the air
             g0, g1 = ground_under(h, cell, x, y, foot_r * 1.1)
             span = max(g1, float(h[gi, gj].max())) - z
-            ok_wall = role == "rubble" or span <= 0.25 * height
-            ok_room = role == "rubble" or fits(x, y, foot_r)
+            ok_wall = span <= (1.5 if role.startswith("rubble") else 0.25) * height
+            ok_room = role.startswith("rubble") or fits(x, y, foot_r)
             if ok_wall and ok_room:
                 gap = float(np.max(z + q[:, 2] * s - h[gi, gj]))
                 inst.append(dict(name=name, kind=v["kind"], role=role, x=x, y=y, z=z, yaw=yaw,
                                  s=s, k=k, foot_r=foot_r, top=z + height, ground_span=span,
                                  bury=v["below"] * s, hang_m=max(0.0, gap), moved_m=t * foot_r))
-                if role != "rubble":
+                if not role.startswith("rubble"):
                     placed.append((x, y, foot_r))
                 return True
             # Nudge off the wall (downhill) or out of a neighbour's way.
@@ -147,6 +150,32 @@ def main():
             hh = rng.uniform(6, 14) * (b["foot_r"] / 10.0) ** 0.5
             put(name, x, y, hh, None, "rubble")
 
+    # Fallen slabs along the walls' feet (the talus's big blocks): at a share
+    # of the tall wall points, found by walking out from the rim downhill.
+    n = h.shape[0]
+    for w in sites["walls"]:
+        if rng.random() > args.wall_rubble:
+            continue
+        ty, tx = w["y"] * cell, w["x"] * cell
+        oy, ox = w["out"]
+        foot = None
+        for d in np.arange(1.0, 80.0, 1.0):
+            yy, xx = ty + oy * d, tx + ox * d
+            if not (0 <= yy < n * cell and 0 <= xx < n * cell):
+                break
+            if h[int(yy / cell), int(xx / cell)] <= w["top_m"] - 0.85 * w["drop_m"]:
+                foot = (yy, xx)
+                break
+        if foot is None:
+            continue
+        for _ in range(int(rng.integers(1, 3))):
+            d = rng.uniform(2, 12)
+            lat = rng.uniform(-12, 12)
+            x = foot[1] + ox * d - oy * lat
+            y = foot[0] + oy * d + ox * lat
+            hh = float(np.clip(w["drop_m"] * rng.uniform(0.05, 0.1), 3, 16))
+            put(rng.choice(rubble), x, y, hh, None, "rubble_wall")
+
     # --- checks -------------------------------------------------------------
     xy = np.array([[i["x"], i["y"]] for i in inst])
     rr = np.array([i["foot_r"] for i in inst])
@@ -154,7 +183,7 @@ def main():
     tree = cKDTree(xy)
     clash = 0
     for a, b in tree.query_pairs(float(rr.max() * 2)):
-        if "rubble" in (role[a], role[b]):
+        if role[a].startswith("rubble") or role[b].startswith("rubble"):
             continue
         if np.hypot(*(xy[a] - xy[b])) < 0.85 * (rr[a] + rr[b]):
             clash += 1
@@ -167,13 +196,13 @@ def main():
     res = dict(
         instances=len(inst), dropped=dropped,
         moved=int(sum(1 for i in inst if i["moved_m"] > 0)),
-        ground=dict(max_ground_span_share=float(max(i["ground_span"] / max(1e-6, i["top"] - i["z"]) for i in inst if i["role"] != "rubble"))),
+        ground=dict(max_ground_span_share=float(max(i["ground_span"] / max(1e-6, i["top"] - i["z"]) for i in inst if not i["role"].startswith("rubble")))),
         by_role={r: int((role == r).sum()) for r in sorted(set(role))},
         checks=dict(
-            hanging=dict(value=int((hang & (role != "rubble")).sum()), ok=bool((hang & (role != "rubble")).sum() == 0)),
-            rubble_hanging=dict(value=int((hang & (role == "rubble")).sum()), ok=bool((hang & (role == "rubble")).sum() == 0)),
+            hanging=dict(value=int((hang & ~np.char.startswith(role.astype(str), "rubble")).sum()), ok=bool((hang & ~np.char.startswith(role.astype(str), "rubble")).sum() == 0)),
+            rubble_hanging=dict(value=int((hang & np.char.startswith(role.astype(str), "rubble")).sum()), ok=bool((hang & np.char.startswith(role.astype(str), "rubble")).sum() == 0)),
             pinnacles_overlapping=dict(value=clash, ok=clash == 0),
-            standing_in_a_wall=dict(value=int((in_wall & (role != "rubble")).sum()), ok=bool((in_wall & (role != "rubble")).sum() == 0)),
+            standing_in_a_wall=dict(value=int((in_wall & ~np.char.startswith(role.astype(str), "rubble")).sum()), ok=bool((in_wall & ~np.char.startswith(role.astype(str), "rubble")).sum() == 0)),
         ),
         footprint_stretch_k=dict(min=float(min(i["k"] for i in inst)), max=float(max(i["k"] for i in inst)),
                                  clamped=int(sum(1 for i in inst if i["k"] in (0.75, 1.5)))),

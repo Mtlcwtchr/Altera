@@ -29,7 +29,9 @@ CLASSES = [
     ("column", (60, 120, 220)), ("peak", (150, 60, 200)), ("grass", (240, 150, 40)),
 ]
 CHECKS = {
-    "climb_on_sheer_walls_min": 0.85,
+    # (user 15.10 asked for talus under the walls: the climb is sheer walls
+    # or scree, never a gentle slope)
+    "climb_on_sheer_or_talus_min": 0.85,
     "climb_on_gentle_max": 0.08,
     "floor_in_one_piece_min": 0.85,
     "islands_walkable_from_floor_max": 0,
@@ -179,7 +181,8 @@ def main():
     (out / "mesh_sites.json").write_text(json.dumps(sites), encoding="utf-8")
 
     checks = {
-        "climb_on_sheer_walls": (climb["sheer_gt60"], climb["sheer_gt60"] >= CHECKS["climb_on_sheer_walls_min"]),
+        "climb_on_sheer_or_talus": (climb["sheer_gt60"] + climb["talus"],
+                                    climb["sheer_gt60"] + climb["talus"] >= CHECKS["climb_on_sheer_or_talus_min"]),
         "climb_on_gentle": (climb["gentle_8_45"], climb["gentle_8_45"] <= CHECKS["climb_on_gentle_max"]),
         "floor_in_one_piece": (floor_one, floor_one >= CHECKS["floor_in_one_piece_min"]),
         "islands_walkable_from_floor": (len(reachable), len(reachable) <= CHECKS["islands_walkable_from_floor_max"]),
