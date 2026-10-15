@@ -223,5 +223,58 @@
   "depth_max_m": 320,
   "shore_m": 6.0,
   "floor_smooth_m": 800
+ },
+ "paths": {
+  "comment": "tools/canyon_lab/paths.py (user 15.10: bridges between islands, spiral rises): see its docstring",
+  "tread_drop_m": 6,
+  "tread_slope_deg": 22,
+  "bridges": {
+   "span_m": [
+    16,
+    170
+   ],
+   "grade_max": 0.25,
+   "width_m": [
+    4,
+    7
+   ],
+   "rise_k": 0.03,
+   "land_m": 6,
+   "clear_m": 4,
+   "bury_max_m": 0.8,
+   "float_max_m": 1.5,
+   "tries": 25,
+   "spacing_m": 140,
+   "per_island": 2,
+   "per_km2": 3.0,
+   "cross_gap_m": 10,
+   "step_m": 2.5,
+   "end_th_k": 0.3,
+   "end_th_max_m": 26,
+   "mid_th_m": 3.0,
+   "jitter_m": 0.25,
+   "mid_th_k": 0.04
+  },
+  "spirals": {
+   "climb_m": [
+    50,
+    360
+   ],
+   "grade": 0.2,
+   "width": 4.5,
+   "step_m": 2.0,
+   "max_turns": 5,
+   "headroom_m": 5.0,
+   "per_km2": 0.6,
+   "spacing_m": 300,
+   "jitter_m": 0.15,
+   "foot_r_min_m": 6,
+   "bridge_reach_m": 160,
+   "top_below_m": 3,
+   "ground_run_m": 40,
+   "embed_m": 1.2,
+   "gap_to_rock_max_m": 1.5,
+   "turn_rise_m": 7.5
+  }
  }
 }

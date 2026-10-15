@@ -26,6 +26,7 @@ RUN = Path(argv[0]).resolve()
 STEP = int(argv[argv.index("--step") + 1]) if "--step" in argv else 2
 ONLY = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
 GAME = "--game" in argv          # the ground as the game holds it (fine_relief.py)
+PATHS = "--paths" in argv        # the bridges and spirals (paths.py) and views of them
 SUFFIX = "_game" if GAME else ""
 WALL_TEX = ROOT / "assets" / "terrain_core" / "materials" / "rock_orange.png"
 SCREE_TEX = ROOT / "assets" / "terrain_core" / "materials" / "scree_slabs.png"
@@ -169,8 +170,8 @@ def rock_material():
     return mat
 
 
-def load_mesh(name, mat):
-    b = (PROPS / f"{name}_lod0.mesh").read_bytes()
+def load_mesh(name, mat, folder=PROPS):
+    b = (folder / f"{name}_lod0.mesh").read_bytes()
     ver, nv, ni = struct.unpack("<III", b[4:16])
     stride = 8 if ver == 1 else 9
     v = np.frombuffer(b, "<f4", count=nv * stride, offset=40).reshape(nv, stride)
@@ -216,6 +217,65 @@ def main():
         ob.scale = (it["s"] * it["k"], it["s"] * it["k"], it["s"])
         coll.objects.link(ob)
 
+    path_views = []
+    if PATHS:
+        ways = json.loads((RUN / "paths.json").read_text(encoding="utf-8"))["ways"]
+        for wy in ways:
+            me = load_mesh(wy["name"], rock, RUN / "paths")
+            ob = bpy.data.objects.new(wy["name"], me)
+            ob.location = (wy["origin"][0], -wy["origin"][1], 0.0)
+            coll.objects.link(ob)
+        # A side view of the longest bridges and of the tallest spirals.
+        br = sorted([w for w in ways if w["kind"] == "bridge"], key=lambda w: -w["gap_m"])[:2]
+        sp = sorted([w for w in ways if w["kind"] == "spiral"], key=lambda w: -w["checks"]["climb_m"])[:2]
+        for k, wy in enumerate(br):
+            p = np.array(wy["pts"])
+            mid = p[len(p) // 2]
+            d = p[-1, :2] - p[0, :2]
+            d /= np.linalg.norm(d)
+            nx_, ny_ = -d[1], d[0]
+            dist = wy["gap_m"] * 0.9 + 60
+            best = None
+            for sgn in (1, -1):
+                for f in (1.0, 0.6, 1.5):
+                    x, y = mid[0] + sgn * nx_ * dist * f, mid[1] + sgn * ny_ * dist * f
+                    if not (0 < x < h.shape[1] * cell and 0 < y < h.shape[0] * cell):
+                        continue
+                    t = np.linspace(0.05, 0.9, 40)
+                    gl = h[np.clip(((y + (mid[1] - y) * t) / cell).astype(int), 0, h.shape[0] - 1),
+                           np.clip(((x + (mid[0] - x) * t) / cell).astype(int), 0, h.shape[1] - 1)]
+                    over = float((gl - mid[2] + 10).max())
+                    if best is None or over < best[0]:
+                        best = (over, x, y, sgn)
+            _, x, y, sgn = best
+            nx_, ny_ = nx_ * sgn, ny_ * sgn
+            # (a view's yaw: looking along (sin, -cos) in the run's x, y)
+            yaw = math.degrees(math.atan2(-nx_, ny_))
+            path_views.append(dict(name=f"bridge{k}", x=x, y=y, z_abs=mid[2] - 10, yaw=yaw, pitch=4))
+        for k, wy in enumerate(sp):
+            p = np.array(wy["pts"])
+            c = np.array([wy["platform"]["x"], wy["platform"]["y"]])
+            hgt = p[-1, 2] - p[0, 2]
+            dist = 1.1 * hgt + 40
+            zc = p[0, 2] + hgt * 0.45
+            best = None
+            for a in range(0, 360, 15):
+                ra = math.radians(a)
+                for f in (1.0, 0.7, 1.4):
+                    x, y = c[0] + f * dist * math.cos(ra), c[1] + f * dist * math.sin(ra)
+                    if not (0 < x < h.shape[1] * cell and 0 < y < h.shape[0] * cell):
+                        continue
+                    # (the column in sight: no ground over the line to it)
+                    t = np.linspace(0.05, 0.9, 40)
+                    gl = h[np.clip(((y + (c[1] - y) * t) / cell).astype(int), 0, h.shape[0] - 1),
+                           np.clip(((x + (c[0] - x) * t) / cell).astype(int), 0, h.shape[1] - 1)]
+                    over = float((gl - zc).max())
+                    if best is None or over < best[0]:
+                        best = (over, x, y)
+            _, x, y = best
+            yaw = math.degrees(math.atan2(c[0] - x, -(c[1] - y)))
+            path_views.append(dict(name=f"spiral{k}", x=x, y=y, z_abs=p[0, 2] + hgt * 0.45, yaw=yaw, pitch=-2))
+
     P = json.loads((HERE / "canyon.json").read_text(encoding="utf-8"))
     R = P["render"]
     sun = bpy.data.lights.new("sun", "SUN")
@@ -241,7 +301,7 @@ def main():
     sc.render.resolution_x, sc.render.resolution_y = 1280, 720
     sc.view_settings.view_transform = "Standard"
     span = n * cell
-    views = list(R["views"])
+    views = list(R["views"]) + path_views
     # Plus one close to the tallest column.
     cols = sorted([i for i in inst["instances"] if i["role"] == "column"], key=lambda i: -(i["top"] - i["z"]))
     # (the first tall one with open floor between it and the camera)
@@ -268,6 +328,8 @@ def main():
         x = v.get("x", v.get("u", 0) * span)
         y = v.get("y", v.get("v", 0) * span)
         gz = float(h[int(np.clip(y / cell, 0, n - 1)), int(np.clip(x / cell, 0, n - 1))])
+        if "z_abs" in v:
+            gz, v = 0.0, dict(v, z=max(v["z_abs"], gz + 3))
         cam = bpy.data.cameras.new("cam")
         cam.sensor_fit = "HORIZONTAL"
         cam.angle = math.radians(62)
