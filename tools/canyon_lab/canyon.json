@@ -276,5 +276,64 @@
    "gap_to_rock_max_m": 1.5,
    "turn_rise_m": 7.5
   }
+ },
+ "decor": {
+  "comment": "tools/canyon_lab/decor.py (user 15.10: small decor): see its docstring",
+  "variants": 12,
+  "wall_min_m": 20,
+  "talus_m": 1.0,
+  "wall_foot_m": 8,
+  "masks": {
+   "talus": {
+    "per_ha": 70,
+    "size_m": [
+     0.6,
+     3.5
+    ],
+    "bury": 0.4,
+    "gap_k": 1.1,
+    "max_relief_k": 1.5
+   },
+   "wall_foot": {
+    "per_ha": 90,
+    "size_m": [
+     1.0,
+     5.0
+    ],
+    "bury": 0.25,
+    "gap_k": 1.0,
+    "max_relief_k": 1.0
+   },
+   "floor": {
+    "per_ha": 6,
+    "size_m": [
+     0.3,
+     1.5
+    ],
+    "bury": 0.35,
+    "gap_k": 3.0,
+    "max_relief_k": 0.8
+   },
+   "bench": {
+    "per_ha": 18,
+    "size_m": [
+     0.5,
+     2.5
+    ],
+    "bury": 0.3,
+    "gap_k": 2.0,
+    "max_relief_k": 0.8
+   },
+   "top": {
+    "per_ha": 3,
+    "size_m": [
+     0.5,
+     2.0
+    ],
+    "bury": 0.3,
+    "gap_k": 3.0,
+    "max_relief_k": 0.8
+   }
+  }
  }
 }

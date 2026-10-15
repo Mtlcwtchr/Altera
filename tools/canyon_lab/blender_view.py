@@ -27,6 +27,7 @@ STEP = int(argv[argv.index("--step") + 1]) if "--step" in argv else 2
 ONLY = argv[argv.index("--only") + 1].split(",") if "--only" in argv else None
 GAME = "--game" in argv          # the ground as the game holds it (fine_relief.py)
 PATHS = "--paths" in argv        # the bridges and spirals (paths.py) and views of them
+DECOR = "--decor" in argv        # the small rocks (decor.py) round close views of them
 SUFFIX = "_game" if GAME else ""
 WALL_TEX = ROOT / "assets" / "terrain_core" / "materials" / "rock_orange.png"
 SCREE_TEX = ROOT / "assets" / "terrain_core" / "materials" / "scree_slabs.png"
@@ -275,6 +276,54 @@ def main():
             _, x, y = best
             yaw = math.degrees(math.atan2(c[0] - x, -(c[1] - y)))
             path_views.append(dict(name=f"spiral{k}", x=x, y=y, z_abs=p[0, 2] + hgt * 0.45, yaw=yaw, pitch=-2))
+
+    if DECOR:
+        from mathutils import Matrix, Vector
+        rocks = json.loads((RUN / "decor.json").read_text(encoding="utf-8"))["rocks"]
+        # Close views: the biggest rock at a wall's foot, one in the scree,
+        # one on a bench - each from where it is in sight.
+        picks = []
+        for mask in ("wall_foot", "talus", "bench"):
+            rs = sorted([r for r in rocks if r["mask"] == mask], key=lambda r: -r["size"])
+            if rs:
+                picks.append(rs[len(rs) // 20])
+        for k, r in enumerate(picks):
+            dist = 14 + 4 * r["size"]
+            gz0 = r["z"] + r["size"] * 0.3
+            best = None
+            for a in range(0, 360, 20):
+                ra = math.radians(a)
+                x, y = r["x"] + dist * math.cos(ra), r["y"] + dist * math.sin(ra)
+                if not (0 < x < h.shape[1] * cell and 0 < y < h.shape[0] * cell):
+                    continue
+                cz = max(float(h[int(y / cell), int(x / cell)]) + 1.8, gz0 + 4 + r["size"])
+                t = np.linspace(0.05, 0.9, 30)
+                gl = h[np.clip(((y + (r["y"] - y) * t) / cell).astype(int), 0, h.shape[0] - 1),
+                       np.clip(((x + (r["x"] - x) * t) / cell).astype(int), 0, h.shape[1] - 1)]
+                over = float((gl - (cz + (gz0 - cz) * t)).max())
+                if best is None or over < best[0]:
+                    best = (over, x, y, cz)
+            _, x, y, cz = best
+            yaw = math.degrees(math.atan2(r["x"] - x, -(r["y"] - y)))
+            pitch = math.degrees(math.atan2(cz - gz0, math.hypot(r["x"] - x, r["y"] - y)))   # (positive: down)
+            path_views.append(dict(name=f"decor{k}", x=x, y=y, z_abs=cz, yaw=yaw, pitch=pitch, around=(r["x"], r["y"])))
+        centres = np.array([v["around"] for v in path_views if "around" in v]).reshape(-1, 2)
+        dmeshes = {}
+        for r in rocks:
+            if not len(centres) or np.min(np.hypot(centres[:, 0] - r["x"], centres[:, 1] - r["y"])) > 260:
+                continue
+            me = dmeshes.get(r["rock"]) or dmeshes.setdefault(r["rock"], load_mesh(r["rock"], rock, RUN / "decor"))
+            ob = bpy.data.objects.new(r["rock"], me)
+            ob.location = (r["x"], -r["y"], r["z"])
+            td = math.radians(r["tilt_dir"])
+            nrm = Vector((math.cos(td), -math.sin(td), 0.0)) * math.sin(math.radians(r["tilt"]))
+            nrm.z = math.cos(math.radians(r["tilt"]))
+            axis = Vector((0, 0, 1)).cross(nrm)
+            m = Matrix.Rotation(math.radians(r["yaw"]), 4, "Z")
+            if axis.length > 1e-6:
+                m = Matrix.Rotation(math.radians(r["tilt"]), 4, axis.normalized()) @ m
+            ob.matrix_world = Matrix.Translation(ob.location) @ m @ Matrix.Scale(r["size"], 4)
+            coll.objects.link(ob)
 
     P = json.loads((HERE / "canyon.json").read_text(encoding="utf-8"))
     R = P["render"]
