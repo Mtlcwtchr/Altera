@@ -304,13 +304,25 @@ def main():
             if "mesh" in q:
                 items.append({"m": q["mesh"], "dir": layout["mesh_dir"], "x": q["x"], "y": q["y"], "z": 0.0, "yaw": 0.0,
                               "s": [1.0, 1.0, 1.0], "biomes": [1, 1], "cat": "terrain"})
+    # The canyon steppe's pinnacles and slab rubble (canyon_features.py: the
+    # sandbox's placing on canyon_relief.py's ground), each at its own `z`.
+    canyon = Path(args.world + "_canyon_features.json")
+    canyon_checks = None
+    if canyon.exists():
+        c = json.loads(canyon.read_text(encoding="utf-8"))
+        items += c["instances"]
+        canyon_checks = c["checks"]
     out = Path(args.world + "_features.json")
     out.write_text(json.dumps({"world_m": world.size, "instances": items}, separators=(",", ":")))
     preview(world, args.world, items, catalogue, args.world + "_features_preview.png")
     import world_megaliths
     checks = world_megaliths.CHECKS
-    import steppe_checks
-    checks["steppe"] = steppe_checks.run(world, items, catalogue, args.world)
+    if canyon_checks is not None:
+        # (the canyon replaced steppe_relief's mesas: its own checks)
+        checks["canyon"] = canyon_checks
+    else:
+        import steppe_checks
+        checks["steppe"] = steppe_checks.run(world, items, catalogue, args.world)
     if checks:
         # The automatic checks (doc/BIOME_PLAN.md 1.5), by element.
         Path(args.world + "_checks.json").write_text(json.dumps(checks, indent=1))

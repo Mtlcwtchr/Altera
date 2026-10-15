@@ -7,15 +7,24 @@
 // the patch's weight. Everything that reads the clipmap (the ground, the
 // grass, the water's shore) then stands on it.
 //
-// File <world>_relief.bin (tools/terrain_lab/marsh_islands.py): "RELF", u32
-// version 1, u32 patch count; per patch f64 x0, y0 (its south-west corner,
-// metres), f32 texel (metres), f32 base (metres), u32 width, height, then
-// width * height pairs of f16 (height over base, weight 0..1), row 0 south.
+// File <world>_relief.bin (tools/terrain_lab/marsh_islands.py,
+// canyon_relief.py): "RELF", u32 version (1 or 2), u32 patch count; per patch
+// f64 x0, y0 (its south-west corner, metres), f32 texel (metres), f32 base
+// (metres), u32 width, height, and in version 2 u32 tile and a u32 spare.
+// A dense patch (version 1, or tile 0): width * height pairs of f16 (height
+// over base, weight 0..1), row 0 south. A sparse one (tile > 0: a canyon's
+// windows over a whole zone, most of it empty): per tile of tile x tile
+// texels (row-major, row 0 south) a u32 index into the stored tiles
+// (0xffffffff: none) and an f32 base (metres), then a u32 count of stored
+// tiles and their tile * tile pairs of f16 (height over the tile's base,
+// weight) each.
 //
 // On the GPU two read-only storage buffers (the generator and the ground's
 // shading read them), bound together and in this
-// order: the patches (32 bytes each; an empty set is one patch of no size)
-// and their texels (u32: height half low, weight half high).
+// order: the patches (48 bytes each; an empty set is one patch of no size)
+// and their texels (u32: height half low, weight half high), a sparse
+// patch's table there too (u32 pairs: the stored tile's first texel or
+// 0xffffffff, the base's bits).
 
 #include "engine/render/device.hpp"
 
@@ -42,7 +51,9 @@ private:
         std::int32_t originX, originY;   // corner, in the finest spacing's texels
         std::uint32_t width, height;
         float texel, base;
-        std::uint32_t offset, pad;
+        std::uint32_t offset;            // dense: the first texel; sparse: the table
+        std::uint32_t tile;              // 0: dense
+        std::uint32_t pad[4];
     };
     std::vector<Patch> patches_;
     std::vector<std::uint32_t> texels_;

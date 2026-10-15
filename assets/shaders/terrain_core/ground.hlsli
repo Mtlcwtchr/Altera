@@ -59,10 +59,20 @@ float islands(GroundPoint p, int log2Cell, uint seed) {
            cellNoise(p, log2Cell - 4, seed + 29u) * 0.1;
 }
 
-// Texture coordinate repeating every 2^log2Tile level-0 texels.
-float2 tileUv(GroundPoint p, int log2Tile) {
+// The ground's slope (dh/dx, dh/dy) where it is shaded: the fragment stage
+// sets it before groundSurface() (a wall's rock is projected from its side,
+// slopeMaterial); compute leaves it flat.
+static float2 groundGradient = float2(0, 0);
+static float groundHeight = 0;
+
+// Texture coordinate repeating every 2^log2Tile level-0 texels: seen from
+// above (`proj` 0), or from the side - across x (1: along y and up) or
+// across y (2: along x and up), the picture's up up the wall.
+float2 tileUv(GroundPoint p, int log2Tile, int proj = 0) {
     const int size = 1 << log2Tile;
-    return (float2(p.base & (size - 1)) + p.sub) / float(size);
+    const float2 top = (float2(p.base & (size - 1)) + p.sub) / float(size);
+    if (proj == 0) return top;
+    return float2(proj == 1 ? top.y : top.x, -groundHeight / (float(size) * groundWorld.y));
 }
 
 // One material, without its repeat showing. A 4 m picture laid edge to edge
@@ -126,9 +136,9 @@ float4 sampleLayer(Texture2DArray<float4> tex, SamplerState at, float2 uv, float
 // slow noise, and blends them (Quilez, "texture repetition", technique 3) -
 // colour, normal and properties alike. Gradients come from the unshifted
 // coordinate so the offset jumps never become mip seams.
-Surface material(float layer, GroundPoint p, float wander) {
+Surface material(float layer, GroundPoint p, float wander, int proj = 0) {
     const int tile = int(groundGlobals.w);
-    const float2 uv = tileUv(p, tile);
+    const float2 uv = tileUv(p, tile, proj);
     const float k = cellNoise(p, tile + 1, 7u) * 8.0;
     const float i = floor(k), f = frac(k);
     const float2 uvA = uv + offsetOf(i), uvB = uv + offsetOf(i + 1);
@@ -196,7 +206,41 @@ Surface biomeGround(uint id, GroundPoint p, float height, float normalZ, float w
     const float jitter = cellNoise(p, int(groundGlobals.w) + 3, 211u + id) - 0.5;
     if (mats.z >= 0) {
         const float m = saturate((slope.x - normalZ + jitter * 0.06) / max(slope.x - slope.y, 1e-3));
-        if (m > 0) ground = surfaceOver(ground, material(mats.z, p, wander), m);
+// A slope's rock (user 15.10: canyon walls, no stretched texture): seen from
+// above on the gentle part of it and from the side - across x, across y -
+// on the steep, each by how squarely the ground faces it (sharpened), so a
+// sheer wall wears its rock upright and in level beds, not drawn out down
+// the drop. A side's own relief only along the wall (its slope across the
+// wall would tilt the wall's whole face).
+Surface slopeMaterial(float layer, GroundPoint p, float wander) {
+    const float3 n = normalize(float3(-groundGradient, 1));
+    float3 w = n * n;
+    w *= w;
+    w /= w.x + w.y + w.z;
+    Surface o;
+    o.colour = 0; o.grass = 0; o.slope = 0; o.ao = 1; o.height = 0.5;
+    float sum = 0;
+    if (w.z > 0.02) {
+        o = material(layer, p, wander);
+        sum = w.z;
+    }
+    if (w.x > 0.02) {
+        Surface sx = material(layer, p, wander, 1);
+        sx.slope = float2(0, sx.slope.x * sign(n.x));
+        if (sum > 0) o = surfaceLerp(o, sx, w.x / (sum + w.x));
+        else o = sx;
+        sum += w.x;
+    }
+    if (w.y > 0.02) {
+        Surface sy = material(layer, p, wander, 2);
+        sy.slope = float2(sy.slope.x * sign(n.y), 0);
+        if (sum > 0) o = surfaceLerp(o, sy, w.y / (sum + w.y));
+        else o = sy;
+    }
+    return o;
+}
+
+        if (m > 0) ground = surfaceOver(ground, slopeMaterial(mats.z, p, wander), m);
     }
     if (mats.w >= 0) {
         // (the snow line wanders by hundreds of metres: tongues down the gullies,

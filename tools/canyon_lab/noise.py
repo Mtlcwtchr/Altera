@@ -20,18 +20,23 @@ def _bspline_matrix(n, g, f):
     return m
 
 
+def shape2(n):
+    """`n` a side (a square patch) or (rows, cols)."""
+    return (n, n) if np.isscalar(n) else (int(n[0]), int(n[1]))
+
+
 def smooth(rng, n, cell, scale_m):
     """One octave of zero-mean, unit-std smooth noise with features ~scale_m."""
+    ny, nx = shape2(n)
     f = cell / scale_m
-    g = int(np.ceil(n * f)) + 4
-    a = rng.standard_normal((g, g)).astype(np.float32)
-    m = _bspline_matrix(n, g, f)
-    out = m @ a @ m.T
+    gy, gx = int(np.ceil(ny * f)) + 4, int(np.ceil(nx * f)) + 4
+    a = rng.standard_normal((gy, gx)).astype(np.float32)
+    out = _bspline_matrix(ny, gy, f) @ a @ _bspline_matrix(nx, gx, f).T
     return (out - out.mean()) / (out.std() + 1e-9)
 
 
 def fbm(rng, n, cell, scale_m, octaves=4, gain=0.5):
-    out = np.zeros((n, n), np.float32)
+    out = np.zeros(shape2(n), np.float32)
     amp, tot, s = 1.0, 0.0, scale_m
     s = max(s, 2.5 * cell)
     for _ in range(octaves):
@@ -50,22 +55,24 @@ def unit(x):
 
 
 def warp_coords(rng, n, cell, scale_m, amp_m):
-    gy, gx = np.mgrid[0:n, 0:n].astype(np.float32)
+    ny, nx = shape2(n)
+    gy, gx = np.mgrid[0:ny, 0:nx].astype(np.float32)
     wy = fbm(rng, n, cell, scale_m, 3) * (amp_m / cell)
     wx = fbm(rng, n, cell, scale_m, 3) * (amp_m / cell)
-    return np.clip(gy + wy, 0, n - 1), np.clip(gx + wx, 0, n - 1)
+    return np.clip(gy + wy, 0, ny - 1), np.clip(gx + wx, 0, nx - 1)
 
 
 def voronoi(rng, n, cell, spacing_m, at=None):
     """Labels of a jittered-grid Voronoi (looked up at warped coords `at`),
     plus the seeds' pixel positions."""
+    ny, nx = shape2(n)
     sp = spacing_m / cell
-    g = int(np.ceil(n / sp)) + 1
-    sy = ((np.arange(g)[:, None] + rng.uniform(0.1, 0.9, (g, g))) * sp).ravel()
-    sx = ((np.arange(g)[None, :] + rng.uniform(0.1, 0.9, (g, g))) * sp).ravel()
-    keep = (sy < n) & (sx < n)
+    gy, gx = int(np.ceil(ny / sp)) + 1, int(np.ceil(nx / sp)) + 1
+    sy = ((np.arange(gy)[:, None] + rng.uniform(0.1, 0.9, (gy, gx))) * sp).ravel()
+    sx = ((np.arange(gx)[None, :] + rng.uniform(0.1, 0.9, (gy, gx))) * sp).ravel()
+    keep = (sy < ny) & (sx < nx)
     sy, sx = sy[keep].astype(int), sx[keep].astype(int)
-    seed = np.zeros((n, n), np.int32)
+    seed = np.zeros((ny, nx), np.int32)
     seed[sy, sx] = np.arange(1, sy.size + 1)
     _, (iy, ix) = nd.distance_transform_edt(seed == 0, return_indices=True)
     lab = seed[iy, ix]
@@ -76,11 +83,10 @@ def voronoi(rng, n, cell, spacing_m, at=None):
 
 def pair_border(lab):
     """Pixels on a border between two labels, with a 0..1 hash of the pair."""
-    n = lab.shape[0]
     b = np.zeros(lab.shape, bool)
     hsh = np.ones(lab.shape, np.float32)
-    for sl_a, sl_b in (((slice(None), slice(0, n - 1)), (slice(None), slice(1, n))),
-                       ((slice(0, n - 1), slice(None)), (slice(1, n), slice(None)))):
+    for sl_a, sl_b in (((slice(None), slice(0, -1)), (slice(None), slice(1, None))),
+                       ((slice(0, -1), slice(None)), (slice(1, None), slice(None)))):
         a, c = lab[sl_a].astype(np.int64), lab[sl_b].astype(np.int64)
         d = a != c
         lo, hi = np.minimum(a, c), np.maximum(a, c)
@@ -92,11 +98,11 @@ def pair_border(lab):
 
 def stamp_cones(h, items, cell, rng=None):
     """Max-stamp cones: items of (y, x, r_m, height_m, power). Returns h."""
-    n = h.shape[0]
+    ny, nx = h.shape
     for y, x, r, ht, pw in items:
         rp = r / cell
-        y0, y1 = int(max(0, y - rp - 1)), int(min(n, y + rp + 2))
-        x0, x1 = int(max(0, x - rp - 1)), int(min(n, x + rp + 2))
+        y0, y1 = int(max(0, y - rp - 1)), int(min(ny, y + rp + 2))
+        x0, x1 = int(max(0, x - rp - 1)), int(min(nx, x + rp + 2))
         if y0 >= y1 or x0 >= x1:
             continue
         yy, xx = np.mgrid[y0:y1, x0:x1]

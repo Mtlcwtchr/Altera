@@ -49,18 +49,22 @@ def slope_deg(h, cell):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="dev")
+    ap.add_argument("--dir", help="a run directory instead of canyon_lab/<tag> (the world's: canyon_relief.py)")
     ap.add_argument("--mesh-wall-m", type=float, default=25.0,
                     help="a wall at least this tall is a cliff mesh's job, lower ones the terrain's")
     ap.add_argument("--walk-deg", type=float, default=38.0)
     args = ap.parse_args()
-    out = ROOT / "terrain_lab_out" / "canyon_lab" / args.tag
+    out = Path(args.dir) if args.dir else ROOT / "terrain_lab_out" / "canyon_lab" / args.tag
     L = np.load(out / "layers.npz")
     st = json.loads((out / "stats.json").read_text(encoding="utf-8"))
     feats = json.loads((out / "features.json").read_text(encoding="utf-8"))
     cell = st["cell_m"]
     h = L["h"].astype(np.float32)
-    n = h.shape[0]
+    n = h.shape
     lab = L["lab"]
+    # (in the world only the canyon's own ground counts: the land round it is not its floor)
+    zone = L["mask"] if "mask" in L.files else np.ones(n, bool)
+    boxes = nd.find_objects(lab)
     sl, gx, gy = slope_deg(h, cell)
 
     # --- walls: top-edge cells and the drop below them ---------------------
@@ -75,7 +79,7 @@ def main():
     # --- classes ------------------------------------------------------------
     rel_isl, rel_col, rel_peak = L["rel_isl"], L["rel_col"], L["rel_peak"]
     talus, rel_fan, wash, grass = L["talus"], L["rel_fan"], L["wash"], L["grass"]
-    c = np.zeros((n, n), np.uint8)
+    c = np.zeros(n, np.uint8)
     names = [k for k, _ in CLASSES]
     put = lambda m, k: c.__setitem__(m, names.index(k))
     put(wash, "wash")
@@ -95,7 +99,7 @@ def main():
 
     # --- climbing: how the height is gained ---------------------------------
     dh = np.hypot(gx, gy) * cell
-    moving = sl > 8
+    moving = (sl > 8) & zone
     tot = dh[moving].sum()
     climb = {
         "sheer_gt60": float(dh[moving & (sl > 60)].sum() / tot),
@@ -115,7 +119,7 @@ def main():
         st = np.maximum(st, np.roll(np.roll(a, dy, 0), dx, 1))
     walk = np.degrees(np.arctan(st)) < args.walk_deg
     wl, nw = nd.label(walk, structure=np.ones((3, 3)))
-    floor = walk & (rel_isl < 1) & (rel_col < 1) & (rel_peak < 1)
+    floor = walk & (rel_isl < 1) & (rel_col < 1) & (rel_peak < 1) & zone
     fl_counts = np.bincount(wl[floor], minlength=nw + 1)
     fl_counts[0] = 0
     main_id = int(fl_counts.argmax())
@@ -125,11 +129,12 @@ def main():
     reachable, isolated = [], 0
     for s in isl:
         i = s["id"]
-        m = lab == i
-        if not m.any():
+        if i > len(boxes) or boxes[i - 1] is None:
             continue
-        top = m & (h >= h[m].max() - 8)
-        if (wl[top] == main_id).any():
+        b = boxes[i - 1]
+        m = lab[b] == i
+        top = m & (h[b] >= h[b][m].max() - 8)
+        if (wl[b][top] == main_id).any():
             reachable.append(i)
         else:
             isolated += 1
@@ -151,11 +156,12 @@ def main():
     on_big = np.isin(lab[grass], big3) if grass.any() else np.array([True])
     depth = []
     for s in isl:
-        if not s.get("grass"):
+        if not s.get("grass") or s["id"] > len(boxes) or boxes[s["id"] - 1] is None:
             continue
-        m = lab == s["id"]
-        e = nd.distance_transform_edt(m) * cell
-        g = grass & m
+        b = boxes[s["id"] - 1]
+        m = lab[b] == s["id"]
+        e = nd.distance_transform_edt(np.pad(m, 1)) [1:-1, 1:-1] * cell
+        g = grass[b] & m
         if g.any():
             depth.append(float(np.median(e[g]) / max(1.0, e.max())))
     grass_core = float(np.mean(depth)) if depth else 0.0
@@ -166,7 +172,7 @@ def main():
     segs = []
     ey, ex = np.nonzero(edge & (big >= args.mesh_wall_m))
     order = np.argsort(-drop[ey, ex])
-    taken = np.zeros((n, n), bool)
+    taken = np.zeros(n, bool)
     sp = int(30 / cell)
     for o in order:
         y, x = ey[o], ex[o]
@@ -212,22 +218,25 @@ def main():
         page.paste(bar, (0, im.size[1]))
         return page
 
-    small = lambda a: Image.fromarray(a).resize((1024, 1024), Image.LANCZOS)
+    small = lambda a: Image.fromarray(a).resize((1024, max(1, round(1024 * a.shape[0] / a.shape[1]))), Image.LANCZOS)
     legend(small(img), CLASSES).save(out / "masks.png")
-    wv = np.full((n, n, 3), 40, np.uint8)
+    wv = np.full(n + (3,), 40, np.uint8)
     wv[...] = (np.clip(h / max(1.0, h.max()), 0, 1)[..., None] * 90 + 30).astype(np.uint8)
     thick = nd.binary_dilation(edge & (big >= args.mesh_wall_m), iterations=2)
     wv[nd.binary_dilation(edge & (big < args.mesh_wall_m))] = (250, 210, 120)
     wv[thick] = (235, 40, 30)
     legend(small(wv), [("wall, terrain (<%dm)" % args.mesh_wall_m, (250, 210, 120)),
                        ("wall, cliff mesh", (235, 40, 30))]).save(out / "walls.png")
-    wk = np.full((n, n, 3), 30, np.uint8)
+    wk = np.full(n + (3,), 30, np.uint8)
     wk[walk] = (90, 90, 90)
     wk[wl == main_id] = (90, 170, 90)
     for s in isl:
-        m = lab == s["id"]
-        top = m & (h >= h[m].max() - 8) & walk if m.any() else m
-        wk[top] = (60, 120, 220) if s["id"] not in reachable else (230, 60, 40)
+        if s["id"] > len(boxes) or boxes[s["id"] - 1] is None:
+            continue
+        b = boxes[s["id"] - 1]
+        m = lab[b] == s["id"]
+        top = m & (h[b] >= h[b][m].max() - 8) & walk[b]
+        wk[b][top] = (60, 120, 220) if s["id"] not in reachable else (230, 60, 40)
     legend(small(wk), [("floor, one piece", (90, 170, 90)), ("island top, cut off", (60, 120, 220)),
                        ("island top, walkable from floor", (230, 60, 40)), ("other walkable", (90, 90, 90)),
                        ("too steep", (30, 30, 30))]).save(out / "walk.png")

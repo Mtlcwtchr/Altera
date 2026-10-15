@@ -208,5 +208,20 @@
   "m": 45,
   "min_k": 0.35,
   "scale_m": 450
+ },
+ "world": {
+  "comment": "tools/terrain_lab/canyon_relief.py: the canyon in the world. The zone's 64 m outline rounded by rim_round_m; floor = the ground round the zone at its rim, spread inside over floor_window_m, never less than depth_min_m under the land (smoothed smooth_m; the floor itself floor_smooth_m), whose level the islands' tops keep (depth_min_m..depth_max_m over the floor); islands keep edge_m inside the zone; eased into the land round over feather_m; fine-relief windows (tile texels square) where the 16 m map misses by more than tol_m, eased over blend_m",
+  "floor_window_m": 3000,
+  "smooth_m": 200,
+  "edge_m": 150,
+  "feather_m": 60,
+  "tol_m": 2.0,
+  "tile": 16,
+  "blend_m": 16,
+  "rim_round_m": 96,
+  "depth_min_m": 150,
+  "depth_max_m": 320,
+  "shore_m": 6.0,
+  "floor_smooth_m": 800
  }
 }

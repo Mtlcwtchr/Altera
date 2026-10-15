@@ -32,78 +32,94 @@ def edt(mask, cell, **kw):
     return out * cell
 
 
-def rivers(P, rng, n, cell):
+def rivers(P, rng, shape, cell, W=None):
     R = P["rivers"]
     cc = R["coarse_cell_m"]
-    m = int(round(n * cell / cc))
-    sk = n / m
-    yy = np.linspace(0.0, 1.0, m)[:, None]
-    surf = R["tilt_m"] * (1.0 - yy) + R["rumple_m"] * fbm(rng, m, cc, R["rumple_scale_m"], 4)
+    ny, nx = shape
+    my, mx = max(2, int(round(ny * cell / cc))), max(2, int(round(nx * cell / cc)))
+    sky, skx = ny / my, nx / mx
+    if W is None:
+        yy = np.linspace(0.0, 1.0, my)[:, None]
+        surf = R["tilt_m"] * (1.0 - yy) + R["rumple_m"] * fbm(rng, (my, mx), cc, R["rumple_scale_m"], 4)
+    else:
+        # In the world: the land as it lay, a little rumpled.
+        surf = nd.zoom(W["surf"], (my / ny, mx / nx), order=1)[:my, :mx]
+        surf = surf + R["rumple_m"] * fbm(rng, (my, mx), cc, R["rumple_scale_m"], 4)
     surf = surf.astype(np.float64)
-    tie = fbm(rng, m, cc, R["rumple_scale_m"] * 0.5, 2).ravel()
-    # Priority flood from the bottom edge: every cell learns where it drains.
+    tie = fbm(rng, (my, mx), cc, R["rumple_scale_m"] * 0.5, 2).ravel()
+    # Priority flood from the bottom edge (in the world: from the canyon's
+    # rim, wherever it lies lowest): every cell learns where it drains.
     filled = surf.copy()
-    recv = np.full(m * m, -1, np.int64)
-    seen = np.zeros((m, m), bool)
-    seen[-1, :] = True
-    heap = [(float(filled[-1, x]), float(tie[(m - 1) * m + x]), (m - 1) * m + x) for x in range(m)]
+    recv = np.full(my * mx, -1, np.int64)
+    if W is None:
+        seen = np.zeros((my, mx), bool)
+        seen[-1, :] = True
+        starts = (my - 1) * mx + np.arange(mx)
+    else:
+        inside = nd.zoom(W["mask"].astype(np.float32), (my / ny, mx / nx), order=1)[:my, :mx] > 0.5
+        seen = ~inside
+        starts = np.flatnonzero(seen & nd.binary_dilation(inside, structure=np.ones((3, 3))))
+    heap = [(float(filled.flat[i]), float(tie[i]), int(i)) for i in starts]
     heapq.heapify(heap)
     order = []
     nbr = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1), (1, 0), (1, 1)]
     while heap:
         z, _, i = heapq.heappop(heap)
-        y0, x0 = divmod(i, m)
+        y0, x0 = divmod(i, mx)
         for dy, dx in nbr:
             y, x = y0 + dy, x0 + dx
-            if 0 <= y < m and 0 <= x < m and not seen[y, x]:
+            if 0 <= y < my and 0 <= x < mx and not seen[y, x]:
                 seen[y, x] = True
-                j = y * m + x
+                j = y * mx + x
                 filled.flat[j] = max(filled.flat[j], z + 1e-3)
                 recv[j] = i
                 order.append(j)
                 heapq.heappush(heap, (float(filled.flat[j]), float(tie[j]), j))
-    acc = np.full(m * m, cc * cc / 1e6)
+    acc = np.full(my * mx, cc * cc / 1e6)
     for j in reversed(order):
         acc[recv[j]] += acc[j]
     chan = acc >= R["min_km2"]
 
     # Centre lines drawn on the fine grid, each pixel tagged with its area.
-    cl = np.zeros((n, n), np.float32)
-    ctr = lambda j: ((j // m + 0.5) * sk, (j % m + 0.5) * sk)
+    cl = np.zeros((ny, nx), np.float32)
+    ctr = lambda j: ((j // mx + 0.5) * sky, (j % mx + 0.5) * skx)
     fans = []
     for j in np.flatnonzero(chan):
         r = recv[j]
         a = ctr(j)
-        b = ctr(r) if r >= 0 else (a[0] + sk, a[1])
-        t = np.linspace(0, 1, int(sk * 1.5) + 2)
-        py = np.clip((a[0] + (b[0] - a[0]) * t).astype(int), 0, n - 1)
-        px = np.clip((a[1] + (b[1] - a[1]) * t).astype(int), 0, n - 1)
+        b = ctr(r) if r >= 0 else (a[0] + sky, a[1])
+        t = np.linspace(0, 1, int(max(sky, skx) * 1.5) + 2)
+        py = np.clip((a[0] + (b[0] - a[0]) * t).astype(int), 0, ny - 1)
+        px = np.clip((a[1] + (b[1] - a[1]) * t).astype(int), 0, nx - 1)
         cl[py, px] = np.maximum(cl[py, px], acc[j])
         # A small stream reaching a much bigger one leaves a fan where its
         # narrow valley opens onto the big one's floor.
         if r >= 0 and acc[j] <= R["fans"]["max_km2"] and acc[r] >= R["fans"]["ratio"] * acc[j]:
             fans.append((a, b, acc[j], acc[r]))
     dist, (iy, ix) = edt(cl == 0, cell, return_indices=True)
-    at = warp_coords(rng, n, cell, R["warp_scale_m"], R["warp_m"])
+    at = warp_coords(rng, shape, cell, R["warp_scale_m"], R["warp_m"])
     dist = nd.map_coordinates(dist.astype(np.float32), at, order=1)
     ia, ja = np.rint(at[0]).astype(int), np.rint(at[1]).astype(int)
     area = cl[iy[ia, ja], ix[ia, ja]]
     del iy, ix
     half = np.clip(0.5 * R["width_per_sqrtkm2_m"] * np.sqrt(area), *(np.array(R["width_m"]) * 0.5))
-    half = half * (1.0 + R["wander"] * fbm(rng, n, cell, R["wander_scale_m"], 3))
+    half = half * (1.0 + R["wander"] * fbm(rng, shape, cell, R["wander_scale_m"], 3))
     bed_w = np.clip(R["bed_w_per_sqrtkm2_m"] * np.sqrt(area), *R["bed_w_m"])
     # The floor: the flooded surface, smooth, dropping gently downstream.
-    f = filled.reshape(m, m)
-    f = (f - f.min()) / max(1e-6, np.ptp(f))
-    floor = nd.zoom(f, n / m, order=1)[:n, :n] * R["floor_drop_m"]
-    floor = nd.gaussian_filter(floor, 60.0 / cell).astype(np.float32)
+    if W is None:
+        f = filled.reshape(my, mx)
+        f = (f - f.min()) / max(1e-6, np.ptp(f))
+        floor = nd.zoom(f, (ny / my, nx / mx), order=1)[:ny, :nx] * R["floor_drop_m"]
+        floor = nd.gaussian_filter(floor, 60.0 / cell).astype(np.float32)
+    else:
+        floor = W["floor"].astype(np.float32)
     return dict(dist=dist, half=half, area=area, bed_w=bed_w, floor=floor, fans=fans,
-                acc=acc.reshape(m, m), chan=chan.reshape(m, m))
+                acc=acc.reshape(my, mx), chan=chan.reshape(my, mx))
 
 
 def cracks(P, rng, n, cell, valley):
     to_valley = edt(~valley, cell)
-    crack = np.zeros((n, n), bool)
+    crack = np.zeros(valley.shape, bool)
     for lv in P["cracks"]:
         at = warp_coords(rng, n, cell, lv["spacing_m"] * 0.6, lv["warp_m"])
         lab, _, _ = voronoi(rng, n, cell, lv["spacing_m"], at)
@@ -119,15 +135,29 @@ def cracks(P, rng, n, cell, valley):
     return crack & ~valley
 
 
-def generate(P, seed):
+def generate(P, seed, world=None):
+    """`world` (tools/terrain_lab/canyon_relief.py: the canyon cut into the
+    world): mask (rows, cols) inside the canyon, surf (the land the rivers ran
+    off, metres), floor (the canyon floor's level, metres), edge_m (islands
+    keep that far off the mask's edge). Without it a square of `size_m`."""
     rng = np.random.default_rng(seed)
     cell = P["cell_m"]
-    n = int(round(P["size_m"] / cell))
-    out = dict(n=n, cell=cell)
+    if world is None:
+        n = int(round(P["size_m"] / cell))
+        shape = (n, n)
+    else:
+        shape = world["mask"].shape
+        n = shape
+    ny, nx = shape
+    out = dict(n=ny, nx=nx, cell=cell)
 
     # --- 1. old rivers -----------------------------------------------------
-    rv = rivers(P, rng, n, cell)
+    rv = rivers(P, rng, shape, cell, world)
     valley = rv["dist"] < rv["half"]
+    if world is not None:
+        # (a strip of floor all round inside the rim: the canyon meets its
+        # neighbours on its floor, no island cut off by the edge)
+        valley |= edt(world["mask"], cell) < world["edge_m"]
     floor = rv["floor"]
 
     # --- 2. drought cracks -------------------------------------------------
@@ -165,7 +195,9 @@ def generate(P, seed):
     vanished = high0 & ~core & (e_h == nd.maximum_filter(e_h, size=9)) & (e_h >= P["remnants"]["col_min_r_m"])
 
     # --- 4. the islands' heights: terraces of sheer steps -------------------
-    top_field = I["top_m"] + I["top_var_m"] * fbm(rng, n, cell, I["top_scale_m"], 2)
+    # (in the world the tops are the land as it lay: `top` over the floor)
+    top_base = I["top_m"] if world is None or "top" not in world else world["top"]
+    top_field = top_base + I["top_var_m"] * fbm(rng, n, cell, I["top_scale_m"], 2)
     cy = nd.center_of_mass(np.ones_like(lab), lab, idx)
     K = I["max_rings"]
     S = np.zeros((ni + 1, K), np.float32)       # step heights per ring
@@ -200,7 +232,7 @@ def generate(P, seed):
                             y=yk, x=xk))
     mod = 1.0 + I["ring_noise"] * fbm(rng, n, cell, I["ring_scale_m"], 3)
     d = e_o + I["edge_jit_m"] * fbm(rng, n, cell, I["edge_jit_scale_m"], 3)
-    rel_isl = np.zeros((n, n), np.float32)
+    rel_isl = np.zeros(shape, np.float32)
     for r in range(K):
         rel_isl += S[lab, r] * (d > W[lab, r] * mod)
     rel_isl *= opened
@@ -222,7 +254,7 @@ def generate(P, seed):
     cx_ = np.concatenate([ax, bx])
     cr_ = np.concatenate([e_r[ay, ax], rb])
     order_ = np.argsort(-cr_)
-    taken = np.zeros((n, n), bool)
+    taken = np.zeros(shape, bool)
     columns, peaks = [], []
     cones_col, cones_peak = [], []
     for o in order_:
@@ -231,11 +263,11 @@ def generate(P, seed):
             continue
         r = float(cr_[o])
         sp = max(Rm["spacing_k"] * r, Rm["spacing_min_m"]) / cell
-        y0, y1 = int(max(0, y - sp)), int(min(n, y + sp + 1))
-        x0, x1 = int(max(0, x - sp)), int(min(n, x + sp + 1))
+        y0, y1 = int(max(0, y - sp)), int(min(ny, y + sp + 1))
+        x0, x1 = int(max(0, x - sp)), int(min(nx, x + sp + 1))
         yy, xx = np.mgrid[y0:y1, x0:x1]
         taken[y0:y1, x0:x1] |= (yy - y) ** 2 + (xx - x) ** 2 <= sp * sp
-        hp = H[parent[y, x]] if parent[y, x] > 0 else I["top_m"]
+        hp = H[parent[y, x]] if parent[y, x] > 0 else float(np.mean(top_base))
         if r >= Rm["col_min_r_m"] and rng.random() > Rm["col_to_peak"]:
             hc = max(I["min_top_m"], hp - rng.choice([0, 0, 1]) * I["tier_m"] + rng.uniform(-6, 4))
             rc = min(r * Rm["col_r_k"], I["walk_r_m"] * 0.9)
@@ -311,27 +343,36 @@ def generate(P, seed):
                 continue
             m = pl == c
             k = np.argmin(np.where(m, dmain, np.inf))
-            y0, x0 = divmod(k, n)
+            y0, x0 = divmod(k, nx)
             y1, x1 = my[y0, x0], mx_[y0, x0]
             t = np.linspace(0, 1, int(dmain[y0, x0]) + 2)
             ly, lx = (y0 + (y1 - y0) * t).astype(int), (x0 + (x1 - x0) * t).astype(int)
             if blocky_q[ly, lx].max() >= 20:
                 continue
-            cut = np.zeros((n, n), bool)
-            cut[ly, lx] = True
+            # (in a window round the line: the same cut, not a whole-map pass)
+            g2 = int(np.ceil(gap / 2)) + 2
+            wy0, wy1 = max(0, ly.min() - g2), min(ny, ly.max() + g2 + 1)
+            wx0, wx1 = max(0, lx.min() - g2), min(nx, lx.max() + g2 + 1)
+            cut = np.zeros((wy1 - wy0, wx1 - wx0), bool)
+            cut[ly - wy0, lx - wx0] = True
             cut = nd.distance_transform_edt(~cut) < gap / 2
-            blocky_q = np.where(cut & (blocky_q < 20), 0.0, blocky_q).astype(np.float32)
+            win_ = blocky_q[wy0:wy1, wx0:wx1]
+            blocky_q[wy0:wy1, wx0:wx1] = np.where(cut & (win_ < 20), 0.0, win_)
     # Some slabs dropped by a fraction of a step (broken tops).
     dropk = np.concatenate([[0.0], rng.uniform(0, 1, sy.size)]).astype(np.float32)[slab]
     blocky_q -= np.where(dropk < Sb["drop_p"], Sb["drop_m"] * (0.4 + dropk / Sb["drop_p"]), 0) * (blocky_q > 20) * (e_o < Sb["drop_band_m"])
 
     # Peaks of the floor, crowding round the islands' feet, off the beds.
     Fp = F["peaks"]
-    area_km2 = (n * cell / 1000.0) ** 2
+    area_km2 = ny * nx * (cell / 1000.0) ** 2
+    if world is not None:
+        area_km2 *= float(world["mask"].mean())
     m_ = int(Fp["per_km2"] * area_km2 * 4)
-    py = rng.uniform(0, n, m_).astype(int)
-    px = rng.uniform(0, n, m_).astype(int)
+    py = rng.uniform(0, ny, m_).astype(int)
+    px = rng.uniform(0, nx, m_).astype(int)
     ok = ~high_any[py, px] & (rv["dist"][py, px] > rv["bed_w"][py, px] + Fp["bed_gap_m"])
+    if world is not None:
+        ok &= world["mask"][py, px]
     w = Fp["base"] + Fp["near_bonus"] * np.exp(-d_out[py, px] / Fp["near_m"])
     w = w * (d_out[py, px] > Fp["min_off_m"])
     acc_ = ok & (rng.random(m_) < w / (Fp["base"] + Fp["near_bonus"]))
@@ -346,12 +387,12 @@ def generate(P, seed):
             a = rng.uniform(0, 6.283)
             dd = rp * rng.uniform(1.4, 3.0) / cell
             ys, xs = int(y + dd * np.sin(a)), int(x + dd * np.cos(a))
-            if 0 <= ys < n and 0 <= xs < n and not high_any[ys, xs]:
+            if 0 <= ys < ny and 0 <= xs < nx and not high_any[ys, xs]:
                 hs, rs = hp * rng.uniform(0.3, 0.7), rp * rng.uniform(0.5, 0.8)
                 cones_peak.append((ys, xs, rs, hs, rng.uniform(*Fp["power"])))
                 peaks.append(dict(y=ys, x=xs, r_m=rs, h_m=hs, kind="satellite"))
-    rel_col = stamp_cones(np.zeros((n, n), np.float32), cones_col, cell, rng)
-    rel_peak = stamp_cones(np.zeros((n, n), np.float32), cones_peak, cell, rng)
+    rel_col = stamp_cones(np.zeros(shape, np.float32), cones_col, cell, rng)
+    rel_peak = stamp_cones(np.zeros(shape, np.float32), cones_peak, cell, rng)
 
     # Talus of fallen blocks under the walls (a fraction of the wall's height).
     T = F["talus"]
@@ -373,7 +414,7 @@ def generate(P, seed):
 
     # Fans where the small dry streams open out.
     Fa = P["rivers"]["fans"]
-    rel_fan = np.zeros((n, n), np.float32)
+    rel_fan = np.zeros(shape, np.float32)
     fans = []
     for a_, b_, A, Ab in rv["fans"]:
         u = np.array([b_[0] - a_[0], b_[1] - a_[1]])
@@ -383,8 +424,8 @@ def generate(P, seed):
         apex = np.array(b_) - u * hw_trunk * 0.85 / cell
         R_ = np.interp(A, [P["rivers"]["min_km2"], Fa["max_km2"]], Fa["radius_m"]) / cell
         hf = rng.uniform(*Fa["height_m"])
-        y0, y1 = int(max(0, apex[0] - R_)), int(min(n, apex[0] + R_ + 1))
-        x0, x1 = int(max(0, apex[1] - R_)), int(min(n, apex[1] + R_ + 1))
+        y0, y1 = int(max(0, apex[0] - R_)), int(min(ny, apex[0] + R_ + 1))
+        x0, x1 = int(max(0, apex[1] - R_)), int(min(nx, apex[1] + R_ + 1))
         if y0 >= y1 or x0 >= x1:
             continue
         yy, xx = np.mgrid[y0:y1, x0:x1]
@@ -413,12 +454,15 @@ def generate(P, seed):
     # (the floor's roll under everything, the beds fading out under talus and
     # fans: no seam where a pile of scree starts)
     h = floor + floor_n * np.clip(1 - rel / 8.0, 0, 1) - inc * np.clip(1 - rel / 2.0, 0, 1) + rel
-    h -= h.min()
+    if world is None:
+        h -= h.min()
 
     # --- 6. burnt grass in the hearts of the biggest islands ----------------
     G = P["grass"]
-    big = sorted(islands, key=lambda s: -s["area_m2"])[:G["islands"]]
-    grass = np.zeros((n, n), bool)
+    # (in the world as many as on so much of the sandbox's patch)
+    n_big = G["islands"] if world is None else max(1, int(round(G["islands"] * area_km2 / 16.78)))
+    big = sorted(islands, key=lambda s: -s["area_m2"])[:n_big]
+    grass = np.zeros(shape, bool)
     gn = unit(fbm(rng, n, cell, G["scale_m"], 3))
     for s in big:
         i = s["id"]

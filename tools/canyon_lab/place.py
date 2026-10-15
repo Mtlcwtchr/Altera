@@ -52,10 +52,10 @@ def variant_info():
 
 
 def ground_under(h, cell, x, y, r):
-    n = h.shape[0]
+    ny, nx = h.shape
     rp = max(1.0, r / cell)
-    y0, y1 = int(max(0, y / cell - rp)), int(min(n, y / cell + rp + 1))
-    x0, x1 = int(max(0, x / cell - rp)), int(min(n, x / cell + rp + 1))
+    y0, y1 = int(max(0, y / cell - rp)), int(min(ny, y / cell + rp + 1))
+    x0, x1 = int(max(0, x / cell - rp)), int(min(nx, x / cell + rp + 1))
     yy, xx = np.mgrid[y0:y1, x0:x1]
     m = (yy - y / cell) ** 2 + (xx - x / cell) ** 2 <= rp * rp
     v = h[y0:y1, x0:x1][m]
@@ -65,11 +65,16 @@ def ground_under(h, cell, x, y, r):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--tag", default="dev")
+    ap.add_argument("--dir", help="a run directory instead of canyon_lab/<tag> (the world's: canyon_relief.py)")
     ap.add_argument("--seed", type=int, default=5)
     ap.add_argument("--views", action="store_true")
     ap.add_argument("--wall-rubble", type=float, default=0.35, help="share of tall wall points with fallen slabs below")
     args = ap.parse_args()
-    out = ROOT / "terrain_lab_out" / "canyon_lab" / args.tag
+    out = Path(args.dir) if args.dir else ROOT / "terrain_lab_out" / "canyon_lab" / args.tag
+    st = json.loads((out / "stats.json").read_text(encoding="utf-8"))
+    # Rows down the pictures (the sandbox) or north (the world's runs: y up,
+    # so a turn is the renderer's own, not mirrored).
+    up = 1.0 if st.get("rows") == "south first" else -1.0
     sites = json.loads((out / "mesh_sites.json").read_text(encoding="utf-8"))
     L = np.load(out / "layers.npz")
     h = L["h"]
@@ -100,15 +105,15 @@ def main():
         yaw = float(rng.uniform(0, 360))
         a = np.radians(yaw)
         q = v["ring"]
-        n = h.shape[0]
+        ny, nx = h.shape
         for t in range(4):
-            if not (0 <= x < n * cell and 0 <= y < n * cell):
+            if not (0 <= x < nx * cell and 0 <= y < ny * cell):
                 break
             # The real foot: the model's vertices at its ground level, placed.
             px = x + (q[:, 0] * np.cos(a) - q[:, 1] * np.sin(a)) * s * k
-            py = y - (q[:, 0] * np.sin(a) + q[:, 1] * np.cos(a)) * s * k
-            gi = np.clip(np.rint(py / cell).astype(int), 0, n - 1)
-            gj = np.clip(np.rint(px / cell).astype(int), 0, n - 1)
+            py = y + up * (q[:, 0] * np.sin(a) + q[:, 1] * np.cos(a)) * s * k
+            gi = np.clip(np.rint(py / cell).astype(int), 0, ny - 1)
+            gj = np.clip(np.rint(px / cell).astype(int), 0, nx - 1)
             g_ring = h[gi, gj] - q[:, 2] * s
             z = float(g_ring.min()) - 0.3                      # sunk so no side of the foot is in the air
             g0, g1 = ground_under(h, cell, x, y, foot_r * 1.1)
@@ -124,7 +129,7 @@ def main():
                     placed.append((x, y, foot_r))
                 return True
             # Nudge off the wall (downhill) or out of a neighbour's way.
-            j, i = int(np.clip(x / cell, 0, n - 1)), int(np.clip(y / cell, 0, n - 1))
+            j, i = int(np.clip(x / cell, 0, nx - 1)), int(np.clip(y / cell, 0, ny - 1))
             g = np.array([gxx[i, j], gyy[i, j]])
             d = -g / (np.linalg.norm(g) + 1e-6) if np.linalg.norm(g) > 0.05 else rng.normal(size=2)
             d /= np.linalg.norm(d) + 1e-9
@@ -152,7 +157,7 @@ def main():
 
     # Fallen slabs along the walls' feet (the talus's big blocks): at a share
     # of the tall wall points, found by walking out from the rim downhill.
-    n = h.shape[0]
+    ny, nx = h.shape
     for w in sites["walls"]:
         if rng.random() > args.wall_rubble:
             continue
@@ -161,7 +166,7 @@ def main():
         foot = None
         for d in np.arange(1.0, 80.0, 1.0):
             yy, xx = ty + oy * d, tx + ox * d
-            if not (0 <= yy < n * cell and 0 <= xx < n * cell):
+            if not (0 <= yy < ny * cell and 0 <= xx < nx * cell):
                 break
             if h[int(yy / cell), int(xx / cell)] <= w["top_m"] - 0.85 * w["drop_m"]:
                 foot = (yy, xx)

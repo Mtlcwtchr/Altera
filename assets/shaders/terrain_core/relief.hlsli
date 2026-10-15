@@ -10,42 +10,60 @@ struct ReliefPatch {
     uint2 size;     // texels
     float texel;    // metres
     float base;     // metres: the heights are over this
-    uint offset;    // first texel in reliefTexels
-    uint pad;
+    uint offset;    // dense: first texel in reliefTexels; sparse: its table there
+    uint tile;      // 0: dense; else texels a side of a sparse patch's tiles
+    uint4 pad;
 };
 
 StructuredBuffer<ReliefPatch> reliefPatches : RELIEF_PATCHES;
 StructuredBuffer<uint> reliefTexels : RELIEF_TEXELS;
 
-// (height over base, weight) at texel `c` of patch `p`, clamped to its edge.
-float2 reliefTexel(ReliefPatch p, int2 c) {
+// (height over base, weight, present) at texel `c` of patch `p`, clamped to
+// its edge; the height comes times `present`. A sparse patch's tile it does
+// not store is not present (all 0): the filters below sum all three and
+// divide the height by the presence (reliefAt), so the ground at a window's
+// edge is never pulled down to a base. A dense patch's texels all are.
+float3 reliefTexel(ReliefPatch p, int2 c) {
     c = clamp(c, int2(0, 0), int2(p.size) - 1);
-    const uint v = reliefTexels[p.offset + uint(c.y) * p.size.x + uint(c.x)];
-    return float2(f16tof32(v & 0xffffu), f16tof32(v >> 16));
+    if (p.tile == 0) {
+        const uint v = reliefTexels[p.offset + uint(c.y) * p.size.x + uint(c.x)];
+        return float3(f16tof32(v & 0xffffu), f16tof32(v >> 16), 1.0);
+    }
+    const uint2 t = uint2(c) / p.tile, l = uint2(c) % p.tile;
+    const uint entry = p.offset + 2u * (t.y * ((p.size.x + p.tile - 1u) / p.tile) + t.x);
+    const uint first = reliefTexels[entry];
+    if (first == 0xffffffffu) return float3(0, 0, 0);
+    const uint v = reliefTexels[first + l.y * p.tile + l.x];
+    return float3(asfloat(reliefTexels[entry + 1u]) + f16tof32(v & 0xffffu), f16tof32(v >> 16), 1.0);
 }
 
 // Bilinear at `q` (patch texels, texel centres at +0.5).
-float2 reliefBilinear(ReliefPatch p, float2 q) {
+float3 reliefBilinear(ReliefPatch p, float2 q) {
     const float2 s = q - 0.5;
     const int2 c = int2(floor(s));
     const float2 f = s - float2(c);
-    const float2 a = reliefTexel(p, c), b = reliefTexel(p, c + int2(1, 0));
-    const float2 d = reliefTexel(p, c + int2(0, 1)), e = reliefTexel(p, c + int2(1, 1));
+    const float3 a = reliefTexel(p, c), b = reliefTexel(p, c + int2(1, 0));
+    const float3 d = reliefTexel(p, c + int2(0, 1)), e = reliefTexel(p, c + int2(1, 1));
     return lerp(lerp(a, b, f.x), lerp(d, e, f.x), f.y);
 }
 
 // The patch at `q` as a level `footprint` patch texels apart reads it: a
 // level coarser than the patch takes a tent over its own texel (3 x 3 taps),
 // not a point - sampled sparsely a step a metre wide aliases into a row of
-// ripples.
+// ripples. (height over base, weight)
 float2 reliefAt(ReliefPatch p, float2 q, float footprint) {
-    if (footprint < 1.0) return reliefBilinear(p, q);
-    const float o = footprint * 0.5;
-    float2 sum = 0;
-    [unroll] for (int j = -1; j <= 1; ++j)
-        [unroll] for (int i = -1; i <= 1; ++i)
-            sum += reliefBilinear(p, q + float2(i, j) * o) * ((2 - abs(i)) * (2 - abs(j)));
-    return sum / 16.0;
+    float3 sum;
+    if (footprint < 1.0) {
+        sum = reliefBilinear(p, q);
+    } else {
+        const float o = footprint * 0.5;
+        sum = 0;
+        [unroll] for (int j = -1; j <= 1; ++j)
+            [unroll] for (int i = -1; i <= 1; ++i)
+                sum += reliefBilinear(p, q + float2(i, j) * o) * ((2 - abs(i)) * (2 - abs(j)));
+        sum /= 16.0;
+    }
+    return float2(sum.z > 1e-4 ? sum.x / sum.z : 0.0, sum.y);
 }
 
 // `h` (height, dh/dx, dh/dy) at `u` (position in finest-spacing texels) with
