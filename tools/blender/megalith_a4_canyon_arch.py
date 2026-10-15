@@ -570,6 +570,12 @@ def portal(name, slot, v, stone, along=0.0, p=None, u=None):
         box(bm, x - 9, x + 9, -T / 2 + 3, T / 2 - 3, deck, deck + h)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     me = mesh_from(name, bm, stone)
+    co = np.empty(len(me.vertices) * 3, np.float32)
+    me.vertices.foreach_get("co", co)
+    zz = co[2::3]
+    for attr, val in (("foot", zz - f["floor"]), ("below_deck", deck - zz)):
+        a = me.attributes.new(attr, "FLOAT", "POINT")
+        a.data.foreach_set("value", val.astype(np.float32))
     loc = u * off + p
     ob = link(name, me, (loc.x, loc.y, 0), (0, 0, math.atan2(u.y, u.x)))
     f["centre"] = Vector((loc.x, loc.y, 0.0))
@@ -785,11 +791,416 @@ def figures(slot, eye, mid, mat, coll):
         hooded(f"figure_{coll.name}_{k}", (p.x, p.y, slot.at(p) - 0.1), mat, coll)
 
 
+# ---------------------------------------------------------------- material
+# The painting: grey-blue masonry in flat fills, patchy plate tones, fine dark hatching along
+# the courses, darker streaks run down from ledges, an orange bloom on the deck's edge and on
+# what faces up, tiny warm lights here and there (more in the niches), the floor's yellow sand
+# drifted against the foot. One 2048 atlas for the whole chain (the renderer's baked looks share
+# one size), nearest filtering: chunky texels are the retro grain.
+TEX = 2048
+KNOBS = dict(
+    rough=0.82,             # roughness of the stone
+    relief_m=0.15,          # depth of the worn relief (pits and grit) in the normal map
+    patch=0.55,             # tone difference between the masonry patches
+    patch_m=9.0,            # size of a patch (m)
+    hatch=0.35,             # fine dark hatching along the courses
+    hatch_m=1.6,            # its spacing (m)
+    streaks=0.45,           # dark streaks running down
+    grain=0.08,             # chunky texel grain
+    bloom=0.6,              # orange bloom on what faces up and near the deck
+    bloom_top_m=12.0,       # how far under the deck the edge bloom reaches
+    bloom_scale=0.05,       # bloom patch size (1/m)
+    lights=0.012,           # share of the faces carrying a warm light (x6 in the niches)
+    light_m=1.1,            # size of a light (m)
+    sand=0.9,               # yellow sand drifted against the foot
+    sand_m=6.0,             # height of the drift (m)
+)
+STONE_A = (0.16, 0.22, 0.33)      # grey-blue
+STONE_B = (0.11, 0.15, 0.24)      # its darker patches
+STONE_PALE = (0.27, 0.33, 0.43)   # worn plates, fallen blocks
+STONE_NICHE = (0.025, 0.035, 0.065)
+BLOOM = (0.62, 0.17, 0.035)       # orange
+LIGHT = (1.0, 0.55, 0.12)         # warm light (painted bright: the albedo carries it)
+SAND_C = (0.86, 0.50, 0.04)
+
+
+def _set(nt, sock, v):
+    if hasattr(v, "is_output"):
+        nt.links.new(v, sock)
+    else:
+        sock.default_value = v
+
+
+class Graph:
+    """Small helper to wire shader nodes without the boilerplate."""
+
+    def __init__(self, nt):
+        self.nt = nt
+
+    def node(self, kind, **inputs):
+        nd = self.nt.nodes.new(kind)
+        for k, v in inputs.items():
+            _set(self.nt, nd.inputs[k], v)
+        return nd
+
+    def knob(self, name):
+        nd = self.nt.nodes.new("ShaderNodeValue")
+        nd.label = nd.name = "knob_" + name
+        nd.outputs[0].default_value = KNOBS[name]
+        return nd.outputs[0]
+
+    def math(self, op, a, b=0.0, clamp=False):
+        nd = self.nt.nodes.new("ShaderNodeMath")
+        nd.operation = op
+        nd.use_clamp = clamp
+        _set(self.nt, nd.inputs[0], a)
+        _set(self.nt, nd.inputs[1], b)
+        return nd.outputs[0]
+
+    def mrange(self, x, a, b, c=0.0, d=1.0):
+        nd = self.nt.nodes.new("ShaderNodeMapRange")
+        nd.clamp = True
+        for k, v in (("Value", x), ("From Min", a), ("From Max", b), ("To Min", c), ("To Max", d)):
+            _set(self.nt, nd.inputs[k], v)
+        return nd.outputs["Result"]
+
+    def noise(self, vec, scale, detail=2.0, distortion=0.0):
+        nd = self.node("ShaderNodeTexNoise", Vector=vec, Scale=scale, Detail=detail, Distortion=distortion)
+        return nd.outputs["Fac"]
+
+    def mix(self, a, b, f):
+        nd = self.nt.nodes.new("ShaderNodeMix")
+        nd.data_type = "RGBA"
+        for k, v in (("A", a), ("B", b), ("Factor", f)):
+            if not hasattr(v, "is_output") and k != "Factor":
+                v = (*v, 1.0)
+            _set(self.nt, nd.inputs[k], v)
+        return nd.outputs["Result"]
+
+    def vmath(self, op, a, b=None):
+        nd = self.nt.nodes.new("ShaderNodeVectorMath")
+        nd.operation = op
+        _set(self.nt, nd.inputs[0], a)
+        if b is not None:
+            _set(self.nt, nd.inputs[1], b)
+        return nd
+
+
+def paint(m, kind):
+    """The procedural paint of one slot (kind: stone, niche, worn). Returns the bake channels."""
+    m.use_nodes = True
+    nt = m.node_tree
+    g = Graph(nt)
+    co = g.node("ShaderNodeTexCoord").outputs["Object"]
+    geo = g.node("ShaderNodeNewGeometry")
+    nz = g.node("ShaderNodeSeparateXYZ", Vector=geo.outputs["Normal"]).outputs["Z"]
+    foot = g.node("ShaderNodeAttribute")
+    foot.attribute_name = "foot"
+    top = g.node("ShaderNodeAttribute")
+    top.attribute_name = "below_deck"
+    foot, top = foot.outputs["Fac"], top.outputs["Fac"]
+    z = g.node("ShaderNodeSeparateXYZ", Vector=co).outputs["Z"]
+    # masonry patches: Voronoi cells, each its own tone between the two greys
+    vor = g.node("ShaderNodeTexVoronoi", Vector=co)
+    _set(nt, vor.inputs["Scale"], g.math("DIVIDE", 1.0, g.knob("patch_m")))
+    cell_tone = g.node("ShaderNodeSeparateColor", Color=vor.outputs["Color"]).outputs["Red"]
+    tone = g.math("MULTIPLY", cell_tone, g.knob("patch"))
+    base = g.mix(STONE_A, STONE_B, tone)
+    if kind == "worn":
+        base = g.mix(base, STONE_PALE, 0.7)
+    if kind == "niche":
+        base = g.mix(base, STONE_NICHE, 0.9)
+    # fine hatching along the courses: thin dark lines every hatch_m, broken by noise
+    wave = g.node("ShaderNodeTexWave", Vector=co, Distortion=1.2, Detail=1.0)
+    wave.wave_type = "BANDS"
+    wave.bands_direction = "Z"
+    _set(nt, wave.inputs["Scale"], g.math("DIVIDE", 0.5, g.knob("hatch_m")))
+    line = g.mrange(wave.outputs["Fac"], 0.08, 0.0)
+    line = g.math("MULTIPLY", line, g.mrange(g.noise(co, 0.15, 2.0), 0.4, 0.55))
+    base = g.mix(base, STONE_NICHE, g.math("MULTIPLY", line, g.knob("hatch")))
+    # streaks: noise stretched down the height
+    sq = g.vmath("MULTIPLY", co, (1.0, 1.0, 0.06)).outputs["Vector"]
+    st = g.mrange(g.noise(sq, 0.35, 3.0), 0.55, 0.7)
+    base = g.mix(base, STONE_NICHE, g.math("MULTIPLY", st, g.math("MULTIPLY", g.knob("streaks"), 0.6)))
+    # orange bloom: what faces up, and a band under the deck's edge, broken into patches
+    up = g.mrange(nz, 0.4, 0.85)
+    edge = g.mrange(top, g.knob("bloom_top_m"), 0.0)
+    edge = g.math("MULTIPLY", edge, g.mrange(g.noise(co, 0.12, 3.0), 0.35, 0.6))
+    patch = g.mrange(g.noise(co, g.knob("bloom_scale"), 3.0), 0.52, 0.62)
+    bloom = g.math("MULTIPLY", g.math("MAXIMUM", g.math("MULTIPLY", up, patch), edge), g.knob("bloom"), clamp=True)
+    base = g.mix(base, BLOOM, bloom)
+    # sand drifted against the foot (jagged top)
+    drift = g.math("ADD", g.knob("sand_m"), g.math("MULTIPLY", g.math("SUBTRACT", g.noise(co, 0.08, 2.0), 0.5), 6.0))
+    sandf = g.math("MULTIPLY", g.mrange(foot, drift, g.math("SUBTRACT", drift, 2.0)), g.knob("sand"))
+    base = g.mix(base, SAND_C, sandf)
+    # grain: chunky texel noise
+    cell = g.vmath("SNAP", co, (1.2, 1.2, 1.2)).outputs["Vector"]
+    wn = g.node("ShaderNodeTexWhiteNoise", Vector=cell).outputs["Value"]
+    gr = g.math("ADD", g.math("MULTIPLY", g.math("SUBTRACT", wn, 0.5), g.knob("grain")), 1.0)
+    sc = g.vmath("SCALE", base)
+    nt.links.new(gr, sc.inputs["Scale"])
+    base = sc.outputs["Vector"]
+    # warm lights: tiny square cells, rare, on walls (not on what faces up), more in the niches
+    lv = g.node("ShaderNodeTexVoronoi", Vector=co)
+    lv.feature = "F1"
+    _set(nt, lv.inputs["Scale"], g.math("DIVIDE", 0.25, g.knob("light_m")))
+    lv.inputs["Randomness"].default_value = 0.8
+    pick = g.node("ShaderNodeSeparateColor", Color=lv.outputs["Color"]).outputs["Green"]
+    rate = g.math("MULTIPLY", g.knob("lights"), 6.0 if kind == "niche" else 1.0)
+    on = g.math("LESS_THAN", pick, rate)
+    dot = g.mrange(lv.outputs["Distance"], g.math("MULTIPLY", g.knob("light_m"), 0.28), 0.0)
+    dot = g.math("GREATER_THAN", dot, 0.01)
+    wall = g.mrange(nz, 0.5, 0.2)
+    lit = g.math("MULTIPLY", g.math("MULTIPLY", on, dot), g.math("MULTIPLY", wall, g.mrange(foot, 8.0, 14.0)))
+    base = g.mix(base, LIGHT, lit)
+    # relief and roughness
+    relief = g.math("ADD", g.math("MULTIPLY", g.noise(co, 0.9, 4.0), 0.6), g.math("MULTIPLY", g.noise(co, 0.2, 3.0), 0.4))
+    rough = g.math("ADD", g.knob("rough"), g.math("MULTIPLY", g.math("SUBTRACT", relief, 0.5), 0.2))
+    rough = g.math("MAXIMUM", rough, g.math("MULTIPLY", sandf, 0.95), clamp=True)
+    metal = g.math("MULTIPLY", 0.0, 0.0)
+    bump = g.node("ShaderNodeBump", Height=relief, Strength=1.0)
+    nt.links.new(g.knob("relief_m"), bump.inputs["Distance"])
+    bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
+    for k, v in (("Base Color", base), ("Roughness", rough), ("Metallic", metal), ("Normal", bump.outputs["Normal"])):
+        nt.links.new(v, bsdf.inputs[k])
+    return dict(base=base, rough=rough, metal=metal)
+
+
+def uv_unwrap(ob):
+    for o in bpy.context.scene.objects:
+        o.select_set(o is ob)
+    bpy.context.view_layer.objects.active = ob
+    bpy.ops.object.mode_set(mode="EDIT")
+    bpy.ops.mesh.select_all(action="SELECT")
+    bpy.ops.uv.smart_project(angle_limit=math.radians(50), island_margin=0.002, area_weight=0.0)
+    bpy.ops.object.mode_set(mode="OBJECT")
+
+
+def bake_all(ob, channels):
+    """Cycles: EMIT bakes of the painted channels, NORMAL (tangent) and AO, every slot into one
+    image per pass. Returns numpy arrays TEX x TEX x 4."""
+    sc = bpy.context.scene
+    try:
+        sc.render.engine = "CYCLES"
+    except TypeError as e:
+        print("engine:", e)
+    sc.cycles.device = "CPU"
+    keep = {o.name: o.hide_render for o in sc.objects}
+    for o in sc.objects:
+        o.hide_render = o is not ob
+        o.select_set(o is ob)
+    bpy.context.view_layer.objects.active = ob
+    sc.render.bake.use_selected_to_active = False
+    sc.render.bake.margin = 6
+    out = {}
+    for kind in ("base", "rough", "metal", "NORMAL", "AO"):
+        img = bpy.data.images.new(f"bake_{kind}", TEX, TEX, float_buffer=True)
+        img.colorspace_settings.name = "Non-Color"
+        undo = []
+        for m in ob.data.materials:
+            nt = m.node_tree
+            tn = nt.nodes.new("ShaderNodeTexImage")
+            tn.image = img
+            nt.nodes.active = tn
+            em = prev = None
+            outn = next(nd for nd in nt.nodes if nd.type == "OUTPUT_MATERIAL")
+            src = channels.get(m.name, {}).get(kind)
+            if kind in ("base", "rough", "metal"):
+                em = nt.nodes.new("ShaderNodeEmission")
+                prev = outn.inputs["Surface"].links[0].from_socket if outn.inputs["Surface"].links else None
+                if src is not None:
+                    nt.links.new(src, em.inputs["Color"])
+                else:
+                    em.inputs["Color"].default_value = (0, 0, 0, 1)
+                nt.links.new(em.outputs["Emission"], outn.inputs["Surface"])
+            undo.append((nt, tn, em, outn, prev))
+        if kind in ("base", "rough", "metal"):
+            sc.cycles.samples = 1
+            bpy.ops.object.bake(type="EMIT")
+        else:
+            sc.cycles.samples = 1 if kind == "NORMAL" else 24
+            bpy.ops.object.bake(type=kind, normal_space="TANGENT")
+        out[kind] = np.array(img.pixels[:], dtype=np.float32).reshape(TEX, TEX, 4)
+        for nt, tn, em, outn, prev in undo:
+            nt.nodes.remove(tn)
+            if em:
+                nt.nodes.remove(em)
+                if prev:
+                    nt.links.new(prev, outn.inputs["Surface"])
+        print("baked", kind)
+    for o in sc.objects:
+        o.hide_render = keep.get(o.name, False)
+    return out
+
+
+def save_map(name, arr, srgb):
+    rgba = np.concatenate([np.clip(arr[:, :, :3], 0, 1), np.ones((TEX, TEX, 1), np.float32)], axis=2)
+    img = bpy.data.images.new(name, TEX, TEX)
+    img.colorspace_settings.name = "sRGB" if srgb else "Non-Color"
+    img.pixels.foreach_set(rgba.astype(np.float32).ravel())
+    img.filepath_raw = str(ASSET_DIR / f"{name}.png")
+    img.file_format = "PNG"
+    img.save()
+    print("saved", img.filepath_raw)
+    return img
+
+
+DETAIL_PX = 512
+DETAIL_M = 8.0          # one detail tile covers this many metres
+
+
+def make_detail():
+    """The small masonry the atlas is too coarse for (the chain is ~1 km2 of stone, the atlas gives
+    ~1.5 texels a metre): a tileable grey tile multiplied over the baked colour, box-projected in
+    object metres - courses of small blocks 0.8 m high and 1-3 m long with dark seams, a faint
+    hatching, grit. Mean about 1, so the atlas keeps its tones. The game samples it the same way
+    (triplanar, DETAIL_M a tile)."""
+    rng = np.random.default_rng(4)
+    n = DETAIL_PX
+    px = n / DETAIL_M
+    img = np.ones((n, n), np.float32)
+    row_h = int(round(0.8 * px))
+    rows = n // row_h
+    row_h = n / rows
+    for r in range(rows):
+        y0, y1 = int(round(r * row_h)), int(round((r + 1) * row_h))
+        tone_row = rng.uniform(0.94, 1.06)
+        # block widths that wrap round the tile exactly
+        widths = []
+        while sum(widths) < n - 1.0 * px:
+            widths.append(rng.uniform(1.0, 3.0) * px)
+        widths = np.array(widths) * n / sum(widths)
+        x = rng.uniform(0, n)
+        for w in widths:
+            x0, x1 = int(round(x)), int(round(x + w))
+            cols = np.arange(x0, x1) % n
+            img[y0:y1, cols] *= tone_row * rng.uniform(0.9, 1.1)
+            img[y0:y1, x0 % n] *= 0.55            # vertical seam
+            img[y0:y1, (x0 + 1) % n] *= 0.8
+            x += w
+        img[y0, :] *= 0.5                          # bed joint
+        img[(y0 + 1) % n, :] *= 0.8
+        img[(y1 - 2) % n, :] *= 1.08               # lit upper lip of the course below
+    # faint hatching every 0.2 m inside the blocks, broken
+    for y in range(0, n, max(2, int(0.2 * px))):
+        keep = rng.random(n) < 0.55
+        img[y, keep] *= 0.9
+    # grit
+    img *= rng.uniform(0.9, 1.1, (n, n)).astype(np.float32)
+    img /= img.mean()
+    out = np.clip(img * 0.5, 0, 1)                 # stored at half: the shader doubles it
+    rgba = np.stack([out, out, out, np.ones_like(out)], -1)[::-1]
+    im = bpy.data.images.new("arch_detail", n, n)
+    im.colorspace_settings.name = "Non-Color"
+    im.pixels.foreach_set(rgba.ravel())
+    im.filepath_raw = str(ASSET_DIR / f"arch_detail_{n}.png")
+    im.file_format = "PNG"
+    im.save()
+    print("saved", im.filepath_raw)
+    return im
+
+
+def join_chain(obs, name, slot):
+    """The chain's portals as one object (one model in the game, one atlas), less the faces buried
+    in the rock or under the floor (they would only take atlas space)."""
+    for o in bpy.context.scene.objects:
+        o.select_set(o in obs)
+    bpy.context.view_layer.objects.active = obs[0]
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+    bpy.ops.object.join()
+    ob = bpy.context.view_layer.objects.active
+    ob.name = ob.data.name = name
+    bm = bmesh.new()
+    bm.from_mesh(ob.data)
+    def under(q):
+        return q.z < slot.at(q) - 1.5
+
+    # buried: every corner and the middle under the ground (the deck's top runs from rock to rock
+    # over the open slot)
+    buried = [fc for fc in bm.faces if all(under(v.co) for v in fc.verts) and under(fc.calc_center_median())]
+    n0 = len(bm.faces)
+    bmesh.ops.delete(bm, geom=buried, context="FACES")
+    bm.to_mesh(ob.data)
+    bm.free()
+    print(f"{name}: {len(buried)} of {n0} faces buried, dropped; {tris(ob.data)} tris")
+    return ob
+
+
+def make_material(ob):
+    """Paint, bake, and put the baked maps on the chain. The painted materials stay in the blend
+    (arch_paint_*, on a hidden copy) for tuning the knobs."""
+    mats = ob.data.materials
+    channels = {}
+    for m, kind in zip(mats, ("stone", "niche", "worn")):
+        m.name = "arch_paint_" + kind
+        channels[m.name] = paint(m, kind)
+    uv_unwrap(ob)
+    area = sum(pl.area for pl in ob.data.polygons)
+    print(f"atlas: {area / 1e3:.0f} thousand m2 of surface, {TEX / math.sqrt(area):.2f} texels a metre at best")
+    b = bake_all(ob, channels)
+    base = np.clip(b["base"][:, :, :3], 0, 1)
+    base_srgb = np.where(base <= 0.0031308, base * 12.92, 1.055 * np.power(base, 1 / 2.4) - 0.055)
+    surface = np.stack([b["AO"][:, :, 0], b["rough"][:, :, 0], b["metal"][:, :, 0]], axis=2)
+    imgs = dict(base=save_map("arch_basecolor_2048", base_srgb, True),
+                normal=save_map("arch_normal_2048", b["NORMAL"], False),
+                surface=save_map("arch_surface_2048", surface, False))
+    keep = bpy.data.objects.new("arch_paint_keeper", ob.data.copy())
+    keep.hide_render = True
+    bpy.context.scene.collection.objects.link(keep)
+    keep.hide_set(True)
+    m = bpy.data.materials.new("arch_material")
+    m.use_nodes = True
+    nt = m.node_tree
+    g = Graph(nt)
+    bsdf = next(nd for nd in nt.nodes if nd.type == "BSDF_PRINCIPLED")
+
+    def tex(img):
+        nd = nt.nodes.new("ShaderNodeTexImage")
+        nd.image = img
+        nd.interpolation = "Closest"
+        return nd
+
+    tb, tn, ts = tex(imgs["base"]), tex(imgs["normal"]), tex(imgs["surface"])
+    sep = g.node("ShaderNodeSeparateColor", Color=ts.outputs["Color"])
+    mul = nt.nodes.new("ShaderNodeMix")
+    mul.data_type = "RGBA"
+    mul.blend_type = "MULTIPLY"
+    mul.inputs["Factor"].default_value = 1.0
+    nt.links.new(tb.outputs["Color"], mul.inputs["A"])
+    nt.links.new(sep.outputs["Red"], mul.inputs["B"])
+    # the small masonry: the detail tile, box-projected in object metres, doubled (stored at half)
+    td = nt.nodes.new("ShaderNodeTexImage")
+    td.image = make_detail()
+    td.interpolation = "Closest"
+    td.projection = "BOX"
+    td.projection_blend = 0.15
+    co = g.node("ShaderNodeTexCoord").outputs["Object"]
+    sv = g.vmath("SCALE", co)
+    sv.inputs["Scale"].default_value = 1.0 / DETAIL_M
+    nt.links.new(sv.outputs["Vector"], td.inputs["Vector"])
+    dmul = nt.nodes.new("ShaderNodeMix")
+    dmul.data_type = "RGBA"
+    dmul.blend_type = "MULTIPLY"
+    dmul.inputs["Factor"].default_value = 1.0
+    nt.links.new(mul.outputs["Result"], dmul.inputs["A"])
+    nt.links.new(g.vmath("SCALE", td.outputs["Color"]).outputs["Vector"], dmul.inputs["B"])
+    dmul.inputs["B"].links[0].from_node.inputs["Scale"].default_value = 2.0
+    nt.links.new(dmul.outputs["Result"], bsdf.inputs["Base Color"])
+    nt.links.new(sep.outputs["Green"], bsdf.inputs["Roughness"])
+    nt.links.new(sep.outputs["Blue"], bsdf.inputs["Metallic"])
+    nm = g.node("ShaderNodeNormalMap", Color=tn.outputs["Color"])
+    nt.links.new(nm.outputs["Normal"], bsdf.inputs["Normal"])
+    ob.data = ob.data.copy()
+    for i in range(len(ob.data.materials)):
+        ob.data.materials[i] = m
+    return m
+
+
 def main():
     argv = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
     ap = argparse.ArgumentParser()
     ap.add_argument("--no-render", action="store_true")
-    ap.add_argument("--stage", choices=("blockout", "sculpt"), default="blockout")
+    ap.add_argument("--stage", choices=("blockout", "sculpt", "material"), default="blockout")
     ap.add_argument("--only", default="")
     args = ap.parse_args(argv)
     global STAGE
@@ -832,9 +1243,19 @@ def main():
         else:
             ob, f = arch("arch_" + name, slot, v, stone)
             obs.append(ob)
+        if STAGE == "material" and len(obs) > 1:
+            obs = [join_chain(obs, "a4_canyon_arch", slot)]
         for ob in obs:
             bpy.context.scene.collection.objects.unlink(ob)
             coll.objects.link(ob)
+        if STAGE == "material":
+            make_material(obs[0])
+            for engine in ("BLENDER_EEVEE", "BLENDER_EEVEE_NEXT"):   # the bake switched to Cycles
+                try:
+                    sc.render.engine = engine
+                    break
+                except TypeError:
+                    pass
         built[name] = (coll, f)
     figs = collection("figures")
     for name in names:
