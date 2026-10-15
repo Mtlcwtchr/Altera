@@ -142,6 +142,8 @@ def main():
     small(render.gray(render.hillshade(h, cell, Rr["sun_az"], 40))).save(out / "hillshade.png")
     small(render.gray(sl, 0, 90)).save(out / "slope.png")
     small(Image.fromarray(col.astype(np.uint8))).save(out / "map.png")
+    alb, _, _, _ = render.albedo(g, cell, np.random.default_rng(seed + 1000))
+    Image.fromarray(alb.astype(np.uint8)).save(out / "albedo.png")
     views = []
     if not args.no_views:
         span = g["n"] * cell

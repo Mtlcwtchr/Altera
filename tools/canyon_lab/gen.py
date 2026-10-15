@@ -370,7 +370,12 @@ def generate(P, seed):
     inc = F["bed_depth_m"] * np.clip(1 - (rv["dist"] / rv["bed_w"]) ** 2, 0, 1)
     wash = (rv["dist"] < rv["bed_w"] * 1.25) & ~high_any
 
-    rel = np.maximum.reduce([blocky_q, rel_col, rel_peak, talus, rel_fan])
+    # Columns and peaks are meshes (stage 3): the ground keeps only their
+    # talus, unless `stamp` asks for the stand-in cones.
+    if Rm.get("stamp", True):
+        rel = np.maximum.reduce([blocky_q, rel_col, rel_peak, talus, rel_fan])
+    else:
+        rel = np.maximum.reduce([blocky_q, talus, rel_fan])
     floor_n = F["floor_rough_m"] * (fbm(rng, n, cell, 80.0, 3) + 0.6 * np.abs(fbm(rng, n, cell, 25.0, 2)))
     h = floor + floor_n * (rel < 1) - inc * (rel < 1) + rel
     h -= h.min()
