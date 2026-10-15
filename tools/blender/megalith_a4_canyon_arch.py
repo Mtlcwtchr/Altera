@@ -67,6 +67,9 @@ HALF = 1200.0                      # the ground built round the site, metres eac
 PORTALS = {
     "V4_portal": dict(deck=0.98, T=44, open=0.62, head=0.32, embed=26, parapet=2.6, second=0),
     "V5_portal_pair": dict(deck=0.98, T=44, open=0.62, head=0.32, embed=26, parapet=2.6, second=360),
+    # user 15.10: a set of such bridges along the narrow canyon, 2-5 as many as fit, one megalith
+    "V6_chain": dict(deck=0.98, T=44, open=0.62, head=0.32, embed=26, parapet=2.6, second=0,
+                     chain=dict(spacing=130.0, most=5, max_gap=180.0, min_depth=150.0)),
 }
 VARIANTS = {
     "V1_ref": dict(deck=0.67, T=46, lintel=0.38, fill=0.96, embed=30, drop=0.9, parapet=2.6),
@@ -151,17 +154,53 @@ class Slot:
         return float((h[j0, i0] * (1 - fx) + h[j0, i0 + 1] * fx) * (1 - fy)
                      + (h[j0 + 1, i0] * (1 - fx) + h[j0 + 1, i0 + 1] * fx) * fy)
 
-    def wall(self, z, side, along=0.0, reach=300.0):
-        """Distance across from the slot's axis to the first ground above z (side +1/-1)."""
+    def wall(self, z, side, along=0.0, reach=300.0, p=None, u=None):
+        """Distance across from the slot's axis (or from p along u) to the first ground above z
+        (side +1/-1)."""
+        p = self.a * along if p is None else p
+        u = self.u if u is None else u
         for s in np.arange(0.0, reach, 1.0):
-            if self.at(self.u * (side * s) + self.a * along) > z:
+            if self.at(u * (side * s) + p) > z:
                 return float(s)
         return reach
 
-    def gap(self, z, along=0.0):
+    def gap(self, z, along=0.0, p=None, u=None):
         """(centre offset across, width) of the slot at height z."""
-        l, r = self.wall(z, -1, along), self.wall(z, 1, along)
+        l, r = self.wall(z, -1, along, p=p, u=u), self.wall(z, 1, along, p=p, u=u)
         return (r - l) / 2, l + r
+
+    def rim(self, p, u):
+        """The slot's rim round p across u (80th percentile of the ground 400 m each way)."""
+        return float(np.percentile([self.at(u * float(s) + p) for s in range(-400, 401, 8)], 80))
+
+    def trace(self, step=20.0, reach=1200.0):
+        """The slot's floor line both ways from the site, kept in the middle of the walls and
+        turning with them: [(point, along unit)] from one end to the other, and the site's index.
+        It stops where the floor climbs, the slot opens out or gets shallow."""
+        ends = []
+        for sign in (-1, 1):
+            p = Vector((0.0, 0.0, 0.0))
+            d = self.a * sign
+            line = []
+            z_prev = self.at(p)
+            for _ in range(int(reach / step)):
+                q = p + d * step
+                u = Vector((d.y, -d.x, 0.0))
+                z0 = self.at(q)
+                off, w = self.gap(z0 + 30.0, p=q, u=u)
+                q = q + u * off
+                z0 = self.at(q)
+                if z0 > z_prev + 15.0 or w > 240.0 or self.rim(q, u) - z0 < 140.0:
+                    break
+                z_prev = z0
+                nd = (q - p).normalized()
+                d = (d * 0.6 + nd * 0.4).normalized()
+                p = q
+                line.append((Vector(p), Vector(d * sign)))
+            ends.append(line)
+        back = ends[0][::-1]
+        line = back + [(Vector((0.0, 0.0, 0.0)), Vector(self.a))] + ends[1]
+        return line, len(back)
 
 
 def ground(slot, mat_wall, mat_sand):
@@ -284,29 +323,55 @@ def arch(name, slot, v, stone):
     return ob, f
 
 
-def fit_portal(slot, v, along=0.0):
-    deck = v["deck"] * slot.depth
+def narrowest(slot, p, u, z):
+    """The across direction within 40 degrees of u that cuts the slot shortest at height z."""
+    best = (slot.gap(z, p=p, u=u)[1], u)
+    for deg in range(-40, 41, 5):
+        a = math.radians(deg)
+        w = Vector((u.x * math.cos(a) - u.y * math.sin(a), u.x * math.sin(a) + u.y * math.cos(a), 0.0))
+        g = slot.gap(z, p=p, u=w)[1]
+        if g < best[0] - 0.5:
+            best = (g, w)
+    return best[1]
+
+
+def fit_portal(slot, v, along=0.0, p=None, u=None):
+    p = slot.a * along if p is None else p
+    u = slot.u if u is None else u
+    floor = slot.at(p)
+    rim = slot.rim(p, u)
+    if v.get("chain"):
+        u = narrowest(slot, p, u, floor + 0.5 * (rim - floor))
+    deck = floor + v["deck"] * (rim - floor)
+    # the deck no higher than where the slot starts to open out (the walls step back near the rim)
+    g_mid = slot.gap(floor + 0.5 * (rim - floor), p=p, u=u)[1]
+    z = floor + 0.5 * (rim - floor)
+    while z + 4 <= deck and slot.gap(z + 4, p=p, u=u)[1] <= 1.45 * g_mid:
+        z += 4
+    deck = min(deck, z)
     R = 0.0
-    spring = deck * 0.6
+    spring = floor + (deck - floor) * 0.6
     for _ in range(20):
-        off, g = slot.gap(spring, along)
+        off, g = slot.gap(spring, p=p, u=u)
         R = 0.5 * (R + g * v["open"] / 2)
         spring = deck - R * (1 + v["head"])
-    off, g = slot.gap(spring, along)
-    _, g_deck = slot.gap(deck, along)
-    return dict(deck=deck, spring=spring, R=R, off=off, gap_spring=g, gap_deck=g_deck, along=along)
+    off, g = slot.gap(spring, p=p, u=u)
+    _, g_deck = slot.gap(deck, p=p, u=u)
+    return dict(deck=deck, spring=spring, R=R, off=off, gap_spring=g, gap_deck=g_deck, along=along,
+                floor=floor, p=p, u=u)
 
 
-def portal(name, slot, v, stone, along=0.0):
+def portal(name, slot, v, stone, along=0.0, p=None, u=None):
     """A wall of masonry closing the slot from below the floor to the deck at the rim, its sides
     following the walls into the rock, a round-headed opening through it down to the floor."""
-    f = fit_portal(slot, v, along)
+    f = fit_portal(slot, v, along, p, u)
     R, deck, spring, off = f["R"], f["deck"], f["spring"], f["off"]
-    bot = -8.0
+    p, u = f["p"], f["u"]
+    bot = f["floor"] - 8.0
     zs = list(np.arange(deck, bot - 1e-3, -10.0)) + [bot]
 
     def outer(z, side):
-        w = slot.wall(z, side, along) - off * side
+        w = slot.wall(z, side, p=p, u=u) - off * side
         return side * max(w + v["embed"], R + 12)
 
     prof = [(outer(z, -1), z) for z in zs]                     # left side, top down
@@ -320,9 +385,9 @@ def portal(name, slot, v, stone, along=0.0):
     T = v["T"]
     prism(bm, prof, -T / 2, T / 2)
     if v["parapet"]:
-        p = f["gap_deck"] / 2 + 4
+        rail = f["gap_deck"] / 2 + 4
         for y in (-T / 2, T / 2 - 1.6):
-            box(bm, -p, p, y, y + 1.6, deck, deck + v["parapet"])
+            box(bm, -rail, rail, y, y + 1.6, deck, deck + v["parapet"])
     # the ring of the arch stands proud of the face, and a pilaster down each side of the opening
     for y0, y1 in ((-T / 2 - 2.5, -T / 2), (T / 2, T / 2 + 2.5)):
         ts = [math.pi * (1 - k / 24) for k in range(25)]
@@ -338,9 +403,10 @@ def portal(name, slot, v, stone, along=0.0):
         box(bm, x - 9, x + 9, -T / 2 + 3, T / 2 - 3, deck, deck + h)
     bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
     me = mesh_from(name, bm, stone)
-    loc = slot.u * off + slot.a * along
-    ob = link(name, me, (loc.x, loc.y, 0), (0, 0, math.radians(ACROSS)))
-    print(f"{name}: deck {deck:.0f} m (slot {slot.depth:.0f} m deep), opening {2 * R:.0f} m wide, crown "
+    loc = u * off + p
+    ob = link(name, me, (loc.x, loc.y, 0), (0, 0, math.atan2(u.y, u.x)))
+    f["centre"] = Vector((loc.x, loc.y, 0.0))
+    print(f"{name}: floor {f['floor']:.0f}, deck {deck:.0f} m, opening {2 * R:.0f} m wide, crown "
           f"{spring + R:.0f} m, gap at the springing {f['gap_spring']:.0f} m, at the deck {f['gap_deck']:.0f} m, "
           f"{tris(me)} tris")
     return ob, f
@@ -466,6 +532,75 @@ def second_along(slot, f, v):
     return best
 
 
+def chain_stations(slot, v):
+    """Where the portals of the chain stand along the slot's floor line: places where the slot is
+    narrow and deep enough, at least `spacing` apart, at most `most`, spread over the stretch."""
+    c = v["chain"]
+    line, site = slot.trace()
+    arc = [0.0]
+    for i in range(1, len(line)):
+        arc.append(arc[-1] + (line[i][0] - line[i - 1][0]).length)
+    ok = []
+    for i, (p, d) in enumerate(line):
+        u = Vector((d.y, -d.x, 0.0))
+        g = fit_portal(slot, v, p=p, u=u)
+        if g["gap_spring"] <= c["max_gap"] and g["deck"] - g["floor"] >= c["min_depth"]:
+            ok.append(i)
+    print(f"slot line {arc[-1]:.0f} m, {len(ok)} of {len(line)} points fit a portal")
+    spacing = c["spacing"]
+    while True:
+        picked = []
+        for i in ok:
+            if not picked or arc[i] - arc[picked[-1]] >= spacing:
+                picked.append(i)
+        if len(picked) <= c["most"]:
+            break
+        spacing += 10.0
+    # centre the run in the stretch that fits
+    if picked and ok:
+        slack = (arc[ok[-1]] - arc[picked[-1]]) / 2
+        picked = [min(ok, key=lambda j: abs(arc[j] - (arc[i] + slack))) for i in picked]
+    return line, arc, picked
+
+
+def chain_views(slot, line, fs):
+    """From the floor beyond each end looking down the chain (the painting), between portals, and
+    from the air over the whole chain."""
+    eye = Vector((0, 0, 1.7))
+    out = []
+    # the painting: from the floor just inside an end portal, looking down the chain at the next
+    # one (the slot's ends are blocked by its bends and climbs, so not from outside)
+    for tag, k0, k1 in (("ref", 0, 1), ("ref_back", len(fs) - 1, len(fs) - 2)):
+        if len(fs) < 2:
+            break
+        near, far = fs[k0], fs[k1]
+        look = far["centre"] + Vector((0, 0, far["floor"] + (far["deck"] - far["floor"]) * 0.45))
+        i0, i1 = near["i"], far["i"]
+        step = 1 if i1 > i0 else -1
+        for i in range(i0 + step, i1, step):
+            q = line[i][0]
+            if (q - near["centre"]).length < 18:
+                continue
+            e = Vector((q.x, q.y, slot.at(q))) + eye
+            if clear(slot, e, look):
+                out.append((f"reference_{tag}", e, look, 20, True))
+                break
+    if len(fs) > 1:
+        a, b = fs[0]["centre"], fs[1]["centre"]
+        m = (a + b) / 2
+        e = Vector((m.x, m.y, slot.at(m))) + eye
+        out.append(("between", e, b + Vector((0, 0, fs[1]["deck"] * 0.6)), 20, True))
+    c = sum((f["centre"] for f in fs), Vector()) / len(fs)
+    span = max((f["centre"] - c).length for f in fs) + 150
+    d = (fs[-1]["centre"] - fs[0]["centre"]).normalized() if len(fs) > 1 else slot.a
+    side = Vector((d.y, -d.x, 0))
+    air = c + side * span * 0.9 - d * span * 0.5 + Vector((0, 0, slot.depth + span * 0.7))
+    out.append(("aerial", air, c + Vector((0, 0, slot.depth * 0.5)), 30, False))
+    top = c + Vector((0, 0, slot.depth + span * 2.2))
+    out.append(("plan", top, c + Vector((0, 0.01, 0)), 35, False))
+    return out
+
+
 def figures(slot, eye, mid, mat, coll):
     to = (mid - eye)
     to.z = 0
@@ -503,7 +638,18 @@ def main():
         coll = collection(name)
         v = every[name]
         obs = []
-        if name in PORTALS:
+        if v.get("chain"):
+            line, arc, picked = chain_stations(slot, v)
+            fs = []
+            for k, i in enumerate(picked):
+                p, d = line[i]
+                ob, g = portal(f"arch_{name}_{k}", slot, v, stone, p=p, u=Vector((d.y, -d.x, 0.0)))
+                obs.append(ob)
+                g["i"] = i
+                fs.append(g)
+                print(f"  portal {k} at {arc[i]:.0f} m along the slot line")
+            f = dict(chain=fs, line=line)
+        elif name in PORTALS:
             ob, f = portal("arch_" + name, slot, v, stone)
             obs.append(ob)
             if v["second"]:
@@ -518,7 +664,8 @@ def main():
     figs = collection("figures")
     for name in names:
         coll, f = built[name]
-        for vname, loc, target, lens, portrait in views(slot, f):
+        vs = chain_views(slot, f["line"], f["chain"]) if "chain" in f else views(slot, f)
+        for vname, loc, target, lens, portrait in vs:
             if vname == "reference_ref":
                 figures(slot, loc, target, fig, coll)
             cam = camera(f"cam_{name}_{vname}", loc, target, lens)
