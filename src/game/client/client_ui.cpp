@@ -161,7 +161,7 @@ void ClientUi::menu(ui::Ui& ui, const ClientView& view, ClientActions& out) {
 
     const float x = std::min(72.0f, W * 0.08f);
     float y = std::max(48.0f, H * 0.2f);
-    ui.text(x, y, "CAMPFIRE", t.accent, 3.2f, true);
+    ui.text(x, y, "ALTERA", t.accent, 3.2f, true);
     y += ui.textHeight(3.2f) + 14;
     ui.text(x, y, "Explore worlds. Shape them.", t.labelSoft, 1.1f);
     y += 56;

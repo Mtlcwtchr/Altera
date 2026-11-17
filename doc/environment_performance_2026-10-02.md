@@ -4,7 +4,7 @@
 
 ## Измерено до правок
 
-Инструмент: `tools/campfire_profiler.py`, xctrace Time Profiler и короткий Metal System Trace. Mac M3 Pro, 18 ГБ, RelWithDebInfo, диагностика/внутренний профайлер выключены. Мир average, seed 11, позиция 228608,28928, 1600 × 1000; качество и маршрут сохранены рядом с трассами.
+Инструмент: `tools/altera_profiler.py`, xctrace Time Profiler и короткий Metal System Trace. Mac M3 Pro, 18 ГБ, RelWithDebInfo, диагностика/внутренний профайлер выключены. Мир average, seed 11, позиция 228608,28928, 1600 × 1000; качество и маршрут сохранены рядом с трассами.
 
 | Участок маршрута | Средний кадр, мс | p95, мс | CPU кадра, мс |
 |---|---:|---:|---:|

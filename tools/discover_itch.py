@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """List itch.io game-asset pages from free listings: discover_itch.py tag-3d/tag-fantasy [pages]"""
 import re, sys, urllib.request
-UA = {"User-Agent": "Mozilla/5.0 campfire-asset-fetch"}
+UA = {"User-Agent": "Mozilla/5.0 altera-asset-fetch"}
 def run(path, pages=3):
     seen = {}
     for p in range(1, pages + 1):

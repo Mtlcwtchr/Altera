@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.24)
-project(campfire LANGUAGES CXX)
+project(altera LANGUAGES CXX)
 
 include(FetchContent)
 
@@ -439,10 +439,10 @@ endif()
 if(ASR_BUILD_CLIENT)
     # The editor is its own program: it opens no world and ticks nothing, so it
     # starts in a second rather than after a continent has been generated.
-    add_executable(campfire_editor
+    add_executable(altera_editor
             src/game/editor/main.cpp
             src/game/ui/editor.cpp)
-    target_link_libraries(campfire_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
+    target_link_libraries(altera_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
             SDL3_image::SDL3_image-static asr_warnings)
 
     # This game's passes. They know what ground is made of and what grass is; the
@@ -486,7 +486,7 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(asr_game_render PUBLIC asr_engine_render asr_world asr_camera asr_animation asr_virtual_geometry_gpu
             asr_impostors_gpu asr_world_source PRIVATE nlohmann_json asr_warnings)
 
-    add_executable(campfire_client
+    add_executable(altera_client
             src/game/client/main.cpp
             src/engine/core/profiler_alloc.cpp
             src/game/client/renderer.cpp
@@ -505,11 +505,11 @@ if(ASR_BUILD_CLIENT)
             src/game/ui/editor.cpp
             src/game/ui/overlay.cpp
             src/game/ui/info_panel.cpp)
-    target_link_libraries(campfire_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
+    target_link_libraries(altera_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
             SDL3::SDL3-static SDL3_image::SDL3_image-static
             SDL3_shadercross::SDL3_shadercross-static nlohmann_json asr_warnings)
     if(ASR_ENABLE_PROFILING)
-        target_sources(campfire_client PRIVATE src/game/client/explore_diagnostics.cpp)
+        target_sources(altera_client PRIVATE src/game/client/explore_diagnostics.cpp)
     endif()
 
     # asr_mesh_lab - UE Nanite's bake against our cluster DAG on the same meshes,
@@ -521,7 +521,7 @@ if(ASR_BUILD_CLIENT)
 
     # The terrain core (doc/rework/TERRAIN_REWORK_PLAN.md): macro map, GPU
     # clipmap, CDLOD patches. Depends on the device and nothing of the game.
-    add_library(campfire_terrain_core STATIC
+    add_library(altera_terrain_core STATIC
             src/terrain_core/macro_map.cpp
             src/terrain_core/biomes.cpp
             src/terrain_core/erosion.cpp
@@ -540,18 +540,18 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/relief.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
-    target_include_directories(campfire_terrain_core PUBLIC src)
-    target_link_libraries(campfire_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
+    target_include_directories(altera_terrain_core PUBLIC src)
+    target_link_libraries(altera_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
 
     # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
     add_executable(terrain_lab tools/terrain_lab/main.cpp)
-    target_link_libraries(terrain_lab PRIVATE campfire_terrain_core asr_warnings)
+    target_link_libraries(terrain_lab PRIVATE altera_terrain_core asr_warnings)
     target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS)
-    campfire_configure_dlss(campfire_terrain_core terrain_lab)
+    altera_configure_dlss(altera_terrain_core terrain_lab)
     if(ASR_BUILD_TESTS AND ASR_DLSS_AVAILABLE)
         add_executable(asr_dlss_gpu_check tests/test_dlss_gpu.cpp)
-        target_link_libraries(asr_dlss_gpu_check PRIVATE campfire_terrain_core asr_warnings)
-        campfire_copy_dlss_runtime(asr_dlss_gpu_check)
+        target_link_libraries(asr_dlss_gpu_check PRIVATE altera_terrain_core asr_warnings)
+        altera_copy_dlss_runtime(asr_dlss_gpu_check)
     endif()
 
     add_executable(asr_shader_check tools/shader_check.cpp)
@@ -567,27 +567,27 @@ if(ASR_BUILD_CLIENT)
     # Vulkan program from outside it. Nothing in the engine knows it exists.
     # Vulkan headers come with SDL; Metal has Instruments instead.
     if(NOT APPLE)
-        add_library(campfire_gpu_layer SHARED tools/gpu_profiler/campfire_gpu_layer.cpp)
-        target_include_directories(campfire_gpu_layer PRIVATE "${sdl3_SOURCE_DIR}/src/video/khronos")
-        set_target_properties(campfire_gpu_layer PROPERTIES PREFIX "")
-        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:campfire_gpu_layer>/VK_LAYER_CAMPFIRE_gpu_profile.json" CONTENT
+        add_library(altera_gpu_layer SHARED tools/gpu_profiler/altera_gpu_layer.cpp)
+        target_include_directories(altera_gpu_layer PRIVATE "${sdl3_SOURCE_DIR}/src/video/khronos")
+        set_target_properties(altera_gpu_layer PROPERTIES PREFIX "")
+        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:altera_gpu_layer>/VK_LAYER_ALTERA_gpu_profile.json" CONTENT
 "{
     \"file_format_version\": \"1.2.0\",
     \"layer\": {
-        \"name\": \"VK_LAYER_CAMPFIRE_gpu_profile\",
+        \"name\": \"VK_LAYER_ALTERA_gpu_profile\",
         \"type\": \"GLOBAL\",
-        \"library_path\": \"./$<TARGET_FILE_NAME:campfire_gpu_layer>\",
+        \"library_path\": \"./$<TARGET_FILE_NAME:altera_gpu_layer>\",
         \"api_version\": \"1.3.0\",
         \"implementation_version\": \"1\",
-        \"description\": \"Campfire GPU profile: timestamps around every piece of GPU work, named after its shaders\"
+        \"description\": \"Altera GPU profile: timestamps around every piece of GPU work, named after its shaders\"
     }
 }
 ")
     endif()
 
-    # Public campfire_* target names, with backward-compatible asr_* executable
+    # Public altera_* target names, with backward-compatible asr_* executable
     # shims for older scripts and local habits.
-    function(campfire_binary target legacy)
+    function(altera_binary target legacy)
         if(UNIX)
             add_custom_command(TARGET ${target} POST_BUILD
                     COMMAND "${CMAKE_COMMAND}" -E rm -f "$<TARGET_FILE_DIR:${target}>/${legacy}"
@@ -601,17 +601,17 @@ if(ASR_BUILD_CLIENT)
                     VERBATIM)
         endif()
     endfunction()
-    campfire_binary(campfire_client asr_client)
-    campfire_binary(campfire_editor asr_editor)
+    altera_binary(altera_client asr_client)
+    altera_binary(altera_editor asr_editor)
 
     # Windows has no rpath: the vendored shader compiler's DLLs must sit next to
     # the exe. dxil.dll is not linked, DXC loads it at runtime to sign DXIL.
     if(WIN32)
-        add_custom_command(TARGET campfire_client POST_BUILD
+        add_custom_command(TARGET altera_client POST_BUILD
                 COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                        $<TARGET_RUNTIME_DLLS:campfire_client> "$<TARGET_FILE_DIR:campfire_client>"
+                        $<TARGET_RUNTIME_DLLS:altera_client> "$<TARGET_FILE_DIR:altera_client>"
                 COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                        "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:campfire_client>"
+                        "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:altera_client>"
                 COMMAND_EXPAND_LISTS
                 VERBATIM)
     endif()
@@ -658,7 +658,7 @@ if(ASR_BUILD_CLIENT)
                 COMMENT "Building per-model geometry DAGs and instance canopy sidecars"
                 VERBATIM)
         add_custom_target(asr_scene_geometry DEPENDS "${SCENE_CLUSTER_STAMP}")
-        add_dependencies(campfire_client asr_scene_geometry)
+        add_dependencies(altera_client asr_scene_geometry)
     endif()
 endif()
 
@@ -864,10 +864,10 @@ if(ASR_BUILD_TESTS)
     target_sources(asr_terrain_tests PRIVATE tests/test_natural_basins.cpp)
     target_sources(asr_terrain_tests PRIVATE tests/test_world_scale.cpp tests/test_land_coverage.cpp
             tests/test_terrain_source.cpp)
-    if(TARGET campfire_terrain_core)
-        add_executable(campfire_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp)
-        target_link_libraries(campfire_terrain_core_tests PRIVATE campfire_terrain_core asr_warnings)
-        add_test(NAME terrain_core_unit COMMAND campfire_terrain_core_tests)
+    if(TARGET altera_terrain_core)
+        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp)
+        target_link_libraries(altera_terrain_core_tests PRIVATE altera_terrain_core asr_warnings)
+        add_test(NAME terrain_core_unit COMMAND altera_terrain_core_tests)
     endif()
     add_test(NAME terrain_unit COMMAND asr_terrain_tests)
     set_tests_properties(terrain_unit PROPERTIES TIMEOUT 120)

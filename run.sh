@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch Campfire (or any other target) in its current state, from a terminal.
+# Launch Altera (or any other target) in its current state, from a terminal.
 # Mirrors the CLion run configurations in .idea/runConfigurations.
 #
 #   ./run.sh                 the game
@@ -55,7 +55,7 @@ if [ "$mode" = engine-editor ]; then
     exec "$BUILD_DIR/campfire_engine_editor" "$@"
 fi
 
-BUILD_DIR="${CAMPFIRE_BUILD_DIR:-${ASR_BUILD_DIR:-cmake-build-relwithdebinfo}}"
+BUILD_DIR="${ALTERA_BUILD_DIR:-${CAMPFIRE_BUILD_DIR:-${ASR_BUILD_DIR:-cmake-build-relwithdebinfo}}}"
 
 # RelWithDebInfo, not Debug: an unoptimised simulation is about ten times slower,
 # which puts the 10x game speed out of reach.
@@ -69,19 +69,19 @@ fi
 case "$mode" in
     game)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/campfire_client" --seed "${1:-11}" --map "${2:-140}" --pop "${3:-10}"
+        exec "$BUILD_DIR/altera_client" --seed "${1:-11}" --map "${2:-140}" --pop "${3:-10}"
         ;;
     client)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/campfire_client" --client "$@"
+        exec "$BUILD_DIR/altera_client" --client "$@"
         ;;
     explore)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/campfire_client" --explore "$@"
+        exec "$BUILD_DIR/altera_client" --explore "$@"
         ;;
     edit)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/campfire_client" --explore --edit --world-file "${1:-worlds/world.json}"
+        exec "$BUILD_DIR/altera_client" --explore --edit --world-file "${1:-worlds/world.json}"
         ;;
     headless)
         nice cmake --build "$BUILD_DIR" -j 2 --target sim_runner

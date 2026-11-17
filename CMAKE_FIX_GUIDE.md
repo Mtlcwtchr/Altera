@@ -20,13 +20,13 @@
 
 Просто запусти скрипт:
 ```powershell
-D:\Campfire\campfire\build_msvc_final.bat
+D:\AlteraGame\altera\build_msvc_final.bat
 ```
 
 Этот скрипт:
 1. Настроит Visual Studio 2022 окружение
 2. Сконфигурирует CMake с Visual Studio 17 2022 генератором
-3. Соберет campfire_client
+3. Соберет altera_client
 4. Покажет путь к готовому бинарику
 
 ---
@@ -46,7 +46,7 @@ D:\Campfire\campfire\build_msvc_final.bat
    - ИЛИ: Ctrl+F9
 
 4. **Или собери конкретный таргет:**
-   - Меню: Build → Build → campfire_client
+   - Меню: Build → Build → altera_client
    - ИЛИ: Кликни правой кнопкой на target в CMake проекте и выбери "Build"
 
 ---
@@ -55,12 +55,12 @@ D:\Campfire\campfire\build_msvc_final.bat
 
 После успешной сборки бинарник будет здесь:
 ```
-D:\Campfire\campfire\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\campfire_client.exe
+D:\AlteraGame\altera\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\altera_client.exe
 ```
 
 Тест:
 ```powershell
-D:\Campfire\campfire\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\campfire_client.exe --help
+D:\AlteraGame\altera\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\altera_client.exe --help
 ```
 
 ---
@@ -69,7 +69,7 @@ D:\Campfire\campfire\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\campfire_cli
 
 1. **Убедись что все directori удалены:**
    ```powershell
-   Get-ChildItem D:\Campfire\campfire -Directory -Filter "cmake-build-*"
+   Get-ChildItem D:\AlteraGame\altera -Directory -Filter "cmake-build-*"
    ```
    
    Не должно быть никаких результатов!
@@ -97,7 +97,7 @@ D:\Campfire\campfire\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\campfire_cli
 
 ```powershell
 # Вариант A - Командная строка (самый надежный)
-D:\Campfire\campfire\build_msvc_final.bat
+D:\AlteraGame\altera\build_msvc_final.bat
 
 # Вариант B - CLion
 # 1. Tools → CMake → Reload CMake Project

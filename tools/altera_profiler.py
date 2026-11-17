@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Campfire external profiler: Instruments capture without engine instrumentation.
+"""Altera external profiler: Instruments capture without engine instrumentation.
 CPU stacks, allocation stacks, Metal/system traces and hardware counters use
 macOS/Xcode facilities. No engine SDK, printf, compiler hooks or source rewrite.
 """
@@ -26,7 +26,7 @@ TEMPLATES = {
     "system": "System Trace",
     "counters": "CPU Counters",
 }
-CLIENTS = {"campfire_client", "campfire_editor", "asr_client", "asr_editor"}
+CLIENTS = {"altera_client", "altera_editor", "asr_client", "asr_editor"}
 
 
 def duration(text):
@@ -140,7 +140,7 @@ def record(mode, seconds, output, pid=None, launch=None, arguments=(), runner=ru
     trace = output / "capture.trace"
     command = recording_command(mode, seconds, trace, pid, launch, arguments)
     output.mkdir(parents=True, exist_ok=False)  # never overwrite a previous capture
-    metadata = {"tool": "Campfire external profiler", "backend": "xctrace",
+    metadata = {"tool": "Altera external profiler", "backend": "xctrace",
                 "mode": mode, "template": TEMPLATES[mode], "requested_seconds": seconds,
                 "target": {"pid": pid, "executable": str(launch) if launch else None},
                 "started_utc": datetime.now(timezone.utc).isoformat(), "status": "recording",
@@ -182,10 +182,10 @@ def report_html(summary):
                        str(row["sampled_ms"]) + "</td><td>" + str(row["percent_of_sampled_cpu"]) +
                        "%</td></tr>" for row in rows)
         return f"<h2>{title}</h2><table><tr><th>Symbol / thread</th><th>Sampled ms</th><th>Share</th></tr>{body}</table>"
-    return ("<!doctype html><meta charset='utf-8'><title>Campfire CPU profile</title>"
+    return ("<!doctype html><meta charset='utf-8'><title>Altera CPU profile</title>"
             "<style>body{font:15px system-ui;max-width:1200px;margin:32px auto;padding:0 20px;background:#171a20;color:#e8edf2}"
             "table{border-collapse:collapse;width:100%}td,th{padding:8px;text-align:left;border-bottom:1px solid #39404b}"
-            "td:first-child{overflow-wrap:anywhere}h1,h2{color:#ffbd75}</style><h1>Campfire — external CPU profile</h1>"
+            "td:first-child{overflow-wrap:anywhere}h1,h2{color:#ffbd75}</style><h1>Altera — external CPU profile</h1>"
             f"<p>{summary['samples']} samples; {summary['sampled_cpu_ms']} ms summed across threads.</p>"
             "<p>Statistical CPU samples, not exact function duration, GPU time or hardware cycles. "
             "Inclusive rows overlap and must not be added. Open capture.trace in Instruments for the full timeline/flame graph.</p>"
@@ -240,7 +240,7 @@ def cpu_report(capture, runner=run_command, spike_ms=25.0):
 def parser():
     ap = argparse.ArgumentParser(description=__doc__)
     sub = ap.add_subparsers(dest="action", required=True)
-    sub.add_parser("processes", help="list Campfire and legacy ASR client/editor processes")
+    sub.add_parser("processes", help="list Altera and legacy ASR client/editor processes")
     sub.add_parser("templates", help="list installed Instruments templates")
     capture = sub.add_parser("record", help="record a process without modifying its source")
     target = capture.add_mutually_exclusive_group(required=True)
@@ -279,7 +279,7 @@ def main(argv=None):
             launch = args.launch.resolve() if args.launch else None
             if launch and (not launch.is_file() or not os.access(launch, os.X_OK)):
                 raise ValueError("--launch must name an existing executable")
-            output = args.output or Path(".cache/profiles") / datetime.now().strftime("campfire-%Y%m%d-%H%M%S-%f")
+            output = args.output or Path(".cache/profiles") / datetime.now().strftime("altera-%Y%m%d-%H%M%S-%f")
             trace = record(args.mode, args.seconds, output, args.pid, launch, arguments, debug_copy=args.debug_copy)
             print(trace)
             metadata = json.loads((trace.parent / "recording.json").read_text(encoding="utf-8"))
@@ -290,7 +290,7 @@ def main(argv=None):
             if args.open:
                 subprocess.run(["open", str(trace)], check=True, timeout=15)
     except (OSError, ValueError, RuntimeError, subprocess.SubprocessError) as error:
-        print(f"Campfire profiler: {error}", file=sys.stderr)
+        print(f"Altera profiler: {error}", file=sys.stderr)
         return 1
     except KeyboardInterrupt:
         return 130

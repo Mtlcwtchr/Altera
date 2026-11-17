@@ -7,7 +7,7 @@ Read-only: loads assets, never saves a package. Run as a Python commandlet:
         -run=pythonscript -script="$PWD/tools/export_ue_terrain.py" \
         -unattended -nosplash -NoSound -nullrhi -stdout
 
-AS_UE_TERRAIN_OUT sets the staging directory (default /tmp/campfire_ue_terrain_maps).
+AS_UE_TERRAIN_OUT sets the staging directory (default /tmp/altera_ue_terrain_maps).
 Every texture is written as PNG (its source art, not the cooked mip).
 tools/stage_ue_terrain.py turns them into assets/terrain/<group>/<id>/src.
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import unreal
 
-OUT = Path(os.environ.get("AS_UE_TERRAIN_OUT", "/tmp/campfire_ue_terrain_maps"))
+OUT = Path(os.environ.get("AS_UE_TERRAIN_OUT", "/tmp/altera_ue_terrain_maps"))
 
 # id -> {channel: asset}. Channels: diffuse, normal (DirectX), ao, rough,
 # displacement, or a packed mask "ard" (AO, roughness, displacement) / "ord".

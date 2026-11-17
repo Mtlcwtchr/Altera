@@ -58,18 +58,18 @@ if(ASR_ENABLE_DLSS)
     set(ASR_DLSS_AVAILABLE ON)
 endif()
 
-function(campfire_configure_dlss library executable)
+function(altera_configure_dlss library executable)
     target_sources(${library} PRIVATE src/terrain_core/dlss.cpp)
     target_compile_definitions(${library} PUBLIC ASR_HAS_DLSS=$<BOOL:${ASR_DLSS_AVAILABLE}>)
     if(ASR_DLSS_AVAILABLE)
         target_include_directories(${library} PRIVATE "${ASR_DLSS_SDK_ROOT}/include")
         target_link_libraries(${library} PRIVATE
             "$<IF:$<CONFIG:Debug>,${ASR_DLSS_LIB_DIR}/nvsdk_ngx_d_dbg.lib,${ASR_DLSS_LIB_DIR}/nvsdk_ngx_d.lib>")
-        campfire_copy_dlss_runtime(${executable})
+        altera_copy_dlss_runtime(${executable})
     endif()
 endfunction()
 
-function(campfire_copy_dlss_runtime executable)
+function(altera_copy_dlss_runtime executable)
     add_custom_command(TARGET ${executable} POST_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASR_DLSS_RUNTIME}" "$<TARGET_FILE_DIR:${executable}>"
         COMMAND ${CMAKE_COMMAND} -E copy_if_different "${ASR_DLSS_SDK_ROOT}/LICENSE.txt" "$<TARGET_FILE_DIR:${executable}>/NVIDIA-DLSS-LICENSE.txt"

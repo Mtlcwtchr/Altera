@@ -61,7 +61,7 @@ compute-шейдер дописывает полосу шириной в это�
 - [x] Бенч-режим: скриптовые пролёты, CSV/JSON с метриками, отчёт в
       `doc/reports/terrain_core/`.
 - [x] GPU-время по проходам через `tools/gpu_profile.py` (Vulkan-слой
-      `campfire_gpu_layer`, у SDL3 GPU своих таймстемпов нет).
+      `altera_gpu_layer`, у SDL3 GPU своих таймстемпов нет).
 
 ### Этап 1 — высоты и стриминг ✅ (отчёт: `doc/reports/terrain_core/step1/README.md`)
 1. Макрокарта: импорт PNG16 → R16 текстура мира; генератор → тот же формат.

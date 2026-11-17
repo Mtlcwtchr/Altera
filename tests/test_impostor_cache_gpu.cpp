@@ -8,7 +8,7 @@
 TEST(impostor_data_png_preserves_packed_bytes_under_partial_alpha) {
     struct Video {Video(){CHECK(SDL_Init(SDL_INIT_VIDEO));}~Video(){SDL_Quit();}} video;
     struct Temporary {
-        std::filesystem::path path=std::filesystem::temp_directory_path()/("campfire-data-png-"+std::to_string(SDL_GetTicksNS())+".png");
+        std::filesystem::path path=std::filesystem::temp_directory_path()/("altera-data-png-"+std::to_string(SDL_GetTicksNS())+".png");
         ~Temporary(){std::error_code error;std::filesystem::remove(path,error);}
     } file;
     const std::array<engine::render::ImpostorPixel,4> bytes{{{159,255,1,123},{128,7,20,0},{100,55,7,67},{1,2,3,255}}};

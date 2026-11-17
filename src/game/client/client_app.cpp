@@ -47,6 +47,12 @@ namespace {
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
 
+// ALTERA_<name> from the environment, or the old CAMPFIRE_<name> spelling.
+const char* gameEnv(const char* name) {
+    if (const char* v = std::getenv((std::string("ALTERA_") + name).c_str())) return v;
+    return std::getenv((std::string("CAMPFIRE_") + name).c_str());
+}
+
 fs::path contentDirectory() {
     fs::path content = "content";
     std::error_code ec;
@@ -114,9 +120,9 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
     const fs::path content = root / "content";
     const bool touring = !options.tour.empty();
     fs::path worldsDir = options.worlds.empty() ? root / "worlds" : options.worlds;
-    // A tour of a world that is already made (CAMPFIRE_TOUR_OPEN) reads the
+    // A tour of a world that is already made (ALTERA_TOUR_OPEN) reads the
     // worlds where it was told to; every other tour makes its own afresh.
-    if (touring && std::getenv("CAMPFIRE_TOUR_OPEN") && !options.worlds.empty()) {
+    if (touring && gameEnv("TOUR_OPEN") && !options.worlds.empty()) {
         std::error_code ec;
         fs::create_directories(options.tour, ec);
     } else if (touring) {
@@ -132,7 +138,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
     const auto regular = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
     const auto bold = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
     if (!regular) std::cerr << "no interface font in " << fonts.string() << "; falling back to the debug font\n";
-    if (window) SDL_SetWindowTitle(window, "Campfire");
+    if (window) SDL_SetWindowTitle(window, "Altera");
 
     // --- the world behind the menu -------------------------------------------
     // Something to look at while choosing: a small world, raised in a moment.
@@ -734,7 +740,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
         // Headless has no display to ask: a scale can be given, to look at the
         // interface as a dense screen draws it.
         if (!window)
-            if (const char* forced = std::getenv("CAMPFIRE_UI_SCALE")) pixelsPerPoint = std::clamp(float(std::atof(forced)), 1.0f, 4.0f);
+            if (const char* forced = gameEnv("UI_SCALE")) pixelsPerPoint = std::clamp(float(std::atof(forced)), 1.0f, 4.0f);
         if (tourPointer) { mx = tourPointer->first; my = tourPointer->second; buttons = tourDown ? SDL_BUTTON_LMASK : 0; }
         const bool leftDown = (buttons & SDL_BUTTON_LMASK) != 0;
         input.mouseX = mx;
@@ -1027,7 +1033,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
                 }
             }
         }
-        if (settling && std::getenv("CAMPFIRE_LOAD_TRACE")) {
+        if (settling && gameEnv("LOAD_TRACE")) {
             const auto& terrain = renderer.terrain();
             const auto baking = system.read()->pages().prebakeProgress();
             std::cout << "load trace " << since(*settling) << " s, frame " << dt * 1000 << " ms: missing " << terrain.missing() << ", coarse "
@@ -1046,7 +1052,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
             screens.paused = false;
             // The character where the world starts, the camera behind it.
             // (A tour takes it only when asked: its pictures are of the country.)
-            if (settlingMode == WorldMode::Explore && (!touring || std::getenv("CAMPFIRE_TOUR_HERO")))
+            if (settlingMode == WorldMode::Explore && (!touring || gameEnv("TOUR_HERO")))
                 hero.take(camera, heroGround);
             if (settlingMode == WorldMode::Explore) screens.showHints(seconds);
         }
@@ -1286,10 +1292,10 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
             ClientActions scripted;
             const float cx = pointsW * 0.5f, cy = pointsH * 0.55f;
             // The stages of making a world by hand, end to end through the
-            // pointer as a person drives it (CAMPFIRE_TOUR_AUTHORING=1): an
+            // pointer as a person drives it (ALTERA_TOUR_AUTHORING=1): an
             // empty world the reference size, land painted across a region
             // border, worked out, a range painted on it, the water.
-            static const bool authoringTour = std::getenv("CAMPFIRE_TOUR_AUTHORING") != nullptr;
+            static const bool authoringTour = gameEnv("TOUR_AUTHORING") != nullptr;
             const auto overBorder = [&] {
                 const double r = double(generation::kRegionMetres);
                 frame(pos(3.0 * r, 7.5 * r), 260000);
@@ -1307,9 +1313,9 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
             quietFrames = build || menu.editor().wanted() ? 0 : quietFrames + 1;
             const auto waitBuilt = [&] { return quietFrames > 90 && groundReady() && tourFrames > 30; };
             // An existing world looked at in Edit from far and near
-            // (CAMPFIRE_TOUR_OPEN=name): what the sea and the region grid do
+            // (ALTERA_TOUR_OPEN=name): what the sea and the region grid do
             // at the scale of a continent.
-            static const char* openTour = std::getenv("CAMPFIRE_TOUR_OPEN");
+            static const char* openTour = gameEnv("TOUR_OPEN");
             const auto worldCentre = [&] {
                 const auto& layout = menu.editor().layout();
                 return pos(0.5 * double(layout.widthMetres()), 0.5 * double(layout.heightMetres()));
@@ -1375,9 +1381,9 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
                         spec.empty = true;
                         spec.regionsX = world::saves::kReferenceRegionsX;
                         spec.regionsY = world::saves::kReferenceRegionsY;
-                        // CAMPFIRE_TOUR_REGIONS=16x16: the tour on another
+                        // ALTERA_TOUR_REGIONS=16x16: the tour on another
                         // size of world (a profile of the largest one, say).
-                        if (const char* size = std::getenv("CAMPFIRE_TOUR_REGIONS"))
+                        if (const char* size = gameEnv("TOUR_REGIONS"))
                             std::sscanf(size, "%dx%d", &spec.regionsX, &spec.regionsY);
                         spec.seed = 4242;
                         scripted.create = spec;
@@ -1419,7 +1425,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
                 case 11: if (waitBuilt()) { tourShot("a6-water.png"); tourStatus("water"); next(); } break;
                 case 12:
                     // Down to the ground it made, and the tools that shape it by hand.
-                    if (const char* at = std::getenv("CAMPFIRE_TOUR_CLOSE")) {
+                    if (const char* at = gameEnv("TOUR_CLOSE")) {
                         double fx = 3.0, fy = 7.5, fd = 20000;
                         std::sscanf(at, "%lf,%lf,%lf", &fx, &fy, &fd);
                         frame(pos(fx * double(generation::kRegionMetres), fy * double(generation::kRegionMetres)), fd);

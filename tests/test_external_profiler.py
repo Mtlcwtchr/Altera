@@ -9,7 +9,7 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
-import campfire_profiler as profiler
+import altera_profiler as profiler
 from summarize_xctrace import summarize
 
 XML = '''<trace-query-result><node><row>
@@ -98,7 +98,7 @@ class ExternalProfilerTests(unittest.TestCase):
     def test_debug_copy_never_modifies_original_executable(self):
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            original = root / "campfire_client"
+            original = root / "altera_client"
             original.write_bytes(b"original executable")
             output = root / "capture"
             def fake(command, logfile, timeout):
@@ -107,12 +107,12 @@ class ExternalProfilerTests(unittest.TestCase):
                     self.assertNotEqual(copied, original)
                     copied.write_bytes(b"signed copy")
                 else:
-                    self.assertIn(str(output / "target/campfire_client"), command)
+                    self.assertIn(str(output / "target/altera_client"), command)
                     Path(command[command.index("--output") + 1]).mkdir()
                 return 0
             profiler.record("memory", 3, output, launch=original, runner=fake, debug_copy=True)
             self.assertEqual(original.read_bytes(), b"original executable")
-            self.assertEqual((output / "target/campfire_client").read_bytes(), b"signed copy")
+            self.assertEqual((output / "target/altera_client").read_bytes(), b"signed copy")
             with self.assertRaises(ValueError):
                 profiler.record("memory", 3, root / "invalid", pid=42, debug_copy=True)
 

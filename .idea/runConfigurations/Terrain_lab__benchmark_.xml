@@ -1,5 +1,5 @@
 <component name="ProjectRunConfigurationManager">
-  <configuration default="false" name="Terrain lab (benchmark)" type="CMakeRunConfiguration" factoryName="Application" folderName="Terrain" PROGRAM_PARAMS="--headless 1920x1080 --bench all --out terrain_lab_out/bench" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="campfire" TARGET_NAME="terrain_lab" CONFIG_NAME="windows" RUN_TARGET_PROJECT_NAME="campfire" RUN_TARGET_NAME="terrain_lab">
+  <configuration default="false" name="Terrain lab (benchmark)" type="CMakeRunConfiguration" factoryName="Application" folderName="Terrain" PROGRAM_PARAMS="--headless 1920x1080 --bench all --out terrain_lab_out/bench" REDIRECT_INPUT="false" ELEVATE="false" USE_EXTERNAL_CONSOLE="false" EMULATE_TERMINAL="false" WORKING_DIR="$PROJECT_DIR$" PASS_PARENT_ENVS_2="true" PROJECT_NAME="altera" TARGET_NAME="terrain_lab" CONFIG_NAME="windows" RUN_TARGET_PROJECT_NAME="altera" RUN_TARGET_NAME="terrain_lab">
     <method v="2">
       <option name="com.jetbrains.cidr.execution.CidrBuildBeforeRunTaskProvider$BuildBeforeRunTask" enabled="true" />
     </method>

@@ -22,7 +22,7 @@ struct TempDir {
     fs::path path;
     TempDir() {
         std::random_device rd;
-        path = fs::temp_directory_path() / ("campfire_saves_" + std::to_string(rd()));
+        path = fs::temp_directory_path() / ("altera_saves_" + std::to_string(rd()));
         fs::remove_all(path);
         fs::create_directories(path);
     }

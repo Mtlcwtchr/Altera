@@ -21,7 +21,7 @@ ap.add_argument("--dest", default="assets/downloaded/sketchfab"); ap.add_argumen
 ap.add_argument("--workers", type=int, default=3)
 ap.add_argument("--keep-retrying", action="store_true")
 a = ap.parse_args()
-H = {"Authorization": "Token " + tok, "User-Agent": "campfire-asset-fetch"}
+H = {"Authorization": "Token " + tok, "User-Agent": "altera-asset-fetch"}
 request_lock = threading.Lock()
 next_request = 0.0
 dest = Path(a.dest)

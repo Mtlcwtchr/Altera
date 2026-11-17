@@ -7,7 +7,7 @@ Writes <dest>/<author>__<slug>/<files> and a source.json (url, title, author, li
 """
 import argparse, html, http.cookiejar, json, os, re, sys, urllib.parse, urllib.request
 
-UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) campfire-asset-fetch"}
+UA = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) altera-asset-fetch"}
 
 
 def opener():

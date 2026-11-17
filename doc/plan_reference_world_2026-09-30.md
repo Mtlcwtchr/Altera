@@ -25,7 +25,7 @@ cmake --build cmake-build-relwithdebinfo --target world_load_probe -j 2
 не должны меняться, пока шаг сам не меняет генерацию. Быстрые наборы тестов:
 `asr_world_system_tests`, `asr_terrain_tests`, `asr_ui_tests`, `asr_tests world_`.
 Тур клиента — с кэшем вне проекта, чтобы не забить диск:
-`ASR_TERRAIN_CACHE_DIR=/tmp/tourcache campfire_client --client --client-tour /tmp/tour --headless 1280x720`.
+`ASR_TERRAIN_CACHE_DIR=/tmp/tourcache altera_client --client --client-tour /tmp/tour --headless 1280x720`.
 
 Сначала проверить: 4 теста в `asr_height_page_gpu_tests` падают уже сейчас
 (публикация атласа, вода на сухой грубой странице, материалы по зуму, эрозия).

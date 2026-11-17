@@ -1,4 +1,4 @@
-// campfire_gpu_layer - a Vulkan layer that times the GPU work of any Vulkan
+// altera_gpu_layer - a Vulkan layer that times the GPU work of any Vulkan
 // program, by itself: no markers in the program, no vendor counters, no admin.
 //
 // It sits between the program and the driver (enabled by environment, see
@@ -16,8 +16,8 @@
 // approximation every timestamp profiler makes - and frame totals are exact.
 //
 // Environment:
-//   CAMPFIRE_GPU_PROFILE_OUT=file.json   where the report goes (at device destruction)
-//   CAMPFIRE_GPU_PROFILE_LIVE=1          a one-line summary on stderr every second
+//   ALTERA_GPU_PROFILE_OUT=file.json   where the report goes (at device destruction)
+//   ALTERA_GPU_PROFILE_LIVE=1          a one-line summary on stderr every second
 #define VK_NO_PROTOTYPES
 #include <vulkan/vk_layer.h>
 #include <vulkan/vulkan.h>
@@ -37,14 +37,14 @@
 #include <vector>
 
 #if defined(_WIN32)
-#define CAMPFIRE_EXPORT extern "C" __declspec(dllexport)
+#define ALTERA_EXPORT extern "C" __declspec(dllexport)
 #else
-#define CAMPFIRE_EXPORT extern "C" __attribute__((visibility("default")))
+#define ALTERA_EXPORT extern "C" __attribute__((visibility("default")))
 #endif
 
 namespace {
 
-constexpr const char* kLayerName = "VK_LAYER_CAMPFIRE_gpu_profile";
+constexpr const char* kLayerName = "VK_LAYER_ALTERA_gpu_profile";
 constexpr std::uint32_t kSliceSize = 1024;   // timestamps a command buffer can hold
 constexpr std::uint32_t kSlices = 128;       // command buffers measured at once
 
@@ -181,7 +181,7 @@ void markIn(VkCommandBuffer buffer, const char* what, bool compute = false) {
 }
 
 void finishFrames(DeviceData& d, bool all) {
-    const char* live = std::getenv("CAMPFIRE_GPU_PROFILE_LIVE");
+    const char* live = std::getenv("ALTERA_GPU_PROFILE_LIVE") ? std::getenv("ALTERA_GPU_PROFILE_LIVE") : std::getenv("CAMPFIRE_GPU_PROFILE_LIVE");
     while (!d.open.empty() && (all || d.open.begin()->first + 12 < d.frame)) {
         FrameStats stats = std::move(d.open.begin()->second);
         d.open.erase(d.open.begin());
@@ -231,8 +231,8 @@ void collect(DeviceData& d) {
 
 void writeReport(DeviceData& d) {
     finishFrames(d, true);
-    const char* path = std::getenv("CAMPFIRE_GPU_PROFILE_OUT");
-    std::ofstream out(path && *path ? path : "campfire_gpu_profile.json", std::ios::trunc);
+    const char* path = std::getenv("ALTERA_GPU_PROFILE_OUT") ? std::getenv("ALTERA_GPU_PROFILE_OUT") : std::getenv("CAMPFIRE_GPU_PROFILE_OUT");
+    std::ofstream out(path && *path ? path : "altera_gpu_profile.json", std::ios::trunc);
     if (!out) return;
     const auto escape = [](const std::string& s) {
         std::string o;
@@ -319,42 +319,42 @@ VKAPI_ATTR void VKAPI_CALL CmdEndRenderPass(VkCommandBuffer buffer) {
     deviceOf(buffer)->cmdEndRenderPass(buffer);
 }
 
-#define CAMPFIRE_DRAW(Name, Args, Call, What, Compute)               \
+#define ALTERA_DRAW(Name, Args, Call, What, Compute)               \
     VKAPI_ATTR void VKAPI_CALL Name Args {                            \
         std::lock_guard<std::mutex> lock(gLock);                      \
         markIn(buffer, What, Compute);                                \
         deviceOf(buffer)->Call;                                       \
     }
 
-CAMPFIRE_DRAW(CmdDraw, (VkCommandBuffer buffer, uint32_t a, uint32_t b, uint32_t c, uint32_t e),
+ALTERA_DRAW(CmdDraw, (VkCommandBuffer buffer, uint32_t a, uint32_t b, uint32_t c, uint32_t e),
               cmdDraw(buffer, a, b, c, e), nullptr, false)
-CAMPFIRE_DRAW(CmdDrawIndexed, (VkCommandBuffer buffer, uint32_t a, uint32_t b, uint32_t c, int32_t e, uint32_t f),
+ALTERA_DRAW(CmdDrawIndexed, (VkCommandBuffer buffer, uint32_t a, uint32_t b, uint32_t c, int32_t e, uint32_t f),
               cmdDrawIndexed(buffer, a, b, c, e, f), nullptr, false)
-CAMPFIRE_DRAW(CmdDrawIndirect, (VkCommandBuffer buffer, VkBuffer a, VkDeviceSize b, uint32_t c, uint32_t e),
+ALTERA_DRAW(CmdDrawIndirect, (VkCommandBuffer buffer, VkBuffer a, VkDeviceSize b, uint32_t c, uint32_t e),
               cmdDrawIndirect(buffer, a, b, c, e), nullptr, false)
-CAMPFIRE_DRAW(CmdDrawIndexedIndirect, (VkCommandBuffer buffer, VkBuffer a, VkDeviceSize b, uint32_t c, uint32_t e),
+ALTERA_DRAW(CmdDrawIndexedIndirect, (VkCommandBuffer buffer, VkBuffer a, VkDeviceSize b, uint32_t c, uint32_t e),
               cmdDrawIndexedIndirect(buffer, a, b, c, e), nullptr, false)
-CAMPFIRE_DRAW(CmdDispatch, (VkCommandBuffer buffer, uint32_t a, uint32_t b, uint32_t c),
+ALTERA_DRAW(CmdDispatch, (VkCommandBuffer buffer, uint32_t a, uint32_t b, uint32_t c),
               cmdDispatch(buffer, a, b, c), nullptr, true)
-CAMPFIRE_DRAW(CmdDispatchIndirect, (VkCommandBuffer buffer, VkBuffer a, VkDeviceSize b),
+ALTERA_DRAW(CmdDispatchIndirect, (VkCommandBuffer buffer, VkBuffer a, VkDeviceSize b),
               cmdDispatchIndirect(buffer, a, b), nullptr, true)
-CAMPFIRE_DRAW(CmdCopyBuffer, (VkCommandBuffer buffer, VkBuffer a, VkBuffer b, uint32_t c, const VkBufferCopy* e),
+ALTERA_DRAW(CmdCopyBuffer, (VkCommandBuffer buffer, VkBuffer a, VkBuffer b, uint32_t c, const VkBufferCopy* e),
               cmdCopyBuffer(buffer, a, b, c, e), "copy buffer", false)
-CAMPFIRE_DRAW(CmdCopyBufferToImage,
+ALTERA_DRAW(CmdCopyBufferToImage,
               (VkCommandBuffer buffer, VkBuffer a, VkImage b, VkImageLayout c, uint32_t e, const VkBufferImageCopy* f),
               cmdCopyBufferToImage(buffer, a, b, c, e, f), "upload image", false)
-CAMPFIRE_DRAW(CmdCopyImage,
+ALTERA_DRAW(CmdCopyImage,
               (VkCommandBuffer buffer, VkImage a, VkImageLayout b, VkImage c, VkImageLayout e, uint32_t f,
                const VkImageCopy* g),
               cmdCopyImage(buffer, a, b, c, e, f, g), "copy image", false)
-CAMPFIRE_DRAW(CmdCopyImageToBuffer,
+ALTERA_DRAW(CmdCopyImageToBuffer,
               (VkCommandBuffer buffer, VkImage a, VkImageLayout b, VkBuffer c, uint32_t e, const VkBufferImageCopy* f),
               cmdCopyImageToBuffer(buffer, a, b, c, e, f), "read back image", false)
-CAMPFIRE_DRAW(CmdBlitImage,
+ALTERA_DRAW(CmdBlitImage,
               (VkCommandBuffer buffer, VkImage a, VkImageLayout b, VkImage c, VkImageLayout e, uint32_t f,
                const VkImageBlit* g, VkFilter h),
               cmdBlitImage(buffer, a, b, c, e, f, g, h), "blit / mipmaps", false)
-CAMPFIRE_DRAW(CmdClearColorImage,
+ALTERA_DRAW(CmdClearColorImage,
               (VkCommandBuffer buffer, VkImage a, VkImageLayout b, const VkClearColorValue* c, uint32_t e,
                const VkImageSubresourceRange* f),
               cmdClearColorImage(buffer, a, b, c, e, f), "clear image", false)
@@ -506,36 +506,36 @@ VKAPI_ATTR VkResult VKAPI_CALL CreateDevice(VkPhysicalDevice physical, const VkD
     VkPhysicalDeviceProperties properties{};
     if (instance.properties) instance.properties(physical, &properties);
     d->period = properties.limits.timestampPeriod > 0 ? double(properties.limits.timestampPeriod) : 1.0;
-#define CAMPFIRE_LOAD(member, name) d->member = reinterpret_cast<PFN_##name>(nextDevice(*device, #name))
-    CAMPFIRE_LOAD(destroyDevice, vkDestroyDevice);
-    CAMPFIRE_LOAD(createQueryPool, vkCreateQueryPool);
-    CAMPFIRE_LOAD(destroyQueryPool, vkDestroyQueryPool);
-    CAMPFIRE_LOAD(getQueryPoolResults, vkGetQueryPoolResults);
-    CAMPFIRE_LOAD(cmdResetQueryPool, vkCmdResetQueryPool);
-    CAMPFIRE_LOAD(cmdWriteTimestamp, vkCmdWriteTimestamp);
-    CAMPFIRE_LOAD(createShaderModule, vkCreateShaderModule);
-    CAMPFIRE_LOAD(createGraphicsPipelines, vkCreateGraphicsPipelines);
-    CAMPFIRE_LOAD(createComputePipelines, vkCreateComputePipelines);
-    CAMPFIRE_LOAD(beginCommandBuffer, vkBeginCommandBuffer);
-    CAMPFIRE_LOAD(endCommandBuffer, vkEndCommandBuffer);
-    CAMPFIRE_LOAD(cmdBindPipeline, vkCmdBindPipeline);
-    CAMPFIRE_LOAD(cmdBeginRenderPass, vkCmdBeginRenderPass);
-    CAMPFIRE_LOAD(cmdEndRenderPass, vkCmdEndRenderPass);
-    CAMPFIRE_LOAD(cmdDraw, vkCmdDraw);
-    CAMPFIRE_LOAD(cmdDrawIndexed, vkCmdDrawIndexed);
-    CAMPFIRE_LOAD(cmdDrawIndirect, vkCmdDrawIndirect);
-    CAMPFIRE_LOAD(cmdDrawIndexedIndirect, vkCmdDrawIndexedIndirect);
-    CAMPFIRE_LOAD(cmdDispatch, vkCmdDispatch);
-    CAMPFIRE_LOAD(cmdDispatchIndirect, vkCmdDispatchIndirect);
-    CAMPFIRE_LOAD(cmdCopyBuffer, vkCmdCopyBuffer);
-    CAMPFIRE_LOAD(cmdCopyBufferToImage, vkCmdCopyBufferToImage);
-    CAMPFIRE_LOAD(cmdCopyImage, vkCmdCopyImage);
-    CAMPFIRE_LOAD(cmdCopyImageToBuffer, vkCmdCopyImageToBuffer);
-    CAMPFIRE_LOAD(cmdBlitImage, vkCmdBlitImage);
-    CAMPFIRE_LOAD(cmdClearColorImage, vkCmdClearColorImage);
-    CAMPFIRE_LOAD(queueSubmit, vkQueueSubmit);
-    CAMPFIRE_LOAD(queuePresent, vkQueuePresentKHR);
-#undef CAMPFIRE_LOAD
+#define ALTERA_LOAD(member, name) d->member = reinterpret_cast<PFN_##name>(nextDevice(*device, #name))
+    ALTERA_LOAD(destroyDevice, vkDestroyDevice);
+    ALTERA_LOAD(createQueryPool, vkCreateQueryPool);
+    ALTERA_LOAD(destroyQueryPool, vkDestroyQueryPool);
+    ALTERA_LOAD(getQueryPoolResults, vkGetQueryPoolResults);
+    ALTERA_LOAD(cmdResetQueryPool, vkCmdResetQueryPool);
+    ALTERA_LOAD(cmdWriteTimestamp, vkCmdWriteTimestamp);
+    ALTERA_LOAD(createShaderModule, vkCreateShaderModule);
+    ALTERA_LOAD(createGraphicsPipelines, vkCreateGraphicsPipelines);
+    ALTERA_LOAD(createComputePipelines, vkCreateComputePipelines);
+    ALTERA_LOAD(beginCommandBuffer, vkBeginCommandBuffer);
+    ALTERA_LOAD(endCommandBuffer, vkEndCommandBuffer);
+    ALTERA_LOAD(cmdBindPipeline, vkCmdBindPipeline);
+    ALTERA_LOAD(cmdBeginRenderPass, vkCmdBeginRenderPass);
+    ALTERA_LOAD(cmdEndRenderPass, vkCmdEndRenderPass);
+    ALTERA_LOAD(cmdDraw, vkCmdDraw);
+    ALTERA_LOAD(cmdDrawIndexed, vkCmdDrawIndexed);
+    ALTERA_LOAD(cmdDrawIndirect, vkCmdDrawIndirect);
+    ALTERA_LOAD(cmdDrawIndexedIndirect, vkCmdDrawIndexedIndirect);
+    ALTERA_LOAD(cmdDispatch, vkCmdDispatch);
+    ALTERA_LOAD(cmdDispatchIndirect, vkCmdDispatchIndirect);
+    ALTERA_LOAD(cmdCopyBuffer, vkCmdCopyBuffer);
+    ALTERA_LOAD(cmdCopyBufferToImage, vkCmdCopyBufferToImage);
+    ALTERA_LOAD(cmdCopyImage, vkCmdCopyImage);
+    ALTERA_LOAD(cmdCopyImageToBuffer, vkCmdCopyImageToBuffer);
+    ALTERA_LOAD(cmdBlitImage, vkCmdBlitImage);
+    ALTERA_LOAD(cmdClearColorImage, vkCmdClearColorImage);
+    ALTERA_LOAD(queueSubmit, vkQueueSubmit);
+    ALTERA_LOAD(queuePresent, vkQueuePresentKHR);
+#undef ALTERA_LOAD
     VkQueryPoolCreateInfo pool{};
     pool.sType = VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO;
     pool.queryType = VK_QUERY_TYPE_TIMESTAMP;
@@ -569,32 +569,32 @@ VKAPI_ATTR void VKAPI_CALL DestroyDevice(VkDevice device, const VkAllocationCall
 }
 
 PFN_vkVoidFunction hook(const char* name) {
-#define CAMPFIRE_HOOK(fn, ours) if (std::strcmp(name, #fn) == 0) return reinterpret_cast<PFN_vkVoidFunction>(&ours)
-    CAMPFIRE_HOOK(vkGetDeviceProcAddr, GetDeviceProcAddr);
-    CAMPFIRE_HOOK(vkDestroyDevice, DestroyDevice);
-    CAMPFIRE_HOOK(vkCreateShaderModule, CreateShaderModule);
-    CAMPFIRE_HOOK(vkCreateGraphicsPipelines, CreateGraphicsPipelines);
-    CAMPFIRE_HOOK(vkCreateComputePipelines, CreateComputePipelines);
-    CAMPFIRE_HOOK(vkBeginCommandBuffer, BeginCommandBuffer);
-    CAMPFIRE_HOOK(vkEndCommandBuffer, EndCommandBuffer);
-    CAMPFIRE_HOOK(vkCmdBindPipeline, CmdBindPipeline);
-    CAMPFIRE_HOOK(vkCmdBeginRenderPass, CmdBeginRenderPass);
-    CAMPFIRE_HOOK(vkCmdEndRenderPass, CmdEndRenderPass);
-    CAMPFIRE_HOOK(vkCmdDraw, CmdDraw);
-    CAMPFIRE_HOOK(vkCmdDrawIndexed, CmdDrawIndexed);
-    CAMPFIRE_HOOK(vkCmdDrawIndirect, CmdDrawIndirect);
-    CAMPFIRE_HOOK(vkCmdDrawIndexedIndirect, CmdDrawIndexedIndirect);
-    CAMPFIRE_HOOK(vkCmdDispatch, CmdDispatch);
-    CAMPFIRE_HOOK(vkCmdDispatchIndirect, CmdDispatchIndirect);
-    CAMPFIRE_HOOK(vkCmdCopyBuffer, CmdCopyBuffer);
-    CAMPFIRE_HOOK(vkCmdCopyBufferToImage, CmdCopyBufferToImage);
-    CAMPFIRE_HOOK(vkCmdCopyImage, CmdCopyImage);
-    CAMPFIRE_HOOK(vkCmdCopyImageToBuffer, CmdCopyImageToBuffer);
-    CAMPFIRE_HOOK(vkCmdBlitImage, CmdBlitImage);
-    CAMPFIRE_HOOK(vkCmdClearColorImage, CmdClearColorImage);
-    CAMPFIRE_HOOK(vkQueueSubmit, QueueSubmit);
-    CAMPFIRE_HOOK(vkQueuePresentKHR, QueuePresentKHR);
-#undef CAMPFIRE_HOOK
+#define ALTERA_HOOK(fn, ours) if (std::strcmp(name, #fn) == 0) return reinterpret_cast<PFN_vkVoidFunction>(&ours)
+    ALTERA_HOOK(vkGetDeviceProcAddr, GetDeviceProcAddr);
+    ALTERA_HOOK(vkDestroyDevice, DestroyDevice);
+    ALTERA_HOOK(vkCreateShaderModule, CreateShaderModule);
+    ALTERA_HOOK(vkCreateGraphicsPipelines, CreateGraphicsPipelines);
+    ALTERA_HOOK(vkCreateComputePipelines, CreateComputePipelines);
+    ALTERA_HOOK(vkBeginCommandBuffer, BeginCommandBuffer);
+    ALTERA_HOOK(vkEndCommandBuffer, EndCommandBuffer);
+    ALTERA_HOOK(vkCmdBindPipeline, CmdBindPipeline);
+    ALTERA_HOOK(vkCmdBeginRenderPass, CmdBeginRenderPass);
+    ALTERA_HOOK(vkCmdEndRenderPass, CmdEndRenderPass);
+    ALTERA_HOOK(vkCmdDraw, CmdDraw);
+    ALTERA_HOOK(vkCmdDrawIndexed, CmdDrawIndexed);
+    ALTERA_HOOK(vkCmdDrawIndirect, CmdDrawIndirect);
+    ALTERA_HOOK(vkCmdDrawIndexedIndirect, CmdDrawIndexedIndirect);
+    ALTERA_HOOK(vkCmdDispatch, CmdDispatch);
+    ALTERA_HOOK(vkCmdDispatchIndirect, CmdDispatchIndirect);
+    ALTERA_HOOK(vkCmdCopyBuffer, CmdCopyBuffer);
+    ALTERA_HOOK(vkCmdCopyBufferToImage, CmdCopyBufferToImage);
+    ALTERA_HOOK(vkCmdCopyImage, CmdCopyImage);
+    ALTERA_HOOK(vkCmdCopyImageToBuffer, CmdCopyImageToBuffer);
+    ALTERA_HOOK(vkCmdBlitImage, CmdBlitImage);
+    ALTERA_HOOK(vkCmdClearColorImage, CmdClearColorImage);
+    ALTERA_HOOK(vkQueueSubmit, QueueSubmit);
+    ALTERA_HOOK(vkQueuePresentKHR, QueuePresentKHR);
+#undef ALTERA_HOOK
     return nullptr;
 }
 
@@ -629,7 +629,7 @@ VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL GetInstanceProcAddr(VkInstance instance
 
 } // namespace
 
-CAMPFIRE_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface* version) {
+ALTERA_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVersion(VkNegotiateLayerInterface* version) {
     if (!version || version->sType != LAYER_NEGOTIATE_INTERFACE_STRUCT) return VK_ERROR_INITIALIZATION_FAILED;
     if (version->loaderLayerInterfaceVersion >= 2) {
         version->pfnGetInstanceProcAddr = GetInstanceProcAddr;
@@ -640,10 +640,10 @@ CAMPFIRE_EXPORT VKAPI_ATTR VkResult VKAPI_CALL vkNegotiateLoaderLayerInterfaceVe
     return VK_SUCCESS;
 }
 
-CAMPFIRE_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char* name) {
+ALTERA_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetInstanceProcAddr(VkInstance instance, const char* name) {
     return GetInstanceProcAddr(instance, name);
 }
 
-CAMPFIRE_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice device, const char* name) {
+ALTERA_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL vkGetDeviceProcAddr(VkDevice device, const char* name) {
     return GetDeviceProcAddr(device, name);
 }

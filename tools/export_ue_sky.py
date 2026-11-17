@@ -7,7 +7,7 @@ Read-only: loads assets, never saves a package. Run as a Python commandlet:
         -run=pythonscript -script="$PWD/tools/export_ue_sky.py" \
         -unattended -nosplash -NoSound -nullrhi -stdout
 
-AS_UE_SKY_OUT sets the staging directory (default /tmp/campfire_ue_sky).
+AS_UE_SKY_OUT sets the staging directory (default /tmp/altera_ue_sky).
 Cubemaps are written as long-lat .hdr, 2D textures as .png. tools/prepare_sky.py
 turns them into the runtime sky assets.
 """
@@ -17,7 +17,7 @@ from pathlib import Path
 
 import unreal
 
-OUT = Path(os.environ.get("AS_UE_SKY_OUT", "/tmp/campfire_ue_sky"))
+OUT = Path(os.environ.get("AS_UE_SKY_OUT", "/tmp/altera_ue_sky"))
 CANDIDATES = [
     "/Game/Namaqualand/HDRIs/goegap_8k",
     "/Game/Namaqualand/HDRIs/klippad_dawn_1_8k",

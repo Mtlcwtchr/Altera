@@ -57,7 +57,7 @@ TEST(graphics_settings_round_trip_clamp_and_presets) {
     const auto low = game::graphicsPreset(0), ultra = game::graphicsPreset(3);
     CHECK(low.lodScale() > ultra.lodScale()); CHECK(low.drawDistanceKm < ultra.drawDistanceKm);
     CHECK_EQ(low.cloudSteps() , 12); CHECK_EQ(ultra.cloudSteps(), 48);
-    const auto file = std::filesystem::temp_directory_path() / ("campfire-graphics-" + std::to_string(SDL_GetTicksNS()) + ".json");
+    const auto file = std::filesystem::temp_directory_path() / ("altera-graphics-" + std::to_string(SDL_GetTicksNS()) + ".json");
     game::GraphicsSettings saved = ultra; saved.exposure = 1.7f; saved.skybox = false;
     CHECK(game::saveGraphicsSettings(file, saved));
     const auto loaded = game::loadGraphicsSettings(file);

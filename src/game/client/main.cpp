@@ -290,13 +290,13 @@ int main(int argc, char** argv) {
         else if (a == "--zoom" && i + 1 < argc) shotZoom = std::atof(argv[++i]);
         else if (a == "--overlay" && i + 1 < argc) shotOverlay = argv[++i];
         else if (a == "--help") {
-            std::cout << "usage: campfire_client                 open the client menu\n"
-                      << "       campfire_client [--seed N] [--map N] [--pop N]\n"
-                      << "       campfire_client --shot-menu FILE   the world-choosing screen\n"
-                      << "       campfire_client --shot FILE [--day N] [--zoom PIXELS_PER_TILE]"
+            std::cout << "usage: altera_client                 open the client menu\n"
+                      << "       altera_client [--seed N] [--map N] [--pop N]\n"
+                      << "       altera_client --shot-menu FILE   the world-choosing screen\n"
+                      << "       altera_client --shot FILE [--day N] [--zoom PIXELS_PER_TILE]"
                       << " [--overlay none|zones|jobs]\n"
-                      << "       campfire_client --world tiny|smaller|small|average|medium|large|giant\n"
-                      << "       campfire_client --explore [--menu] [--seed N] [--world N]"
+                      << "       altera_client --world tiny|smaller|small|average|medium|large|giant\n"
+                      << "       altera_client --explore [--menu] [--seed N] [--world N]"
                       << " [--shot FILE] [--camera map|orbit|free] [--grid off|samples|mesh]"
                       << " [--object-mesh]"
                       << " [--yaw RADIANS] [--pitch RADIANS] [--height-offset METRES]"
@@ -304,7 +304,7 @@ int main(int argc, char** argv) {
                       << " [--headless WxH] [--bench FRAMES] [--bench-load FRAMES] [--bench-json FILE]"
                       << " [--dig X,Y[,RADIUS[,METRES]]]"
                       << "   the world, without the game in it\n"
-                      << "       campfire_client --client [--client-worlds DIR] [--client-tour DIR [--headless WxH]]"
+                      << "       altera_client --client [--client-worlds DIR] [--client-tour DIR [--headless WxH]]"
                       << "   the world, without the game in it\n";
             return 0;
         }
@@ -360,7 +360,7 @@ int main(int argc, char** argv) {
         clientOptions.headlessHeight = exploreOptions.headlessHeight;
         SDL_Window* clientWindow = clientOptions.headlessWidth > 0
                 ? nullptr
-                : SDL_CreateWindow("Campfire", 1440, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
+                : SDL_CreateWindow("Altera", 1440, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
         if (!clientWindow && clientOptions.headlessWidth <= 0) {
             std::cerr << "window creation failed: " << SDL_GetError() << "\n";
             SDL_Quit();
@@ -376,7 +376,7 @@ int main(int argc, char** argv) {
     if (exploring) {
         SDL_Window* gpuWindow = exploreOptions.headlessWidth > 0
                 ? nullptr
-                : SDL_CreateWindow("Campfire — World Explorer", 1280, 800, SDL_WINDOW_RESIZABLE);
+                : SDL_CreateWindow("Altera — World Explorer", 1280, 800, SDL_WINDOW_RESIZABLE);
         if (!gpuWindow && exploreOptions.headlessWidth <= 0) {
             std::cerr << "GPU explorer window creation failed: " << SDL_GetError() << "\n";
             SDL_Quit();
@@ -396,7 +396,7 @@ int main(int argc, char** argv) {
 
     SDL_Window* window = nullptr;
     SDL_Renderer* sdlRenderer = nullptr;
-    if (!SDL_CreateWindowAndRenderer("Campfire", 1280, 800, SDL_WINDOW_RESIZABLE,
+    if (!SDL_CreateWindowAndRenderer("Altera", 1280, 800, SDL_WINDOW_RESIZABLE,
                                      &window, &sdlRenderer)) {
         std::cerr << "window creation failed: " << SDL_GetError() << "\n";
         SDL_Quit();

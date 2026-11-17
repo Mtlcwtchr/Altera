@@ -7,7 +7,7 @@
 Воспроизвести:
 
 ```
-cmake --build cmake-build-windows --target terrain_lab campfire_terrain_core_tests
+cmake --build cmake-build-windows --target terrain_lab altera_terrain_core_tests
 python tools/terrain_lab/sweep.py --out doc/reports/terrain_core/step1
 cmake-build-windows/terrain_lab.exe --world-km 2000 --spacing 0.5 --view-km 32   # полетать: WASD, ПКМ, колесо, F1
 ```

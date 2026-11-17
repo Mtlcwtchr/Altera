@@ -1,5 +1,5 @@
 
-# Campfire — «Костёр»
+# Altera
 
 Campfire — собственный движок и работающий на нём клиент симуляционной RTS
 об автономной общине бронзового века. Источник истины по
@@ -63,14 +63,14 @@ Windows: стеки через SuspendThread/RtlVirtualUnwind, имена из P
 
 ### GPU-профайлер (Windows, Linux)
 
-`tools/gpu_profile.py` — **отдельная тулза**: Vulkan-слой `campfire_gpu_layer` (цель CMake,
+`tools/gpu_profile.py` — **отдельная тулза**: Vulkan-слой `altera_gpu_layer` (цель CMake,
 собирается с клиентом) включается через окружение загрузчика Vulkan, в коде игры о нём
 ничего нет. Слой ставит timestamp-запросы вокруг каждой работы GPU — серии draw с одним
 пайплайном, dispatch, копии, загрузки/сохранения render pass — и называет её по точкам
 входа шейдеров (`AdaptiveTerrainVS / TerrainPagePS`). Права на счётчики и Nsight не нужны.
 
 ```bat
-python tools\gpu_profile.py --skip 600 -- cmake-build-windows\campfire_client.exe --explore
+python tools\gpu_profile.py --skip 600 -- cmake-build-windows\altera_client.exe --explore
 python tools\gpu_profile.py --live -- <любая Vulkan-программа и её аргументы>
 python tools\gpu_profile.py --report .cache\profiles\gpu_profile.json --skip 300
 ```
@@ -78,7 +78,7 @@ python tools\gpu_profile.py --report .cache\profiles\gpu_profile.json --skip 300
 Отчёт: среднее/медиана/p95 GPU-кадра и мс на кадр по каждой работе; JSON по кадрам в
 `.cache/profiles/gpu_profile.json`. Метки стоят в конце конвейера: итог кадра точный,
 раскладка между соседями, перекрывающимися на GPU, — атрибуция, как у любого
-timestamp-профайлера. На macOS — Instruments (`tools/campfire_profiler.py --mode gpu`).
+timestamp-профайлера. На macOS — Instruments (`tools/altera_profiler.py --mode gpu`).
 
 ## Запуск
 
@@ -94,7 +94,7 @@ world)**, **Headless (1 year)**, **Headless (10 years)**, **Explain decisions**,
 ./run.sh                 # игра
 ./run.sh game 42 180     # seed 42, карта 180
 ./run.sh client          # клиент мира: главное меню, сохранённые миры, Explore и Edit
-./run.sh explore         # 3D-эксплорер Campfire
+./run.sh explore         # 3D-эксплорер Altera
 ./run.sh engine-editor   # GUI модулей движка с GPU-viewport, без игры
 ./run.sh headless 200    # 200 суток без графики, с отчётом
 ./run.sh explain 5000    # таблица спроса и все жители на тике 5000
@@ -104,7 +104,7 @@ world)**, **Headless (1 year)**, **Headless (10 years)**, **Explain decisions**,
 
 ### Клиент мира
 
-`./run.sh client` (в CLion — **Campfire client**) — полноценный клиент:
+`./run.sh client` (в CLion — **Altera client**) — полноценный клиент:
 главное меню → экран **Worlds** (список сохранений из `worlds/`: открыть в
 Explore или Edit, создать новый мир — имя, тип, размер, сид — или удалить) →
 загрузка → сам мир в одном из двух режимов, переключение — `Tab` или
@@ -137,8 +137,8 @@ Explore или Edit, создать новый мир — имя, тип, раз
 проверкой раскладки (наложения и вылеты текста за край):
 
 ```bash
-campfire_client --client --client-tour /tmp/tour --headless 1600x1000
-CAMPFIRE_UI_SCALE=2 campfire_client --client --client-tour /tmp/tour2x --headless 2880x1800
+altera_client --client --client-tour /tmp/tour --headless 1600x1000
+ALTERA_UI_SCALE=2 altera_client --client --client-tour /tmp/tour2x --headless 2880x1800
 ```
 
 Сколько стоит открыть мир, по проходам (генерация, граф стока, климат,
@@ -147,14 +147,14 @@ CAMPFIRE_UI_SCALE=2 campfire_client --client --client-tour /tmp/tour2x --headles
 ```bash
 ./cmake-build-relwithdebinfo/world_load_probe --regions 1
 ./cmake-build-relwithdebinfo/world_load_probe --grow     # мир растёт: остаётся ли старое как было
-CAMPFIRE_LOAD_TRACE=1 campfire_client --client   # кадр за кадром, пока грузится земля
+ALTERA_LOAD_TRACE=1 altera_client --client   # кадр за кадром, пока грузится земля
 ```
 
 Или напрямую:
 
 ```bash
 # посмотреть
-./cmake-build-relwithdebinfo/campfire_client --seed 11 --map 140
+./cmake-build-relwithdebinfo/altera_client --seed 11 --map 140
 
 # прогнать без графики и получить отчёт
 ./cmake-build-relwithdebinfo/sim_runner --days 200 --seed 11 --status-every 2400
@@ -166,11 +166,11 @@ CAMPFIRE_LOAD_TRACE=1 campfire_client --client   # кадр за кадром, �
 ./cmake-build-relwithdebinfo/content_validator
 
 # редактор данных и интерфейса - отдельный клиент, мир не создаётся
-./cmake-build-relwithdebinfo/campfire_editor --settings editor.json
+./cmake-build-relwithdebinfo/altera_editor --settings editor.json
 
 # посмотреть на мир без игры: бесшовный террейн от метра до континента
-./cmake-build-relwithdebinfo/campfire_client --explore
-./cmake-build-relwithdebinfo/campfire_client --explore --at mountains --zoom 0.6 --shot /tmp/hills.png
+./cmake-build-relwithdebinfo/altera_client --explore
+./cmake-build-relwithdebinfo/altera_client --explore --at mountains --zoom 0.6 --shot /tmp/hills.png
 
 # выписка «этнос → контент» (после правок в content/)
 python3 tools/ethnos_table.py
@@ -181,7 +181,7 @@ python3 tools/ethnos_table.py
 
 Внутренние CMake-цели `asr_client`/`asr_editor` и старые имена исполняемых файлов
 оставлены как aliases для совместимости с инструментами и CLion. Новые имена —
-`campfire_client` и `campfire_editor`. `run.sh` использует `CAMPFIRE_BUILD_DIR`
+`altera_client` и `altera_editor`. `run.sh` использует `ALTERA_BUILD_DIR`
 (старый `ASR_BUILD_DIR` также поддерживается).
 
 ## Модули и GUI движка
@@ -343,7 +343,7 @@ placement, тени) замораживается, живая камера ст�
 сохранения:
 
 ```bash
-campfire_client --explore --world 64 --at "open country" --zoom 1 \
+altera_client --explore --world 64 --at "open country" --zoom 1 \
     --dig 28504,20736,120,-30 --headless 1280x800 --shot /tmp/dig.png
 ```
 
@@ -353,16 +353,16 @@ D150 в `doc/DECISIONS.md`.
 
 ## Внешний профайлер
 
-`tools/campfire_profiler.py` — **отдельная тулза**, не библиотека движка.
+`tools/altera_profiler.py` — **отдельная тулза**, не библиотека движка.
 Она подключается к PID или запускает исполняемый файл через macOS Instruments.
 В коде движка не нужны Tracy-зоны, `printf`, reflection или compiler hooks.
 Нужны macOS и Xcode; debug symbols улучшают имена стеков, но не являются инструментацией.
 
 ```sh
-python3 tools/campfire_profiler.py processes
-python3 tools/campfire_profiler.py record --pid 12345 --mode cpu --seconds 10
-python3 tools/campfire_profiler.py record --mode memory --seconds 10 --debug-copy \
-  --launch ./cmake-build-relwithdebinfo/campfire_client -- --explore
+python3 tools/altera_profiler.py processes
+python3 tools/altera_profiler.py record --pid 12345 --mode cpu --seconds 10
+python3 tools/altera_profiler.py record --mode memory --seconds 10 --debug-copy \
+  --launch ./cmake-build-relwithdebinfo/altera_client -- --explore
 ```
 
 Режимы: `cpu` (семплирование стеков), `memory` (аллокации), `gpu` (Metal),

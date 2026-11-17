@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
-"""Collect downloadable CC0 / CC-BY Sketchfab models for Campfire -> doc/sketchfab_candidates.{json,md}"""
+"""Collect downloadable CC0 / CC-BY Sketchfab models for Altera -> doc/sketchfab_candidates.{json,md}"""
 import json, urllib.request, urllib.parse, time
-UA = {"User-Agent": "Mozilla/5.0 campfire-asset-search"}
+UA = {"User-Agent": "Mozilla/5.0 altera-asset-search"}
 Q = {
  "architecture": ["gothic cathedral ruins", "medieval house", "medieval village", "castle tower", "fantasy tower", "ruined temple", "stone bridge medieval", "windmill", "gatehouse", "abandoned church", "crypt mausoleum", "fantasy city building", "giant ruins colossal", "monolith obelisk", "stone arch portal"],
  "surreal_landscape": ["floating island", "rock spire", "natural arch rock", "alien landscape", "giant tree fantasy", "twisted tree", "dead tree", "giant mushroom", "crystal formation", "giant bones skeleton", "ribcage giant", "strange rock formation", "canyon mesa", "stalagmite cave", "volcano", "waterfall cliff"],

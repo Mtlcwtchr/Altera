@@ -17,9 +17,9 @@ seed="${1:-11}"; [ $# -gt 0 ] && shift
 [ "${1:-}" = "--" ] && shift
 extra=("$@")
 mkdir -p "$out"
-bin="${CAMPFIRE_BUILD_DIR:-cmake-build-relwithdebinfo}/campfire_client"
+bin="${ALTERA_BUILD_DIR:-${CAMPFIRE_BUILD_DIR:-cmake-build-relwithdebinfo}}/altera_client"
 size="${LOOK_SIZE:-1600x900}"
-export ASR_TERRAIN_CACHE_DIR="${ASR_TERRAIN_CACHE_DIR:-/tmp/campfire-look-cache}"
+export ASR_TERRAIN_CACHE_DIR="${ASR_TERRAIN_CACHE_DIR:-/tmp/altera-look-cache}"
 mkdir -p "$ASR_TERRAIN_CACHE_DIR"
 
 cache="$ASR_TERRAIN_CACHE_DIR/landmarks-$world-$seed.txt"
