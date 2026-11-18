@@ -149,17 +149,54 @@ TEST(altera_sim_switch_a_b_a) {
 }
 
 TEST(altera_sim_free_will_resumes_paused_plan) {
+    // Taking a character pauses its autonomous plan (it is not deleted); with
+    // free will on and no orders for playerIdleResumeTicks, the AI picks the
+    // paused plan up again and the character lives on by itself.
     World w = aiWorld();
     w.run(kTicksPerDay / 2);
     const EntityId A = twoAdults(w).first;
+    for (int i = 0; i < 64 && !w.character(A)->ai.goal.valid(); ++i) w.run(1);
+    CHECK(w.character(A)->ai.goal.valid());
+    if (!w.character(A)->ai.goal.valid()) return;
+    const std::string pausedGoal = w.character(A)->ai.goal.id;
+    const size_t pausedSteps = w.character(A)->ai.plan.steps.size();
+    const Tick resume = w.content().config.playerIdleResumeTicks;
     w.applyNow(cmdOf("take_control", {{"id", A}}));
-    w.run(w.content().config.playerIdleResumeTicks + 4);
-    CHECK(w.character(A)->controller.isPlayer());
-    CHECK(w.character(A)->ai.goal.valid()); // nobody gave orders: it lives on by itself
+    {
+        const Character& a = *w.character(A);
+        CHECK(a.controller.isPlayer());
+        CHECK(a.ai.suspended);
+        CHECK(!a.ai.goal.valid());
+        CHECK_EQ(a.ai.suspendedGoal.id, pausedGoal);
+        CHECK_EQ(a.ai.suspendedPlan.steps.size(), pausedSteps);
+    }
+    // Before the idle timeout the paused plan waits for the player.
+    w.run(resume - 2);
+    CHECK(w.character(A)->ai.suspended);
+    CHECK(!w.character(A)->ai.goal.valid());
+    // Timeout passed: free will resumes exactly the paused plan.
+    w.run(4);
+    const Character& a = *w.character(A);
+    CHECK(a.controller.isPlayer());
+    CHECK(!a.ai.suspended);
+    bool resumed = false;
+    for (const auto& e : a.ai.trace)
+        if (e.code == "control.free_will_resume" && e.params.value("goal", std::string()) == pausedGoal) resumed = true;
+    CHECK(resumed);
+    // It keeps living by itself (one tick may pass between two goals).
+    bool lives = false;
+    for (int i = 0; i < 3; ++i) {
+        if (w.character(A)->ai.goal.valid()) lives = true;
+        w.run(1);
+    }
+    CHECK(lives);
+    // Free will off: once the current goal is cancelled it waits for the player.
     w.applyNow(cmdOf("set_free_will", {{"id", A}, {"on", false}}));
     w.applyNow(cmdOf("cancel_goal", {{"id", A}}));
-    w.run(w.content().config.playerIdleResumeTicks + 4);
-    CHECK(!w.character(A)->ai.goal.valid()); // free will off: waits for the player
+    for (Tick i = 0; i < resume + 4; ++i) {
+        w.run(1);
+        CHECK(!w.character(A)->ai.goal.valid());
+    }
 }
 
 TEST(altera_sim_control_rules) {
