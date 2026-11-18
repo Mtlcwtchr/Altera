@@ -120,6 +120,10 @@ public:
     const std::map<EntityId, Character>& characters() const { return chars_; }
     std::map<EntityId, WorldObject>& objects() { return objects_; }
     const std::map<EntityId, WorldObject>& objects() const { return objects_; }
+    // Ids of every object of a type (index kept by addObject / loadJson).
+    const std::vector<EntityId>& objectsOfType(const std::string& type) const;
+    // Roof positions (objects.json shelter), kept with the index.
+    const std::vector<Vec2>& roofs() const { return roofs_; }
     std::map<EntityId, Family>& families() { return families_; }
     const std::map<EntityId, Family>& families() const { return families_; }
     std::map<EntityId, Dynasty>& dynasties() { return dynasties_; }
@@ -174,7 +178,7 @@ private:
     void processEvents();
     void handleEvent(const Event& e);
     void updateBodies();
-    bool sheltered(const Character& c) const;
+    bool sheltered(const Character& c, const std::vector<Vec2>& roofs) const;
 
     const Content* content_;
     std::uint64_t seed_;
@@ -186,6 +190,9 @@ private:
     MapGrid map_;
     std::map<EntityId, Character> chars_;
     std::map<EntityId, WorldObject> objects_;
+    std::map<std::string, std::vector<EntityId>> byType_;
+    std::vector<Vec2> roofs_;
+    void indexObject(const WorldObject& o);
     std::map<EntityId, Family> families_;
     std::map<EntityId, Dynasty> dynasties_;
     std::map<EntityId, Settlement> settlements_;

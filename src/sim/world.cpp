@@ -59,7 +59,20 @@ WorldObject& World::addObject(WorldObject o) {
     nextId_ = std::max(nextId_, o.id + 1);
     auto [it, ok] = objects_.emplace(o.id, std::move(o));
     if (!ok) throw std::runtime_error("duplicate object id");
+    indexObject(it->second);
     return it->second;
+}
+
+void World::indexObject(const WorldObject& o) {
+    byType_[o.type].push_back(o.id);
+    auto d = content_->objects.find(o.type);
+    if (d != content_->objects.end() && d->second.shelter) roofs_.push_back(o.pos);
+}
+
+const std::vector<EntityId>& World::objectsOfType(const std::string& type) const {
+    static const std::vector<EntityId> none;
+    auto it = byType_.find(type);
+    return it == byType_.end() ? none : it->second;
 }
 
 Character* World::character(EntityId id) {
@@ -196,18 +209,16 @@ void World::remember(Character& c, MemoryEntry m) {
     }
 }
 
-bool World::sheltered(const Character& c) const {
+bool World::sheltered(const Character& c, const std::vector<Vec2>& roofs) const {
     const double range = content_->config.interactionRangeM;
-    for (const auto& [id, o] : objects_) {
-        auto d = content_->objects.find(o.type);
-        if (d == content_->objects.end() || !d->second.shelter) continue;
-        if (dist(o.pos, c.pos) <= range) return true;
-    }
+    for (const Vec2& p : roofs)
+        if (dist(p, c.pos) <= range) return true;
     return false;
 }
 
 void World::updateBodies() {
     const bool night = isNight();
+    const std::vector<Vec2>& roofs = roofs_;
     for (auto& [id, c] : chars_) {
         if (!c.body.alive) continue;
         if (tick_ % kTicksPerDay == 0 && tick_ > 0) ++c.body.ageDays;
@@ -220,7 +231,7 @@ void World::updateBodies() {
             if (bm != n.biomeMult.end()) rate *= bm->second;
             auto sm = n.seasonMult.find(season());
             if (sm != n.seasonMult.end()) rate *= sm->second;
-            if (n.shelteredMult != 1.0 && sheltered(c)) rate *= n.shelteredMult;
+            if (n.shelteredMult != 1.0 && sheltered(c, roofs)) rate *= n.shelteredMult;
             for (const auto& [item, mult] : n.clothingMult)
                 if (c.has(item) > 0) rate *= mult;
             for (const auto& t : c.traits) {
@@ -380,9 +391,12 @@ void World::loadJson(const Json& j) {
         chars_.emplace(c.id, std::move(c));
     }
     objects_.clear();
+    byType_.clear();
+    roofs_.clear();
     for (const auto& oj : j.at("objects")) {
         WorldObject o = oj.get<WorldObject>();
-        objects_.emplace(o.id, std::move(o));
+        auto [it, ok] = objects_.emplace(o.id, std::move(o));
+        if (ok) indexObject(it->second);
     }
     families_.clear();
     for (const auto& fj : j.at("families")) {

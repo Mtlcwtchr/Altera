@@ -104,6 +104,45 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
         for (const auto& [id, d] : ct.interactions)
             if (d.goap && d.legal.empty()) consider(&d);
     }
+    // Relevance pruning (README_B §6): keep only actions that produce an item
+    // the goal needs, or an item a kept action needs (backward closure). With
+    // ~150 catalog entries an unpruned search burns its node budget on
+    // unrelated crafts.
+    {
+        std::set<std::string> need;
+        for (const auto& k : goal)
+            if (k.subject == "has") need.insert(k.key);
+        if (finalAction)
+            for (const auto& k : finalAction->pre)
+                if (k.subject == "has") need.insert(k.key);
+        std::vector<bool> keep(allowed.size(), false);
+        // An at:<type> goal keeps one action of that type so the type is located.
+        for (const auto& k : goal)
+            if (k.subject == "at")
+                for (size_t i = 0; i < allowed.size(); ++i)
+                    if (allowed[i]->targetType == k.key) {
+                        keep[i] = true;
+                        break;
+                    }
+        for (bool changed = true; changed;) {
+            changed = false;
+            for (size_t i = 0; i < allowed.size(); ++i) {
+                if (keep[i]) continue;
+                bool produces = false;
+                for (const auto& e : allowed[i]->eff)
+                    if (e.subject == "has" && e.signedDelta() > 0.0 && need.count(e.key)) produces = true;
+                if (!produces) continue;
+                keep[i] = true;
+                changed = true;
+                for (const auto& k : allowed[i]->pre)
+                    if (k.subject == "has") need.insert(k.key);
+            }
+        }
+        std::vector<const InteractionDef*> kept;
+        for (size_t i = 0; i < allowed.size(); ++i)
+            if (keep[i]) kept.push_back(allowed[i]);
+        allowed.swap(kept);
+    }
     // Representative instance per object type (nearest valid for the first
     // interaction needing it), and the types we can actually reach.
     std::map<std::string, Vec2> typePos;

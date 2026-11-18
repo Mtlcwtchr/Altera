@@ -60,9 +60,10 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
     if (s == "known" || s == "at") {
         const double range = x.w.content().config.interactionRangeM;
         int n = 0;
-        for (EntityId id : c.knownObjects) {
+        for (EntityId id : x.w.objectsOfType(k.key)) {
+            if (!c.knownObjects.count(id)) continue;
             const WorldObject* o = x.w.object(id);
-            if (!o || o->type != k.key) continue;
+            if (!o) continue;
             if (o->reservedFor(c.id, x.w.now())) continue;
             if (!x.w.inSeason(*o)) continue;
             if (s == "at" && dist(o->pos, c.pos) > range) continue;
@@ -374,9 +375,10 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
     double bestD = 1e18;
     bool anyOfType = false;
     std::string lastWhy;
-    for (EntityId id : c.knownObjects) {
+    for (EntityId id : w.objectsOfType(d.targetType)) {
+        if (!c.knownObjects.count(id)) continue;
         const WorldObject* o = w.object(id);
-        if (!o || o->type != d.targetType) continue;
+        if (!o) continue;
         anyOfType = true;
         if (!w.inSeason(*o)) {
             lastWhy = "season:" + d.targetType;
