@@ -1,0 +1,140 @@
+{
+ "_doc": "Звери и рыба: такие же персонажи ядра (Character с species), с упрощённым ИИ на реакционных драйверах: голод, кормёжка, страх/бегство, нападение, размножение, миграция. Никаких сценариев: встречи и случайности рождаются из того, где кто ходит. Одна запись мира = группа (стадо, стая, косяк), group — сколько в ней голов; охота забирает одну голову (t.group:heads-1).",
+ "species": [
+  {
+   "id": "deer",
+   "habitat": "land",
+   "biomes": [
+    "forest",
+    "meadow"
+   ],
+   "per_km2": 0.9,
+   "group": [
+    3,
+    7
+   ],
+   "max_group": 10,
+   "speed_m_per_tick": 90,
+   "notice_m": 45,
+   "flee_m": 350,
+   "diet": "graze",
+   "aggression": 0.0,
+   "hunger_per_day": 0.5,
+   "breed_every_days": 45,
+   "territory_m": 1600,
+   "starve_days": 6
+  },
+  {
+   "id": "boar",
+   "habitat": "land",
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 0.5,
+   "group": [
+    2,
+    5
+   ],
+   "max_group": 7,
+   "speed_m_per_tick": 70,
+   "notice_m": 30,
+   "flee_m": 200,
+   "diet": "graze",
+   "aggression": 0.35,
+   "attack": {
+    "damage": [
+     0.1,
+     0.35
+    ],
+    "chance": 0.5
+   },
+   "hunger_per_day": 0.5,
+   "breed_every_days": 50,
+   "territory_m": 1200,
+   "starve_days": 6
+  },
+  {
+   "id": "hare",
+   "habitat": "land",
+   "biomes": [
+    "meadow",
+    "forest"
+   ],
+   "per_km2": 3.0,
+   "group": [
+    2,
+    6
+   ],
+   "max_group": 9,
+   "speed_m_per_tick": 80,
+   "notice_m": 20,
+   "flee_m": 150,
+   "diet": "graze",
+   "aggression": 0.0,
+   "hunger_per_day": 0.6,
+   "breed_every_days": 20,
+   "territory_m": 600,
+   "starve_days": 4
+  },
+  {
+   "id": "wolf",
+   "habitat": "land",
+   "biomes": [
+    "forest",
+    "meadow"
+   ],
+   "per_km2": 0.06,
+   "group": [
+    3,
+    6
+   ],
+   "max_group": 8,
+   "speed_m_per_tick": 110,
+   "notice_m": 120,
+   "flee_m": 250,
+   "diet": "prey",
+   "prey": [
+    "deer",
+    "hare",
+    "boar"
+   ],
+   "aggression": 0.6,
+   "attack": {
+    "damage": [
+     0.15,
+     0.45
+    ],
+    "chance": 0.45
+   },
+   "hunger_per_day": 0.45,
+   "breed_every_days": 240,
+   "territory_m": 4500,
+   "starve_days": 10,
+   "_doc": "Нападают на людей только голодными, стаей и на одиночку; сытые обходят деревню."
+  },
+  {
+   "id": "fish_shoal",
+   "habitat": "water",
+   "biomes": [
+    "river",
+    "marsh"
+   ],
+   "per_km2": 6.0,
+   "group": [
+    12,
+    30
+   ],
+   "max_group": 45,
+   "speed_m_per_tick": 0,
+   "notice_m": 0,
+   "flee_m": 0,
+   "diet": "graze",
+   "aggression": 0.0,
+   "hunger_per_day": 0.0,
+   "breed_every_days": 6,
+   "territory_m": 0,
+   "starve_days": 0,
+   "_doc": "Косяк в воде у берега: не убегает, вылов уменьшает его, нерест восполняет."
+  }
+ ]
+}

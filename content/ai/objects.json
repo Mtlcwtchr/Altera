@@ -270,26 +270,6 @@
    "id": "grave",
    "owned": false,
    "_doc": "spawn:grave из погребения (часть C)"
-  },
-  {
-   "id": "game_trail",
-   "stock": {
-    "carcass": 1
-   },
-   "regrow": {
-    "carcass": 1
-   },
-   "regrow_every": 288,
-   "max_stock": {
-    "carcass": 2
-   },
-   "biomes": [
-    "forest",
-    "meadow"
-   ],
-   "per_km2": 2,
-   "owned": false,
-   "_doc": "охота — взаимодействия hunt_game/butcher_carcass в части C"
   }
  ]
 }

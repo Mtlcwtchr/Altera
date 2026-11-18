@@ -57,6 +57,14 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
         const std::string r = ownerRelation(c, x.target);
         return (r == k.key || (k.key == "self" && r == "family")) ? 1.0 : 0.0;
     }
+    if ((s == "known" || s == "at") && x.w.content().speciesOf(k.key)) {
+        // Animals move: known = a live group within the tracking radius.
+        const double radius = s == "known" ? x.w.content().config.trackRadiusM : x.w.content().config.interactionRangeM * 4;
+        int n = 0;
+        for (const auto& [id, o] : x.w.characters())
+            if (o.body.alive && o.species == k.key && dist(o.pos, c.pos) <= radius) ++n;
+        return n;
+    }
     if (s == "known" || s == "at") {
         const double range = x.w.content().config.interactionRangeM;
         int n = 0;
@@ -93,8 +101,181 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
 
 bool evalCondition(const EvalCtx& x, const Condition& k) { return k.test(evalSubject(x, k)); }
 
+EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why) {
+    auto passes = [&](const Character& o) {
+        const EvalCtx x{w, c, nullptr, &o};
+        for (const auto& k : d.pre)
+            if (!evalCondition(x, k)) {
+                if (why) *why = "person:" + k.text;
+                return false;
+            }
+        return true;
+    };
+    if (prefer != kNone)
+        if (const Character* o = w.character(prefer); o && o->body.alive && !o->isAnimal() && o->id != c.id && passes(*o))
+            return prefer;
+    // Gifts go to the needy: eff gives the target something.
+    bool gift = false;
+    for (const auto& e : d.eff)
+        if (e.onTarget && (e.subject == "has" || e.subject == "need") && e.signedDelta() > 0.0) gift = true;
+    EntityId best = kNone;
+    double bestScore = 1e18;
+    for (const auto& [id, o] : w.characters()) {
+        if (id == c.id || o.isAnimal() || !o.body.alive) continue;
+        if (!c.relations.count(id)) continue; // strangers are not sought out
+        const double d0 = dist(o.pos, c.pos);
+        if (d0 > w.content().config.trackRadiusM) continue;
+        if (!passes(o)) continue;
+        double score = d0 / 100.0;
+        if (o.status.family == c.status.family) score -= 3.0;
+        if (gift) score -= 4.0 * (1.0 - o.need("hunger"));
+        score -= 2.0 * c.relations.at(id).affinity;
+        if (score < bestScore || (score == bestScore && id < best)) {
+            bestScore = score;
+            best = id;
+        }
+    }
+    if (best == kNone && why && why->empty()) *why = "no_person";
+    return best;
+}
+
+bool consents(const World& w, const Character& actor, const Character& target, const InteractionDef& d) {
+    if (d.consent != "target") return true;
+    if (!target.body.alive) return false;
+    auto rel = target.relations.find(actor.id);
+    const double aff = rel == target.relations.end() ? 0.0 : rel->second.affinity;
+    const double trust = rel == target.relations.end() ? 0.0 : rel->second.trust;
+    double p = 0.45 + 0.5 * aff + 0.3 * trust;
+    if (target.status.family == actor.status.family) p += 0.35;
+    // Asked to give away food while hungry yourself: unlikely.
+    for (const auto& e : d.eff)
+        if (e.onTarget && e.subject == "has" && e.signedDelta() < 0.0 && target.need("hunger") < 0.35) p -= 0.5;
+    Rng r = agentRng(w.seed(), target.id, w.now(), "consent:" + d.id + ":" + std::to_string(actor.id));
+    return r.uniform() < std::clamp(p, 0.02, 0.98);
+}
+
+void runConversation(World& w, Character& c, Character& other, const Json& params) {
+    const std::string intent = params.value("intent", std::string("small_talk"));
+    const Content& ct = w.content();
+    // Every conversation is also company.
+    if (const InteractionDef* chat = ct.interaction("chat")) {
+        applyEffectList(w, c, chat->eff, nullptr, &other, nullptr);
+        Effect social;
+        social.onTarget = true;
+        social.subject = "need";
+        social.key = "social";
+        social.op = '+';
+        social.value = 0.2;
+        social.text = "t.need:social+0.2";
+        applyEffectList(w, c, {social}, nullptr, &other, nullptr);
+    }
+    if (intent == "ask_favor" && params.value("want", std::string()) == "meal") {
+        // The listener's mind decides; a yes is a promise to bring food.
+        InteractionDef ask;
+        ask.id = "ask_favor";
+        ask.consent = "target";
+        Effect take;
+        take.onTarget = true;
+        take.subject = "has";
+        take.key = "meal";
+        take.op = '-';
+        take.value = 1.0;
+        ask.eff = {take};
+        if (consents(w, c, other, ask) && ct.task("share_food_task")) {
+            QueuedTask q;
+            q.task = "share_food_task";
+            q.target = c.id;
+            q.priority = other.status.family == c.status.family ? 0.85 : 0.6;
+            q.created = w.now();
+            q.ttl = 72;
+            q.reason = "asked_for_food";
+            q.source = "dialogue:" + std::to_string(c.id);
+            auto& queue = other.ai.queue;
+            if (std::none_of(queue.begin(), queue.end(), [&](const QueuedTask& t) {
+                    return t.task == q.task && t.target == q.target;
+                }))
+                queue.push_back(q);
+            trace(w, c, 'C', "dialog.accepted", {{"intent", intent}, {"listener", other.id}});
+        } else {
+            w.remember(c, MemoryEntry{0, "was_refused", {other.id}, kNone, -0.2, 0.0, "seen", 1.0});
+            trace(w, c, 'C', "dialog.refused", {{"intent", intent}, {"listener", other.id}});
+        }
+    }
+}
+
+double reachOf(const World& w, const InteractionDef& d) {
+    return d.rangeM > 0.0 ? d.rangeM : w.content().config.interactionRangeM;
+}
+
+EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius) {
+    EntityId best = kNone;
+    double bd = radius;
+    for (const auto& [id, o] : w.characters()) {
+        if (!o.body.alive || o.species != species || o.group <= 0) continue;
+        if (const SpeciesDef* sp = w.content().speciesOf(species); sp && sp->habitat == "water" && o.group <= 4) continue;
+        const double d = dist(o.pos, from);
+        if (d <= bd) {
+            bd = d;
+            best = id;
+        }
+    }
+    return best;
+}
+
+bool targetPos(const World& w, EntityId id, Vec2& out) {
+    if (const WorldObject* o = w.object(id)) {
+        out = o->pos;
+        return true;
+    }
+    if (const Character* ch = w.character(id)) {
+        out = ch->pos;
+        return true;
+    }
+    return false;
+}
+
+double homeFoodDays(const World& w, const Character& c) {
+    const WorldObject* h = w.object(c.home);
+    if (!h) return 0.0;
+    double food = 0.0;
+    for (const auto& [item, n] : h->stock) {
+        auto d = w.content().items.find(item);
+        if (d != w.content().items.end()) food += d->second.nutrition * n;
+    }
+    int members = 1;
+    if (const Family* f = w.familyOf(c)) members = std::max<int>(1, static_cast<int>(f->members.size()));
+    const NeedDef* hunger = w.content().need("hunger");
+    const double perDay = hunger ? hunger->decayPerDay : 0.5;
+    return food / (members * std::max(0.05, perDay));
+}
+
+void spoilFood(World& w) {
+    const Content& ct = w.content();
+    auto rot = [&](std::map<std::string, int>& stock, EntityId owner, const char* salt) {
+        for (auto it = stock.begin(); it != stock.end();) {
+            auto d = ct.items.find(it->first);
+            if (d == ct.items.end() || d->second.spoilDays <= 0.0 || it->second <= 0) {
+                ++it;
+                continue;
+            }
+            // spoil_days is a half-life: half of a stack is gone after that many days.
+            const double expect = it->second * (0.6931471805599453 / d->second.spoilDays);
+            int lost = static_cast<int>(expect);
+            Rng r = w.rng(owner, std::string(salt) + it->first);
+            if (r.uniform() < expect - lost) ++lost;
+            it->second -= std::min(lost, it->second);
+            if (it->second <= 0 && salt[0] == 'p') it = stock.erase(it);
+            else ++it;
+        }
+    };
+    for (auto& [id, o] : w.objects())
+        if (!o.stock.empty() && o.ownerFamily != kNone) rot(o.stock, id, "s:");
+    for (auto& [id, c] : w.characters())
+        if (c.body.alive && !c.isAnimal()) rot(c.inventory, id, "p:");
+}
+
 bool canPerform(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
-                std::string* why, bool checkRange) {
+                std::string* why, bool checkRange, const Character* targetChar) {
     auto fail = [&](std::string r) {
         if (why) *why = std::move(r);
         return false;
@@ -105,10 +286,24 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
         if (target->type != d.targetType) return fail("wrong_target:" + d.targetType);
         if (target->reservedFor(c.id, w.now())) return fail("reserved:" + d.targetType);
         if (!w.inSeason(*target)) return fail("season:" + d.targetType);
-        if (checkRange && dist(target->pos, c.pos) > w.content().config.interactionRangeM)
-            return fail("out_of_range:" + d.targetType);
+        if (checkRange && dist(target->pos, c.pos) > reachOf(w, d)) return fail("out_of_range:" + d.targetType);
     }
-    const EvalCtx x{w, c, target, nullptr};
+    if (d.targetsCharacter() && targetChar) { // without a person only the actor's side is checked
+        if (!targetChar->body.alive || targetChar->isAnimal()) return fail("no_person");
+        if (checkRange && dist(targetChar->pos, c.pos) > reachOf(w, d)) return fail("out_of_range:person");
+    }
+    if (d.targetsCreature()) {
+        if (!targetChar || !targetChar->body.alive || targetChar->species != d.targetType)
+            return fail("no_target:" + d.targetType);
+        if (checkRange && dist(targetChar->pos, c.pos) > reachOf(w, d)) return fail("out_of_range:" + d.targetType);
+        // A shoal fished down to its spawning stock gives nothing more for now.
+        int heads = 0;
+        for (const auto& e : d.eff)
+            if (e.onTarget && e.subject == "group") heads += static_cast<int>(-e.signedDelta());
+        const SpeciesDef* sp = w.content().speciesOf(targetChar->species);
+        if (sp && sp->habitat == "water" && targetChar->group <= heads + 2) return fail("depleted:" + d.targetType);
+    }
+    const EvalCtx x{w, c, target, targetChar};
     for (const auto& k : d.pre)
         if (!evalCondition(x, k)) return fail("pre:" + k.text);
     return true;
@@ -188,8 +383,18 @@ std::vector<EntityId> witnessesOf(const World& w, const Character& actor, const 
     std::vector<EntityId> out;
     if (d.visibility == "private") return out; // participants only: actor and target are not witnesses
     const AiConfig& cfg = w.content().config;
+    if (d.targetsCreature()) return out; // the herd is not a witness
     for (const auto& [id, o] : w.characters()) {
-        if (id == actor.id || (targetChar && id == targetChar->id) || !o.body.alive) continue;
+        if (o.isAnimal()) continue;
+        if (id == actor.id || !o.body.alive) continue;
+        if (targetChar && id == targetChar->id) {
+            // The robbed person may feel the hand in the purse (secret acts).
+            if (d.targetsCarried()) {
+                Rng r = agentRng(w.seed(), id, w.now(), "notice:" + d.id + ":" + std::to_string(actor.id));
+                if (r.uniform() < cfg.noticeChance * 1.5) out.push_back(id);
+            }
+            continue;
+        }
         if (dist(o.pos, actor.pos) > cfg.perceptionRadiusM) continue;
         if (d.visibility == "secret") {
             Rng r = agentRng(w.seed(), id, w.now(), "notice:" + d.id + ":" + std::to_string(actor.id));
@@ -326,6 +531,11 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             if (def != w.content().objects.end()) o.stock = def->second.stock;
             const EntityId id = w.addObject(o).id;
             c.knownObjects.insert(id);
+        } else if (s == "group") {
+            if (targetChar && targetChar->isAnimal()) {
+                const int n = static_cast<int>(e.op == '=' ? targetChar->group - e.value : -dv);
+                if (n > 0) loseHeads(w, *targetChar, std::min(n, targetChar->group), "hunted");
+            }
         } else if (s == "status_pair") {
             if (targetChar) setPair(w, actor, *targetChar, e.key, e.op == 0 || e.value != 0.0);
         } else if (s == "rel") {
@@ -370,6 +580,11 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,
                     bool ignoreReservations) {
+    if (d.targetsCreature()) {
+        const EntityId t = findCreature(w, d.targetType, from, w.content().config.trackRadiusM);
+        if (t == kNone && why) *why = "unknown:" + d.targetType;
+        return t;
+    }
     if (!d.targetsObject()) return kNone;
     EntityId best = kNone;
     double bestD = 1e18;

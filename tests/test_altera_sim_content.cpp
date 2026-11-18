@@ -76,9 +76,14 @@ TEST(altera_sim_real_world_survives_three_days) {
     World w = makeTestWorld(real(), realWorldCfg());
     installAi(w);
     w.run(3 * kTicksPerDay);
-    int alive = 0;
-    for (const auto& [id, c] : w.characters()) alive += c.body.alive ? 1 : 0;
-    CHECK_EQ(alive, static_cast<int>(w.characters().size()));
+    int alive = 0, people = 0;
+    for (const auto& [id, c] : w.characters()) {
+        if (c.isAnimal()) continue;
+        ++people;
+        alive += c.body.alive ? 1 : 0;
+    }
+    CHECK(people > 0);
+    CHECK_EQ(alive, people);
 }
 
 TEST(altera_sim_start_knowledge_covers_chains) {
@@ -248,4 +253,135 @@ TEST(altera_sim_v03_name_declension_ru) {
     CHECK(latin["dat"].get<std::string>() == "Ralemmund Mossbarrow");
     // A trace with a character argument assembles with the declined form.
     CHECK(formatLoc("{who:dat}", Json{{"who", ivan}}, "ru") == reinterpret_cast<const char*>(u8"\u0418\u0432\u0430\u043D\u0443"));
+}
+
+// ---- part H: animals, hunting, fishing, stores ------------------------------
+
+namespace {
+
+EntityId addAnimal(World& w, const std::string& species, Vec2 pos, int group) {
+    Character a;
+    a.species = species;
+    a.name = species;
+    a.group = group;
+    a.pos = pos;
+    a.den = pos;
+    a.needs["hunger"] = 0.9;
+    return w.addCharacter(std::move(a)).id;
+}
+
+} // namespace
+
+TEST(altera_sim_animals_spawn_and_flee) {
+    World w = makeTestWorld(real(), realWorldCfg());
+    int deer = 0, fish = 0, people = 0;
+    for (const auto& [id, c] : w.characters()) {
+        if (c.species == "deer") ++deer;
+        if (c.species == "fish_shoal") {
+            ++fish;
+            CHECK(w.map().waterAt(c.pos));
+        }
+        if (!c.isAnimal()) ++people;
+    }
+    CHECK(deer > 10);
+    CHECK(fish > 3);
+    // A person walking up to a herd (not stalking it) sends it running.
+    Pair p = pairWorld(real());
+    const EntityId herd = addAnimal(p.w, "deer", {20.0, 0.0}, 5);
+    installAi(p.w);
+    const double before = dist(p.w.character(herd)->pos, p.w.character(p.a)->pos);
+    p.w.run(3);
+    CHECK(dist(p.w.character(herd)->pos, p.w.character(p.a)->pos) > before + 50.0);
+    CHECK(people > 0);
+}
+
+TEST(altera_sim_hunting_takes_a_head) {
+    Pair p = pairWorld(real());
+    Character& hunter = *p.w.character(p.a);
+    hunter.knowledge.insert("hunting");
+    hunter.skills["hunting"] = 1.0;
+    hunter.inventory["spear"] = 1;
+    const EntityId herd = addAnimal(p.w, "deer", {30.0, 0.0}, 3);
+    const InteractionDef& hunt = *real().interaction("hunt_game");
+    Character& deer = *p.w.character(herd);
+    std::string why;
+    CHECK(canPerform(p.w, hunter, hunt, nullptr, &why, true, &deer));
+    int got = 0;
+    for (int i = 0; i < 20 && deer.body.alive; ++i) {
+        p.w.step();
+        applyEffects(p.w, hunter, hunt, nullptr, &deer);
+        got = hunter.has("carcass");
+    }
+    CHECK(got >= 1);
+    CHECK(deer.group < 3);
+    // The last head taken: the group is gone.
+    while (deer.body.alive) {
+        p.w.step();
+        applyEffects(p.w, hunter, hunt, nullptr, &deer);
+    }
+    CHECK_EQ(deer.group, 0);
+}
+
+TEST(altera_sim_fish_shoal_keeps_spawning_stock) {
+    Pair p = pairWorld(real());
+    Character& fisher = *p.w.character(p.a);
+    fisher.knowledge.insert("fishing");
+    fisher.inventory["fishing_line"] = 1;
+    const EntityId shoal = addAnimal(p.w, "fish_shoal", {10.0, 0.0}, 5);
+    const InteractionDef& line = *real().interaction("fish_with_line");
+    std::string why;
+    // 5 fish, a catch takes 3 and more than 2 must stay: depleted.
+    CHECK(!canPerform(p.w, fisher, line, nullptr, &why, true, p.w.character(shoal)));
+    CHECK(why.rfind("depleted:", 0) == 0);
+}
+
+TEST(altera_sim_food_spoils_by_half_life) {
+    Pair p = pairWorld(real());
+    Character& a = *p.w.character(p.a);
+    a.inventory["fish"] = 100;       // half-life 2 days
+    a.inventory["grain"] = 100;      // half-life 600 days
+    for (int d = 0; d < 2; ++d) spoilFood(p.w);
+    CHECK(a.has("fish") > 35 && a.has("fish") < 65);
+    CHECK(a.has("grain") >= 99);
+}
+
+TEST(altera_sim_last_year_stores_follow_the_season) {
+    auto food = [&](const char* season) {
+        Json cfg = realWorldCfg();
+        cfg["season"] = season;
+        const World w = makeTestWorld(real(), cfg);
+        double units = 0.0;
+        for (const auto& [fid, f] : w.families())
+            for (const auto& [item, n] : w.object(f.storage)->stock)
+                units += real().items.at(item).nutrition * n;
+        return units;
+    };
+    const double autumn = food("autumn"), summer = food("summer");
+    CHECK(autumn > summer * 3.0); // after the harvest vs the hungry gap
+    CHECK(summer > 0.0);
+}
+
+TEST(altera_sim_pickpocket_is_an_act_on_carried_things) {
+    const InteractionDef& pp = *real().interaction("pickpocket");
+    CHECK(pp.targetsCarried());
+    CHECK(!pp.targetsCharacter());
+    CHECK(pp.consent.empty());
+    CHECK(!pp.speech.empty()); // others can be asked or ordered to do it
+}
+
+TEST(altera_sim_child_asks_and_parent_feeds) {
+    World w = makeTestWorld(real(), realWorldCfg());
+    installAi(w);
+    // A hungry child next to a parent with grain at home and firewood.
+    Character* child = nullptr;
+    for (auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.stage() == "child") child = &c;
+    if (!child) return; // the generator gave no child for this seed
+    child->needs["hunger"] = 0.12;
+    child->knowledge.erase("cooking");
+    const EntityId kid = child->id;
+    w.run(kTicksPerDay);
+    const Character& after = *w.character(kid);
+    CHECK(after.body.alive);
+    CHECK(after.need("hunger") > 0.12);
 }

@@ -18,7 +18,17 @@ Json aiReport(const World& w) {
     std::map<std::string, std::int64_t> idleAll, failAll, methodAll, goalAll;
     Json hunger = Json::array();
     int alive = 0;
+    int population = 0;
+    std::map<std::string, std::pair<int, int>> fauna; // species -> groups, heads
     for (const auto& [id, c] : w.characters()) {
+        if (c.isAnimal()) {
+            if (c.body.alive) {
+                ++fauna[c.species].first;
+                fauna[c.species].second += c.group;
+            }
+            continue;
+        }
+        ++population;
         const AiStats& s = c.ai.stats;
         Json needs = Json::object();
         for (const auto& [n, v] : c.needs) needs[n] = r3(v);
@@ -73,7 +83,12 @@ Json aiReport(const World& w) {
                 {"day", w.day()},
                 {"seed", w.seed()},
                 {"alive", alive},
-                {"population", w.characters().size()},
+                {"population", population},
+                {"fauna", [&] {
+                     Json f = Json::object();
+                     for (const auto& [sp, gh] : fauna) f[sp] = {{"groups", gh.first}, {"heads", gh.second}};
+                     return f;
+                 }()},
                 {"summary",
                  {{"why_hunger", hunger},
                   {"why_idle", top(idleAll, 10)},

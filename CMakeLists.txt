@@ -307,6 +307,7 @@ add_library(altera_sim STATIC
         src/sim/world.cpp
         src/sim/worldgen.cpp
         src/sim/ai_eval.cpp
+        src/sim/animals.cpp
         src/sim/ai_utility.cpp
         src/sim/ai_htn.cpp
         src/sim/ai_goap.cpp

@@ -102,6 +102,7 @@ struct PlanStep {
     std::vector<std::string> achieve;
     std::vector<std::string> allow;
     std::string method; // HTN method this step came from
+    Json params = Json::object(); // HTN step params (start_dialog intent, ...)
 };
 
 struct PlanAction {
@@ -205,6 +206,13 @@ struct AiState {
 struct Character {
     EntityId id = kNone;
     std::string name;
+    // Animals and monsters (species.json): a group of `group` heads driven by
+    // animals.cpp; empty species = a person with the four-layer mind.
+    std::string species;
+    int group = 1;
+    Vec2 den;          // territory centre
+    int starveDays = 0;
+    bool isAnimal() const { return !species.empty(); }
     Body body;
     std::map<std::string, double> needs; // 0..1, 1 = satisfied
     std::vector<Moodlet> moodlets;

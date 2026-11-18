@@ -1,6 +1,7 @@
 #include <set>
 #include <functional>
 #include "sim/worldgen.hpp"
+#include "sim/ai.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -176,8 +177,16 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             for (int x = 0; x < m.w; ++x) {
                 const size_t i = static_cast<size_t>(y * m.w + x);
                 if (m.water[i]) continue;
-                if (std::find(def.biomes.begin(), def.biomes.end(), m.biomeNames[m.biome[i]]) == def.biomes.end())
-                    continue;
+                bool fits = std::find(def.biomes.begin(), def.biomes.end(), m.biomeNames[m.biome[i]]) != def.biomes.end();
+                // "river" is not a biome of the grid: it is a land cell on the bank.
+                if (!fits && std::find(def.biomes.begin(), def.biomes.end(), "river") != def.biomes.end())
+                    for (int dy = -1; dy <= 1 && !fits; ++dy)
+                        for (int dx = -1; dx <= 1; ++dx) {
+                            const int nx = x + dx, ny = y + dy;
+                            if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue;
+                            if (m.water[static_cast<size_t>(ny * m.w + nx)]) fits = true;
+                        }
+                if (!fits) continue;
                 Rng cr(hashCombine(hashCombine(seed, hashStr(id)), i));
                 const double expect = def.perKm2 * cellKm2;
                 int n = static_cast<int>(expect);
@@ -353,6 +362,92 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     }
     w.settlements()[st.id] = st;
 
+    // --- last year's stores ------------------------------------------------
+    // Until the history generator runs N years before the start, each
+    // household's store is a cheap model of last year: how many days of food
+    // a family of this size, these hands and this luck put aside by this
+    // season (autumn: the harvest is in; spring: the hungry gap). Spread
+    // between households on purpose - a poorer neighbour makes situations.
+    if (!content.knowledge.empty()) {
+        // A household's staple has to last until the next harvest (no fields
+        // yet: the stores stand in for last year's farming). It covers a share
+        // of the days left - the rest is foraging, fishing, hunting and the
+        // neighbours. carryover_days {season: [lo, hi]} overrides it (tests).
+        const Json carry = cfg.value("carryover_days", Json::object());
+        const int harvestDay = cfg.value("harvest_day", 180); // the end of summer
+        const int doy = w.startDay() % kDaysPerYear;
+        const int daysToHarvest = ((harvestDay - doy) % kDaysPerYear + kDaysPerYear) % kDaysPerYear;
+        const Json share = cfg.value("carryover_share", Json::array({0.55, 0.8}));
+        const std::string& season = w.season();
+        // The hungry gap: the closer the next harvest, the more of the old one is eaten up.
+        const double gap = season == "summer" ? 0.35 : (season == "spring" ? 0.65 : (season == "winter" ? 0.95 : 1.0));
+        const Json range = carry.contains(season)
+                               ? carry[season]
+                               : Json::array({daysToHarvest * share.at(0).get<double>() * gap,
+                                              daysToHarvest * share.at(1).get<double>() * gap});
+        Rng yr(hashCombine(seed, hashStr("last_year")));
+        const double villageLuck = yr.range(0.75, 1.2); // last year's weather for everyone
+        const NeedDef* hungerNeed = content.need("hunger");
+        const double perDay = hungerNeed ? hungerNeed->decayPerDay : 0.5;
+        for (auto& [fid, fam] : w.families()) {
+            WorldObject* store = w.object(fam.storage);
+            if (!store) continue;
+            int adults = 0, people = 0, diligent = 0, lazy = 0;
+            bool fisher = false, hunter = false;
+            for (EntityId id : fam.members) {
+                const Character* ch = w.character(id);
+                if (!ch) continue;
+                ++people;
+                if (ch->body.stage() == "adult") ++adults;
+                for (const auto& t : ch->traits) {
+                    if (t == "diligent" || t == "handy") ++diligent;
+                    if (t == "lazy" || t == "slob") ++lazy;
+                }
+                fisher = fisher || ch->knowledge.count("fishing") > 0;
+                hunter = hunter || ch->knowledge.count("hunting") > 0;
+            }
+            if (people == 0) continue;
+            Rng fr(hashCombine(seed, hashStr("last_year:" + fam.name)));
+            const double hands = std::clamp(adults / (0.5 * people), 0.5, 1.4);
+            const double work = std::clamp(1.0 + 0.12 * diligent - 0.15 * lazy, 0.6, 1.4);
+            const double luck = fr.range(0.6, 1.3);
+            const double days = fr.range(range.at(0).get<double>(), range.at(1).get<double>()) * hands * work *
+                                luck * villageLuck;
+            const double value = days * people * perDay; // hunger units to cover
+            auto put = [&](const std::string& item, double share) {
+                auto d = content.items.find(item);
+                if (d == content.items.end() || d->second.nutrition <= 0.0 || share <= 0.0) return;
+                const int n = static_cast<int>(std::round(value * share / d->second.nutrition));
+                if (n > 0) store->stock[item] += n;
+            };
+            double grain = 0.6, fish = fisher ? 0.15 : 0.0, meat = hunter ? 0.1 : 0.0, berries = 0.1;
+            const double rest = 1.0 - grain - fish - meat - berries;
+            grain += rest;
+            put("grain", grain);
+            put("smoked_fish", fish);
+            put("dried_meat", meat);
+            put("dried_berries", berries);
+            // Tools kept from last year: every adult a knife, hunters a spear,
+            // fishers a line, the household a digging stick.
+            for (EntityId id : fam.members) {
+                Character* ch = w.character(id);
+                if (!ch || ch->body.stage() == "child") continue;
+                auto give = [&](const char* item) {
+                    if (content.items.count(item)) ch->inventory[item] += 1;
+                };
+                give("stone_blade");
+                if (ch->knowledge.count("hunting")) give("spear");
+                if (ch->knowledge.count("fishing")) give("fishing_line");
+            }
+            if (content.items.count("digging_stick")) store->stock["digging_stick"] += 1;
+            // Firewood: a few days' worth, more in the cold half of the year.
+            const bool cold = season == "autumn" || season == "winter";
+            store->stock["firewood"] += static_cast<int>(std::round(fr.range(4.0, 10.0) * (cold ? 2.0 : 1.0)));
+            w.chronicle("last_year", {fam.members.empty() ? kNone : fam.members.front()}, "chronicle.last_year",
+                        {{"family", fam.name}, {"days", std::round(days)}});
+        }
+    }
+
     // The settlement as a whole covers settlement_must: each missing piece goes
     // to a different adult, round-robin (the start chains must close).
     if (!explicitKnowledge && !everyone.empty()) {
@@ -393,6 +488,8 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             if (own || dist(o.pos, center) <= knowRadius) ca.knownObjects.insert(oid);
         }
     }
+    // --- animals: groups of every species over their habitat ------------
+    spawnAnimals(w, seed);
     return w;
 }
 

@@ -22,7 +22,8 @@ const std::set<std::string> kEffSubjects = {"has",        "need",           "tar
                                             "rel",        "rel_back",       "spawn",          "target_need",
                                             "reputation", "status_pair",    "household_join", "household_adopt",
                                             "household_leave", "household_found", "commitment", "death"};
-const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death"};
+const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death",
+                                                  "group"};
 // Flag effects: subject:key with no operator.
 const std::set<std::string> kFlagEffects = {"moodlet",         "memory",          "spawn",           "household_join",
                                             "household_adopt", "household_leave", "household_found", "commitment",
@@ -96,7 +97,7 @@ struct V {
         if (!param(k.subject, k.key, k.text, where, sc)) return;
         if ((k.subject == "has" || k.subject == "home" || k.subject == "target_stock") && !c.items.count(k.key))
             err(where + ": unknown item '" + k.key + "' in '" + k.text + "'");
-        if ((k.subject == "at" || k.subject == "known") && !c.objects.count(k.key))
+        if ((k.subject == "at" || k.subject == "known") && !c.objects.count(k.key) && !c.species.count(k.key))
             err(where + ": unknown object type '" + k.key + "' in '" + k.text + "'");
         if (k.subject == "need" && !c.need(k.key)) err(where + ": unknown need '" + k.key + "'");
         if (k.subject == "trait" && !c.traits.count(k.key)) err(where + ": unknown trait '" + k.key + "'");
@@ -179,7 +180,11 @@ struct V {
     void interaction(const InteractionDef& d) {
         const std::string where = "interaction " + d.id;
         std::set<std::string> used;
-        Scope sc{d.targetsCharacter(), d.parametric() ? &d.params : nullptr, &used};
+        Scope sc{d.targetsCharacter() || d.targetsCreature() || d.targetsCarried(),
+                 d.parametric() ? &d.params : nullptr, &used};
+        for (const auto& e : d.eff)
+            if (e.onTarget && e.subject == "group" && !d.targetsCreature())
+                err(where + ": t.group is only for creature targets ('" + e.text + "')");
         std::set<std::string> names;
         for (const auto& p : d.params) {
             if (!names.insert(p.name).second) err(where + ": duplicate parameter '" + p.name + "'");
@@ -299,6 +304,19 @@ ValidationReport validate(const Content& c) {
     for (const auto& [a, b] : c.exclusiveTraits)
         if (!c.traits.count(a) || !c.traits.count(b)) v.err("traits: exclusive pair names unknown trait " + a + "/" + b);
 
+    // Species.
+    for (const auto& [id, s] : c.species) {
+        const std::string where = "species " + id;
+        if (s.habitat != "land" && s.habitat != "water") v.err(where + ": habitat must be land or water");
+        if (s.groupLo < 1 || s.groupLo > s.groupHi || s.maxGroup < s.groupHi) v.err(where + ": bad group sizes");
+        if (s.diet != "graze" && s.diet != "prey") v.err(where + ": diet must be graze or prey");
+        if (s.diet == "prey" && s.prey.empty()) v.err(where + ": a predator without prey");
+        for (const auto& p : s.prey)
+            if (!c.species.count(p)) v.err(where + ": unknown prey '" + p + "'");
+        if (s.aggression < 0.0 || s.aggression > 1.0) v.err(where + ": aggression out of [0, 1]");
+        if (c.items.count(id) || c.objects.count(id)) v.err(where + ": id clashes with an item or object");
+    }
+
     // Objects.
     for (const auto& [id, o] : c.objects) {
         for (const auto& [it, n] : o.stock)
@@ -327,8 +345,11 @@ ValidationReport validate(const Content& c) {
     for (const auto& [id, d] : c.interactions) {
         const std::string where = "interaction " + id;
         if (d.category.empty()) v.err(where + ": missing category");
-        if (d.target != "self" && d.target != "character" && !d.targetsObject())
+        if (d.target != "self" && d.target != "character" && !d.targetsObject() && !d.targetsCreature() &&
+            !d.targetsCarried())
             v.err(where + ": bad target '" + d.target + "'");
+        if (d.targetsCreature() && !c.species.count(d.targetType))
+            v.err(where + ": unknown species '" + d.targetType + "'");
         if (d.targetsObject() && !c.objects.count(d.targetType))
             v.err(where + ": unknown target object type '" + d.targetType + "'");
         if (d.duration < 1) v.err(where + ": duration < 1");
@@ -430,7 +451,8 @@ ValidationReport validate(const Content& c) {
             else if ((subj == "has" || subj == "home") && !c.items.count(key))
                 v.err(where + ": unknown item input '" + k.input + "'");
             else if (subj != "need" && subj != "has" && subj != "home" && subj != "time" && subj != "body" &&
-                     subj != "mood" && subj != "const" && subj != "trait" && subj != "age")
+                     subj != "mood" && subj != "const" && subj != "trait" && subj != "age" && subj != "home_food_days" &&
+                     subj != "season")
                 v.err(where + ": unknown input '" + k.input + "'");
         }
         // Score identically zero over the whole range?

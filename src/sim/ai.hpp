@@ -26,7 +26,37 @@ bool goapFact(const Condition& k);
 // The interaction catalog's executor. Players and NPCs both go through here.
 // `why` gets the first failing precondition.
 bool canPerform(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
-                std::string* why, bool checkRange = true);
+                std::string* why, bool checkRange = true, const Character* targetChar = nullptr);
+// The person a character-targeted act is done with: `prefer` when valid
+// (the goal's target), else the best known person who passes the act's
+// preconditions (family first, the needy for gifts, then the nearest).
+EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why);
+// consent: "target" - the other's mind decides (relation, kinship, own need).
+bool consents(const World& w, const Character& actor, const Character& target, const InteractionDef& d);
+// A conversation opened by start_dialog, run by the built-in provider until a
+// dialogue runtime/agent takes over: small talk feeds both sides' social need;
+// ask_favor for food puts a "share food with me" task in the other's queue.
+void runConversation(World& w, Character& c, Character& other, const Json& params);
+// The reach of an act: its range_m, else config.interaction_range_m.
+double reachOf(const World& w, const InteractionDef& d);
+// The nearest live group of a species within the tracking radius of `from`.
+EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius);
+// Where the target of a plan action is now (object or creature).
+bool targetPos(const World& w, EntityId id, Vec2& out);
+// Animals (animals.cpp): reactive drivers per tick, daily breeding and
+// migration, spawning at world generation, losing heads to hunters/predators.
+struct AnimalTick {
+    std::vector<const Character*> people;    // alive persons this tick
+    std::vector<const Character*> predators; // alive groups of diet:prey species
+};
+void animalThink(World& w, Character& a, const AnimalTick& tick);
+void animalsDaily(World& w);
+void spawnAnimals(World& w, std::uint64_t seed);
+void loseHeads(World& w, Character& herd, int n, const std::string& cause);
+// Food left in a household store, in days per member (items' nutrition).
+double homeFoodDays(const World& w, const Character& c);
+// Daily spoilage of perishable food (items' spoil_days) in packs and stores.
+void spoilFood(World& w);
 // Applies `eff` once (a continuous interaction calls it every tick), after the
 // `chance` roll (on_fail instead of eff when it fails), then the `risk` rolls.
 // `targetChar` is the target character of character-targeted interactions

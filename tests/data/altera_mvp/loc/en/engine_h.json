@@ -1,0 +1,9 @@
+{
+ "trace.dialog.accepted": "{listener} agreed ({intent})",
+ "trace.dialog.refused": "{listener} refused ({intent})",
+ "reason.goap.no_person": "nobody to do it with: {detail}",
+ "reason.refused": "refused: {detail}",
+ "reason.season": "out of season: {detail}",
+ "reason.person": "the other person does not fit: {detail}",
+ "reason.no_person": "no suitable person{detail}"
+}

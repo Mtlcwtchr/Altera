@@ -28,6 +28,8 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
         return clamp01((it == h->stock.end() ? 0 : it->second) / norm);
     }
     if (subj == "mood") return (c.mood(w.now()) + 1.0) * 0.5;
+    if (subj == "home_food_days") return clamp01(homeFoodDays(w, c) / norm);
+    if (subj == "season") return w.season() == key ? 1.0 : 0.0;
     if (subj == "trait") return c.hasTrait(key) ? 1.0 : 0.0;
     if (subj == "age") return c.body.stage() == key ? 1.0 : 0.0;
     return 1.0; // const

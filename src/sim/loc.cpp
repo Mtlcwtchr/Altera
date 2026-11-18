@@ -476,7 +476,8 @@ const std::vector<std::string>& traceCodes() {
         "fsm.arrived",         "fsm.done",                 "fsm.enter",         "fsm.wait",
         "goal.done",           "goal.dropped",             "goal.failed",       "goap.fail",
         "goap.plan",           "goap.replan",              "htn.method_failed", "htn.no_method",
-        "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt"};
+        "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt",
+        "dialog.accepted",     "dialog.refused"};
     return v;
 }
 
@@ -488,7 +489,7 @@ const std::vector<std::string>& reasonCodes() {
         "goto.unknown_action", "goto.no_target", "goap.unknown_action", "goap.no_target", "goap.no_chain",
         "goap.cannot",  "goap.budget",        "htn.unknown_task",    "htn.no_method",     "htn.depth",
         "no_such_character", "controlled_by_other", "nothing_controlled", "no_paused_plan", "cannot",
-        "plan_failed"};
+        "plan_failed", "goap.no_person", "refused", "season", "person", "no_person"};
     return v;
 }
 

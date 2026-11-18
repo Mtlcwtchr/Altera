@@ -291,6 +291,37 @@
    "value": -0.2,
    "ttl": 288,
    "_part": "c"
+  },
+  {
+   "id": "alarmed",
+   "value": 0.0,
+   "ttl": 36,
+   "_doc": "зверь спугнут: бежит дальше обычного",
+   "_part": "H"
+  },
+  {
+   "id": "frightened",
+   "value": -0.3,
+   "ttl": 72,
+   "_part": "H"
+  },
+  {
+   "id": "mauled",
+   "value": -0.4,
+   "ttl": 144,
+   "_part": "H"
+  },
+  {
+   "id": "good_catch",
+   "value": 0.15,
+   "ttl": 36,
+   "_part": "H"
+  },
+  {
+   "id": "ate_spoiled",
+   "value": -0.1,
+   "ttl": 24,
+   "_part": "H"
   }
  ]
 }

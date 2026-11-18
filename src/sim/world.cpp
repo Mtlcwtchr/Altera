@@ -222,6 +222,7 @@ void World::updateBodies() {
     for (auto& [id, c] : chars_) {
         if (!c.body.alive) continue;
         if (tick_ % kTicksPerDay == 0 && tick_ > 0) ++c.body.ageDays;
+        if (c.isAnimal()) continue; // animals.cpp drives their hunger
         const std::string& biome = map_.biomeAt(c.pos);
         bool starving = false;
         for (const auto& n : content_->needs) {

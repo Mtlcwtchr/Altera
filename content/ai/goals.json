@@ -234,19 +234,21 @@
      }
     },
     {
-     "input": "home:meal",
-     "norm": 6,
-     "curve": {
-      "type": "inverse"
-     }
-    },
-    {
-     "input": "home:roots",
-     "norm": 12,
+     "input": "home_food_days",
+     "norm": 20,
      "curve": {
       "type": "inverse"
      },
-     "weight": 0.5
+     "_doc": "дней еды на каждого в доме (все съестные запасы по nutrition)"
+    },
+    {
+     "input": "season:autumn",
+     "curve": {
+      "type": "linear",
+      "m": 0.4,
+      "b": 0.75
+     },
+     "_doc": "осенью запасаются на зиму"
     },
     {
      "input": "need:hunger",

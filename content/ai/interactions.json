@@ -1333,58 +1333,6 @@
    "_part": "c"
   },
   {
-   "id": "hunt_game",
-   "category": "work",
-   "target": "object:game_trail",
-   "pre": [
-    "knows:hunting",
-    "has:spear>=1",
-    "target_stock:carcass>=1"
-   ],
-   "eff": [
-    "has:carcass+1",
-    "target_stock:carcass-1",
-    "skill:hunting+0.02",
-    "body:fatigue+0.12"
-   ],
-   "from_target": true,
-   "duration": 18,
-   "cost": 18,
-   "fsm": "Work",
-   "reserve": true,
-   "goap": true,
-   "legal": [],
-   "visibility": "public",
-   "social": null,
-   "speech": [
-    "inform",
-    "promise",
-    "request",
-    "command"
-   ],
-   "mvp": true,
-   "_doc": "Успех от навыка и риск — расширения chance/risk (§6)",
-   "chance": {
-    "base": 0.35,
-    "skill": "hunting",
-    "per_skill": 0.6
-   },
-   "on_fail": [
-    "body:fatigue+0.05"
-   ],
-   "risk": [
-    {
-     "id": "hunting_injury",
-     "p": 0.03,
-     "eff": [
-      "body:health-0.2",
-      "moodlet:injured"
-     ]
-    }
-   ],
-   "_part": "c"
-  },
-  {
    "id": "butcher_carcass",
    "category": "work",
    "target": "self",
@@ -2155,7 +2103,7 @@
   {
    "id": "pickpocket",
    "category": "economy",
-   "target": "character",
+   "target": "carried",
    "eff": [
     "memory:stole",
     "has:$item+1",
@@ -2174,13 +2122,13 @@
     "witness_affinity": -0.3
    },
    "speech": [
+    "inform",
+    "promise",
     "request",
-    "command",
-    "persuade",
-    "confess"
+    "command"
    ],
    "mvp": true,
-   "_doc": "Предмет — из terms/цели HTN; обнаружение жертвой → rel_back trust -0.3, событие theft",
+   "_doc": "Действие над вещами при человеке (кошель, сума), а не взаимодействие с ним: согласия и диалога нет; заметит ли жертва — проверка свидетелей (visibility secret, сама жертва тоже проверяет). Уговорить или приказать украсть — это уже речевой акт с исполнителем.",
    "pre": [
     "t.has:$item>=1"
    ],
@@ -3926,6 +3874,549 @@
    },
    "_doc": "Учиться у собеседника (актёр — ученик). Учитель: offer(learn{skill}) → у ученика queue_task. knows ставится при skill≥learn_threshold",
    "_part": "c"
+  },
+  {
+   "id": "hunt_game",
+   "category": "gather",
+   "target": "creature:deer",
+   "pre": [
+    "knows:hunting",
+    "has:spear>=1"
+   ],
+   "eff": [
+    "has:carcass+1",
+    "t.group:heads-1",
+    "skill:hunting+0.02",
+    "body:fatigue+0.12",
+    "memory:good_hunt"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "range_m": 40,
+   "chance": {
+    "base": 0.2,
+    "skill": "hunting",
+    "per_skill": 0.5,
+    "min": 0.05,
+    "max": 0.85
+   },
+   "on_fail": [
+    "t.moodlet:alarmed",
+    "skill:hunting+0.01",
+    "body:fatigue+0.1"
+   ],
+   "_part": "H"
+  },
+  {
+   "id": "hunt_boar",
+   "category": "gather",
+   "target": "creature:boar",
+   "pre": [
+    "knows:hunting",
+    "has:spear>=1"
+   ],
+   "eff": [
+    "has:carcass+1",
+    "t.group:heads-1",
+    "skill:hunting+0.02",
+    "body:fatigue+0.15",
+    "memory:good_hunt"
+   ],
+   "duration": 6,
+   "cost": 7,
+   "range_m": 30,
+   "chance": {
+    "base": 0.2,
+    "skill": "hunting",
+    "per_skill": 0.45,
+    "min": 0.05,
+    "max": 0.8
+   },
+   "on_fail": [
+    "t.moodlet:alarmed",
+    "body:fatigue+0.1"
+   ],
+   "risk": [
+    {
+     "id": "gored",
+     "p": 0.12,
+     "eff": [
+      "body:health-0.25",
+      "moodlet:mauled",
+      "memory:attacked_by_beast"
+     ]
+    }
+   ],
+   "_part": "H"
+  },
+  {
+   "id": "make_snare",
+   "category": "craft",
+   "target": "self",
+   "pre": [
+    "knows:hunting",
+    "has:cord>=1",
+    "has:branch>=1"
+   ],
+   "eff": [
+    "has:cord-1",
+    "has:branch-1",
+    "has:snare+1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "_part": "H"
+  },
+  {
+   "id": "snare_hare",
+   "category": "gather",
+   "target": "creature:hare",
+   "pre": [
+    "knows:hunting",
+    "has:snare>=1"
+   ],
+   "eff": [
+    "has:meat+1",
+    "t.group:heads-1",
+    "skill:hunting+0.01"
+   ],
+   "duration": 8,
+   "cost": 4,
+   "range_m": 60,
+   "chance": {
+    "base": 0.3,
+    "skill": "hunting",
+    "per_skill": 0.4,
+    "min": 0.1,
+    "max": 0.8
+   },
+   "on_fail": [
+    "t.moodlet:alarmed"
+   ],
+   "risk": [
+    {
+     "id": "snare_lost",
+     "p": 0.1,
+     "eff": [
+      "has:snare-1"
+     ]
+    }
+   ],
+   "_part": "H"
+  },
+  {
+   "id": "make_fishing_line",
+   "category": "craft",
+   "target": "self",
+   "pre": [
+    "knows:fishing",
+    "has:cord>=1",
+    "has:branch>=1"
+   ],
+   "eff": [
+    "has:cord-1",
+    "has:branch-1",
+    "has:fishing_line+1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "_part": "H"
+  },
+  {
+   "id": "fish_by_hand",
+   "category": "gather",
+   "target": "creature:fish_shoal",
+   "pre": [
+    "knows:fishing"
+   ],
+   "eff": [
+    "has:fish+2",
+    "t.group:heads-2",
+    "skill:fishing+0.01",
+    "body:fatigue+0.04"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "range_m": 30,
+   "chance": {
+    "base": 0.15,
+    "skill": "fishing",
+    "per_skill": 0.3,
+    "min": 0.05,
+    "max": 0.5
+   },
+   "on_fail": [
+    "body:fatigue+0.03"
+   ],
+   "_doc": "запруда, ловля руками и корзиной",
+   "_part": "H"
+  },
+  {
+   "id": "fish_with_line",
+   "category": "gather",
+   "target": "creature:fish_shoal",
+   "pre": [
+    "knows:fishing",
+    "has:fishing_line>=1"
+   ],
+   "eff": [
+    "has:fish+3",
+    "t.group:heads-3",
+    "skill:fishing+0.02",
+    "body:fatigue+0.03",
+    "moodlet:good_catch"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "range_m": 30,
+   "chance": {
+    "base": 0.35,
+    "skill": "fishing",
+    "per_skill": 0.4,
+    "min": 0.1,
+    "max": 0.9
+   },
+   "on_fail": [
+    "skill:fishing+0.01"
+   ],
+   "risk": [
+    {
+     "id": "line_snapped",
+     "p": 0.05,
+     "eff": [
+      "has:fishing_line-1"
+     ]
+    }
+   ],
+   "_part": "H"
+  },
+  {
+   "id": "cook_fish",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:fish>=2",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:fish-2",
+    "home:firewood-1",
+    "has:meal+1",
+    "skill:cooking+0.01"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "_part": "H"
+  },
+  {
+   "id": "smoke_fish",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:fish>=3",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:fish-3",
+    "home:firewood-1",
+    "has:smoked_fish+1"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "_doc": "коптить над очагом: три рыбы -> одна копчёная порция на два месяца",
+   "_part": "H"
+  },
+  {
+   "id": "smoke_meat",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:meat>=2",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:meat-2",
+    "home:firewood-1",
+    "has:dried_meat+1"
+   ],
+   "duration": 8,
+   "cost": 3,
+   "_part": "H"
+  },
+  {
+   "id": "dry_berries",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:berries>=6"
+   ],
+   "eff": [
+    "has:berries-6",
+    "has:dried_berries+2"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "_part": "H"
+  },
+  {
+   "id": "cook_porridge",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:grain>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:grain-1",
+    "home:firewood-1",
+    "has:meal+2",
+    "skill:cooking+0.01"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_part": "H"
+  },
+  {
+   "id": "eat_smoked_fish",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:smoked_fish>=1"
+   ],
+   "eff": [
+    "has:smoked_fish-1",
+    "need:hunger+0.3",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "eat_dried_meat",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:dried_meat>=1"
+   ],
+   "eff": [
+    "has:dried_meat-1",
+    "need:hunger+0.35",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "eat_dried_berries",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:dried_berries>=1"
+   ],
+   "eff": [
+    "has:dried_berries-1",
+    "need:hunger+0.15"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "take_berries",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:berries>=2"
+   ],
+   "eff": [
+    "has:berries+2",
+    "home:berries-2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "take_grain",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:grain>=1"
+   ],
+   "eff": [
+    "has:grain+1",
+    "home:grain-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "take_smoked_fish",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:smoked_fish>=1"
+   ],
+   "eff": [
+    "has:smoked_fish+1",
+    "home:smoked_fish-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "take_dried_meat",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:dried_meat>=1"
+   ],
+   "eff": [
+    "has:dried_meat+1",
+    "home:dried_meat-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "take_dried_berries",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:dried_berries>=1"
+   ],
+   "eff": [
+    "has:dried_berries+1",
+    "home:dried_berries-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "take_fish",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:fish>=2"
+   ],
+   "eff": [
+    "has:fish+2",
+    "home:fish-2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "store_smoked_fish",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:smoked_fish>=1"
+   ],
+   "eff": [
+    "has:smoked_fish-1",
+    "home:smoked_fish+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "store_dried_meat",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:dried_meat>=1"
+   ],
+   "eff": [
+    "has:dried_meat-1",
+    "home:dried_meat+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "store_dried_berries",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:dried_berries>=1"
+   ],
+   "eff": [
+    "has:dried_berries-1",
+    "home:dried_berries+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "store_fish",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:fish>=2"
+   ],
+   "eff": [
+    "has:fish-2",
+    "home:fish+2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "steal_grain",
+   "category": "crime",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:other",
+    "target_stock:grain>=1"
+   ],
+   "eff": [
+    "has:grain+1",
+    "target_stock:grain-1",
+    "memory:stole_food"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "legal": [
+    "theft"
+   ],
+   "visibility": "secret",
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "_part": "H"
   }
  ]
 }

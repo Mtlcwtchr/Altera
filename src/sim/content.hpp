@@ -38,6 +38,26 @@ struct ObjectDef {
     std::vector<std::string> seasons;  // empty = all year; out of season the stock is not gathered
 };
 
+// species.json: animals and monsters (characters with a simplified AI).
+struct SpeciesDef {
+    std::string id;
+    std::string habitat = "land"; // land | water
+    std::vector<std::string> biomes;
+    double perKm2 = 0.0;          // groups per km2 of habitat
+    int groupLo = 1, groupHi = 1, maxGroup = 1;
+    double speedMPerTick = 0.0;
+    double noticeM = 0.0;         // sees people this close
+    double fleeM = 0.0;           // runs this far once spooked
+    std::string diet = "graze";   // graze | prey
+    std::vector<std::string> prey;
+    double aggression = 0.0;      // chance a hungry group dares a lone person
+    double attackChance = 0.0, attackLo = 0.0, attackHi = 0.0;
+    double hungerPerDay = 0.0;
+    int breedEveryDays = 0;
+    double territoryM = 0.0;
+    int starveDays = 0;
+};
+
 struct NeedDef {
     std::string id;
     double decayPerDay = 0.5;
@@ -218,7 +238,12 @@ struct InteractionDef {
     std::vector<RiskDef> risk;
     CombatDef combat;
     TermsDef terms;
+    double rangeM = -1.0;          // reach of the act (spear throw, line); <0 = config.interaction_range_m
     bool targetsObject() const { return target.rfind("object:", 0) == 0; }
+    // creature:<species> - an animal group (a Character with that species)
+    bool targetsCreature() const { return target.rfind("creature:", 0) == 0; }
+    // carried - the things a person has on them (an act on things, not a social act)
+    bool targetsCarried() const { return target == "carried"; }
     bool targetsCharacter() const { return target == "character"; }
     bool parametric() const { return !params.empty(); }
 };
@@ -274,6 +299,7 @@ struct AiConfig {
     double legalBase = 4.0;
     double perceptionRadiusM = 40.0; // witnesses of public acts
     double noticeChance = 0.25;      // a bystander notices a secret act
+    double trackRadiusM = 2500.0;    // animals this close count as known: (tracks, calls)
     int traceSize = 64;
     double modMaxAbsDelta = 0.5;
     Tick modMaxTtl = 288;
@@ -310,6 +336,11 @@ struct Content {
     std::map<std::string, DialogueTemplate> dialogue;
     Json dialogueRules = Json::object(); // the rest of dialogue.json (plans, menu, consent, ...)
     std::map<std::string, KnowledgeDef> knowledge;
+    std::map<std::string, SpeciesDef> species;
+    const SpeciesDef* speciesOf(const std::string& id) const {
+        auto it = species.find(id);
+        return it == species.end() ? nullptr : &it->second;
+    }
     std::vector<std::string> householdMust;
     std::vector<std::string> settlementMust;
     AiConfig config;
@@ -327,7 +358,7 @@ struct Content {
     static Content fromJson(const Json& items, const Json& objects, const Json& needs, const Json& traits,
                             const Json& goals, const Json& htn, const Json& interactions, const Json& fsm,
                             const Json& config, const Json& dialogue = Json::object(),
-                            const Json& knowledge = Json::object());
+                            const Json& knowledge = Json::object(), const Json& species = Json::object());
 };
 
 struct ValidationReport {

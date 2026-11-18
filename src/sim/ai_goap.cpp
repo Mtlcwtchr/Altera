@@ -40,8 +40,9 @@ bool satisfied(const Node& n, const Condition& k) {
     return k.test(it == n.has.end() ? 0.0 : it->second);
 }
 
-bool staticOk(const World& w, const Character& c, const InteractionDef& d, std::string* why) {
-    const EvalCtx x{w, c, nullptr, nullptr};
+bool staticOk(const World& w, const Character& c, const InteractionDef& d, std::string* why,
+              const Character* person = nullptr) {
+    const EvalCtx x{w, c, nullptr, person};
     for (const auto& k : d.pre) {
         if (goapFact(k) || k.subject == "target_stock" || k.subject == "target_owner") continue;
         if (!evalCondition(x, k)) {
@@ -61,6 +62,7 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
 
     // Goal facts and the final action.
     std::vector<Condition> goal;
+    EntityId personId = kNone;
     const InteractionDef* finalAction = nullptr;
     if (step.kind == "do") {
         finalAction = ct.interaction(step.ref);
@@ -69,13 +71,21 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
             return res;
         }
         std::string why;
-        if (!staticOk(w, c, *finalAction, &why)) {
+        if (finalAction->targetsCharacter()) {
+            std::string pw;
+            personId = findPerson(w, c, *finalAction, c.ai.goal.target, &pw);
+            if (personId == kNone) {
+                res.why = "goap.no_person:" + finalAction->id + ":" + pw;
+                return res;
+            }
+        }
+        if (!staticOk(w, c, *finalAction, &why, w.character(personId))) {
             res.why = "goap.cannot:" + why;
             return res;
         }
         for (const auto& k : finalAction->pre)
             if (k.subject == "has") goal.push_back(k);
-        if (finalAction->targetsObject()) {
+        if (finalAction->targetsObject() || finalAction->targetsCreature() || finalAction->targetsCharacter()) {
             Condition at;
             at.subject = "at";
             at.key = finalAction->targetType;
@@ -148,15 +158,21 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
     std::map<std::string, Vec2> typePos;
     std::map<std::string, std::string> typeWhy;
     auto locate = [&](const InteractionDef* d) {
-        if (!d || !d->targetsObject() || typePos.count(d->targetType)) return;
+        if (!d || !(d->targetsObject() || d->targetsCreature()) || typePos.count(d->targetType)) return;
         std::string why;
         const EntityId t = findTarget(w, c, *d, c.pos, &why, true);
-        if (t != kNone) typePos[d->targetType] = w.object(t)->pos;
+        Vec2 p;
+        if (t != kNone && targetPos(w, t, p)) typePos[d->targetType] = p;
         else typeWhy[d->targetType] = why;
     };
     for (const auto* d : allowed) locate(d);
     locate(finalAction);
-    if (finalAction && finalAction->targetsObject() && !typePos.count(finalAction->targetType)) {
+    if (personId != kNone) {
+        const Character* pc = w.character(personId);
+        typePos["person"] = pc->pos;
+    }
+    if (finalAction && (finalAction->targetsObject() || finalAction->targetsCreature()) &&
+        !typePos.count(finalAction->targetType)) {
         res.why = "goap.no_target:" + typeWhy[finalAction->targetType];
         return res;
     }
@@ -238,7 +254,7 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
         }
         // Interactions.
         for (const auto* d : allowed) {
-            if (d->targetsObject() && d->targetType != n.at) continue;
+            if ((d->targetsObject() || d->targetsCreature()) && d->targetType != n.at) continue;
             bool ok = true;
             for (const auto& k : d->pre)
                 if (k.subject == "has" && !satisfied(n, k)) ok = false;
@@ -275,7 +291,10 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
     res.actions.assign(rev.rbegin(), rev.rend());
     res.cost = nodes[static_cast<size_t>(found)].g;
     if (finalAction) {
-        res.actions.push_back(PlanAction{finalAction->id, kNone, finalAction->targetType, finalAction->cost});
+        res.actions.push_back(PlanAction{finalAction->id, personId, finalAction->targetType, finalAction->cost});
+        if (personId != kNone)
+            for (auto& a : res.actions)
+                if (a.interaction == "goto" && a.targetType == "person") a.target = personId;
         res.cost += finalAction->cost;
     }
     res.ok = true;

@@ -85,6 +85,7 @@ bool expand(const World& w, const Character& c, const std::string& taskId, int d
             ps.ref = s.ref;
             for (const auto& k : s.achieve) ps.achieve.push_back(k.text);
             ps.allow = s.allow;
+            ps.params = s.params;
             ps.method = methodKey(taskId, cd.m->id);
             sub.steps.push_back(ps);
         }

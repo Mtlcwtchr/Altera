@@ -72,7 +72,7 @@ bool Status::hasPairAny(const std::string& id) const {
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, allow, method)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, allow, method, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanAction, interaction, target, targetType, cost)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Plan, methods, steps, stepIndex, actions, actionIndex, stepReplans,
                                                 htnReplans, waits)
@@ -106,6 +106,12 @@ void to_json(Json& j, const Character& c) {
              {"home", c.home},
              {"controller", c.controller},
              {"ai", c.ai}};
+    if (!c.species.empty()) {
+        j["species"] = c.species;
+        j["group"] = c.group;
+        j["den"] = c.den;
+        j["starve_days"] = c.starveDays;
+    }
 }
 
 void from_json(const Json& j, Character& c) {
@@ -128,6 +134,10 @@ void from_json(const Json& j, Character& c) {
     c.home = j.value("home", kNone);
     c.controller = j.value("controller", Controller{});
     c.ai = j.value("ai", AiState{});
+    c.species = j.value("species", std::string());
+    c.group = j.value("group", 1);
+    c.den = j.value("den", Vec2{});
+    c.starveDays = j.value("starve_days", 0);
 }
 
 } // namespace altera::sim

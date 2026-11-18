@@ -216,16 +216,12 @@
      "id": "hunt_and_eat",
      "pre": [
       "knows:hunting",
-      "knows:toolmaking",
-      "knows:knapping",
-      "knows:fiber_working",
       "knows:cooking",
-      "known:game_trail",
-      "known:riverbank",
-      "known:deadwood",
-      "known:nettle_patch",
+      "known:deer",
       "known:hearth",
-      "home:firewood>=1"
+      "home:firewood>=1",
+      "has:spear>=1",
+      "has:stone_blade>=1"
      ],
      "cost": 10,
      "steps": [
@@ -258,6 +254,201 @@
       }
      ],
      "_doc": "дороже собирательства: долгая охота с chance и риском травмы"
+    },
+    {
+     "id": "eat_stored_preserved",
+     "pre": [
+      "home:smoked_fish>=1",
+      "known:storage"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:smoked_fish>=1"
+       ]
+      },
+      {
+       "do": "eat_smoked_fish"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "eat_stored_dried_meat",
+     "pre": [
+      "home:dried_meat>=1",
+      "known:storage"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:dried_meat>=1"
+       ]
+      },
+      {
+       "do": "eat_dried_meat"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "eat_stored_berries",
+     "pre": [
+      "home:berries>=2",
+      "known:storage"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:berries>=2"
+       ]
+      },
+      {
+       "do": "eat_berries"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "eat_stored_dried_berries",
+     "pre": [
+      "home:dried_berries>=1",
+      "known:storage"
+     ],
+     "cost": 1.6,
+     "steps": [
+      {
+       "achieve": [
+        "has:dried_berries>=1"
+       ]
+      },
+      {
+       "do": "eat_dried_berries"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "cook_stored_grain",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "home:grain>=1",
+      "home:firewood>=1"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:grain>=1"
+       ]
+      },
+      {
+       "do": "cook_porridge"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "fish_and_eat",
+     "pre": [
+      "knows:fishing",
+      "knows:cooking",
+      "known:fish_shoal",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 4.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:fish>=2"
+       ],
+       "allow": [
+        "fish_with_line",
+        "fish_by_hand"
+       ]
+      },
+      {
+       "do": "cook_fish"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "snare_and_eat",
+     "pre": [
+      "knows:hunting",
+      "knows:fiber_working",
+      "knows:cooking",
+      "known:hare",
+      "known:nettle_patch",
+      "known:deadwood",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 5.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:snare>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:meat>=1"
+       ],
+       "allow": [
+        "snare_hare"
+       ]
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "steal_grain_food",
+     "pre": [
+      "known:storage",
+      "knows:cooking",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 7.0,
+     "legal": [
+      "theft"
+     ],
+     "steps": [
+      {
+       "achieve": [
+        "has:grain>=1"
+       ],
+       "allow": [
+        "steal_grain"
+       ]
+      },
+      {
+       "do": "cook_porridge"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_part": "H"
     }
    ]
   },
@@ -681,21 +872,74 @@
      ]
     },
     {
-     "id": "hunt_and_store",
+     "id": "fish_and_smoke",
+     "pre": [
+      "knows:fishing",
+      "knows:cooking",
+      "known:fish_shoal",
+      "known:hearth",
+      "home:firewood>=2"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:fish>=3"
+       ],
+       "allow": [
+        "fish_with_line",
+        "fish_by_hand"
+       ]
+      },
+      {
+       "do": "smoke_fish"
+      },
+      {
+       "do": "store_smoked_fish"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "make_fishing_line_first",
+     "pre": [
+      "!has:fishing_line",
+      "knows:fishing",
+      "knows:fiber_working",
+      "known:nettle_patch",
+      "known:deadwood"
+     ],
+     "cost": 2.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:fishing_line>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:fish>=3"
+       ]
+      },
+      {
+       "do": "store_fish"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "hunt_and_smoke",
      "pre": [
       "knows:hunting",
-      "knows:toolmaking",
-      "knows:knapping",
-      "knows:fiber_working",
       "knows:cooking",
-      "known:game_trail",
-      "known:riverbank",
-      "known:deadwood",
-      "known:nettle_patch",
+      "known:deer",
       "known:hearth",
-      "home:firewood>=1"
+      "home:firewood>=1",
+      "has:spear>=1",
+      "has:stone_blade>=1",
+      "home:firewood>=2"
      ],
-     "cost": 6,
+     "cost": 6.0,
      "steps": [
       {
        "achieve": [
@@ -719,34 +963,35 @@
        "do": "butcher_carcass"
       },
       {
-       "do": "cook_meat"
+       "do": "smoke_meat"
       },
       {
-       "do": "cook_meat"
-      },
-      {
-       "do": "cook_meat"
-      },
-      {
-       "do": "store_meal"
-      },
-      {
-       "do": "store_meal"
-      },
-      {
-       "do": "store_meal"
-      },
-      {
-       "do": "store_meal"
-      },
-      {
-       "do": "store_meal"
-      },
-      {
-       "do": "store_meal"
+       "do": "store_dried_meat"
       }
      ],
-     "_doc": "туша = 3 мяса = 6 порций; шкура остаётся у охотника"
+     "_part": "H"
+    },
+    {
+     "id": "dry_and_store_berries",
+     "pre": [
+      "knows:foraging",
+      "known:berry_bush"
+     ],
+     "cost": 2.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:berries>=6"
+       ]
+      },
+      {
+       "do": "dry_berries"
+      },
+      {
+       "do": "store_dried_berries"
+      }
+     ],
+     "_part": "H"
     }
    ]
   },
@@ -815,6 +1060,73 @@
        "do": "give_food"
       }
      ]
+    },
+    {
+     "id": "take_meal_and_give",
+     "pre": [
+      "home:meal>=1",
+      "known:storage"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:meal>=1"
+       ]
+      },
+      {
+       "do": "give_food"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "cook_grain_and_give",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "home:grain>=1",
+      "home:firewood>=1"
+     ],
+     "cost": 2.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:grain>=1"
+       ]
+      },
+      {
+       "do": "cook_porridge"
+      },
+      {
+       "do": "give_food"
+      }
+     ],
+     "_part": "H"
+    },
+    {
+     "id": "cook_fish_and_give",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "home:fish>=2",
+      "home:firewood>=1"
+     ],
+     "cost": 2.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:fish>=2"
+       ]
+      },
+      {
+       "do": "cook_fish"
+      },
+      {
+       "do": "give_food"
+      }
+     ],
+     "_part": "H"
     }
    ]
   },

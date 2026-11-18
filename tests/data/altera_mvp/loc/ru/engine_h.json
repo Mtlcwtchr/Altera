@@ -1,0 +1,9 @@
+{
+ "trace.dialog.accepted": "{listener} согласил{listener:g|ся|ась} ({intent})",
+ "trace.dialog.refused": "{listener} отказал{listener:g||а} ({intent})",
+ "reason.goap.no_person": "не с кем: {detail}",
+ "reason.refused": "отказали: {detail}",
+ "reason.season": "не сезон: {detail}",
+ "reason.person": "собеседник не подходит: {detail}",
+ "reason.no_person": "нет подходящего человека{detail}"
+}

@@ -187,7 +187,8 @@ Curve curveFrom(const Json& j) {
 
 Content Content::fromJson(const Json& items, const Json& objects, const Json& needs, const Json& traits,
                           const Json& goals, const Json& htn, const Json& interactions, const Json& fsm,
-                          const Json& config, const Json& dialogue, const Json& knowledge) {
+                          const Json& config, const Json& dialogue, const Json& knowledge,
+                          const Json& species) {
     Content c;
     Errors err;
     auto& W = c.warnings;
@@ -344,7 +345,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : interactions.value("interactions", Json::array())) {
         warnUnknown(j, {"id", "category", "target", "pre", "eff", "from_target", "duration", "cost", "fsm", "reserve",
                         "goap", "legal", "visibility", "social", "speech", "continuous", "until", "params", "chance",
-                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents"},
+                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents", "range_m"},
                     "interactions", W);
         InteractionDef d;
         d.id = j.at("id").get<std::string>();
@@ -352,6 +353,9 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.category = opt<std::string>(j, "category", "");
         d.target = opt<std::string>(j, "target", "self");
         if (d.targetsObject()) d.targetType = d.target.substr(7);
+        if (d.targetsCreature()) d.targetType = d.target.substr(9);
+        if (d.targetsCharacter()) d.targetType = "person";
+        d.rangeM = opt(j, "range_m", -1.0);
         d.pre = conditions(j, "pre", where, err);
         d.eff = effects(j, "eff", where, err);
         if (j.contains("params") && j["params"].is_object())
@@ -502,6 +506,40 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         k.familyKnowledge = opt(j, "family_knowledge", false);
         if (!c.knowledge.emplace(k.id, k).second) err.add("knowledge: duplicate id " + k.id);
     }
+    for (const auto& j : species.value("species", Json::array())) {
+        warnUnknown(j, {"id", "habitat", "biomes", "per_km2", "group", "max_group", "speed_m_per_tick", "notice_m",
+                        "flee_m", "diet", "prey", "aggression", "attack", "hunger_per_day", "breed_every_days",
+                        "territory_m", "starve_days"},
+                    "species", W);
+        SpeciesDef s;
+        s.id = j.at("id").get<std::string>();
+        s.habitat = opt<std::string>(j, "habitat", "land");
+        s.biomes = strings(j, "biomes");
+        s.perKm2 = opt(j, "per_km2", 0.0);
+        if (j.contains("group")) {
+            s.groupLo = j["group"].at(0).get<int>();
+            s.groupHi = j["group"].at(1).get<int>();
+        }
+        s.maxGroup = opt(j, "max_group", s.groupHi);
+        s.speedMPerTick = opt(j, "speed_m_per_tick", 0.0);
+        s.noticeM = opt(j, "notice_m", 0.0);
+        s.fleeM = opt(j, "flee_m", 0.0);
+        s.diet = opt<std::string>(j, "diet", "graze");
+        s.prey = strings(j, "prey");
+        s.aggression = opt(j, "aggression", 0.0);
+        if (j.contains("attack") && j["attack"].is_object()) {
+            s.attackChance = opt(j["attack"], "chance", 0.0);
+            if (j["attack"].contains("damage")) {
+                s.attackLo = j["attack"]["damage"].at(0).get<double>();
+                s.attackHi = j["attack"]["damage"].at(1).get<double>();
+            }
+        }
+        s.hungerPerDay = opt(j, "hunger_per_day", 0.0);
+        s.breedEveryDays = opt(j, "breed_every_days", 0);
+        s.territoryM = opt(j, "territory_m", 0.0);
+        s.starveDays = opt(j, "starve_days", 0);
+        if (!c.species.emplace(s.id, s).second) err.add("species: duplicate id " + s.id);
+    }
     c.householdMust = strings(knowledge, "household_must");
     c.settlementMust = strings(knowledge, "settlement_must");
     for (const auto& sa : dialogue.value("speech_acts", Json::array()))
@@ -545,6 +583,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.legalBase = opt(config, "legal_base", a.legalBase);
     a.perceptionRadiusM = opt(config, "perception_radius_m", a.perceptionRadiusM);
     a.noticeChance = opt(config, "notice_chance", a.noticeChance);
+    a.trackRadiusM = opt(config, "track_radius_m", a.trackRadiusM);
     a.traceSize = opt(config, "trace_size", a.traceSize);
     a.playerIdleResumeTicks = opt(config, "player_idle_resume_ticks", a.playerIdleResumeTicks);
     a.playerGoalHoldTicks = opt(config, "player_goal_hold_ticks", a.playerGoalHoldTicks);
@@ -587,7 +626,7 @@ Content Content::load(const std::string& dir) {
     };
     Content c = fromJson(f("items.json"), f("objects.json"), f("needs.json"), f("traits.json"), f("goals.json"),
                          f("htn.json"), f("interactions.json"), f("fsm.json"), f("config.json"), f("dialogue.json"),
-                         f("knowledge.json"));
+                         f("knowledge.json"), f("species.json"));
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);
     if (!v.ok()) {

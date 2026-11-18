@@ -168,6 +168,32 @@ bool tickFsm(World& w, Character& c) {
         return f.timer <= 0;
     }
     if (f.state == "Move") {
+        // A moving target (a person, a herd): follow it, stop at the reach of
+        // the act that comes next; give up after a long chase.
+        if (Character* tc = w.character(f.target); tc && tc->id != c.id) {
+            const Plan& pl = ai.plan;
+            const InteractionDef* nd = pl.actionIndex + 1 < pl.actions.size()
+                                           ? w.content().interaction(pl.actions[pl.actionIndex + 1].interaction)
+                                           : nullptr;
+            const double reach = std::max(1.0, (nd ? reachOf(w, *nd) : cfg.interactionRangeM) * 0.8);
+            const double dd = dist(c.pos, tc->pos);
+            if (!tc->body.alive) {
+                replanStep(w, c, "fsm.lost:target_gone");
+                return false;
+            }
+            if (dd <= reach) {
+                trace(w, c, 'F', "fsm.arrived", {{"target", f.target}});
+                c.ai.fsm = FsmState{};
+                ai.plan.actionIndex++;
+                return true;
+            }
+            if (w.now() - f.started > 48) {
+                replanStep(w, c, "fsm.lost:lost_track");
+                return false;
+            }
+            f.dest = {tc->pos.x + (c.pos.x - tc->pos.x) * reach / dd, tc->pos.y + (c.pos.y - tc->pos.y) * reach / dd};
+            f.timer = std::max<Tick>(f.timer, 2);
+        }
         const double d = dist(c.pos, f.dest);
         if (d <= cfg.walkMPerTick || f.timer <= 1) {
             c.pos = f.dest;
@@ -190,9 +216,10 @@ bool tickFsm(World& w, Character& c) {
         return false;
     }
     WorldObject* target = w.object(f.target);
+    Character* creature = (d->targetsCreature() || d->targetsCharacter()) ? w.character(f.target) : nullptr;
     --f.timer;
     if (d->continuous) {
-        applyEffects(w, c, *d, target);
+        applyEffects(w, c, *d, target, creature);
         const EvalCtx x{w, c, target, nullptr};
         if ((d->hasUntil && evalCondition(x, d->until)) || f.timer <= 0) {
             trace(w, c, 'F', "fsm.done", {{"action", d->id}});
@@ -203,11 +230,26 @@ bool tickFsm(World& w, Character& c) {
     }
     if (f.timer > 0) return false;
     std::string why;
-    if (!canPerform(w, c, *d, target, &why)) {
+    // Game moves: a group that bolted out of reach during the act means a
+    // miss (on_fail), not a lost plan.
+    const bool bolted = creature && creature->isAnimal() && creature->body.alive &&
+                        dist(creature->pos, c.pos) > reachOf(w, *d);
+    if (!canPerform(w, c, *d, target, &why, !(creature && creature->isAnimal()), creature)) {
         replanStep(w, c, "fsm.lost:" + why);
         return false;
     }
-    applyEffects(w, c, *d, target);
+    if (bolted) {
+        applyEffectList(w, c, d->onFail, nullptr, creature);
+        trace(w, c, 'F', "fsm.done", {{"action", d->id}});
+        finishAction(w, c);
+        return true;
+    }
+    applyEffects(w, c, *d, target, creature);
+    if (d->id == "start_dialog" && creature && !creature->isAnimal()) {
+        const Plan& p = ai.plan;
+        const Json params = p.stepIndex < p.steps.size() ? p.steps[p.stepIndex].params : Json::object();
+        runConversation(w, c, *creature, params);
+    }
     trace(w, c, 'F', "fsm.done", {{"action", d->id}});
     finishAction(w, c);
     return true;
@@ -233,7 +275,13 @@ Start startAction(World& w, Character& c, std::string& why) {
             return Start::Failed;
         }
         std::string fw;
-        const EntityId t = findTarget(w, c, *d, c.pos, &fw);
+        EntityId t = kNone;
+        if (d->targetsCharacter()) {
+            const Character* pc = w.character(next.target);
+            t = pc && pc->body.alive ? next.target : findPerson(w, c, *d, c.ai.goal.target, &fw);
+        } else {
+            t = findTarget(w, c, *d, c.pos, &fw);
+        }
         if (t == kNone) {
             why = "goto.no_target:" + fw;
             // Someone else holds it: wait a little instead of giving up.
@@ -247,16 +295,25 @@ Start startAction(World& w, Character& c, std::string& why) {
         }
         WorldObject* o = w.object(t);
         next.target = t;
-        if (d->reserve) {
+        if (o && d->reserve) {
             o->reservedBy = c.id;
             o->reservedUntil = w.now() + cfg.reserveTicks;
         }
-        const double dd = dist(c.pos, o->pos);
-        if (dd <= cfg.interactionRangeM) {
+        Vec2 tp;
+        targetPos(w, t, tp);
+        // Stop at the act's reach (a hunter stays a spear throw away).
+        const double reach = std::max(1.0, reachOf(w, *d) * 0.8);
+        const double dd = dist(c.pos, tp);
+        if (dd <= reachOf(w, *d)) {
             p.actionIndex++;
             return Start::Instant;
         }
-        ai.fsm = FsmState{"Move", "goto", t, o->pos, static_cast<Tick>(std::ceil(dd / cfg.walkMPerTick)), w.now()};
+        if (d->targetsCreature() && dd > reach) {
+            tp.x = c.pos.x + (tp.x - c.pos.x) * (dd - reach) / dd;
+            tp.y = c.pos.y + (tp.y - c.pos.y) * (dd - reach) / dd;
+        }
+        const double walk = dist(c.pos, tp);
+        ai.fsm = FsmState{"Move", "goto", t, tp, static_cast<Tick>(std::ceil(walk / cfg.walkMPerTick)), w.now()};
         trace(w, c, 'F', "fsm.enter", {{"state", "Move"}, {"to", a.targetType}, {"target", t},
                                        {"ticks", ai.fsm.timer}});
         return Start::Started;
@@ -267,19 +324,33 @@ Start startAction(World& w, Character& c, std::string& why) {
         return Start::Failed;
     }
     WorldObject* target = nullptr;
-    if (d->targetsObject()) {
-        if (a.target == kNone) {
+    Character* creature = nullptr;
+    if (d->targetsCharacter()) {
+        if (!w.character(a.target)) {
+            std::string fw;
+            a.target = findPerson(w, c, *d, c.ai.goal.target, &fw);
+        }
+        creature = w.character(a.target); // the other person (same slot as a creature target)
+        if (creature && !consents(w, c, *creature, *d)) {
+            w.remember(c, MemoryEntry{0, "was_refused", {creature->id}, kNone, -0.2, 0.0, "seen", 1.0});
+            why = "refused:" + d->id;
+            return Start::Failed;
+        }
+    } else if (d->targetsObject() || d->targetsCreature()) {
+        if (a.target == kNone || (d->targetsCreature() && !w.character(a.target))) {
             std::string fw;
             a.target = findTarget(w, c, *d, c.pos, &fw);
         }
-        target = w.object(a.target);
+        if (d->targetsObject()) target = w.object(a.target);
+        else creature = w.character(a.target);
     }
-    if (!canPerform(w, c, *d, target, &why)) return Start::Failed;
+    if (!canPerform(w, c, *d, target, &why, true, creature)) return Start::Failed;
     if (d->reserve && target) {
         target->reservedBy = c.id;
         target->reservedUntil = w.now() + d->duration + 2;
     }
-    ai.fsm = FsmState{d->fsm, d->id, target ? target->id : kNone, target ? target->pos : c.pos, d->duration, w.now()};
+    const EntityId tid = target ? target->id : (creature ? creature->id : kNone);
+    ai.fsm = FsmState{d->fsm, d->id, tid, target ? target->pos : (creature ? creature->pos : c.pos), d->duration, w.now()};
     trace(w, c, 'F', "fsm.enter", {{"state", d->fsm}, {"root", w.content().fsmRoot(d->fsm)}, {"action", d->id},
                                    {"target", ai.fsm.target}, {"ticks", d->duration}});
     return Start::Started;
@@ -449,7 +520,23 @@ void thinkCharacter(World& w, Character& c) {
 
 void installAi(World& w) {
     w.setThinkHook([](World& world) {
-        for (auto& [id, c] : world.characters()) thinkCharacter(world, c);
+        // Animals may be born while the loop runs (animalsDaily adds groups),
+        // so the daily pass runs before the per-tick loop.
+        if (world.now() % kTicksPerDay == 0 && world.now() > 0) {
+            animalsDaily(world);
+            spoilFood(world);
+        }
+        AnimalTick tick;
+        for (const auto& [id, c] : world.characters()) {
+            if (!c.body.alive) continue;
+            if (!c.isAnimal()) tick.people.push_back(&c);
+            else if (const SpeciesDef* sp = world.content().speciesOf(c.species); sp && sp->diet == "prey")
+                tick.predators.push_back(&c);
+        }
+        for (auto& [id, c] : world.characters()) {
+            if (c.isAnimal()) animalThink(world, c, tick);
+            else thinkCharacter(world, c);
+        }
     });
     installControl(w);
 }
