@@ -1,0 +1,7 @@
+{ "_doc": "Items (AI_DATA_SCHEMA.md §2). MVP chain: berries + wood -> meal at a hearth.",
+  "items": [
+    { "id": "berries", "tags": ["food", "raw"], "nutrition": 0.1 },
+    { "id": "wood",    "tags": ["material", "fuel"] },
+    { "id": "meal",    "tags": ["food", "cooked"], "nutrition": 0.45 }
+  ]
+}

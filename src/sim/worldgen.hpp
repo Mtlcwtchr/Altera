@@ -1,0 +1,15 @@
+#pragma once
+// The small test world of AI_ARCHITECTURE §11.1: a stub map (8-16 km), 2-3
+// biomes, a river, natural resources and one settlement of a few families.
+// Everything follows from (config, seed).
+
+#include "sim/world.hpp"
+
+namespace altera::sim {
+
+// cfg: content/sim/test_world.json (AI_DATA_SCHEMA.md §11). `seed` overrides cfg.seed when non-zero.
+World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seed = 0);
+
+Json loadJsonFile(const std::string& path);
+
+} // namespace altera::sim

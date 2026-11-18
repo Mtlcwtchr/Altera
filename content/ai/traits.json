@@ -1,0 +1,13 @@
+{ "_doc": "Traits (AI_DATA_SCHEMA.md §5).",
+  "traits": [
+    { "id": "lazy", "goal_mult": {"stock_food": 0.6, "sleep": 1.15}, "need_mult": {"energy": 1.15} },
+    { "id": "diligent", "goal_mult": {"stock_food": 1.4, "idle": 0.5} },
+    { "id": "honest", "legal_penalty": {"theft": 3.0} },
+    { "id": "desperate_thief", "legal_penalty": {"theft": 0.2} },
+    { "id": "stubborn", "hysteresis_mult": 1.8 },
+    { "id": "gluttonous", "goal_mult": {"eat": 1.25}, "need_mult": {"hunger": 1.2} },
+    { "id": "hardy", "need_mult": {"warmth": 0.6} },
+    { "id": "forager", "method_bias": {"forage": -2.5} }
+  ],
+  "exclusive": [["honest", "desperate_thief"], ["lazy", "diligent"]]
+}

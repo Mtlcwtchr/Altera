@@ -1,0 +1,211 @@
+#pragma once
+// Character - one data type for the player's people and every NPC
+// (CORE_SPEC §2). Only `controller` tells them apart.
+
+#include <deque>
+#include <map>
+#include <set>
+#include <string>
+#include <vector>
+
+#include "sim/core.hpp"
+
+namespace altera::sim {
+
+struct Body {
+    double health = 1.0;
+    double fatigue = 0.0;
+    int ageDays = 0;
+    char sex = 'f';
+    bool alive = true;
+    std::string causeOfDeath;
+    std::string stage() const {
+        const int years = ageDays / kDaysPerYear;
+        return years < 14 ? "child" : (years >= 60 ? "elder" : "adult");
+    }
+};
+
+struct Moodlet {
+    std::string id;
+    double value = 0.0;
+    Tick until = 0;
+};
+
+struct MemoryEntry {
+    Tick tick = 0;
+    std::string type;
+    std::vector<EntityId> who;
+    EntityId object = kNone;
+    double valence = 0.0;
+    double salience = 0.0;
+    std::string source = "seen"; // seen | heard | rumor | told
+    double confidence = 1.0;
+};
+
+// Directed: A->B is not B->A (AI_ARCHITECTURE §7).
+struct Relation {
+    double familiarity = 0.0;
+    double trust = 0.0;
+    double affinity = 0.0;
+    double fear = 0.0;
+    double debt = 0.0;
+};
+
+struct Status {
+    EntityId family = kNone;
+    EntityId dynasty = kNone;
+    EntityId settlement = kNone;
+    std::string role = "member";
+    EntityId spouse = kNone;
+    EntityId mother = kNone;
+    EntityId father = kNone;
+    std::vector<EntityId> children;
+};
+
+struct Controller {
+    enum class Kind { Ai, Player };
+    Kind kind = Kind::Ai;
+    int playerId = 0;
+    bool freeWill = true; // Sims "free will": idle player characters go back to their own plan
+    Tick since = 0;
+    bool isPlayer() const { return kind == Kind::Player; }
+};
+
+// --- AI state (four layers + controller bookkeeping) ------------------------
+struct GoalInstance {
+    std::string id;           // goal type from goals.json
+    std::string source = "utility"; // utility | player | queued
+    double score = 0.0;
+    Tick started = 0;
+    std::string task;         // root HTN task (a queued task may override the goal's own)
+    EntityId target = kNone;  // optional target (queued task / player command)
+    bool valid() const { return !id.empty(); }
+};
+
+struct PlanStep {
+    std::string kind; // do | achieve
+    std::string ref;  // interaction for do
+    std::vector<std::string> achieve;
+    std::vector<std::string> allow;
+    std::string method; // HTN method this step came from
+};
+
+struct PlanAction {
+    std::string interaction; // catalog id, or "goto"
+    EntityId target = kNone;
+    std::string targetType;
+    double cost = 0.0;
+};
+
+struct Plan {
+    std::vector<std::string> methods; // task/method chosen at each decomposition
+    std::vector<PlanStep> steps;
+    size_t stepIndex = 0;
+    std::vector<PlanAction> actions; // GOAP chain for the current step
+    size_t actionIndex = 0;
+    bool valid() const { return !steps.empty(); }
+};
+
+struct FsmState {
+    std::string state = "Idle";
+    std::string interaction;
+    EntityId target = kNone;
+    Vec2 dest;
+    Tick timer = 0;
+    Tick started = 0;
+};
+
+struct WeightMod {
+    std::string target; // goal:<id>
+    double delta = 0.0;
+    Tick created = 0;
+    Tick ttl = 0;
+    std::string decay = "linear"; // linear | none
+    std::string reason;
+    std::string source;
+    double at(Tick now) const {
+        if (now >= created + ttl) return 0.0;
+        if (decay == "none" || ttl <= 0) return delta;
+        return delta * (1.0 - static_cast<double>(now - created) / static_cast<double>(ttl));
+    }
+};
+
+struct QueuedTask {
+    std::string task; // HTN task id, or a catalog interaction id
+    EntityId target = kNone;
+    double priority = 0.5;
+    Tick created = 0;
+    Tick ttl = 0;
+    std::string reason;
+    std::string source;
+};
+
+struct TraceEntry {
+    Tick tick = 0;
+    char layer = 'U'; // U H G F C(ontroller) E(vent)
+    std::string text;
+};
+
+struct MethodFail {
+    int count = 0;
+    Tick until = 0;
+};
+
+struct AiStats {
+    std::map<std::string, std::int64_t> goalTicks;
+    std::map<std::string, std::int64_t> failReasons;
+    std::int64_t idleTicks = 0;
+    std::int64_t starvingTicks = 0;
+    std::int64_t replans = 0;
+    std::int64_t goalSwitches = 0;
+    std::int64_t planFailures = 0;
+    std::map<std::string, std::int64_t> idleReasons;
+};
+
+struct AiState {
+    GoalInstance goal;
+    Plan plan;
+    FsmState fsm;
+    // A plan put aside while a player drives the body (CORE_SPEC §3.2.5).
+    bool suspended = false;
+    GoalInstance suspendedGoal;
+    Plan suspendedPlan;
+    std::vector<WeightMod> mods;
+    std::vector<QueuedTask> queue;
+    std::map<std::string, MethodFail> methodFails;
+    std::map<std::string, Tick> goalCooldown;
+    std::deque<TraceEntry> trace;
+    std::string lastFailReason;
+    Tick nextThink = 0;
+    AiStats stats;
+};
+
+struct Character {
+    EntityId id = kNone;
+    std::string name;
+    Body body;
+    std::map<std::string, double> needs; // 0..1, 1 = satisfied
+    std::vector<Moodlet> moodlets;
+    std::vector<std::string> traits;
+    std::map<std::string, double> skills;
+    std::set<std::string> knowledge;
+    std::set<EntityId> knownObjects;
+    std::vector<MemoryEntry> memory;
+    std::map<EntityId, Relation> relations;
+    Status status;
+    std::map<std::string, int> inventory;
+    Vec2 pos;
+    EntityId home = kNone; // the family's storage object
+    Controller controller;
+    AiState ai;
+
+    bool hasTrait(const std::string& t) const;
+    int has(const std::string& item) const;
+    double need(const std::string& n) const;
+    double mood(Tick now) const;
+};
+
+void to_json(Json& j, const Character& c);
+void from_json(const Json& j, Character& c);
+
+} // namespace altera::sim

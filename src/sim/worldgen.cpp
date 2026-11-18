@@ -1,0 +1,294 @@
+#include "sim/worldgen.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <fstream>
+#include <stdexcept>
+
+namespace altera::sim {
+
+Json loadJsonFile(const std::string& path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) throw std::runtime_error("cannot open " + path);
+    return Json::parse(f);
+}
+
+namespace {
+
+constexpr double kPi = 3.14159265358979323846;
+
+double lattice(std::uint64_t seed, int x, int y) {
+    const std::uint64_t h = hashCombine(hashCombine(seed, static_cast<std::uint64_t>(x) + 0x10000u),
+                                        static_cast<std::uint64_t>(y) + 0x10000u);
+    return static_cast<double>(h >> 11) * (1.0 / 9007199254740992.0);
+}
+
+// Smooth value noise, one octave per call.
+double valueNoise(std::uint64_t seed, double x, double y) {
+    const int x0 = static_cast<int>(std::floor(x)), y0 = static_cast<int>(std::floor(y));
+    const double fx = x - x0, fy = y - y0;
+    const double sx = fx * fx * (3 - 2 * fx), sy = fy * fy * (3 - 2 * fy);
+    const double a = lattice(seed, x0, y0), b = lattice(seed, x0 + 1, y0);
+    const double c = lattice(seed, x0, y0 + 1), d = lattice(seed, x0 + 1, y0 + 1);
+    return (a + (b - a) * sx) + ((c + (d - c) * sx) - (a + (b - a) * sx)) * sy;
+}
+
+double fbm(std::uint64_t seed, double x, double y) {
+    return 0.6 * valueNoise(seed, x, y) + 0.3 * valueNoise(seed + 1, x * 2.1, y * 2.1) +
+           0.1 * valueNoise(seed + 2, x * 4.3, y * 4.3);
+}
+
+std::string makeName(Rng& r, bool female) {
+    static const char* a[] = {"Ar", "Bel", "Cor", "Dra", "El", "Fen", "Gor", "Hal", "Is", "Kar",
+                              "Lor", "Mor", "Nar", "Or", "Ral", "Sar", "Tor", "Ul", "Var", "Yr"};
+    static const char* b[] = {"an", "ek", "il", "or", "un", "as", "em", "ith", "ar", "ol"};
+    static const char* fem[] = {"a", "ia", "elle", "is", "wen"};
+    static const char* mas[] = {"", "ric", "mund", "ald", "os"};
+    std::string n = a[r.irange(0, 19)];
+    n += b[r.irange(0, 9)];
+    n += female ? fem[r.irange(0, 4)] : mas[r.irange(0, 4)];
+    return n;
+}
+
+std::string makeFamilyName(Rng& r) {
+    static const char* a[] = {"Ash", "Black", "Crow", "Dusk", "Grim", "Iron", "Moss", "Red", "Thorn", "Wolf"};
+    static const char* b[] = {"vale", "barrow", "mere", "hold", "wood", "stone", "ford", "fell"};
+    return std::string(a[r.irange(0, 9)]) + b[r.irange(0, 7)];
+}
+
+std::vector<std::string> pickTraits(Rng& r, const Content& c, const std::vector<std::string>& pool, int count) {
+    std::vector<std::string> out;
+    for (int guard = 0; guard < 32 && static_cast<int>(out.size()) < count && !pool.empty(); ++guard) {
+        const std::string& t = pool[static_cast<size_t>(r.irange(0, static_cast<int>(pool.size()) - 1))];
+        if (std::find(out.begin(), out.end(), t) != out.end()) continue;
+        bool clash = false;
+        for (const auto& [x, y] : c.exclusiveTraits)
+            for (const auto& o : out)
+                if ((x == t && y == o) || (y == t && x == o)) clash = true;
+        if (!clash) out.push_back(t);
+    }
+    return out;
+}
+
+} // namespace
+
+World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedOverride) {
+    const std::uint64_t seed = seedOverride ? seedOverride : cfg.value("seed", std::uint64_t{1});
+    World w(content, seed);
+    Rng rng(hashCombine(seed, hashStr("worldgen")));
+
+    // --- map --------------------------------------------------------------
+    MapGrid& m = w.map();
+    m.sizeM = std::clamp(cfg.value("size_m", 12000.0), 8000.0, 16000.0);
+    m.cellM = cfg.value("cell_m", 250.0);
+    m.w = m.h = static_cast<int>(m.sizeM / m.cellM);
+    for (const auto& b : cfg.value("biomes", Json::array({"meadow", "forest", "marsh"})))
+        m.biomeNames.push_back(b.is_string() ? b.get<std::string>() : b.at("id").get<std::string>());
+    auto biomeIdx = [&](const std::string& n) -> int {
+        for (size_t i = 0; i < m.biomeNames.size(); ++i)
+            if (m.biomeNames[i] == n) return static_cast<int>(i);
+        return -1;
+    };
+    const int iMeadow = std::max(0, biomeIdx("meadow"));
+    const int iForest = biomeIdx("forest");
+    const int iMarsh = biomeIdx("marsh");
+    m.biome.assign(static_cast<size_t>(m.w * m.h), static_cast<std::uint8_t>(iMeadow));
+    m.water.assign(static_cast<size_t>(m.w * m.h), 0);
+    const double scale = 1.0 / 10.0; // noise lattice every ~10 cells (2.5 km)
+    const double phase = rng.range(0.0, 2.0 * kPi);
+    const bool river = cfg.value("river", true);
+    for (int y = 0; y < m.h; ++y)
+        for (int x = 0; x < m.w; ++x) {
+            const size_t i = static_cast<size_t>(y * m.w + x);
+            const double moist = fbm(seed ^ 0xA11CEull, x * scale, y * scale);
+            int b = iMeadow;
+            if (iMarsh >= 0 && moist > 0.66) b = iMarsh;
+            else if (iForest >= 0 && moist > 0.44) b = iForest;
+            m.biome[i] = static_cast<std::uint8_t>(b);
+            if (river) {
+                const double yy = (y + 0.5) * m.cellM;
+                const double rx = m.sizeM * 0.5 + m.sizeM * 0.15 * std::sin(yy / m.sizeM * 2.0 * kPi * 1.3 + phase);
+                if (std::abs((x + 0.5) * m.cellM - rx) < m.cellM * 0.75) m.water[i] = 1;
+            }
+        }
+
+    // --- settlement site: the meadow cell nearest the map centre beside the river
+    Vec2 center{m.sizeM * 0.5, m.sizeM * 0.5};
+    {
+        double best = 1e18;
+        for (int y = 2; y < m.h - 2; ++y)
+            for (int x = 2; x < m.w - 2; ++x) {
+                const size_t i = static_cast<size_t>(y * m.w + x);
+                if (m.water[i] || m.biome[i] != iMeadow) continue;
+                bool nearWater = !river;
+                for (int dy = -3; dy <= 3 && !nearWater; ++dy)
+                    for (int dx = -3; dx <= 3; ++dx)
+                        if (m.water[static_cast<size_t>((y + dy) * m.w + (x + dx))]) nearWater = true;
+                if (!nearWater) continue;
+                const Vec2 p{(x + 0.5) * m.cellM, (y + 0.5) * m.cellM};
+                const double d = dist(p, Vec2{m.sizeM * 0.5, m.sizeM * 0.5});
+                if (d < best) {
+                    best = d;
+                    center = p;
+                }
+            }
+    }
+    Settlement& st = w.settlements()[w.newId()];
+    st.id = w.settlements().rbegin()->first;
+    st.name = cfg.value("settlement_name", std::string("Emberford"));
+    st.center = center;
+
+    // --- natural resources --------------------------------------------------
+    const double cellKm2 = (m.cellM / 1000.0) * (m.cellM / 1000.0);
+    for (const auto& [id, def] : content.objects) {
+        if (def.biomes.empty() || def.perKm2 <= 0.0) continue;
+        for (int y = 0; y < m.h; ++y)
+            for (int x = 0; x < m.w; ++x) {
+                const size_t i = static_cast<size_t>(y * m.w + x);
+                if (m.water[i]) continue;
+                if (std::find(def.biomes.begin(), def.biomes.end(), m.biomeNames[m.biome[i]]) == def.biomes.end())
+                    continue;
+                Rng cr(hashCombine(hashCombine(seed, hashStr(id)), i));
+                const double expect = def.perKm2 * cellKm2;
+                int n = static_cast<int>(expect);
+                if (cr.chance(expect - n)) ++n;
+                for (int k = 0; k < n; ++k) {
+                    WorldObject o;
+                    o.type = id;
+                    o.pos = {(x + cr.uniform()) * m.cellM, (y + cr.uniform()) * m.cellM};
+                    o.stock = def.stock;
+                    WorldObject& placed = w.addObject(o);
+                    if (def.regrowEvery > 0)
+                        w.schedule({def.regrowEvery + cr.irange(0, static_cast<int>(def.regrowEvery)), 0, "regrow",
+                                    kNone, kNone, placed.id, {}});
+                }
+            }
+    }
+
+    // --- families -----------------------------------------------------------
+    const int families = cfg.value("families", 3);
+    int ppfLo = 4, ppfHi = 6;
+    if (cfg.contains("people_per_family")) {
+        ppfLo = cfg["people_per_family"].at(0).get<int>();
+        ppfHi = cfg["people_per_family"].at(1).get<int>();
+    }
+    std::vector<std::string> pool = cfg.value("traits_pool", std::vector<std::string>{});
+    if (pool.empty())
+        for (const auto& [id, t] : content.traits) pool.push_back(id);
+    const auto knowledgeStart = cfg.value("knowledge_start", std::vector<std::string>{"foraging", "cooking"});
+    const auto childKnowledge = cfg.value("child_knowledge", std::vector<std::string>{"foraging"});
+    const int traitsPer = cfg.value("traits_per_person", 2);
+    const double knowRadius = cfg.value("know_radius_m", 1500.0);
+
+    auto spawnSettlementObject = [&](const std::string& type, Vec2 pos, EntityId fam) -> EntityId {
+        WorldObject o;
+        o.type = type;
+        o.pos = pos;
+        o.ownerFamily = fam;
+        auto d = content.objects.find(type);
+        if (d != content.objects.end()) o.stock = d->second.stock;
+        return w.addObject(o).id;
+    };
+
+    std::vector<EntityId> everyone;
+    for (int f = 0; f < families; ++f) {
+        Family fam;
+        fam.id = w.newId();
+        fam.name = makeFamilyName(rng);
+        Dynasty dyn;
+        dyn.id = w.newId();
+        dyn.name = "House " + fam.name;
+        fam.dynasty = dyn.id;
+        fam.settlement = st.id;
+        const double ang = 2.0 * kPi * (f + 0.25 * rng.uniform()) / std::max(1, families);
+        const double rad = rng.range(60.0, 120.0);
+        const Vec2 house{center.x + std::cos(ang) * rad, center.y + std::sin(ang) * rad};
+        const int people = rng.irange(ppfLo, ppfHi);
+        for (const auto& [type, def] : content.objects) {
+            if (!def.settlement) continue;
+            const int n = def.perFamily + def.perPerson * people;
+            for (int k = 0; k < n; ++k) {
+                const Vec2 p{house.x + rng.range(-6.0, 6.0), house.y + rng.range(-6.0, 6.0)};
+                const EntityId oid = spawnSettlementObject(type, p, fam.id);
+                if (type == "storage" && fam.storage == kNone) fam.storage = oid;
+                if (type == "hearth" && fam.hearth == kNone) fam.hearth = oid;
+            }
+        }
+
+        std::vector<EntityId> members;
+        auto makePerson = [&](char sex, int ageYears, const std::string& role) -> Character& {
+            Character c;
+            c.id = w.newId();
+            c.body.sex = sex;
+            c.body.ageDays = ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1);
+            c.name = makeName(rng, sex == 'f') + " " + fam.name;
+            c.traits = pickTraits(rng, content, pool, traitsPer);
+            for (const auto& n : content.needs) c.needs[n.id] = rng.range(n.startLo, n.startHi);
+            const bool child = c.body.stage() == "child";
+            for (const auto& k : child ? childKnowledge : knowledgeStart) c.knowledge.insert(k);
+            for (const auto& k : c.knowledge) c.skills[k] = child ? rng.range(0.05, 0.2) : rng.range(0.2, 0.7);
+            c.status.family = fam.id;
+            c.status.dynasty = dyn.id;
+            c.status.settlement = st.id;
+            c.status.role = role;
+            c.pos = {house.x + rng.range(-4.0, 4.0), house.y + rng.range(-4.0, 4.0)};
+            c.home = fam.storage;
+            Character& placed = w.addCharacter(std::move(c));
+            members.push_back(placed.id);
+            return placed;
+        };
+        Character& father = makePerson('m', rng.irange(26, 46), "head");
+        const EntityId fatherId = father.id;
+        Character& mother = makePerson('f', rng.irange(24, 42), "spouse");
+        const EntityId motherId = mother.id;
+        w.character(fatherId)->status.spouse = motherId;
+        w.character(motherId)->status.spouse = fatherId;
+        int left = people - 2;
+        if (left >= 3 && rng.chance(0.5)) {
+            makePerson(rng.chance(0.5) ? 'f' : 'm', rng.irange(61, 72), "elder");
+            --left;
+        }
+        for (int k = 0; k < left; ++k) {
+            Character& kid = makePerson(rng.chance(0.5) ? 'f' : 'm', rng.irange(3, 19), "child");
+            kid.status.father = fatherId;
+            kid.status.mother = motherId;
+            w.character(fatherId)->status.children.push_back(kid.id);
+            w.character(motherId)->status.children.push_back(kid.id);
+        }
+        dyn.founder = fatherId;
+        fam.members = members;
+        w.families()[fam.id] = fam;
+        w.dynasties()[dyn.id] = dyn;
+        st.families.push_back(fam.id);
+        everyone.insert(everyone.end(), members.begin(), members.end());
+    }
+    w.settlements()[st.id] = st;
+
+    // --- relations and knowledge -------------------------------------------
+    for (EntityId a : everyone) {
+        Character& ca = *w.character(a);
+        for (EntityId b : everyone) {
+            if (a == b) continue;
+            const Character& cb = *w.character(b);
+            Relation r;
+            Rng rr = agentRng(seed, a, b, "relation");
+            if (ca.status.family == cb.status.family) {
+                r.familiarity = 1.0;
+                r.affinity = rr.range(0.4, 0.8);
+                r.trust = rr.range(0.5, 0.9);
+            } else {
+                r.familiarity = rr.range(0.2, 0.6);
+                r.affinity = rr.range(-0.3, 0.35);
+                r.trust = rr.range(-0.1, 0.4);
+            }
+            ca.relations[b] = r;
+        }
+        for (const auto& [oid, o] : w.objects()) {
+            const bool own = o.ownerFamily != kNone;
+            if (own || dist(o.pos, center) <= knowRadius) ca.knownObjects.insert(oid);
+        }
+    }
+    return w;
+}
+
+} // namespace altera::sim

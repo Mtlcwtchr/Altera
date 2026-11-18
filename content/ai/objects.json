@@ -1,0 +1,10 @@
+{ "_doc": "Object types (AI_DATA_SCHEMA.md §3).",
+  "objects": [
+    { "id": "berry_bush", "stock": {"berries": 6}, "max_stock": {"berries": 6}, "regrow": {"berries": 1},
+      "regrow_every": 48, "biomes": ["meadow", "forest"], "per_km2": 5 },
+    { "id": "tree", "biomes": ["forest", "meadow"], "per_km2": 8 },
+    { "id": "hearth", "settlement": true, "per_family": 1, "warmth": true, "owned": true },
+    { "id": "storage", "settlement": true, "per_family": 1, "owned": true, "stock": {"meal": 3, "wood": 2} },
+    { "id": "bed", "settlement": true, "per_person": 1, "owned": true }
+  ]
+}

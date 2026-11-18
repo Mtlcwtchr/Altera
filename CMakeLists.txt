@@ -295,6 +295,25 @@ add_executable(sim_runner sim_runner/main.cpp)
 target_link_libraries(sim_runner PRIVATE asr_simulation asr_warnings)
 
 # ---------------------------------------------------------------------------
+# altera_sim - the Altera life-sim core (doc/design/ALTERA_CORE_SPEC_v0.1.md):
+# characters, 4-layer AI (Utility -> HTN -> GOAP -> FSM), controllers. Headless,
+# deterministic from seed + command log; depends on nothing but the JSON header.
+# ---------------------------------------------------------------------------
+add_library(altera_sim STATIC
+        src/sim/rules.cpp
+        src/sim/content.cpp
+        src/sim/validate.cpp
+        src/sim/character.cpp
+        src/sim/world.cpp
+        src/sim/worldgen.cpp)
+target_include_directories(altera_sim PUBLIC src)
+target_link_libraries(altera_sim PUBLIC nlohmann_json PRIVATE asr_warnings)
+
+add_executable(altera_sim_runner src/sim/runner/main.cpp)
+target_link_libraries(altera_sim_runner PRIVATE altera_sim asr_warnings)
+target_compile_definitions(altera_sim_runner PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
+# ---------------------------------------------------------------------------
 # tools - content validator.
 # ---------------------------------------------------------------------------
 # terrain_lint - looks for the marks the generator leaves on its own work:
@@ -667,6 +686,11 @@ endif()
 # ---------------------------------------------------------------------------
 if(ASR_BUILD_TESTS)
     enable_testing()
+    add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp)
+    target_include_directories(altera_sim_tests PRIVATE src tests)
+    target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
+    target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    add_test(NAME altera_sim COMMAND altera_sim_tests)
     add_executable(asr_dlss_math_tests tests/main.cpp tests/test_dlss_math.cpp)
     target_include_directories(asr_dlss_math_tests PRIVATE src tests)
     target_link_libraries(asr_dlss_math_tests PRIVATE asr_warnings)
