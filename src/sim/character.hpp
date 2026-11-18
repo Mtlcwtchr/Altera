@@ -68,6 +68,7 @@ struct Controller {
     int playerId = 0;
     bool freeWill = true; // Sims "free will": idle player characters go back to their own plan
     Tick since = 0;
+    Tick idleSince = 0; // player: since when no player order is running
     bool isPlayer() const { return kind == Kind::Player; }
 };
 

@@ -90,6 +90,8 @@ void dropGoal(World& w, Character& c, const std::string& reason, bool failed) {
     }
     trace(w, c, 'U', failed ? "goal.failed" : (reason == "done" ? "goal.done" : "goal.dropped"),
           {{"goal", ai.goal.id}, {"task", ai.goal.task}, {"why", reason}});
+    // A finished player order starts the free-will countdown again.
+    if (c.controller.isPlayer() && ai.goal.source != "utility") c.controller.idleSince = w.now();
     ai.goal = GoalInstance{};
     ai.plan = Plan{};
 }

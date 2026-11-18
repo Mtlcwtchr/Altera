@@ -34,7 +34,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Relation, familiarity, trust, af
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Status, family, dynasty, settlement, role, spouse, mother, father,
                                                 children)
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, allow, method)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanAction, interaction, target, targetType, cost)
