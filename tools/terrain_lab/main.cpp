@@ -618,9 +618,12 @@ struct Lab {
             postReady = post.open(device);
             if (postReady) dlssComposite.open(device);
             psxReady = psx.open(device);
+            if (!psxReady) std::fprintf(stderr, "psx off: %s\n", device.error().c_str());
             psxFile = foliageFile.parent_path() / "psx.json";
             loadPsx();
             if (options.psx >= 0) psxSettings.enabled = options.psx == 1;
+            std::printf("psx: %s, %s (%ux, %u bits)\n", psxReady ? "ready" : "no pipeline",
+                        psxSettings.enabled ? "on" : "off", psxSettings.pixelScale, psxSettings.colourBits);
             {
                 // Opened even with the water off - one dry texel - since the
                 // plants' spawns read the water map either way.

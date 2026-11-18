@@ -38,14 +38,17 @@ float hash(float2 p) {
 
 static const float kBayer[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
 
+// The block from uv, not SV_Position: a PS that does not read the VS's uv did
+// not build on D3D12 (CreateGraphicsPipelineState 0x80070057). Sample (the
+// sampler is NEAREST) rather than Load keeps the sampler in the reflection too.
 float4 psxPs(VsOut input) : SV_Target0 {
-    const int2 low = int2(input.position.xy);
+    const int2 low = int2(input.uv * source / float(scale));
     const int2 origin = low * int(scale);
     const int2 last = int2(source) - 1;
     float3 sum = 0;
     for (uint y = 0; y < scale; ++y)
         for (uint x = 0; x < scale; ++x)
-            sum += frame.Load(int3(min(origin + int2(x, y), last), 0)).rgb;
+            sum += frame.SampleLevel(frameSampler, (float2(min(origin + int2(x, y), last)) + 0.5) / source, 0).rgb;
     float3 c = sum / float(scale * scale) * 255.0;
 
     const float d = kBayer[(low.y & 3) * 4 + (low.x & 3)] / 16.0 - 0.5;
