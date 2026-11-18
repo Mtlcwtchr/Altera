@@ -35,11 +35,12 @@ int runAll(const std::vector<std::string>& patterns) {
         gCurrent = t.name;
         const int before = gFailures;
         t.fn();
+        // Flushed per test: if a test crashes, the log shows the last one that passed.
         if (gFailures > before) {
             ++failed;
-            std::cout << "FAIL " << t.name << "\n";
+            std::cout << "FAIL " << t.name << std::endl;
         } else {
-            std::cout << "ok   " << t.name << "\n";
+            std::cout << "ok   " << t.name << std::endl;
         }
     }
     std::cout << "\n" << (ran - failed) << "/" << ran << " tests passed\n";

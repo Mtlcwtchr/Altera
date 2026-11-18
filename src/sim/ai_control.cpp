@@ -130,7 +130,9 @@ void playerThink(World& w, Character& c) {
     const AiConfig& cfg = w.content().config;
     if (ai.goal.valid()) return; // the player's order (or its queued task) runs
     // Player-queued tasks, in order.
-    for (const auto& q : ai.queue) {
+    // A copy: adopting (or failing) a goal edits the queue.
+    const std::vector<QueuedTask> queue = ai.queue;
+    for (const auto& q : queue) {
         if (q.source != "player") continue;
         GoalScore gs;
         gs.goal = "queued";

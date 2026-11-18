@@ -121,9 +121,14 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 const size_t i = static_cast<size_t>(y * m.w + x);
                 if (m.water[i] || m.biome[i] != iMeadow) continue;
                 bool nearWater = !river;
+                // The window (radius 3) is wider than the scan margin (2):
+                // neighbours outside the map are skipped, not read.
                 for (int dy = -3; dy <= 3 && !nearWater; ++dy)
-                    for (int dx = -3; dx <= 3; ++dx)
-                        if (m.water[static_cast<size_t>((y + dy) * m.w + (x + dx))]) nearWater = true;
+                    for (int dx = -3; dx <= 3; ++dx) {
+                        const int nx = x + dx, ny = y + dy;
+                        if (nx < 0 || ny < 0 || nx >= m.w || ny >= m.h) continue;
+                        if (m.water[static_cast<size_t>(ny * m.w + nx)]) nearWater = true;
+                    }
                 if (!nearWater) continue;
                 const Vec2 p{(x + 0.5) * m.cellM, (y + 0.5) * m.cellM};
                 const double d = dist(p, Vec2{m.sizeM * 0.5, m.sizeM * 0.5});
