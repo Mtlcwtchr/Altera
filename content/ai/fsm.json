@@ -9,6 +9,8 @@
     { "id": "Eat", "parent": "Act", "interruptible": false },
     { "id": "Interact", "parent": "Act" },
     { "id": "Warm", "parent": "Act" },
+    { "id": "Talk", "parent": "Act" },
+    { "id": "Fight", "parent": "Act", "interruptible": false },
     { "id": "Rest", "interruptible": true },
     { "id": "Sleep", "parent": "Rest", "wake_on": ["threat"] }
   ]

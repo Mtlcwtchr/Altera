@@ -1,0 +1,96 @@
+{ "_doc": "Names of content ids (English). English has no case forms: nouns are plain strings.",
+  "item": {
+    "berries": { "name": "berries" },
+    "wood": { "name": "firewood" },
+    "meal": { "name": "stew" }
+  },
+  "object": {
+    "berry_bush": { "name": "berry bush" },
+    "tree": { "name": "tree" },
+    "hearth": { "name": "hearth" },
+    "storage": { "name": "larder" },
+    "bed": { "name": "bed" }
+  },
+  "need": {
+    "hunger": { "name": "satiety" },
+    "energy": { "name": "energy" },
+    "warmth": { "name": "warmth" }
+  },
+  "trait": {
+    "lazy": { "name": "lazy", "desc": "Works reluctantly, sleeps more and tires faster." },
+    "diligent": { "name": "diligent", "desc": "Gladly stocks food and is rarely idle." },
+    "honest": { "name": "honest", "desc": "Theft is almost unthinkable: it costs three times as much." },
+    "desperate_thief": { "name": "desperate thief", "desc": "Other people's goods are no obstacle to an empty belly." },
+    "stubborn": { "name": "stubborn", "desc": "Hates to give up what was started." },
+    "gluttonous": { "name": "glutton", "desc": "Gets hungry faster and thinks of food more often." },
+    "hardy": { "name": "hardy", "desc": "Bears the cold better than others." },
+    "forager": { "name": "forager", "desc": "Prefers to look for food in the woods rather than cook." }
+  },
+  "goal": {
+    "eat": { "name": "eat" },
+    "sleep": { "name": "sleep" },
+    "warm_up": { "name": "warm up" },
+    "stock_food": { "name": "stock food" },
+    "idle": { "name": "idle" },
+    "queued": { "name": "queued task" },
+    "player_action": { "name": "player order" }
+  },
+  "task": {
+    "obtain_food": { "name": "get food" },
+    "rest": { "name": "rest" },
+    "get_warm": { "name": "get warm" },
+    "stock_food": { "name": "stock food" },
+    "idle": { "name": "idle" }
+  },
+  "interaction": {
+    "gather_berries": { "name": "gather berries" },
+    "gather_wood": { "name": "chop firewood" },
+    "cook_meal": { "name": "cook stew" },
+    "take_meal": { "name": "take food from the larder" },
+    "store_meal": { "name": "put food in the larder" },
+    "steal_meal": { "name": "steal food" },
+    "eat_meal": { "name": "eat stew" },
+    "eat_berries": { "name": "eat berries" },
+    "sleep_bed": { "name": "sleep in a bed" },
+    "sleep_ground": { "name": "sleep on the ground" },
+    "warm_at_hearth": { "name": "warm up at the hearth" },
+    "huddle": { "name": "huddle against the cold" },
+    "idle_wander": { "name": "wander about" },
+    "give_item": { "name": "give an item" },
+    "lend_item": { "name": "lend an item" },
+    "teach_skill": { "name": "teach a craft" },
+    "chat": { "name": "chat" },
+    "brawl": { "name": "brawl" }
+  },
+  "moodlet": {
+    "ate_meal": { "name": "hearty meal" },
+    "ate_raw": { "name": "raw snack" },
+    "slept_bed": { "name": "slept in a bed" },
+    "slept_rough": { "name": "slept rough" },
+    "warm_hearth": { "name": "warmed at the hearth" },
+    "stole": { "name": "guilty conscience" },
+    "insulted": { "name": "insulted" },
+    "wounded": { "name": "beaten up" },
+    "won_fight": { "name": "won a fight" },
+    "learned": { "name": "learned something" },
+    "chatted": { "name": "good talk" }
+  },
+  "fsm": {
+    "Idle": { "name": "idle" },
+    "Loiter": { "name": "loitering" },
+    "Wait": { "name": "waiting" },
+    "Move": { "name": "walking" },
+    "Act": { "name": "acting" },
+    "Work": { "name": "working" },
+    "Eat": { "name": "eating" },
+    "Interact": { "name": "busy" },
+    "Warm": { "name": "warming up" },
+    "Talk": { "name": "talking" },
+    "Fight": { "name": "fighting" },
+    "Rest": { "name": "resting" },
+    "Sleep": { "name": "sleeping" }
+  },
+  "risk": {
+    "broken_bone": { "name": "broken bone" }
+  }
+}

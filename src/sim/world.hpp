@@ -86,7 +86,8 @@ struct ChronicleEntry {
     Tick tick = 0;
     std::string type;
     std::vector<EntityId> who;
-    std::string text;
+    std::string code;              // loc key (chronicle.<...>), text assembled at output
+    Json params = Json::object();
 };
 
 class World {
@@ -123,7 +124,7 @@ public:
     // --- events ---------------------------------------------------------
     void schedule(Event e); // seq assigned here
     size_t pendingEvents() const { return events_.size(); }
-    void chronicle(const std::string& type, std::vector<EntityId> who, std::string text);
+    void chronicle(const std::string& type, std::vector<EntityId> who, std::string code, Json params = Json::object());
     const std::vector<ChronicleEntry>& chronicleLog() const { return chronicle_; }
 
     // --- commands -------------------------------------------------------

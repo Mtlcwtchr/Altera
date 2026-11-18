@@ -27,8 +27,14 @@ bool goapFact(const Condition& k);
 // `why` gets the first failing precondition.
 bool canPerform(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
                 std::string* why, bool checkRange = true);
-// Applies `eff` once (a continuous interaction calls it every tick).
-void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target);
+// Applies `eff` once (a continuous interaction calls it every tick), after the
+// `chance` roll (on_fail instead of eff when it fails), then the `risk` rolls.
+// `targetChar` is the target character of character-targeted interactions
+// (t.* effects, rel, rel_back).
+void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target,
+                  Character* targetChar = nullptr);
+void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list, WorldObject* target,
+                     Character* targetChar = nullptr);
 // Known, free (or ours), condition-satisfying instance of the interaction's
 // target type nearest `from`; kNone if there is none.
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,

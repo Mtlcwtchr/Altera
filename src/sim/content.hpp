@@ -105,6 +105,49 @@ struct HtnTask {
 };
 
 // --- Layers 3/4: interaction catalog, FSM ----------------------------------
+// A parameter of a parametric interaction: `$name` in pre/eff/terms.
+struct ParamDef {
+    std::string name;
+    std::string type;            // item | skill | place | need | trait
+    std::vector<std::string> of; // allowed values (empty = any of the type)
+};
+
+// Success chance of a (non-continuous) interaction: base + per_skill * skill.
+struct ChanceDef {
+    bool set = false;
+    double base = 1.0;
+    std::string skill; // may be a parameter ($skill)
+    double perSkill = 0.0;
+    double min = 0.0, max = 1.0;
+};
+
+// A side risk rolled after the interaction (succeeded or not).
+struct RiskDef {
+    std::string id; // loc: risk.<id>.name
+    double p = 0.0;
+    std::vector<Effect> eff;
+};
+
+// Violence (stage 2 of the interpreter: parser + validator now).
+struct CombatDef {
+    bool set = false;
+    std::string attackSkill = "fighting";
+    std::string defenseSkill = "fighting";
+    double damageLo = 0.0, damageHi = 0.0; // health removed from the loser
+    bool lethal = false;                   // a loser at health 0 dies (cause: combat)
+    std::map<std::string, std::vector<Effect>> outcomes; // win | lose | draw | flee
+};
+
+// Terms of a deal between two characters (stage 2).
+struct TermsDef {
+    bool set = false;
+    std::map<std::string, int> give; // actor -> target (items, may be $params)
+    std::map<std::string, int> take; // target -> actor
+    Tick due = 0;                    // 0 = on the spot; else deferred, becomes a commitment
+    std::string commitment;          // config.commitments id when due > 0
+    std::vector<Effect> onBreach;
+};
+
 struct InteractionDef {
     std::string id;
     std::string category;
@@ -125,7 +168,43 @@ struct InteractionDef {
     bool continuous = false;
     bool hasUntil = false;
     Condition until;
+    std::vector<ParamDef> params;
+    ChanceDef chance;
+    std::vector<Effect> onFail; // applied instead of eff when the chance roll fails
+    std::vector<RiskDef> risk;
+    CombatDef combat;
+    TermsDef terms;
     bool targetsObject() const { return target.rfind("object:", 0) == 0; }
+    bool targetsCharacter() const { return target == "character"; }
+    bool parametric() const { return !params.empty(); }
+};
+
+// A parametric interaction with its $params bound (pre, eff, on_fail, risk,
+// combat outcomes, terms, chance.skill). Throws on an unbound parameter or a
+// value outside the parameter's `of` list.
+InteractionDef bindParams(const InteractionDef& d, const ParamBinding& b);
+
+// --- dialogue.json: speech acts and dialogue templates ----------------------
+// Texts are never here: dialogue.<template>.<variant> in content/loc/<lang>/dialogue.json.
+struct DialogueVariant {
+    std::string id;
+    std::vector<Condition> pre;
+    double weight = 1.0;
+};
+
+struct DialogueTemplate {
+    std::string id;
+    std::string speech;             // speech act (speech_acts)
+    std::vector<Condition> pre;     // speaker -> listener (t. = listener, rel = speaker->listener)
+    std::vector<Effect> eff;        // applied when said
+    std::vector<DialogueVariant> variants;
+    std::vector<std::string> replies; // templates the listener may answer with
+};
+
+struct CommitmentDef {
+    std::string id;
+    Tick due = 144;
+    std::vector<Effect> onBreach;
 };
 
 struct FsmStateDef {
@@ -158,7 +237,15 @@ struct AiConfig {
     double hintDecayTicks = 72;      // player hints become decaying weights after a switch
     int memoryCap = 200;
     std::map<std::string, double> memoryTypes;
+    std::vector<std::string> reputationAxes = {"honesty", "valor", "piety", "generosity", "notoriety"};
+    std::vector<std::string> statusPairs = {"betrothed", "married", "master_apprentice", "lord_vassal", "sworn_kin"};
+    std::vector<std::string> householdRoles = {"head", "spouse", "child", "kin", "servant", "ward"};
+    std::vector<std::string> deathCauses = {"starvation", "combat", "illness", "old_age", "execution"};
+    std::map<std::string, CommitmentDef> commitments;
 };
+
+// Relation axes (rel:<axis>), -1..1 except familiarity/debt (0..1 / any).
+const std::vector<std::string>& relAxes();
 
 struct Content {
     std::map<std::string, ItemDef> items;
@@ -171,6 +258,8 @@ struct Content {
     std::map<std::string, HtnTask> tasks;
     std::map<std::string, InteractionDef> interactions;
     std::map<std::string, FsmStateDef> fsm;
+    std::vector<std::string> speechActs;
+    std::map<std::string, DialogueTemplate> dialogue;
     AiConfig config;
     std::vector<std::string> warnings;
 
@@ -185,7 +274,7 @@ struct Content {
     static Content load(const std::string& dir);
     static Content fromJson(const Json& items, const Json& objects, const Json& needs, const Json& traits,
                             const Json& goals, const Json& htn, const Json& interactions, const Json& fsm,
-                            const Json& config);
+                            const Json& config, const Json& dialogue = Json::object());
 };
 
 struct ValidationReport {

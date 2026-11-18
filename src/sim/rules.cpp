@@ -26,10 +26,32 @@ size_t parseHead(const std::string& text, size_t i, std::string& subject, std::s
         if (!keyChar(c)) throw std::runtime_error("bad subject in '" + text + "'");
     size_t j = colon + 1;
     const size_t k0 = j;
+    if (j < text.size() && text[j] == '$') ++j; // a parameter: $item, $skill, $place
     while (j < text.size() && keyChar(text[j])) ++j;
-    if (j == k0) throw std::runtime_error("empty key in '" + text + "'");
+    if (j == k0 || (j == k0 + 1 && text[k0] == '$')) throw std::runtime_error("empty key in '" + text + "'");
     key = text.substr(k0, j - k0);
     return j;
+}
+
+// t.<subject> -> onTarget; an empty rest is an error.
+void splitTarget(std::string& subject, bool& onTarget, const std::string& text) {
+    if (subject.rfind("t.", 0) != 0) return;
+    onTarget = true;
+    subject = subject.substr(2);
+    if (subject.empty() || subject.find('.') != std::string::npos)
+        throw std::runtime_error("bad target subject in '" + text + "'");
+}
+
+std::string bindKey(const std::string& key, const ParamBinding& b, const std::string& text) {
+    if (key.empty() || key[0] != '$') return key;
+    auto it = b.find(key.substr(1));
+    if (it == b.end()) throw std::runtime_error("unbound parameter " + key + " in '" + text + "'");
+    return it->second;
+}
+
+std::string replaceAll(std::string s, const std::string& from, const std::string& to) {
+    for (size_t p = s.find(from); p != std::string::npos; p = s.find(from, p + to.size())) s.replace(p, from.size(), to);
+    return s;
 }
 
 } // namespace
@@ -43,6 +65,7 @@ Condition parseCondition(const std::string& text) {
         i = 1;
     }
     i = parseHead(text, i, c.subject, c.key);
+    splitTarget(c.subject, c.onTarget, text);
     if (i == text.size()) return c;
     const std::string rest = text.substr(i);
     auto take = [&](const char* op, Condition::Op o) {
@@ -62,12 +85,29 @@ Effect parseEffect(const std::string& text) {
     Effect e;
     e.text = text;
     const size_t i = parseHead(text, 0, e.subject, e.key);
+    splitTarget(e.subject, e.onTarget, text);
     if (i == text.size()) return e;
     const char op = text[i];
     if (op != '+' && op != '-' && op != '=') throw std::runtime_error("bad operator in effect '" + text + "'");
     e.op = op;
     e.value = parseNumber(text.substr(i + 1), text);
     return e;
+}
+
+Condition bindCondition(const Condition& k, const ParamBinding& b) {
+    if (!k.isParam()) return k;
+    Condition r = k;
+    r.key = bindKey(k.key, b, k.text);
+    r.text = replaceAll(k.text, k.key, r.key);
+    return r;
+}
+
+Effect bindEffect(const Effect& e, const ParamBinding& b) {
+    if (!e.isParam()) return e;
+    Effect r = e;
+    r.key = bindKey(e.key, b, e.text);
+    r.text = replaceAll(e.text, e.key, r.key);
+    return r;
 }
 
 } // namespace altera::sim

@@ -16,6 +16,29 @@ double Character::need(const std::string& n) const {
     return it == needs.end() ? 1.0 : it->second;
 }
 
+bool Character::hasMoodlet(const std::string& id, Tick now) const {
+    for (const auto& m : moodlets)
+        if (m.id == id && m.until > now) return true;
+    return false;
+}
+
+double* Relation::axis(const std::string& a) {
+    if (a == "familiarity") return &familiarity;
+    if (a == "trust") return &trust;
+    if (a == "affinity") return &affinity;
+    if (a == "fear") return &fear;
+    if (a == "debt") return &debt;
+    if (a == "enmity") return &enmity;
+    if (a == "respect") return &respect;
+    if (a == "attraction") return &attraction;
+    return nullptr;
+}
+
+double Relation::get(const std::string& a) const {
+    double* p = const_cast<Relation*>(this)->axis(a);
+    return p ? *p : 0.0;
+}
+
 double Character::mood(Tick now) const {
     double m = 0.0;
     for (const auto& md : moodlets)
@@ -30,7 +53,8 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Body, health, fatigue, ageDays, 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Moodlet, id, value, until)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MemoryEntry, tick, type, who, object, valence, salience, source,
                                                 confidence)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Relation, familiarity, trust, affinity, fear, debt)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Relation, familiarity, trust, affinity, fear, debt, enmity, respect,
+                                                attraction)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Status, family, dynasty, settlement, role, spouse, mother, father,
                                                 children)
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
@@ -63,6 +87,7 @@ void to_json(Json& j, const Character& c) {
              {"known_objects", c.knownObjects},
              {"memory", c.memory},
              {"relations", c.relations},
+             {"reputation", c.reputation},
              {"status", c.status},
              {"inventory", c.inventory},
              {"pos", c.pos},
@@ -84,6 +109,7 @@ void from_json(const Json& j, Character& c) {
     c.knownObjects = j.value("known_objects", std::set<EntityId>{});
     c.memory = j.value("memory", std::vector<MemoryEntry>{});
     c.relations = j.value("relations", std::map<EntityId, Relation>{});
+    c.reputation = j.value("reputation", std::map<std::string, double>{});
     c.status = j.value("status", Status{});
     c.inventory = j.value("inventory", std::map<std::string, int>{});
     c.pos = j.value("pos", Vec2{});

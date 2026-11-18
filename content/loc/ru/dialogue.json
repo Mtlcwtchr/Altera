@@ -1,0 +1,35 @@
+{ "_doc": "Dialogue lines: dialogue.<template>.<variant> (templates in content/ai/dialogue.json). Arguments from the dialogue layer: speaker, listener (characters), plus template-specific ones (qty, item).",
+  "dialogue": {
+    "greet": {
+      "warm": "{speaker} радостно приветствует {listener:acc}: «Рад{speaker:g||а} тебя видеть!»",
+      "plain": "«Здравствуй», — говорит {speaker}.",
+      "cold": "{speaker} холодно кивает {listener:dat}."
+    },
+    "smalltalk": {
+      "weather": "«С болот опять тянет сыростью», — замечает {speaker}.",
+      "harvest": "«Ягод в этом году — хоть отбавляй», — говорит {speaker}."
+    },
+    "offer_food": {
+      "plain": "{speaker} протягивает {listener:dat} {qty} {qty:plural|ягоду|ягоды|ягод}.",
+      "kind": "«Возьми, ты совсем отощал{listener:g||а}», — {speaker} делится едой с {listener:ins}."
+    },
+    "insult": {
+      "plain": "«Глаза б мои тебя не видели», — бросает {speaker} {listener:dat}.",
+      "harsh": "{speaker} плюёт под ноги {listener:dat}: «Падаль болотная!»"
+    },
+    "threaten": {
+      "plain": "«Ещё раз сунешься — пожалеешь», — цедит {speaker}."
+    },
+    "propose_marriage": {
+      "plain": "{speaker} просит руки {listener:gen}.",
+      "shy": "Краснея, {speaker} спрашивает {listener:acc}, не пойдёт ли {listener:g|он|она} за {speaker:g|него|неё}."
+    },
+    "agree": {
+      "plain": "«Согласен{speaker:g||на}», — отвечает {speaker}."
+    },
+    "refuse": {
+      "plain": "«Нет», — отвечает {speaker}.",
+      "rude": "«Убирайся», — огрызается {speaker}."
+    }
+  }
+}

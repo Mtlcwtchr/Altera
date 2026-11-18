@@ -1,0 +1,58 @@
+{ "speech": {
+    "greet": { "name": "greet" },
+    "smalltalk": { "name": "small talk" },
+    "offer": { "name": "offer" },
+    "request": { "name": "ask" },
+    "promise": { "name": "promise" },
+    "threaten": { "name": "threaten" },
+    "insult": { "name": "insult" },
+    "gossip": { "name": "gossip" },
+    "propose": { "name": "propose" },
+    "comfort": { "name": "comfort" },
+    "agree": { "name": "agree" },
+    "refuse": { "name": "refuse" }
+  },
+  "rel": {
+    "affinity": { "name": "affinity" },
+    "trust": { "name": "trust" },
+    "fear": { "name": "fear" },
+    "familiarity": { "name": "familiarity" },
+    "debt": { "name": "debt" },
+    "enmity": { "name": "enmity" },
+    "respect": { "name": "respect" },
+    "attraction": { "name": "attraction" }
+  },
+  "reputation": {
+    "honesty": { "name": "honesty" },
+    "valor": { "name": "valor" },
+    "piety": { "name": "piety" },
+    "generosity": { "name": "generosity" },
+    "notoriety": { "name": "notoriety" }
+  },
+  "status_pair": {
+    "betrothed": { "name": "betrothed" },
+    "married": { "name": "married" },
+    "master_apprentice": { "name": "master and apprentice" },
+    "lord_vassal": { "name": "lord and vassal" },
+    "sworn_kin": { "name": "sworn kin" }
+  },
+  "household_role": {
+    "head": { "name": "head of the house" },
+    "spouse": { "name": "spouse" },
+    "child": { "name": "child" },
+    "kin": { "name": "kin" },
+    "servant": { "name": "servant" },
+    "ward": { "name": "ward" }
+  },
+  "commitment": {
+    "wedding": { "name": "promise of marriage" },
+    "repay_debt": { "name": "repay a debt" }
+  },
+  "cause": {
+    "starvation": { "name": "starvation" },
+    "combat": { "name": "wounds" },
+    "illness": { "name": "illness" },
+    "old_age": { "name": "old age" },
+    "execution": { "name": "the axe" }
+  }
+}

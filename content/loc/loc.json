@@ -1,0 +1,5 @@
+{ "_doc": "Localization root (doc/design/LOC_FORMAT.md). base: the language every key must exist in (validator error otherwise); fallback: where a missing translation is taken from; languages: one directory each, any number of *.json files.",
+  "base": "ru",
+  "fallback": "ru",
+  "languages": ["ru", "en"]
+}

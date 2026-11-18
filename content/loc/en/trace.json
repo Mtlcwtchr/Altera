@@ -1,0 +1,96 @@
+{ "trace": {
+    "control": {
+      "confirmed": "The player confirmed the paused plan \"{goal}\"",
+      "free_will_resume": "{self} went back to \"{goal}\" on {self:g|his|her} own (free will)",
+      "hint": "Player hint: \"{goal}\" {delta} for {ttl} {ttl:plural|tick|ticks}",
+      "order": "Player order: \"{goal}\"",
+      "order_refused": "{self} cannot do \"{goal}\": {why}",
+      "paused": "Plan \"{goal}\" paused: a player controls the character",
+      "queued": "Queued: \"{task}\"",
+      "resumed": "The AI resumed \"{goal}\" at step {step}",
+      "suspended_dropped": "Paused plan \"{goal}\" dropped",
+      "to_ai": "Control handed to the AI",
+      "to_player": "Player {player} took control"
+    },
+    "fsm": {
+      "abort": "Aborted \"{action}\": {why}",
+      "arrived": "{self} reached the {target}",
+      "done": "Done: \"{action}\"",
+      "enter": "State \"{state}\" for {ticks} {ticks:plural|tick|ticks}",
+      "wait": "Waiting: {for}"
+    },
+    "goal": {
+      "done": "Goal \"{goal}\" reached",
+      "dropped": "Goal \"{goal}\" dropped: {why}",
+      "failed": "Goal \"{goal}\" failed: {why}"
+    },
+    "goap": {
+      "fail": "No way to \"{step}\": {why}",
+      "plan": "Plan for \"{step}\": {actions}",
+      "replan": "Replanning (attempt {attempt}): {why}"
+    },
+    "htn": {
+      "method_failed": "Method {method} failed ({fails}): {why}",
+      "no_method": "No method fits \"{task}\"",
+      "plan": "Task \"{task}\": {methods}, {steps} {steps:plural|step|steps}",
+      "replan": "Task \"{task}\" rebuilt: {methods}"
+    },
+    "utility": {
+      "choose": "Chose \"{chosen}\"",
+      "interrupt": "Urgent: \"{goal}\" instead of \"{was}\" ({cond})"
+    }
+  },
+  "reason": {
+    "pre": "condition not met: {detail}",
+    "no_target": "no target: {detail}",
+    "wrong_target": "wrong object: {detail}",
+    "reserved": "taken: {detail}",
+    "out_of_range": "too far: {detail}",
+    "dead": "dead",
+    "unknown": "does not know where a {detail} is",
+    "target": "target condition not met: {detail}",
+    "switched_to": "switched to \"{detail}\"",
+    "done": "done",
+    "cancelled_by_player": "cancelled by the player",
+    "control": { "paused": "a player took control" },
+    "fsm": {
+      "lost": "the action fell through: {detail}",
+      "unknown_action": "unknown action {detail}"
+    },
+    "goto": {
+      "dangling": "nowhere to go",
+      "unknown_action": "unknown action after the walk",
+      "no_target": "nothing to walk to: {detail}"
+    },
+    "goap": {
+      "unknown_action": "unknown action {detail}",
+      "no_target": "no available object: {detail}",
+      "no_chain": "no chain of actions for {detail}",
+      "cannot": "cannot do: {detail}",
+      "budget": "the planner ran out of budget"
+    },
+    "htn": {
+      "unknown_task": "unknown task {detail}",
+      "no_method": "no method fits: {detail}",
+      "depth": "tasks nested too deep"
+    },
+    "no_such_character": "no such character",
+    "controlled_by_other": "another player controls this character",
+    "nothing_controlled": "the player controls nobody",
+    "no_paused_plan": "no paused plan",
+    "cannot": "cannot: {detail}",
+    "plan_failed": "no plan: {detail}"
+  },
+  "report": {
+    "idle": {
+      "no_feasible_goal": "no feasible goal",
+      "chose_idle": "chose to idle",
+      "no_goal": "between goals",
+      "player_paused_plan": "waiting for the player (plan paused)",
+      "player_no_order": "waiting for a player order"
+    }
+  },
+  "chronicle": {
+    "death": "{who} died of {cause}"
+  }
+}

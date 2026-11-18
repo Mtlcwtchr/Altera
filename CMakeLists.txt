@@ -312,6 +312,7 @@ add_library(altera_sim STATIC
         src/sim/ai_goap.cpp
         src/sim/ai_mind.cpp
         src/sim/ai_control.cpp
+        src/sim/loc.cpp
         src/sim/ai_report.cpp)
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json PRIVATE asr_warnings)
@@ -693,7 +694,8 @@ endif()
 # ---------------------------------------------------------------------------
 if(ASR_BUILD_TESTS)
     enable_testing()
-    add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp)
+    add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp
+            tests/test_altera_sim_loc.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

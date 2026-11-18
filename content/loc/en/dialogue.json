@@ -1,0 +1,34 @@
+{ "dialogue": {
+    "greet": {
+      "warm": "{speaker} greets {listener} warmly: \"So good to see you!\"",
+      "plain": "\"Hello,\" says {speaker}.",
+      "cold": "{speaker} gives {listener} a cold nod."
+    },
+    "smalltalk": {
+      "weather": "\"The marsh is breathing damp again,\" {speaker} remarks.",
+      "harvest": "\"Berries aplenty this year,\" says {speaker}."
+    },
+    "offer_food": {
+      "plain": "{speaker} hands {listener} {qty} {qty:plural|berry|berries}.",
+      "kind": "\"Take it, you're skin and bones,\" {speaker} says, sharing food with {listener}."
+    },
+    "insult": {
+      "plain": "\"I wish I'd never laid eyes on you,\" {speaker} snaps at {listener}.",
+      "harsh": "{speaker} spits at {listener}'s feet: \"Marsh carrion!\""
+    },
+    "threaten": {
+      "plain": "\"Try that again and you'll regret it,\" {speaker} hisses."
+    },
+    "propose_marriage": {
+      "plain": "{speaker} asks for {listener}'s hand.",
+      "shy": "Blushing, {speaker} asks {listener} whether {listener:g|he|she} would marry {speaker:g|him|her}."
+    },
+    "agree": {
+      "plain": "\"Agreed,\" {speaker} answers."
+    },
+    "refuse": {
+      "plain": "\"No,\" {speaker} answers.",
+      "rude": "\"Get lost,\" {speaker} growls."
+    }
+  }
+}

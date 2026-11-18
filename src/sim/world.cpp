@@ -76,8 +76,8 @@ void World::schedule(Event e) {
     std::push_heap(events_.begin(), events_.end(), laterEvent);
 }
 
-void World::chronicle(const std::string& type, std::vector<EntityId> who, std::string text) {
-    chronicle_.push_back({tick_, type, std::move(who), std::move(text)});
+void World::chronicle(const std::string& type, std::vector<EntityId> who, std::string code, Json params) {
+    chronicle_.push_back({tick_, type, std::move(who), std::move(code), std::move(params)});
 }
 
 std::uint64_t World::submit(Command cmd) {
@@ -220,7 +220,7 @@ void World::updateBodies() {
         if (c.body.health <= 0.0) {
             c.body.alive = false;
             c.body.causeOfDeath = "starvation";
-            chronicle("death", {c.id}, c.name + " died of starvation");
+            chronicle("death", {c.id}, "chronicle.death", {{"who", c.id}, {"cause", "starvation"}});
         }
     }
 }
@@ -260,7 +260,7 @@ void World::run(Tick ticks) {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Family, id, name, dynasty, settlement, members, storage, hearth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Dynasty, id, name, founder)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settlement, id, name, center, families)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, text)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, code, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MapGrid, sizeM, cellM, w, h, biomeNames, biome, water)
 
 void to_json(Json& j, const WorldObject& o) {

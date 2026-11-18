@@ -68,7 +68,7 @@ Json aiReport(const World& w) {
     };
     Json deaths = Json::array();
     for (const auto& e : w.chronicleLog())
-        if (e.type == "death") deaths.push_back({{"tick", e.tick}, {"who", e.who}, {"text", e.text}});
+        if (e.type == "death") deaths.push_back({{"tick", e.tick}, {"who", e.who}, {"code", e.code}, {"params", e.params}});
     return Json{{"tick", w.now()},
                 {"day", w.day()},
                 {"seed", w.seed()},

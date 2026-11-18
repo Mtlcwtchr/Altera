@@ -1,0 +1,59 @@
+{ "_doc": "Social vocabulary (base language): speech acts, relation and reputation axes, status pairs, household roles, commitments, causes of death.",
+  "speech": {
+    "greet": { "name": "приветствие" },
+    "smalltalk": { "name": "болтовня" },
+    "offer": { "name": "предложить" },
+    "request": { "name": "попросить" },
+    "promise": { "name": "пообещать" },
+    "threaten": { "name": "пригрозить" },
+    "insult": { "name": "оскорбить" },
+    "gossip": { "name": "посплетничать" },
+    "propose": { "name": "сделать предложение" },
+    "comfort": { "name": "утешить" },
+    "agree": { "name": "согласиться" },
+    "refuse": { "name": "отказать" }
+  },
+  "rel": {
+    "affinity": { "name": "симпатия" },
+    "trust": { "name": "доверие" },
+    "fear": { "name": "страх" },
+    "familiarity": { "name": "знакомство" },
+    "debt": { "name": "долг" },
+    "enmity": { "name": "вражда" },
+    "respect": { "name": "уважение" },
+    "attraction": { "name": "влечение" }
+  },
+  "reputation": {
+    "honesty": { "name": "честность" },
+    "valor": { "name": "доблесть" },
+    "piety": { "name": "набожность" },
+    "generosity": { "name": "щедрость" },
+    "notoriety": { "name": "дурная слава" }
+  },
+  "status_pair": {
+    "betrothed": { "name": "помолвлены" },
+    "married": { "name": "супруги" },
+    "master_apprentice": { "name": "мастер и подмастерье" },
+    "lord_vassal": { "name": "сеньор и вассал" },
+    "sworn_kin": { "name": "побратимы" }
+  },
+  "household_role": {
+    "head": { "name": "глава дома" },
+    "spouse": { "name": "супруг" },
+    "child": { "name": "ребёнок" },
+    "kin": { "name": "родич" },
+    "servant": { "name": "слуга" },
+    "ward": { "name": "воспитанник" }
+  },
+  "commitment": {
+    "wedding": { "name": "обещание свадьбы" },
+    "repay_debt": { "name": "вернуть долг" }
+  },
+  "cause": {
+    "starvation": { "name": { "nom": "голод", "gen": "голода", "dat": "голоду", "acc": "голод", "ins": "голодом", "pre": "голоде", "g": "m" } },
+    "combat": { "name": { "nom": "раны", "gen": "ран", "dat": "ранам", "acc": "раны", "ins": "ранами", "pre": "ранах", "g": "pl" } },
+    "illness": { "name": { "nom": "болезнь", "gen": "болезни", "dat": "болезни", "acc": "болезнь", "ins": "болезнью", "pre": "болезни", "g": "f" } },
+    "old_age": { "name": { "nom": "старость", "gen": "старости", "dat": "старости", "acc": "старость", "ins": "старостью", "pre": "старости", "g": "f" } },
+    "execution": { "name": { "nom": "казнь", "gen": "казни", "dat": "казни", "acc": "казнь", "ins": "казнью", "pre": "казни", "g": "f" } }
+  }
+}

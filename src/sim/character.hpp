@@ -49,6 +49,12 @@ struct Relation {
     double affinity = 0.0;
     double fear = 0.0;
     double debt = 0.0;
+    double enmity = 0.0;
+    double respect = 0.0;
+    double attraction = 0.0;
+    // rel:<axis> by name (relAxes() in content.hpp); nullptr for an unknown axis.
+    double* axis(const std::string& a);
+    double get(const std::string& a) const;
 };
 
 struct Status {
@@ -201,6 +207,7 @@ struct Character {
     std::set<EntityId> knownObjects;
     std::vector<MemoryEntry> memory;
     std::map<EntityId, Relation> relations;
+    std::map<std::string, double> reputation; // reputation:<axis>, -1..1 (config.reputation_axes)
     Status status;
     std::map<std::string, int> inventory;
     Vec2 pos;
@@ -212,6 +219,7 @@ struct Character {
     int has(const std::string& item) const;
     double need(const std::string& n) const;
     double mood(Tick now) const;
+    bool hasMoodlet(const std::string& id, Tick now) const;
 };
 
 void to_json(Json& j, const Character& c);

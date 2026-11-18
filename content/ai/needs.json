@@ -11,6 +11,11 @@
     { "id": "slept_bed", "value": 0.1, "ttl": 96 },
     { "id": "slept_rough", "value": -0.12, "ttl": 96 },
     { "id": "warm_hearth", "value": 0.05, "ttl": 36 },
-    { "id": "stole", "value": -0.05, "ttl": 72 }
+    { "id": "stole", "value": -0.05, "ttl": 72 },
+    { "id": "insulted", "value": -0.08, "ttl": 48 },
+    { "id": "wounded", "value": -0.2, "ttl": 144 },
+    { "id": "won_fight", "value": 0.06, "ttl": 48 },
+    { "id": "learned", "value": 0.05, "ttl": 48 },
+    { "id": "chatted", "value": 0.04, "ttl": 36 }
   ]
 }

@@ -22,8 +22,15 @@ const WorldObject* homeStorage(const World& w, const Character& c) { return w.ob
 bool goapFact(const Condition& k) { return k.subject == "has" || k.subject == "at"; }
 
 double evalSubject(const EvalCtx& x, const Condition& k) {
-    const Character& c = x.c;
+    // t.<subject>: the same subjects, read from the target character.
+    if (k.onTarget && !x.targetChar) return 0.0;
+    const Character& c = k.onTarget ? *x.targetChar : x.c;
     const std::string& s = k.subject;
+    if (s == "moodlet") return c.hasMoodlet(k.key, x.w.now()) ? 1.0 : 0.0;
+    if (s == "reputation") {
+        auto it = c.reputation.find(k.key);
+        return it == c.reputation.end() ? 0.0 : it->second;
+    }
     if (s == "has") return c.has(k.key);
     if (s == "need") return c.need(k.key);
     if (s == "knows") return c.knowledge.count(k.key) ? 1.0 : 0.0;
@@ -64,14 +71,8 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
     }
     if (s == "rel") {
         if (!x.targetChar) return 0.0;
-        auto it = c.relations.find(x.targetChar->id);
-        if (it == c.relations.end()) return 0.0;
-        const Relation& r = it->second;
-        if (k.key == "affinity") return r.affinity;
-        if (k.key == "trust") return r.trust;
-        if (k.key == "fear") return r.fear;
-        if (k.key == "familiarity") return r.familiarity;
-        if (k.key == "debt") return r.debt;
+        auto it = x.c.relations.find(x.targetChar->id);
+        return it == x.c.relations.end() ? 0.0 : it->second.get(k.key);
     }
     return 0.0;
 }
@@ -98,16 +99,46 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
     return true;
 }
 
-void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target) {
-    for (const auto& e : d.eff) {
+namespace {
+
+double clampAxis(const std::string& axis, double v) {
+    if (axis == "familiarity") return clamp01(v);
+    if (axis == "debt") return v;
+    return std::clamp(v, -1.0, 1.0);
+}
+
+void addRel(Character& from, EntityId to, const Effect& e) {
+    Relation& r = from.relations[to];
+    if (double* p = r.axis(e.key)) *p = clampAxis(e.key, e.op == '=' ? e.value : *p + e.signedDelta());
+}
+
+void kill(World& w, Character& who, const std::string& cause) {
+    if (!who.body.alive) return;
+    who.body.alive = false;
+    who.body.health = 0.0;
+    who.body.causeOfDeath = cause;
+    w.chronicle("death", {who.id}, "chronicle.death", {{"who", who.id}, {"cause", cause}});
+}
+
+} // namespace
+
+// Applies a list of effects. Subjects of the social layer that are parsed and
+// validated but not interpreted yet (status_pair, household_*, commitment:
+// stage 2, see AI_DATA_SCHEMA.md §1.4) are skipped here.
+void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list, WorldObject* target,
+                     Character* targetChar) {
+    for (const auto& e : list) {
+        if (e.onTarget && !targetChar) continue;
+        Character& c = e.onTarget ? *targetChar : actor;
         const double dv = e.signedDelta();
         const std::string& s = e.subject;
         if (s == "has") {
             int& n = c.inventory[e.key];
             n = e.op == '=' ? static_cast<int>(e.value) : n + static_cast<int>(dv);
             if (n <= 0) c.inventory.erase(e.key);
-        } else if (s == "need") {
-            double& v = c.needs[e.key];
+        } else if (s == "need" || (s == "target_need" && targetChar)) {
+            Character& who = s == "target_need" ? *targetChar : c;
+            double& v = who.needs[e.key];
             v = clamp01(e.op == '=' ? e.value : v + dv);
         } else if (s == "target_stock") {
             if (!target) continue;
@@ -124,6 +155,9 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
         } else if (s == "body") {
             double& v = e.key == "health" ? c.body.health : c.body.fatigue;
             v = clamp01(e.op == '=' ? e.value : v + dv);
+        } else if (s == "reputation") {
+            double& v = c.reputation[e.key];
+            v = std::clamp(e.op == '=' ? e.value : v + dv, -1.0, 1.0);
         } else if (s == "moodlet") {
             auto md = w.content().moodlets.find(e.key);
             const Tick until = w.now() + (md == w.content().moodlets.end() ? 72 : md->second.ttl);
@@ -135,6 +169,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
             MemoryEntry m;
             m.type = e.key;
             m.object = target ? target->id : kNone;
+            if (targetChar) m.who = {targetChar->id};
             if (target && target->ownerFamily != kNone && target->ownerFamily != c.status.family) {
                 auto f = w.families().find(target->ownerFamily);
                 if (f != w.families().end()) m.who = f->second.members;
@@ -149,9 +184,34 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
             if (def != w.content().objects.end()) o.stock = def->second.stock;
             const EntityId id = w.addObject(o).id;
             c.knownObjects.insert(id);
+        } else if (s == "rel") {
+            if (targetChar) addRel(actor, targetChar->id, e);
+        } else if (s == "rel_back") {
+            if (targetChar) addRel(*targetChar, actor.id, e);
+        } else if (s == "death") {
+            kill(w, c, e.key);
         }
-        // rel / rel_back / target_need need a target character: the social
-        // layer (dialogue, step 4) applies them.
+    }
+}
+
+void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar) {
+    // chance: one deterministic roll per (actor, tick, interaction); a failed
+    // roll applies on_fail instead of eff. Risks roll independently after.
+    bool success = true;
+    if (d.chance.set) {
+        double p = d.chance.base;
+        if (!d.chance.skill.empty()) {
+            auto it = c.skills.find(d.chance.skill);
+            p += d.chance.perSkill * (it == c.skills.end() ? 0.0 : it->second);
+        }
+        p = std::clamp(p, d.chance.min, d.chance.max);
+        Rng r = w.rng(c.id, "chance:" + d.id);
+        success = r.uniform() < p;
+    }
+    applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar);
+    for (const auto& rk : d.risk) {
+        Rng r = w.rng(c.id, "risk:" + d.id + ":" + rk.id);
+        if (r.uniform() < rk.p) applyEffectList(w, c, rk.eff, target, targetChar);
     }
 }
 
