@@ -8,6 +8,7 @@
 //                                                 M = strategic map view (WASD/drag pan,
 //                                                 wheel zoom, RMB/QE rotate)
 //                                                 G = another world, another seed (builds, then restarts the lab on it)
+//                                                 X = the PSX look on/off (reads psx.json again when turned on)
 //   benchmark     terrain_lab --bench all --headless 1920x1080 --out DIR [params]
 //
 // The benchmark flies scripted paths at a fixed 1/60 s step - the movement a
@@ -20,6 +21,7 @@
 //         --range F  --morph F  --heightmap PNG | --generate SIZE  --seed S
 //         --height-range M  --sea F  --detail F
 // Shots:  --shot PNG --at X,Y,AGL,YAWDEG,PITCHDEG (X, Y as fractions of the world)
+// Look:   --post N (style)  --psx | --no-psx  --psx-scale N (content/config/terrain_core/psx.json)
 // Water:  --water-skeleton PNG (red rivers, blue lakes: the main framework, painted)
 //         --water-skeleton-out PNG (the framework used, over the relief, to edit)
 //         --main-river-area KM2  --main-lakes N  --main-lake-area KM2 (generated framework)
@@ -35,6 +37,7 @@
 #include "terrain_core/grass.hpp"
 #include "terrain_core/props.hpp"
 #include "terrain_core/post.hpp"
+#include "terrain_core/psx.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/sky.hpp"
 #include "terrain_core/water.hpp"
@@ -117,6 +120,8 @@ struct Options {
     double propsDetail = 1400;    // --props-detail M: cliffs nearer than this are refined (0: never)
     fs::path features;            // --features: <world>_features.json; empty: beside a <world>_final.r16 heightmap
     std::uint32_t post = 0;       // picture style: 0 off, 1 dark fantasy, 2 Frazetta, 3 Vallejo
+    int psx = -1;                 // the PSX look (psx.json, X): -1 as the file says, 0 off, 1 on
+    int psxScale = 0;             // --psx-scale N: the file's pixel_scale overridden (0: not)
     bool water = true;            // rivers, lakes, sea (F11); off also skips cutting the river beds
     bool dlss = false;            // NVIDIA DLSS Super Resolution, live toggle F12
     int dlssQuality = 0;          // 0 Quality, 1 Balanced, 2 Performance
@@ -230,6 +235,9 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--wind") o.light.wind = std::atof(next());
         else if (a == "--no-wind") o.light.windOn = false;
         else if (a == "--post") o.post = std::uint32_t(std::atoi(next())) % Post::kStyles;
+        else if (a == "--psx") o.psx = 1;
+        else if (a == "--no-psx") o.psx = 0;
+        else if (a == "--psx-scale") { o.psxScale = std::atoi(next()); if (o.psx < 0) o.psx = 1; }
         else if (a == "--foliage-layers") o.foliageLayers = next();
         else if (a == "--foliage-min-pixels") o.foliageMinPixels = float(std::atof(next()));
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
@@ -345,6 +353,18 @@ struct Lab {
     Post post;
     Post dlssComposite;
     bool postReady = false;
+    Psx psx;
+    PsxSettings psxSettings;
+    fs::path psxFile;
+    bool psxReady = false;
+    // psx.json again (X turns the look on: edit the file, press X twice), then the command line over it.
+    void loadPsx() {
+        std::string psxWhy;
+        PsxSettings fresh;
+        if (loadPsxSettings(psxFile, fresh, &psxWhy)) psxSettings = fresh;
+        else std::fprintf(stderr, "psx: %s (defaults)\n", psxWhy.c_str());
+        if (options.psxScale > 0) psxSettings.pixelScale = std::uint32_t(options.psxScale);
+    }
     std::uint64_t frames = 0;
     Lighting lighting;
     Water water;
@@ -597,6 +617,10 @@ struct Lab {
             if (!grassReady) std::fprintf(stderr, "grass off: %s\n", why.c_str());
             postReady = post.open(device);
             if (postReady) dlssComposite.open(device);
+            psxReady = psx.open(device);
+            psxFile = foliageFile.parent_path() / "psx.json";
+            loadPsx();
+            if (options.psx >= 0) psxSettings.enabled = options.psx == 1;
             {
                 // Opened even with the water off - one dry texel - since the
                 // plants' spawns read the water map either way.
@@ -943,6 +967,8 @@ struct Lab {
             if (!upscaled) options.dlss = false;
             if (postReady) post.apply(commands, targets, options.post, float(seconds));
         } else if (postReady) post.apply(commands, targets, options.post, float(seconds), cloudsDrawn ? clouds.texture() : nullptr);
+        // The PSX look last, at display resolution, over whatever style is on.
+        if (psxReady) psx.apply(commands, targets, psxSettings, float(seconds));
         ++frames;
         probe.record(commands, renderer.clipmap(), p, camera.eye);
         if (swapchain) {
@@ -1181,6 +1207,11 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 if (e.key.key == SDLK_O && lab.propsReady)
                     lab.props.setEnabled(Props::kMegaliths, !lab.props.enabled(Props::kMegaliths));
                 if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
+                if (e.key.key == SDLK_X && !e.key.repeat) {
+                    const bool on = !lab.psxSettings.enabled;
+                    if (on) lab.loadPsx();
+                    lab.psxSettings.enabled = on;
+                }
                 if (e.key.key == SDLK_F6) lab.options.surfaceMaps = !lab.options.surfaceMaps;
                 if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;
                 if (e.key.key == SDLK_F8) lab.options.light.clouds = !lab.options.light.clouds;
@@ -1320,13 +1351,16 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                 for (std::size_t i = 0; i < lab.foliage.layers().size(); ++i)
                     modules += lab.foliage.layers()[i].enabled ? char('1' + i) : '-';
             modules += " | " + lab.dlss.status();
+            char psxTag[32] = "off";
+            if (lab.psxSettings.enabled)
+                std::snprintf(psxTag, sizeof psxTag, "%ux %ub", lab.psxSettings.pixelScale, lab.psxSettings.colourBits);
             char title[640];
             std::snprintf(title, sizeof title,
-                          "terrain_lab | %.0f fps %.2f ms | %02d:%02d | grass %llu | trees %llu %.2fM tris | [%s] style %s | %s %s",
+                          "terrain_lab | %.0f fps %.2f ms | %02d:%02d | grass %llu | trees %llu %.2fM tris | [%s] style %s | psx %s | %s %s",
                           1000.0 / mean, mean, int(lab.options.light.timeOfDay),
                           int(std::fmod(lab.options.light.timeOfDay, 1.0) * 60.0), (unsigned long long)s.grassTufts,
                           (unsigned long long)s.foliageInstances,
-                          double(s.foliageTriangles) / 1e6, modules.c_str(), Post::name(lab.options.post), where,
+                          double(s.foliageTriangles) / 1e6, modules.c_str(), Post::name(lab.options.post), psxTag, where,
                           s.misses ? "| COVERAGE MISS" : "");
             SDL_SetWindowTitle(window, title);
             window_ms.clear();

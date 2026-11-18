@@ -1,0 +1,9 @@
+{
+ "comment": "The PSX look over the finished frame (assets/shaders/terrain_core/psx.hlsl), the same filter as the asset previews (assets_catalog/tools/psx_filter.py, its scale = pixel_scale): the picture drawn `pixel_scale` times coarser and blown up with hard pixels, a 4x4 ordered dither of amplitude `dither`, gaussian grain of deviation `grain` (both in 0..255 steps), then `colour_bits` bits a channel (5: the PlayStation's 15-bit colour). `grain_animated` false keeps the grain still, as on the previews. A style profile: `enabled` is the start state, the lab toggles it with X (and reads this file again) or --psx / --no-psx.",
+ "enabled": false,
+ "pixel_scale": 3,
+ "colour_bits": 5,
+ "dither": 8,
+ "grain": 3,
+ "grain_animated": true
+}
