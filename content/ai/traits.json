@@ -1,13 +1,303 @@
-{ "_doc": "Traits (AI_DATA_SCHEMA.md §5).",
-  "traits": [
-    { "id": "lazy", "goal_mult": {"stock_food": 0.6, "sleep": 1.15}, "need_mult": {"energy": 1.15} },
-    { "id": "diligent", "goal_mult": {"stock_food": 1.4, "idle": 0.5} },
-    { "id": "honest", "legal_penalty": {"theft": 3.0} },
-    { "id": "desperate_thief", "legal_penalty": {"theft": 0.2} },
-    { "id": "stubborn", "hysteresis_mult": 1.8 },
-    { "id": "gluttonous", "goal_mult": {"eat": 1.25}, "need_mult": {"hunger": 1.2} },
-    { "id": "hardy", "need_mult": {"warmth": 0.6} },
-    { "id": "forager", "method_bias": {"forage": -2.5} }
+{
+ "_doc": "Черты MVP. goal_mult — множитель балла цели; need_mult — множитель скорости падения нужды; legal_penalty — множитель штрафа за юридический тег (база config.legal_base); method_bias — сдвиг стоимости метода HTN (минус = охотнее); hysteresis_mult — упорство. inherit — вероятность передачи ребёнку от каждого носителя-родителя (для E, v0.28 §6; поле-расширение). weight_in_pool — частота в генераторе.",
+ "traits": [
+  {
+   "id": "lazy",
+   "goal_mult": {
+    "stock_food": 0.7,
+    "stock_firewood": 0.6,
+    "make_axe": 0.7,
+    "make_clothes": 0.7,
+    "build_home": 0.75,
+    "rest": 1.4,
+    "sleep": 1.15
+   },
+   "need_mult": {
+    "energy": 1.2
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "diligent",
+   "goal_mult": {
+    "stock_food": 1.3,
+    "stock_firewood": 1.3,
+    "make_axe": 1.2,
+    "make_clothes": 1.2,
+    "build_home": 1.25,
+    "rest": 0.7,
+    "have_fun": 0.8
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "gluttonous",
+   "goal_mult": {
+    "eat": 1.25,
+    "stock_food": 1.1
+   },
+   "need_mult": {
+    "hunger": 1.2
+   },
+   "method_bias": {
+    "eat_raw_carried": 1.0
+   },
+   "inherit": 0.25,
+   "weight_in_pool": 0.7
+  },
+  {
+   "id": "ascetic",
+   "goal_mult": {
+    "eat": 0.85,
+    "have_fun": 0.7,
+    "pray": 1.2
+   },
+   "need_mult": {
+    "hunger": 0.85,
+    "fun": 0.7
+   },
+   "method_bias": {
+    "eat_raw_carried": -1.0,
+    "forage_and_eat": -1.0
+   },
+   "inherit": 0.15,
+   "weight_in_pool": 0.5
+  },
+  {
+   "id": "sociable",
+   "goal_mult": {
+    "socialize": 1.3,
+    "have_fun": 1.1
+   },
+   "need_mult": {
+    "social": 1.5
+   },
+   "method_bias": {
+    "ask_family_for_food": -1.0,
+    "warm_at_village_fire": -1.0
+   },
+   "inherit": 0.25,
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "loner",
+   "goal_mult": {
+    "socialize": 0.6
+   },
+   "need_mult": {
+    "social": 0.5
+   },
+   "method_bias": {
+    "ask_family_for_food": 2.0,
+    "warm_at_village_fire": 2.0,
+    "fun_stories_at_fire": 2.0
+   },
+   "inherit": 0.25,
+   "weight_in_pool": 0.8
+  },
+  {
+   "id": "honest",
+   "legal_penalty": {
+    "theft": 3.0,
+    "trespass": 2.0
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "unscrupulous",
+   "legal_penalty": {
+    "theft": 0.25,
+    "trespass": 0.3
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 0.5,
+   "_doc": "в схеме-примере desperate_thief"
+  },
+  {
+   "id": "proud",
+   "method_bias": {
+    "ask_family_for_food": 4.0
+   },
+   "goal_mult": {
+    "build_home": 1.15
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 0.6
+  },
+  {
+   "id": "family_minded",
+   "goal_mult": {
+    "stock_food": 1.25,
+    "stock_firewood": 1.2,
+    "build_home": 1.3,
+    "socialize": 1.1
+   },
+   "method_bias": {
+    "ask_family_for_food": -1.5,
+    "share_food_with_family": -2.0
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "stubborn",
+   "hysteresis_mult": 1.6,
+   "inherit": 0.25,
+   "weight_in_pool": 0.8
+  },
+  {
+   "id": "fickle",
+   "hysteresis_mult": 0.5,
+   "goal_mult": {
+    "have_fun": 1.2
+   },
+   "inherit": 0.25,
+   "weight_in_pool": 0.6
+  },
+  {
+   "id": "handy",
+   "goal_mult": {
+    "make_axe": 1.4,
+    "make_clothes": 1.4,
+    "build_home": 1.2
+   },
+   "method_bias": {
+    "cook_at_campfire": -0.5
+   },
+   "inherit": 0.3,
+   "weight_in_pool": 0.8,
+   "_doc": "мастеровитый"
+  },
+  {
+   "id": "hardy",
+   "need_mult": {
+    "warmth": 0.6,
+    "energy": 0.9
+   },
+   "goal_mult": {
+    "get_warm": 0.8
+   },
+   "method_bias": {
+    "sleep_rough": -2.0
+   },
+   "inherit": 0.4,
+   "weight_in_pool": 0.6,
+   "_doc": "выносливый, телесная черта"
+  },
+  {
+   "id": "frail",
+   "need_mult": {
+    "warmth": 1.4,
+    "energy": 1.15
+   },
+   "goal_mult": {
+    "rest": 1.3
+   },
+   "method_bias": {
+    "sleep_rough": 3.0
+   },
+   "inherit": 0.3,
+   "weight_in_pool": 0.4
+  },
+  {
+   "id": "pious",
+   "goal_mult": {
+    "pray": 1.6
+   },
+   "need_mult": {
+    "purpose": 2.0
+   },
+   "legal_penalty": {
+    "theft": 1.5
+   },
+   "inherit": 0.15,
+   "weight_in_pool": 0.7
+  },
+  {
+   "id": "fastidious",
+   "goal_mult": {
+    "wash": 1.5
+   },
+   "need_mult": {
+    "hygiene": 1.5
+   },
+   "inherit": 0.15,
+   "weight_in_pool": 0.5,
+   "_doc": "чистоплотный"
+  },
+  {
+   "id": "slob",
+   "goal_mult": {
+    "wash": 0.5
+   },
+   "need_mult": {
+    "hygiene": 0.6
+   },
+   "inherit": 0.15,
+   "weight_in_pool": 0.5
+  },
+  {
+   "id": "curious",
+   "goal_mult": {
+    "have_fun": 1.2,
+    "make_clothes": 1.1
+   },
+   "need_mult": {
+    "fun": 1.2
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 0.8
+  },
+  {
+   "id": "generous",
+   "method_bias": {
+    "share_food_with_family": -2.5
+   },
+   "goal_mult": {
+    "socialize": 1.05
+   },
+   "legal_penalty": {
+    "theft": 1.5
+   },
+   "inherit": 0.2,
+   "weight_in_pool": 0.8
+  }
+ ],
+ "exclusive": [
+  [
+   "lazy",
+   "diligent"
   ],
-  "exclusive": [["honest", "desperate_thief"], ["lazy", "diligent"]]
+  [
+   "gluttonous",
+   "ascetic"
+  ],
+  [
+   "sociable",
+   "loner"
+  ],
+  [
+   "honest",
+   "unscrupulous"
+  ],
+  [
+   "stubborn",
+   "fickle"
+  ],
+  [
+   "hardy",
+   "frail"
+  ],
+  [
+   "fastidious",
+   "slob"
+  ],
+  [
+   "generous",
+   "unscrupulous"
+  ]
+ ]
 }

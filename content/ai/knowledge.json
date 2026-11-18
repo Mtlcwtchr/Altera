@@ -1,0 +1,154 @@
+{
+ "_doc": "Знания (ключи для knows:/skill:). Файл вне списка схемы §0 — справочник для валидатора и генератора (E: стартовые знания, семейные секреты v0.28 §6). learn_ticks — тиков обучения у знающего; self_ticks — самому (null = нельзя). household_must/settlement_must — правило покрытия для генератора: иначе стартовая цепочка не замкнётся.",
+ "knowledge": [
+  {
+   "id": "foraging",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 60,
+   "start": "all_from_child"
+  },
+  {
+   "id": "firemaking",
+   "requires": [],
+   "learn_ticks": 6,
+   "self_ticks": 90,
+   "start": "all_from_youth"
+  },
+  {
+   "id": "cooking",
+   "requires": [
+    "firemaking"
+   ],
+   "learn_ticks": 12,
+   "self_ticks": 60,
+   "start": "all_adults"
+  },
+  {
+   "id": "knapping",
+   "requires": [],
+   "learn_ticks": 24,
+   "self_ticks": 180,
+   "start_chance_adult": 0.5
+  },
+  {
+   "id": "fiber_working",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 90,
+   "start_chance_adult": 0.6
+  },
+  {
+   "id": "toolmaking",
+   "requires": [
+    "knapping",
+    "fiber_working"
+   ],
+   "learn_ticks": 30,
+   "self_ticks": 240,
+   "start_chance_adult": 0.35,
+   "family_knowledge": true
+  },
+  {
+   "id": "woodcutting",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 48,
+   "start_chance_adult": 0.6
+  },
+  {
+   "id": "building",
+   "requires": [
+    "woodcutting"
+   ],
+   "learn_ticks": 48,
+   "self_ticks": null,
+   "start_chance_adult": 0.4,
+   "family_knowledge": true
+  },
+  {
+   "id": "spinning",
+   "requires": [
+    "fiber_working"
+   ],
+   "learn_ticks": 24,
+   "self_ticks": 240,
+   "start_chance_adult": 0.35,
+   "family_knowledge": true
+  },
+  {
+   "id": "weaving",
+   "requires": [
+    "spinning"
+   ],
+   "learn_ticks": 36,
+   "self_ticks": null,
+   "start_chance_adult": 0.25,
+   "family_knowledge": true
+  },
+  {
+   "id": "sewing",
+   "requires": [],
+   "learn_ticks": 18,
+   "self_ticks": 120,
+   "start_chance_adult": 0.45
+  },
+  {
+   "id": "hunting",
+   "requires": [],
+   "learn_ticks": 36,
+   "self_ticks": 240,
+   "start_chance_adult": 0.3,
+   "_doc": "часть C"
+  },
+  {
+   "id": "herbalism",
+   "requires": [
+    "foraging"
+   ],
+   "learn_ticks": 36,
+   "self_ticks": 300,
+   "start_chance_adult": 0.15,
+   "family_knowledge": true
+  },
+  {
+   "id": "faith",
+   "requires": [],
+   "learn_ticks": 24,
+   "self_ticks": null,
+   "start_chance_adult": 0.2
+  },
+  {
+   "id": "medicine",
+   "requires": [
+    "herbalism"
+   ],
+   "learn_ticks": 48,
+   "self_ticks": null,
+   "start_chance_adult": 0.1,
+   "family_knowledge": true
+  },
+  {
+   "id": "storytelling",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 120,
+   "start_chance_adult": 0.4
+  }
+ ],
+ "household_must": [
+  "foraging",
+  "firemaking",
+  "cooking"
+ ],
+ "settlement_must": [
+  "knapping",
+  "fiber_working",
+  "toolmaking",
+  "woodcutting",
+  "building",
+  "spinning",
+  "weaving",
+  "sewing"
+ ]
+}

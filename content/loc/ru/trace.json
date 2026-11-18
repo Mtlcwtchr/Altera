@@ -92,6 +92,8 @@
     }
   },
   "chronicle": {
-    "death": "{who} умер{who:g||ла} от {cause:gen}"
+    "death": "{who} умер{who:g||ла} от {cause:gen}",
+    "status_pair": "{a} и {b}: {pair}",
+    "status_pair_end": "{a} и {b}: конец ({pair})"
   }
 }

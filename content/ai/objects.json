@@ -1,10 +1,295 @@
-{ "_doc": "Object types (AI_DATA_SCHEMA.md §3).",
-  "objects": [
-    { "id": "berry_bush", "stock": {"berries": 6}, "max_stock": {"berries": 6}, "regrow": {"berries": 1},
-      "regrow_every": 48, "biomes": ["meadow", "forest"], "per_km2": 5 },
-    { "id": "tree", "biomes": ["forest", "meadow"], "per_km2": 8 },
-    { "id": "hearth", "settlement": true, "per_family": 1, "warmth": true, "owned": true },
-    { "id": "storage", "settlement": true, "per_family": 1, "owned": true, "stock": {"meal": 3, "wood": 2} },
-    { "id": "bed", "settlement": true, "per_person": 1, "owned": true }
-  ]
+{
+ "_doc": "Типы объектов мира для MVP-цепочек. Биомы тестового мира: meadow, forest, river (берег/пойма), marsh. regrow_every в тиках (144 = сутки). Поля warmth/shelter/season — свойства для исполнителя (warmth уже есть в схеме у hearth).",
+ "objects": [
+  {
+   "id": "berry_bush",
+   "stock": {
+    "berries": 8
+   },
+   "regrow": {
+    "berries": 2
+   },
+   "regrow_every": 72,
+   "max_stock": {
+    "berries": 8
+   },
+   "biomes": [
+    "meadow",
+    "forest"
+   ],
+   "per_km2": 6,
+   "owned": false,
+   "season": [
+    "summer",
+    "autumn"
+   ]
+  },
+  {
+   "id": "root_patch",
+   "stock": {
+    "roots": 10
+   },
+   "regrow": {
+    "roots": 1
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "roots": 10
+   },
+   "biomes": [
+    "meadow",
+    "river"
+   ],
+   "per_km2": 5,
+   "owned": false,
+   "season": [
+    "spring",
+    "summer",
+    "autumn"
+   ]
+  },
+  {
+   "id": "mushroom_glade",
+   "stock": {
+    "mushrooms": 9
+   },
+   "regrow": {
+    "mushrooms": 3
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "mushrooms": 9
+   },
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 3,
+   "owned": false,
+   "season": [
+    "summer",
+    "autumn"
+   ]
+  },
+  {
+   "id": "tree",
+   "stock": {
+    "log": 4
+   },
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 400,
+   "owned": false,
+   "_doc": "без regrow: лес убывает, генератор сажает с запасом"
+  },
+  {
+   "id": "deadwood",
+   "stock": {
+    "firewood": 9,
+    "branch": 8
+   },
+   "regrow": {
+    "firewood": 2,
+    "branch": 2
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "firewood": 9,
+    "branch": 8
+   },
+   "biomes": [
+    "forest",
+    "meadow"
+   ],
+   "per_km2": 20,
+   "owned": false,
+   "_doc": "сухостой и валежник"
+  },
+  {
+   "id": "riverbank",
+   "stock": {
+    "stone": 30,
+    "clay": 30
+   },
+   "regrow": {
+    "stone": 3,
+    "clay": 3
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "stone": 30,
+    "clay": 30
+   },
+   "biomes": [
+    "river"
+   ],
+   "per_km2": 4,
+   "owned": false
+  },
+  {
+   "id": "reed_bed",
+   "stock": {
+    "reeds": 24
+   },
+   "regrow": {
+    "reeds": 4
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "reeds": 24
+   },
+   "biomes": [
+    "river",
+    "marsh"
+   ],
+   "per_km2": 3,
+   "owned": false
+  },
+  {
+   "id": "nettle_patch",
+   "stock": {
+    "fiber_raw": 18
+   },
+   "regrow": {
+    "fiber_raw": 3
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "fiber_raw": 18
+   },
+   "biomes": [
+    "meadow",
+    "forest",
+    "river"
+   ],
+   "per_km2": 4,
+   "owned": false,
+   "season": [
+    "summer",
+    "autumn"
+   ],
+   "_doc": "крапива / дикий лён"
+  },
+  {
+   "id": "water",
+   "biomes": [
+    "river",
+    "marsh"
+   ],
+   "per_km2": 2,
+   "owned": false,
+   "_doc": "ручей/речка; бесконечный"
+  },
+  {
+   "id": "shrine",
+   "settlement": true,
+   "per_settlement": 1,
+   "owned": false,
+   "_doc": "камень предков",
+   "stock": {
+    "artifact": 1
+   }
+  },
+  {
+   "id": "village_fire",
+   "settlement": true,
+   "per_settlement": 1,
+   "owned": false,
+   "warmth": true,
+   "_doc": "общий костёр: тепло, разговоры, байки"
+  },
+  {
+   "id": "house",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "shelter": true,
+   "_doc": "хижина; spawn:house из build_hut"
+  },
+  {
+   "id": "hearth",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "warmth": true
+  },
+  {
+   "id": "bed",
+   "settlement": true,
+   "per_person": 1,
+   "owned": true,
+   "_doc": "лежанка; build_hut спаунит 2, make_bed добавляет"
+  },
+  {
+   "id": "storage",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "stock": {
+    "household_idol": 1
+   },
+   "_doc": "стартовые запасы еды/дров кладёт генератор (E) через test_world, иначе новый дом получал бы еду из воздуха"
+  },
+  {
+   "id": "campfire",
+   "owned": false,
+   "warmth": true,
+   "_doc": "кострище, spawn:campfire из build_campfire; гаснет через 2 суток (событие исполнителя)"
+  },
+  {
+   "id": "herb_patch",
+   "stock": {
+    "herbs": 6
+   },
+   "regrow": {
+    "herbs": 2
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "herbs": 6
+   },
+   "biomes": [
+    "meadow",
+    "forest",
+    "marsh"
+   ],
+   "per_km2": 3,
+   "owned": false,
+   "season": [
+    "spring",
+    "summer",
+    "autumn"
+   ]
+  },
+  {
+   "id": "corpse",
+   "owned": false,
+   "_doc": "появляется исполнителем при смерти персонажа"
+  },
+  {
+   "id": "grave",
+   "owned": false,
+   "_doc": "spawn:grave из погребения (часть C)"
+  },
+  {
+   "id": "game_trail",
+   "stock": {
+    "carcass": 1
+   },
+   "regrow": {
+    "carcass": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "carcass": 2
+   },
+   "biomes": [
+    "forest",
+    "meadow"
+   ],
+   "per_km2": 2,
+   "owned": false,
+   "_doc": "охота — взаимодействия hunt_game/butcher_carcass в части C"
+  }
+ ]
 }

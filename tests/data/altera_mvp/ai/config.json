@@ -1,0 +1,19 @@
+{ "_doc": "Global AI parameters (AI_DATA_SCHEMA.md §10).",
+  "top_k": 3, "hysteresis_bonus": 0.15, "switch_margin": 0.1, "fail_penalty": 0.3,
+  "htn_max_depth": 4, "method_max_fails": 3, "method_fail_ticks": 72,
+  "goap_max_depth": 10, "goap_max_nodes": 2000, "reserve_ticks": 36,
+  "walk_m_per_tick": 800, "interaction_range_m": 15,
+  "legal_base": 4.0, "trace_size": 64,
+  "player_idle_resume_ticks": 18, "player_goal_hold_ticks": 36, "player_goal_hold_bonus": 0.3,
+  "hint_decay_ticks": 72, "memory_cap": 200,
+  "modifier_bounds": { "max_abs_delta": 0.5, "max_ttl": 288 },
+  "memory_types": { "starved": 0.6, "stole_food": 0.4, "goal_failed": 0.15, "fought": 0.5, "was_taught": 0.2 },
+  "reputation_axes": ["honesty", "valor", "piety", "generosity", "notoriety"],
+  "status_pairs": ["betrothed", "married", "master_apprentice", "lord_vassal", "sworn_kin"],
+  "household_roles": ["head", "spouse", "child", "kin", "servant", "ward"],
+  "death_causes": ["starvation", "combat", "illness", "old_age", "execution"],
+  "commitments": {
+    "wedding": { "due": 1008, "on_breach": ["rel_back:trust-0.4", "rel_back:enmity+0.3", "reputation:honesty-0.1"] },
+    "repay_debt": { "due": 432, "on_breach": ["rel_back:trust-0.3", "reputation:honesty-0.15"] }
+  }
+}

@@ -1,0 +1,22 @@
+{
+ "_doc": "Строки части C для moodlets/памяти (ru)",
+ "moodlet.flattered.name": "Польщён{self:g||а}",
+ "moodlet.insulted.name": "Оскорблён{self:g||а}",
+ "moodlet.injured.name": "Ранен{self:g||а}",
+ "moodlet.sick.name": "Болен{self:g||а}",
+ "moodlet.cursed.name": "Проклят{self:g||а}",
+ "memory.was_insulted.text": "{who} оскорбил{who:g||а} меня.",
+ "memory.saw_insult.text": "{who} оскорбил{who:g||а} другого при мне.",
+ "memory.saw_accusation.text": "{who} обвинил{who:g||а} кого-то при всех.",
+ "memory.saw_punishment.text": "Видел{self:g||а}, как наказали человека.",
+ "memory.saw_brawl.text": "Видел{self:g||а} драку.",
+ "memory.saw_attack.text": "Видел{self:g||а}, как {who} напал{who:g||а} на человека.",
+ "memory.saw_execution.text": "Видел{self:g||а} казнь.",
+ "memory.was_given_gift.text": "{who} сделал{who:g||а} мне подарок.",
+ "memory.lied.text": "Солгал{self:g||а} {who:dat}.",
+ "memory.caught_lying.text": "Меня поймали на лжи.",
+ "memory.kept_promise.text": "{who} сдержал{who:g||а} слово.",
+ "memory.broken_promise.text": "{who} нарушил{who:g||а} обещание.",
+ "memory.disobeyed.text": "{who} не подчинил{who:g|ся|ась}.",
+ "memory.unpaid_debt.text": "{who} не вернул{who:g||а} долг."
+}

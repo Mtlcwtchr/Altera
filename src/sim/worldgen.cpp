@@ -1,3 +1,5 @@
+#include <set>
+#include <functional>
 #include "sim/worldgen.hpp"
 
 #include <algorithm>
@@ -58,8 +60,22 @@ std::string makeFamilyName(Rng& r) {
 
 std::vector<std::string> pickTraits(Rng& r, const Content& c, const std::vector<std::string>& pool, int count) {
     std::vector<std::string> out;
-    for (int guard = 0; guard < 32 && static_cast<int>(out.size()) < count && !pool.empty(); ++guard) {
-        const std::string& t = pool[static_cast<size_t>(r.irange(0, static_cast<int>(pool.size()) - 1))];
+    double total = 0.0;
+    for (const auto& t : pool) {
+        auto d = c.traits.find(t);
+        total += d == c.traits.end() ? 1.0 : std::max(0.0, d->second.weightInPool);
+    }
+    auto draw = [&]() -> const std::string& {
+        double x = r.uniform() * total;
+        for (const auto& t : pool) {
+            auto d = c.traits.find(t);
+            x -= d == c.traits.end() ? 1.0 : std::max(0.0, d->second.weightInPool);
+            if (x <= 0.0) return t;
+        }
+        return pool.back();
+    };
+    for (int guard = 0; guard < 32 && static_cast<int>(out.size()) < count && !pool.empty() && total > 0.0; ++guard) {
+        const std::string& t = draw();
         if (std::find(out.begin(), out.end(), t) != out.end()) continue;
         bool clash = false;
         for (const auto& [x, y] : c.exclusiveTraits)
@@ -75,6 +91,15 @@ std::vector<std::string> pickTraits(Rng& r, const Content& c, const std::vector<
 World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedOverride) {
     const std::uint64_t seed = seedOverride ? seedOverride : cfg.value("seed", std::uint64_t{1});
     World w(content, seed);
+    {
+        // start_day (day of year) or season: spring | summer | autumn | winter.
+        static const char* kSeasons[] = {"spring", "summer", "autumn", "winter"};
+        int startDay = cfg.value("start_day", 100); // early summer by default
+        const std::string season = cfg.value("season", std::string());
+        for (int i = 0; i < 4; ++i)
+            if (season == kSeasons[i]) startDay = i * (kDaysPerYear / 4) + 10;
+        w.setStartDay(startDay);
+    }
     Rng rng(hashCombine(seed, hashStr("worldgen")));
 
     // --- map --------------------------------------------------------------
@@ -180,8 +205,50 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     std::vector<std::string> pool = cfg.value("traits_pool", std::vector<std::string>{});
     if (pool.empty())
         for (const auto& [id, t] : content.traits) pool.push_back(id);
+    // Start knowledge: explicit lists in the world file win (fixtures); else
+    // knowledge.json start rules + household_must / settlement_must coverage.
+    const bool explicitKnowledge = cfg.contains("knowledge_start") || content.knowledge.empty();
     const auto knowledgeStart = cfg.value("knowledge_start", std::vector<std::string>{"foraging", "cooking"});
     const auto childKnowledge = cfg.value("child_knowledge", std::vector<std::string>{"foraging"});
+    auto startKnowledge = [&](Rng& r, int ageYears) {
+        std::set<std::string> out;
+        if (explicitKnowledge) {
+            for (const auto& k : ageYears < 14 ? childKnowledge : knowledgeStart) out.insert(k);
+            return out;
+        }
+        for (const auto& [id, k] : content.knowledge) {
+            if (k.start == "all_from_child" && ageYears >= 5) out.insert(id);
+            else if (k.start == "all_from_youth" && ageYears >= 12) out.insert(id);
+            else if (k.start == "all_adults" && ageYears >= 14) out.insert(id);
+            else if (ageYears >= 14 && k.startChanceAdult > 0.0 && r.chance(k.startChanceAdult)) out.insert(id);
+        }
+        // Only keep what the prerequisites allow.
+        for (bool changed = true; changed;) {
+            changed = false;
+            for (auto it = out.begin(); it != out.end();) {
+                auto d = content.knowledge.find(*it);
+                bool ok = true;
+                if (d != content.knowledge.end())
+                    for (const auto& req : d->second.requiresKnowledge)
+                        if (!out.count(req)) ok = false;
+                if (ok) ++it;
+                else {
+                    it = out.erase(it);
+                    changed = true;
+                }
+            }
+        }
+        return out;
+    };
+    // Teach `id` (and its prerequisites) to a character.
+    std::function<void(Character&, const std::string&, Rng&)> teach = [&](Character& ch, const std::string& id, Rng& r) {
+        if (ch.knowledge.count(id)) return;
+        auto d = content.knowledge.find(id);
+        if (d != content.knowledge.end())
+            for (const auto& req : d->second.requiresKnowledge) teach(ch, req, r);
+        ch.knowledge.insert(id);
+        ch.skills[id] = r.range(0.2, 0.7);
+    };
     const int traitsPer = cfg.value("traits_per_person", 2);
     const double knowRadius = cfg.value("know_radius_m", 1500.0);
 
@@ -194,6 +261,15 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         if (d != content.objects.end()) o.stock = d->second.stock;
         return w.addObject(o).id;
     };
+
+    // Shared settlement objects (per_settlement) around the centre.
+    for (const auto& [type, def] : content.objects) {
+        if (!def.settlement) continue;
+        for (int k = 0; k < def.perSettlement; ++k) {
+            const Vec2 p{center.x + rng.range(-15.0, 15.0), center.y + rng.range(-15.0, 15.0)};
+            spawnSettlementObject(type, p, kNone);
+        }
+    }
 
     std::vector<EntityId> everyone;
     for (int f = 0; f < families; ++f) {
@@ -230,7 +306,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             c.traits = pickTraits(rng, content, pool, traitsPer);
             for (const auto& n : content.needs) c.needs[n.id] = rng.range(n.startLo, n.startHi);
             const bool child = c.body.stage() == "child";
-            for (const auto& k : child ? childKnowledge : knowledgeStart) c.knowledge.insert(k);
+            c.knowledge = startKnowledge(rng, ageYears);
             for (const auto& k : c.knowledge) c.skills[k] = child ? rng.range(0.05, 0.2) : rng.range(0.2, 0.7);
             c.status.family = fam.id;
             c.status.dynasty = dyn.id;
@@ -260,6 +336,14 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             w.character(fatherId)->status.children.push_back(kid.id);
             w.character(motherId)->status.children.push_back(kid.id);
         }
+        // Every household covers household_must (on its head at least).
+        if (!explicitKnowledge)
+            for (const auto& k : content.householdMust) {
+                bool covered = false;
+                for (EntityId m : members)
+                    if (w.character(m)->knowledge.count(k) && w.character(m)->body.stage() != "child") covered = true;
+                if (!covered) teach(*w.character(fatherId), k, rng);
+            }
         dyn.founder = fatherId;
         fam.members = members;
         w.families()[fam.id] = fam;
@@ -268,6 +352,22 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         everyone.insert(everyone.end(), members.begin(), members.end());
     }
     w.settlements()[st.id] = st;
+
+    // The settlement as a whole covers settlement_must: each missing piece goes
+    // to a different adult, round-robin (the start chains must close).
+    if (!explicitKnowledge && !everyone.empty()) {
+        std::vector<EntityId> adults;
+        for (EntityId id : everyone)
+            if (w.character(id)->body.stage() == "adult") adults.push_back(id);
+        size_t next = 0;
+        for (const auto& k : content.settlementMust) {
+            bool covered = false;
+            for (EntityId id : adults)
+                if (w.character(id)->knowledge.count(k)) covered = true;
+            if (covered || adults.empty()) continue;
+            teach(*w.character(adults[next++ % adults.size()]), k, rng);
+        }
+    }
 
     // --- relations and knowledge -------------------------------------------
     for (EntityId a : everyone) {

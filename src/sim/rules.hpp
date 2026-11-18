@@ -41,7 +41,8 @@ struct Condition {
 };
 
 struct Effect {
-    bool onTarget = false; // t.<subject>: the target character
+    bool onTarget = false;    // t.<subject>: the target character
+    bool onWitnesses = false; // w.<subject>: every witness (memory | moodlet | rel toward the actor)
     std::string subject;   // without the t. prefix
     std::string key;
     char op = 0; // '+', '-', '=' or 0 for a flag effect (moodlet/memory/spawn)

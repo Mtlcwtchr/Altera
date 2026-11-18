@@ -64,10 +64,23 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
             const WorldObject* o = x.w.object(id);
             if (!o || o->type != k.key) continue;
             if (o->reservedFor(c.id, x.w.now())) continue;
+            if (!x.w.inSeason(*o)) continue;
             if (s == "at" && dist(o->pos, c.pos) > range) continue;
             ++n;
         }
         return n;
+    }
+    if (s == "status_pair") {
+        if (!x.targetChar) return 0.0;
+        return x.c.status.hasPair(x.targetChar->id, k.key) ? 1.0 : 0.0;
+    }
+    if (s == "status_pair_any") return c.status.hasPairAny(k.key) ? 1.0 : 0.0;
+    if (s == "right") return c.status.rights.count(k.key) ? 1.0 : 0.0;
+    if (s == "verdict") {
+        // A sentence is always read from the target (the one being judged);
+        // without a target character it is the actor's own.
+        const Character& who = x.targetChar ? *x.targetChar : c;
+        return who.status.verdicts.count(k.key) ? 1.0 : 0.0;
     }
     if (s == "rel") {
         if (!x.targetChar) return 0.0;
@@ -90,6 +103,7 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
         if (!target) return fail("no_target:" + d.targetType);
         if (target->type != d.targetType) return fail("wrong_target:" + d.targetType);
         if (target->reservedFor(c.id, w.now())) return fail("reserved:" + d.targetType);
+        if (!w.inSeason(*target)) return fail("season:" + d.targetType);
         if (checkRange && dist(target->pos, c.pos) > w.content().config.interactionRangeM)
             return fail("out_of_range:" + d.targetType);
     }
@@ -120,14 +134,141 @@ void kill(World& w, Character& who, const std::string& cause) {
     w.chronicle("death", {who.id}, "chronicle.death", {{"who", who.id}, {"cause", cause}});
 }
 
-} // namespace
-
 // Applies a list of effects. Subjects of the social layer that are parsed and
 // validated but not interpreted yet (status_pair, household_*, commitment:
 // stage 2, see AI_DATA_SCHEMA.md §1.4) are skipped here.
+} // namespace
 void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list, WorldObject* target,
-                     Character* targetChar) {
+                     Character* targetChar, const std::vector<EntityId>* witnesses);
+namespace {
+
+void setPair(World& w, Character& a, Character& b, const std::string& id, bool on) {
+    auto one = [&](Character& x, Character& y) {
+        if (on) x.status.pairs[y.id].insert(id);
+        else {
+            auto it = x.status.pairs.find(y.id);
+            if (it != x.status.pairs.end()) {
+                it->second.erase(id);
+                if (it->second.empty()) x.status.pairs.erase(it);
+            }
+        }
+        if (id == "married") x.status.spouse = on ? y.id : (x.status.spouse == y.id ? kNone : x.status.spouse);
+    };
+    one(a, b);
+    one(b, a);
+    w.chronicle(on ? "status_pair" : "status_pair_end", {a.id, b.id},
+                on ? "chronicle.status_pair" : "chronicle.status_pair_end", {{"a", a.id}, {"b", b.id}, {"pair", id}});
+}
+
+void applyWitnessEffect(World& w, Character& actor, const Effect& e, const std::vector<EntityId>& witnesses) {
+    for (EntityId id : witnesses) {
+        Character* wc = w.character(id);
+        if (!wc || !wc->body.alive) continue;
+        if (e.subject == "rel") {
+            addRel(*wc, actor.id, e);
+        } else if (e.subject == "moodlet") {
+            Effect m = e;
+            m.onWitnesses = false;
+            applyEffectList(w, *wc, {m}, nullptr, nullptr, nullptr);
+        } else if (e.subject == "memory") {
+            MemoryEntry m;
+            m.type = e.key;
+            m.who = {actor.id};
+            m.source = "seen";
+            w.remember(*wc, std::move(m));
+        }
+    }
+}
+
+} // namespace
+
+std::vector<EntityId> witnessesOf(const World& w, const Character& actor, const InteractionDef& d,
+                                  const Character* targetChar) {
+    std::vector<EntityId> out;
+    if (d.visibility == "private") return out; // participants only: actor and target are not witnesses
+    const AiConfig& cfg = w.content().config;
+    for (const auto& [id, o] : w.characters()) {
+        if (id == actor.id || (targetChar && id == targetChar->id) || !o.body.alive) continue;
+        if (dist(o.pos, actor.pos) > cfg.perceptionRadiusM) continue;
+        if (d.visibility == "secret") {
+            Rng r = agentRng(w.seed(), id, w.now(), "notice:" + d.id + ":" + std::to_string(actor.id));
+            if (r.uniform() >= cfg.noticeChance) continue;
+        }
+        out.push_back(id);
+    }
+    return out;
+}
+
+double chanceOf(const World& w, const Character& c, const InteractionDef& d, const Character* targetChar) {
+    if (!d.chance.set) return 1.0;
+    double p = d.chance.base;
+    if (!d.chance.skill.empty()) {
+        auto it = c.skills.find(d.chance.skill);
+        p += d.chance.perSkill * (it == c.skills.end() ? 0.0 : it->second);
+    }
+    const EvalCtx x{w, c, nullptr, targetChar};
+    for (const auto& in : d.chance.add) p += in.k * evalSubject(x, in.input);
+    return std::clamp(p, d.chance.min, d.chance.max);
+}
+
+std::vector<LegalTag> legalTags(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
+                                const Character* targetChar) {
+    const EvalCtx x{w, c, target, targetChar};
+    auto holds = [&](const LegalRule& r) {
+        for (const auto& any : r.all) {
+            bool one = false;
+            for (const auto& k : any)
+                if (evalCondition(x, k)) {
+                    one = true;
+                    break;
+                }
+            if (!one) return false;
+        }
+        return true;
+    };
+    std::vector<LegalTag> tags;
+    for (const auto& t : d.legal) tags.push_back({t, 1.0});
+    for (const auto& r : d.legalIf)
+        if (holds(r) && std::none_of(tags.begin(), tags.end(), [&](const LegalTag& g) { return g.tag == r.tag; }))
+            tags.push_back({r.tag, 1.0});
+    for (const auto& r : d.legalUnless) {
+        if (!holds(r)) continue;
+        for (auto it = tags.begin(); it != tags.end();) {
+            if (it->tag != r.tag) {
+                ++it;
+                continue;
+            }
+            if (r.mult < 0.0) it = tags.erase(it);
+            else {
+                it->mult *= r.mult;
+                ++it;
+            }
+        }
+    }
+    return tags;
+}
+
+double legalPrice(const World& w, const Character& c, const std::string& tag, double mult) {
+    const Content& ct = w.content();
+    double m = mult;
+    for (const auto& t : c.traits) {
+        auto td = ct.traits.find(t);
+        if (td == ct.traits.end()) continue;
+        auto lp = td->second.legalPenalty.find(tag);
+        if (lp != td->second.legalPenalty.end()) m *= lp->second;
+    }
+    // Desperation lowers the price of breaking a norm (AI_ARCHITECTURE §3.4).
+    const double desperation = c.need("hunger") < 0.2 ? 0.35 : 1.0;
+    return ct.config.legalBase * m * desperation;
+}
+
+void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list, WorldObject* target,
+                     Character* targetChar, const std::vector<EntityId>* witnesses) {
     for (const auto& e : list) {
+        if (e.onWitnesses) {
+            if (witnesses) applyWitnessEffect(w, actor, e, *witnesses);
+            continue;
+        }
         if (e.onTarget && !targetChar) continue;
         Character& c = e.onTarget ? *targetChar : actor;
         const double dv = e.signedDelta();
@@ -184,6 +325,8 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             if (def != w.content().objects.end()) o.stock = def->second.stock;
             const EntityId id = w.addObject(o).id;
             c.knownObjects.insert(id);
+        } else if (s == "status_pair") {
+            if (targetChar) setPair(w, actor, *targetChar, e.key, e.op == 0 || e.value != 0.0);
         } else if (s == "rel") {
             if (targetChar) addRel(actor, targetChar->id, e);
         } else if (s == "rel_back") {
@@ -199,20 +342,29 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     // roll applies on_fail instead of eff. Risks roll independently after.
     bool success = true;
     if (d.chance.set) {
-        double p = d.chance.base;
-        if (!d.chance.skill.empty()) {
-            auto it = c.skills.find(d.chance.skill);
-            p += d.chance.perSkill * (it == c.skills.end() ? 0.0 : it->second);
-        }
-        p = std::clamp(p, d.chance.min, d.chance.max);
+        const double p = chanceOf(w, c, d, targetChar);
         Rng r = w.rng(c.id, "chance:" + d.id);
         success = r.uniform() < p;
     }
-    applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar);
+    const std::vector<EntityId> wit = witnessesOf(w, c, d, targetChar);
+    applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar, &wit);
     for (const auto& rk : d.risk) {
         Rng r = w.rng(c.id, "risk:" + d.id + ":" + rk.id);
-        if (r.uniform() < rk.p) applyEffectList(w, c, rk.eff, target, targetChar);
+        if (r.uniform() < rk.p) applyEffectList(w, c, rk.eff, target, targetChar, &wit);
     }
+    // A norm broken in front of witnesses is remembered by them (rumours, courts).
+    const auto tags = legalTags(w, c, d, target, targetChar);
+    if (!wit.empty() && !tags.empty())
+        for (EntityId id : wit) {
+            Character* wc = w.character(id);
+            if (!wc) continue;
+            MemoryEntry m;
+            m.type = "saw_crime";
+            m.who = {c.id};
+            if (targetChar) m.who.push_back(targetChar->id);
+            m.valence = -0.3 * tags.front().mult;
+            w.remember(*wc, std::move(m));
+        }
 }
 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,
@@ -226,6 +378,10 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
         const WorldObject* o = w.object(id);
         if (!o || o->type != d.targetType) continue;
         anyOfType = true;
+        if (!w.inSeason(*o)) {
+            lastWhy = "season:" + d.targetType;
+            continue;
+        }
         if (!ignoreReservations && o->reservedFor(c.id, w.now())) {
             lastWhy = "reserved:" + d.targetType;
             continue;

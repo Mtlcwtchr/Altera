@@ -15,6 +15,9 @@ struct ItemDef {
     std::string id;
     std::vector<std::string> tags;
     double nutrition = 0.0;
+    double warmth = 0.0;    // clothing: slows warmth decay while carried (needs.clothing_mult)
+    double toolWear = 0.0;  // chance per use that the tool breaks (stage 2)
+    double spoilDays = 0.0; // 0 = keeps
 };
 
 struct ObjectDef {
@@ -30,6 +33,9 @@ struct ObjectDef {
     int perFamily = 0;
     int perPerson = 0;
     bool warmth = false;
+    bool shelter = false;              // a roof: needs.sheltered_mult applies nearby
+    int perSettlement = 0;             // settlement objects shared by everyone
+    std::vector<std::string> seasons;  // empty = all year; out of season the stock is not gathered
 };
 
 struct NeedDef {
@@ -39,6 +45,10 @@ struct NeedDef {
     double startLo = 0.6, startHi = 0.9;
     double nightMult = 1.0;
     std::map<std::string, double> biomeMult;
+    bool mvp = true;
+    std::map<std::string, double> seasonMult;
+    double shelteredMult = 1.0;
+    std::map<std::string, double> clothingMult; // item -> decay multiplier while carried
 };
 
 struct MoodletDef {
@@ -54,6 +64,19 @@ struct TraitDef {
     std::map<std::string, double> legalPenalty;
     std::map<std::string, double> methodBias;
     double hysteresisMult = 1.0;
+    double inherit = 0.0;      // chance a carrier parent passes it on (history generator)
+    double weightInPool = 1.0; // world generator draw weight
+};
+
+// knowledge.json: what can be known (knows:/skill: keys) and the start rules.
+struct KnowledgeDef {
+    std::string id;
+    std::vector<std::string> requiresKnowledge;
+    Tick learnTicks = 0;
+    Tick selfTicks = 0;   // 0 = cannot be learned alone
+    std::string start;    // all_from_child | all_from_youth | all_adults | "" (none)
+    double startChanceAdult = 0.0; // otherwise: chance an adult starts with it
+    bool familyKnowledge = false;  // candidate for a family secret (history generator)
 };
 
 // --- Layer 1: Utility -------------------------------------------------------
@@ -89,6 +112,7 @@ struct HtnStep {
     std::string ref;                 // interaction id (Do) or task id (Task)
     std::vector<Condition> achieve;  // Achieve
     std::vector<std::string> allow;  // Achieve: interaction whitelist (empty = default set)
+    Json params = Json::object();    // Do: extra parameters (start_dialog intent, ...)
 };
 
 struct HtnMethod {
@@ -112,13 +136,29 @@ struct ParamDef {
     std::vector<std::string> of; // allowed values (empty = any of the type)
 };
 
-// Success chance of a (non-continuous) interaction: base + per_skill * skill.
+// One extra input of a chance (schema v0.3 §3): k * <input>, the input being
+// rel:<axis> | need: | body: | skill: | reputation:, optionally with t.
+struct ChanceInput {
+    Condition input; // parsed as a condition, only subject/key/onTarget are used
+    double k = 0.0;
+};
+
+// Success chance: clamp(base + per_skill * skill + sum k * input, min, max).
 struct ChanceDef {
     bool set = false;
     double base = 1.0;
     std::string skill; // may be a parameter ($skill)
     double perSkill = 0.0;
+    std::vector<ChanceInput> add;
     double min = 0.0, max = 1.0;
+};
+
+// Conditional law (schema v0.3 §2). `anyOf[i]` is one list entry; its
+// alternatives are the `|`-separated parts. All entries must hold.
+struct LegalRule {
+    std::string tag;
+    std::vector<std::vector<Condition>> all;
+    double mult = -1.0; // legal_unless: <0 removes the tag, else multiplies its price
 };
 
 // A side risk rolled after the interaction (succeeded or not).
@@ -162,6 +202,10 @@ struct InteractionDef {
     bool reserve = false;
     bool goap = true;
     std::vector<std::string> legal;
+    std::vector<LegalRule> legalIf;
+    std::vector<LegalRule> legalUnless;
+    std::string consent;                // "" | target (the target's mind decides)
+    std::vector<std::string> intents;   // start_dialog: conversation intents it can open
     std::string visibility = "public";
     Json social;
     std::vector<std::string> speech;
@@ -228,6 +272,8 @@ struct AiConfig {
     double walkMPerTick = 800.0;
     double interactionRangeM = 15.0;
     double legalBase = 4.0;
+    double perceptionRadiusM = 40.0; // witnesses of public acts
+    double noticeChance = 0.25;      // a bystander notices a secret act
     int traceSize = 64;
     double modMaxAbsDelta = 0.5;
     Tick modMaxTtl = 288;
@@ -239,6 +285,8 @@ struct AiConfig {
     std::map<std::string, double> memoryTypes;
     std::vector<std::string> reputationAxes = {"honesty", "valor", "piety", "generosity", "notoriety"};
     std::vector<std::string> statusPairs = {"betrothed", "married", "master_apprentice", "lord_vassal", "sworn_kin"};
+    std::vector<std::string> rights = {"arrest", "exile", "judge", "appoint"};
+    std::vector<std::string> verdicts = {"execute", "punish", "exile"};
     std::vector<std::string> householdRoles = {"head", "spouse", "child", "kin", "servant", "ward"};
     std::vector<std::string> deathCauses = {"starvation", "combat", "illness", "old_age", "execution"};
     std::map<std::string, CommitmentDef> commitments;
@@ -260,6 +308,10 @@ struct Content {
     std::map<std::string, FsmStateDef> fsm;
     std::vector<std::string> speechActs;
     std::map<std::string, DialogueTemplate> dialogue;
+    Json dialogueRules = Json::object(); // the rest of dialogue.json (plans, menu, consent, ...)
+    std::map<std::string, KnowledgeDef> knowledge;
+    std::vector<std::string> householdMust;
+    std::vector<std::string> settlementMust;
     AiConfig config;
     std::vector<std::string> warnings;
 
@@ -274,7 +326,8 @@ struct Content {
     static Content load(const std::string& dir);
     static Content fromJson(const Json& items, const Json& objects, const Json& needs, const Json& traits,
                             const Json& goals, const Json& htn, const Json& interactions, const Json& fsm,
-                            const Json& config, const Json& dialogue = Json::object());
+                            const Json& config, const Json& dialogue = Json::object(),
+                            const Json& knowledge = Json::object());
 };
 
 struct ValidationReport {

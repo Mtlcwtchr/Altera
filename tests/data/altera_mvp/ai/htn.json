@@ -1,0 +1,34 @@
+{ "_doc": "HTN tasks and methods (AI_DATA_SCHEMA.md §7). The cheapest feasible method wins.",
+  "tasks": [
+    { "id": "obtain_food", "methods": [
+      { "id": "eat_carried", "pre": ["has:meal>=1"], "cost": 1, "steps": [ {"do": "eat_meal"} ] },
+      { "id": "eat_carried_berries", "pre": ["has:berries>=2"], "cost": 2, "steps": [ {"do": "eat_berries"} ] },
+      { "id": "eat_stored", "pre": ["home:meal>=1"], "cost": 3,
+        "steps": [ {"achieve": ["has:meal>=1"], "allow": ["take_meal"]}, {"do": "eat_meal"} ] },
+      { "id": "forage", "pre": ["knows:foraging", "known:berry_bush"], "cost": 6,
+        "steps": [ {"achieve": ["has:berries>=2"], "allow": ["gather_berries"]}, {"do": "eat_berries"} ] },
+      { "id": "cook_then_eat", "pre": ["knows:cooking", "known:hearth", "known:berry_bush"], "cost": 8,
+        "steps": [ {"achieve": ["has:meal>=1"], "allow": ["gather_berries", "gather_wood", "cook_meal"]},
+                   {"do": "eat_meal"} ] },
+      { "id": "steal_food", "pre": ["known:storage"], "cost": 3, "legal": ["theft"],
+        "steps": [ {"achieve": ["has:meal>=1"], "allow": ["steal_meal"]}, {"do": "eat_meal"} ] }
+    ]},
+    { "id": "rest", "methods": [
+      { "id": "sleep_in_bed", "pre": ["known:bed"], "cost": 1, "steps": [ {"do": "sleep_bed"} ] },
+      { "id": "sleep_rough", "cost": 4, "steps": [ {"do": "sleep_ground"} ] }
+    ]},
+    { "id": "get_warm", "methods": [
+      { "id": "warm_at_hearth", "pre": ["known:hearth"], "cost": 1, "steps": [ {"do": "warm_at_hearth"} ] },
+      { "id": "huddle", "cost": 5, "steps": [ {"do": "huddle"} ] }
+    ]},
+    { "id": "stock_food", "methods": [
+      { "id": "cook_and_store", "pre": ["knows:cooking", "known:hearth", "known:berry_bush", "known:storage"],
+        "cost": 2,
+        "steps": [ {"achieve": ["has:meal>=2"], "allow": ["gather_berries", "gather_wood", "cook_meal"]},
+                   {"do": "store_meal"}, {"do": "store_meal"} ] }
+    ]},
+    { "id": "idle", "methods": [
+      { "id": "loiter", "cost": 1, "steps": [ {"do": "idle_wander"} ] }
+    ]}
+  ]
+}

@@ -33,8 +33,26 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
 // (t.* effects, rel, rel_back).
 void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target,
                   Character* targetChar = nullptr);
+// `witnesses` receive the w.* effects (nullptr: none are applied).
 void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list, WorldObject* target,
-                     Character* targetChar = nullptr);
+                     Character* targetChar = nullptr, const std::vector<EntityId>* witnesses = nullptr);
+// Who perceives the act by its visibility (schema v0.3 §1): public - everyone
+// alive within config.perception_radius_m; private - nobody but the two
+// participants (who are not witnesses); secret - those who pass a notice roll.
+std::vector<EntityId> witnessesOf(const World& w, const Character& actor, const InteractionDef& d,
+                                  const Character* targetChar);
+// p = clamp(base + per_skill * skill + sum k * input, min, max) (schema v0.3 §3).
+double chanceOf(const World& w, const Character& c, const InteractionDef& d, const Character* targetChar);
+// Legal tags of the act right now: `legal` plus legal_if minus/scaled by legal_unless (v0.3 §2).
+struct LegalTag {
+    std::string tag;
+    double mult = 1.0;
+};
+std::vector<LegalTag> legalTags(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
+                                const Character* targetChar);
+// What breaking `tag` costs this character (traits, desperation). The law
+// only changes the price, never removes the option.
+double legalPrice(const World& w, const Character& c, const std::string& tag, double mult = 1.0);
 // Known, free (or ours), condition-satisfying instance of the interaction's
 // target type nearest `from`; kNone if there is none.
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,

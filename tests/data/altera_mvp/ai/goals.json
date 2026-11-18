@@ -1,0 +1,31 @@
+{ "_doc": "Utility goals (AI_DATA_SCHEMA.md §6). time:night and age:<stage> are 1 or 0.",
+  "goals": [
+    { "id": "eat", "task": "obtain_food", "priority_class": "need", "aggregate": "product",
+      "considerations": [
+        { "input": "need:hunger", "curve": {"type": "inverse_logistic", "k": 12, "x0": 0.42} }
+      ],
+      "min_ticks": 3, "interrupt": "need:hunger<0.12", "cooldown_on_fail": 12 },
+    { "id": "sleep", "task": "rest", "priority_class": "need", "aggregate": "product",
+      "considerations": [
+        { "input": "need:energy", "curve": {"type": "inverse_logistic", "k": 10, "x0": 0.4} },
+        { "input": "time:night", "curve": {"type": "step", "x0": 0.5, "lo": 0.45, "hi": 1.0} }
+      ],
+      "min_ticks": 6, "interrupt": "need:energy<0.08", "cooldown_on_fail": 12 },
+    { "id": "warm_up", "task": "get_warm", "priority_class": "need", "aggregate": "product",
+      "considerations": [
+        { "input": "need:warmth", "curve": {"type": "inverse_logistic", "k": 12, "x0": 0.35} }
+      ],
+      "min_ticks": 3, "interrupt": "need:warmth<0.1" },
+    { "id": "stock_food", "task": "stock_food", "priority_class": "work", "aggregate": "product", "base": 0.55,
+      "considerations": [
+        { "input": "home:meal", "norm": 8, "curve": {"type": "inverse"} },
+        { "input": "need:energy", "curve": {"type": "linear", "m": 0.7, "b": 0.3} },
+        { "input": "time:night", "curve": {"type": "step", "x0": 0.5, "lo": 1.0, "hi": 0.15} },
+        { "input": "age:adult", "curve": {"type": "step", "x0": 0.5, "lo": 0.3, "hi": 1.0} }
+      ],
+      "min_ticks": 12, "cooldown_on_fail": 36 },
+    { "id": "idle", "task": "idle", "priority_class": "idle", "aggregate": "product",
+      "considerations": [ { "input": "const", "curve": {"type": "const", "v": 0.08} } ],
+      "min_ticks": 2 }
+  ]
+}

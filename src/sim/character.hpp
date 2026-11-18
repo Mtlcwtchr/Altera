@@ -66,6 +66,13 @@ struct Status {
     EntityId mother = kNone;
     EntityId father = kNone;
     std::vector<EntityId> children;
+    // Social layer (schema v0.3 §2). Status pairs are stored on both sides;
+    // `married` also mirrors `spouse`.
+    std::map<EntityId, std::set<std::string>> pairs; // other -> status pair ids
+    std::set<std::string> rights;                    // arrest | exile | judge | appoint (mandate or office)
+    std::set<std::string> verdicts;                  // sentences against this character
+    bool hasPair(EntityId other, const std::string& id) const;
+    bool hasPairAny(const std::string& id) const;
 };
 
 struct Controller {

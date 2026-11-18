@@ -85,7 +85,14 @@ Effect parseEffect(const std::string& text) {
     Effect e;
     e.text = text;
     const size_t i = parseHead(text, 0, e.subject, e.key);
-    splitTarget(e.subject, e.onTarget, text);
+    if (e.subject.rfind("w.", 0) == 0) { // w.<subject>: every witness (schema v0.3 §1)
+        e.onWitnesses = true;
+        e.subject = e.subject.substr(2);
+        if (e.subject.empty() || e.subject.find('.') != std::string::npos)
+            throw std::runtime_error("bad witness prefix in '" + text + "'");
+    } else {
+        splitTarget(e.subject, e.onTarget, text);
+    }
     if (i == text.size()) return e;
     const char op = text[i];
     if (op != '+' && op != '-' && op != '=') throw std::runtime_error("bad operator in effect '" + text + "'");

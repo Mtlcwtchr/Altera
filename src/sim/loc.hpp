@@ -48,6 +48,11 @@ public:
     // and "g" (a plain string entry becomes {"nom": text}); `fallbackText`
     // when the key is missing.
     Json noun(const std::string& lang, const std::string& key, const std::string& fallbackText) const;
+    // A character's name as a noun {nom, gen, ..., g} (schema v0.3 §4): each
+    // word is declined by the language's _grammar.json name_rules; keys
+    // name.<word>.<case> override the rules; no rule -> nom everywhere.
+    Json personNoun(const std::string& lang, const std::string& name, char sex) const;
+    const Json* grammar(const std::string& lang) const;
     std::set<std::string> keys(const std::string& lang) const;
 
     std::vector<std::string> loadWarnings; // duplicate keys across files, etc.
@@ -56,6 +61,7 @@ private:
     std::string base_ = "ru";
     std::string fallback_ = "ru";
     std::map<std::string, std::map<std::string, Json>> tables_; // lang -> key -> string | noun object
+    std::map<std::string, Json> grammar_;                       // lang -> _grammar.json
 };
 
 // The formatter itself. `lang` picks the plural rule (the language the pattern

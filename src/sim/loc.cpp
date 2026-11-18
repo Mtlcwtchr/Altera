@@ -170,8 +170,148 @@ Json readJsonFile(const std::filesystem::path& p) {
     }
 }
 
-Json characterNoun(const Character& c) { return Json{{"nom", c.name}, {"g", c.body.sex == 'm' ? "m" : "f"}}; }
+// --- UTF-8 <-> code points (name declension works on letters) ---------------
+std::u32string toU32(const std::string& s) {
+    std::u32string out;
+    for (size_t i = 0; i < s.size();) {
+        const unsigned char c = static_cast<unsigned char>(s[i]);
+        char32_t cp = c;
+        int n = 0;
+        if (c >= 0xF0) cp = c & 0x07, n = 3;
+        else if (c >= 0xE0) cp = c & 0x0F, n = 2;
+        else if (c >= 0xC0) cp = c & 0x1F, n = 1;
+        ++i;
+        for (int k = 0; k < n && i < s.size(); ++k, ++i) cp = (cp << 6) | (static_cast<unsigned char>(s[i]) & 0x3F);
+        out.push_back(cp);
+    }
+    return out;
+}
+std::string toU8(const std::u32string& s) {
+    std::string out;
+    for (char32_t cp : s) {
+        if (cp < 0x80) out.push_back(static_cast<char>(cp));
+        else if (cp < 0x800) {
+            out.push_back(static_cast<char>(0xC0 | (cp >> 6)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        } else if (cp < 0x10000) {
+            out.push_back(static_cast<char>(0xE0 | (cp >> 12)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        } else {
+            out.push_back(static_cast<char>(0xF0 | (cp >> 18)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 12) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | ((cp >> 6) & 0x3F)));
+            out.push_back(static_cast<char>(0x80 | (cp & 0x3F)));
+        }
+    }
+    return out;
+}
+char32_t lowerRu(char32_t c) {
+    if (c >= U'А' && c <= U'Я') return c + 32; // А..Я
+    if (c == U'Ё') return U'ё';                 // Ё
+    return c;
+}
 
+// One alternative of a rule's `match`: ".*" (anything), "[...]" (a class of the
+// last letter) or a literal ending.
+bool matchEnding(const std::u32string& word, const std::u32string& alt) {
+    if (alt == U".*") return true;
+    if (word.empty()) return false;
+    if (alt.size() >= 2 && alt.front() == U'[' && alt.back() == U']') {
+        const char32_t last = lowerRu(word.back());
+        return alt.find(last, 1) < alt.size() - 1;
+    }
+    if (alt.size() > word.size()) return false;
+    for (size_t i = 0; i < alt.size(); ++i)
+        if (lowerRu(word[word.size() - alt.size() + i]) != alt[i]) return false;
+    return true;
+}
+bool matchRule(const std::u32string& word, const std::string& match) {
+    const std::u32string m = toU32(match);
+    size_t from = 0;
+    while (true) {
+        const size_t bar = m.find(U'|', from);
+        if (matchEnding(word, m.substr(from, bar == std::u32string::npos ? std::u32string::npos : bar - from)))
+            return true;
+        if (bar == std::u32string::npos) return false;
+        from = bar + 1;
+    }
+}
+
+// Case forms of one word by the grammar rules; nullopt-like empty when no rule.
+Json declineWord(const Json& grammar, const std::string& word, char sex) {
+    static const char* kCases[] = {"gen", "dat", "acc", "ins", "pre"};
+    Json forms = Json::object();
+    forms["nom"] = word;
+    const std::u32string w = toU32(word);
+    const std::string g = sex == 'm' ? "m" : "f";
+    for (const auto& r : grammar.value("name_rules", Json::array())) {
+        const std::string rg = r.value("gender", std::string("any"));
+        if (rg != "any" && rg != g) continue;
+        if (!matchRule(w, r.value("match", std::string()))) continue;
+        const std::u32string end = toU32(r.value("end", std::string()));
+        const std::u32string stem = w.size() >= end.size() ? w.substr(0, w.size() - end.size()) : w;
+        const char32_t before = stem.empty() ? 0 : lowerRu(stem.back());
+        static const std::u32string hushVelar = U"жшчщкгх", // жшчщкгх
+            hushTs = U"жшчщц";                              // жшчщц
+        Json add = r.value("add", Json::object());
+        auto over = [&](const char* key, const std::u32string& set) {
+            if (!r.contains(key) || !before || set.find(before) == std::u32string::npos) return;
+            for (auto it = r[key].begin(); it != r[key].end(); ++it) add[it.key()] = *it;
+        };
+        // after_hush_or_velar looks at the stem, after_hush_or_ts at the last letter
+        over("after_hush_or_velar", hushVelar);
+        if (r.contains("after_hush_or_ts") && !w.empty() && hushTs.find(lowerRu(w.back())) != std::u32string::npos)
+            for (auto it = r["after_hush_or_ts"].begin(); it != r["after_hush_or_ts"].end(); ++it) add[it.key()] = *it;
+        if (add.empty()) return forms; // indeclinable
+        for (const char* cs : kCases) {
+            if (!add.contains(cs)) continue;
+            std::string ending = add[cs].get<std::string>();
+            const size_t bar = ending.find('|');
+            if (bar != std::string::npos) ending = ending.substr(0, bar);
+            forms[cs] = toU8(stem) + ending;
+        }
+        return forms;
+    }
+    return forms;
+}
+
+} // namespace
+
+const Json* Loc::grammar(const std::string& lang) const {
+    auto it = grammar_.find(lang);
+    return it == grammar_.end() ? nullptr : &it->second;
+}
+
+Json Loc::personNoun(const std::string& lang, const std::string& name, char sex) const {
+    static const char* kAll[] = {"nom", "gen", "dat", "acc", "ins", "pre"};
+    Json out = Json::object();
+    for (const char* cs : kAll) out[cs] = "";
+    out["g"] = sex == 'm' ? "m" : "f";
+    const Json* gr = grammar(lang);
+    size_t from = 0;
+    bool first = true;
+    while (from <= name.size()) {
+        const size_t sp = name.find(' ', from);
+        const std::string word = name.substr(from, sp == std::string::npos ? std::string::npos : sp - from);
+        Json forms = gr ? declineWord(*gr, word, sex) : Json{{"nom", word}};
+        for (const char* cs : kAll) {
+            std::string f = forms.value(cs, word);
+            if (const Json* ex = entry(lang, "name." + word + "." + cs); ex && ex->is_string()) f = ex->get<std::string>();
+            std::string cur = out[cs].get<std::string>();
+            out[cs] = first ? f : cur + " " + f;
+        }
+        first = false;
+        if (sp == std::string::npos) break;
+        from = sp + 1;
+    }
+    return out;
+}
+
+namespace {
+Json characterNoun(const Loc& loc, const std::string& lang, const Character& c) {
+    return loc.personNoun(lang, c.name, c.body.sex);
+}
 } // namespace
 
 // --- tables -----------------------------------------------------------------
@@ -207,7 +347,14 @@ Loc Loc::load(const std::string& dir) {
         for (const auto& e : fs::directory_iterator(ld))
             if (e.is_regular_file() && e.path().extension() == ".json") files.push_back(e.path());
         std::sort(files.begin(), files.end()); // deterministic across file systems
-        for (const auto& f : files) flatten("", readJsonFile(f), t, lang + "/" + f.filename().string(), l.loadWarnings);
+        for (const auto& f : files) {
+            const std::string fn = f.filename().string();
+            if (!fn.empty() && fn[0] == '_') { // _grammar.json: rules, not keys
+                if (fn == "_grammar.json") l.grammar_[lang] = readJsonFile(f);
+                continue;
+            }
+            flatten("", readJsonFile(f), t, lang + "/" + fn, l.loadWarnings);
+        }
     }
     return l;
 }
@@ -461,7 +608,7 @@ std::string reasonText(const Loc& loc, const std::string& lang, const std::strin
 
 Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json& params, const Character* self) {
     Json a = Json::object();
-    if (self) a["self"] = characterNoun(*self);
+    if (self) a["self"] = characterNoun(loc, lang, *self);
     if (!params.is_object()) return a;
     auto ref = [&](const char* kind, const std::string& id) { return loc.noun(lang, std::string(kind) + "." + id + ".name", id); };
     for (auto it = params.begin(); it != params.end(); ++it) {
@@ -492,9 +639,10 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = v;
             }
         } else if (v.is_number_integer() &&
-                   (k == "who" || k == "speaker" || k == "listener" || k == "actor" || k == "target")) {
+                   (k == "who" || k == "speaker" || k == "listener" || k == "actor" || k == "target" || k == "a" ||
+                    k == "b")) {
             const EntityId id = v.get<EntityId>();
-            if (const Character* c = w.character(id)) a[k] = characterNoun(*c);
+            if (const Character* c = w.character(id)) a[k] = characterNoun(loc, lang, *c);
             else if (const WorldObject* o = w.object(id)) a[k] = ref("object", o->type);
             else a[k] = v;
         } else {

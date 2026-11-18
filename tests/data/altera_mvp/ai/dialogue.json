@@ -1,0 +1,37 @@
+{ "_doc": "Speech acts and dialogue templates (AI_DATA_SCHEMA.md §9a). No display text here: dialogue.<template>.<variant> lives in content/loc/<lang>/dialogue.json. pre/eff: speaker is the actor, t. is the listener, rel is speaker->listener.",
+  "speech_acts": ["greet", "smalltalk", "offer", "request", "promise", "threaten", "insult", "gossip", "propose",
+                  "comfort", "agree", "refuse"],
+  "templates": [
+    { "id": "greet", "speech": "greet",
+      "eff": ["rel:familiarity+0.02", "rel_back:familiarity+0.02"],
+      "variants": [
+        { "id": "warm", "pre": ["rel:affinity>=0.4"] },
+        { "id": "plain" },
+        { "id": "cold", "pre": ["rel:enmity>=0.3"] }
+      ],
+      "replies": ["greet", "smalltalk"] },
+    { "id": "smalltalk", "speech": "smalltalk",
+      "eff": ["rel:affinity+0.01", "rel_back:affinity+0.01"],
+      "variants": [ "weather", { "id": "harvest", "pre": ["!time:night"] } ],
+      "replies": ["smalltalk", "agree"] },
+    { "id": "offer_food", "speech": "offer", "pre": ["has:berries>=2", "t.need:hunger<0.4"],
+      "eff": ["rel_back:affinity+0.05", "rel_back:trust+0.03", "reputation:generosity+0.02"],
+      "variants": [ "plain", { "id": "kind", "pre": ["rel:affinity>=0.3"] } ],
+      "replies": ["agree", "refuse"] },
+    { "id": "insult", "speech": "insult", "pre": ["rel:enmity>=0.2"],
+      "eff": ["rel_back:enmity+0.1", "rel_back:affinity-0.05", "t.moodlet:insulted"],
+      "variants": [ "plain", { "id": "harsh", "pre": ["rel:enmity>=0.6"] } ],
+      "replies": ["insult", "threaten", "refuse"] },
+    { "id": "threaten", "speech": "threaten",
+      "eff": ["rel_back:fear+0.1", "rel_back:enmity+0.05", "reputation:notoriety+0.02"],
+      "variants": [ "plain" ],
+      "replies": ["refuse", "agree"] },
+    { "id": "propose_marriage", "speech": "propose",
+      "pre": ["rel:attraction>=0.5", "rel:respect>=0.2", "!age:child", "!t.age:child"],
+      "eff": ["status_pair:betrothed", "commitment:wedding"],
+      "variants": [ "plain", { "id": "shy", "pre": ["rel:familiarity<0.5"] } ],
+      "replies": ["agree", "refuse"] },
+    { "id": "agree", "speech": "agree", "variants": [ "plain" ] },
+    { "id": "refuse", "speech": "refuse", "variants": [ "plain", { "id": "rude", "pre": ["rel:enmity>=0.3"] } ] }
+  ]
+}

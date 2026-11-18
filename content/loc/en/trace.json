@@ -91,6 +91,8 @@
     }
   },
   "chronicle": {
-    "death": "{who} died of {cause}"
+    "death": "{who} died of {cause}",
+    "status_pair": "{a} and {b}: {pair}",
+    "status_pair_end": "{a} and {b}: {pair} ended"
   }
 }

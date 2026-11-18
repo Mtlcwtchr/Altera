@@ -1,34 +1,1110 @@
-{ "_doc": "HTN tasks and methods (AI_DATA_SCHEMA.md §7). The cheapest feasible method wins.",
-  "tasks": [
-    { "id": "obtain_food", "methods": [
-      { "id": "eat_carried", "pre": ["has:meal>=1"], "cost": 1, "steps": [ {"do": "eat_meal"} ] },
-      { "id": "eat_carried_berries", "pre": ["has:berries>=2"], "cost": 2, "steps": [ {"do": "eat_berries"} ] },
-      { "id": "eat_stored", "pre": ["home:meal>=1"], "cost": 3,
-        "steps": [ {"achieve": ["has:meal>=1"], "allow": ["take_meal"]}, {"do": "eat_meal"} ] },
-      { "id": "forage", "pre": ["knows:foraging", "known:berry_bush"], "cost": 6,
-        "steps": [ {"achieve": ["has:berries>=2"], "allow": ["gather_berries"]}, {"do": "eat_berries"} ] },
-      { "id": "cook_then_eat", "pre": ["knows:cooking", "known:hearth", "known:berry_bush"], "cost": 8,
-        "steps": [ {"achieve": ["has:meal>=1"], "allow": ["gather_berries", "gather_wood", "cook_meal"]},
-                   {"do": "eat_meal"} ] },
-      { "id": "steal_food", "pre": ["known:storage"], "cost": 3, "legal": ["theft"],
-        "steps": [ {"achieve": ["has:meal>=1"], "allow": ["steal_meal"]}, {"do": "eat_meal"} ] }
-    ]},
-    { "id": "rest", "methods": [
-      { "id": "sleep_in_bed", "pre": ["known:bed"], "cost": 1, "steps": [ {"do": "sleep_bed"} ] },
-      { "id": "sleep_rough", "cost": 4, "steps": [ {"do": "sleep_ground"} ] }
-    ]},
-    { "id": "get_warm", "methods": [
-      { "id": "warm_at_hearth", "pre": ["known:hearth"], "cost": 1, "steps": [ {"do": "warm_at_hearth"} ] },
-      { "id": "huddle", "cost": 5, "steps": [ {"do": "huddle"} ] }
-    ]},
-    { "id": "stock_food", "methods": [
-      { "id": "cook_and_store", "pre": ["knows:cooking", "known:hearth", "known:berry_bush", "known:storage"],
-        "cost": 2,
-        "steps": [ {"achieve": ["has:meal>=2"], "allow": ["gather_berries", "gather_wood", "cook_meal"]},
-                   {"do": "store_meal"}, {"do": "store_meal"} ] }
-    ]},
-    { "id": "idle", "methods": [
-      { "id": "loiter", "cost": 1, "steps": [ {"do": "idle_wander"} ] }
-    ]}
-  ]
+{
+ "_doc": "Задачи и методы HTN (слой 2). Оценка метода = cost + trait.method_bias + legal (config.legal_base × trait.legal_penalty) + fail_penalty; берётся минимальная среди выполнимых. achieve — подцель GOAP (только has/at); allow — белый список. Длинные цепочки нарезаны на achieve-шаги, чтобы каждый умещался в goap_max_depth=10 (проверено tools/validate_ai.py).",
+ "tasks": [
+  {
+   "id": "obtain_food",
+   "methods": [
+    {
+     "id": "eat_carried_meal",
+     "pre": [
+      "has:meal>=1"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "eat_raw_carried",
+     "pre": [
+      "has:berries>=2"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "eat_berries"
+      }
+     ]
+    },
+    {
+     "id": "eat_stored",
+     "pre": [
+      "home:meal>=1",
+      "known:storage"
+     ],
+     "cost": 3,
+     "steps": [
+      {
+       "achieve": [
+        "has:meal>=1"
+       ],
+       "allow": [
+        "take_meal"
+       ]
+      },
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "ask_family_for_food",
+     "pre": [],
+     "cost": 4,
+     "steps": [
+      {
+       "do": "ask_for_food"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "cook_stored_roots",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "home:roots>=2",
+      "home:firewood>=1"
+     ],
+     "cost": 5,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=2"
+       ],
+       "allow": [
+        "take_roots"
+       ]
+      },
+      {
+       "do": "cook_meal"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "forage_and_eat",
+     "pre": [
+      "knows:foraging",
+      "known:berry_bush"
+     ],
+     "cost": 5,
+     "steps": [
+      {
+       "achieve": [
+        "has:berries>=2"
+       ],
+       "allow": [
+        "gather_berries"
+       ]
+      },
+      {
+       "do": "eat_berries"
+      }
+     ]
+    },
+    {
+     "id": "dig_and_eat_raw",
+     "pre": [
+      "knows:foraging",
+      "known:root_patch"
+     ],
+     "cost": 6,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=2"
+       ],
+       "allow": [
+        "dig_roots",
+        "dig_roots_with_stick"
+       ]
+      },
+      {
+       "do": "eat_roots"
+      }
+     ]
+    },
+    {
+     "id": "dig_and_cook_home",
+     "pre": [
+      "knows:foraging",
+      "knows:cooking",
+      "known:root_patch",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 6,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=2"
+       ],
+       "allow": [
+        "dig_roots",
+        "dig_roots_with_stick"
+       ]
+      },
+      {
+       "do": "cook_meal"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "cook_at_campfire",
+     "pre": [
+      "knows:foraging",
+      "knows:cooking",
+      "knows:firemaking",
+      "known:root_patch",
+      "known:riverbank",
+      "known:deadwood"
+     ],
+     "cost": 9,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=2",
+        "has:stone>=4",
+        "has:firewood>=3"
+       ]
+      },
+      {
+       "do": "build_campfire"
+      },
+      {
+       "do": "cook_meal_campfire"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "steal_food",
+     "pre": [
+      "known:storage"
+     ],
+     "cost": 7,
+     "legal": [
+      "theft"
+     ],
+     "steps": [
+      {
+       "achieve": [
+        "has:meal>=1"
+       ],
+       "allow": [
+        "steal_meal"
+       ]
+      },
+      {
+       "do": "eat_meal"
+      }
+     ]
+    },
+    {
+     "id": "hunt_and_eat",
+     "pre": [
+      "knows:hunting",
+      "knows:toolmaking",
+      "knows:knapping",
+      "knows:fiber_working",
+      "knows:cooking",
+      "known:game_trail",
+      "known:riverbank",
+      "known:deadwood",
+      "known:nettle_patch",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 10,
+     "steps": [
+      {
+       "achieve": [
+        "has:spear>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:carcass>=1"
+       ],
+       "allow": [
+        "hunt_game"
+       ]
+      },
+      {
+       "do": "butcher_carcass"
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_doc": "дороже собирательства: долгая охота с chance и риском травмы"
+    }
+   ]
+  },
+  {
+   "id": "obtain_water",
+   "methods": [
+    {
+     "id": "drink_from_source",
+     "pre": [
+      "known:water"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "drink_water"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "find_sleep",
+   "methods": [
+    {
+     "id": "sleep_in_own_bed",
+     "pre": [
+      "known:bed"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "sleep_in_bed"
+      }
+     ]
+    },
+    {
+     "id": "sleep_by_campfire",
+     "pre": [
+      "known:campfire"
+     ],
+     "cost": 3,
+     "steps": [
+      {
+       "do": "sleep_by_fire"
+      }
+     ]
+    },
+    {
+     "id": "sleep_rough",
+     "pre": [],
+     "cost": 5,
+     "steps": [
+      {
+       "do": "sleep_rough"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "warm_up",
+   "methods": [
+    {
+     "id": "warm_at_home_hearth",
+     "pre": [
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "warm_at_hearth"
+      }
+     ]
+    },
+    {
+     "id": "shelter_at_home",
+     "pre": [
+      "known:house"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "shelter_in_house"
+      }
+     ]
+    },
+    {
+     "id": "warm_at_campfire",
+     "pre": [
+      "known:campfire"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "warm_at_campfire"
+      }
+     ]
+    },
+    {
+     "id": "warm_at_village_fire",
+     "pre": [
+      "known:village_fire"
+     ],
+     "cost": 2.5,
+     "steps": [
+      {
+       "do": "warm_at_village_fire"
+      }
+     ]
+    },
+    {
+     "id": "make_fire_and_warm",
+     "pre": [
+      "knows:firemaking",
+      "known:riverbank",
+      "known:deadwood"
+     ],
+     "cost": 5,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone>=4",
+        "has:firewood>=3"
+       ]
+      },
+      {
+       "do": "build_campfire"
+      },
+      {
+       "do": "warm_at_campfire"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "socialize_task",
+   "methods": [
+    {
+     "id": "small_talk",
+     "pre": [],
+     "cost": 0.8,
+     "steps": [
+      {
+       "do": "start_dialog",
+       "params": {
+        "intent": "small_talk"
+       }
+      }
+     ],
+     "_doc": "подходит к знакомому (в т.ч. к персонажу игрока) и заводит разговор; план small_talk в dialogue.json"
+    },
+    {
+     "id": "chat_with_someone",
+     "pre": [],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "chat"
+      }
+     ]
+    },
+    {
+     "id": "gather_at_village_fire",
+     "pre": [
+      "known:village_fire"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "tell_stories"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "have_fun_task",
+   "methods": [
+    {
+     "id": "fun_stories_at_fire",
+     "pre": [
+      "known:village_fire"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "tell_stories"
+      }
+     ]
+    },
+    {
+     "id": "play_alone",
+     "pre": [],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "play"
+      }
+     ]
+    },
+    {
+     "id": "wander_around",
+     "pre": [],
+     "cost": 3,
+     "steps": [
+      {
+       "do": "wander"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "wash_task",
+   "methods": [
+    {
+     "id": "wash_at_water",
+     "pre": [
+      "known:water"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "wash_in_water"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "pray_task",
+   "methods": [
+    {
+     "id": "pray_at_shrine_m",
+     "pre": [
+      "known:shrine"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "pray_at_shrine"
+      }
+     ]
+    },
+    {
+     "id": "pray_alone_m",
+     "pre": [],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "pray_alone"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "rest_task",
+   "methods": [
+    {
+     "id": "rest_at_home",
+     "pre": [
+      "known:house"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "shelter_in_house"
+      }
+     ]
+    },
+    {
+     "id": "rest_here",
+     "pre": [],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "rest"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "gather_food_for_home",
+   "methods": [
+    {
+     "id": "cook_and_store",
+     "pre": [
+      "knows:foraging",
+      "knows:cooking",
+      "known:root_patch",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 4,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=2"
+       ],
+       "allow": [
+        "dig_roots",
+        "dig_roots_with_stick"
+       ]
+      },
+      {
+       "do": "cook_meal"
+      },
+      {
+       "do": "store_meal"
+      }
+     ]
+    },
+    {
+     "id": "store_roots_from_patch",
+     "pre": [
+      "knows:foraging",
+      "known:root_patch"
+     ],
+     "cost": 3,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=4"
+       ],
+       "allow": [
+        "dig_roots",
+        "dig_roots_with_stick"
+       ]
+      },
+      {
+       "do": "store_roots"
+      }
+     ]
+    },
+    {
+     "id": "store_berries_from_bush",
+     "pre": [
+      "knows:foraging",
+      "known:berry_bush"
+     ],
+     "cost": 3.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:berries>=4"
+       ],
+       "allow": [
+        "gather_berries"
+       ]
+      },
+      {
+       "do": "store_berries"
+      }
+     ]
+    },
+    {
+     "id": "make_digging_stick_first",
+     "pre": [
+      "!has:digging_stick",
+      "has:stone_blade",
+      "knows:foraging",
+      "known:deadwood",
+      "known:root_patch"
+     ],
+     "cost": 5,
+     "steps": [
+      {
+       "achieve": [
+        "has:digging_stick>=1"
+       ],
+       "allow": [
+        "gather_branches",
+        "make_digging_stick"
+       ]
+      },
+      {
+       "achieve": [
+        "has:roots>=4"
+       ],
+       "allow": [
+        "dig_roots_with_stick"
+       ]
+      },
+      {
+       "do": "store_roots"
+      }
+     ]
+    },
+    {
+     "id": "mushrooms_cook_store",
+     "pre": [
+      "knows:foraging",
+      "knows:cooking",
+      "known:mushroom_glade",
+      "known:deadwood",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 4.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:mushrooms>=3",
+        "has:branch>=1"
+       ],
+       "allow": [
+        "pick_mushrooms",
+        "gather_branches"
+       ]
+      },
+      {
+       "do": "cook_mushrooms"
+      },
+      {
+       "do": "store_meal"
+      }
+     ]
+    },
+    {
+     "id": "hunt_and_store",
+     "pre": [
+      "knows:hunting",
+      "knows:toolmaking",
+      "knows:knapping",
+      "knows:fiber_working",
+      "knows:cooking",
+      "known:game_trail",
+      "known:riverbank",
+      "known:deadwood",
+      "known:nettle_patch",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 6,
+     "steps": [
+      {
+       "achieve": [
+        "has:spear>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:carcass>=1"
+       ],
+       "allow": [
+        "hunt_game"
+       ]
+      },
+      {
+       "do": "butcher_carcass"
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "store_meal"
+      },
+      {
+       "do": "store_meal"
+      },
+      {
+       "do": "store_meal"
+      },
+      {
+       "do": "store_meal"
+      },
+      {
+       "do": "store_meal"
+      },
+      {
+       "do": "store_meal"
+      }
+     ],
+     "_doc": "туша = 3 мяса = 6 порций; шкура остаётся у охотника"
+    }
+   ]
+  },
+  {
+   "id": "gather_firewood_for_home",
+   "methods": [
+    {
+     "id": "deadwood_to_home",
+     "pre": [
+      "known:deadwood"
+     ],
+     "cost": 3,
+     "steps": [
+      {
+       "achieve": [
+        "has:firewood>=3"
+       ],
+       "allow": [
+        "gather_firewood"
+       ]
+      },
+      {
+       "do": "store_firewood"
+      }
+     ]
+    },
+    {
+     "id": "split_logs_to_home",
+     "pre": [
+      "has:axe",
+      "knows:woodcutting",
+      "known:tree"
+     ],
+     "cost": 3.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:firewood>=6"
+       ],
+       "allow": [
+        "chop_tree",
+        "split_log"
+       ]
+      },
+      {
+       "do": "store_firewood"
+      },
+      {
+       "do": "store_firewood"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "share_food_task",
+   "methods": [
+    {
+     "id": "share_food_with_family",
+     "pre": [
+      "has:meal>=1"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "give_food"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "craft_axe",
+   "methods": [
+    {
+     "id": "make_axe_self",
+     "pre": [
+      "knows:toolmaking",
+      "knows:knapping",
+      "knows:fiber_working",
+      "known:riverbank",
+      "known:deadwood",
+      "known:nettle_patch"
+     ],
+     "cost": 5,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:stone>=2",
+        "has:branch>=1",
+        "has:cord>=1"
+       ]
+      },
+      {
+       "do": "make_axe"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "craft_clothes",
+   "methods": [
+    {
+     "id": "sew_tunic_self",
+     "pre": [
+      "knows:sewing",
+      "knows:weaving",
+      "knows:spinning",
+      "knows:fiber_working",
+      "knows:knapping",
+      "known:riverbank",
+      "known:deadwood",
+      "known:nettle_patch",
+      "known:water"
+     ],
+     "cost": 6,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:needle>=1",
+        "has:spindle>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:loom>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:bast_fiber>=8"
+       ],
+       "allow": [
+        "gather_fiber",
+        "ret_fiber"
+       ]
+      },
+      {
+       "achieve": [
+        "has:thread>=9"
+       ],
+       "allow": [
+        "spin_thread"
+       ]
+      },
+      {
+       "achieve": [
+        "has:cloth>=2"
+       ],
+       "allow": [
+        "weave_cloth"
+       ]
+      },
+      {
+       "do": "sew_tunic"
+      }
+     ]
+    },
+    {
+     "id": "sew_from_cloth",
+     "pre": [
+      "knows:sewing",
+      "has:cloth>=2",
+      "has:thread>=1"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "achieve": [
+        "has:needle>=1"
+       ]
+      },
+      {
+       "do": "sew_tunic"
+      }
+     ],
+     "_doc": "полотно уже есть (выменял/подарили)"
+    }
+   ]
+  },
+  {
+   "id": "build_home_task",
+   "methods": [
+    {
+     "id": "build_hut_self",
+     "pre": [
+      "home:household_idol<1",
+      "knows:building",
+      "knows:woodcutting",
+      "knows:toolmaking",
+      "knows:knapping",
+      "knows:fiber_working",
+      "known:tree",
+      "known:riverbank",
+      "known:deadwood",
+      "known:reed_bed",
+      "known:nettle_patch"
+     ],
+     "cost": 6,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:axe>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:log>=6"
+       ],
+       "allow": [
+        "chop_tree"
+       ]
+      },
+      {
+       "achieve": [
+        "has:branch>=12"
+       ],
+       "allow": [
+        "gather_branches"
+       ]
+      },
+      {
+       "achieve": [
+        "has:clay>=6",
+        "has:stone>=6"
+       ],
+       "allow": [
+        "dig_clay",
+        "gather_stones"
+       ]
+      },
+      {
+       "achieve": [
+        "has:cord>=5"
+       ],
+       "allow": [
+        "gather_fiber",
+        "twist_cord"
+       ]
+      },
+      {
+       "achieve": [
+        "has:reeds>=12"
+       ],
+       "allow": [
+        "cut_reeds"
+       ]
+      },
+      {
+       "achieve": [
+        "has:thatch>=3"
+       ],
+       "allow": [
+        "bundle_thatch"
+       ]
+      },
+      {
+       "do": "build_hut"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "idle_task",
+   "methods": [
+    {
+     "id": "idle_rest",
+     "pre": [],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "rest"
+      }
+     ]
+    },
+    {
+     "id": "idle_wander",
+     "pre": [],
+     "cost": 1.5,
+     "steps": [
+      {
+       "do": "wander"
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "id": "talk_ask_favor",
+   "_doc": "HTN talk_to(<char>) с намерением ask_favor (AGENT_API §3.4). Цель выбирает исполнитель: знакомый рядом, у кого по памяти есть нужное (person_has), с лучшим rel:affinity; если такой — персонаж игрока, тот получает входящий разговор.",
+   "methods": [
+    {
+     "id": "ask_favor_food",
+     "pre": [
+      "!has:meal>=1"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "start_dialog",
+       "params": {
+        "intent": "ask_favor",
+        "need": "hunger",
+        "want": "meal"
+       }
+      }
+     ]
+    },
+    {
+     "id": "ask_favor_generic",
+     "pre": [],
+     "cost": 2,
+     "steps": [
+      {
+       "do": "start_dialog",
+       "params": {
+        "intent": "ask_favor"
+       }
+      }
+     ],
+     "_doc": "просьба о помощи по последнему провалившемуся методу (want берётся из причины провала в трассе)"
+    }
+   ]
+  },
+  {
+   "id": "talk_propose_trade",
+   "methods": [
+    {
+     "id": "propose_trade_surplus",
+     "pre": [],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "start_dialog",
+       "params": {
+        "intent": "propose_trade"
+       }
+      }
+     ]
+    }
+   ]
+  }
+ ]
 }

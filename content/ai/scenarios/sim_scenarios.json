@@ -1,0 +1,46 @@
+{
+  "_doc": "Сценарные тесты по схеме §11 (каждый элемент = отдельный content/sim/scenarios/<id>.json). overrides — поверх test_world.json: семьи, люди (traits, knows, needs, has), запасы домов. expect — проверки по трассе и итоговому состоянию; формат expect предлагаю: goal_chosen / method_chosen / method_rejected (с причиной) / interaction_done / state (условия схемы §1) / not_happened.",
+  "scenarios": [
+    {"id": "hungry_family", "world": "test_world.json", "days": 2,
+     "overrides": {"families": [{"id": "f1", "house": true, "storage": {"meal": 0, "roots": 4, "firewood": 3},
+       "people": [{"id": "p1", "age": "adult", "knows": ["foraging", "firemaking", "cooking"], "needs": {"hunger": 0.2}},
+                  {"id": "p2", "age": "child", "knows": ["foraging"], "needs": {"hunger": 0.25}}]}]},
+     "expect": {"goal_chosen": {"p1": "eat"}, "method_chosen": {"p1": "cook_stored_roots"}, "method_rejected": {"p1": {"eat_stored": "pre home:meal>=1"}},
+                "state_at_end": {"p1": ["need:hunger>=0.4"], "p2": ["need:hunger>=0.3"]}}},
+
+    {"id": "no_tool", "world": "test_world.json", "days": 3,
+     "overrides": {"families": [{"id": "f1", "house": false,
+       "people": [{"id": "p1", "age": "adult", "knows": ["foraging", "firemaking", "cooking", "knapping", "fiber_working", "toolmaking", "woodcutting", "building"]}]}]},
+     "expect": {"goal_chosen": {"p1": "build_home"}, "interaction_done": {"p1": ["knap_blade", "twist_cord", "make_axe", "chop_tree"]},
+                "_doc": "за 3 дня дом может не успеть; проверяем, что цепочка камень→нож→верёвка→топор→брёвна идёт без провалов «из воздуха»"}},
+
+    {"id": "law_vs_need", "world": "test_world.json", "days": 1,
+     "overrides": {"season": "winter", "families": [
+       {"id": "f1", "house": true, "storage": {"meal": 0, "roots": 0, "firewood": 0},
+        "people": [{"id": "p1", "age": "adult", "traits": ["unscrupulous"], "knows": ["foraging"], "needs": {"hunger": 0.12}}]},
+       {"id": "f2", "house": true, "storage": {"meal": 5},
+        "people": [{"id": "p3", "age": "adult", "traits": ["honest"], "knows": ["foraging"], "needs": {"hunger": 0.12}}]}]},
+     "expect": {"_doc": "зимой ягод/корней нет; ask_for_food у чужого (affinity<0.1) невозможен",
+                "method_chosen": {"p1": "steal_food"}, "not_happened": {"p3": ["steal_meal"]},
+                "trace_contains": {"p1": "legal theft"}}},
+
+    {"id": "homeless_first_night", "world": "test_world.json", "days": 1,
+     "overrides": {"season": "autumn", "families": [{"id": "f1", "house": false,
+       "people": [{"id": "p1", "age": "adult", "knows": ["foraging", "firemaking", "cooking"], "needs": {"energy": 0.3, "warmth": 0.35}}]}]},
+     "expect": {"method_chosen": {"p1": "make_fire_and_warm"}, "interaction_done": {"p1": ["build_campfire", "sleep_by_fire"]}}},
+
+    {"id": "switch_keeps_plan", "world": "test_world.json", "days": 1,
+     "overrides": {"families": [{"id": "f1", "house": false,
+       "people": [{"id": "p1", "age": "adult", "knows": ["knapping", "fiber_working", "toolmaking", "woodcutting", "building", "foraging"]}]}]},
+     "commands": [{"tick": 10, "type": "possess", "player": "u1", "character": "p1"}, {"tick": 20, "type": "release", "player": "u1", "character": "p1"}],
+     "expect": {"_doc": "CORE §3.2: после release ИИ продолжает build_home без сброса инвентаря и плана", "goal_chosen_after_tick_20": {"p1": "build_home"}}},
+
+    {"id": "npc_starts_dialog_with_player", "world": "test_world.json", "days": 1,
+     "overrides": {"families": [
+       {"id": "f1", "house": true, "storage": {"meal": 0, "roots": 0}, "people": [{"id": "p1", "age": "adult", "knows": [], "needs": {"hunger": 0.25}}]},
+       {"id": "f2", "house": true, "people": [{"id": "p2", "age": "adult", "controller": "player", "has": {"meal": 2}}]}],
+       "relations": [{"from": "p1", "to": "p2", "affinity": 0.4}]},
+     "expect": {"_doc": "AGENT_API §3.4: без агента NPC сам идёт к игроку и просит еды; игрок молчит → refuse по reply_timeout",
+                "goal_chosen": {"p1": "ask_help"}, "interaction_done": {"p1": ["start_dialog"]}, "dialog_opened": {"initiator": "p1", "intent": "ask_favor"}}}
+  ]
+}

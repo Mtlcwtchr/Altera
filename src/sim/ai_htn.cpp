@@ -119,20 +119,7 @@ double methodScore(const World& w, const Character& c, const std::string& task, 
         auto b = td->second.methodBias.find(m.id);
         if (b != td->second.methodBias.end()) s += b->second;
     }
-    for (const auto& tag : m.legal) {
-        double mult = 1.0;
-        for (const auto& t : c.traits) {
-            auto td = ct.traits.find(t);
-            if (td == ct.traits.end()) continue;
-            auto lp = td->second.legalPenalty.find(tag);
-            if (lp != td->second.legalPenalty.end()) mult *= lp->second;
-        }
-        // Desperation lowers the price of breaking a norm (AI_ARCHITECTURE §3.4:
-        // "нарушить норму при высоком мотиве").
-        const double hunger = c.need("hunger");
-        const double desperation = hunger < 0.2 ? 0.35 : 1.0;
-        s += ct.config.legalBase * mult * desperation;
-    }
+    for (const auto& tag : m.legal) s += legalPrice(w, c, tag);
     auto it = c.ai.methodFails.find(task + "/" + m.id);
     if (it != c.ai.methodFails.end()) s += it->second.count * 1.5;
     return s;

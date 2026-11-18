@@ -11,12 +11,12 @@ using namespace altera::sim;
 namespace {
 
 const Content& content() {
-    static const Content c = Content::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/ai");
+    static const Content c = Content::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/tests/data/altera_mvp/ai");
     return c;
 }
 
 World aiWorld(std::uint64_t seed = 0) {
-    static const Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    static const Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/tests/data/altera_mvp/test_world.json");
     World w = makeTestWorld(content(), cfg, seed);
     installAi(w);
     return w;

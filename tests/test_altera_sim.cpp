@@ -12,12 +12,12 @@ using namespace altera::sim;
 namespace {
 
 const Content& content() {
-    static const Content c = Content::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/ai");
+    static const Content c = Content::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/tests/data/altera_mvp/ai");
     return c;
 }
 
 const Json& worldCfg() {
-    static const Json j = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    static const Json j = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/tests/data/altera_mvp/test_world.json");
     return j;
 }
 

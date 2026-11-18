@@ -1,0 +1,97 @@
+{ "_doc": "Trace, reasons, report and chronicle texts (base language). trace.<code> gets the trace params; ids of known kinds arrive as names (LOC_FORMAT.md §5), self is the traced character.",
+  "trace": {
+    "control": {
+      "confirmed": "Игрок подтвердил приостановленный план «{goal}»",
+      "free_will_resume": "{self} сам{self:g||а} вернул{self:g|ся|ась} к плану «{goal}» (свобода воли)",
+      "hint": "Подсказка игрока: «{goal}» {delta} на {ttl} {ttl:plural|тик|тика|тиков}",
+      "order": "Приказ игрока: «{goal}»",
+      "order_refused": "{self} не может выполнить «{goal}»: {why}",
+      "paused": "План «{goal}» приостановлен: персонажем управляет игрок",
+      "queued": "В очередь добавлено: «{task}»",
+      "resumed": "ИИ продолжил план «{goal}» с шага {step}",
+      "suspended_dropped": "Приостановленный план «{goal}» отброшен",
+      "to_ai": "Управление передано ИИ",
+      "to_player": "Управление взял игрок {player}"
+    },
+    "fsm": {
+      "abort": "Прервано «{action}»: {why}",
+      "arrived": "{self} дош{self:g|ёл|ла} до {target:gen}",
+      "done": "Выполнено: «{action}»",
+      "enter": "Состояние «{state}» на {ticks} {ticks:plural|тик|тика|тиков}",
+      "wait": "Ждёт: {for}"
+    },
+    "goal": {
+      "done": "Цель «{goal}» достигнута",
+      "dropped": "Цель «{goal}» оставлена: {why}",
+      "failed": "Цель «{goal}» провалена: {why}"
+    },
+    "goap": {
+      "fail": "Не найден путь к «{step}»: {why}",
+      "plan": "План шага «{step}»: {actions}",
+      "replan": "Перепланирование (попытка {attempt}): {why}"
+    },
+    "htn": {
+      "method_failed": "Способ {method} не сработал ({fails}): {why}",
+      "no_method": "Нет подходящего способа для «{task}»",
+      "plan": "Задача «{task}»: {methods}, {steps} {steps:plural|шаг|шага|шагов}",
+      "replan": "Задача «{task}» перестроена: {methods}"
+    },
+    "utility": {
+      "choose": "Выбрана цель «{chosen}»",
+      "interrupt": "Срочно: «{goal}» вместо «{was}» ({cond})"
+    }
+  },
+  "reason": {
+    "pre": "не выполнено условие {detail}",
+    "no_target": "нет цели: {detail}",
+    "wrong_target": "не тот объект: {detail}",
+    "reserved": "занято: {detail}",
+    "out_of_range": "слишком далеко: {detail}",
+    "dead": "мёртв",
+    "unknown": "не знает, где {detail}",
+    "target": "у цели не выполнено: {detail}",
+    "switched_to": "переключился на «{detail}»",
+    "done": "готово",
+    "cancelled_by_player": "отменено игроком",
+    "control": { "paused": "управление взял игрок" },
+    "fsm": {
+      "lost": "действие сорвалось: {detail}",
+      "unknown_action": "неизвестное действие {detail}"
+    },
+    "goto": {
+      "dangling": "некуда идти",
+      "unknown_action": "неизвестное действие после перехода",
+      "no_target": "не к чему идти: {detail}"
+    },
+    "goap": {
+      "unknown_action": "неизвестное действие {detail}",
+      "no_target": "нет доступного объекта: {detail}",
+      "no_chain": "нет цепочки действий для {detail}",
+      "cannot": "нельзя выполнить: {detail}",
+      "budget": "планировщик исчерпал лимит"
+    },
+    "htn": {
+      "unknown_task": "неизвестная задача {detail}",
+      "no_method": "нет подходящего способа: {detail}",
+      "depth": "слишком глубокая вложенность задач"
+    },
+    "no_such_character": "нет такого персонажа",
+    "controlled_by_other": "персонажем управляет другой игрок",
+    "nothing_controlled": "игрок никем не управляет",
+    "no_paused_plan": "нет приостановленного плана",
+    "cannot": "не может: {detail}",
+    "plan_failed": "план не построен: {detail}"
+  },
+  "report": {
+    "idle": {
+      "no_feasible_goal": "нет выполнимой цели",
+      "chose_idle": "сам решил побыть без дела",
+      "no_goal": "между целями",
+      "player_paused_plan": "ждёт игрока (план приостановлен)",
+      "player_no_order": "ждёт приказа игрока"
+    }
+  },
+  "chronicle": {
+    "death": "{who} умер{who:g||ла} от {cause:gen}"
+  }
+}

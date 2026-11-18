@@ -1,21 +1,296 @@
-{ "_doc": "Needs (AI_DATA_SCHEMA.md §4). 1 = satisfied; decay per game day (144 ticks).",
-  "needs": [
-    { "id": "hunger", "decay_per_day": 0.6, "critical": 0.12, "start": [0.55, 0.9] },
-    { "id": "energy", "decay_per_day": 0.85, "critical": 0.08, "start": [0.6, 0.95] },
-    { "id": "warmth", "decay_per_day": 0.3, "critical": 0.1, "start": [0.7, 1.0], "night_mult": 1.8,
-      "biome_mult": {"marsh": 1.5, "forest": 0.8} }
-  ],
-  "moodlets": [
-    { "id": "ate_meal", "value": 0.15, "ttl": 72 },
-    { "id": "ate_raw", "value": 0.03, "ttl": 24 },
-    { "id": "slept_bed", "value": 0.1, "ttl": 96 },
-    { "id": "slept_rough", "value": -0.12, "ttl": 96 },
-    { "id": "warm_hearth", "value": 0.05, "ttl": 36 },
-    { "id": "stole", "value": -0.05, "ttl": 72 },
-    { "id": "insulted", "value": -0.08, "ttl": 48 },
-    { "id": "wounded", "value": -0.2, "ttl": 144 },
-    { "id": "won_fight", "value": 0.06, "ttl": 48 },
-    { "id": "learned", "value": 0.05, "ttl": 48 },
-    { "id": "chatted", "value": 0.04, "ttl": 36 }
-  ]
+{
+ "_doc": "Нужды: value 0..1, 1 = удовлетворена. decay_per_day — за игровые сутки (144 тика). mvp — входит в первый кор (CORE §9: еда, сон, тепло, социум); остальные можно выключить конфигом, контент на них уже есть. Поля mvp/night_mult/biome_mult/sheltered_mult/clothing_mult/season_mult — night_mult и biome_mult есть в схеме, остальное — предложение расширения.",
+ "needs": [
+  {
+   "id": "hunger",
+   "decay_per_day": 0.55,
+   "critical": 0.15,
+   "start": [
+    0.6,
+    0.9
+   ],
+   "mvp": true,
+   "night_mult": 0.6
+  },
+  {
+   "id": "energy",
+   "decay_per_day": 0.9,
+   "critical": 0.1,
+   "start": [
+    0.7,
+    0.95
+   ],
+   "mvp": true,
+   "night_mult": 1.0,
+   "_doc": "во сне не падает: interaction sleep_* восстанавливает"
+  },
+  {
+   "id": "warmth",
+   "decay_per_day": 0.3,
+   "critical": 0.15,
+   "start": [
+    0.7,
+    0.9
+   ],
+   "mvp": true,
+   "night_mult": 1.6,
+   "biome_mult": {
+    "marsh": 1.6,
+    "river": 1.2
+   },
+   "season_mult": {
+    "winter": 2.5,
+    "autumn": 1.4,
+    "summer": 0.3
+   },
+   "sheltered_mult": 0.4,
+   "clothing_mult": {
+    "tunic": 0.7,
+    "cloak": 0.5
+   }
+  },
+  {
+   "id": "social",
+   "decay_per_day": 0.35,
+   "critical": 0.05,
+   "start": [
+    0.5,
+    0.8
+   ],
+   "mvp": true
+  },
+  {
+   "id": "thirst",
+   "decay_per_day": 1.2,
+   "critical": 0.15,
+   "start": [
+    0.7,
+    0.95
+   ],
+   "mvp": false,
+   "night_mult": 0.5,
+   "season_mult": {
+    "summer": 1.3
+   }
+  },
+  {
+   "id": "hygiene",
+   "decay_per_day": 0.25,
+   "critical": 0.05,
+   "start": [
+    0.6,
+    0.9
+   ],
+   "mvp": false
+  },
+  {
+   "id": "fun",
+   "decay_per_day": 0.3,
+   "critical": 0.05,
+   "start": [
+    0.5,
+    0.8
+   ],
+   "mvp": false
+  },
+  {
+   "id": "purpose",
+   "decay_per_day": 0.12,
+   "critical": 0.05,
+   "start": [
+    0.5,
+    0.8
+   ],
+   "mvp": false
+  }
+ ],
+ "moodlets": [
+  {
+   "id": "ate_meal",
+   "value": 0.15,
+   "ttl": 72
+  },
+  {
+   "id": "ate_raw",
+   "value": -0.04,
+   "ttl": 18
+  },
+  {
+   "id": "hungry",
+   "value": -0.1,
+   "ttl": 12
+  },
+  {
+   "id": "starving",
+   "value": -0.4,
+   "ttl": 24
+  },
+  {
+   "id": "thirsty",
+   "value": -0.1,
+   "ttl": 12
+  },
+  {
+   "id": "rested",
+   "value": 0.1,
+   "ttl": 48
+  },
+  {
+   "id": "slept_rough",
+   "value": -0.08,
+   "ttl": 48
+  },
+  {
+   "id": "exhausted",
+   "value": -0.3,
+   "ttl": 12
+  },
+  {
+   "id": "warm_cozy",
+   "value": 0.08,
+   "ttl": 18
+  },
+  {
+   "id": "cold",
+   "value": -0.1,
+   "ttl": 12
+  },
+  {
+   "id": "freezing",
+   "value": -0.35,
+   "ttl": 12
+  },
+  {
+   "id": "good_chat",
+   "value": 0.08,
+   "ttl": 24
+  },
+  {
+   "id": "lonely",
+   "value": -0.15,
+   "ttl": 24
+  },
+  {
+   "id": "comforted",
+   "value": 0.1,
+   "ttl": 36
+  },
+  {
+   "id": "helped_someone",
+   "value": 0.06,
+   "ttl": 36
+  },
+  {
+   "id": "refused_help",
+   "value": -0.06,
+   "ttl": 36
+  },
+  {
+   "id": "begged",
+   "value": -0.05,
+   "ttl": 24,
+   "_doc": "гордому неприятно просить еду"
+  },
+  {
+   "id": "made_something",
+   "value": 0.05,
+   "ttl": 36
+  },
+  {
+   "id": "new_clothes",
+   "value": 0.08,
+   "ttl": 144
+  },
+  {
+   "id": "own_home",
+   "value": 0.2,
+   "ttl": 432
+  },
+  {
+   "id": "prayed",
+   "value": 0.06,
+   "ttl": 72
+  },
+  {
+   "id": "had_fun",
+   "value": 0.08,
+   "ttl": 24
+  },
+  {
+   "id": "clean",
+   "value": 0.04,
+   "ttl": 36
+  },
+  {
+   "id": "stung",
+   "value": -0.03,
+   "ttl": 6
+  },
+  {
+   "id": "guilty",
+   "value": -0.12,
+   "ttl": 144,
+   "_doc": "честный нарушил норму (эффект исполнителя по legal + trait:honest)"
+  },
+  {
+   "id": "caught",
+   "value": -0.25,
+   "ttl": 288
+  },
+  {
+   "id": "amused",
+   "value": 0.08,
+   "ttl": 12
+  },
+  {
+   "id": "at_peace",
+   "value": 0.1,
+   "ttl": 72
+  },
+  {
+   "id": "blessed",
+   "value": 0.12,
+   "ttl": 144
+  },
+  {
+   "id": "good_company",
+   "value": 0.06,
+   "ttl": 24
+  },
+  {
+   "id": "wedding_joy",
+   "value": 0.25,
+   "ttl": 432
+  },
+  {
+   "id": "flattered",
+   "value": 0.08,
+   "ttl": 24,
+   "_part": "c"
+  },
+  {
+   "id": "insulted",
+   "value": -0.15,
+   "ttl": 48,
+   "_part": "c"
+  },
+  {
+   "id": "injured",
+   "value": -0.3,
+   "ttl": 144,
+   "_part": "c"
+  },
+  {
+   "id": "sick",
+   "value": -0.25,
+   "ttl": 216,
+   "_part": "c"
+  },
+  {
+   "id": "cursed",
+   "value": -0.2,
+   "ttl": 288,
+   "_part": "c"
+  }
+ ]
 }

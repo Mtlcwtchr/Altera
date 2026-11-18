@@ -1,7 +1,278 @@
-{ "_doc": "Items (AI_DATA_SCHEMA.md §2). MVP chain: berries + wood -> meal at a hearth.",
-  "items": [
-    { "id": "berries", "tags": ["food", "raw"], "nutrition": 0.1 },
-    { "id": "wood",    "tags": ["material", "fuel"] },
-    { "id": "meal",    "tags": ["food", "cooked"], "nutrition": 0.45 }
-  ]
+{
+ "_doc": "Предметы MVP-цепочек ИИ. nutrition — прибавка к need:hunger за 1 шт при eat_*. Поля warmth/tool_wear/spoil_days — предложение расширения (сейчас валидатор даст предупреждение 'неизвестное поле'). household_idol — служебный маркер «у семьи есть дом», см. README §3.",
+ "items": [
+  {
+   "id": "berries",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.12,
+   "stack": 20,
+   "spoil_days": 3
+  },
+  {
+   "id": "roots",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.09,
+   "stack": 20,
+   "spoil_days": 14
+  },
+  {
+   "id": "mushrooms",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.0,
+   "stack": 20,
+   "spoil_days": 4,
+   "_doc": "сырыми не едят"
+  },
+  {
+   "id": "meal",
+   "tags": [
+    "food",
+    "cooked"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 3,
+   "_doc": "печёные корни/грибы на прутике"
+  },
+  {
+   "id": "firewood",
+   "tags": [
+    "fuel"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "branch",
+   "tags": [
+    "wood"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "log",
+   "tags": [
+    "wood",
+    "heavy"
+   ],
+   "stack": 6
+  },
+  {
+   "id": "stone",
+   "tags": [
+    "stone"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "clay",
+   "tags": [
+    "building"
+   ],
+   "stack": 12
+  },
+  {
+   "id": "reeds",
+   "tags": [
+    "plant"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "thatch",
+   "tags": [
+    "building"
+   ],
+   "stack": 6
+  },
+  {
+   "id": "fiber_raw",
+   "tags": [
+    "plant"
+   ],
+   "stack": 30
+  },
+  {
+   "id": "bast_fiber",
+   "tags": [
+    "fiber"
+   ],
+   "stack": 30
+  },
+  {
+   "id": "cord",
+   "tags": [
+    "binding"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "thread",
+   "tags": [
+    "binding",
+    "textile"
+   ],
+   "stack": 30
+  },
+  {
+   "id": "cloth",
+   "tags": [
+    "textile"
+   ],
+   "stack": 10
+  },
+  {
+   "id": "stone_blade",
+   "tags": [
+    "tool"
+   ],
+   "stack": 1,
+   "tool_wear": 0.03
+  },
+  {
+   "id": "digging_stick",
+   "tags": [
+    "tool"
+   ],
+   "stack": 1,
+   "tool_wear": 0.05
+  },
+  {
+   "id": "axe",
+   "tags": [
+    "tool"
+   ],
+   "stack": 1,
+   "tool_wear": 0.04,
+   "_doc": "каменный топор"
+  },
+  {
+   "id": "spindle",
+   "tags": [
+    "tool"
+   ],
+   "stack": 1,
+   "tool_wear": 0.01
+  },
+  {
+   "id": "loom",
+   "tags": [
+    "tool"
+   ],
+   "stack": 1,
+   "tool_wear": 0.02,
+   "_doc": "поясной ткацкий станок, носимый"
+  },
+  {
+   "id": "needle",
+   "tags": [
+    "tool"
+   ],
+   "stack": 1,
+   "tool_wear": 0.05,
+   "_doc": "деревянная игла"
+  },
+  {
+   "id": "tunic",
+   "tags": [
+    "clothing"
+   ],
+   "stack": 1,
+   "warmth": 0.4
+  },
+  {
+   "id": "cloak",
+   "tags": [
+    "clothing"
+   ],
+   "stack": 1,
+   "warmth": 0.7
+  },
+  {
+   "id": "household_idol",
+   "tags": [
+    "marker",
+    "faith"
+   ],
+   "stack": 1,
+   "_doc": "домашний идол-оберег; лежит в storage каждого дома с рождения дома. Никакое взаимодействие его не берёт. home:household_idol>=1 ⇔ у семьи есть дом"
+  },
+  {
+   "id": "herbs",
+   "tags": [
+    "plant",
+    "medicine"
+   ],
+   "stack": 20,
+   "spoil_days": 5
+  },
+  {
+   "id": "bandage",
+   "tags": [
+    "medicine"
+   ],
+   "stack": 10
+  },
+  {
+   "id": "remedy",
+   "tags": [
+    "medicine"
+   ],
+   "stack": 5
+  },
+  {
+   "id": "hide",
+   "tags": [
+    "animal"
+   ],
+   "stack": 5,
+   "_doc": "источник — охота из части C"
+  },
+  {
+   "id": "artifact",
+   "tags": [
+    "faith",
+    "magic"
+   ],
+   "stack": 1,
+   "_doc": "лежит в stock святилища; дальше — отдельная работа"
+  },
+  {
+   "id": "spear",
+   "tags": [
+    "tool",
+    "weapon"
+   ],
+   "stack": 1,
+   "tool_wear": 0.04
+  },
+  {
+   "id": "carcass",
+   "tags": [
+    "animal",
+    "heavy"
+   ],
+   "stack": 1,
+   "spoil_days": 2
+  },
+  {
+   "id": "meat",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.0,
+   "stack": 10,
+   "spoil_days": 2,
+   "_doc": "сырым не едят; cook_meat (C) → meal"
+  }
+ ]
 }

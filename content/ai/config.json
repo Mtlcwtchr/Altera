@@ -1,19 +1,198 @@
-{ "_doc": "Global AI parameters (AI_DATA_SCHEMA.md §10).",
-  "top_k": 3, "hysteresis_bonus": 0.15, "switch_margin": 0.1, "fail_penalty": 0.3,
-  "htn_max_depth": 4, "method_max_fails": 3, "method_fail_ticks": 72,
-  "goap_max_depth": 10, "goap_max_nodes": 2000, "reserve_ticks": 36,
-  "walk_m_per_tick": 800, "interaction_range_m": 15,
-  "legal_base": 4.0, "trace_size": 64,
-  "player_idle_resume_ticks": 18, "player_goal_hold_ticks": 36, "player_goal_hold_bonus": 0.3,
-  "hint_decay_ticks": 72, "memory_cap": 200,
-  "modifier_bounds": { "max_abs_delta": 0.5, "max_ttl": 288 },
-  "memory_types": { "starved": 0.6, "stole_food": 0.4, "goal_failed": 0.15, "fought": 0.5, "was_taught": 0.2 },
-  "reputation_axes": ["honesty", "valor", "piety", "generosity", "notoriety"],
-  "status_pairs": ["betrothed", "married", "master_apprentice", "lord_vassal", "sworn_kin"],
-  "household_roles": ["head", "spouse", "child", "kin", "servant", "ward"],
-  "death_causes": ["starvation", "combat", "illness", "old_age", "execution"],
-  "commitments": {
-    "wedding": { "due": 1008, "on_breach": ["rel_back:trust-0.4", "rel_back:enmity+0.3", "reputation:honesty-0.1"] },
-    "repay_debt": { "due": 432, "on_breach": ["rel_back:trust-0.3", "reputation:honesty-0.15"] }
+{
+ "_doc": "Глобальные параметры ИИ по схеме §10. Тик = 10 игровых минут (144 в сутках). memory_types — значимость 0..1 записей памяти, на которые ссылаются эффекты memory:*.",
+ "top_k": 3,
+ "hysteresis_bonus": 0.15,
+ "switch_margin": 0.1,
+ "fail_penalty": 0.3,
+ "htn_max_depth": 4,
+ "method_max_fails": 3,
+ "method_fail_ticks": 72,
+ "goap_max_depth": 10,
+ "goap_max_nodes": 2000,
+ "reserve_ticks": 36,
+ "walk_m_per_tick": 800,
+ "interaction_range_m": 15,
+ "legal_base": 4.0,
+ "trace_size": 64,
+ "modifier_bounds": {
+  "max_abs_delta": 0.5,
+  "max_ttl": 288
+ },
+ "memory_types": {
+  "ate_meal": 0.05,
+  "ate_raw": 0.03,
+  "starved": 0.6,
+  "froze": 0.5,
+  "slept_rough": 0.1,
+  "good_chat": 0.15,
+  "was_comforted": 0.3,
+  "was_refused": 0.25,
+  "was_given_food": 0.35,
+  "gave_food": 0.2,
+  "stole_food": 0.5,
+  "was_robbed": 0.6,
+  "built_home": 0.8,
+  "made_tool": 0.2,
+  "made_clothes": 0.25,
+  "learned_skill": 0.4,
+  "prayed": 0.05,
+  "told_stories": 0.1,
+  "accused": 0.3,
+  "adopted": 0.3,
+  "attacked": 0.7,
+  "brawl": 0.3,
+  "buried": 0.3,
+  "claimed": 0.3,
+  "coup": 0.9,
+  "disowned": 0.3,
+  "divorce": 0.7,
+  "duel": 0.7,
+  "executed": 0.95,
+  "flirted": 0.15,
+  "gossiped": 0.1,
+  "heir_named": 0.7,
+  "helped": 0.2,
+  "insulted_someone": 0.3,
+  "intimacy": 0.5,
+  "judged": 0.3,
+  "migrated": 0.3,
+  "oath": 0.6,
+  "proposed": 0.3,
+  "raid": 0.8,
+  "revealed_secret": 0.5,
+  "rite": 0.3,
+  "stole": 0.3,
+  "surrendered": 0.3,
+  "sworn_friend": 0.3,
+  "used_magic": 0.3,
+  "war_declared": 0.9,
+  "wedding": 0.85,
+  "was_insulted": 0.4,
+  "saw_insult": 0.1,
+  "saw_accusation": 0.3,
+  "saw_punishment": 0.4,
+  "saw_brawl": 0.2,
+  "saw_attack": 0.6,
+  "saw_execution": 0.7,
+  "was_given_gift": 0.3,
+  "lied": 0.2,
+  "caught_lying": 0.5,
+  "kept_promise": 0.3,
+  "broken_promise": 0.6,
+  "disobeyed": 0.4,
+  "unpaid_debt": 0.5,
+  "saw_crime": 0.5
+ },
+ "loc": {
+  "_doc": "Локализация: видимые тексты только ключами (name_key, desc_key, thought_key; memory.<id>.text по типу памяти). Строки — content/loc/<язык>/*.json (часть B — ai.json), плоский словарь; значение — строка, массив вариантов или объект CLDR-форм {one,few,many,other}. Падежи отдельными ключами (.acc, .gen…). Слоты: {person}, {person.gen|dat|acc|ins}, {person.g:м|ж}, {speaker.g:м|ж}, {qty item}. Грамматика имён — loc/ru.grammar.json (C). Нет ключа в языке → fallback_language, нет и там → сам ключ (видно в отладке).",
+  "default_language": "ru",
+  "fallback_language": "en",
+  "languages": [
+   "ru",
+   "en"
+  ]
+ },
+ "reputation_axes": [
+  "honesty",
+  "valor",
+  "piety",
+  "generosity",
+  "notoriety"
+ ],
+ "status_pairs": [
+  "betrothed",
+  "married",
+  "master_apprentice",
+  "lord_vassal",
+  "sworn_kin",
+  "captor_captive"
+ ],
+ "household_roles": [
+  "head",
+  "spouse",
+  "child",
+  "kin",
+  "servant",
+  "ward"
+ ],
+ "death_causes": [
+  "starvation",
+  "combat",
+  "illness",
+  "old_age",
+  "execution"
+ ],
+ "commitments": {
+  "wedding": {
+   "due": 1008,
+   "on_breach": [
+    "rel_back:trust-0.4",
+    "rel_back:enmity+0.3",
+    "reputation:honesty-0.1"
+   ]
+  },
+  "repay_debt": {
+   "due": 432,
+   "on_breach": [
+    "rel_back:trust-0.3",
+    "reputation:honesty-0.15"
+   ]
+  },
+  "promise": {
+   "due": 288,
+   "on_breach": [
+    "rel_back:trust-0.15",
+    "reputation:honesty-0.03"
+   ]
+  },
+  "threat": {
+   "due": 144,
+   "on_breach": [
+    "rel_back:fear-0.1"
+   ],
+   "_doc": "пустая угроза: говорящий не исполнил then к сроку"
+  },
+  "work_slot": {
+   "due": 144,
+   "on_breach": [
+    "rel_back:trust-0.2",
+    "reputation:honesty-0.05"
+   ]
+  },
+  "mutual_aid": {
+   "due": 4320,
+   "on_breach": [
+    "rel_back:trust-0.3",
+    "rel_back:enmity+0.2"
+   ],
+   "_doc": "побратимство; продлевается при исполнении"
+  },
+  "fealty": {
+   "due": 8640,
+   "on_breach": [
+    "rel_back:enmity+0.4",
+    "reputation:honesty-0.2"
+   ]
+  },
+  "keep_secret": {
+   "due": 8640,
+   "on_breach": [
+    "rel_back:trust-0.4",
+    "rel_back:enmity+0.2"
+   ]
   }
+ },
+ "perception_radius_m": 40,
+ "notice_chance": 0.25,
+ "rights": [
+  "arrest",
+  "exile",
+  "judge",
+  "appoint"
+ ],
+ "verdicts": [
+  "execute",
+  "punish",
+  "exile"
+ ]
 }

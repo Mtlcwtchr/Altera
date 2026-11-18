@@ -1,0 +1,9 @@
+{ "_doc": "Small test world (AI_ARCHITECTURE §11.1, AI_DATA_SCHEMA.md §11).",
+  "seed": 20261118, "size_m": 12000, "cell_m": 250,
+  "biomes": ["meadow", "forest", "marsh"], "river": true,
+  "settlement_name": "Emberford",
+  "families": 3, "people_per_family": [4, 6], "traits_per_person": 2,
+  "traits_pool": ["lazy", "diligent", "honest", "desperate_thief", "stubborn", "gluttonous", "hardy", "forager"],
+  "knowledge_start": ["foraging", "cooking"], "child_knowledge": ["foraging"],
+  "know_radius_m": 1500
+}

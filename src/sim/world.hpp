@@ -99,6 +99,14 @@ public:
     Tick now() const { return tick_; }
     int day() const { return static_cast<int>(tick_ / kTicksPerDay); }
     bool isNight() const;
+    // Seasons: 90 days each from `startDay` (day of year the world starts on).
+    // spring | summer | autumn | winter.
+    const std::string& season() const;
+    void setStartDay(int dayOfYear) { startDay_ = ((dayOfYear % kDaysPerYear) + kDaysPerYear) % kDaysPerYear; }
+    int startDay() const { return startDay_; }
+    // Out-of-season objects (objects.json `season`) give nothing and are not
+    // offered to planners.
+    bool inSeason(const WorldObject& o) const;
 
     // --- entities -------------------------------------------------------
     EntityId newId() { return nextId_++; }
@@ -166,10 +174,12 @@ private:
     void processEvents();
     void handleEvent(const Event& e);
     void updateBodies();
+    bool sheltered(const Character& c) const;
 
     const Content* content_;
     std::uint64_t seed_;
     Tick tick_ = 0;
+    int startDay_ = 0;
     std::uint64_t nextSeq_ = 1;    // events
     std::uint64_t nextCmdSeq_ = 1; // commands (own counter: replay must not depend on event traffic)
     EntityId nextId_ = 1;

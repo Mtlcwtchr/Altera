@@ -1,31 +1,579 @@
-{ "_doc": "Utility goals (AI_DATA_SCHEMA.md §6). time:night and age:<stage> are 1 or 0.",
-  "goals": [
-    { "id": "eat", "task": "obtain_food", "priority_class": "need", "aggregate": "product",
-      "considerations": [
-        { "input": "need:hunger", "curve": {"type": "inverse_logistic", "k": 12, "x0": 0.42} }
-      ],
-      "min_ticks": 3, "interrupt": "need:hunger<0.12", "cooldown_on_fail": 12 },
-    { "id": "sleep", "task": "rest", "priority_class": "need", "aggregate": "product",
-      "considerations": [
-        { "input": "need:energy", "curve": {"type": "inverse_logistic", "k": 10, "x0": 0.4} },
-        { "input": "time:night", "curve": {"type": "step", "x0": 0.5, "lo": 0.45, "hi": 1.0} }
-      ],
-      "min_ticks": 6, "interrupt": "need:energy<0.08", "cooldown_on_fail": 12 },
-    { "id": "warm_up", "task": "get_warm", "priority_class": "need", "aggregate": "product",
-      "considerations": [
-        { "input": "need:warmth", "curve": {"type": "inverse_logistic", "k": 12, "x0": 0.35} }
-      ],
-      "min_ticks": 3, "interrupt": "need:warmth<0.1" },
-    { "id": "stock_food", "task": "stock_food", "priority_class": "work", "aggregate": "product", "base": 0.55,
-      "considerations": [
-        { "input": "home:meal", "norm": 8, "curve": {"type": "inverse"} },
-        { "input": "need:energy", "curve": {"type": "linear", "m": 0.7, "b": 0.3} },
-        { "input": "time:night", "curve": {"type": "step", "x0": 0.5, "lo": 1.0, "hi": 0.15} },
-        { "input": "age:adult", "curve": {"type": "step", "x0": 0.5, "lo": 0.3, "hi": 1.0} }
-      ],
-      "min_ticks": 12, "cooldown_on_fail": 36 },
-    { "id": "idle", "task": "idle", "priority_class": "idle", "aggregate": "product",
-      "considerations": [ { "input": "const", "curve": {"type": "const", "v": 0.08} } ],
-      "min_ticks": 2 }
-  ]
+{
+ "_doc": "Цели Utility (слой 1). Вход соображений — только из схемы §6. Нормы: has/home нормируются на norm (по умолч. 10). Ворота «есть дом» = home:household_idol (norm 1), см. README §3. base — множитель класса. Подсказка игрока/агента (adjust_weight, set_goal_hint) — множитель поверх балла, в данных не пишется.",
+ "goals": [
+  {
+   "id": "eat",
+   "task": "obtain_food",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 1.0,
+   "considerations": [
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 10,
+      "x0": 0.45
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.3,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "interrupt": "need:hunger<0.15",
+   "cooldown_on_fail": 12
+  },
+  {
+   "id": "drink",
+   "task": "obtain_water",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 1.0,
+   "considerations": [
+    {
+     "input": "need:thirst",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 12,
+      "x0": 0.4
+     }
+    }
+   ],
+   "min_ticks": 1,
+   "interrupt": "need:thirst<0.15",
+   "cooldown_on_fail": 12
+  },
+  {
+   "id": "sleep",
+   "task": "find_sleep",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 1.0,
+   "considerations": [
+    {
+     "input": "need:energy",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 9,
+      "x0": 0.45
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": 0.6,
+      "b": 0.4
+     }
+    }
+   ],
+   "min_ticks": 12,
+   "interrupt": "need:energy<0.1",
+   "cooldown_on_fail": 6
+  },
+  {
+   "id": "get_warm",
+   "task": "warm_up",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 1.0,
+   "considerations": [
+    {
+     "input": "need:warmth",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 10,
+      "x0": 0.4
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "interrupt": "need:warmth<0.15",
+   "cooldown_on_fail": 12
+  },
+  {
+   "id": "socialize",
+   "task": "socialize_task",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.8,
+   "considerations": [
+    {
+     "input": "need:social",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 8,
+      "x0": 0.4
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.6,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "cooldown_on_fail": 12
+  },
+  {
+   "id": "have_fun",
+   "task": "have_fun_task",
+   "priority_class": "idle",
+   "aggregate": "product",
+   "base": 0.6,
+   "considerations": [
+    {
+     "input": "need:fun",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 6,
+      "x0": 0.4
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.5,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "cooldown_on_fail": 12
+  },
+  {
+   "id": "wash",
+   "task": "wash_task",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 0.6,
+   "considerations": [
+    {
+     "input": "need:hygiene",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 8,
+      "x0": 0.3
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.8,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 2,
+   "cooldown_on_fail": 24
+  },
+  {
+   "id": "pray",
+   "task": "pray_task",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.6,
+   "considerations": [
+    {
+     "input": "need:purpose",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 6,
+      "x0": 0.35
+     }
+    }
+   ],
+   "min_ticks": 2,
+   "cooldown_on_fail": 24
+  },
+  {
+   "id": "rest",
+   "task": "rest_task",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 0.7,
+   "considerations": [
+    {
+     "input": "body:fatigue",
+     "curve": {
+      "type": "logistic",
+      "k": 10,
+      "x0": 0.6
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "cooldown_on_fail": 6
+  },
+  {
+   "id": "stock_food",
+   "task": "gather_food_for_home",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.75,
+   "considerations": [
+    {
+     "input": "home:household_idol",
+     "norm": 1,
+     "curve": {
+      "type": "step",
+      "x0": 0.5,
+      "lo": 0.0,
+      "hi": 1.0
+     }
+    },
+    {
+     "input": "home:meal",
+     "norm": 6,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "home:roots",
+     "norm": 12,
+     "curve": {
+      "type": "inverse"
+     },
+     "weight": 0.5
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 24
+  },
+  {
+   "id": "stock_firewood",
+   "task": "gather_firewood_for_home",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.6,
+   "considerations": [
+    {
+     "input": "home:household_idol",
+     "norm": 1,
+     "curve": {
+      "type": "step",
+      "x0": 0.5,
+      "lo": 0.0,
+      "hi": 1.0
+     }
+    },
+    {
+     "input": "home:firewood",
+     "norm": 12,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "need:warmth",
+     "curve": {
+      "type": "linear",
+      "m": -0.4,
+      "b": 1.0
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 24
+  },
+  {
+   "id": "share_food",
+   "task": "share_food_task",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.35,
+   "considerations": [
+    {
+     "input": "has:meal",
+     "norm": 3,
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "logistic",
+      "k": 8,
+      "x0": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.7,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 1,
+   "cooldown_on_fail": 36,
+   "_doc": "исполнитель выбирает голодного члена семьи рядом; нет такого → провал метода → cooldown"
+  },
+  {
+   "id": "make_axe",
+   "task": "craft_axe",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.5,
+   "considerations": [
+    {
+     "input": "has:axe",
+     "norm": 1,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "home:axe",
+     "norm": 1,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.6,
+      "b": 0.4
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 72
+  },
+  {
+   "id": "make_clothes",
+   "task": "craft_clothes",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.45,
+   "considerations": [
+    {
+     "input": "has:tunic",
+     "norm": 1,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "need:warmth",
+     "curve": {
+      "type": "linear",
+      "m": -0.5,
+      "b": 1.0
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.6,
+      "b": 0.4
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 72
+  },
+  {
+   "id": "build_home",
+   "task": "build_home_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.7,
+   "considerations": [
+    {
+     "input": "home:household_idol",
+     "norm": 1,
+     "curve": {
+      "type": "step",
+      "x0": 0.5,
+      "lo": 1.0,
+      "hi": 0.0
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.6,
+      "b": 0.4
+     }
+    },
+    {
+     "input": "need:energy",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 12,
+   "cooldown_on_fail": 144
+  },
+  {
+   "id": "ask_help",
+   "task": "talk_ask_favor",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.85,
+   "considerations": [
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "inverse_logistic",
+      "k": 10,
+      "x0": 0.35
+     }
+    },
+    {
+     "input": "has:meal",
+     "norm": 1,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "home:meal",
+     "norm": 2,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.7,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 2,
+   "cooldown_on_fail": 36,
+   "_doc": "повод hungry_no_food; повод need_help (провал метода) — в goals.ext.json, нужен вход trigger:*"
+  },
+  {
+   "id": "offer_trade",
+   "task": "talk_propose_trade",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.4,
+   "considerations": [
+    {
+     "input": "home:roots",
+     "norm": 20,
+     "curve": {
+      "type": "logistic",
+      "k": 10,
+      "x0": 0.6
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 2,
+   "cooldown_on_fail": 72,
+   "_doc": "повод has_surplus: в MVP излишек = корни дома (≥12); общий излишек любого предмета — через trigger:has_surplus"
+  },
+  {
+   "id": "idle",
+   "task": "idle_task",
+   "priority_class": "idle",
+   "aggregate": "product",
+   "base": 1.0,
+   "considerations": [
+    {
+     "input": "const",
+     "curve": {
+      "type": "const",
+      "v": 0.08
+     }
+    }
+   ],
+   "min_ticks": 2,
+   "cooldown_on_fail": 0,
+   "_doc": "запасная цель: всегда выполнима"
+  }
+ ]
 }

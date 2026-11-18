@@ -1,0 +1,21 @@
+{ "_doc": "Needs (AI_DATA_SCHEMA.md §4). 1 = satisfied; decay per game day (144 ticks).",
+  "needs": [
+    { "id": "hunger", "decay_per_day": 0.6, "critical": 0.12, "start": [0.55, 0.9] },
+    { "id": "energy", "decay_per_day": 0.85, "critical": 0.08, "start": [0.6, 0.95] },
+    { "id": "warmth", "decay_per_day": 0.3, "critical": 0.1, "start": [0.7, 1.0], "night_mult": 1.8,
+      "biome_mult": {"marsh": 1.5, "forest": 0.8} }
+  ],
+  "moodlets": [
+    { "id": "ate_meal", "value": 0.15, "ttl": 72 },
+    { "id": "ate_raw", "value": 0.03, "ttl": 24 },
+    { "id": "slept_bed", "value": 0.1, "ttl": 96 },
+    { "id": "slept_rough", "value": -0.12, "ttl": 96 },
+    { "id": "warm_hearth", "value": 0.05, "ttl": 36 },
+    { "id": "stole", "value": -0.05, "ttl": 72 },
+    { "id": "insulted", "value": -0.08, "ttl": 48 },
+    { "id": "wounded", "value": -0.2, "ttl": 144 },
+    { "id": "won_fight", "value": 0.06, "ttl": 48 },
+    { "id": "learned", "value": 0.05, "ttl": 48 },
+    { "id": "chatted", "value": 0.04, "ttl": 36 }
+  ]
+}

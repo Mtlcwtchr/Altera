@@ -56,7 +56,19 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MemoryEntry, tick, type, who, ob
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Relation, familiarity, trust, affinity, fear, debt, enmity, respect,
                                                 attraction)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Status, family, dynasty, settlement, role, spouse, mother, father,
-                                                children)
+                                                children, pairs, rights, verdicts)
+
+bool Status::hasPair(EntityId other, const std::string& id) const {
+    if (id == "married" && spouse != kNone && spouse == other) return true;
+    auto it = pairs.find(other);
+    return it != pairs.end() && it->second.count(id) > 0;
+}
+bool Status::hasPairAny(const std::string& id) const {
+    if (id == "married" && spouse != kNone) return true;
+    for (const auto& [o, s] : pairs)
+        if (s.count(id)) return true;
+    return false;
+}
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)

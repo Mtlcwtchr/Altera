@@ -161,7 +161,7 @@ void warnUnknown(const Json& j, std::initializer_list<const char*> known, const 
                  std::vector<std::string>& warnings) {
     if (!j.is_object()) return;
     for (auto it = j.begin(); it != j.end(); ++it) {
-        if (it.key() == "_doc") continue;
+        if (!it.key().empty() && it.key()[0] == '_') continue; // _doc, _part, ...: notes
         bool ok = false;
         for (const char* k : known)
             if (it.key() == k) ok = true;
@@ -187,23 +187,26 @@ Curve curveFrom(const Json& j) {
 
 Content Content::fromJson(const Json& items, const Json& objects, const Json& needs, const Json& traits,
                           const Json& goals, const Json& htn, const Json& interactions, const Json& fsm,
-                          const Json& config, const Json& dialogue) {
+                          const Json& config, const Json& dialogue, const Json& knowledge) {
     Content c;
     Errors err;
     auto& W = c.warnings;
 
     for (const auto& j : items.value("items", Json::array())) {
-        warnUnknown(j, {"id", "tags", "nutrition", "stack"}, "items", W);
+        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days"}, "items", W);
         ItemDef d;
         d.id = j.at("id").get<std::string>();
         d.tags = strings(j, "tags");
         d.nutrition = opt(j, "nutrition", 0.0);
+        d.warmth = opt(j, "warmth", 0.0);
+        d.toolWear = opt(j, "tool_wear", 0.0);
+        d.spoilDays = opt(j, "spoil_days", 0.0);
         if (!c.items.emplace(d.id, d).second) err.add("items: duplicate id " + d.id);
     }
 
     for (const auto& j : objects.value("objects", Json::array())) {
         warnUnknown(j, {"id", "stock", "max_stock", "regrow", "regrow_every", "biomes", "per_km2", "owned",
-                        "settlement", "per_family", "per_person", "warmth"},
+                        "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season"},
                     "objects", W);
         ObjectDef d;
         d.id = j.at("id").get<std::string>();
@@ -218,11 +221,15 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.perFamily = opt(j, "per_family", 0);
         d.perPerson = opt(j, "per_person", 0);
         d.warmth = opt(j, "warmth", false);
+        d.shelter = opt(j, "shelter", false);
+        d.perSettlement = opt(j, "per_settlement", 0);
+        d.seasons = strings(j, "season");
         if (!c.objects.emplace(d.id, d).second) err.add("objects: duplicate id " + d.id);
     }
 
     for (const auto& j : needs.value("needs", Json::array())) {
-        warnUnknown(j, {"id", "decay_per_day", "critical", "start", "night_mult", "biome_mult"}, "needs", W);
+        warnUnknown(j, {"id", "decay_per_day", "critical", "start", "night_mult", "biome_mult", "mvp", "season_mult",
+                        "sheltered_mult", "clothing_mult"}, "needs", W);
         NeedDef d;
         d.id = j.at("id").get<std::string>();
         d.decayPerDay = opt(j, "decay_per_day", 0.5);
@@ -233,6 +240,10 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         }
         d.nightMult = opt(j, "night_mult", 1.0);
         d.biomeMult = opt(j, "biome_mult", std::map<std::string, double>{});
+        d.mvp = opt(j, "mvp", true);
+        d.seasonMult = opt(j, "season_mult", std::map<std::string, double>{});
+        d.shelteredMult = opt(j, "sheltered_mult", 1.0);
+        d.clothingMult = opt(j, "clothing_mult", std::map<std::string, double>{});
         if (c.need(d.id)) err.add("needs: duplicate id " + d.id);
         c.needs.push_back(d);
     }
@@ -245,7 +256,9 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     }
 
     for (const auto& j : traits.value("traits", Json::array())) {
-        warnUnknown(j, {"id", "goal_mult", "need_mult", "legal_penalty", "method_bias", "hysteresis_mult"}, "traits",
+        warnUnknown(j, {"id", "goal_mult", "need_mult", "legal_penalty", "method_bias", "hysteresis_mult", "inherit",
+                        "weight_in_pool"},
+                    "traits",
                     W);
         TraitDef d;
         d.id = j.at("id").get<std::string>();
@@ -254,6 +267,8 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.legalPenalty = opt(j, "legal_penalty", std::map<std::string, double>{});
         d.methodBias = opt(j, "method_bias", std::map<std::string, double>{});
         d.hysteresisMult = opt(j, "hysteresis_mult", 1.0);
+        d.inherit = opt(j, "inherit", 0.0);
+        d.weightInPool = opt(j, "weight_in_pool", 1.0);
         if (!c.traits.emplace(d.id, d).second) err.add("traits: duplicate id " + d.id);
     }
     for (const auto& p : traits.value("exclusive", Json::array()))
@@ -307,6 +322,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
                 if (sj.contains("do")) {
                     s.kind = HtnStep::Kind::Do;
                     s.ref = sj["do"].get<std::string>();
+                    if (sj.contains("params") && sj["params"].is_object()) s.params = sj["params"];
                 } else if (sj.contains("task")) {
                     s.kind = HtnStep::Kind::Task;
                     s.ref = sj["task"].get<std::string>();
@@ -328,7 +344,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : interactions.value("interactions", Json::array())) {
         warnUnknown(j, {"id", "category", "target", "pre", "eff", "from_target", "duration", "cost", "fsm", "reserve",
                         "goap", "legal", "visibility", "social", "speech", "continuous", "until", "params", "chance",
-                        "on_fail", "risk", "combat", "terms"},
+                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents"},
                     "interactions", W);
         InteractionDef d;
         d.id = j.at("id").get<std::string>();
@@ -354,10 +370,21 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
             d.chance.set = true;
             if (cj.is_number()) d.chance.base = cj.get<double>();
             else {
-                warnUnknown(cj, {"base", "skill", "per_skill", "min", "max"}, where + " chance", W);
+                warnUnknown(cj, {"base", "skill", "per_skill", "add", "min", "max"}, where + " chance", W);
                 d.chance.base = opt(cj, "base", 1.0);
                 d.chance.skill = opt<std::string>(cj, "skill", "");
                 d.chance.perSkill = opt(cj, "per_skill", 0.0);
+                for (const auto& aj : cj.value("add", Json::array())) {
+                    ChanceInput in;
+                    try {
+                        in.input = parseCondition(aj.at("input").get<std::string>());
+                    } catch (const std::exception& e) {
+                        err.add(where + " chance.add: " + e.what());
+                        continue;
+                    }
+                    in.k = opt(aj, "k", 0.0);
+                    d.chance.add.push_back(in);
+                }
                 d.chance.min = opt(cj, "min", 0.0);
                 d.chance.max = opt(cj, "max", 1.0);
             }
@@ -407,6 +434,35 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.reserve = opt(j, "reserve", false);
         d.goap = opt(j, "goap", d.target != "character" && d.params.empty());
         d.legal = strings(j, "legal");
+        auto legalRules = [&](const char* key, std::vector<LegalRule>& out) {
+            for (const auto& lj : j.value(key, Json::array())) {
+                LegalRule r;
+                r.tag = opt<std::string>(lj, "tag", "");
+                r.mult = opt(lj, "mult", -1.0);
+                for (const auto& alt : strings(lj, "if")) {
+                    std::vector<Condition> any;
+                    size_t from = 0;
+                    while (from <= alt.size()) {
+                        const size_t bar = alt.find('|', from);
+                        const std::string part = alt.substr(from, bar == std::string::npos ? std::string::npos : bar - from);
+                        try {
+                            any.push_back(parseCondition(part));
+                        } catch (const std::exception& e) {
+                            err.add(where + " " + key + ": " + e.what());
+                        }
+                        if (bar == std::string::npos) break;
+                        from = bar + 1;
+                    }
+                    r.all.push_back(std::move(any));
+                }
+                if (r.tag.empty()) err.add(where + " " + key + ": rule without tag");
+                out.push_back(std::move(r));
+            }
+        };
+        legalRules("legal_if", d.legalIf);
+        legalRules("legal_unless", d.legalUnless);
+        d.consent = opt<std::string>(j, "consent", "");
+        d.intents = strings(j, "intents");
         d.visibility = opt<std::string>(j, "visibility", "public");
         d.social = j.value("social", Json());
         d.speech = strings(j, "speech");
@@ -431,6 +487,23 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         if (!c.fsm.emplace(d.id, d).second) err.add("fsm: duplicate state " + d.id);
     }
 
+    for (auto it = dialogue.begin(); it != dialogue.end(); ++it)
+        if (it.key() != "speech_acts" && it.key() != "templates") c.dialogueRules[it.key()] = *it;
+    for (const auto& j : knowledge.value("knowledge", Json::array())) {
+        warnUnknown(j, {"id", "requires", "learn_ticks", "self_ticks", "start", "start_chance_adult",
+                        "family_knowledge"}, "knowledge", W);
+        KnowledgeDef k;
+        k.id = j.at("id").get<std::string>();
+        k.requiresKnowledge = strings(j, "requires");
+        k.learnTicks = opt<Tick>(j, "learn_ticks", 0);
+        k.selfTicks = opt<Tick>(j, "self_ticks", 0);
+        k.start = opt<std::string>(j, "start", "");
+        k.startChanceAdult = opt(j, "start_chance_adult", 0.0);
+        k.familyKnowledge = opt(j, "family_knowledge", false);
+        if (!c.knowledge.emplace(k.id, k).second) err.add("knowledge: duplicate id " + k.id);
+    }
+    c.householdMust = strings(knowledge, "household_must");
+    c.settlementMust = strings(knowledge, "settlement_must");
     for (const auto& sa : dialogue.value("speech_acts", Json::array()))
         c.speechActs.push_back(sa.is_string() ? sa.get<std::string>() : sa.at("id").get<std::string>());
     for (const auto& j : dialogue.value("templates", Json::array())) {
@@ -470,6 +543,8 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.walkMPerTick = opt(config, "walk_m_per_tick", a.walkMPerTick);
     a.interactionRangeM = opt(config, "interaction_range_m", a.interactionRangeM);
     a.legalBase = opt(config, "legal_base", a.legalBase);
+    a.perceptionRadiusM = opt(config, "perception_radius_m", a.perceptionRadiusM);
+    a.noticeChance = opt(config, "notice_chance", a.noticeChance);
     a.traceSize = opt(config, "trace_size", a.traceSize);
     a.playerIdleResumeTicks = opt(config, "player_idle_resume_ticks", a.playerIdleResumeTicks);
     a.playerGoalHoldTicks = opt(config, "player_goal_hold_ticks", a.playerGoalHoldTicks);
@@ -483,6 +558,8 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.memoryTypes = opt(config, "memory_types", std::map<std::string, double>{});
     if (config.contains("reputation_axes")) a.reputationAxes = strings(config, "reputation_axes");
     if (config.contains("status_pairs")) a.statusPairs = strings(config, "status_pairs");
+    if (config.contains("rights")) a.rights = strings(config, "rights");
+    if (config.contains("verdicts")) a.verdicts = strings(config, "verdicts");
     if (config.contains("household_roles")) a.householdRoles = strings(config, "household_roles");
     if (config.contains("death_causes")) a.deathCauses = strings(config, "death_causes");
     if (config.contains("commitments") && config["commitments"].is_object())
@@ -509,7 +586,8 @@ Content Content::load(const std::string& dir) {
         return probe ? readJson(dir + "/" + name) : Json::object();
     };
     Content c = fromJson(f("items.json"), f("objects.json"), f("needs.json"), f("traits.json"), f("goals.json"),
-                         f("htn.json"), f("interactions.json"), f("fsm.json"), f("config.json"), f("dialogue.json"));
+                         f("htn.json"), f("interactions.json"), f("fsm.json"), f("config.json"), f("dialogue.json"),
+                         f("knowledge.json"));
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);
     if (!v.ok()) {

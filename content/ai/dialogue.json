@@ -1,37 +1,2655 @@
-{ "_doc": "Speech acts and dialogue templates (AI_DATA_SCHEMA.md §9a). No display text here: dialogue.<template>.<variant> lives in content/loc/<lang>/dialogue.json. pre/eff: speaker is the actor, t. is the listener, rel is speaker->listener.",
-  "speech_acts": ["greet", "smalltalk", "offer", "request", "promise", "threaten", "insult", "gossip", "propose",
-                  "comfort", "agree", "refuse"],
-  "templates": [
-    { "id": "greet", "speech": "greet",
-      "eff": ["rel:familiarity+0.02", "rel_back:familiarity+0.02"],
-      "variants": [
-        { "id": "warm", "pre": ["rel:affinity>=0.4"] },
-        { "id": "plain" },
-        { "id": "cold", "pre": ["rel:enmity>=0.3"] }
-      ],
-      "replies": ["greet", "smalltalk"] },
-    { "id": "smalltalk", "speech": "smalltalk",
-      "eff": ["rel:affinity+0.01", "rel_back:affinity+0.01"],
-      "variants": [ "weather", { "id": "harvest", "pre": ["!time:night"] } ],
-      "replies": ["smalltalk", "agree"] },
-    { "id": "offer_food", "speech": "offer", "pre": ["has:berries>=2", "t.need:hunger<0.4"],
-      "eff": ["rel_back:affinity+0.05", "rel_back:trust+0.03", "reputation:generosity+0.02"],
-      "variants": [ "plain", { "id": "kind", "pre": ["rel:affinity>=0.3"] } ],
-      "replies": ["agree", "refuse"] },
-    { "id": "insult", "speech": "insult", "pre": ["rel:enmity>=0.2"],
-      "eff": ["rel_back:enmity+0.1", "rel_back:affinity-0.05", "t.moodlet:insulted"],
-      "variants": [ "plain", { "id": "harsh", "pre": ["rel:enmity>=0.6"] } ],
-      "replies": ["insult", "threaten", "refuse"] },
-    { "id": "threaten", "speech": "threaten",
-      "eff": ["rel_back:fear+0.1", "rel_back:enmity+0.05", "reputation:notoriety+0.02"],
-      "variants": [ "plain" ],
-      "replies": ["refuse", "agree"] },
-    { "id": "propose_marriage", "speech": "propose",
-      "pre": ["rel:attraction>=0.5", "rel:respect>=0.2", "!age:child", "!t.age:child"],
-      "eff": ["status_pair:betrothed", "commitment:wedding"],
-      "variants": [ "plain", { "id": "shy", "pre": ["rel:familiarity<0.5"] } ],
-      "replies": ["agree", "refuse"] },
-    { "id": "agree", "speech": "agree", "variants": [ "plain" ] },
-    { "id": "refuse", "speech": "refuse", "variants": [ "plain", { "id": "rude", "pre": ["rel:enmity>=0.3"] } ] }
+{
+ "_doc": "Altera, диалоги (задача C) по AI_DATA_SCHEMA v0.2 §9a. Текста нет: dialogue.<template>.<variant> в loc/<lang>/dialogue.json. Нестандартные разделы (speech_act_rules, initiation, dialog_plans, agent_join, response_eval, menu, consent, topic_kinds, legal_rules, agent_projection) — правила слоя диалогов (шаг 4), см. gdd/interactions/INTERACTIONS_DIALOGUE_v0.1.md",
+ "speech_acts": [
+  "greet",
+  "farewell",
+  "praise",
+  "insult",
+  "apologize",
+  "thank",
+  "inform",
+  "ask",
+  "confess",
+  "lie",
+  "accuse",
+  "request",
+  "command",
+  "persuade",
+  "offer",
+  "bargain",
+  "ignore",
+  "accept",
+  "refuse",
+  "promise",
+  "threaten"
+ ],
+ "templates": [
+  {
+   "id": "accept",
+   "speech": "accept",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_2",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "neutral_3"
+    }
+   ],
+   "replies": [
+    "thank"
+   ]
+  },
+  {
+   "id": "accuse",
+   "speech": "accuse",
+   "eff": [
+    "rel_back:affinity-0.08"
+   ],
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "refuse",
+    "confess",
+    "apologize",
+    "lie",
+    "accuse",
+    "threaten"
+   ]
+  },
+  {
+   "id": "apologize",
+   "speech": "apologize",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "request"
+   ]
+  },
+  {
+   "id": "ask",
+   "speech": "ask",
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "neutral_3"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "inform",
+    "lie",
+    "refuse",
+    "ask"
+   ]
+  },
+  {
+   "id": "bargain",
+   "speech": "bargain",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "neutral_3"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain"
+   ]
+  },
+  {
+   "id": "command",
+   "speech": "command",
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "formal_2",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask"
+   ]
+  },
+  {
+   "id": "confess",
+   "speech": "confess",
+   "eff": [
+    "rel_back:trust+0.05"
+   ],
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "accuse",
+    "inform",
+    "promise"
+   ]
+  },
+  {
+   "id": "farewell",
+   "speech": "farewell",
+   "eff": [
+    "rel_back:affinity+0.01"
+   ],
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_2",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "formal_2",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "rude_2",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "farewell"
+   ]
+  },
+  {
+   "id": "greet",
+   "speech": "greet",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_2",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_3",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "formal_2",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "formal_3",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "rude_2",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "greet",
+    "ignore",
+    "farewell"
+   ]
+  },
+  {
+   "id": "ignore",
+   "speech": "ignore",
+   "eff": [
+    "rel_back:affinity-0.02"
+   ],
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "insult",
+    "farewell"
+   ]
+  },
+  {
+   "id": "inform",
+   "speech": "inform",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_2",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "neutral_3"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise"
+   ]
+  },
+  {
+   "id": "inform_interaction",
+   "speech": "inform",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise"
+   ]
+  },
+  {
+   "id": "inform_playful",
+   "speech": "inform",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise"
+   ]
+  },
+  {
+   "id": "inform_warm",
+   "speech": "inform",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise"
+   ]
+  },
+  {
+   "id": "insult",
+   "speech": "insult",
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "rude_2",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "rude_3",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "insult",
+    "accuse",
+    "threaten",
+    "apologize",
+    "farewell"
+   ]
+  },
+  {
+   "id": "insult_sacred",
+   "speech": "insult",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "insult",
+    "accuse",
+    "threaten",
+    "apologize",
+    "farewell"
+   ]
+  },
+  {
+   "id": "offer",
+   "speech": "offer",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask"
+   ]
+  },
+  {
+   "id": "offer_terms",
+   "speech": "offer",
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask"
+   ]
+  },
+  {
+   "id": "persuade",
+   "speech": "persuade",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "ask",
+    "bargain"
+   ]
+  },
+  {
+   "id": "praise",
+   "speech": "praise",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_2",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "thank",
+    "inform",
+    "refuse"
+   ]
+  },
+  {
+   "id": "praise_flirtatious",
+   "speech": "praise",
+   "pre": [
+    "!age:child",
+    "!t.age:child"
+   ],
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "thank",
+    "inform",
+    "refuse"
+   ]
+  },
+  {
+   "id": "praise_sacred",
+   "speech": "praise",
+   "pre": [
+    "knows:faith"
+   ],
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "thank",
+    "inform",
+    "refuse"
+   ]
+  },
+  {
+   "id": "promise",
+   "speech": "promise",
+   "eff": [
+    "rel_back:trust+0.01"
+   ],
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "thank",
+    "accept",
+    "refuse",
+    "ask"
+   ]
+  },
+  {
+   "id": "promise_fealty",
+   "speech": "promise",
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    }
+   ],
+   "replies": [
+    "thank",
+    "accept",
+    "refuse",
+    "ask"
+   ]
+  },
+  {
+   "id": "promise_sworn_friendship",
+   "speech": "promise",
+   "pre": [
+    "rel:affinity>=0.5"
+   ],
+   "variants": [
+    {
+     "id": "neutral_1"
+    }
+   ],
+   "replies": [
+    "thank",
+    "accept",
+    "refuse",
+    "ask"
+   ]
+  },
+  {
+   "id": "refuse",
+   "speech": "refuse",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "neutral_3"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "rude_2",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "persuade",
+    "bargain",
+    "threaten",
+    "farewell"
+   ]
+  },
+  {
+   "id": "request",
+   "speech": "request",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "familiar_2",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask",
+    "promise"
+   ]
+  },
+  {
+   "id": "request_pleading",
+   "speech": "request",
+   "variants": [
+    {
+     "id": "neutral_1"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask",
+    "promise"
+   ]
+  },
+  {
+   "id": "thank",
+   "speech": "thank",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "inform"
+   ]
+  },
+  {
+   "id": "threaten",
+   "speech": "threaten",
+   "eff": [
+    "rel_back:fear+0.05",
+    "rel_back:affinity-0.08"
+   ],
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "rude_2",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "threaten",
+    "accuse"
+   ]
+  },
+  {
+   "id": "threaten_sacred",
+   "speech": "threaten",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "threaten",
+    "accuse"
+   ]
+  },
+  {
+   "id": "lie",
+   "speech": "lie",
+   "variants": [
+    {
+     "id": "as_inform"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "accept"
+   ],
+   "_doc": "Ложь выводится вариантами шаблона inform (снаружи неотличима); dialogue.lie.as_inform — служебная пустышка"
+  },
+  {
+   "id": "open_ask_favor",
+   "speech": "request",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask",
+    "promise",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_call_out",
+   "speech": "greet",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "neutral_3"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "greet",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Оклик перед первой репликой, если собеседник не смотрит"
+  },
+  {
+   "id": "open_confront",
+   "speech": "accuse",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    },
+    {
+     "id": "rude_1",
+     "pre": [
+      "rel:enmity>=0.3"
+     ],
+     "weight": 2.0
+    }
+   ],
+   "replies": [
+    "refuse",
+    "confess",
+    "apologize",
+    "lie",
+    "accuse",
+    "threaten",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_court",
+   "speech": "praise",
+   "pre": [
+    "!age:child",
+    "!t.age:child"
+   ],
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "thank",
+    "inform",
+    "refuse",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_offer_teaching",
+   "speech": "offer",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_propose_trade",
+   "speech": "offer",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_recruit",
+   "speech": "persuade",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "ask",
+    "bargain",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_report",
+   "speech": "accuse",
+   "variants": [
+    {
+     "id": "formal_1",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    },
+    {
+     "id": "formal_2",
+     "pre": [
+      "rel:familiarity<0.2"
+     ],
+     "weight": 1.5
+    }
+   ],
+   "replies": [
+    "refuse",
+    "confess",
+    "apologize",
+    "lie",
+    "accuse",
+    "threaten",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_share_news",
+   "speech": "inform",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_small_talk",
+   "speech": "greet",
+   "variants": [
+    {
+     "id": "familiar_1",
+     "pre": [
+      "rel:affinity>=0.4"
+     ],
+     "weight": 2.0
+    },
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "greet",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "open_warn",
+   "speech": "inform",
+   "variants": [
+    {
+     "id": "neutral_1"
+    },
+    {
+     "id": "neutral_2"
+    }
+   ],
+   "replies": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Первая реплика NPC по start_dialog{intent}"
+  },
+  {
+   "id": "gesture_accept",
+   "speech": "accept",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "thank"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_farewell",
+   "speech": "farewell",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "farewell"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_greet",
+   "speech": "greet",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "greet",
+    "ignore",
+    "farewell"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_ignore",
+   "speech": "ignore",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "insult",
+    "farewell"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_insult",
+   "speech": "insult",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "insult",
+    "accuse",
+    "threaten",
+    "apologize",
+    "farewell"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_offer",
+   "speech": "offer",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_praise",
+   "speech": "praise",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "thank",
+    "inform",
+    "refuse"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_refuse",
+   "speech": "refuse",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "persuade",
+    "bargain",
+    "threaten",
+    "farewell"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  },
+  {
+   "id": "gesture_threaten",
+   "speech": "threaten",
+   "variants": [
+    {
+     "id": "plain_1"
+    }
+   ],
+   "replies": [
+    "accept",
+    "refuse",
+    "threaten",
+    "accuse"
+   ],
+   "_doc": "Без общего языка: описание жеста вместо речи"
+  }
+ ],
+ "initiation": {
+  "_doc": "Диалог всегда начинает обычный ИИ (Utility→HTN), в т.ч. с персонажем игрока. Агент не нужен ни для начала, ни для ведения; он может подключиться позже (agent_join).",
+  "chain": "социальная цель Utility (B: socialize, ask_help, trade, warn, recruit, complain, court, teach…) → задача HTN talk_to(<char>) → взаимодействие start_dialog{intent} → план dialog_plans[intent] (AGENT_API §3.4)",
+  "intents": [
+   "small_talk",
+   "ask_favor",
+   "propose_trade",
+   "share_news",
+   "warn",
+   "confront",
+   "court",
+   "recruit",
+   "offer_teaching",
+   "report",
+   "from_hint"
+  ],
+  "intent_aliases": {
+   "_doc": "намерения из примеров AGENT_API §3.4",
+   "socialize": "small_talk",
+   "ask_help": "ask_favor",
+   "trade": "propose_trade",
+   "complain": "confront",
+   "teach": "offer_teaching"
+  },
+  "triggers": [
+   {
+    "id": "need_help",
+    "when": "текущий метод HTN провалился, а у знакомого есть нужное (has/knows)",
+    "plan": "ask_favor"
+   },
+   {
+    "id": "hungry_no_food",
+    "when": "need:hunger<0.3 и home:meal<1, рядом знакомый с едой",
+    "plan": "ask_favor"
+   },
+   {
+    "id": "has_surplus",
+    "when": "избыток предмета и знает, кому он нужен",
+    "plan": "propose_trade"
+   },
+   {
+    "id": "fresh_news",
+    "when": "в памяти свежее значимое событие/слух, рядом знакомый",
+    "plan": "share_news"
+   },
+   {
+    "id": "grievance",
+    "when": "нарушенное обязательство/обида к цели выше порога",
+    "plan": "confront"
+   },
+   {
+    "id": "debt_due",
+    "when": "срок долга/обещания цели истёк",
+    "plan": "confront"
+   },
+   {
+    "id": "attraction",
+    "when": "rel:affinity высока, оба взрослые, свободны (или черта)",
+    "plan": "court"
+   },
+   {
+    "id": "recruit",
+    "when": "лидер/основатель и цель без поселения или недовольна",
+    "plan": "recruit"
+   },
+   {
+    "id": "teach_offer",
+    "when": "родитель/мастер и цель без знания",
+    "plan": "offer_teaching"
+   },
+   {
+    "id": "lonely",
+    "when": "need:social<0.3",
+    "plan": "small_talk"
+   },
+   {
+    "id": "danger_seen",
+    "when": "видел угрозу (зверь, набег, пожар) рядом с знакомым",
+    "plan": "warn"
+   },
+   {
+    "id": "witness_crime",
+    "when": "видел преступление цели",
+    "plan": "confront|report"
+   },
+   {
+    "id": "agent_hint",
+    "when": "set_goal_hint/queue_task из прошлого диалога с агентом",
+    "plan": "from_hint"
+   }
+  ],
+  "approach": [
+   "NPC идёт к цели (Move) и открывает сессию актом greet или сразу первым актом плана (при срочности)",
+   "Если цель под PlayerController: игрок получает входящий разговор (реплика NPC + меню ответов); проигнорировать = ответ ignore",
+   "Если цель под AiController: её ИИ принимает/отклоняет вход по response_eval (занят, вражда)"
+  ],
+  "world_runs": "Мир не ставится на паузу (ответ пользователя 18.11). Ожидание ответа ограничено reply_timeout тиков; молчание = refuse с причиной «не ответил», NPC запоминает, меню у игрока гаснет",
+  "reply_timeout_ticks": {
+   "player": 3,
+   "npc": 1
+  },
+  "interrupts": "критичная нужда, угроза, зов — сессия закрывается с причиной interrupted; невыполненный план разговора можно продолжить позже (цель talk_to с бонусом)"
+ },
+ "dialog_plans": {
+  "_doc": "Планы разговора = методы HTN из речевых актов. Шаг: {act, content}; ветки по ответу собеседника (on: accept/refuse/bargain/ask/default). NPC перепланирует шаг, если ответ неожиданный (например, игрок сам предложил сделку). Ветка end закрывает сессию farewell.",
+  "plans": [
+   {
+    "id": "ask_favor",
+    "steps": [
+     {
+      "act": "greet"
+     },
+     {
+      "act": "inform",
+      "content": "need:<нужда> | plan:<провалившийся метод>",
+      "_doc": "объясняет, зачем пришёл"
+     },
+     {
+      "act": "request",
+      "content": "interaction:<что нужно>",
+      "on": {
+       "accept": "thank→end",
+       "refuse": "next",
+       "bargain": "accept_if_fair",
+       "ask": "inform_reason"
+      }
+     },
+     {
+      "act": "offer",
+      "content": "terms:<что может дать взамен>",
+      "if": "has_something_to_offer",
+      "on": {
+       "accept": "thank→end",
+       "refuse": "next",
+       "bargain": "bargain_until_patience"
+      }
+     },
+     {
+      "act": "persuade",
+      "if": "trait:persistent|need critical",
+      "on": {
+       "accept": "thank→end",
+       "default": "farewell→end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "propose_trade",
+    "steps": [
+     {
+      "act": "greet"
+     },
+     {
+      "act": "offer",
+      "content": "terms",
+      "on": {
+       "accept": "end",
+       "bargain": "bargain_until_patience",
+       "refuse": "ask_what_wanted"
+      }
+     },
+     {
+      "act": "ask",
+      "content": "item:что нужно собеседнику",
+      "on": {
+       "inform": "offer_again",
+       "default": "farewell→end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "share_news",
+    "steps": [
+     {
+      "act": "greet"
+     },
+     {
+      "act": "inform",
+      "content": "event|rumor"
+     },
+     {
+      "act": "ask",
+      "content": "event|rumor",
+      "_doc": "в ответ ждёт новостей",
+      "on": {
+       "default": "farewell→end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "confront",
+    "steps": [
+     {
+      "act": "accuse",
+      "content": "event|commitment",
+      "on": {
+       "apologize": "accept→end",
+       "confess": "request_compensation",
+       "refuse": "next",
+       "lie": "detect_lie_roll"
+      }
+     },
+     {
+      "act": "request",
+      "content": "interaction:возмещение",
+      "on": {
+       "accept": "end",
+       "refuse": "next"
+      }
+     },
+     {
+      "act": "threaten",
+      "if": "trait:vengeful|rel:fear(target)<0.2",
+      "content": "terms{if: возмещение, then: brawl|accuse_publicly}",
+      "on": {
+       "default": "end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "court",
+    "steps": [
+     {
+      "act": "greet"
+     },
+     {
+      "act": "praise",
+      "tone": "flirtatious",
+      "on": {
+       "thank": "next",
+       "refuse": "farewell→end"
+      }
+     },
+     {
+      "act": "offer",
+      "content": "interaction:share_meal|embrace",
+      "on": {
+       "accept": "end",
+       "refuse": "farewell→end"
+      }
+     },
+     {
+      "act": "offer",
+      "content": "interaction:propose_marriage",
+      "if": "rel:affinity>0.6 и встречи≥N"
+     }
+    ]
+   },
+   {
+    "id": "recruit",
+    "steps": [
+     {
+      "act": "greet"
+     },
+     {
+      "act": "inform",
+      "content": "place:поселение | plan:что есть у нас"
+     },
+     {
+      "act": "persuade",
+      "content": "interaction:invite_to_settle",
+      "on": {
+       "accept": "promise→end",
+       "bargain": "offer_terms",
+       "refuse": "farewell→end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "offer_teaching",
+    "steps": [
+     {
+      "act": "offer",
+      "content": "interaction:learn_<знание>",
+      "on": {
+       "accept": "end",
+       "refuse": "end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "small_talk",
+    "steps": [
+     {
+      "act": "greet"
+     },
+     {
+      "act": "inform",
+      "content": "любая тема с наибольшим интересом обоих"
+     },
+     {
+      "act": "ask",
+      "content": "plan|feeling",
+      "on": {
+       "default": "farewell→end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "warn",
+    "steps": [
+     {
+      "act": "inform",
+      "content": "event|place|person: угроза",
+      "tone": "neutral",
+      "_doc": "без приветствия при срочности"
+     },
+     {
+      "act": "request",
+      "content": "interaction:flee|travel_to|defend_other",
+      "on": {
+       "accept": "end",
+       "default": "farewell→end"
+      }
+     }
+    ]
+   },
+   {
+    "id": "report",
+    "steps": [
+     {
+      "act": "accuse",
+      "listener": "office[judge]|leader",
+      "content": "event:преступление",
+      "_doc": "идёт не к виновному, а к власти"
+     }
+    ]
+   },
+   {
+    "id": "from_hint",
+    "_doc": "План собирается из цели, поставленной агентом ранее (queue_task/set_goal_hint) — агент так «продолжает» разговор без своего присутствия"
+   }
+  ],
+  "player_initiative": "Если игрок в ответ сам выбирает другой акт (например, offer вместо ответа), NPC оценивает его как обычный входящий акт; план разговора продолжает или бросает по новому баллу цели"
+ },
+ "agent_join": {
+  "_doc": "Агент подключается к уже идущему разговору (начатому ИИ), подстраивается и может уйти — без разрыва.",
+  "when": [
+   "в любой момент: игрок включил агента или клиент Agent API подписан на персонажа",
+   "только на границе акта (не посреди реплики)"
+  ],
+  "handover_to_agent": {
+   "session_history": "все акты и тексты сессии",
+   "opening": "AGENT_API §3.4: {initiator, intent, goal, acts}; агент обязан продолжать opening.intent",
+   "dialog_plan": "план и номер шага",
+   "listener_graph": "get_character_graph NPC",
+   "rule": "агент продолжает цель разговора NPC или меняет её только через ai_mods с причиной; уже совершённые акты и обязательства не отменяются"
+  },
+  "handover_back": "агент ушёл/таймаут → BuiltinProvider и план разговора продолжают с текущего шага (или перепланируют по новому состоянию)",
+  "player_input": "с агентом игрок пишет свободный текст; если агент отключился посреди сессии — сразу меню «акт+тема» на той же сессии"
+ },
+ "response_eval": {
+  "_doc": "Как ИИ слушателя выбирает ответ (BuiltinProvider и ИИ NPC в любом режиме). Каждый допустимый ответ получает балл как цель Utility; выбор — взвешенный среди top_k от seed слушателя.",
+  "accept_score": [
+   {
+    "input": "goal_value(listener,content)",
+    "weight": 1.0,
+    "_doc": "насколько содержание полезно слушателю (его нужды/цели)"
+   },
+   {
+    "input": "cost(listener,content)",
+    "weight": -0.8,
+    "_doc": "время, ресурсы, риск для слушателя"
+   },
+   {
+    "input": "rel:affinity(listener->speaker)",
+    "weight": 0.6
+   },
+   {
+    "input": "rel:trust(listener->speaker)",
+    "weight": 0.5,
+    "_doc": "для promise/offer с отложенным исполнением"
+   },
+   {
+    "input": "rel:fear(listener->speaker)",
+    "weight": 0.5,
+    "_doc": "для threaten/command"
+   },
+   {
+    "input": "authority(speaker,listener)",
+    "weight": 0.7,
+    "_doc": "только command"
+   },
+   {
+    "input": "obligation(listener->speaker)",
+    "weight": 0.6,
+    "_doc": "долг, обещание, вассалитет, родство"
+   },
+   {
+    "input": "legal_penalty(listener,content)",
+    "weight": -1.0,
+    "_doc": "traits.legal_penalty × config.legal_base"
+   },
+   {
+    "input": "trait_bias(listener,act,content)",
+    "weight": 1.0
+   },
+   {
+    "input": "witness_pressure",
+    "weight": 0.3,
+    "_doc": "отказ при свидетелях дороже/дешевле по культуре"
+   },
+   {
+    "input": "agent_modifiers(listener)",
+    "weight": 1.0,
+    "_doc": "adjust_weight из Agent API, в границах config.modifier_bounds"
+   }
+  ],
+  "refuse_score": "const 0.5 + rel:enmity×0.6 + current_goal_priority×0.5",
+  "bargain_if": "accept_score в [refuse_score-0.15, refuse_score) и content.kind=terms",
+  "ask_if": "слушатель не знает темы или не понял (нет общего языка)",
+  "refusal_reason": "топ-1 отрицательное соображение из трассы → fact в акте refuse",
+  "player_listener": "если слушатель под PlayerController — меню ответов с подсветкой того, что выбрал бы ИИ"
+ },
+ "menu": {
+  "_doc": "Меню диалога без агента: собеседник → группа → (акт, тема) → тон. Строится из каталога и знаний говорящего, не из списка тем.",
+  "groups": [
+   {
+    "id": "do_together",
+    "name_key": "ui.dialogue_menu.do_together",
+    "source": "interactions с target=character и непустым speech",
+    "acts_from": "interaction.speech",
+    "_doc": "«предложить поесть вместе», «попросить научить готовить», «приказать охранять»"
+   },
+   {
+    "id": "talk_about",
+    "name_key": "ui.dialogue_menu.talk_about",
+    "source": "topic_kinds по знаниям говорящего",
+    "acts_from": "topic_kinds[].acts"
+   },
+   {
+    "id": "feelings",
+    "name_key": "ui.dialogue_menu.feelings",
+    "source": "acts group=expressive"
+   },
+   {
+    "id": "deal",
+    "name_key": "ui.dialogue_menu.deal",
+    "source": "trade|lend|hire|propose_marriage|make_peace",
+    "acts_from": [
+     "offer",
+     "bargain",
+     "request"
+    ],
+    "_doc": "Редактор terms: дать/получить/срок; подсказка «что его заинтересует» — только то, что персонаж знает о собеседнике"
+   },
+   {
+    "id": "reply",
+    "name_key": "ui.dialogue_menu.reply",
+    "source": "responses открытого акта",
+    "pinned": true
+   }
+  ],
+  "ordering": "по баллу Utility говорящего («чего хочет персонаж»), top-6 на виду, остальное в «ещё»",
+  "unavailable": "показывать серым с причиной: нет общего языка, не знает темы, не рядом, нет предмета",
+  "illegal": "не скрывать; если персонаж знает норму — пометка цены («это кража»), иначе без пометки",
+  "tones": [
+   "neutral",
+   "warm",
+   "cold",
+   "hostile",
+   "formal",
+   "playful",
+   "flirtatious",
+   "sacred",
+   "pleading"
+  ],
+  "tone_default": "из настроения и отношения говорящего",
+  "no_common_language": "доступны только acts greet, farewell, praise, insult, threaten, offer, accept, refuse с жестом; content ограничен item/interaction"
+ },
+ "consent": {
+  "_doc": "Для target=character: required — исполнение только после accept цели (её ИИ/игрок/агент); none — исполняется сразу, цель реагирует (FSM-прерывание или ответный акт).",
+  "default_character": "required",
+  "none": [
+   "greet",
+   "joke",
+   "compliment",
+   "insult",
+   "argue",
+   "apologize",
+   "thank",
+   "flirt",
+   "gossip",
+   "ignore",
+   "pickpocket",
+   "extort",
+   "accuse_publicly",
+   "punish",
+   "exile",
+   "declare_war",
+   "divorce",
+   "name_heir",
+   "disown",
+   "shove",
+   "brawl",
+   "attack",
+   "restrain",
+   "execute",
+   "defend_other",
+   "release_captive",
+   "curse",
+   "surrender",
+   "observe_work",
+   "repay_debt",
+   "care_child",
+   "feed_child"
+  ],
+  "never_forced": [
+   "intimacy",
+   "marry",
+   "swear_friendship",
+   "swear_fealty",
+   "adopt",
+   "duel"
+  ],
+  "_doc2": "never_forced: силового варианта в каталоге нет совсем — это решение дизайна, а не закона",
+  "unconscious_target": [
+   "treat_wound",
+   "tend_sick",
+   "give_remedy"
   ]
+ },
+ "topic_kinds": [
+  {
+   "id": "person",
+   "from": "memory.relations",
+   "acts": [
+    "inform",
+    "ask",
+    "praise",
+    "insult",
+    "accuse",
+    "lie",
+    "persuade"
+   ]
+  },
+  {
+   "id": "event",
+   "from": "memory.events",
+   "acts": [
+    "inform",
+    "ask",
+    "confess",
+    "accuse",
+    "apologize",
+    "thank",
+    "lie"
+   ]
+  },
+  {
+   "id": "place",
+   "from": "knowledge.map",
+   "acts": [
+    "inform",
+    "ask",
+    "lie",
+    "offer",
+    "request"
+   ]
+  },
+  {
+   "id": "item",
+   "from": "knowledge.items+inventory",
+   "acts": [
+    "inform",
+    "ask",
+    "offer",
+    "request",
+    "bargain",
+    "lie"
+   ]
+  },
+  {
+   "id": "law",
+   "from": "knowledge.norms",
+   "acts": [
+    "inform",
+    "ask",
+    "persuade",
+    "accuse"
+   ]
+  },
+  {
+   "id": "rumor",
+   "from": "memory.rumors",
+   "acts": [
+    "inform",
+    "ask",
+    "lie"
+   ],
+   "_doc": "Искажение при пересказе — параметр говорящего"
+  },
+  {
+   "id": "plan",
+   "from": "ai.current_goal+plan (своё)",
+   "acts": [
+    "inform",
+    "ask",
+    "offer",
+    "request",
+    "persuade"
+   ]
+  },
+  {
+   "id": "need",
+   "from": "needs (свои)",
+   "acts": [
+    "inform",
+    "request"
+   ],
+   "_doc": "«Я голоден» → собеседник может предложить еду"
+  },
+  {
+   "id": "feeling",
+   "from": "relations+mood (свои)",
+   "acts": [
+    "inform",
+    "confess",
+    "lie"
+   ],
+   "_doc": "Признание в любви/ненависти"
+  },
+  {
+   "id": "secret",
+   "from": "memory(secret=true)",
+   "acts": [
+    "confess",
+    "inform",
+    "lie",
+    "threaten"
+   ],
+   "_doc": "threaten секретом = шантаж"
+  },
+  {
+   "id": "commitment",
+   "from": "society.commitments",
+   "acts": [
+    "request",
+    "apologize",
+    "promise",
+    "accuse",
+    "threaten"
+   ]
+  },
+  {
+   "id": "skill",
+   "from": "knowledge.skills",
+   "acts": [
+    "inform",
+    "ask",
+    "offer",
+    "request",
+    "bargain"
+   ],
+   "_doc": "Повод для learn_*"
+  }
+ ],
+ "legal_rules": {
+  "_doc": "Условные теги взаимодействий перенесены в каталог (legal_if/legal_unless, AI_DATA_SCHEMA_EXT §8). Здесь — только правила речевых актов. Закон меняет цену, вариант не исчезает.",
+  "add": [
+   {
+    "act": "lie",
+    "tag": "fraud",
+    "if": "content in open_deal"
+   },
+   {
+    "act": "accuse",
+    "tag": "false_accusation",
+    "if": "truth=speaker_believes_false"
+   },
+   {
+    "act": "threaten",
+    "tag": "extortion",
+    "if": "terms.if gives item to speaker"
+   },
+   {
+    "act": "insult",
+    "tag": "lese_majeste",
+    "if": "rank(listener)>rank(speaker)+1"
+   }
+  ],
+  "detection": "visibility public — все в радиусе восприятия; private — только участники; secret — проверка заметить по каждому свидетелю"
+ },
+ "agent_projection": {
+  "_doc": "Формат вывода AgentProvider (детали транспорта — задача D, agent_api/). Механика берётся только из acts; text — оболочка.",
+  "utterance": {
+   "speaker": "id",
+   "text": "string (≤ 600 символов)",
+   "acts": [
+    {
+     "act": "<acts.id>",
+     "content": {
+      "kind": "interaction|fact|terms|commitment|none",
+      "ref": "id",
+      "params": {}
+     },
+     "tone": "<menu.tones>",
+     "truth": "true|false (только lie)"
+    }
+   ],
+   "ai_mods": [
+    {
+     "op": "adjust_weight|queue_task|set_goal_hint",
+     "args": {},
+     "reason": "string"
+    }
+   ]
+  },
+  "rules": [
+   "acts пусто → реплика без механики (small talk), трактуется как inform без содержания",
+   "каждый act проверяется по get_options(session, speaker); недопустимый отклоняется с причиной, остальное исполняется",
+   "player free text → агент сводит к acts игрока; при неоднозначности агент обязан спросить уточнение (ask), а не угадывать дорогие акты (command, threaten, attack-интеракции)",
+   "ai_mods только для NPC-собеседника и только как следствие актов этой реплики; reason обязателен и пишется в трассу",
+   "таймаут агента → BuiltinProvider даёт реплику по тем же правилам"
+  ]
+ },
+ "aliases": {
+  "_doc": "Имена актов в AGENT_API v0.1 §4.3 → id в этом файле (свести к одному при реализации)",
+  "agree": "accept",
+  "haggle": "bargain"
+ },
+ "speech_act_rules": [
+  {
+   "id": "greet",
+   "group": "expressive",
+   "content": [
+    "none"
+   ],
+   "responses": [
+    "greet",
+    "ignore",
+    "farewell"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "opens_dialog": true,
+   "verbal": {
+    "default": "greet"
+   }
+  },
+  {
+   "id": "farewell",
+   "group": "expressive",
+   "content": [
+    "none"
+   ],
+   "responses": [
+    "farewell",
+    "none"
+   ],
+   "eff": [
+    "rel_back:affinity+0.01"
+   ],
+   "reply_required": false,
+   "closes_dialog": true
+  },
+  {
+   "id": "praise",
+   "group": "expressive",
+   "content": [
+    "fact",
+    "none"
+   ],
+   "responses": [
+    "thank",
+    "inform",
+    "refuse",
+    "none"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "verbal": {
+    "default": "compliment",
+    "tone:flirtatious": "flirt",
+    "tone:sacred": "bless"
+   }
+  },
+  {
+   "id": "insult",
+   "group": "expressive",
+   "content": [
+    "fact",
+    "none"
+   ],
+   "responses": [
+    "insult",
+    "accuse",
+    "threaten",
+    "apologize",
+    "farewell",
+    "escalate"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "verbal": {
+    "default": "insult",
+    "tone:sacred": "curse"
+   }
+  },
+  {
+   "id": "apologize",
+   "group": "expressive",
+   "content": [
+    "fact",
+    "commitment"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "request"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "verbal": {
+    "default": "apologize"
+   },
+   "_doc": "request в ответ — «извинись делом»: слушатель просит возмещение"
+  },
+  {
+   "id": "thank",
+   "group": "expressive",
+   "content": [
+    "fact"
+   ],
+   "responses": [
+    "none",
+    "inform"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "verbal": {
+    "default": "thank"
+   },
+   "_doc": "Гасит часть долга-услуги (favor) за указанное событие"
+  },
+  {
+   "id": "inform",
+   "group": "assertive",
+   "content": [
+    "fact",
+    "interaction"
+   ],
+   "responses": [
+    "inform",
+    "ask",
+    "accuse",
+    "praise",
+    "none"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "truth": "speaker_believes_true",
+   "verbal": {
+    "default": "chat",
+    "tone:playful": "joke",
+    "topic:event|legend": "tell_story",
+    "topic:person_third": "gossip",
+    "tone:warm+listener_mood_negative": "comfort"
+   },
+   "_doc": "Знание переходит слушателю с источником=говорящий и достоверностью от trust; interaction — сообщить намерение, без обязательства"
+  },
+  {
+   "id": "ask",
+   "group": "assertive",
+   "content": [
+    "fact"
+   ],
+   "responses": [
+    "inform",
+    "lie",
+    "refuse",
+    "ask"
+   ],
+   "eff": [],
+   "reply_required": true,
+   "_doc": "Вопрос о теме: что/где/кто/почему. Раскрывает интерес говорящего"
+  },
+  {
+   "id": "confess",
+   "group": "assertive",
+   "content": [
+    "fact"
+   ],
+   "responses": [
+    "accept",
+    "accuse",
+    "inform",
+    "promise",
+    "comfort"
+   ],
+   "eff": [
+    "rel_back:trust+0.05"
+   ],
+   "reply_required": false,
+   "truth": "speaker_believes_true",
+   "verbal": {
+    "topic:secret_of_other": "reveal_secret"
+   },
+   "_doc": "Признание в преступлении перед должностным лицом — доказательство в деле"
+  },
+  {
+   "id": "lie",
+   "group": "assertive",
+   "content": [
+    "fact"
+   ],
+   "responses": [
+    "inform",
+    "ask",
+    "accuse",
+    "accept"
+   ],
+   "eff": [
+    "memory:lied"
+   ],
+   "reply_required": false,
+   "truth": "speaker_believes_false",
+   "on": {
+    "detected": [
+     "rel_back:trust-0.2",
+     "memory:caught_lying"
+    ]
+   },
+   "_doc": "Для слушателя неотличимо от inform; проверка обмана: навык/черты слушателя против говорящего"
+  },
+  {
+   "id": "accuse",
+   "group": "assertive",
+   "content": [
+    "fact"
+   ],
+   "responses": [
+    "refuse",
+    "confess",
+    "apologize",
+    "lie",
+    "accuse",
+    "threaten",
+    "escalate"
+   ],
+   "eff": [
+    "rel_back:affinity-0.08"
+   ],
+   "reply_required": false,
+   "verbal": {
+    "default": "argue",
+    "listener:office|venue:court|public": "accuse_publicly"
+   }
+  },
+  {
+   "id": "request",
+   "group": "directive",
+   "content": [
+    "interaction",
+    "fact"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask",
+    "promise"
+   ],
+   "eff": [],
+   "reply_required": true,
+   "on": {
+    "accept": [
+     "queue_task(listener,content,reason=request)",
+     "favor(speaker->listener,+cost)"
+    ],
+    "refuse": [
+     "rel:affinity-0.01"
+    ]
+   },
+   "_doc": "Главная форма социальных задач HTN (AI §4.4): ответ даёт ИИ слушателя, не скрипт"
+  },
+  {
+   "id": "command",
+   "group": "directive",
+   "content": [
+    "interaction"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask"
+   ],
+   "eff": [],
+   "reply_required": true,
+   "requires": "authority(speaker,listener,content)|force",
+   "on": {
+    "accept": [
+     "queue_task(listener,content,priority=authority,reason=command)"
+    ],
+    "refuse": [
+     "memory:disobeyed|if authority"
+    ],
+    "no_authority": [
+     "rel_back:affinity-0.03"
+    ]
+   },
+   "_doc": "Без права акт возможен, но читается как наглость"
+  },
+  {
+   "id": "persuade",
+   "group": "directive",
+   "content": [
+    "interaction",
+    "fact"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "ask",
+    "bargain"
+   ],
+   "eff": [],
+   "reply_required": true,
+   "on": {
+    "success": [
+     "adjust_weight(listener,goal_of(content),+delta,ttl,reason=persuaded)",
+     "queue_task(listener,content)|if interaction"
+    ],
+    "fail": [
+     "rel_back:affinity-0.02"
+    ]
+   },
+   "_doc": "Шанс: навык persuasion, доверие, совпадение с чертами/нуждами. Повтор по той же теме в течение суток — штраф"
+  },
+  {
+   "id": "offer",
+   "group": "commissive",
+   "content": [
+    "interaction",
+    "terms"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "bargain",
+    "ask"
+   ],
+   "eff": [],
+   "reply_required": true,
+   "on": {
+    "accept": [
+     "execute_or_queue(content,both)",
+     "commit(speaker->listener,content)|if deferred"
+    ]
+   }
+  },
+  {
+   "id": "bargain",
+   "group": "commissive",
+   "content": [
+    "terms"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "bargain"
+   ],
+   "eff": [],
+   "reply_required": true,
+   "requires": "open_proposal",
+   "on": {
+    "each": [
+     "patience(listener,-1)"
+    ],
+    "lowball": [
+     "rel_back:affinity-0.01"
+    ]
+   },
+   "_doc": "Встречное предложение; после patience раундов слушатель отвечает refuse"
+  },
+  {
+   "id": "ignore",
+   "group": "response",
+   "content": [
+    "none"
+   ],
+   "responses": [
+    "none",
+    "insult",
+    "farewell"
+   ],
+   "eff": [
+    "rel_back:affinity-0.02"
+   ],
+   "reply_required": false,
+   "closes_dialog": true,
+   "verbal": {
+    "default": "ignore"
+   },
+   "_doc": "Не ответить / отвернуться. Молчание до reply_timeout засчитывается как ignore. Отвечающий — актёр: rel_back = инициатор→игнорирующий"
+  },
+  {
+   "id": "accept",
+   "group": "response",
+   "content": [
+    "none",
+    "terms"
+   ],
+   "responses": [
+    "thank",
+    "none"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "requires": "open_proposal",
+   "verbal": {
+    "in_combat": "surrender"
+   }
+  },
+  {
+   "id": "refuse",
+   "group": "response",
+   "content": [
+    "none",
+    "fact"
+   ],
+   "responses": [
+    "persuade",
+    "bargain",
+    "threaten",
+    "farewell",
+    "none"
+   ],
+   "eff": [],
+   "reply_required": false,
+   "requires": "open_proposal|open_question",
+   "_doc": "fact — причина из трассы ИИ отказавшего («нет еды», «не доверяю»): игрок видит честную причину"
+  },
+  {
+   "id": "promise",
+   "group": "commissive",
+   "content": [
+    "interaction",
+    "terms"
+   ],
+   "responses": [
+    "thank",
+    "accept",
+    "refuse",
+    "ask"
+   ],
+   "eff": [
+    "rel_back:trust+0.01"
+   ],
+   "reply_required": false,
+   "verbal": {
+    "terms:sworn_friendship": "swear_friendship",
+    "terms:fealty": "swear_fealty"
+   },
+   "commitment": "promise"
+  },
+  {
+   "id": "threaten",
+   "group": "commissive",
+   "content": [
+    "terms"
+   ],
+   "responses": [
+    "accept",
+    "refuse",
+    "threaten",
+    "accuse",
+    "escalate",
+    "flee"
+   ],
+   "eff": [
+    "rel_back:fear+0.05",
+    "rel_back:affinity-0.08"
+   ],
+   "reply_required": true,
+   "verbal": {
+    "terms.if:give_item": "extort",
+    "tone:sacred": "curse"
+   },
+   "commitment": "threat",
+   "_doc": "terms = {if: что должен сделать слушатель, then: взаимодействие говорящего из каталога}"
+  }
+ ]
 }

@@ -1,74 +1,3931 @@
-{ "_doc": "Interaction catalog (AI_DATA_SCHEMA.md §8): one entry serves the planner, the player and every NPC alike. MVP subset: food, sleep, warmth. For continuous interactions eff is applied every tick.",
-  "interactions": [
-    { "id": "gather_berries", "category": "work", "target": "object:berry_bush",
-      "pre": ["knows:foraging", "target_stock:berries>=2"],
-      "eff": ["has:berries+2", "target_stock:berries-2", "skill:foraging+0.01", "body:fatigue+0.01"],
-      "duration": 3, "cost": 3, "fsm": "Work", "reserve": true, "speech": ["offer", "request"] },
-    { "id": "gather_wood", "category": "work", "target": "object:tree", "pre": ["!age:child"],
-      "eff": ["has:wood+2", "body:fatigue+0.02"], "duration": 4, "cost": 4, "fsm": "Work", "reserve": true },
-    { "id": "cook_meal", "category": "work", "target": "object:hearth",
-      "pre": ["knows:cooking", "has:berries>=3", "has:wood>=1", "target_owner:family"],
-      "eff": ["has:berries-3", "has:wood-1", "has:meal+2", "skill:cooking+0.01"],
-      "duration": 4, "cost": 4, "fsm": "Work", "reserve": true },
-    { "id": "take_meal", "category": "household", "target": "object:storage",
-      "pre": ["target_stock:meal>=1", "target_owner:family"],
-      "eff": ["has:meal+1", "target_stock:meal-1"], "duration": 1, "cost": 1, "fsm": "Interact" },
-    { "id": "store_meal", "category": "household", "target": "object:storage",
-      "pre": ["has:meal>=1", "target_owner:family"],
-      "eff": ["has:meal-1", "target_stock:meal+1"], "duration": 1, "cost": 1, "fsm": "Interact", "goap": false },
-    { "id": "steal_meal", "category": "economy", "target": "object:storage",
-      "pre": ["target_stock:meal>=1", "target_owner:other"],
-      "eff": ["has:meal+1", "target_stock:meal-1", "moodlet:stole", "memory:stole_food"],
-      "duration": 1, "cost": 2, "fsm": "Interact", "legal": ["theft"], "visibility": "secret" },
-    { "id": "eat_meal", "category": "household", "target": "self", "pre": ["has:meal>=1"],
-      "eff": ["has:meal-1", "need:hunger+0.45", "moodlet:ate_meal"], "duration": 2, "cost": 1, "fsm": "Eat",
-      "goap": false },
-    { "id": "eat_berries", "category": "household", "target": "self", "pre": ["has:berries>=2"],
-      "eff": ["has:berries-2", "need:hunger+0.22", "moodlet:ate_raw"], "duration": 1, "cost": 1, "fsm": "Eat",
-      "goap": false },
-    { "id": "sleep_bed", "category": "household", "target": "object:bed", "pre": ["target_owner:family"],
-      "eff": ["need:energy+0.022", "body:fatigue-0.02", "moodlet:slept_bed"],
-      "continuous": true, "until": "need:energy>=0.97", "duration": 60, "cost": 1, "fsm": "Sleep",
-      "reserve": true, "goap": false },
-    { "id": "sleep_ground", "category": "household", "target": "self",
-      "eff": ["need:energy+0.014", "body:fatigue-0.01", "moodlet:slept_rough"],
-      "continuous": true, "until": "need:energy>=0.9", "duration": 72, "cost": 3, "fsm": "Sleep", "goap": false },
-    { "id": "warm_at_hearth", "category": "household", "target": "object:hearth",
-      "eff": ["need:warmth+0.04", "moodlet:warm_hearth"], "continuous": true, "until": "need:warmth>=0.95",
-      "duration": 18, "cost": 1, "fsm": "Warm", "goap": false },
-    { "id": "huddle", "category": "household", "target": "self", "eff": ["need:warmth+0.015"],
-      "continuous": true, "until": "need:warmth>=0.7", "duration": 24, "cost": 2, "fsm": "Warm", "goap": false },
-    { "id": "idle_wander", "category": "household", "target": "self", "duration": 3, "cost": 0, "fsm": "Loiter",
-      "goap": false },
-    { "_doc": "Social catalog, interpreter stage 2: parsed and validated, run by the dialogue layer (step 4).",
-      "id": "give_item", "category": "economy", "target": "character",
-      "params": { "item": { "type": "item", "of": ["berries", "wood", "meal"] } },
-      "pre": ["has:$item>=1"], "eff": ["has:$item-1", "t.has:$item+1", "rel_back:affinity+0.04"],
-      "duration": 1, "cost": 1, "fsm": "Interact", "speech": ["offer"] },
-    { "id": "lend_item", "category": "economy", "target": "character",
-      "params": { "item": { "type": "item", "of": ["berries", "wood", "meal"] } },
-      "pre": ["has:$item>=1", "rel:trust>=0.2"],
-      "terms": { "give": {"$item": 1}, "take": {"$item": 1}, "due": 288, "commitment": "repay_debt",
-                 "on_breach": ["rel:trust-0.3", "t.reputation:honesty-0.1"] },
-      "duration": 1, "cost": 1, "fsm": "Talk", "speech": ["offer", "promise"] },
-    { "id": "teach_skill", "category": "knowledge", "target": "character",
-      "params": { "skill": { "type": "skill", "of": ["foraging", "cooking"] } },
-      "pre": ["skill:$skill>=0.5", "t.skill:$skill<0.5", "!t.age:elder"],
-      "chance": { "base": 0.4, "skill": "$skill", "per_skill": 0.5 },
-      "eff": ["t.skill:$skill+0.05", "t.moodlet:learned", "rel_back:respect+0.05"],
-      "on_fail": ["rel_back:respect-0.01"],
-      "duration": 6, "cost": 3, "fsm": "Talk", "speech": ["offer", "request"] },
-    { "id": "chat", "category": "social", "target": "character", "pre": ["!t.need:energy<0.1"],
-      "eff": ["rel:familiarity+0.03", "rel_back:familiarity+0.03", "moodlet:chatted", "t.moodlet:chatted"],
-      "duration": 2, "cost": 1, "fsm": "Talk", "speech": ["greet", "smalltalk", "gossip"] },
-    { "id": "brawl", "category": "violence", "target": "character", "pre": ["rel:enmity>=0.5", "!t.age:child"],
-      "combat": { "attack_skill": "fighting", "defense_skill": "fighting", "damage": [0.05, 0.25], "lethal": false,
-                  "outcomes": { "win": ["moodlet:won_fight", "reputation:valor+0.03", "t.moodlet:wounded"],
-                                "lose": ["moodlet:wounded", "t.moodlet:won_fight"],
-                                "flee": ["reputation:valor-0.02"] } },
-      "risk": [ { "id": "broken_bone", "p": 0.05, "eff": ["body:health-0.2"] } ],
-      "eff": ["rel_back:enmity+0.1", "rel_back:fear+0.05", "memory:fought"],
-      "duration": 3, "cost": 5, "fsm": "Fight", "legal": ["assault"], "visibility": "public",
-      "speech": ["threaten"] }
-  ]
+{
+ "_doc": "Каталог взаимодействий, часть B: всё, что нужно ИИ-цепочкам MVP (быт, сбор, ремесло, дом, ткань→одежда) + минимум соц./веры, на который ссылаются методы HTN. Остальной каталог (~60, речевые акты) добавляет задача C в этот же файл в том же формате. duration — тики (10 мин). Для continuous эффект need:* начисляется пропорционально прошедшему времени (eff = за полную duration), см. README §3.",
+ "interactions": [
+  {
+   "id": "eat_meal",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:meal>=1"
+   ],
+   "eff": [
+    "has:meal-1",
+    "need:hunger+0.45",
+    "moodlet:ate_meal",
+    "memory:ate_meal"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Eat",
+   "visibility": "public",
+   "speech": [
+    "offer",
+    "inform"
+   ]
+  },
+  {
+   "id": "eat_berries",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:berries>=2"
+   ],
+   "eff": [
+    "has:berries-2",
+    "need:hunger+0.24",
+    "moodlet:ate_raw"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat"
+  },
+  {
+   "id": "eat_roots",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:roots>=2"
+   ],
+   "eff": [
+    "has:roots-2",
+    "need:hunger+0.18",
+    "moodlet:ate_raw",
+    "memory:ate_raw"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Eat"
+  },
+  {
+   "id": "drink_water",
+   "category": "household",
+   "target": "object:water",
+   "eff": [
+    "need:thirst+0.7"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact"
+  },
+  {
+   "id": "wash_in_water",
+   "category": "household",
+   "target": "object:water",
+   "eff": [
+    "need:hygiene+0.7",
+    "moodlet:clean",
+    "need:warmth-0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "visibility": "public"
+  },
+  {
+   "id": "sleep_in_bed",
+   "category": "household",
+   "target": "object:bed",
+   "pre": [
+    "target_owner:family"
+   ],
+   "eff": [
+    "need:energy+0.9",
+    "need:warmth+0.2",
+    "moodlet:rested",
+    "body:fatigue-1"
+   ],
+   "duration": 60,
+   "cost": 3,
+   "fsm": "Sleep",
+   "reserve": true,
+   "continuous": true,
+   "until": "need:energy>=0.95",
+   "visibility": "private"
+  },
+  {
+   "id": "sleep_by_fire",
+   "category": "household",
+   "target": "object:campfire",
+   "eff": [
+    "need:energy+0.8",
+    "need:warmth+0.1",
+    "body:fatigue-1"
+   ],
+   "duration": 60,
+   "cost": 5,
+   "fsm": "Sleep",
+   "continuous": true,
+   "until": "need:energy>=0.9"
+  },
+  {
+   "id": "sleep_rough",
+   "category": "household",
+   "target": "self",
+   "eff": [
+    "need:energy+0.7",
+    "need:warmth-0.15",
+    "moodlet:slept_rough",
+    "memory:slept_rough",
+    "body:fatigue-0.8"
+   ],
+   "duration": 60,
+   "cost": 8,
+   "fsm": "Sleep",
+   "continuous": true,
+   "until": "need:energy>=0.85"
+  },
+  {
+   "id": "rest",
+   "category": "household",
+   "target": "self",
+   "eff": [
+    "body:fatigue-0.2",
+    "need:energy+0.03"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Rest"
+  },
+  {
+   "id": "shelter_in_house",
+   "category": "household",
+   "target": "object:house",
+   "pre": [
+    "target_owner:family"
+   ],
+   "eff": [
+    "need:warmth+0.25",
+    "body:fatigue-0.15"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "fsm": "Rest",
+   "visibility": "private"
+  },
+  {
+   "id": "warm_at_hearth",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "home:firewood-1",
+    "need:warmth+0.5",
+    "moodlet:warm_cozy"
+   ],
+   "duration": 6,
+   "cost": 2,
+   "fsm": "Rest"
+  },
+  {
+   "id": "warm_at_campfire",
+   "category": "household",
+   "target": "object:campfire",
+   "eff": [
+    "need:warmth+0.45",
+    "moodlet:warm_cozy"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "fsm": "Rest"
+  },
+  {
+   "id": "warm_at_village_fire",
+   "category": "household",
+   "target": "object:village_fire",
+   "eff": [
+    "need:warmth+0.4",
+    "need:social+0.05"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "fsm": "Rest",
+   "visibility": "public"
+  },
+  {
+   "id": "build_campfire",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "knows:firemaking",
+    "has:stone>=4",
+    "has:firewood>=3"
+   ],
+   "eff": [
+    "has:stone-4",
+    "has:firewood-3",
+    "spawn:campfire",
+    "skill:firemaking+0.01"
+   ],
+   "duration": 2,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "take_meal",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:meal>=1"
+   ],
+   "eff": [
+    "has:meal+1",
+    "home:meal-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact"
+  },
+  {
+   "id": "take_roots",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:roots>=2"
+   ],
+   "eff": [
+    "has:roots+2",
+    "home:roots-2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact"
+  },
+  {
+   "id": "take_firewood",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:firewood>=3"
+   ],
+   "eff": [
+    "has:firewood+3",
+    "home:firewood-3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact"
+  },
+  {
+   "id": "store_meal",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:meal>=1"
+   ],
+   "eff": [
+    "has:meal-1",
+    "home:meal+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false
+  },
+  {
+   "id": "store_roots",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:roots>=4"
+   ],
+   "eff": [
+    "has:roots-4",
+    "home:roots+4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false
+  },
+  {
+   "id": "store_berries",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:berries>=4"
+   ],
+   "eff": [
+    "has:berries-4",
+    "home:berries+4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false
+  },
+  {
+   "id": "store_firewood",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:firewood>=3"
+   ],
+   "eff": [
+    "has:firewood-3",
+    "home:firewood+3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false
+  },
+  {
+   "id": "steal_meal",
+   "category": "economy",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:other",
+    "target_stock:meal>=1"
+   ],
+   "eff": [
+    "has:meal+1",
+    "target_stock:meal-1",
+    "memory:stole_food"
+   ],
+   "from_target": true,
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Interact",
+   "legal": [
+    "theft"
+   ],
+   "visibility": "secret",
+   "social": {
+    "meaning": "theft",
+    "witness_affinity": -0.3
+   }
+  },
+  {
+   "id": "gather_berries",
+   "category": "work",
+   "target": "object:berry_bush",
+   "pre": [
+    "knows:foraging",
+    "target_stock:berries>=3"
+   ],
+   "eff": [
+    "has:berries+3",
+    "target_stock:berries-3",
+    "skill:foraging+0.01",
+    "body:fatigue+0.02"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "speech": [
+    "offer",
+    "request",
+    "command"
+   ]
+  },
+  {
+   "id": "dig_roots",
+   "category": "work",
+   "target": "object:root_patch",
+   "pre": [
+    "knows:foraging",
+    "target_stock:roots>=2"
+   ],
+   "eff": [
+    "has:roots+2",
+    "target_stock:roots-2",
+    "skill:foraging+0.01",
+    "body:fatigue+0.04"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "dig_roots_with_stick",
+   "category": "work",
+   "target": "object:root_patch",
+   "pre": [
+    "knows:foraging",
+    "has:digging_stick",
+    "target_stock:roots>=4"
+   ],
+   "eff": [
+    "has:roots+4",
+    "target_stock:roots-4",
+    "skill:foraging+0.01",
+    "body:fatigue+0.04"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "pick_mushrooms",
+   "category": "work",
+   "target": "object:mushroom_glade",
+   "pre": [
+    "knows:foraging",
+    "target_stock:mushrooms>=3"
+   ],
+   "eff": [
+    "has:mushrooms+3",
+    "target_stock:mushrooms-3",
+    "skill:foraging+0.01",
+    "body:fatigue+0.02"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "gather_firewood",
+   "category": "work",
+   "target": "object:deadwood",
+   "pre": [
+    "target_stock:firewood>=3"
+   ],
+   "eff": [
+    "has:firewood+3",
+    "target_stock:firewood-3",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "gather_branches",
+   "category": "work",
+   "target": "object:deadwood",
+   "pre": [
+    "target_stock:branch>=4"
+   ],
+   "eff": [
+    "has:branch+4",
+    "target_stock:branch-4",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "gather_stones",
+   "category": "work",
+   "target": "object:riverbank",
+   "pre": [
+    "target_stock:stone>=4"
+   ],
+   "eff": [
+    "has:stone+4",
+    "target_stock:stone-4",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work"
+  },
+  {
+   "id": "dig_clay",
+   "category": "work",
+   "target": "object:riverbank",
+   "pre": [
+    "target_stock:clay>=3"
+   ],
+   "eff": [
+    "has:clay+3",
+    "target_stock:clay-3",
+    "body:fatigue+0.05"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work"
+  },
+  {
+   "id": "cut_reeds",
+   "category": "work",
+   "target": "object:reed_bed",
+   "pre": [
+    "has:stone_blade",
+    "target_stock:reeds>=4"
+   ],
+   "eff": [
+    "has:reeds+4",
+    "target_stock:reeds-4",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "gather_fiber",
+   "category": "work",
+   "target": "object:nettle_patch",
+   "pre": [
+    "target_stock:fiber_raw>=6"
+   ],
+   "eff": [
+    "has:fiber_raw+6",
+    "target_stock:fiber_raw-6",
+    "moodlet:stung",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "reserve": true
+  },
+  {
+   "id": "chop_tree",
+   "category": "work",
+   "target": "object:tree",
+   "pre": [
+    "knows:woodcutting",
+    "has:axe",
+    "target_stock:log>=2"
+   ],
+   "eff": [
+    "has:log+2",
+    "target_stock:log-2",
+    "skill:woodcutting+0.01",
+    "body:fatigue+0.12"
+   ],
+   "from_target": true,
+   "duration": 9,
+   "cost": 10,
+   "fsm": "Work",
+   "reserve": true,
+   "risk": [
+    {
+     "id": "axe_slip",
+     "p": 0.01,
+     "eff": [
+      "body:health-0.15"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "split_log",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:woodcutting",
+    "has:axe",
+    "has:log>=1"
+   ],
+   "eff": [
+    "has:log-1",
+    "has:firewood+6",
+    "skill:woodcutting+0.01",
+    "body:fatigue+0.05"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "knap_blade",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:knapping",
+    "has:stone>=2"
+   ],
+   "eff": [
+    "has:stone-2",
+    "has:stone_blade+1",
+    "skill:knapping+0.02",
+    "moodlet:made_something"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "chance": {
+    "base": 0.55,
+    "skill": "knapping",
+    "per_skill": 0.45,
+    "min": 0.4,
+    "max": 0.98
+   },
+   "on_fail": [
+    "has:stone-2",
+    "skill:knapping+0.02"
+   ],
+   "risk": [
+    {
+     "id": "cut_hand",
+     "p": 0.02,
+     "eff": [
+      "body:health-0.05"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "twist_cord",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:fiber_working",
+    "has:fiber_raw>=3"
+   ],
+   "eff": [
+    "has:fiber_raw-3",
+    "has:cord+1",
+    "skill:fiber_working+0.01"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "make_digging_stick",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "has:stone_blade",
+    "has:branch>=1"
+   ],
+   "eff": [
+    "has:branch-1",
+    "has:digging_stick+1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work"
+  },
+  {
+   "id": "make_axe",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:toolmaking",
+    "has:stone_blade",
+    "has:stone>=2",
+    "has:branch>=1",
+    "has:cord>=1"
+   ],
+   "eff": [
+    "has:stone-2",
+    "has:branch-1",
+    "has:cord-1",
+    "has:axe+1",
+    "skill:toolmaking+0.03",
+    "moodlet:made_something",
+    "memory:made_tool"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "chance": {
+    "base": 0.7,
+    "skill": "toolmaking",
+    "per_skill": 0.3,
+    "min": 0.6,
+    "max": 0.98
+   },
+   "on_fail": [
+    "has:cord-1",
+    "skill:toolmaking+0.03"
+   ]
+  },
+  {
+   "id": "bundle_thatch",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "has:reeds>=4",
+    "has:cord>=1"
+   ],
+   "eff": [
+    "has:reeds-4",
+    "has:cord-1",
+    "has:thatch+1"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "ret_fiber",
+   "category": "work",
+   "target": "object:water",
+   "pre": [
+    "knows:fiber_working",
+    "has:fiber_raw>=6"
+   ],
+   "eff": [
+    "has:fiber_raw-6",
+    "has:bast_fiber+4",
+    "skill:fiber_working+0.01"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "_doc": "мочка и трепание: упрощено до одного действия у воды"
+  },
+  {
+   "id": "make_spindle",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:spinning",
+    "has:stone_blade",
+    "has:branch>=1",
+    "has:stone>=1"
+   ],
+   "eff": [
+    "has:branch-1",
+    "has:stone-1",
+    "has:spindle+1"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "spin_thread",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:spinning",
+    "has:spindle",
+    "has:bast_fiber>=4"
+   ],
+   "eff": [
+    "has:bast_fiber-4",
+    "has:thread+5",
+    "skill:spinning+0.02"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work"
+  },
+  {
+   "id": "make_loom",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:weaving",
+    "has:stone_blade",
+    "has:branch>=4",
+    "has:cord>=2"
+   ],
+   "eff": [
+    "has:branch-4",
+    "has:cord-2",
+    "has:loom+1",
+    "moodlet:made_something"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work"
+  },
+  {
+   "id": "weave_cloth",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:weaving",
+    "has:loom",
+    "has:thread>=4"
+   ],
+   "eff": [
+    "has:thread-4",
+    "has:cloth+1",
+    "skill:weaving+0.02"
+   ],
+   "duration": 12,
+   "cost": 12,
+   "fsm": "Work"
+  },
+  {
+   "id": "make_needle",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:sewing",
+    "has:stone_blade",
+    "has:branch>=1"
+   ],
+   "eff": [
+    "has:branch-1",
+    "has:needle+1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work"
+  },
+  {
+   "id": "sew_tunic",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:sewing",
+    "has:needle",
+    "has:cloth>=2",
+    "has:thread>=1"
+   ],
+   "eff": [
+    "has:cloth-2",
+    "has:thread-1",
+    "has:tunic+1",
+    "skill:sewing+0.02",
+    "moodlet:new_clothes",
+    "memory:made_clothes"
+   ],
+   "duration": 12,
+   "cost": 12,
+   "fsm": "Work"
+  },
+  {
+   "id": "sew_cloak",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:sewing",
+    "has:needle",
+    "has:cloth>=3",
+    "has:thread>=2"
+   ],
+   "eff": [
+    "has:cloth-3",
+    "has:thread-2",
+    "has:cloak+1",
+    "skill:sewing+0.02",
+    "moodlet:new_clothes",
+    "memory:made_clothes"
+   ],
+   "duration": 15,
+   "cost": 15,
+   "fsm": "Work"
+  },
+  {
+   "id": "cook_meal",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:roots>=2",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:roots-2",
+    "home:firewood-1",
+    "has:meal+1",
+    "skill:cooking+0.01"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "speech": [
+    "offer",
+    "request",
+    "promise"
+   ]
+  },
+  {
+   "id": "cook_mushrooms",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:mushrooms>=3",
+    "has:branch>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:mushrooms-3",
+    "has:branch-1",
+    "home:firewood-1",
+    "has:meal+1",
+    "skill:cooking+0.01"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "cook_meal_campfire",
+   "category": "household",
+   "target": "object:campfire",
+   "pre": [
+    "knows:cooking",
+    "has:roots>=2"
+   ],
+   "eff": [
+    "has:roots-2",
+    "has:meal+1",
+    "skill:cooking+0.01"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work"
+  },
+  {
+   "id": "cook_mushrooms_campfire",
+   "category": "household",
+   "target": "object:campfire",
+   "pre": [
+    "knows:cooking",
+    "has:mushrooms>=3",
+    "has:branch>=1"
+   ],
+   "eff": [
+    "has:mushrooms-3",
+    "has:branch-1",
+    "has:meal+1",
+    "skill:cooking+0.01"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work"
+  },
+  {
+   "id": "build_hut",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:building",
+    "has:log>=6",
+    "has:branch>=12",
+    "has:clay>=6",
+    "has:thatch>=3",
+    "has:cord>=2",
+    "has:stone>=6"
+   ],
+   "eff": [
+    "has:log-6",
+    "has:branch-12",
+    "has:clay-6",
+    "has:thatch-3",
+    "has:cord-2",
+    "has:stone-6",
+    "spawn:house",
+    "spawn:hearth",
+    "spawn:storage",
+    "spawn:bed",
+    "spawn:bed",
+    "moodlet:own_home",
+    "memory:built_home",
+    "skill:building+0.05",
+    "body:fatigue+0.4"
+   ],
+   "duration": 60,
+   "cost": 60,
+   "fsm": "Work",
+   "visibility": "public",
+   "speech": [
+    "offer",
+    "request",
+    "promise"
+   ],
+   "_doc": "каркас из брёвен, плетень с глиной, тростниковая крыша, очаг из камней. Прерывание сбрасывает прогресс до введения стадий/заказов"
+  },
+  {
+   "id": "make_bed",
+   "category": "work",
+   "target": "object:house",
+   "pre": [
+    "target_owner:family",
+    "has:reeds>=6",
+    "has:branch>=4"
+   ],
+   "eff": [
+    "has:reeds-6",
+    "has:branch-4",
+    "spawn:bed"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work"
+  },
+  {
+   "id": "chat",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "rel:affinity>=-0.3"
+   ],
+   "eff": [
+    "need:social+0.25",
+    "need:fun+0.05",
+    "rel:affinity+0.03",
+    "rel_back:affinity+0.03",
+    "rel:familiarity+0.05",
+    "rel_back:familiarity+0.05",
+    "moodlet:good_chat",
+    "memory:good_chat"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "chat"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ]
+  },
+  {
+   "id": "ask_for_food",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "rel:affinity>=0.1",
+    "t.has:meal>=1"
+   ],
+   "eff": [
+    "has:meal+1",
+    "t.has:meal-1",
+    "rel_back:affinity-0.01",
+    "moodlet:begged",
+    "memory:was_given_food"
+   ],
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "consent": "target",
+   "speech": [
+    "request"
+   ],
+   "social": {
+    "meaning": "request_help"
+   },
+   "_doc": "Согласие решает ИИ цели (или игрок): consent target."
+  },
+  {
+   "id": "give_food",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "has:meal>=1"
+   ],
+   "eff": [
+    "has:meal-1",
+    "t.has:meal+1",
+    "rel_back:affinity+0.08",
+    "rel_back:trust+0.03",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "consent": "target",
+   "speech": [
+    "offer"
+   ],
+   "social": {
+    "meaning": "gift"
+   }
+  },
+  {
+   "id": "comfort",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "rel:affinity>=0"
+   ],
+   "eff": [
+    "rel_back:affinity+0.06",
+    "rel_back:trust+0.02",
+    "t.moodlet:comforted",
+    "moodlet:helped_someone"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "consent": "target",
+   "speech": [
+    "offer"
+   ],
+   "social": {
+    "meaning": "support"
+   }
+  },
+  {
+   "id": "tell_stories",
+   "category": "social",
+   "target": "object:village_fire",
+   "eff": [
+    "need:fun+0.3",
+    "need:social+0.15",
+    "need:warmth+0.1",
+    "moodlet:had_fun",
+    "memory:told_stories"
+   ],
+   "duration": 6,
+   "cost": 4,
+   "fsm": "Talk",
+   "visibility": "public"
+  },
+  {
+   "id": "play",
+   "category": "household",
+   "target": "self",
+   "eff": [
+    "need:fun+0.2",
+    "moodlet:had_fun"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Idle",
+   "_doc": "игры детей, резьба по дереву у взрослых"
+  },
+  {
+   "id": "wander",
+   "category": "travel",
+   "target": "self",
+   "eff": [
+    "need:fun+0.05",
+    "body:fatigue+0.01"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Move",
+   "_doc": "бесцельная прогулка; исполнитель может открыть новое место (known)"
+  },
+  {
+   "id": "pray_at_shrine",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.4",
+    "moodlet:prayed",
+    "memory:prayed"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Pray",
+   "visibility": "public"
+  },
+  {
+   "id": "pray_alone",
+   "category": "faith",
+   "target": "self",
+   "eff": [
+    "need:purpose+0.2",
+    "moodlet:prayed"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "private"
+  },
+  {
+   "id": "start_dialog",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "rel:affinity>=-0.8"
+   ],
+   "eff": [
+    "rel:familiarity+0.02",
+    "rel_back:familiarity+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "consent": "target",
+   "visibility": "public",
+   "speech": [
+    "greet"
+   ],
+   "_doc": "NPC подходит (GOAP строит goto к персонажу), окликает и открывает сессию диалога: первые акты по плану intent из dialogue.json/dialog_plans (C), BuiltinProvider. Шаг HTN завершается, когда сессия закрыта: успех = план дошёл до end с accept, иначе провал с причиной (refuse/ignore/timeout). Цель под PlayerController получает входящий разговор; молчание reply_timeout = refuse. Агент может войти в идущую сессию (AGENT_API §3.4).",
+   "intents": [
+    "small_talk",
+    "ask_favor",
+    "propose_trade",
+    "share_news",
+    "confront",
+    "court",
+    "recruit",
+    "offer_teaching",
+    "report",
+    "from_hint",
+    "warn"
+   ]
+  },
+  {
+   "id": "gather_herbs",
+   "category": "work",
+   "target": "object:herb_patch",
+   "pre": [
+    "knows:herbalism",
+    "target_stock:herbs>=1"
+   ],
+   "eff": [
+    "has:herbs+1",
+    "target_stock:herbs-1",
+    "skill:herbalism+0.01"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "make_bandage",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "has:cloth>=1"
+   ],
+   "eff": [
+    "has:cloth-1",
+    "has:bandage+2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Work",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "make_spear",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:toolmaking",
+    "has:stone_blade>=1",
+    "has:branch>=1",
+    "has:cord>=1"
+   ],
+   "eff": [
+    "has:stone_blade-1",
+    "has:branch-1",
+    "has:cord-1",
+    "has:spear+1",
+    "skill:toolmaking+0.02"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "hunt_game",
+   "category": "work",
+   "target": "object:game_trail",
+   "pre": [
+    "knows:hunting",
+    "has:spear>=1",
+    "target_stock:carcass>=1"
+   ],
+   "eff": [
+    "has:carcass+1",
+    "target_stock:carcass-1",
+    "skill:hunting+0.02",
+    "body:fatigue+0.12"
+   ],
+   "from_target": true,
+   "duration": 18,
+   "cost": 18,
+   "fsm": "Work",
+   "reserve": true,
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_doc": "Успех от навыка и риск — расширения chance/risk (§6)",
+   "chance": {
+    "base": 0.35,
+    "skill": "hunting",
+    "per_skill": 0.6
+   },
+   "on_fail": [
+    "body:fatigue+0.05"
+   ],
+   "risk": [
+    {
+     "id": "hunting_injury",
+     "p": 0.03,
+     "eff": [
+      "body:health-0.2",
+      "moodlet:injured"
+     ]
+    }
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "butcher_carcass",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "has:carcass>=1",
+    "has:stone_blade>=1"
+   ],
+   "eff": [
+    "has:carcass-1",
+    "has:meat+3",
+    "has:hide+1"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "cook_meat",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:meat>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:meat-1",
+    "home:firewood-1",
+    "has:meal+2",
+    "skill:cooking+0.01"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "reserve": true,
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "offer",
+    "request",
+    "promise"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "steal_tool",
+   "category": "economy",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:other",
+    "target_stock:axe>=1"
+   ],
+   "eff": [
+    "has:axe+1",
+    "target_stock:axe-1",
+    "memory:stole"
+   ],
+   "from_target": true,
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Interact",
+   "goap": true,
+   "legal": [
+    "theft"
+   ],
+   "visibility": "secret",
+   "social": {
+    "meaning": "theft",
+    "witness_affinity": -0.3
+   },
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "pick_berries_claimed",
+   "category": "economy",
+   "target": "object:berry_bush",
+   "pre": [
+    "target_owner:other",
+    "target_stock:berries>=1"
+   ],
+   "eff": [
+    "has:berries+2",
+    "target_stock:berries-2"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "goap": true,
+   "legal": [
+    "poaching"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "poaching",
+    "witness_affinity": -0.1
+   },
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "greet",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel:familiarity+0.02",
+    "rel_back:familiarity+0.02",
+    "rel_back:affinity+0.01",
+    "t.need:social+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "respect"
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "joke",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "need:social+0.05",
+    "need:fun+0.1",
+    "rel_back:affinity+0.03",
+    "t.need:fun+0.1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "playfulness"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Знак эффекта зависит от совпадения юмора (расширение match)",
+   "chance": {
+    "base": 0.5,
+    "skill": "storytelling",
+    "per_skill": 0.4
+   },
+   "on_fail": [
+    "rel_back:affinity-0.04"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "tell_story",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "need:social+0.1",
+    "need:fun+0.05",
+    "rel_back:affinity+0.02",
+    "skill:storytelling+0.01",
+    "t.need:fun+0.15",
+    "t.need:social+0.1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "culture"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "compliment",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity+0.04",
+    "t.moodlet:flattered"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "respect"
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "insult",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.1",
+    "rel_back:fear+0.02",
+    "memory:insulted_someone",
+    "t.moodlet:insulted",
+    "t.reputation:valor-0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [
+    "insult"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "disrespect",
+    "witness_affinity": -0.05
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "argue",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "need:social+0.03",
+    "rel:affinity-0.06",
+    "rel_back:affinity-0.06",
+    "t.need:social+0.03",
+    "t.moodlet:insulted"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility"
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "apologize",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity+0.03",
+    "rel_back:trust+0.01",
+    "t.moodlet:comforted"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "submission"
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "thank",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "respect"
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "flirt",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "age:adult"
+   ],
+   "eff": [
+    "rel_back:affinity+0.03",
+    "memory:flirted",
+    "rel_back:attraction+0.04"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "private",
+   "social": {
+    "meaning": "intimacy"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Знак эффекта по влечению собеседника; при браке одного из них — тег adultery_suspicion у свидетеля",
+   "chance": {
+    "base": 0.45
+   },
+   "on_fail": [
+    "rel_back:affinity-0.03"
+   ],
+   "_part": "c",
+   "legal_if": [
+    {
+     "tag": "adultery_suspicion",
+     "if": [
+      "status_pair_any:married|t.status_pair_any:married",
+      "!status_pair:married"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "embrace",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "need:social+0.1",
+    "rel_back:affinity+0.03",
+    "t.need:social+0.1",
+    "t.moodlet:comforted"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "intimacy",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "age:adult",
+    "rel:affinity>0.4"
+   ],
+   "eff": [
+    "need:social+0.3",
+    "need:fun+0.3",
+    "need:energy-0.05",
+    "rel:affinity+0.05",
+    "rel_back:affinity+0.05",
+    "memory:intimacy",
+    "t.need:social+0.3",
+    "t.need:fun+0.3",
+    "need:fun+0.3",
+    "rel:attraction+0.05",
+    "rel_back:attraction+0.05"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "private",
+   "social": {
+    "meaning": "intimacy"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "persuade"
+   ],
+   "mvp": true,
+   "_doc": "Только с согласием (consent=required, без варианта силы). Зачатие — расширение conception. legal по браку — dialogue.json/legal_rules",
+   "_part": "c",
+   "legal_if": [
+    {
+     "tag": "adultery",
+     "if": [
+      "status_pair_any:married|t.status_pair_any:married",
+      "!status_pair:married"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "swear_friendship",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "rel:affinity>0.5",
+    "rel:trust>0.3"
+   ],
+   "eff": [
+    "rel:trust+0.1",
+    "rel_back:trust+0.1",
+    "memory:sworn_friend",
+    "status_pair:sworn_kin",
+    "commitment:mutual_aid"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "loyalty"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": true,
+   "_doc": "Создаёт взаимное обязательство mutual_aid (dialogue.json/commitments)",
+   "_part": "c"
+  },
+  {
+   "id": "share_meal",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "has:meal>=1"
+   ],
+   "eff": [
+    "has:meal-1",
+    "need:hunger+0.25",
+    "need:social+0.2",
+    "rel_back:affinity+0.04",
+    "moodlet:good_company",
+    "t.need:hunger+0.2",
+    "t.need:social+0.2",
+    "t.moodlet:good_company"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Eat",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "generosity"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "gossip",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "need:social+0.1",
+    "rel_back:affinity+0.02",
+    "memory:gossiped",
+    "t.need:social+0.1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "private",
+   "social": {
+    "meaning": "sociability"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Передаёт знание о третьем лице с искажением (dialogue.json/topics.rumor)",
+   "_part": "c"
+  },
+  {
+   "id": "ask_help",
+   "category": "social",
+   "target": "character",
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "request"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Обёртка акта request с содержанием-взаимодействием; ответ — accept → queue_task у собеседника",
+   "_part": "c"
+  },
+  {
+   "id": "help_with_task",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity+0.04",
+    "memory:helped",
+    "t.moodlet:helped_someone"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Work",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Присоединиться к текущей задаче собеседника: исполнитель копирует её шаг (расширение join_task)",
+   "_part": "c"
+  },
+  {
+   "id": "ignore",
+   "category": "social",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Idle",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "disrespect"
+   },
+   "speech": [],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "trade",
+   "category": "economy",
+   "target": "character",
+   "eff": [
+    "rel:trust+0.01",
+    "rel_back:trust+0.01"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "bargain",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Состав обмена — terms из акта offer/bargain; исполнитель проверяет has у обеих сторон и переносит предметы",
+   "params": {
+    "give": {
+     "type": "item"
+    },
+    "take": {
+     "type": "item"
+    }
+   },
+   "terms": {
+    "give": {
+     "$give": 1
+    },
+    "take": {
+     "$take": 1
+    },
+    "due": 0
+   },
+   "pre": [
+    "has:$give>=1",
+    "t.has:$take>=1"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "lend",
+   "category": "economy",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "loan"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "bargain"
+   ],
+   "mvp": true,
+   "_doc": "terms: что, срок, процент → обязательство return у заёмщика",
+   "params": {
+    "item": {
+     "type": "item"
+    }
+   },
+   "terms": {
+    "give": {
+     "$item": 1
+    },
+    "take": {
+     "$item": 1
+    },
+    "due": 288,
+    "commitment": "repay_debt",
+    "on_breach": [
+     "rel:trust-0.3",
+     "t.reputation:honesty-0.1"
+    ]
+   },
+   "pre": [
+    "has:$item>=1"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "repay_debt",
+   "category": "economy",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.05"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "honesty"
+   },
+   "speech": [
+    "promise",
+    "inform"
+   ],
+   "mvp": true,
+   "_doc": "Исполняет обязательство из terms; нарушение срока → событие broken_promise",
+   "params": {
+    "item": {
+     "type": "item"
+    }
+   },
+   "terms": {
+    "give": {
+     "$item": 1
+    },
+    "due": 0
+   },
+   "pre": [
+    "has:$item>=1"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "hire",
+   "category": "economy",
+   "target": "character",
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "bargain"
+   ],
+   "mvp": true,
+   "_doc": "terms: работа ↔ оплата; accept → queue_task работнику + два обязательства",
+   "eff": [
+    "commitment:work_slot"
+   ],
+   "params": {
+    "item": {
+     "type": "item"
+    }
+   },
+   "terms": {
+    "give": {
+     "$item": 1
+    },
+    "due": 144,
+    "commitment": "work_slot",
+    "on_breach": [
+     "rel:trust-0.2"
+    ]
+   },
+   "_part": "c"
+  },
+  {
+   "id": "pickpocket",
+   "category": "economy",
+   "target": "character",
+   "eff": [
+    "memory:stole",
+    "has:$item+1",
+    "t.has:$item-1"
+   ],
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [
+    "theft"
+   ],
+   "visibility": "secret",
+   "social": {
+    "meaning": "theft",
+    "witness_affinity": -0.3
+   },
+   "speech": [
+    "request",
+    "command",
+    "persuade",
+    "confess"
+   ],
+   "mvp": true,
+   "_doc": "Предмет — из terms/цели HTN; обнаружение жертвой → rel_back trust -0.3, событие theft",
+   "pre": [
+    "t.has:$item>=1"
+   ],
+   "params": {
+    "item": {
+     "type": "item",
+     "of": [
+      "axe",
+      "bandage",
+      "berries",
+      "digging_stick",
+      "herbs",
+      "meal",
+      "meat",
+      "mushrooms",
+      "needle",
+      "remedy",
+      "roots",
+      "spear",
+      "spindle",
+      "stone_blade"
+     ]
+    }
+   },
+   "chance": {
+    "base": 0.5,
+    "skill": "foraging",
+    "per_skill": 0.3,
+    "max": 0.9
+   },
+   "on_fail": [
+    "rel_back:trust-0.3",
+    "moodlet:caught"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "extort",
+   "category": "economy",
+   "target": "character",
+   "eff": [
+    "rel_back:fear+0.1",
+    "rel_back:affinity-0.1",
+    "commitment:threat"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [
+    "extortion"
+   ],
+   "visibility": "private",
+   "social": {
+    "meaning": "extortion"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Исполняется актом threaten с terms {if: give X, then: brawl/attack}",
+   "params": {
+    "item": {
+     "type": "item"
+    }
+   },
+   "terms": {
+    "take": {
+     "$item": 1
+    },
+    "due": 0
+   },
+   "pre": [
+    "t.has:$item>=1"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "collect_debt",
+   "category": "economy",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "pay_tax",
+   "category": "economy",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:other"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_doc": "Склад общины/собирателя; нужны obligation и params.item",
+   "_part": "c"
+  },
+  {
+   "id": "claim_object",
+   "category": "economy",
+   "target": "self",
+   "eff": [
+    "memory:claimed"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_doc": "Заявить владение; при чужом владельце — тег usurpation. Цель — объект из params (расширение target:object:any)",
+   "_part": "c"
+  },
+  {
+   "id": "invite_to_settle",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.02",
+    "rel_back:trust+0.02"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "offer",
+    "persuade",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Путь «глава привлёк людей» (GDD §12): accept → цель migrate у слушателя и +1 сторонник мандата",
+   "chance": {
+    "base": 0.35
+   },
+   "_part": "c"
+  },
+  {
+   "id": "accuse_publicly",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.15",
+    "rel_back:fear+0.02",
+    "memory:accused",
+    "t.reputation:honesty-0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "accusation",
+    "witness_affinity": -0.05
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Исполняется актом accuse; если слушатель — судья/глава, открывает дело. Ложное — тег false_accusation",
+   "_part": "c"
+  },
+  {
+   "id": "swear_fealty",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel:trust+0.1",
+    "memory:oath",
+    "status_pair:lord_vassal",
+    "commitment:fealty"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "loyalty"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "command",
+    "persuade"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "call_council",
+   "category": "politics",
+   "target": "character",
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "command",
+    "request"
+   ],
+   "mvp": false,
+   "_doc": "target — глава/член совета; созывает событие",
+   "_part": "c"
+  },
+  {
+   "id": "vote",
+   "category": "politics",
+   "target": "character",
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "persuade",
+    "request",
+    "bargain"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "propose_law",
+   "category": "politics",
+   "target": "character",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "persuade",
+    "request"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "judge_case",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "memory:judged"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "justice"
+   },
+   "speech": [
+    "request",
+    "persuade",
+    "bargain"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "punish",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel_back:fear+0.2",
+    "rel_back:affinity-0.3"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "lynching"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "punishment"
+   },
+   "speech": [
+    "command",
+    "request"
+   ],
+   "mvp": false,
+   "_doc": "legal снимается, если есть приговор (dialogue.json/legal_rules)",
+   "_part": "c",
+   "legal_unless": [
+    {
+     "tag": "lynching",
+     "if": [
+      "verdict:punish"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "appoint_office",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.05"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "persuade"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "exile",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [
+    "tyranny"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "command",
+    "threaten"
+   ],
+   "mvp": false,
+   "_doc": "legal снимается при праве exile у мандата",
+   "_part": "c",
+   "legal_unless": [
+    {
+     "tag": "tyranny",
+     "if": [
+      "right:exile"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "seize_power",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "memory:coup"
+   ],
+   "duration": 6,
+   "cost": 12,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "treason"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "dominance"
+   },
+   "speech": [
+    "persuade",
+    "promise",
+    "threaten"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "declare_war",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "memory:war_declared"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility"
+   },
+   "speech": [
+    "inform",
+    "threaten"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "make_peace",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel:trust+0.05",
+    "rel_back:trust+0.05"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "bargain",
+    "promise"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "propose_marriage",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "age:adult",
+    "rel:affinity>0.3"
+   ],
+   "eff": [
+    "memory:proposed",
+    "commitment:wedding"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "courtship"
+   },
+   "speech": [
+    "offer",
+    "persuade",
+    "bargain"
+   ],
+   "mvp": true,
+   "_doc": "accept → обязательство marry; к опекуну — с terms (приданое, место жительства)",
+   "chance": {
+    "base": 0.4
+   },
+   "_part": "c"
+  },
+  {
+   "id": "marry",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "age:adult"
+   ],
+   "eff": [
+    "rel:trust+0.1",
+    "rel_back:trust+0.1",
+    "moodlet:wedding_joy",
+    "memory:wedding",
+    "status_pair:married",
+    "household_join:spouse",
+    "t.moodlet:wedding_joy"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "marriage"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Статус супругов и слияние домохозяйств — расширение status_pair. bigamy/elopement — legal_rules",
+   "_part": "c",
+   "legal_if": [
+    {
+     "tag": "bigamy",
+     "if": [
+      "status_pair_any:married|t.status_pair_any:married",
+      "!status_pair:married"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "care_child",
+   "category": "family",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity+0.03",
+    "body:fatigue+0.02",
+    "t.need:social+0.15",
+    "t.need:fun+0.1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Цель — ребёнок (условие age цели — расширение t.age). Кормление тратит meal — вариант feed_child",
+   "pre": [
+    "t.age:child"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "feed_child",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "has:meal>=1",
+    "t.age:child"
+   ],
+   "eff": [
+    "has:meal-1",
+    "rel_back:affinity+0.03",
+    "t.need:hunger+0.4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "divorce",
+   "category": "family",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.3",
+    "memory:divorce",
+    "status_pair:married=0",
+    "household_leave:divorce"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [
+    "unlawful_divorce"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility"
+   },
+   "speech": [
+    "inform",
+    "threaten"
+   ],
+   "mvp": false,
+   "_doc": "legal только где культура запрещает (legal_rules)",
+   "_part": "c"
+  },
+  {
+   "id": "adopt",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "age:adult",
+    "t.age:child"
+   ],
+   "eff": [
+    "memory:adopted",
+    "household_adopt:ward"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "name_heir",
+   "category": "family",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.1",
+    "memory:heir_named"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "authority"
+   },
+   "speech": [
+    "inform",
+    "promise",
+    "persuade"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "disown",
+   "category": "family",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.4",
+    "memory:disowned"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility"
+   },
+   "speech": [
+    "inform",
+    "threaten"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "observe_work",
+   "category": "knowledge",
+   "target": "character",
+   "eff": [
+    "skill:$skill+0.005"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Idle",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "observation"
+   },
+   "speech": [
+    "request"
+   ],
+   "mvp": true,
+   "_doc": "Навык — тот, которым сейчас работает цель (расширение t.current_skill); в MVP фиксирован как пример",
+   "pre": [
+    "t.knows:$skill"
+   ],
+   "params": {
+    "skill": "skill"
+   },
+   "_part": "c"
+  },
+  {
+   "id": "practice_skill",
+   "category": "knowledge",
+   "target": "self",
+   "pre": [
+    "knows:$skill"
+   ],
+   "eff": [
+    "skill:$skill+0.02",
+    "body:fatigue+0.05"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_doc": "Пример практики; общий вид — расширение params.skill",
+   "params": {
+    "skill": "skill"
+   },
+   "_part": "c"
+  },
+  {
+   "id": "reveal_secret",
+   "category": "knowledge",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.05",
+    "memory:revealed_secret"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [
+    "betrayal_of_secret"
+   ],
+   "visibility": "private",
+   "social": {
+    "meaning": "intimacy"
+   },
+   "speech": [],
+   "mvp": false,
+   "_doc": "Исполняется актом confess с темой-секретом; legal — если давал клятву молчать",
+   "_part": "c"
+  },
+  {
+   "id": "make_offering",
+   "category": "faith",
+   "target": "object:shrine",
+   "pre": [
+    "has:meal>=1"
+   ],
+   "eff": [
+    "has:meal-1",
+    "need:purpose+0.2",
+    "moodlet:blessed"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "perform_rite",
+   "category": "faith",
+   "target": "object:shrine",
+   "pre": [
+    "knows:faith"
+   ],
+   "eff": [
+    "memory:rite",
+    "need:social+0.15",
+    "need:purpose+0.3"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Cast",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "bless",
+   "category": "faith",
+   "target": "character",
+   "pre": [
+    "knows:faith"
+   ],
+   "eff": [
+    "rel_back:trust+0.03",
+    "t.moodlet:blessed",
+    "t.need:purpose+0.1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "devotion"
+   },
+   "speech": [
+    "request",
+    "offer"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "curse",
+   "category": "faith",
+   "target": "character",
+   "eff": [
+    "rel_back:fear+0.05",
+    "rel_back:affinity-0.1",
+    "t.moodlet:cursed"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [
+    "witchcraft"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility"
+   },
+   "speech": [],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "use_artifact",
+   "category": "faith",
+   "target": "self",
+   "pre": [
+    "has:artifact>=1"
+   ],
+   "eff": [
+    "memory:used_magic"
+   ],
+   "duration": 3,
+   "cost": 6,
+   "fsm": "Cast",
+   "goap": false,
+   "legal": [
+    "forbidden_magic"
+   ],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_doc": "Эффект задаёт сам артефакт (items.json/artifact_effect) — расширение",
+   "_part": "c"
+  },
+  {
+   "id": "shove",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity-0.05",
+    "rel_back:fear+0.02",
+    "t.moodlet:insulted"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "assault_minor"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility",
+    "witness_affinity": -0.02
+   },
+   "speech": [
+    "threaten",
+    "command",
+    "request"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "brawl",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "body:fatigue+0.1",
+    "body:health-0.05",
+    "rel_back:affinity-0.1",
+    "memory:brawl",
+    "t.body:health-0.05"
+   ],
+   "duration": 2,
+   "cost": 4,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "assault"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "hostility",
+    "witness_affinity": -0.05
+   },
+   "speech": [
+    "threaten",
+    "offer",
+    "command",
+    "request"
+   ],
+   "mvp": true,
+   "_doc": "Нелетальный бой; урон цели и исход — расширение combat",
+   "combat": {
+    "damage": [
+     0.05,
+     0.25
+    ],
+    "lethal": false,
+    "outcomes": {
+     "win": [
+      "reputation:valor+0.02",
+      "t.moodlet:injured"
+     ],
+     "lose": [
+      "moodlet:injured"
+     ],
+     "flee": [
+      "reputation:valor-0.02"
+     ]
+    }
+   },
+   "_part": "c"
+  },
+  {
+   "id": "attack",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "body:fatigue+0.2",
+    "rel_back:affinity-0.5",
+    "rel_back:fear+0.3",
+    "memory:attacked"
+   ],
+   "duration": 2,
+   "cost": 8,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "assault_armed"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "violence",
+    "witness_affinity": -0.3
+   },
+   "speech": [
+    "threaten",
+    "command",
+    "request"
+   ],
+   "mvp": true,
+   "_doc": "Летальный бой; смерть цели → тег murder. Урон/смерть — расширение combat",
+   "combat": {
+    "attack_skill": "hunting",
+    "damage": [
+     0.2,
+     0.7
+    ],
+    "lethal": true,
+    "outcomes": {
+     "win": [
+      "t.moodlet:injured"
+     ],
+     "lose": [
+      "moodlet:injured"
+     ],
+     "flee": []
+    }
+   },
+   "_part": "c",
+   "legal_if": [
+    {
+     "tag": "murder",
+     "if": [
+      "t.body:health<=0"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "defend_other",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "body:fatigue+0.1",
+    "rel_back:affinity+0.15",
+    "rel_back:trust+0.1"
+   ],
+   "duration": 2,
+   "cost": 4,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "self_defense"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "protection"
+   },
+   "speech": [
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "self_defense — оправдывающий тег: снижает штраф за ответное насилие",
+   "combat": {
+    "attack_skill": "hunting",
+    "damage": [
+     0.1,
+     0.5
+    ],
+    "lethal": true,
+    "outcomes": {
+     "win": [
+      "rel_back:respect+0.1",
+      "reputation:valor+0.03"
+     ],
+     "lose": [
+      "moodlet:injured"
+     ]
+    }
+   },
+   "_part": "c"
+  },
+  {
+   "id": "duel",
+   "category": "violence",
+   "target": "character",
+   "pre": [
+    "age:adult"
+   ],
+   "eff": [
+    "memory:duel"
+   ],
+   "duration": 2,
+   "cost": 6,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "dueling"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "honor"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "threaten"
+   ],
+   "mvp": false,
+   "_doc": "Только с согласием; отказ при культуре чести — урон репутации",
+   "combat": {
+    "damage": [
+     0.1,
+     0.4
+    ],
+    "lethal": false,
+    "outcomes": {
+     "win": [
+      "reputation:valor+0.05"
+     ],
+     "lose": [
+      "reputation:valor-0.02"
+     ],
+     "flee": [
+      "reputation:valor-0.05"
+     ]
+    }
+   },
+   "_part": "c"
+  },
+  {
+   "id": "restrain",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "rel_back:fear+0.1",
+    "rel_back:affinity-0.15",
+    "status_pair:captor_captive"
+   ],
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "unlawful_detention"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "dominance"
+   },
+   "speech": [
+    "command",
+    "threaten",
+    "request"
+   ],
+   "mvp": true,
+   "_doc": "legal снимается при праве ареста",
+   "chance": {
+    "base": 0.5
+   },
+   "_part": "c",
+   "legal_unless": [
+    {
+     "tag": "unlawful_detention",
+     "if": [
+      "right:arrest"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "release_captive",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "rel_back:affinity+0.1",
+    "status_pair:captor_captive=0",
+    "status_pair:captor_captive=0"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "request",
+    "persuade",
+    "bargain",
+    "promise"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "execute",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "memory:executed",
+    "t.death:execution"
+   ],
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "murder"
+   ],
+   "visibility": "public",
+   "social": {
+    "meaning": "execution",
+    "witness_affinity": -0.1
+   },
+   "speech": [
+    "command",
+    "request",
+    "threaten"
+   ],
+   "mvp": false,
+   "_doc": "legal снимается при приговоре",
+   "_part": "c",
+   "legal_unless": [
+    {
+     "tag": "murder",
+     "if": [
+      "verdict:execute"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "flee",
+   "category": "violence",
+   "target": "self",
+   "eff": [
+    "body:fatigue+0.1"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Flee",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform"
+   ],
+   "mvp": true,
+   "_doc": "Запускается прерыванием FSM угрозой; desertion, если на страже",
+   "_part": "c"
+  },
+  {
+   "id": "surrender",
+   "category": "violence",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.02",
+    "memory:surrendered",
+    "reputation:valor-0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Idle",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "submission"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "Исполняется актом accept в бою (dialogue.json)",
+   "_part": "c"
+  },
+  {
+   "id": "raid",
+   "category": "violence",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:other"
+   ],
+   "eff": [
+    "memory:raid"
+   ],
+   "duration": 6,
+   "cost": 12,
+   "fsm": "Fight",
+   "goap": false,
+   "legal": [
+    "banditry"
+   ],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_doc": "Групповое действие — расширение group",
+   "_part": "c"
+  },
+  {
+   "id": "examine",
+   "category": "medicine",
+   "target": "character",
+   "eff": [
+    "skill:medicine+0.005"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": true,
+   "_doc": "Знание о здоровье цели — расширение know(t.health)",
+   "_part": "c"
+  },
+  {
+   "id": "treat_wound",
+   "category": "medicine",
+   "target": "character",
+   "pre": [
+    "has:bandage>=1"
+   ],
+   "eff": [
+    "has:bandage-1",
+    "skill:medicine+0.02",
+    "rel_back:affinity+0.08",
+    "rel_back:trust+0.03",
+    "t.body:health+0.15"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Здоровье цели +0.15×навык — расширение t.body",
+   "chance": {
+    "base": 0.5,
+    "skill": "medicine",
+    "per_skill": 0.5
+   },
+   "on_fail": [
+    "t.body:health-0.02"
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "treat_self",
+   "category": "medicine",
+   "target": "self",
+   "pre": [
+    "has:bandage>=1"
+   ],
+   "eff": [
+    "has:bandage-1",
+    "body:health+0.1",
+    "skill:medicine+0.01"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": true,
+   "_part": "c"
+  },
+  {
+   "id": "tend_sick",
+   "category": "medicine",
+   "target": "character",
+   "eff": [
+    "body:fatigue+0.05",
+    "rel_back:affinity+0.05",
+    "t.body:health+0.1",
+    "t.need:social+0.1"
+   ],
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Скорость выздоровления цели — расширение t.body; заражение — risk",
+   "risk": [
+    {
+     "id": "caught_illness",
+     "p": 0.05,
+     "eff": [
+      "moodlet:sick",
+      "body:health-0.1"
+     ]
+    }
+   ],
+   "_part": "c"
+  },
+  {
+   "id": "brew_remedy",
+   "category": "medicine",
+   "target": "object:hearth",
+   "pre": [
+    "knows:herbalism",
+    "has:herbs>=2"
+   ],
+   "eff": [
+    "has:herbs-2",
+    "has:remedy+1"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "give_remedy",
+   "category": "medicine",
+   "target": "character",
+   "pre": [
+    "has:remedy>=1"
+   ],
+   "eff": [
+    "has:remedy-1",
+    "rel_back:affinity+0.05",
+    "t.body:health+0.2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "mvp": false,
+   "_part": "c"
+  },
+  {
+   "id": "assist_birth",
+   "category": "medicine",
+   "target": "character",
+   "eff": [
+    "skill:medicine+0.02",
+    "rel_back:affinity+0.1"
+   ],
+   "duration": 12,
+   "cost": 12,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "request",
+    "offer",
+    "promise"
+   ],
+   "mvp": false,
+   "chance": {
+    "base": 0.7,
+    "skill": "medicine",
+    "per_skill": 0.3
+   },
+   "_part": "c"
+  },
+  {
+   "id": "bury_dead",
+   "category": "medicine",
+   "target": "object:corpse",
+   "eff": [
+    "memory:buried",
+    "body:fatigue+0.1",
+    "spawn:grave"
+   ],
+   "duration": 9,
+   "cost": 9,
+   "fsm": "Work",
+   "goap": true,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "request",
+    "command",
+    "promise",
+    "offer"
+   ],
+   "mvp": true,
+   "_doc": "Родня погребённого: rel_back+ — расширение kin",
+   "_part": "c"
+  },
+  {
+   "id": "travel_to",
+   "category": "travel",
+   "target": "self",
+   "eff": [
+    "body:fatigue+0.05"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Move",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "offer",
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "_doc": "Место — цель команды перемещения; параметр place появится, когда GOAP научится параметрам",
+   "_part": "c"
+  },
+  {
+   "id": "migrate",
+   "category": "travel",
+   "target": "self",
+   "eff": [
+    "memory:migrated"
+   ],
+   "duration": 144,
+   "cost": 144,
+   "fsm": "Move",
+   "goap": false,
+   "legal": [
+    "flight_from_lord"
+   ],
+   "visibility": "public",
+   "social": null,
+   "speech": [
+    "inform",
+    "promise",
+    "request",
+    "command"
+   ],
+   "mvp": false,
+   "_doc": "Домохозяйство меняет поселение; legal — если связан с господином",
+   "_part": "c"
+  },
+  {
+   "id": "give",
+   "category": "economy",
+   "target": "character",
+   "pre": [
+    "has:$item>=1"
+   ],
+   "eff": [
+    "has:$item-1",
+    "t.has:$item+1",
+    "rel_back:affinity+0.03",
+    "rel_back:trust+0.01"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "command",
+    "promise"
+   ],
+   "mvp": true,
+   "params": {
+    "item": {
+     "type": "item",
+     "of": [
+      "axe",
+      "bandage",
+      "berries",
+      "branch",
+      "clay",
+      "cloak",
+      "cloth",
+      "cord",
+      "digging_stick",
+      "fiber_raw",
+      "firewood",
+      "herbs",
+      "hide",
+      "log",
+      "meal",
+      "meat",
+      "mushrooms",
+      "needle",
+      "reeds",
+      "remedy",
+      "roots",
+      "spear",
+      "spindle",
+      "stone",
+      "stone_blade",
+      "thread",
+      "tunic"
+     ]
+    }
+   },
+   "_doc": "Передать предметы. give_food (B) — частный случай для HTN",
+   "_part": "c"
+  },
+  {
+   "id": "learn",
+   "category": "knowledge",
+   "target": "character",
+   "pre": [
+    "!knows:$skill",
+    "t.knows:$skill"
+   ],
+   "eff": [
+    "skill:$skill+0.05",
+    "rel:respect+0.02"
+   ],
+   "duration": 12,
+   "cost": 12,
+   "fsm": "Work",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "teaching"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "command",
+    "bargain",
+    "promise"
+   ],
+   "mvp": true,
+   "params": {
+    "skill": "skill"
+   },
+   "_doc": "Учиться у собеседника (актёр — ученик). Учитель: offer(learn{skill}) → у ученика queue_task. knows ставится при skill≥learn_threshold",
+   "_part": "c"
+  }
+ ]
 }

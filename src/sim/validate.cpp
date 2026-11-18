@@ -11,10 +11,12 @@ namespace {
 
 const std::set<std::string> kCondSubjects = {"has", "at", "need", "knows", "skill", "trait", "age", "body", "time",
                                              "known", "home", "target_stock", "target_owner", "rel", "moodlet",
-                                             "reputation"};
+                                             "reputation", "status_pair", "status_pair_any", "right", "verdict"};
 // t.<subject>: conditions on the target character.
 const std::set<std::string> kTargetCondSubjects = {"need", "skill", "body", "age", "moodlet", "has", "trait",
-                                                   "knows", "reputation"};
+                                                   "knows", "reputation", "status_pair_any", "right", "verdict"};
+// w.<subject>: effects on every witness of the actor (schema v0.3 §1).
+const std::set<std::string> kWitnessEffSubjects = {"memory", "moodlet", "rel"};
 const std::set<std::string> kEffSubjects = {"has",        "need",           "target_stock",   "home",
                                             "skill",      "body",           "moodlet",        "memory",
                                             "rel",        "rel_back",       "spawn",          "target_need",
@@ -90,7 +92,7 @@ struct V {
         } else if (!kCondSubjects.count(k.subject)) {
             return err(where + ": unknown condition subject '" + k.subject + "'");
         }
-        if ((k.subject == "rel") && !sc.charTarget) err(where + ": '" + k.text + "' needs a character target");
+        if ((k.subject == "rel" || k.subject == "status_pair") && !sc.charTarget) err(where + ": '" + k.text + "' needs a character target");
         if (!param(k.subject, k.key, k.text, where, sc)) return;
         if ((k.subject == "has" || k.subject == "home" || k.subject == "target_stock") && !c.items.count(k.key))
             err(where + ": unknown item '" + k.key + "' in '" + k.text + "'");
@@ -109,9 +111,22 @@ struct V {
         if (k.subject == "rel" && !contains(relAxes(), k.key)) err(where + ": unknown rel axis '" + k.key + "'");
         if (k.subject == "reputation" && !contains(c.config.reputationAxes, k.key))
             err(where + ": unknown reputation axis '" + k.key + "'");
+        if ((k.subject == "status_pair" || k.subject == "status_pair_any") && !contains(c.config.statusPairs, k.key))
+            err(where + ": unknown status pair '" + k.key + "'");
+        if (k.subject == "right" && !contains(c.config.rights, k.key)) err(where + ": unknown right '" + k.key + "'");
+        if (k.subject == "verdict" && !contains(c.config.verdicts, k.key))
+            err(where + ": unknown verdict '" + k.key + "'");
     }
 
     void eff(const Effect& e, const std::string& where, const Scope& sc = {}) {
+        if (e.onWitnesses) {
+            if (!kWitnessEffSubjects.count(e.subject))
+                return err(where + ": w." + e.subject + " is not a witness effect ('" + e.text + "')");
+            if (e.subject == "memory" && e.op != 0) err(where + ": effect '" + e.text + "' has the wrong form");
+            if (e.subject == "moodlet" && !c.moodlets.count(e.key)) err(where + ": unknown moodlet '" + e.key + "'");
+            if (e.subject == "rel" && !contains(relAxes(), e.key)) err(where + ": unknown rel axis '" + e.key + "'");
+            return;
+        }
         if (e.onTarget) {
             if (!kTargetEffSubjects.count(e.subject))
                 return err(where + ": t." + e.subject + " is not a target effect ('" + e.text + "')");
@@ -186,7 +201,19 @@ struct V {
             if (d.chance.min < 0.0 || d.chance.max > 1.0 || d.chance.min > d.chance.max)
                 err(where + ": chance min/max out of [0, 1]");
             if (!d.chance.skill.empty() && d.chance.skill[0] == '$') param("skill", d.chance.skill, "chance", where, sc);
+            static const std::set<std::string> inputs = {"rel", "need", "body", "skill", "reputation"};
+            for (const auto& in : d.chance.add) {
+                if (!inputs.count(in.input.subject))
+                    err(where + ": chance.add input '" + in.input.text + "' must be rel:/need:/body:/skill:/reputation:");
+                else cond(in.input, where + " chance.add", sc);
+            }
         }
+        for (const auto* rules : {&d.legalIf, &d.legalUnless})
+            for (const auto& lr : *rules) {
+                for (const auto& any : lr.all)
+                    for (const auto& k : any) cond(k, where + " legal rule " + lr.tag, sc);
+                if (lr.mult >= 0.0 && rules == &d.legalIf) warn(where + ": legal_if " + lr.tag + ": mult is ignored");
+            }
         if (!d.onFail.empty() && !d.chance.set) warn(where + ": on_fail without chance never applies");
         for (const auto& e : d.onFail) eff(e, where + " on_fail", sc);
         std::set<std::string> riskIds;

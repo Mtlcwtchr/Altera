@@ -1,17 +1,102 @@
-{ "_doc": "Body state machine (AI_DATA_SCHEMA.md §9). Headless: state + timer.",
-  "states": [
-    { "id": "Idle", "interruptible": true },
-    { "id": "Loiter", "parent": "Idle" },
-    { "id": "Wait", "parent": "Idle" },
-    { "id": "Move", "interruptible": true },
-    { "id": "Act", "interruptible": true },
-    { "id": "Work", "parent": "Act" },
-    { "id": "Eat", "parent": "Act", "interruptible": false },
-    { "id": "Interact", "parent": "Act" },
-    { "id": "Warm", "parent": "Act" },
-    { "id": "Talk", "parent": "Act" },
-    { "id": "Fight", "parent": "Act", "interruptible": false },
-    { "id": "Rest", "interruptible": true },
-    { "id": "Sleep", "parent": "Rest", "wake_on": ["threat"] }
-  ]
+{
+ "_doc": "Иерархия состояний тела (слой 4). Headless: состояние + таймер (duration взаимодействия; Move — расстояние/скорость). wake_on — события, прерывающие непрерываемое: threat (угроза), call (позвали по имени/просьба о помощи), pain (рана), critical_need (нужда ниже critical), player_command (команда контроллера игрока), fire (пожар/огонь погас рядом).",
+ "states": [
+  {
+   "id": "Idle",
+   "interruptible": true
+  },
+  {
+   "id": "Move",
+   "interruptible": true
+  },
+  {
+   "id": "Act",
+   "interruptible": true
+  },
+  {
+   "id": "Work",
+   "parent": "Act",
+   "_doc": "сбор, ремесло, стройка, готовка"
+  },
+  {
+   "id": "Eat",
+   "parent": "Act",
+   "wake_on": [
+    "threat",
+    "pain"
+   ],
+   "interruptible": false,
+   "_doc": "короткое, доедает"
+  },
+  {
+   "id": "Interact",
+   "parent": "Act",
+   "_doc": "взять/положить/зажечь/надеть"
+  },
+  {
+   "id": "Pray",
+   "parent": "Act"
+  },
+  {
+   "id": "Talk",
+   "interruptible": true,
+   "_doc": "диалог: прерывание = речевой акт farewell с причиной"
+  },
+  {
+   "id": "Rest",
+   "interruptible": true
+  },
+  {
+   "id": "Sleep",
+   "parent": "Rest",
+   "interruptible": false,
+   "wake_on": [
+    "threat",
+    "call",
+    "pain",
+    "player_command",
+    "fire"
+   ]
+  },
+  {
+   "id": "Cast",
+   "parent": "Act",
+   "interruptible": false,
+   "wake_on": [
+    "threat",
+    "pain"
+   ],
+   "_doc": "обряд/магия"
+  },
+  {
+   "id": "Fight",
+   "interruptible": false,
+   "wake_on": [
+    "pain",
+    "player_command"
+   ]
+  },
+  {
+   "id": "Flee",
+   "interruptible": false,
+   "wake_on": [
+    "pain",
+    "player_command"
+   ]
+  },
+  {
+   "id": "Pain",
+   "interruptible": false,
+   "wake_on": [
+    "threat"
+   ],
+   "_doc": "ранен/болен: тело само, пока таймер"
+  },
+  {
+   "id": "Incapacitated",
+   "interruptible": false,
+   "wake_on": [],
+   "_doc": "без сознания; выход только по таймеру/лечению"
+  }
+ ]
 }

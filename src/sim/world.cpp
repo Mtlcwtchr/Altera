@@ -33,6 +33,19 @@ bool World::isNight() const {
     return t < kTicksPerDay * 6 / 24 || t >= kTicksPerDay * 21 / 24; // 21:00 - 06:00
 }
 
+const std::string& World::season() const {
+    static const std::string names[4] = {"spring", "summer", "autumn", "winter"};
+    const int doy = (startDay_ + day()) % kDaysPerYear;
+    return names[std::min(3, doy / (kDaysPerYear / 4))];
+}
+
+bool World::inSeason(const WorldObject& o) const {
+    auto d = content_->objects.find(o.type);
+    if (d == content_->objects.end() || d->second.seasons.empty()) return true;
+    const std::string& s = season();
+    return std::find(d->second.seasons.begin(), d->second.seasons.end(), s) != d->second.seasons.end();
+}
+
 Character& World::addCharacter(Character c) {
     if (c.id == kNone) c.id = newId();
     nextId_ = std::max(nextId_, c.id + 1);
@@ -183,6 +196,16 @@ void World::remember(Character& c, MemoryEntry m) {
     }
 }
 
+bool World::sheltered(const Character& c) const {
+    const double range = content_->config.interactionRangeM;
+    for (const auto& [id, o] : objects_) {
+        auto d = content_->objects.find(o.type);
+        if (d == content_->objects.end() || !d->second.shelter) continue;
+        if (dist(o.pos, c.pos) <= range) return true;
+    }
+    return false;
+}
+
 void World::updateBodies() {
     const bool night = isNight();
     for (auto& [id, c] : chars_) {
@@ -195,6 +218,11 @@ void World::updateBodies() {
             if (night) rate *= n.nightMult;
             auto bm = n.biomeMult.find(biome);
             if (bm != n.biomeMult.end()) rate *= bm->second;
+            auto sm = n.seasonMult.find(season());
+            if (sm != n.seasonMult.end()) rate *= sm->second;
+            if (n.shelteredMult != 1.0 && sheltered(c)) rate *= n.shelteredMult;
+            for (const auto& [item, mult] : n.clothingMult)
+                if (c.has(item) > 0) rate *= mult;
             for (const auto& t : c.traits) {
                 auto td = content_->traits.find(t);
                 if (td == content_->traits.end()) continue;
@@ -319,6 +347,7 @@ Json World::toJson() const {
     return Json{{"format", "altera.sim.world/1"},
                 {"seed", seed_},
                 {"tick", tick_},
+                {"start_day", startDay_},
                 {"next_seq", nextSeq_},
                 {"next_cmd_seq", nextCmdSeq_},
                 {"next_id", nextId_},
@@ -338,6 +367,7 @@ void World::loadJson(const Json& j) {
     if (j.value("format", "") != "altera.sim.world/1") throw std::runtime_error("not an altera.sim.world/1 snapshot");
     seed_ = j.at("seed").get<std::uint64_t>();
     tick_ = j.at("tick").get<Tick>();
+    startDay_ = j.value("start_day", 0);
     nextSeq_ = j.at("next_seq").get<std::uint64_t>();
     nextCmdSeq_ = j.value("next_cmd_seq", std::uint64_t{1});
     replay_.clear();
