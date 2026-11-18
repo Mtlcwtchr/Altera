@@ -4,6 +4,7 @@
 #include <set>
 
 #include "framework.hpp"
+#include "sim/ai.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace altera::sim;
@@ -132,4 +133,152 @@ TEST(altera_sim_command_log_replays) {
     b.replay(a.commandLog());
     b.run(110);
     CHECK_EQ(a.stateHash(), b.stateHash());
+}
+
+// ---- step 2: the four-layer mind ----------------------------------------
+
+namespace {
+
+World aiWorld(std::uint64_t seed = 0) {
+    World w = freshWorld(seed);
+    installAi(w);
+    return w;
+}
+
+bool traceHas(const Character& c, char layer, const std::string& code) {
+    for (const auto& e : c.ai.trace)
+        if (e.layer == layer && e.code == code) return true;
+    return false;
+}
+
+std::int64_t methodUses(const World& w, const std::string& m) {
+    std::int64_t n = 0;
+    for (const auto& [id, c] : w.characters()) {
+        auto it = c.ai.stats.methodUse.find(m);
+        if (it != c.ai.stats.methodUse.end()) n += it->second;
+    }
+    return n;
+}
+
+// Everyone's storage empty, the character knows no bushes.
+void forgetObjects(World& w, Character& c, const std::string& type) {
+    for (auto it = c.knownObjects.begin(); it != c.knownObjects.end();) {
+        const WorldObject* o = w.object(*it);
+        it = (o && o->type == type) ? c.knownObjects.erase(it) : std::next(it);
+    }
+}
+
+} // namespace
+
+TEST(altera_sim_ai_lives_three_days) {
+    World w = aiWorld();
+    // No two people ever work one reserved object at the same time.
+    bool clash = false;
+    for (Tick t = 0; t < 3 * kTicksPerDay; ++t) {
+        w.step();
+        std::map<EntityId, int> users;
+        for (const auto& [id, c] : w.characters()) {
+            const InteractionDef* d = w.content().interaction(c.ai.fsm.interaction);
+            if (d && d->reserve && c.ai.fsm.target != kNone && c.ai.fsm.state != "Move")
+                clash |= ++users[c.ai.fsm.target] > 1;
+        }
+    }
+    CHECK(!clash);
+    double hunger = 0.0;
+    for (const auto& [id, c] : w.characters()) {
+        CHECK(c.body.alive);
+        hunger += c.need("hunger");
+        CHECK(traceHas(c, 'U', "utility.choose"));
+        CHECK(traceHas(c, 'H', "htn.plan"));
+        CHECK(traceHas(c, 'F', "fsm.enter"));
+    }
+    CHECK(hunger / static_cast<double>(w.characters().size()) > 0.35);
+    // The chains run: people cook (gather -> wood -> hearth) and sleep in beds.
+    CHECK(methodUses(w, "stock_food/cook_and_store") > 0);
+    CHECK(methodUses(w, "rest/sleep_in_bed") > 0);
+    bool goap = false;
+    for (const auto& [id, c] : w.characters()) goap |= traceHas(c, 'G', "goap.plan");
+    CHECK(goap);
+    const Json rep = aiReport(w);
+    CHECK_EQ(rep["alive"].get<int>(), static_cast<int>(w.characters().size()));
+}
+
+TEST(altera_sim_ai_is_deterministic) {
+    World a = aiWorld(), b = aiWorld();
+    a.run(2 * kTicksPerDay);
+    b.run(2 * kTicksPerDay);
+    CHECK_EQ(a.stateHash(), b.stateHash());
+    World c = aiWorld(99);
+    c.run(2 * kTicksPerDay);
+    CHECK(c.stateHash() != a.stateHash());
+    // Snapshot in the middle of plans, reload, continue.
+    World d(content());
+    d.loadJson(a.toJson());
+    installAi(d);
+    a.run(kTicksPerDay);
+    d.run(kTicksPerDay);
+    CHECK_EQ(a.stateHash(), d.stateHash());
+}
+
+TEST(altera_sim_hungry_family_cooks) {
+    World w = aiWorld();
+    // Empty every storage and starve family #1: they must gather, fetch wood and cook.
+    for (auto& [id, o] : w.objects())
+        if (o.type == "storage") o.stock.clear();
+    const EntityId fam = w.families().begin()->first;
+    for (auto& [id, c] : w.characters())
+        if (c.status.family == fam) c.needs["hunger"] = 0.2;
+    w.run(kTicksPerDay);
+    for (const auto& [id, c] : w.characters()) {
+        if (c.status.family != fam) continue;
+        CHECK(c.need("hunger") > 0.2);
+    }
+    CHECK(methodUses(w, "obtain_food/forage") + methodUses(w, "obtain_food/cook_then_eat") > 0);
+}
+
+TEST(altera_sim_why_hungry_is_reported) {
+    World w = aiWorld();
+    for (auto& [id, o] : w.objects())
+        if (o.type == "storage") o.stock.clear();
+    Character& c = w.characters().begin()->second;
+    forgetObjects(w, c, "berry_bush");
+    forgetObjects(w, c, "storage");
+    c.needs["hunger"] = 0.05;
+    w.run(kTicksPerDay / 2);
+    const Json rep = aiReport(w);
+    bool found = false;
+    for (const auto& h : rep["summary"]["why_hunger"])
+        if (h["id"].get<EntityId>() == c.id) found = true;
+    CHECK(found);
+    // Either no food method is feasible at all (Utility never picks eat), or
+    // the tried ones failed and the report carries the reason code.
+    CHECK(c.need("hunger") < 0.1);
+    const bool explained = c.ai.stats.goalTicks.count("eat") == 0 || c.ai.stats.lastGoalFail.count("eat") > 0;
+    CHECK(explained);
+    for (const auto& h : rep["summary"]["why_hunger"])
+        if (h["id"].get<EntityId>() == c.id && c.ai.stats.lastGoalFail.count("eat")) CHECK(!h["why"].empty());
+}
+
+TEST(altera_sim_law_changes_price_not_options) {
+    // Two hungry neighbours, own storage empty, the other family's full.
+    World w = aiWorld();
+    auto famIt = w.families().begin();
+    const Family& famA = famIt->second;
+    const Family& famB = std::next(famIt)->second;
+    w.object(famA.storage)->stock = {};
+    w.object(famB.storage)->stock = {{"meal", 10}};
+    Character& thief = *w.character(famA.members[0]);
+    Character& honest = *w.character(famA.members[1]);
+    thief.traits = {"desperate_thief"};
+    honest.traits = {"honest"};
+    for (Character* c : {&thief, &honest}) {
+        c->needs["hunger"] = 0.1;
+        c->inventory.clear();
+    }
+    w.run(kTicksPerDay / 3);
+    CHECK(thief.ai.stats.methodUse.count("obtain_food/steal_food") > 0);
+    CHECK(honest.ai.stats.methodUse.count("obtain_food/steal_food") == 0);
+    bool remembers = false;
+    for (const auto& m : thief.memory) remembers |= m.type == "stole_food";
+    CHECK(remembers);
 }

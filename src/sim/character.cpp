@@ -38,14 +38,15 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, free
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, allow, method)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanAction, interaction, target, targetType, cost)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Plan, methods, steps, stepIndex, actions, actionIndex)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Plan, methods, steps, stepIndex, actions, actionIndex, stepReplans,
+                                                htnReplans, waits)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FsmState, state, interaction, target, dest, timer, started)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(WeightMod, target, delta, created, ttl, decay, reason, source)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(QueuedTask, task, target, priority, created, ttl, reason, source)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TraceEntry, tick, layer, text)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TraceEntry, tick, layer, code, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MethodFail, count, until)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(AiStats, goalTicks, failReasons, idleTicks, starvingTicks, replans,
-                                                goalSwitches, planFailures, idleReasons)
+                                                goalSwitches, planFailures, idleReasons, lastGoalFail, methodUse)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(AiState, goal, plan, fsm, suspended, suspendedGoal, suspendedPlan, mods,
                                                 queue, methodFails, goalCooldown, trace, lastFailReason, nextThink,
                                                 stats)

@@ -103,6 +103,9 @@ struct Plan {
     size_t stepIndex = 0;
     std::vector<PlanAction> actions; // GOAP chain for the current step
     size_t actionIndex = 0;
+    int stepReplans = 0; // GOAP replans of the current step
+    int htnReplans = 0;  // method switches inside the current goal
+    int waits = 0;       // ticks spent waiting for a reserved object in this step
     bool valid() const { return !steps.empty(); }
 };
 
@@ -140,10 +143,13 @@ struct QueuedTask {
     std::string source;
 };
 
+// Trace lines keep a code and parameters, never display text: the text is
+// assembled through the localization tables (content/loc) when shown.
 struct TraceEntry {
     Tick tick = 0;
     char layer = 'U'; // U H G F C(ontroller) E(vent)
-    std::string text;
+    std::string code; // trace.<code> in content/loc/<lang>/trace.json
+    Json params = Json::object();
 };
 
 struct MethodFail {
@@ -160,6 +166,8 @@ struct AiStats {
     std::int64_t goalSwitches = 0;
     std::int64_t planFailures = 0;
     std::map<std::string, std::int64_t> idleReasons;
+    std::map<std::string, std::string> lastGoalFail; // goal -> reason code of its last failure
+    std::map<std::string, std::int64_t> methodUse;   // task/method -> times chosen
 };
 
 struct AiState {

@@ -305,7 +305,14 @@ add_library(altera_sim STATIC
         src/sim/validate.cpp
         src/sim/character.cpp
         src/sim/world.cpp
-        src/sim/worldgen.cpp)
+        src/sim/worldgen.cpp
+        src/sim/ai_eval.cpp
+        src/sim/ai_utility.cpp
+        src/sim/ai_htn.cpp
+        src/sim/ai_goap.cpp
+        src/sim/ai_mind.cpp
+        src/sim/ai_control.cpp
+        src/sim/ai_report.cpp)
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json PRIVATE asr_warnings)
 

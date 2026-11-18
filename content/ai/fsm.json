@@ -1,6 +1,8 @@
 { "_doc": "Body state machine (AI_DATA_SCHEMA.md §9). Headless: state + timer.",
   "states": [
     { "id": "Idle", "interruptible": true },
+    { "id": "Loiter", "parent": "Idle" },
+    { "id": "Wait", "parent": "Idle" },
     { "id": "Move", "interruptible": true },
     { "id": "Act", "interruptible": true },
     { "id": "Work", "parent": "Act" },

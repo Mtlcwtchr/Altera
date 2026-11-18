@@ -38,7 +38,7 @@
       "duration": 18, "cost": 1, "fsm": "Warm", "goap": false },
     { "id": "huddle", "category": "household", "target": "self", "eff": ["need:warmth+0.015"],
       "continuous": true, "until": "need:warmth>=0.7", "duration": 24, "cost": 2, "fsm": "Warm", "goap": false },
-    { "id": "idle_wander", "category": "household", "target": "self", "duration": 3, "cost": 0, "fsm": "Idle",
+    { "id": "idle_wander", "category": "household", "target": "self", "duration": 3, "cost": 0, "fsm": "Loiter",
       "goap": false }
   ]
 }
