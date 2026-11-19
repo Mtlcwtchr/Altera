@@ -60,6 +60,19 @@ const CombatBridge* combatBridge(const Content& c) {
         } else {
             err.push_back("recovery.json: missing next to sim_bridge.json");
         }
+        for (const char* f : {"aftermath.json", "rescue.json"}) {
+            if (!fs::exists(dir / f)) {
+                err.push_back(std::string(f) + ": missing next to sim_bridge.json");
+                continue;
+            }
+            std::ifstream af(dir / f, std::ios::binary);
+            const Json aj = Json::parse(af);
+            if (std::string(f) == "aftermath.json") b->aftermath = loadAftermath(aj, c, err);
+            else b->rescue = loadRescue(aj, c, err);
+        }
+        for (const auto& rr : b->rescue.rescuers)
+            if (!d.treatIx.count(rr.treatment))
+                err.push_back("rescue.rescuers." + rr.id + ".treatment: unknown treatment '" + rr.treatment + "'");
         if (!err.empty()) throw combat::DataError(err);
     }
     return (cache[c.dir] = std::move(b)).get();

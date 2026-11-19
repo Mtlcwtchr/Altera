@@ -6,6 +6,7 @@
 
 #include "framework.hpp"
 #include "sim/ai.hpp"
+#include "sim/aftermath.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/worldgen.hpp"
 
@@ -249,4 +250,126 @@ TEST(altera_sim_combat_wounds_kill_npcs_not_the_player) {
     CHECK_EQ(playerDead, 0);
     const double share = static_cast<double>(npcDead) / std::max(1, trials);
     CHECK(share > 0.12 && share < 0.42);
+}
+
+TEST(altera_sim_combat_winner_decides_by_motivation) {
+    World w = makeTestWorld(real(), loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    auto ps = people(w);
+    Character& a = *ps[0];
+    Character& b = *ps[1];
+    const AftermathRules& R = combatBridge(real())->aftermath;
+    const InteractionDef& brawl = *real().interaction("brawl");
+    const InteractionDef& attack = *real().interaction("attack");
+    auto best = [&](const InteractionDef& d, const std::string& st, std::size_t wit) {
+        const auto sc = finishScores(w, R, a, b, d, st, wit);
+        std::size_t k = 0;
+        for (std::size_t i = 1; i < sc.size(); ++i)
+            if (sc[i] > sc[k]) k = i;
+        return R.options[k].id;
+    };
+    a.status.family = b.status.family = kNone;
+    a.status.dynasty = b.status.dynasty = kNone;
+    a.relations[b.id] = Relation{};
+    a.traits.clear();
+    CHECK_EQ(best(brawl, "ko", 0), std::string("spare")); // a brawl among neighbours
+    a.relations[b.id].enmity = 1.0;
+    a.traits = {"unscrupulous"};
+    CHECK_EQ(best(attack, "ko", 0), std::string("kill")); // a lethal attack on a hated foe
+    CHECK(finishScores(w, R, a, b, attack, "ko", 4)[1] < finishScores(w, R, a, b, attack, "ko", 0)[1]); // witnesses deter
+    a.relations[b.id].enmity = 0.2;
+    a.traits.clear();
+    a.status.rights.insert("arrest");
+    b.status.verdicts.insert("exile");
+    CHECK_EQ(best(attack, "yield", 0), std::string("bind")); // a guard with a sentence to carry out
+    a.status.rights.clear();
+    b.status.verdicts.clear();
+    // Applied: a kill kills, a bind sets the captor pair, a spare leaves memories.
+    a.relations[b.id].enmity = 1.0;
+    a.traits = {"unscrupulous"};
+    CHECK_EQ(finishFight(w, a, b, attack, "ko", {}), std::string("kill"));
+    CHECK(!b.body.alive);
+    Character& c = *ps[2];
+    a.relations[c.id] = Relation{};
+    a.traits.clear();
+    c.status.family = kNone;
+    c.status.dynasty = kNone;
+    CHECK_EQ(finishFight(w, a, c, brawl, "ko", {}), std::string("spare"));
+    CHECK(c.body.alive && c.body.downUntil > w.now());
+    bool spared = false;
+    for (const auto& m : c.memory) spared |= m.type == "was_spared";
+    CHECK(spared);
+    CHECK(finishFight(w, a, c, brawl, "flee", {}).empty()); // nobody to decide over
+    // The player as winner chooses by focus.
+    a.controller.kind = Controller::Kind::Player;
+    a.controller.combatFinish = "bind";
+    c.body.downUntil = 0;
+    CHECK_EQ(finishFight(w, a, c, brawl, "yield", {}), std::string("bind"));
+    CHECK(a.status.hasPair(c.id, "captor_captive"));
+}
+
+TEST(altera_sim_combat_player_is_rescued_not_killed) {
+    World w = makeTestWorld(real(), loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    auto ps = people(w);
+    Character& p = *ps[0];
+    Character& foe = *ps[2]; // another family: ps[1] is the player's kin
+    for (Character* c : ps) {
+        c->skills["hunting"] = 0.0;
+        c->skills["herbalism"] = 0.0;
+    }
+    p.controller.kind = Controller::Kind::Player;
+    foe.relations[p.id].enmity = 1.0;
+    foe.traits = {"unscrupulous"};
+    foe.status.family = foe.status.dynasty = kNone;
+    p.inventory["log"] = 10;
+    p.wounds.clear();
+    p.wounds.push_back(Wound{"torso", "deep", 20.0, 0.2, 18.0, 18.0, "none", true, false, false, false, w.now(), 0});
+    p.pos = Vec2{p.pos.x + 3000.0, p.pos.y};
+    const InteractionDef& attack = *real().interaction("attack");
+    // A lethal attack by a hated foe would end in "kill": not for the player.
+    const std::string decision = finishFight(w, foe, p, attack, "ko", {});
+    CHECK(decision == "spare" || decision == "bind");
+    CHECK(p.body.alive);
+    if (decision == "spare") {
+        CHECK(p.body.downUntil > w.now());
+        CHECK_EQ(p.ai.fsm.state, std::string("Incapacitated"));
+        CHECK(p.has("log") < 10); // the winner took a share
+        CHECK(foe.has("log") > 0);
+        CHECK(!p.wounds.front().bleeding && p.wounds.front().aided);
+        bool rescued = false;
+        for (const auto& m : p.memory) rescued |= m.type == "rescued";
+        CHECK(rescued);
+        bool chron = false;
+        for (const auto& e : w.chronicleLog()) chron |= e.code == "chronicle.rescue";
+        CHECK(chron);
+    }
+    // Rescuers are drawn by weight: with kin around, the family is the most common.
+    std::map<std::string, int> by;
+    for (int i = 0; i < 200; ++i) {
+        p.body.downUntil = 0;
+        w.step();
+        by[rescuePlayer(w, p, nullptr)]++;
+    }
+    int top = 0;
+    std::string topId;
+    for (const auto& [id, n] : by)
+        if (n > top) {
+            top = n;
+            topId = id;
+        }
+    CHECK(by.size() >= 2);
+    CHECK_EQ(topId, std::string("family"));
+    // Through the act: the player who loses a lethal fight is alive afterwards.
+    Character& q = *ps[3];
+    q.controller.kind = Controller::Kind::Player;
+    q.skills["fighting"] = 0.0;
+    foe.skills["fighting"] = 1.0;
+    foe.inventory["axe"] = 1;
+    for (int i = 0; i < 10; ++i) {
+        q.body.health = 1.0;
+        q.wounds.clear();
+        q.body.downUntil = 0;
+        applyEffects(w, foe, attack, nullptr, &q);
+        CHECK(q.body.alive);
+        w.step();
+    }
 }

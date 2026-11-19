@@ -1,0 +1,63 @@
+{
+  "_doc": "Спасение игрока за кадром (COMBAT_DESIGN §17, CORE_SPEC §11): при поражении игрок не умирает; спасителя выбираем по весам из окружения (кто рядом, родня, умельцы, расстояние до жилья), без подробностей в тексте. Игрок теряет время (skip_hours), часть вещей (их забирает победитель-человек и теряется по дороге), просыпается в безопасном месте с ранами под присмотром спасителя. Настоящая смерть игрока только через особые действия мира (казнь).",
+  "weight_doc": "base + per_kin_alive * живой родни (та же семья, не без сознания, не больше kin_max) + per_holder * людей поселения с навыком skill >= skill_min (не больше holder_max) + near_add, если до дома ближе near_home_m",
+  "rescuers": [
+    {
+      "id": "family",
+      "loc": "rescue.family",
+      "weight": { "base": 0.0, "per_kin_alive": 1.0, "kin_max": 4 },
+      "who": "kin",
+      "wake": "home",
+      "treatment": "bandage",
+      "skip_hours": [6, 14],
+      "loss_share": 0.0
+    },
+    {
+      "id": "hunters",
+      "loc": "rescue.hunters",
+      "weight": { "base": 0.2, "skill": "hunting", "skill_min": 0.3, "per_holder": 0.4, "holder_max": 3 },
+      "who": "holder",
+      "wake": "home",
+      "treatment": "bandage",
+      "skip_hours": [10, 24],
+      "loss_share": 0.1
+    },
+    {
+      "id": "travellers",
+      "loc": "rescue.travellers",
+      "weight": { "base": 0.4 },
+      "who": "none",
+      "wake": "nearest_home",
+      "treatment": "none",
+      "skip_hours": [12, 36],
+      "loss_share": 0.25
+    },
+    {
+      "id": "settlement",
+      "loc": "rescue.settlement",
+      "weight": { "base": 0.2, "near_home_m": 1500, "near_add": 1.0 },
+      "who": "none",
+      "wake": "nearest_home",
+      "treatment": "bandage",
+      "skip_hours": [8, 20],
+      "loss_share": 0.1
+    },
+    {
+      "id": "healer",
+      "loc": "rescue.healer",
+      "weight": { "base": 0.0, "skill": "herbalism", "skill_min": 0.5, "per_holder": 0.6, "holder_max": 2 },
+      "who": "holder",
+      "wake": "home",
+      "treatment": "healer",
+      "skip_hours": [12, 30],
+      "loss_share": 0.0
+    }
+  ],
+  "winner_takes": { "person": 0.5, "animal": 0.0 },
+  "health_floor": 0.15,
+  "blood_floor": 35,
+  "memory": { "rescued": "rescued", "rescuer": "rescued_someone" },
+  "valence": { "rescued": -0.2, "rescuer": 0.2 },
+  "rescuer_affinity": 0.1,
+  "chronicle": "chronicle.rescue"
+}

@@ -1,6 +1,10 @@
 {
  "chronicle": {
-  "combat": "{actor} и {target}: бой ({act}), исход для нападавшего: {outcome}"
+  "combat": "{actor} и {target}: бой ({act}), исход для нападавшего: {outcome}",
+  "combat_finish": "{winner} решает судьбу {loser}: {decision}",
+  "rescue": "{who} без сознания; спасение: {loc}",
+  "maimed": "{who}: рана зажила плохо ({kind})",
+  "died_of_wounds": "{who} умирает от ран"
  },
  "combat": {
   "_doc": "Реплики боя: варианты 1..N, выбор по seed боя (COMBAT_PRESENTATION §5).",
@@ -64,5 +68,23 @@
     "2": "Пронесло."
    }
   }
+ },
+ "rescue": {
+  "family": "семья вытащила",
+  "hunters": "нашли охотники",
+  "travellers": "подобрали путники",
+  "settlement": "принесли в поселение",
+  "healer": "выходил лекарь"
+ },
+ "finish": {
+  "spare": "пощадить",
+  "kill": "добить",
+  "bind": "связать"
+ },
+ "injury": {
+  "scarred_face": "шрам на лице",
+  "old_wound": "старая рана",
+  "crippled_arm": "покалеченная рука",
+  "limp": "хромота"
  }
 }

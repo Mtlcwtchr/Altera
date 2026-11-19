@@ -1,0 +1,65 @@
+{
+  "_doc": "Решение победителя над поверженным (COMBAT_DESIGN §7, CORE_SPEC §6): пощадить, добить или связать. Решает мотивация победителя: базовая оценка + слагаемые (черты, отношения к поверженному, смертельность акта, свидетели, родство, права, приговор), плюс детерминированный шум; берётся вариант с наибольшей оценкой. Игрок-победитель с фокусом (controller.combatFinish) выбирает сам. Варианты с player_loser=false не применяются к игроку: вместо смерти его спасают (rescue.json).",
+  "loser_states": ["ko", "yield"],
+  "noise": 0.15,
+  "terms_doc": "add: прибавка, если условие выполнено; mul: множитель к значению (отношение победителя к поверженному по оси). Условия: trait (у победителя), rel (ось отношения), act_lethal (true/false), loser/winner (person|animal), winner_predator, kin (одна семья или династия), loser_state (ko|yield), witnesses_each (за каждого свидетеля, не ниже cap), right (право победителя), loser_verdict (на поверженном есть приговор)",
+  "options": [
+    {
+      "id": "spare",
+      "base": 0.5,
+      "terms": [
+        { "rel": "affinity", "mul": 1.0 },
+        { "rel": "respect", "mul": 0.5 },
+        { "kin": true, "add": 1.0 },
+        { "loser_state": "yield", "add": 0.3 },
+        { "trait": "generous", "add": 0.3 },
+        { "trait": "honest", "add": 0.2 },
+        { "trait": "pious", "add": 0.2 }
+      ],
+      "eff": ["rel_back:respect+0.05", "rel_back:fear+0.05"],
+      "memory": { "winner": "spared_foe", "loser": "was_spared" },
+      "valence": { "winner": 0.1, "loser": 0.2 },
+      "ko_down_hours": [1, 4]
+    },
+    {
+      "id": "kill",
+      "base": -0.6,
+      "terms": [
+        { "act_lethal": true, "add": 0.6 },
+        { "act_lethal": false, "add": -2.0 },
+        { "rel": "enmity", "mul": 1.5 },
+        { "rel": "affinity", "mul": -1.5 },
+        { "trait": "unscrupulous", "add": 0.4 },
+        { "trait": "pious", "add": -0.3 },
+        { "witnesses_each": -0.15, "cap": -0.6 },
+        { "kin": true, "add": -2.0 },
+        { "loser_state": "yield", "add": -0.4 },
+        { "loser": "animal", "add": 1.5 },
+        { "winner_predator": true, "add": 2.5 }
+      ],
+      "eff": [],
+      "kills": true,
+      "death_cause": "combat",
+      "death_cause_animal_winner": "beast",
+      "player_loser": false,
+      "memory": { "winner": "killed_foe" },
+      "valence": { "winner": 0.0 }
+    },
+    {
+      "id": "bind",
+      "base": -0.2,
+      "terms": [
+        { "right": "arrest", "add": 0.8 },
+        { "loser_verdict": true, "add": 0.8 },
+        { "rel": "enmity", "mul": 0.5 },
+        { "trait": "unscrupulous", "add": 0.2 },
+        { "loser": "animal", "add": -5.0 }
+      ],
+      "eff": ["status_pair:captor_captive", "rel_back:fear+0.1", "rel_back:enmity+0.1"],
+      "person_winner": true,
+      "memory": { "winner": "bound_foe", "loser": "was_bound" },
+      "valence": { "winner": 0.1, "loser": -0.6 }
+    }
+  ],
+  "chronicle": "chronicle.combat_finish"
+}

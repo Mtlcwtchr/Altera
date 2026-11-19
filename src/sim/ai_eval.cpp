@@ -582,7 +582,9 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
                        WorldObject* target, const std::vector<EntityId>& wit) {
     const CombatBridge& b = *combatBridge(w.content());
     auto hurt = [&](Character& who, double mult, bool dead, const std::vector<WoundHit>& hits, double blood) {
-        if (dead && d.combat.lethal) return kill(w, who, "combat");
+        // A player is never killed in a fight: defeat means an off-screen rescue
+        // (rescue.json); real death comes only from special acts (execution).
+        if (dead && d.combat.lethal && !who.controller.isPlayer()) return kill(w, who, "combat");
         const double before = who.body.health;
         who.body.health = std::max(b.healthMinAfter, who.body.health * mult);
         if (dead) who.body.health = b.healthMinAfter; // a non-lethal fight leaves the body down, not dead
@@ -606,7 +608,16 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
     remember(t, c.id, mirrorOutcome(cr.outcome, cr.targetState));
     w.chronicle("combat", {c.id, t.id}, b.chronicle,
                 {{"actor", c.id}, {"target", t.id}, {"act", d.id}, {"outcome", cr.outcome}, {"rounds", cr.rounds},
-                 {"actor_state", cr.actorState}, {"target_state", cr.targetState}});
+                 {"actor_state", cr.actorState}, {"target_state", cr.targetState}, {"mode", cr.mode}});
+    // The winner decides over a knocked-out or yielding loser (aftermath.json);
+    // a body that survived a non-lethal "death" is down, i.e. knocked out.
+    if (cr.outcome == "win" || cr.outcome == "lose") {
+        Character& winner = cr.outcome == "win" ? c : t;
+        Character& loser = cr.outcome == "win" ? t : c;
+        std::string state = cr.outcome == "win" ? cr.targetState : cr.actorState;
+        if (state == "dead" && loser.body.alive) state = "ko";
+        finishFight(w, winner, loser, d, state, wit);
+    }
 }
 
 } // namespace

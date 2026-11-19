@@ -1,5 +1,27 @@
 {
  "chronicle": {
-  "combat": "{actor} and {target}: fight ({act}), outcome for the attacker: {outcome}"
+  "combat": "{actor} and {target}: fight ({act}), outcome for the attacker: {outcome}",
+  "combat_finish": "{winner} decides the fate of {loser}: {decision}",
+  "rescue": "{who} lost consciousness; rescued: {loc}",
+  "maimed": "{who}: a wound healed badly ({kind})",
+  "died_of_wounds": "{who} dies of wounds"
+ },
+ "rescue": {
+  "family": "the family pulled them out",
+  "hunters": "found by hunters",
+  "travellers": "picked up by travellers",
+  "settlement": "carried to the settlement",
+  "healer": "nursed by a healer"
+ },
+ "finish": {
+  "spare": "spare",
+  "kill": "finish off",
+  "bind": "bind"
+ },
+ "injury": {
+  "scarred_face": "scarred face",
+  "old_wound": "old wound",
+  "crippled_arm": "crippled arm",
+  "limp": "limp"
  }
 }
