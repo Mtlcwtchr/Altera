@@ -9,5 +9,12 @@
   "health_min_after": 0.05,
   "memory": { "win": "won_fight", "lose": "lost_fight", "draw": "fought_draw", "flee": "fled_fight" },
   "memory_valence": { "win": 0.2, "lose": -0.5, "draw": -0.1, "flee": -0.3 },
-  "chronicle": "chronicle.combat"
+  "chronicle": "chronicle.combat",
+  "lod": {
+    "_doc": "LOD боя (COMBAT_CORE_SPEC §7): бои дальше full_radius_m от любого игрока, без игрока и без старых ран решаются таблицей исходов того же ядра (samples боёв на клетку, навык по сетке skill_step с интерполяцией). Иначе полный цикл раундов.",
+    "enabled": true,
+    "full_radius_m": 300,
+    "samples": 800,
+    "skill_step": 10
+  }
 }

@@ -13,6 +13,7 @@
 #include <vector>
 
 #include "sim/combat/combat.hpp"
+#include "sim/combat/combat_lod.hpp"
 #include "sim/content.hpp"
 #include "sim/aftermath.hpp"
 #include "sim/wounds.hpp"
@@ -35,6 +36,11 @@ struct CombatBridge {
     RecoveryRules recovery; // recovery.json: wounds in the profile, healing
     AftermathRules aftermath; // aftermath.json: the winner's decision
     RescueRules rescue;       // rescue.json: a defeated player is rescued, not killed
+    // LOD (CORE_SPEC §7): fights far from every player are drawn from a table
+    // of outcomes of the same core instead of the round loop.
+    bool lodEnabled = false;
+    double lodFullRadiusM = 300.0;
+    std::shared_ptr<combat::DuelTable> lod;
 };
 
 // Loaded once per content directory; nullptr when there is no content/combat.
@@ -57,8 +63,14 @@ struct CombatResolution {
 
 combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const std::string& skillKey);
 
+// Full round loop or the statistical table (LOD): full when events are asked
+// for, a player fights or stands within lod.full_radius_m, or a side carries
+// old wounds; the table otherwise.
+bool combatNeedsFullMode(const World& w, const CombatBridge& b, const Character& actor, const Character& target);
+
 // Plays the fight; events go to `events` when given (client, tests).
+// mode: "" = by combatNeedsFullMode, "full" or "stat" to force one.
 CombatResolution resolveCombat(const World& w, const Character& actor, const InteractionDef& d, const Character& target,
-                               combat::EventStream* events = nullptr);
+                               combat::EventStream* events = nullptr, const std::string& mode = "");
 
 } // namespace altera::sim

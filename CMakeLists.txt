@@ -330,7 +330,8 @@ target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_
 add_library(altera_combat STATIC
         src/sim/combat/combat_data.cpp
         src/sim/combat/combat.cpp
-        src/sim/combat/combat_anim.cpp)
+        src/sim/combat/combat_anim.cpp
+        src/sim/combat/combat_lod.cpp)
 target_include_directories(altera_combat PUBLIC src)
 target_link_libraries(altera_combat PUBLIC nlohmann_json PRIVATE asr_warnings)
 

@@ -12,6 +12,7 @@
 #include "framework.hpp"
 #include "sim/combat/combat.hpp"
 #include "sim/combat/combat_anim.hpp"
+#include "sim/combat/combat_lod.hpp"
 
 using namespace altera::combat;
 
@@ -183,4 +184,60 @@ TEST(altera_combat_events_bind_to_ual_clips) {
     for (const auto& k : bind.unboundEvents()) // only the gaps animations.json names as null
         CHECK(k == "get_up" || k == "shoot" || k == "projectile_miss");
     for (const auto& k : bind.missingClips()) std::cerr << "    no UAL clip for '" << k << "'\n";
+}
+
+// COMBAT_CORE_SPEC §7: the statistical (LOD) mode wins as often as the full
+// round loop, within 5 pp, on a set of match-ups (skills off the grid too).
+TEST(altera_combat_lod_matches_full_mode) {
+    struct Case {
+        FighterSpec a, b;
+    };
+    auto spec = [](const char* w, double skill, std::vector<std::string> armor = {}, const char* shield = "") {
+        FighterSpec s;
+        s.weapon = w;
+        s.skill = skill;
+        s.armor = std::move(armor);
+        s.shield = shield;
+        return s;
+    };
+    const std::vector<Case> cases = {
+        {spec("sword", 50), spec("sword", 50)},
+        {spec("axe", 50), spec("sword", 50)},
+        {spec("spear", 63), spec("dagger", 41)},
+        {spec("mace", 37), spec("sword", 58, {"gambeson"})},
+        {spec("sword", 72, {}, "round"), spec("axe", 55)},
+        {spec("fists", 30), spec("dagger", 30)},
+        {spec("fangs", 40), spec("spear", 25)},
+        {spec("dagger", 66), spec("sword", 47, {"gambeson", "mail"})},
+    };
+    const int n = 1500;
+    DuelTable table(data(), LodConfig{800, 10.0});
+    double worst = 0.0;
+    for (std::size_t k = 0; k < cases.size(); ++k) {
+        const Case& c = cases[k];
+        Engine e(data(), 1000 + k);
+        int fullWin = 0, statWin = 0;
+        for (int i = 0; i < n; ++i) {
+            Fighter fa = e.make(c.a, 0, 0), fb = e.make(c.b, 1, 1);
+            e.fight(fa, fb);
+            fullWin += fa.fighting() && !fb.fighting();
+        }
+        Rng rng(5000 + k);
+        for (int i = 0; i < n; ++i) {
+            const DuelSample& s = table.resolve(c.a, c.b, rng);
+            statWin += s.a == State::Fight && s.b != State::Fight;
+        }
+        const double diff = 100.0 * std::abs(fullWin - statWin) / n;
+        worst = std::max(worst, diff);
+        std::cout << "  lod " << c.a.weapon << c.a.skill << " vs " << c.b.weapon << c.b.skill << ": full "
+                  << 100.0 * fullWin / n << "% stat " << 100.0 * statWin / n << "%\n";
+        CHECK(diff <= 5.0);
+    }
+    std::cout << "  lod worst diff " << worst << " pp, cells " << table.cells() << "\n";
+    // Same rng, same result: the table does not depend on what was asked before.
+    DuelTable fresh(data(), LodConfig{800, 10.0});
+    Rng r1(9), r2(9);
+    const DuelSample& s1 = table.resolve(cases[2].a, cases[2].b, r1);
+    const DuelSample& s2 = fresh.resolve(cases[2].a, cases[2].b, r2);
+    CHECK(s1.a == s2.a && s1.b == s2.b && s1.rounds == s2.rounds && s1.woundsA == s2.woundsA);
 }

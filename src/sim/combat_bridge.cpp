@@ -41,6 +41,16 @@ const CombatBridge* combatBridge(const Content& c) {
         b->memory = j.value("memory", std::map<std::string, std::string>{});
         b->memoryValence = j.value("memory_valence", std::map<std::string, double>{});
         b->chronicle = j.value("chronicle", b->chronicle);
+        if (j.contains("lod")) {
+            const Json& l = j["lod"];
+            b->lodEnabled = l.value("enabled", false);
+            b->lodFullRadiusM = l.value("full_radius_m", b->lodFullRadiusM);
+            combat::LodConfig lc;
+            lc.samples = l.value("samples", lc.samples);
+            lc.skillStep = l.value("skill_step", lc.skillStep);
+            if (lc.samples < 1) err.push_back("sim_bridge.lod.samples: at least 1");
+            b->lod = std::make_shared<combat::DuelTable>(*b->data, lc);
+        }
         for (const auto& [item, w] : b->weaponOfItem) {
             if (!d.hasWeapon(w)) err.push_back("sim_bridge.weapon_of_item." + item + ": unknown weapon '" + w + "'");
             if (!c.items.count(item)) err.push_back("sim_bridge.weapon_of_item: unknown item '" + item + "'");
@@ -120,8 +130,21 @@ double healthLeft(const combat::CombatData& d, const combat::Fighter& f, const s
 
 } // namespace
 
+bool combatNeedsFullMode(const World& w, const CombatBridge& b, const Character& actor, const Character& target) {
+    if (!b.lodEnabled || !b.lod) return true;
+    for (const Character* c : {&actor, &target}) {
+        if (c->controller.isPlayer() || !c->wounds.empty() || !c->injuries.empty()) return true;
+        if (c->body.blood < b.data->bloodMax) return true;
+    }
+    for (const auto& [id, c] : w.characters())
+        if (c.body.alive && c.controller.isPlayer() &&
+            (dist(c.pos, actor.pos) <= b.lodFullRadiusM || dist(c.pos, target.pos) <= b.lodFullRadiusM))
+            return true;
+    return false;
+}
+
 CombatResolution resolveCombat(const World& w, const Character& actor, const InteractionDef& d, const Character& target,
-                               combat::EventStream* events) {
+                               combat::EventStream* events, const std::string& mode) {
     CombatResolution r;
     const CombatBridge* b = combatBridge(w.content());
     if (!b) return r;
@@ -134,7 +157,18 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     carryWounds(cd, b->recovery, target, t);
     const std::vector<double> hpA = a.hp, hpT = t.hp;
     r.ran = true;
-    r.rounds = e.fight(a, t);
+    const bool full = mode == "full" || (mode != "stat" && (events || combatNeedsFullMode(w, *b, actor, target)));
+    if (full || !b->lod) {
+        r.rounds = e.fight(a, t);
+    } else {
+        // Statistical resolution: a sample of the same core's results for this match-up.
+        combat::Rng rng(combat::combatSeed(w.seed(), pair ^ 0x5747u, static_cast<std::uint64_t>(w.now())));
+        const combat::DuelSample& s = b->lod->resolve(fighterOf(*b, actor, d.combat.attackSkill),
+                                                      fighterOf(*b, target, d.combat.defenseSkill), rng);
+        b->lod->apply(s, a, t);
+        r.rounds = s.rounds;
+        r.mode = "stat";
+    }
     r.actorState = combat::stateId(a.state);
     r.targetState = combat::stateId(t.state);
     if (a.fighting() && !t.fighting()) r.outcome = "win";

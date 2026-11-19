@@ -373,3 +373,29 @@ TEST(altera_sim_combat_player_is_rescued_not_killed) {
         w.step();
     }
 }
+
+TEST(altera_sim_combat_lod_mode_by_distance_to_player) {
+    World w = makeTestWorld(real(), loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    auto ps = people(w);
+    Character& a = *ps[0];
+    Character& b = *ps[1];
+    const CombatBridge& br = *combatBridge(real());
+    for (Character* c : ps) {
+        c->wounds.clear();
+        c->body.blood = br.data->bloodMax;
+        c->controller.kind = Controller::Kind::Ai;
+    }
+    const InteractionDef& duel = *real().interaction("duel");
+    CHECK(!combatNeedsFullMode(w, br, a, b));
+    CHECK_EQ(resolveCombat(w, a, duel, b).mode, std::string("stat"));
+    Character& p = *ps[2];
+    p.controller.kind = Controller::Kind::Player;
+    p.pos = a.pos;
+    CHECK(combatNeedsFullMode(w, br, a, b)); // the player is watching
+    CHECK_EQ(resolveCombat(w, a, duel, b).mode, std::string("full"));
+    p.pos = Vec2{a.pos.x + 10.0 * br.lodFullRadiusM, a.pos.y};
+    b.pos = a.pos;
+    CHECK(!combatNeedsFullMode(w, br, a, b));
+    b.wounds.push_back(Wound{"arm_l", "cut", 5.0, 0.05, 6.0, 6.0, "none", false, true, false, false, w.now(), 0});
+    CHECK(combatNeedsFullMode(w, br, a, b)); // old wounds need the full loop
+}
