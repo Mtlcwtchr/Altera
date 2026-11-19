@@ -183,6 +183,15 @@ public:
     // screen while the passes that would draw one are still being built.
     bool present(SDL_Surface* picture);
     const std::string& error() const { return error_; }
+    // Told of every graphics shader as it is loaded: its name, and whether it
+    // has to be compiled (true) or came from the cache. For a loading screen.
+    void onShaderProgress(std::function<void(const std::string& shader, bool compiling)> f) {
+        shaderProgress_ = std::move(f);
+    }
+    // Called over and over while a shader compiles on a worker thread (the
+    // compile itself never blocks this thread when one is set): pump the
+    // window's events, draw a loading screen. Never touches a pass in flight.
+    void onWait(std::function<void()> f) { waitPump_ = std::move(f); }
     void fail(std::string why) { error_ = std::move(why); }
 
     // The format the offscreen target is drawn in. Pipelines have to agree with
@@ -345,6 +354,14 @@ private:
                             SDL_ShaderCross_ShaderStage stage, std::size_t& size);
     std::uint64_t shaderKey(const std::filesystem::path& file, const char* entry,
                             SDL_ShaderCross_ShaderStage stage);
+    // Direct3D 12: the DXIL of a shader, from .cache/shaders or compiled (and kept) now.
+    std::vector<std::uint8_t> cachedDxil(const std::filesystem::path& file, const char* entry,
+                                         SDL_ShaderCross_ShaderStage stage,
+                                         const std::function<void*(std::size_t&)>& compile);
+    // Runs a compile; with a wait pump set, on a worker while the pump runs here.
+    void* pumped(const std::function<void*(std::size_t&)>& work, std::size_t& size);
+    std::function<void()> waitPump_;
+    std::function<void(const std::string& shader, bool compiling)> shaderProgress_;
 
     // Compiled SPIR-V, kept: compiling HLSL was ten seconds of a frozen
     // window every time a world was opened, because a new world rebuilds the

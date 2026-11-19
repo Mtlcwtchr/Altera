@@ -9,6 +9,7 @@
 #include <SDL3_shadercross/SDL_shadercross.h>
 
 #include <algorithm>
+#include <chrono>
 #include <functional>
 #include <cstdio>
 #include <cstdlib>
@@ -329,7 +330,8 @@ void* Device::compileSpirv(const std::filesystem::path& file, const char* entry,
             return sdlCopy(kept, size);
         }
     }
-    void* spirv = compileFromSource(file, entry, stage, size);
+    if (shaderProgress_) shaderProgress_(file.filename().string() + ":" + entry, true);
+    void* spirv = pumped([&](std::size_t& n) { return compileFromSource(file, entry, stage, n); }, size);
     if (!spirv) return nullptr;
     std::vector<std::uint8_t> bytes(static_cast<const std::uint8_t*>(spirv), static_cast<const std::uint8_t*>(spirv) + size);
     if (!cached.empty()) {
@@ -403,14 +405,97 @@ SDL_GPUShader* Device::compile(const std::filesystem::path& file, const char* en
                      file.filename().string().c_str(), entry, metadata->resource_info.num_samplers,
                      metadata->resource_info.num_storage_textures, metadata->resource_info.num_storage_buffers,
                      metadata->resource_info.num_uniform_buffers);
-    SDL_GPUShader* shader =
-            metadata ? SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(device_, &info,
-                                                                      &metadata->resource_info, 0)
-                     : nullptr;
+    SDL_GPUShader* shader = nullptr;
+    const SDL_GPUShaderFormat formats = SDL_GetGPUShaderFormats(device_);
+    if (metadata && !(formats & SDL_GPU_SHADERFORMAT_SPIRV) && (formats & SDL_GPU_SHADERFORMAT_DXIL)) {
+        // Direct3D 12: SPIR-V -> HLSL -> DXIL is the slow half of a shader
+        // (whole minutes for the big ones, on every start), so the DXIL is
+        // kept beside the SPIR-V under the same key.
+        std::vector<std::uint8_t> dxil = cachedDxil(file, entry, stage, [&info](std::size_t& n) {
+            return SDL_ShaderCross_CompileDXILFromSPIRV(&info, &n);
+        });
+        if (!dxil.empty()) {
+            SDL_GPUShaderCreateInfo create{};
+            create.code = dxil.data();
+            create.code_size = dxil.size();
+            create.entrypoint = entry;
+            create.format = SDL_GPU_SHADERFORMAT_DXIL;
+            create.stage = fragment ? SDL_GPU_SHADERSTAGE_FRAGMENT : SDL_GPU_SHADERSTAGE_VERTEX;
+            create.num_samplers = metadata->resource_info.num_samplers;
+            create.num_storage_textures = metadata->resource_info.num_storage_textures;
+            create.num_storage_buffers = metadata->resource_info.num_storage_buffers;
+            create.num_uniform_buffers = metadata->resource_info.num_uniform_buffers;
+            shader = SDL_CreateGPUShader(device_, &create);
+        }
+    } else if (metadata) {
+        shader = SDL_ShaderCross_CompileGraphicsShaderFromSPIRV(device_, &info, &metadata->resource_info, 0);
+    }
     if (!shader) error_ = std::string("shader ") + entry + " would not load: " + SDL_GetError();
     SDL_free(metadata);
     SDL_free(spirv);
     return shader;
+}
+
+std::vector<std::uint8_t> Device::cachedDxil(const std::filesystem::path& file, const char* entry,
+                                             SDL_ShaderCross_ShaderStage stage,
+                                             const std::function<void*(std::size_t&)>& compile) {
+    const std::uint64_t key = shaderKey(file, entry, stage);
+    if (shaderCache_.empty() && !std::getenv("ASR_SHADER_NO_CACHE"))
+        shaderCache_ = std::filesystem::absolute(assets_).lexically_normal().parent_path().parent_path() / ".cache" / "shaders";
+    char name[40];
+    std::snprintf(name, sizeof name, "%016llx.dxil", static_cast<unsigned long long>(key));
+    const std::filesystem::path cached = shaderCache_.empty() ? std::filesystem::path{} : shaderCache_ / name;
+    const std::string label = file.filename().string() + ":" + entry;
+    std::vector<std::uint8_t> bytes;
+    if (!cached.empty()) {
+        std::ifstream in(cached, std::ios::binary);
+        bytes.assign(std::istreambuf_iterator<char>(in), {});
+        // A DXIL container starts with "DXBC".
+        if (bytes.size() >= 4 && bytes[0] == 'D' && bytes[1] == 'X' && bytes[2] == 'B' && bytes[3] == 'C') {
+            if (shaderProgress_) shaderProgress_(label, false);
+            return bytes;
+        }
+        bytes.clear();
+    }
+    if (shaderProgress_) shaderProgress_(label, true);
+    const auto start = std::chrono::steady_clock::now();
+    std::size_t size = 0;
+    void* code = pumped(compile, size);
+    if (!code || !size) return bytes;
+    bytes.assign(static_cast<const std::uint8_t*>(code), static_cast<const std::uint8_t*>(code) + size);
+    SDL_free(code);
+    const double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - start).count();
+    if (ms > 500) std::printf("shader %s -> DXIL in %.1f s\n", label.c_str(), ms / 1000.0);
+    if (!cached.empty()) {
+        std::error_code ec;
+        std::filesystem::create_directories(shaderCache_, ec);
+        const auto partial = cached.string() + ".partial";
+        {
+            std::ofstream out(partial, std::ios::binary | std::ios::trunc);
+            out.write(reinterpret_cast<const char*>(bytes.data()), std::streamsize(bytes.size()));
+        }
+        std::filesystem::rename(partial, cached, ec);
+        if (ec) std::filesystem::remove(partial, ec);
+    }
+    return bytes;
+}
+
+void* Device::pumped(const std::function<void*(std::size_t&)>& work, std::size_t& size) {
+    if (!waitPump_) return work(size);
+    // The compiler on a thread of its own; this thread keeps the window alive
+    // (and a loading screen drawn) until it is done.
+    std::atomic<bool> done{false};
+    void* out = nullptr;
+    std::thread worker([&] {
+        out = work(size);
+        done = true;
+    });
+    while (!done) {
+        waitPump_();
+        SDL_Delay(15);
+    }
+    worker.join();
+    return out;
 }
 
 ComputePipeline Device::makeCompute(const ComputeWanted& wanted) {
@@ -448,8 +533,11 @@ ComputePipeline Device::makeCompute(const ComputeWanted& wanted) {
         SDL_ShaderCross_HLSL_Info hlsl{};
         hlsl.source = source.c_str(); hlsl.entrypoint = wanted.entry;
         hlsl.include_dir = includes.c_str(); hlsl.shader_stage = SDL_SHADERCROSS_SHADERSTAGE_COMPUTE;
-        std::size_t dxilSize = 0;
-        void* dxil = SDL_ShaderCross_CompileDXILFromHLSL(&hlsl, &dxilSize);
+        std::vector<std::uint8_t> kept = cachedDxil(file, wanted.entry, SDL_SHADERCROSS_SHADERSTAGE_COMPUTE,
+                                                    [&hlsl](std::size_t& n) { return SDL_ShaderCross_CompileDXILFromHLSL(&hlsl, &n); });
+        std::size_t dxilSize = kept.size();
+        void* dxil = dxilSize ? SDL_malloc(dxilSize) : nullptr;
+        if (dxil) std::memcpy(dxil, kept.data(), dxilSize);
         if (dxil && dxilSize) {
             SDL_GPUComputePipelineCreateInfo create{};
             create.code = static_cast<const Uint8*>(dxil); create.code_size = dxilSize;

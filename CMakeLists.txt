@@ -602,10 +602,27 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(altera_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
 
     # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
+    # altera_game_view - the life-sim drawn into the world view: its people,
+    # beasts and buildings as a scene layer, the HUD, the player's orders
+    # (src/game_view, doc engine_merge/MERGE_PLAN.md stage 4-6 fast path).
+    add_library(altera_game_view STATIC src/game_view/sim_game.cpp src/game_view/loading_screen.cpp)
+    target_include_directories(altera_game_view PUBLIC src)
+    target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui PRIVATE asr_warnings)
+
     add_executable(terrain_lab tools/terrain_lab/main.cpp)
-    target_link_libraries(terrain_lab PRIVATE altera_terrain_core asr_warnings)
-    target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS)
+    target_link_libraries(terrain_lab PRIVATE altera_terrain_core altera_game_view asr_warnings)
+    target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS ALTERA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     altera_configure_dlss(altera_terrain_core terrain_lab)
+
+    # altera_game - the game on the lab's world view: the life-sim with the
+    # player's HUD from the start (terrain_lab --game, under its own name).
+    add_executable(altera_game tools/terrain_lab/main.cpp)
+    target_link_libraries(altera_game PRIVATE altera_terrain_core altera_game_view asr_warnings)
+    target_compile_definitions(altera_game PRIVATE _CRT_SECURE_NO_WARNINGS ALTERA_GAME_DEFAULT=1
+            ALTERA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    if(ASR_DLSS_AVAILABLE)
+        altera_copy_dlss_runtime(altera_game)
+    endif()
     if(ASR_BUILD_TESTS AND ASR_DLSS_AVAILABLE)
         add_executable(asr_dlss_gpu_check tests/test_dlss_gpu.cpp)
         target_link_libraries(asr_dlss_gpu_check PRIVATE altera_terrain_core asr_warnings)

@@ -46,6 +46,8 @@
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
 #include "terrain_core/renderer.hpp"
+#include "game_view/game_layer.hpp"
+#include "game_view/loading_screen.hpp"
 
 #include <SDL3/SDL.h>
 
@@ -60,6 +62,7 @@
 #include <cstring>
 #include <filesystem>
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -150,6 +153,9 @@ struct Options {
     int debugLevels = 0;
     double startX = -1, startY = -1;    // fractions of the world; <0: auto (land near centre)
     bool map = false;                   // start in the strategic map view
+    bool game = false;                  // the life-sim and its HUD on this world (altera_game)
+    std::uint64_t gameSeed = 7;         // the sim's world seed
+    std::string gameSeason;             // spring | summer | autumn | winter
     bool levelsGiven = false;
     bool seaGiven = false;
 };
@@ -208,6 +214,9 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--debug-levels") o.debugLevels = 1;
         else if (a == "--debug") o.debugLevels = std::atoi(next());
         else if (a == "--map") o.map = true;
+        else if (a == "--game") o.game = true;
+        else if (a == "--sim-seed") o.gameSeed = std::strtoull(next(), nullptr, 10);
+        else if (a == "--season") o.gameSeason = next();
         else if (a == "--no-ground") o.groundMaterials = false;
         else if (a == "--no-surface") o.surfaceMaps = false;
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
@@ -385,6 +394,9 @@ struct Lab {
     double ground = 0;      // last known height under the eye
     bool groundKnown = false;
     bool eroded = false;      // --erode ran; nothing else to do
+    altera::game::GameLayer* game = nullptr;   // --game: the life-sim drawn into this view
+    altera::game::LoadingScreen* loading = nullptr;   // a window: what open() is doing, while it does it
+    void step(const char* key, float fraction) { if (loading) loading->stage(key, fraction); }
 
     explicit Lab(Options& o) : options(o) {}
 
@@ -401,6 +413,8 @@ struct Lab {
         if (!ok && driver) ok = window ? device.open(window, assets)
                                       : device.openHeadless(options.width, options.height, assets);
         if (!ok) { std::fprintf(stderr, "device: %s\n", device.error().c_str()); return false; }
+        if (loading && window) loading->attach(device, window);
+        step("heightmap", 0.02f);
         dlss.open(device);
         std::printf("%s\n", dlss.status().c_str());
         targets.sampledDepth(true);
@@ -478,7 +492,9 @@ struct Lab {
                                  image ? "needs an RGB picture" : why.c_str());
                 }
             }
-            Hydrology hydro = buildHydrology(macro, options.params, options.hydrology);
+            step("water", 0.10f);
+            Hydrology hydro = loading ? loading->run([&] { return buildHydrology(macro, options.params, options.hydrology); })
+                                      : buildHydrology(macro, options.params, options.hydrology);
             options.hydrology.rules = nullptr;
             options.hydrology.skeleton = nullptr;
             std::printf("framework: %u main lakes, %u main river cells (%s)\n", hydro.mainLakeCount, hydro.mainRiverCells,
@@ -567,6 +583,7 @@ struct Lab {
         std::printf("detail from %.0f m wavelength down\n", options.params.topWavelength());
 
         const auto gpuStart = Clock::now();
+        step("biomes", 0.25f);
         const auto biomeStart = Clock::now();
         const fs::path groundFile = options.ground.empty()
                 ? assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "biomes.json"
@@ -607,8 +624,10 @@ struct Lab {
                 }
             }
         }
+        step("terrain", 0.30f);
         if (!renderer.open(device, options.params, macro, table, biomes)) { std::fprintf(stderr, "renderer: %s\n", device.error().c_str()); return false; }
         {
+            step("plants", 0.45f);
             const auto foliageStart = Clock::now();
             const fs::path foliageFile = assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "foliage.json";
             foliageReady = foliage.open(device, options.params, foliageFile, renderer.ground(), &why);
@@ -631,11 +650,13 @@ struct Lab {
                     waterMap.size = 1;
                     waterMap.texels = {WaterMap::kNoWater, 0.0f, 0.0f, 0.0f};
                 }
+                step("water_surface", 0.60f);
                 waterReady = water.open(device, options.params, waterMap, &why);
                 if (!waterReady) std::fprintf(stderr, "water off: %s\n", why.c_str());
                 waterMap.texels.clear();
                 waterMap.texels.shrink_to_fit();
             }
+            step("sky", 0.68f);
             lightReady = shadows.open(device) && sky.open(device) && clouds.open(device);
             if (!lightReady) std::fprintf(stderr, "light off: %s\n", device.error().c_str());
             if (!foliageReady) std::fprintf(stderr, "foliage off: %s\n", why.c_str());
@@ -667,6 +688,7 @@ struct Lab {
             if (features.empty() && hm.size() > tail.size() && hm.compare(hm.size() - tail.size(), tail.size(), tail) == 0)
                 features = hm.substr(0, hm.size() - tail.size()) + "_features.json";
             if (!features.empty() && fs::exists(features)) {
+                step("props", 0.80f);
                 const auto propsStart = Clock::now();
                 const fs::path root = assets.parent_path().parent_path();
                 const fs::path groundFile = options.ground.empty()
@@ -884,6 +906,10 @@ struct Lab {
             s.propsTriangles = props.trianglesDrawn();
             s.propsCullMs = props.cullMs();
         }
+        if (game) {
+            const double eye[3] = {camera.eye.x, camera.eye.y, camera.eye.z};
+            game->prepare(commands, eye, view.viewProjection, targets.width(), targets.height());
+        }
         if (shadowsOn) {
             // The sun's shadow atlas: the ground and the trees, three cascades.
             auto* shadowPass = shadows.begin(commands);
@@ -947,6 +973,7 @@ struct Lab {
         }
         if (foliageReady && options.foliage) foliage.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
         if (grassReady && options.grass) grass.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
+        if (game) game->drawOpaque(commands, pass, light);
         if (waterReady && options.water)
             water.draw(commands, pass, renderer, view, light, shadows.texture(), shadows.sampler(), camera.eye, float(seconds));
         SDL_EndGPURenderPass(pass);
@@ -972,6 +999,7 @@ struct Lab {
         } else if (postReady) post.apply(commands, targets, options.post, float(seconds), cloudsDrawn ? clouds.texture() : nullptr);
         // The PSX look last, at display resolution, over whatever style is on.
         if (psxReady) psx.apply(commands, targets, psxSettings, float(seconds));
+        if (game) game->drawOverlay(commands, targets.resolved(), targets.width(), targets.height());
         ++frames;
         probe.record(commands, renderer.clipmap(), p, camera.eye);
         if (swapchain) {
@@ -1182,7 +1210,54 @@ struct MapCamera {
     }
 };
 
+// The game (--game): the sim's own camera and HUD; the view keeps only its
+// look keys (X PSX, F5 style, F7 shadows, F8 clouds, F12 DLSS).
+int runGame(Lab& lab, SDL_Window* window) {
+    auto last = Clock::now(), titleAt = Clock::now();
+    double frameMs = 0;
+    int frames = 0;
+    for (;;) {
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            if (!lab.game->event(e)) return 0;
+            if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) {
+                if (e.key.key == SDLK_X) {
+                    const bool on = !lab.psxSettings.enabled;
+                    if (on) lab.loadPsx();
+                    lab.psxSettings.enabled = on;
+                }
+                if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
+                if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;
+                if (e.key.key == SDLK_F8) lab.options.light.clouds = !lab.options.light.clouds;
+                if (e.key.key == SDLK_F12) {
+                    lab.options.dlss = !lab.options.dlss;
+                    lab.dlss.resetHistory();
+                }
+            }
+        }
+        const double dt = std::min(0.1, std::chrono::duration<double>(Clock::now() - last).count());
+        last = Clock::now();
+        altera::game::CameraRig rig;
+        rig.eye[0] = lab.camera.eye.x; rig.eye[1] = lab.camera.eye.y; rig.eye[2] = lab.camera.eye.z;
+        rig.yaw = lab.camera.yaw; rig.pitch = lab.camera.pitch; rig.fovY = lab.camera.fovY;
+        lab.game->update(dt, rig, lab.options.light.timeOfDay);
+        lab.camera.eye.x = rig.eye[0]; lab.camera.eye.y = rig.eye[1]; lab.camera.eye.z = rig.eye[2];
+        lab.camera.yaw = rig.yaw; lab.camera.pitch = rig.pitch;
+        frameMs += lab.frame(window, -1.0).frameMs;
+        ++frames;
+        if (msSince(titleAt) > 1000) {
+            char title[96];
+            std::snprintf(title, sizeof title, "Altera | %.0f fps", 1000.0 * frames / std::max(1.0, frameMs));
+            SDL_SetWindowTitle(window, title);
+            frameMs = 0;
+            frames = 0;
+            titleAt = Clock::now();
+        }
+    }
+}
+
 int runInteractive(Lab& lab, SDL_Window* window) {
+    if (lab.game) return runGame(lab, window);
     const Params& p = lab.options.params;
     double sx = lab.options.startX, sy = lab.options.startY;
     if (sx < 0 || sy < 0) lab.findLand(sx, sy);
@@ -1377,6 +1452,26 @@ int runInteractive(Lab& lab, SDL_Window* window) {
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     Options options;
+#ifdef ALTERA_GAME_DEFAULT
+    // altera_game: the game on the imported world unless told otherwise, run
+    // from the repository whatever the working folder.
+    options.game = true;
+    std::vector<char*> args(argv, argv + argc);
+    bool worldGiven = false;
+    for (int i = 1; i < argc; ++i) worldGiven = worldGiven || !std::strcmp(argv[i], "--heightmap");
+    static const char* kWorld[] = {"--heightmap", "terrain_lab_out/world_final.r16", "--world-km", "131.072",
+                                   "--main-river-area", "80", "--main-lake-area", "2", "--height-range", "6000",
+                                   "--sea", "0.13", "--biomes", "terrain_lab_out/world_biomes.png",
+                                   "--water-rules", "terrain_lab_out/world_water.png",
+                                   "--water-skeleton", "terrain_lab_out/world_water_skeleton.png"};
+    if (!worldGiven)
+        for (std::size_t i = 0; i < std::size(kWorld); ++i)
+            args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kWorld[i]));
+    std::error_code cwdError;
+    fs::current_path(ALTERA_SOURCE_DIR, cwdError);
+    argc = int(args.size());
+    argv = args.data();
+#endif
     if (!parse(argc, argv, options)) return 2;
     SDL_Window* window = nullptr;
     // The GPU device wants the video subsystem even with no window to draw in.
@@ -1388,8 +1483,39 @@ int main(int argc, char** argv) {
     int code = 0;
     {
         Lab lab(options);
+        altera::game::LoadingScreen loading;   // the window says what the lab is opening, and stays alive
+        if (window && options.shot.empty() && options.bench.empty()) {
+#ifdef ALTERA_SOURCE_DIR
+            loading.setup(ALTERA_SOURCE_DIR, "ru");
+#else
+            loading.setup(".", "ru");
+#endif
+            lab.loading = &loading;
+        }
         if (!lab.open(window)) return 1;
         if (lab.eroded) return 0;
+        std::unique_ptr<altera::game::GameLayer> game;   // released before the lab's device
+        if (options.game && window) {
+            double gx = options.startX, gy = options.startY;
+            if (gx < 0 || gy < 0) lab.findLand(gx, gy);
+            altera::game::GameOptions go;
+            go.seed = options.gameSeed;
+            go.season = options.gameSeason;
+#ifdef ALTERA_SOURCE_DIR
+            go.root = ALTERA_SOURCE_DIR;
+#else
+            go.root = ".";
+#endif
+            std::string why;
+            lab.step("sim", 0.92f);
+            game = altera::game::makeSimGame(lab.device, window, lab.macro, options.params,
+                                             gx * options.params.worldSize, gy * options.params.worldSize, go, &why);
+            if (!game) { std::fprintf(stderr, "game: %s\n", why.c_str()); return 1; }
+            lab.game = game.get();
+            SDL_SetWindowTitle(window, "Altera");
+        }
+        loading.finish();
+        lab.loading = nullptr;
         if (!options.shot.empty()) code = runShot(lab, window);
         else if (!options.bench.empty()) code = runBench(lab, window);
         else if (window) code = runInteractive(lab, window);
