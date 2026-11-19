@@ -1,0 +1,253 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Altera: симуляция</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+:root{--bg:#15110d;--panel:#1f1914;--panel2:#2a221b;--line:#3d3227;--text:#e8dcc4;--muted:#a3937a;--accent:#d8893a;--red:#c8483a;--green:#7fa65a;--blue:#5f8fb0}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--text);font:13px/1.35 "Segoe UI",system-ui,sans-serif}
+#app{display:grid;grid-template-columns:260px 1fr 380px;grid-template-rows:auto 1fr 210px;height:100vh}
+header{grid-column:1/4;display:flex;gap:14px;align-items:center;padding:6px 10px;background:var(--panel);border-bottom:1px solid var(--line)}
+header b{font-size:15px;letter-spacing:.06em;color:var(--accent)}
+header .clock{font-variant-numeric:tabular-nums;font-size:14px}
+button,select{background:var(--panel2);color:var(--text);border:1px solid var(--line);border-radius:4px;padding:3px 8px;font:inherit;cursor:pointer}
+button:hover{border-color:var(--accent)}
+button.on{background:var(--accent);color:#1a120a;border-color:var(--accent)}
+#left{overflow:auto;background:var(--panel);border-right:1px solid var(--line)}
+#left h3,#right h3,#bottom h3{margin:8px 10px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.row{padding:4px 10px;cursor:pointer;border-left:3px solid transparent}
+.row:hover{background:var(--panel2)}
+.row.sel{background:var(--panel2);border-left-color:var(--accent)}
+.row .n{font-weight:600}
+.row .a{color:var(--muted);font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dead{opacity:.45;text-decoration:line-through}
+#mapwrap{position:relative;overflow:hidden}
+canvas{display:block;width:100%;height:100%;cursor:grab}
+#tip{position:absolute;pointer-events:none;background:#000c;padding:3px 6px;border-radius:3px;display:none;font-size:12px}
+#legend{max-height:40vh;overflow:auto}
+#legend label{display:block;cursor:pointer}
+#right{overflow:auto;background:var(--panel);border-left:1px solid var(--line);padding-bottom:20px}
+#right .big{font-size:17px;font-weight:700;margin:8px 10px 0}
+#right .sub{color:var(--muted);margin:0 10px 6px}
+.kv{margin:2px 10px}
+.bar{height:8px;background:#0006;border-radius:3px;overflow:hidden;margin:1px 0 4px}
+.bar i{display:block;height:100%}
+.need{display:grid;grid-template-columns:110px 1fr 34px;gap:6px;align-items:center;margin:0 10px}
+.tag{display:inline-block;background:var(--panel2);border:1px solid var(--line);border-radius:10px;padding:0 7px;margin:2px;font-size:12px}
+.list{margin:0 10px;font-size:12px}
+.list div{padding:1px 0;border-bottom:1px solid #ffffff08}
+.t{color:var(--muted);font-variant-numeric:tabular-nums;margin-right:6px}
+.ctl{margin:6px 10px;display:flex;flex-wrap:wrap;gap:5px}
+#bottom{grid-column:1/4;background:var(--panel);border-top:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+#bottom .hd{display:flex;align-items:center;gap:8px}
+#chron{overflow:auto;padding:0 10px 6px;font-size:12.5px;flex:1}
+#chron div{padding:1px 0;cursor:pointer}
+#chron div:hover{color:var(--accent)}
+#chron .death{color:#e07a6c}
+#chron .combat,#chron .combat_finish{color:#e0a86c}
+.muted{color:var(--muted)}
+#msg{color:var(--accent);margin-left:auto;font-size:12px}
+</style>
+</head>
+<body>
+<div id="app">
+<header>
+  <b>ALTERA</b>
+  <span class="clock" id="clock">...</span>
+  <span id="weather" class="muted"></span>
+  <button id="bPause">Пауза</button>
+  <span class="muted">скорость</span>
+  <span id="speeds"></span>
+  <button data-step="6">+1 ч</button>
+  <button data-step="144">+1 день</button>
+  <span id="perf" class="muted"></span>
+  <span id="msg"></span>
+</header>
+<div id="left">
+  <h3>Люди <span id="pop" class="muted"></span></h3>
+  <div id="people"></div>
+  <h3>Звери</h3>
+  <div id="animals"></div>
+</div>
+<div id="mapwrap"><canvas id="map"></canvas><div id="tip"></div><details id="legendBox" style="position:absolute;left:8px;bottom:8px;background:#000a;padding:4px 8px;border-radius:4px;font-size:11px"><summary style="cursor:pointer">Объекты на карте</summary><div id="legend"></div></details></div>
+<div id="right"><div class="sub" style="margin-top:12px">Выбери человека в списке или на карте. Колесо: масштаб, перетаскивание: сдвиг, F: следить за выбранным.</div></div>
+<div id="bottom">
+  <div class="hd"><h3>Хроника</h3>
+    <label class="muted"><input type="checkbox" id="onlySel"> только выбранный</label>
+  </div>
+  <div id="chron"></div>
+</div>
+</div>
+<script>
+const FSM={Idle:"стоит",Move:"идёт",Act:"занят",Work:"работает",Eat:"ест",Interact:"взаимодействует",Pray:"молится",Talk:"говорит",Rest:"отдыхает",Sleep:"спит",Cast:"колдует",Fight:"дерётся",Flee:"бежит",Pain:"страдает от боли",Incapacitated:"без сил",Wait:"ждёт"};
+const SEASON={spring:"весна",summer:"лето",autumn:"осень",winter:"зима"};
+const BIOME_COL={meadow:"#3a4a2a",forest:"#24331f",marsh:"#2f3a33",hills:"#4a4230",mountain:"#55504a",steppe:"#4d4a2c"};
+const ZONE={head:"голова",torso:"торс",arm_l:"левая рука",arm_r:"правая рука",leg_l:"левая нога",leg_r:"правая нога",left_arm:"левая рука",right_arm:"правая рука",left_leg:"левая нога",right_leg:"правая нога"};
+const SPEEDS=[[1,"1x"],[6,"6x"],[24,"24x"],[96,"96x"],[2000,"макс"]];
+let S=null, ST=null, sel=0, chron=[], chronN=0, prevPos={}, curPos={}, lastPoll=0, pollDt=200, follow=false;
+let view={x:0,y:0,scale:0.1}, hidden=new Set(), famCol={};
+const cv=document.getElementById('map'), cx=cv.getContext('2d');
+const $=id=>document.getElementById(id);
+function esc(s){return String(s??"").replace(/[&<>]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;"}[c]))}
+async function api(p,body){const r=await fetch(p,body?{method:"POST",body:JSON.stringify(body)}:{});return r.json()}
+async function cmd(o){const r=await api('/api/cmd',o);$('msg').textContent=r.result==="ok"?"":r.result;poll(true);return r}
+function hue(s){let h=0;for(const c of s)h=(h*31+c.charCodeAt(0))%360;return h}
+function famColor(f){return famCol[f]||(famCol[f]=`hsl(${hue(f||"-")},55%,62%)`)}
+// --- map -------------------------------------------------------------------
+function resize(){const r=cv.parentElement.getBoundingClientRect();cv.width=r.width*devicePixelRatio;cv.height=r.height*devicePixelRatio}
+function w2s(x,y){return[(x-view.x)*view.scale*devicePixelRatio+cv.width/2,(y-view.y)*view.scale*devicePixelRatio+cv.height/2]}
+function s2w(px,py){return[(px*devicePixelRatio-cv.width/2)/(view.scale*devicePixelRatio)+view.x,(py*devicePixelRatio-cv.height/2)/(view.scale*devicePixelRatio)+view.y]}
+function lerpPos(id){const c=curPos[id];if(!c)return null;const p=prevPos[id]||c;const k=Math.min(1,(performance.now()-lastPoll)/pollDt);return[p[0]+(c[0]-p[0])*k,p[1]+(c[1]-p[1])*k]}
+function draw(){
+  requestAnimationFrame(draw);
+  if(!ST||!S)return;
+  if(follow&&sel){const p=lerpPos(sel);if(p){view.x=p[0];view.y=p[1]}}
+  cx.fillStyle=S.night?"#0b0b10":"#15110d";cx.fillRect(0,0,cv.width,cv.height);
+  const cs=ST.cell;
+  for(let j=0;j<ST.h;j++)for(let i=0;i<ST.w;i++){
+    const k=j*ST.w+i;const[x,y]=w2s(i*cs,j*cs);const sz=cs*view.scale*devicePixelRatio+1;
+    if(x>cv.width||y>cv.height||x+sz<0||y+sz<0)continue;
+    cx.fillStyle=ST.water[k]?"#23405a":(BIOME_COL[ST.biomes[ST.biome[k]]]||"#333");cx.fillRect(x,y,sz,sz)}
+  if(S.night){cx.fillStyle="#0008";cx.fillRect(0,0,cv.width,cv.height)}
+  const dot=Math.max(1,Math.min(5,view.scale*devicePixelRatio*3));
+  for(const [t,o] of Object.entries(ST.objects)){
+    if(hidden.has(t))continue;cx.fillStyle=`hsl(${hue(t)},45%,${t.includes("tree")?30:60}%)`;
+    const d=t.includes("tree")?dot*0.7:dot*1.4;
+    for(const p of o.pts){const[x,y]=w2s(p[1],p[2]);if(x<-5||y<-5||x>cv.width+5||y>cv.height+5)continue;cx.fillRect(x-d/2,y-d/2,d,d)}}
+  cx.font=`${12*devicePixelRatio}px Segoe UI`;cx.fillStyle="#e8dcc4";
+  for(const s of ST.settlements){const[x,y]=w2s(s.x,s.y);cx.fillText(s.name,x+8,y-8)}
+  const r=Math.max(3,Math.min(9,view.scale*devicePixelRatio*6));
+  for(const c of S.chars){
+    const p=lerpPos(c.id);if(!p)continue;const[x,y]=w2s(p[0],p[1]);
+    if(x<-20||y<-20||x>cv.width+20||y>cv.height+20)continue;
+    cx.globalAlpha=c.alive?1:0.4;
+    if(c.sp){cx.fillStyle=c.alive?"#b87a5a":"#666";cx.beginPath();cx.moveTo(x,y-r);cx.lineTo(x+r*0.9,y+r*0.7);cx.lineTo(x-r*0.9,y+r*0.7);cx.fill()}
+    else{cx.fillStyle=c.alive?famColor(c.fam):"#777";cx.beginPath();cx.arc(x,y,r,0,7);cx.fill();
+      if(c.st==="Fight"){cx.strokeStyle="#ff4a3a";cx.lineWidth=2*devicePixelRatio;cx.beginPath();cx.arc(x,y,r+4,0,7);cx.stroke()}
+      if(c.wnd){cx.fillStyle="#e33";cx.fillRect(x+r*0.4,y-r-3,4,4)}}
+    if(c.pl){cx.strokeStyle="#ffd35a";cx.lineWidth=2*devicePixelRatio;cx.beginPath();cx.arc(x,y,r+2,0,7);cx.stroke()}
+    if(c.id===sel){cx.strokeStyle="#fff";cx.lineWidth=1.5*devicePixelRatio;cx.beginPath();cx.arc(x,y,r+6,0,7);cx.stroke()}
+    if(!c.sp&&view.scale>0.25){cx.fillStyle="#e8dcc4";cx.fillText(c.name,x+r+3,y+4)}
+    cx.globalAlpha=1}
+}
+let drag=null;
+cv.addEventListener('mousedown',e=>{drag={x:e.clientX,y:e.clientY,vx:view.x,vy:view.y,moved:false}});
+window.addEventListener('mouseup',e=>{if(drag&&!drag.moved)pick(e);drag=null});
+cv.addEventListener('mousemove',e=>{
+  if(drag){const dx=e.clientX-drag.x,dy=e.clientY-drag.y;if(Math.abs(dx)+Math.abs(dy)>3){drag.moved=true;follow=false}
+    view.x=drag.vx-dx/view.scale;view.y=drag.vy-dy/view.scale;return}
+  const c=nearest(e);const tip=$('tip');
+  if(c){tip.style.display="block";tip.style.left=(e.offsetX+14)+"px";tip.style.top=(e.offsetY+8)+"px";
+    tip.innerHTML=`<b>${esc(c.sp?c.spn+(c.g>1?" ×"+c.g:""):c.name)}</b><br>${esc(FSM[c.st]||c.st)} ${esc(c.act)}`}else tip.style.display="none"});
+cv.addEventListener('wheel',e=>{e.preventDefault();const[wx,wy]=s2w(e.offsetX,e.offsetY);const f=e.deltaY<0?1.2:1/1.2;
+  view.scale=Math.max(0.03,Math.min(8,view.scale*f));const[nx,ny]=s2w(e.offsetX,e.offsetY);view.x+=wx-nx;view.y+=wy-ny},{passive:false});
+function nearest(e){if(!S)return null;let best=null,bd=14;for(const c of S.chars){const p=lerpPos(c.id);if(!p)continue;const[x,y]=w2s(p[0],p[1]);
+  const d=Math.hypot(x/devicePixelRatio-e.offsetX,y/devicePixelRatio-e.offsetY);if(d<bd){bd=d;best=c}}return best}
+function pick(e){const c=nearest(e);if(c)select(c.id)}
+window.addEventListener('keydown',e=>{if(e.target.tagName==="SELECT")return;if(e.key==="f"||e.key==="F"||e.key==="а"||e.key==="А")follow=!follow;if(e.key===" "){e.preventDefault();cmd({op:"pause"})}});
+function select(id){sel=id;follow=true;poll(true);renderChron()}
+function centerOn(x,y){view.x=x;view.y=y}
+// --- panels ----------------------------------------------------------------
+function rowHtml(c){const who=c.sp?`${esc(c.spn)}${c.g>1?" ×"+c.g:""}`:esc(c.name);
+  const sub=c.alive?`${esc(FSM[c.st]||c.st)}${c.act?" · "+esc(c.act):""}`:"мёртв"+(c.sex==="f"?"а":"");
+  return `<div class="row${c.id===sel?" sel":""}" data-id="${c.id}"><div class="n ${c.alive?"":"dead"}">${c.pl?"★ ":""}${who}${c.sp?"":` <span class="muted">${c.age} л.</span>`}</div><div class="a">${sub}${c.goal?" · цель: "+esc(c.goal):""}</div></div>`}
+function renderLists(){
+  const ppl=S.chars.filter(c=>!c.sp).sort((a,b)=>(b.alive-a.alive)||a.fam.localeCompare(b.fam)||a.name.localeCompare(b.name));
+  let h="",fam=null;for(const c of ppl){if(c.fam!==fam){fam=c.fam;h+=`<h3 style="color:${famColor(fam)}">${esc(fam||"без семьи")}</h3>`}h+=rowHtml(c)}
+  setHtml('people',h);$('pop').textContent=`${S.alive}/${S.people}`;
+  setHtml('animals',S.chars.filter(c=>c.sp&&(c.alive||c.id===sel)).slice(0,300).map(rowHtml).join(""))}
+const lastHtml={};
+function setHtml(id,h){if(lastHtml[id]===h)return false;lastHtml[id]=h;$(id).innerHTML=h;return true}
+// Clicks go through mousedown delegation: the panels are re-rendered several times a second.
+document.addEventListener('mousedown',e=>{
+  if(e.button!==0)return;
+  const row=e.target.closest('.row,.relrow,#chron div[data-who]');
+  if(row){const id=+(row.dataset.id||row.dataset.who);if(id)select(id);return}
+  const b=e.target.closest('button[data-c]');if(b)ctlClick(b.dataset.c)});
+function bar(v,col){return `<div class="bar"><i style="width:${Math.round(Math.max(0,Math.min(1,v))*100)}%;background:${col}"></i></div>`}
+function needCol(v){return v<0.25?"var(--red)":v<0.5?"var(--accent)":"var(--green)"}
+let goalSel="";
+function renderSel(){
+  const d=S.sel;const R=$('right');
+  if(!d){lastHtml.right=null;R.innerHTML='<div class="sub" style="margin-top:12px">Выбери человека в списке или на карте. Колесо: масштаб, перетаскивание: сдвиг, F: следить за выбранным, пробел: пауза.</div>';return}
+  const keep=document.activeElement&&document.activeElement.id==="goalSel";if(keep)return;
+  let h=`<div class="big">${d.pl?"★ ":""}${esc(d.sp?d.spn:d.name)}</div>`;
+  h+=`<div class="sub">${d.sp?(d.g>1?"стая/стадо ×"+d.g:""):`${d.sex==="f"?"женщина":"мужчина"}, ${d.age} л., семья ${esc(d.fam)}, ${esc(d.role)}`}</div>`;
+  if(!d.alive)h+=`<div class="kv" style="color:var(--red)">Мёртв${d.sex==="f"?"а":""}: ${esc(d.cause)}</div>`;
+  else h+=`<div class="kv"><b>${esc(FSM[d.st]||d.st)}</b>${d.act?" · "+esc(d.act):""}</div><div class="kv">Цель: <b>${esc(d.goal||"нет")}</b></div>${d.down?'<div class="kv" style="color:var(--red)">Без сознания / уведён после боя</div>':""}`;
+  if(!d.sp){
+    h+=`<h3>Управление</h3><div class="ctl">`;
+    h+=d.pl?`<button data-c="release_control">Отпустить (ИИ)</button><button data-c="cancel_goal">Отменить цель</button><button data-c="free_will">${d.free_will?"Своя воля: вкл":"Своя воля: выкл"}</button>`
+           :`<button data-c="take_control">Взять под управление</button>`;
+    h+=`</div><div class="ctl"><select id="goalSel">${ST.goals.map(g=>`<option value="${g.id}" ${g.id===goalSel?"selected":""}>${esc(g.name)}</option>`).join("")}</select>`;
+    h+=d.pl?`<button data-c="set_goal">Приказать</button>`:"";
+    h+=`<button data-c="want">Хочу</button><button data-c="dontwant">Не хочу</button></div>`;
+  }
+  h+=`<h3>Здоровье</h3><div class="need"><span>здоровье</span>${bar(d.hp,needCol(d.hp))}<span>${Math.round(d.hp*100)}</span></div>`;
+  h+=`<div class="need"><span>кровь</span>${bar(d.blood/100,needCol(d.blood/100))}<span>${Math.round(d.blood)}</span></div>`;
+  h+=`<div class="need"><span>усталость</span>${bar(d.fatigue,"var(--blue)")}<span>${Math.round(d.fatigue*100)}</span></div>`;
+  if(!d.sp)h+=`<div class="need"><span>настроение</span>${bar((d.mood+1)/2,needCol((d.mood+1)/2))}<span>${d.mood.toFixed(2)}</span></div>`;
+  if(d.wounds.length)h+=`<div class="list">${d.wounds.map(w=>`<div style="color:#e88">Рана: ${esc(ZONE[w.zone]||w.zone)}, ${esc(w.sev)}, ещё ${w.left.toFixed(1)} дн.${w.bleeding?", кровоточит":""}${w.infected?", заражена":""} (${esc(w.treat)})</div>`).join("")}</div>`;
+  if(d.injuries.length)h+=`<div class="list">${d.injuries.map(x=>`<div>Увечье: ${esc(x)}</div>`).join("")}</div>`;
+  if(d.needs.length){h+=`<h3>Потребности</h3>`;for(const n of d.needs)h+=`<div class="need"><span>${esc(n.name)}</span>${bar(n.v,needCol(n.v))}<span>${Math.round(n.v*100)}</span></div>`}
+  if(d.moodlets.length)h+=`<div class="ctl">${d.moodlets.map(m=>`<span class="tag" style="color:${m.v<0?"#e88":"#9c8"}">${esc(m.name)} ${m.v>0?"+":""}${m.v.toFixed(2)}</span>`).join("")}</div>`;
+  if(d.traits.length)h+=`<h3>Черты</h3><div class="ctl">${d.traits.map(t=>`<span class="tag">${esc(t)}</span>`).join("")}</div>`;
+  if(d.inv.length)h+=`<h3>При себе</h3><div class="ctl">${d.inv.map(i=>`<span class="tag">${esc(i.name)} ${i.n}</span>`).join("")}</div>`;
+  if(d.skills.length)h+=`<h3>Навыки</h3><div class="ctl">${d.skills.sort((a,b)=>b.v-a.v).map(s=>`<span class="tag">${esc(s.name)} ${Math.round(s.v*100)}</span>`).join("")}</div>`;
+  if(d.relations.length)h+=`<h3>Отношения</h3><div class="list">${d.relations.map(r=>`<div data-id="${r.id}" class="relrow" style="cursor:pointer">${esc(r.name)} <span class="muted">симп. ${r.aff.toFixed(2)}, дов. ${r.trust.toFixed(2)}${r.fear>0.05?", страх "+r.fear.toFixed(2):""}${r.enm>0.05?", вражда "+r.enm.toFixed(2):""}</span></div>`).join("")}</div>`;
+  if(d.memory.length)h+=`<h3>Память</h3><div class="list">${d.memory.map(m=>`<div><span class="t">д${m.day} ${m.t}</span><span style="color:${m.val<0?"#e88":m.val>0?"#9c8":"inherit"}">${esc(m.text)}</span></div>`).join("")}</div>`;
+  h+=`<h3>Мысли (трасса ИИ)</h3><div class="list">${d.trace.map(t=>`<div><span class="t">д${t.day} ${t.t} ${t.l}</span>${esc(t.text)}</div>`).join("")}</div>`;
+  if(!setHtml('right',h))return;
+  const gs=$('goalSel');if(gs)gs.onchange=()=>{goalSel=gs.value};if(gs&&!goalSel)goalSel=gs.value;
+}
+function ctlClick(c){const d=S&&S.sel;if(!d)return;const g=$('goalSel')?.value||goalSel;
+  if(c==="free_will")cmd({op:"cmd",type:"set_free_will",args:{id:sel,on:!d.free_will}});
+  else if(c==="set_goal")cmd({op:"cmd",type:"set_goal",args:{id:sel,goal:g}});
+  else if(c==="want"||c==="dontwant")cmd({op:"cmd",type:"hint",args:{id:sel,goal:g,delta:c==="want"?0.4:-0.4,ttl:144}});
+  else cmd({op:"cmd",type:c,args:{id:sel}})}
+function renderChron(){
+  const only=$('onlySel').checked;const el=$('chron');const atBottom=el.scrollTop+el.clientHeight>=el.scrollHeight-4;
+  el.innerHTML=chron.filter(e=>!only||e.who.includes(sel)).slice(-400).map(e=>`<div class="${e.type}" data-who="${e.who[0]||0}"><span class="t">д${e.day} ${e.t}</span>${esc(e.text)}</div>`).join("");
+  if(atBottom)el.scrollTop=el.scrollHeight}
+$('onlySel').onchange=renderChron;
+function renderHeader(){
+  $('clock').textContent=`День ${S.day+1}, ${S.time} · ${SEASON[S.season]||S.season}${S.night?" · ночь":""}`;
+  if(S.weather)$('weather').textContent=`${S.weather.t}°C${S.weather.rain>0?`, дождь ${S.weather.rain} мм`:""}`;
+  $('bPause').textContent=S.paused?"▶ Пуск":"❚❚ Пауза";$('bPause').classList.toggle('on',S.paused);
+  setHtml('speeds',SPEEDS.map(([v,l])=>`<button data-tps="${v}" class="${S.tps===v?"on":""}">${l}</button>`).join(" "));
+  $('perf').textContent=`тик ${S.step_ms.toFixed(1)} мс`}
+$('bPause').onclick=()=>cmd({op:"pause"});
+$('speeds').onclick=e=>{const b=e.target.closest('[data-tps]');if(b)cmd({op:"speed",tps:+b.dataset.tps})};
+for(const b of document.querySelectorAll('[data-step]'))b.onclick=()=>cmd({op:"step",ticks:+b.dataset.step});
+function renderLegend(){
+  $('legend').innerHTML=Object.entries(ST.objects).sort((a,b)=>a[1].name.localeCompare(b[1].name)).map(([t,o])=>
+    `<label><input type="checkbox" data-t="${t}" ${hidden.has(t)?"":"checked"}> <span style="color:hsl(${hue(t)},45%,60%)">■</span> ${esc(o.name)} <span class="muted">${o.count}</span></label>`).join("");
+  for(const i of document.querySelectorAll('#legend input'))i.onchange=()=>{i.checked?hidden.delete(i.dataset.t):hidden.add(i.dataset.t)}}
+let busy=false;
+async function poll(force){
+  if(busy&&!force)return;busy=true;
+  try{const s=await api(`/api/state?sel=${sel}&since=${chronN}`);
+    const t=performance.now();pollDt=Math.max(100,t-lastPoll);lastPoll=t;
+    prevPos={};for(const id in curPos)prevPos[id]=lerpPos(+id)||curPos[id];
+    curPos={};for(const c of s.chars)curPos[c.id]=[c.x,c.y];
+    S=s;chron.push(...s.chron);chronN=s.chron_n;
+    renderHeader();renderLists();renderSel();if(s.chron.length)renderChron();
+    if(s.last_result&&s.last_result.includes("rejected"))$('msg').textContent=s.last_result;
+  }catch(e){$('clock').textContent="нет связи с симуляцией (altera_sim_view.exe закрыт?)"}
+  busy=false}
+async function init(){
+  resize();window.addEventListener('resize',resize);
+  ST=await api('/api/static');
+  for(const [t,o] of Object.entries(ST.objects))if(o.count>1500)hidden.add(t);
+  renderLegend();
+  await poll(true);
+  const people=S.chars.filter(c=>!c.sp);
+  if(ST.settlements.length)centerOn(ST.settlements[0].x,ST.settlements[0].y);else if(people.length)centerOn(people[0].x,people[0].y);
+  view.scale=0.35;
+  setInterval(poll,200);draw()}
+init();
+</script>
+</body>
+</html>

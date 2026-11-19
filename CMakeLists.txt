@@ -343,6 +343,14 @@ add_executable(altera_sim_runner src/sim/runner/main.cpp)
 target_link_libraries(altera_sim_runner PRIVATE altera_sim asr_warnings)
 target_compile_definitions(altera_sim_runner PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
+# altera_sim_view - watch and play the life-sim in a browser (local HTTP page,
+# placeholder visuals until the sim moves into the game client).
+if(WIN32)
+    add_executable(altera_sim_view tools/sim_view/main.cpp)
+    target_link_libraries(altera_sim_view PRIVATE altera_sim ws2_32 asr_warnings)
+    target_compile_definitions(altera_sim_view PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+endif()
+
 # ---------------------------------------------------------------------------
 # tools - content validator.
 # ---------------------------------------------------------------------------
