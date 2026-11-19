@@ -321,6 +321,20 @@ add_library(altera_sim STATIC
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json PRIVATE asr_warnings)
 
+# altera_combat - combat core (gdd/combat/COMBAT_CORE_SPEC_v0.1.md): a port of
+# the combat_sim.py prototype, numbers from content/combat/*.json, deterministic
+# per seed, output is an event stream (no rendering).
+add_library(altera_combat STATIC
+        src/sim/combat/combat_data.cpp
+        src/sim/combat/combat.cpp
+        src/sim/combat/combat_anim.cpp)
+target_include_directories(altera_combat PUBLIC src)
+target_link_libraries(altera_combat PUBLIC nlohmann_json PRIVATE asr_warnings)
+
+add_executable(altera_combat_tables src/sim/combat/tool/combat_tables.cpp)
+target_link_libraries(altera_combat_tables PRIVATE altera_combat asr_warnings)
+target_compile_definitions(altera_combat_tables PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
 add_executable(altera_sim_runner src/sim/runner/main.cpp)
 target_link_libraries(altera_sim_runner PRIVATE altera_sim asr_warnings)
 target_compile_definitions(altera_sim_runner PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
@@ -706,6 +720,14 @@ if(ASR_BUILD_TESTS)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     add_test(NAME altera_sim COMMAND altera_sim_tests)
+    add_executable(altera_combat_tests tests/main.cpp tests/test_altera_combat.cpp)
+    target_include_directories(altera_combat_tests PRIVATE src tests)
+    target_link_libraries(altera_combat_tests PRIVATE altera_combat asr_warnings)
+    target_compile_definitions(altera_combat_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    add_test(NAME altera_combat COMMAND altera_combat_tests)
+    # C++ core vs the Python prototype's tables (n=3000, seed 1), +-5 pp per cell
+    add_test(NAME altera_combat_golden COMMAND altera_combat_tables --n 3000 --seed 1
+            --golden ${CMAKE_SOURCE_DIR}/tests/data/combat/golden_combat_sim_n3000_seed1.md --tol 5)
     add_executable(asr_dlss_math_tests tests/main.cpp tests/test_dlss_math.cpp)
     target_include_directories(asr_dlss_math_tests PRIVATE src tests)
     target_link_libraries(asr_dlss_math_tests PRIVATE asr_warnings)

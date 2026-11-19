@@ -1,0 +1,106 @@
+{
+  "_doc": "Дальний бой и метание v0.1. dist_k — потеря шанса на метр, pierce — доля поглощения брони, которую снаряд обходит (0..1), reload — раундов между выстрелами, ammo — запас. Латы всё равно считаем практически непробиваемыми: основной шанс против них в незащищённых зонах и в ближнем бою.",
+  "close_speed_m_per_round": 7.0,
+  "armor_speed_pen_per_pen": 1.5,
+  "melee_range_m": 1.5,
+  "moving_penalty": 0.12,
+  "shield_extra": 0.15,
+  "weapons": {
+    "shortbow": {
+      "range": 40,
+      "dtype": "thrust",
+      "dmg": [
+        9,
+        16
+      ],
+      "reload": 1,
+      "ammo": 14,
+      "base_hit": 0.55,
+      "dist_k": 0.008,
+      "skill_k": 0.004,
+      "pierce": 0.1,
+      "stam": 2
+    },
+    "longbow": {
+      "range": 60,
+      "dtype": "thrust",
+      "dmg": [
+        12,
+        20
+      ],
+      "reload": 1,
+      "ammo": 14,
+      "base_hit": 0.55,
+      "dist_k": 0.006,
+      "skill_k": 0.004,
+      "pierce": 0.2,
+      "stam": 3
+    },
+    "crossbow": {
+      "range": 50,
+      "dtype": "thrust",
+      "dmg": [
+        15,
+        24
+      ],
+      "reload": 2,
+      "ammo": 12,
+      "base_hit": 0.6,
+      "dist_k": 0.005,
+      "skill_k": 0.003,
+      "pierce": 0.35,
+      "stam": 1
+    },
+    "sling": {
+      "range": 35,
+      "dtype": "blunt",
+      "dmg": [
+        5,
+        9
+      ],
+      "reload": 1,
+      "ammo": 20,
+      "base_hit": 0.5,
+      "dist_k": 0.009,
+      "skill_k": 0.005,
+      "pierce": 0.05,
+      "stam": 1
+    },
+    "javelin": {
+      "range": 22,
+      "dtype": "thrust",
+      "dmg": [
+        12,
+        20
+      ],
+      "reload": 1,
+      "ammo": 2,
+      "base_hit": 0.58,
+      "dist_k": 0.012,
+      "skill_k": 0.004,
+      "pierce": 0.1,
+      "stam": 4
+    },
+    "throwing_axe": {
+      "range": 14,
+      "dtype": "slash",
+      "dmg": [
+        10,
+        16
+      ],
+      "reload": 1,
+      "ammo": 2,
+      "base_hit": 0.58,
+      "dist_k": 0.015,
+      "skill_k": 0.004,
+      "pierce": 0.05,
+      "stam": 4
+    }
+  },
+  "aim_direction": "thrust",
+  "min_close_speed_m_per_round": 2.0,
+  "hit_chance": [
+    0.03,
+    0.95
+  ]
+}

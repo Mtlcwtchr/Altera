@@ -1,0 +1,96 @@
+{
+  "_doc": "Клинч v0.1: приёмы ближней схватки (после сближения). Все числа здесь. share — доля действий раунда, которые боец тратит на приём клинча вместо обычного удара (у копья малая: оно в клинче слабо). Приём выбирается по весам; умелый (шанс read) берёт лучший по весу с учётом брони цели, остальные случайный из доступных. gap_stab бьёт только в незащищённые места: слои с ключом gap (кольчуга, латы) игнорируются, пробивать латы не нужно.",
+  "share": {
+    "default": 0.45,
+    "spear": 0.08,
+    "fists": 0.6,
+    "dagger": 0.65,
+    "mace": 0.25,
+    "axe": 0.25,
+    "sword": 0.3,
+    "fangs": 0.0
+  },
+  "down_rounds": 2,
+  "armor_weight_factor": 1.5,
+  "moves": {
+    "grapple_throw": {
+      "weapons": {
+        "sword": 1.0,
+        "axe": 1.0,
+        "mace": 1.0,
+        "dagger": 1.0,
+        "fists": 2.0,
+        "spear": 1.0
+      },
+      "base": 0.35,
+      "k_skill_diff": 0.004,
+      "armor_resist_per_pen": 0.1,
+      "stam_cost": 6,
+      "target_stam_loss": 10,
+      "fall_dmg": [
+        2,
+        5
+      ],
+      "effect": "down",
+      "fall_zone": "torso"
+    },
+    "gap_stab": {
+      "weapons": {
+        "dagger": 3.0,
+        "sword": 1.0
+      },
+      "base": 0.58,
+      "k_skill_diff": 0.004,
+      "down_bonus": 0.4,
+      "stam_cost": 3,
+      "dtype": "thrust",
+      "armor_weight_mult": 1.0,
+      "down_weight_mult": 3.0,
+      "zones": {
+        "head": 1,
+        "torso": 3,
+        "leg_l": 1,
+        "leg_r": 1,
+        "arm_l": 0.5,
+        "arm_r": 0.5
+      },
+      "base_by_weapon": {
+        "sword": 0.28
+      },
+      "force": 0.65
+    },
+    "pommel_strike": {
+      "weapons": {
+        "sword": 1.0,
+        "dagger": 1.0,
+        "axe": 0.5,
+        "mace": 0.8
+      },
+      "base": 0.45,
+      "k_skill_diff": 0.004,
+      "stam_cost": 3,
+      "dmg": [
+        3,
+        6
+      ],
+      "dtype": "blunt",
+      "absorb_mult": 0.5,
+      "down_weight_mult": 0.5,
+      "zones": {
+        "head": 3,
+        "torso": 1
+      }
+    },
+    "disarm": {
+      "weapons": {
+        "sword": 0.5,
+        "dagger": 0.5,
+        "axe": 0.8
+      },
+      "base": 0.2,
+      "k_skill_diff": 0.004,
+      "stam_cost": 4,
+      "down_weight_mult": 0.0
+    }
+  }
+}

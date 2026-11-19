@@ -1,0 +1,18 @@
+{
+  "_doc": "Щиты: guard_mult умножает шанс попадания, если защита верная или соседняя; stamina — цена блока.",
+  "buckler": {
+    "guard_mult": 0.8,
+    "stamina": 1.5,
+    "weight": 0.8
+  },
+  "round": {
+    "guard_mult": 0.68,
+    "stamina": 2.5,
+    "weight": 2.0
+  },
+  "kite": {
+    "guard_mult": 0.6,
+    "stamina": 3.5,
+    "weight": 3.0
+  }
+}

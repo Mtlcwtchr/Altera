@@ -1,0 +1,209 @@
+{
+  "_doc": "Конфиг боя v0.1. Все числа тут, код только читает. Строки через ключи локализации.",
+  "round_seconds": 1.5,
+  "zones": [
+    "head",
+    "torso",
+    "arm_l",
+    "arm_r",
+    "leg_l",
+    "leg_r"
+  ],
+  "zone_weight": {
+    "head": 0.12,
+    "torso": 0.4,
+    "arm_l": 0.12,
+    "arm_r": 0.12,
+    "leg_l": 0.12,
+    "leg_r": 0.12
+  },
+  "directions": [
+    "overhead",
+    "left",
+    "right",
+    "under",
+    "thrust"
+  ],
+  "direction_counter": {
+    "_doc": "какая защитная стойка закрывает какое направление: [верная, соседняя]",
+    "overhead": [
+      "guard_high",
+      "guard_left"
+    ],
+    "left": [
+      "guard_left",
+      "guard_high"
+    ],
+    "right": [
+      "guard_right",
+      "guard_high"
+    ],
+    "under": [
+      "guard_low",
+      "guard_right"
+    ],
+    "thrust": [
+      "guard_center",
+      "guard_left"
+    ]
+  },
+  "guards": [
+    "guard_high",
+    "guard_left",
+    "guard_right",
+    "guard_low",
+    "guard_center"
+  ],
+  "direction_zone_bias": {
+    "_doc": "вероятность попасть в зону при направлении (до нормировки)",
+    "overhead": {
+      "head": 3,
+      "torso": 2,
+      "arm_l": 1,
+      "arm_r": 1,
+      "leg_l": 0.2,
+      "leg_r": 0.2
+    },
+    "left": {
+      "head": 1,
+      "torso": 3,
+      "arm_l": 1,
+      "arm_r": 2,
+      "leg_l": 1,
+      "leg_r": 1
+    },
+    "right": {
+      "head": 1,
+      "torso": 3,
+      "arm_l": 2,
+      "arm_r": 1,
+      "leg_l": 1,
+      "leg_r": 1
+    },
+    "under": {
+      "head": 0.1,
+      "torso": 1,
+      "arm_l": 0.5,
+      "arm_r": 0.5,
+      "leg_l": 3,
+      "leg_r": 3
+    },
+    "thrust": {
+      "head": 1,
+      "torso": 4,
+      "arm_l": 0.5,
+      "arm_r": 0.5,
+      "leg_l": 0.5,
+      "leg_r": 0.5
+    }
+  },
+  "skill_range": [
+    0,
+    100
+  ],
+  "read": {
+    "_doc": "шанс выбрать правильный подход = clamp(base + k_skill*skill + k_know*know - k_fatigue*fatigue - k_panic*panic)",
+    "base": 0.15,
+    "k_skill": 0.0055,
+    "k_know": 0.25,
+    "k_fatigue": 0.2,
+    "k_panic": 0.25,
+    "min": 0.05,
+    "max": 0.92
+  },
+  "hit": {
+    "base": 0.55,
+    "k_skill_diff": 0.004,
+    "perfect_guard_mult": 0.25,
+    "near_guard_mult": 0.65,
+    "no_guard_mult": 1.0,
+    "min": 0.03,
+    "max": 0.97
+  },
+  "stamina": {
+    "max": 100,
+    "regen_per_round": 4,
+    "fatigue_threshold": 0.5
+  },
+  "morale": {
+    "start": 100,
+    "flee_below": 25,
+    "yield_below": 12,
+    "loss_per_hit": 4,
+    "loss_per_wound_heavy": 12,
+    "loss_ally_down": 8
+  },
+  "knockout": {
+    "pain_threshold": 100,
+    "head_hit_ko_mult": 1.5
+  },
+  "bleed": {
+    "light": 0.02,
+    "deep": 0.06,
+    "death_blood": 0
+  },
+  "blood_max": 100,
+  "aim_bias_exp": 1.0,
+  "reach": {
+    "_doc": "длинное оружие бьёт первым, пока короткое не сблизилось; в клинче выигрывает короткое",
+    "hit_bonus_per_level": 0.07,
+    "close_base": 0.12,
+    "close_k_skill": 0.003,
+    "clinch_bonus_per_level": 0.07,
+    "clinch_long_penalty_per_level": 0.05
+  },
+  "riposte": {
+    "_doc": "после промаха по идеально выставленной защите есть шанс немедленного контрудара",
+    "base": 0.1,
+    "k_skill": 0.004,
+    "hit_bonus": 0.2
+  },
+  "group": {
+    "_doc": "бой N на M",
+    "flank_bonus_per_extra": 0.04,
+    "flank_cap": 0.12,
+    "morale_loss_ally_down": 8,
+    "polearm_rank_bonus": 0.07,
+    "polearm_rank_cap": 0.28
+  },
+  "aim_sharpness": 6.0,
+  "core": {
+    "_doc": "Числа, которые в прототипе tools/combat_sim.py стояли прямо в коде; ядро C++ читает их отсюда (значения те же).",
+    "damage_types": [
+      "slash",
+      "thrust",
+      "blunt"
+    ],
+    "impact_only_types": [
+      "blunt"
+    ],
+    "unarmed_weapon": "fists",
+    "default_know": 0.3,
+    "indestructible_durability": 9999,
+    "attack_armor_stamina_mult": 0.5,
+    "regen_armor_stamina_mult": 0.3,
+    "clinch_armor_stamina_mult": 0.3,
+    "damage_fatigue_floor": 0.7,
+    "exhausted_below": 15,
+    "wavering_margin": 20,
+    "bleed_per_round_mult": 10,
+    "pain_scale_severity": "cut",
+    "heavy_severities": [
+      "deep",
+      "severe"
+    ],
+    "ko_severity": "severe",
+    "aim_floor_weight": 1e-06,
+    "pierce_immune_pen": 0.999,
+    "clinch_chance": [
+      0.03,
+      0.95
+    ],
+    "first_mover_chance": 0.5,
+    "duel_max_rounds": 200,
+    "battle_max_rounds": 600,
+    "rank_weapons": [
+      "spear"
+    ]
+  }
+}

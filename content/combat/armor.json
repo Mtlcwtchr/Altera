@@ -1,0 +1,130 @@
+{
+  "_doc": "Броня по слоям v0.2. cover — зоны. Две величины на тип удара: pen — сопротивление проникновению (0..1, сколько режущей/колющей силы слой останавливает; 1 = непробиваем), trans — доля силы удара, которая проходит под слой как ушиб (множитель; ниже = больше гасит). Итог слоёв: через(dtype) = Π(1-pen) + (1-Π(1-pen))*k_impact[dtype]*Πtrans для рубящего/колющего (остановленная часть уходит ушибом), для тупого просто Πtrans. gap — шанс попасть мимо слоя (сочленения, стыки). Латы непробиваемы, но дробящее проходит ушибом; подбитие (aketon, gambeson) гасит дробящее лишь слегка.",
+  "k_impact": {
+    "slash": 0.1,
+    "thrust": 0.05
+  },
+  "none": {
+    "cover": [],
+    "pen": {
+      "slash": 0,
+      "thrust": 0
+    },
+    "trans": {
+      "slash": 1,
+      "thrust": 1,
+      "blunt": 1
+    },
+    "stamina_pen": 0
+  },
+  "aketon": {
+    "cover": [
+      "torso",
+      "arm_l",
+      "arm_r"
+    ],
+    "pen": {
+      "slash": 0.2,
+      "thrust": 0.1
+    },
+    "trans": {
+      "slash": 0.92,
+      "thrust": 0.92,
+      "blunt": 0.88
+    },
+    "stamina_pen": 0.15
+  },
+  "gambeson": {
+    "cover": [
+      "torso",
+      "arm_l",
+      "arm_r"
+    ],
+    "pen": {
+      "slash": 0.3,
+      "thrust": 0.18
+    },
+    "trans": {
+      "slash": 0.85,
+      "thrust": 0.85,
+      "blunt": 0.8
+    },
+    "stamina_pen": 0.3
+  },
+  "hide": {
+    "cover": [
+      "head",
+      "torso",
+      "arm_l",
+      "arm_r",
+      "leg_l",
+      "leg_r"
+    ],
+    "pen": {
+      "slash": 0.15,
+      "thrust": 0.1
+    },
+    "trans": {
+      "slash": 0.95,
+      "thrust": 0.95,
+      "blunt": 0.92
+    },
+    "stamina_pen": 0
+  },
+  "mail": {
+    "cover": [
+      "torso",
+      "arm_l",
+      "arm_r",
+      "leg_l",
+      "leg_r"
+    ],
+    "pen": {
+      "slash": 0.7,
+      "thrust": 0.4
+    },
+    "trans": {
+      "slash": 0.9,
+      "thrust": 0.9,
+      "blunt": 0.88
+    },
+    "stamina_pen": 0.9,
+    "gap": 0.08
+  },
+  "helmet": {
+    "cover": [
+      "head"
+    ],
+    "pen": {
+      "slash": 0.85,
+      "thrust": 0.8
+    },
+    "trans": {
+      "slash": 0.85,
+      "thrust": 0.85,
+      "blunt": 0.72
+    },
+    "stamina_pen": 0.3
+  },
+  "plate": {
+    "cover": [
+      "head",
+      "torso",
+      "arm_l",
+      "arm_r",
+      "leg_l",
+      "leg_r"
+    ],
+    "pen": {
+      "slash": 1.0,
+      "thrust": 1.0
+    },
+    "trans": {
+      "slash": 0.8,
+      "thrust": 0.8,
+      "blunt": 0.75
+    },
+    "stamina_pen": 1.6,
+    "gap": 0.12
+  }
+}

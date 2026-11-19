@@ -1,0 +1,356 @@
+{
+  "_doc": "Привязка боевых событий к анимациям. Имена клипов — ключи/теги для аниматоров, не файлы. Всё data-driven: новый клип подключается правкой JSON. Тайминги (мс) — окна: windup → hit_frame → recover. Исход боя считает симулятор ДО проигрыша, анимация подстраивается (см. COMBAT_PRESENTATION.md §3).",
+  "timing": {
+    "round_ms": 1500,
+    "windup_ms": [
+      350,
+      450
+    ],
+    "hit_frame_ms": 520,
+    "recover_ms": [
+      300,
+      500
+    ],
+    "speed_mult_by": {
+      "weapon_speed": true,
+      "fatigue": 0.35,
+      "skill_tiers": {
+        "novice": 1.15,
+        "trained": 1.0,
+        "master": 0.85
+      }
+    },
+    "_doc": "skill_tiers: множитель длительности замаха; новичок медленнее, мастер экономнее"
+  },
+  "skill_tiers": {
+    "novice": [
+      0,
+      34
+    ],
+    "trained": [
+      35,
+      69
+    ],
+    "master": [
+      70,
+      100
+    ]
+  },
+  "locomotion": {
+    "idle_ready": {
+      "tags": [
+        "stance"
+      ],
+      "by_weapon_class": {
+        "blade": "stance_blade",
+        "polearm": "stance_polearm",
+        "blunt": "stance_blunt",
+        "shield": "stance_shield",
+        "unarmed": "stance_fists",
+        "beast": "stance_beast"
+      }
+    },
+    "approach": "advance_guarded",
+    "close_in": "step_in_clinch",
+    "circle_left": "strafe_l",
+    "circle_right": "strafe_r",
+    "retreat": "step_back",
+    "flee": "run_panic",
+    "limp": "walk_limp",
+    "exhausted": "breath_heavy_idle"
+  },
+  "attack": {
+    "_doc": "ключ weapon_class.direction, суффикс _a/_b/_c — варианты; выбор по seed",
+    "blade": {
+      "overhead": [
+        "atk_blade_overhead_a",
+        "atk_blade_overhead_b"
+      ],
+      "left": [
+        "atk_blade_slash_l_a",
+        "atk_blade_slash_l_b"
+      ],
+      "right": [
+        "atk_blade_slash_r_a",
+        "atk_blade_slash_r_b"
+      ],
+      "under": [
+        "atk_blade_rising_a",
+        "atk_blade_low_cut_a"
+      ],
+      "thrust": [
+        "atk_blade_thrust_a",
+        "atk_blade_thrust_b"
+      ]
+    },
+    "polearm": {
+      "overhead": [
+        "atk_pole_smash_a"
+      ],
+      "left": [
+        "atk_pole_sweep_l_a"
+      ],
+      "right": [
+        "atk_pole_sweep_r_a"
+      ],
+      "under": [
+        "atk_pole_low_a"
+      ],
+      "thrust": [
+        "atk_pole_thrust_a",
+        "atk_pole_thrust_b"
+      ]
+    },
+    "blunt": {
+      "overhead": [
+        "atk_blunt_overhead_a"
+      ],
+      "left": [
+        "atk_blunt_swing_l_a"
+      ],
+      "right": [
+        "atk_blunt_swing_r_a"
+      ],
+      "under": [
+        "atk_blunt_low_a"
+      ],
+      "thrust": [
+        "atk_blunt_jab_a"
+      ]
+    },
+    "unarmed": {
+      "overhead": [
+        "atk_fist_hook_a"
+      ],
+      "left": [
+        "atk_fist_hook_l_a"
+      ],
+      "right": [
+        "atk_fist_hook_r_a"
+      ],
+      "under": [
+        "atk_kick_low_a"
+      ],
+      "thrust": [
+        "atk_fist_straight_a"
+      ]
+    },
+    "beast": {
+      "overhead": [
+        "atk_beast_pounce"
+      ],
+      "left": [
+        "atk_beast_claw_l"
+      ],
+      "right": [
+        "atk_beast_claw_r"
+      ],
+      "under": [
+        "atk_beast_bite_low"
+      ],
+      "thrust": [
+        "atk_beast_bite"
+      ]
+    },
+    "tier_suffix": {
+      "novice": "_wild",
+      "trained": "",
+      "master": "_tight"
+    }
+  },
+  "weapon_class": {
+    "sword": "blade",
+    "dagger": "blade",
+    "axe": "blade",
+    "mace": "blunt",
+    "spear": "polearm",
+    "fists": "unarmed",
+    "fangs": "beast"
+  },
+  "defense": {
+    "parry": {
+      "by_guard": {
+        "guard_high": "def_parry_high",
+        "guard_left": "def_parry_l",
+        "guard_right": "def_parry_r",
+        "guard_low": "def_parry_low",
+        "guard_center": "def_parry_center"
+      },
+      "vfx": "spark_steel",
+      "sfx_by_material": {
+        "blade": "sfx_clang_blade",
+        "blunt": "sfx_clang_dull",
+        "polearm": "sfx_clack_wood"
+      }
+    },
+    "block_shield": {
+      "anim": "def_shield_brace",
+      "vfx": "dust_small",
+      "sfx": "sfx_shield_thud",
+      "shake": 0.2
+    },
+    "block": {
+      "anim": "def_block_forced",
+      "flinch": 0.3,
+      "sfx": "sfx_clang_blade"
+    },
+    "dodge": {
+      "by_direction": {
+        "overhead": "dodge_sidestep",
+        "left": "dodge_lean_r",
+        "right": "dodge_lean_l",
+        "under": "dodge_hop",
+        "thrust": "dodge_turn"
+      }
+    }
+  },
+  "riposte": {
+    "anim": "atk_riposte_quick",
+    "preceded_by": "parry",
+    "hitstop_ms": 70
+  },
+  "hit_reaction": {
+    "_doc": "по зоне и тяжести; additive-слой поверх локомоции; stagger/knockdown из порога доли урона",
+    "bruise": {
+      "head": "react_head_light",
+      "torso": "react_chest_light",
+      "arm": "react_arm_light",
+      "leg": "react_leg_light"
+    },
+    "cut": {
+      "head": "react_head_mid",
+      "torso": "react_chest_mid",
+      "arm": "react_arm_mid",
+      "leg": "react_leg_stumble"
+    },
+    "deep": {
+      "head": "react_head_heavy",
+      "torso": "react_chest_stagger",
+      "arm": "react_arm_drop_weapon_try",
+      "leg": "react_leg_buckle"
+    },
+    "severe": {
+      "head": "react_ko_fall",
+      "torso": "react_collapse_kneel",
+      "arm": "react_arm_limp_cradle",
+      "leg": "react_knockdown"
+    },
+    "armored_bruise": "react_armor_rattle",
+    "directional": true,
+    "ragdoll_blend": {
+      "from_frac": 0.4,
+      "duration_ms": 600
+    }
+  },
+  "persistent_pose": {
+    "arm_r_disabled": "stance_weapon_hand_wounded",
+    "arm_l_disabled": "stance_guard_arm_hanging",
+    "leg_disabled": "walk_limp",
+    "torso_wounded": "stance_hunched_hand_on_wound",
+    "exhausted": "breath_heavy_idle",
+    "bleeding": "idle_hand_on_wound_add"
+  },
+  "end_states": {
+    "ko": {
+      "head": "fall_ko_back",
+      "other": "fall_ko_forward"
+    },
+    "dead": {
+      "head": "death_head_collapse",
+      "torso": "death_slump",
+      "bleed": "death_slow_kneel_then_fall",
+      "beast": "death_beast_roll"
+    },
+    "yield": "kneel_drop_weapon_hands_up",
+    "flee": "turn_and_run",
+    "crawl": "crawl_wounded",
+    "prisoner_bound": "idle_bound_hands"
+  },
+  "aftermath": {
+    "victor": [
+      "breath_relief",
+      "check_wounds_self",
+      "wipe_blade",
+      "look_around"
+    ],
+    "mercy": "offer_hand",
+    "finisher": "exec_kneel_stab",
+    "bind_prisoner": "bind_hands",
+    "loot_body": "loot_crouch",
+    "mourn": "kneel_beside_body",
+    "treat_wound": [
+      "bandage_arm",
+      "bandage_torso",
+      "tourniquet_leg"
+    ],
+    "carry_wounded": "carry_shoulder"
+  },
+  "camera": {
+    "_doc": "вид от 1/3: мягкие реакции; жёстче при тяжёлых; slow-mo только при смертельном ударе игрока или на игроке",
+    "hit_shake_by_severity": {
+      "bruise": 0.0,
+      "cut": 0.1,
+      "deep": 0.25,
+      "severe": 0.45
+    },
+    "hitstop_ms_by_severity": {
+      "bruise": 0,
+      "cut": 40,
+      "deep": 70,
+      "severe": 120
+    },
+    "slowmo_on": [
+      "kill_blow_player",
+      "ko_player"
+    ],
+    "slowmo_scale": 0.35,
+    "slowmo_ms": 600,
+    "duel_frame": {
+      "enable_when_participants_lte": 2,
+      "distance_m": 4.5,
+      "keep_both_in_view": true
+    }
+  },
+  "vfx_sfx": {
+    "hit": {
+      "slash": {
+        "flesh": "vfx_blood_slash",
+        "armor_mail": "vfx_spark_mail",
+        "armor_plate": "vfx_spark_plate"
+      },
+      "thrust": {
+        "flesh": "vfx_blood_stab",
+        "armor_mail": "vfx_mail_rip",
+        "armor_plate": "vfx_ping"
+      },
+      "blunt": {
+        "flesh": "vfx_dull_hit",
+        "armor_mail": "vfx_dent",
+        "armor_plate": "vfx_dent_big"
+      }
+    },
+    "decals": {
+      "blood_pool_on_bleed": true,
+      "blood_trail_on_move": true,
+      "fade_minutes": 20
+    }
+  },
+  "core_events": {
+    "_doc": "События ядра, которых нет в разделах выше (клинч, дальний бой, поломка, подъём). Ключи анимаций из manifest.json keys.combat; null = клипа пока нет (gap).",
+    "clinch": {
+      "actor": "step_in_clinch",
+      "target_by_move": {
+        "grapple_throw": "react_knockdown",
+        "gap_stab": "react_chest_stagger",
+        "pommel_strike": "react_head_mid",
+        "disarm": "react_arm_drop_weapon_try"
+      },
+      "fail": "step_back"
+    },
+    "get_up": null,
+    "shoot": null,
+    "projectile_hit": "react_chest_mid",
+    "projectile_miss": null,
+    "weapon_break": "react_arm_drop_weapon_try"
+  }
+}

@@ -1,0 +1,104 @@
+{
+  "_doc": "Раны: порог доли урона от max HP зоны -> тяжесть. Эффекты читаются кодом как данные.",
+  "zone_hp": {
+    "head": 40,
+    "torso": 80,
+    "arm_l": 45,
+    "arm_r": 45,
+    "leg_l": 50,
+    "leg_r": 50
+  },
+  "severity": [
+    {
+      "id": "bruise",
+      "min_frac": 0.0,
+      "pain": 6,
+      "bleed": 0
+    },
+    {
+      "id": "cut",
+      "min_frac": 0.1,
+      "pain": 12,
+      "bleed": "light"
+    },
+    {
+      "id": "deep",
+      "min_frac": 0.25,
+      "pain": 25,
+      "bleed": "deep"
+    },
+    {
+      "id": "severe",
+      "min_frac": 0.5,
+      "pain": 45,
+      "bleed": "deep",
+      "disable_zone": true
+    }
+  ],
+  "disable": {
+    "arm_r": {
+      "attack_mult": 0.5
+    },
+    "arm_l": {
+      "guard_mult": 0.7
+    },
+    "leg_l": {
+      "speed_mult": 0.7
+    },
+    "leg_r": {
+      "speed_mult": 0.7
+    },
+    "head": {
+      "ko": true
+    },
+    "torso": {
+      "death_at_zone_hp": true
+    }
+  },
+  "heal": {
+    "rest_per_hour": 1.5,
+    "bandage_stops_bleed": true,
+    "infection_chance": 0.15,
+    "herbs_mult": 1.5
+  },
+  "treatment": {
+    "_doc": "лечение после боя: p_stop — шанс остановить кровь в первые минуты; infection — шанс заражения раны; recover_days — дней на раны по тяжести; perm — шанс увечья тяжёлой раны",
+    "none": {
+      "p_stop": 0.5,
+      "infection": 0.3,
+      "recover_mult": 1.0,
+      "perm_mult": 1.0
+    },
+    "bandage": {
+      "p_stop": 0.8,
+      "infection": 0.25,
+      "recover_mult": 0.9,
+      "perm_mult": 0.9
+    },
+    "herbs": {
+      "p_stop": 0.85,
+      "infection": 0.12,
+      "recover_mult": 0.75,
+      "perm_mult": 0.8
+    },
+    "healer": {
+      "p_stop": 0.97,
+      "infection": 0.05,
+      "recover_mult": 0.5,
+      "perm_mult": 0.5
+    },
+    "recover_days": {
+      "bruise": 2,
+      "cut": 6,
+      "deep": 18,
+      "severe": 45
+    },
+    "perm": {
+      "deep": 0.08,
+      "severe": 0.45
+    },
+    "infection_extra_days": 10,
+    "infection_death": 0.25,
+    "bleed_death_untreated_deep": 0.18
+  }
+}

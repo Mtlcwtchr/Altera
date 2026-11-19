@@ -1,0 +1,5 @@
+{
+  "_doc": "Износ v0.1. Оружие: состояние 1.0..0 (durability из weapons.json — число действий до нуля при cost 1). Каждая атака стоит per_attack, парирование per_parry, удар в сильную броню множитель vs_hard_armor. Состояние снижает урон от min_dmg_mult до 1; при 0 оружие ломается (бойцу остаются кулаки). Броня: каждый поглощённый удар стоит per_hit у каждого слоя зоны, слой деградирует: pen и trans хуже до min_eff. Ремонт и заточка это ремесло (другой тред).",
+  "weapon": {"per_attack": 1.0, "per_parry": 1.5, "vs_hard_armor": 2.5, "hard_armor_pen": 0.7, "min_dmg_mult": 0.6},
+  "armor": {"per_hit": 1.0, "durability": {"default": 250, "aketon": 150, "gambeson": 200, "hide": 200, "mail": 500, "helmet": 400, "plate": 900}, "min_eff": 0.5}
+}

@@ -1,0 +1,152 @@
+{
+  "_doc": "Оружие. Имена через weapon.<id>.name в loc. damage по типу [lo,hi]; reach 0..3; moves — доступные направления.",
+  "sword": {
+    "reach": 2,
+    "weight": 1.4,
+    "stamina": 5,
+    "types": {
+      "slash": [
+        10,
+        18
+      ],
+      "thrust": [
+        9,
+        16
+      ]
+    },
+    "dir_type": {
+      "overhead": "slash",
+      "left": "slash",
+      "right": "slash",
+      "under": "slash",
+      "thrust": "thrust"
+    },
+    "speed": 1.0,
+    "durability": 120
+  },
+  "axe": {
+    "reach": 2,
+    "weight": 1.8,
+    "stamina": 7,
+    "types": {
+      "slash": [
+        14,
+        22
+      ]
+    },
+    "dir_type": {
+      "overhead": "slash",
+      "left": "slash",
+      "right": "slash",
+      "under": "slash"
+    },
+    "speed": 0.85,
+    "durability": 100
+  },
+  "mace": {
+    "reach": 2,
+    "weight": 2.0,
+    "stamina": 7,
+    "types": {
+      "blunt": [
+        12,
+        20
+      ]
+    },
+    "dir_type": {
+      "overhead": "blunt",
+      "left": "blunt",
+      "right": "blunt",
+      "under": "blunt"
+    },
+    "speed": 0.85,
+    "durability": 140
+  },
+  "spear": {
+    "reach": 3,
+    "weight": 2.0,
+    "stamina": 4,
+    "types": {
+      "thrust": [
+        15,
+        24
+      ],
+      "blunt": [
+        4,
+        7
+      ]
+    },
+    "dir_type": {
+      "overhead": "blunt",
+      "left": "blunt",
+      "right": "blunt",
+      "thrust": "thrust"
+    },
+    "speed": 1.0,
+    "durability": 90
+  },
+  "dagger": {
+    "reach": 1,
+    "weight": 0.5,
+    "stamina": 3,
+    "types": {
+      "slash": [
+        4,
+        7
+      ],
+      "thrust": [
+        6,
+        10
+      ]
+    },
+    "dir_type": {
+      "overhead": "slash",
+      "left": "slash",
+      "right": "slash",
+      "under": "slash",
+      "thrust": "thrust"
+    },
+    "speed": 1.3,
+    "durability": 80
+  },
+  "fists": {
+    "reach": 0,
+    "weight": 0.0,
+    "stamina": 3,
+    "types": {
+      "blunt": [
+        2,
+        5
+      ]
+    },
+    "dir_type": {
+      "overhead": "blunt",
+      "left": "blunt",
+      "right": "blunt",
+      "under": "blunt",
+      "thrust": "blunt"
+    },
+    "speed": 1.2,
+    "durability": 9999
+  },
+  "fangs": {
+    "reach": 1,
+    "weight": 0.0,
+    "stamina": 4,
+    "types": {
+      "slash": [
+        8,
+        14
+      ]
+    },
+    "dir_type": {
+      "overhead": "slash",
+      "left": "slash",
+      "right": "slash",
+      "under": "slash",
+      "thrust": "slash"
+    },
+    "speed": 1.2,
+    "durability": 9999
+  }
+}
