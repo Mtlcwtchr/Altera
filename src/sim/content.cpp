@@ -207,7 +207,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
 
     for (const auto& j : objects.value("objects", Json::array())) {
         warnUnknown(j, {"id", "stock", "max_stock", "regrow", "regrow_every", "biomes", "per_km2", "owned",
-                        "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season"},
+                        "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season", "crop"},
                     "objects", W);
         ObjectDef d;
         d.id = j.at("id").get<std::string>();
@@ -225,6 +225,38 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.shelter = opt(j, "shelter", false);
         d.perSettlement = opt(j, "per_settlement", 0);
         d.seasons = strings(j, "season");
+        if (j.contains("crop")) {
+            const Json& k = j.at("crop");
+            warnUnknown(k, {"seed", "produce", "seed_per_strip", "grain_per_sheaf", "sow", "grow_days", "yield",
+                            "drought_at", "waterlog_at", "drought_loss", "frost_c", "frost_loss", "wet_harvest_mm",
+                            "weeds_every", "weed_loss", "spoil_after", "spoil_per_day", "_doc"},
+                        "objects.crop", W);
+            d.hasCrop = true;
+            CropDef& cd = d.crop;
+            cd.seed = k.at("seed").get<std::string>();
+            cd.produce = opt(k, "produce", cd.produce);
+            cd.seedPerStrip = std::max(1, opt(k, "seed_per_strip", cd.seedPerStrip));
+            cd.grainPerSheaf = std::max(1, opt(k, "grain_per_sheaf", cd.grainPerSheaf));
+            if (k.contains("sow")) {
+                cd.sowFrom = k.at("sow").at(0).get<int>();
+                cd.sowTo = k.at("sow").at(1).get<int>();
+            }
+            cd.growDays = opt(k, "grow_days", cd.growDays);
+            if (k.contains("yield")) {
+                cd.yieldLo = k.at("yield").at(0).get<double>();
+                cd.yieldHi = k.at("yield").at(1).get<double>();
+            }
+            cd.droughtAt = opt(k, "drought_at", cd.droughtAt);
+            cd.waterlogAt = opt(k, "waterlog_at", cd.waterlogAt);
+            cd.droughtLoss = opt(k, "drought_loss", cd.droughtLoss);
+            cd.frostC = opt(k, "frost_c", cd.frostC);
+            cd.frostLoss = opt(k, "frost_loss", cd.frostLoss);
+            cd.wetHarvestMm = opt(k, "wet_harvest_mm", cd.wetHarvestMm);
+            cd.weedsEvery = std::max(1, opt(k, "weeds_every", cd.weedsEvery));
+            cd.weedLoss = opt(k, "weed_loss", cd.weedLoss);
+            cd.spoilAfter = opt(k, "spoil_after", cd.spoilAfter);
+            cd.spoilPerDay = opt(k, "spoil_per_day", cd.spoilPerDay);
+        }
         if (!c.objects.emplace(d.id, d).second) err.add("objects: duplicate id " + d.id);
     }
 
@@ -619,6 +651,65 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     return c;
 }
 
+const SoilDef& ClimateDef::soil(const std::string& biome) const {
+    static const SoilDef fallback;
+    auto it = soils.find(biome);
+    if (it != soils.end()) return it->second;
+    it = soils.find("default");
+    return it != soils.end() ? it->second : fallback;
+}
+
+ClimateDef parseClimate(const Json& j, std::vector<std::string>& W) {
+    ClimateDef d;
+    if (!j.is_object() || j.empty()) return d;
+    d.loaded = true;
+    static const char* kSeasonNames[4] = {"spring", "summer", "autumn", "winter"};
+    const Json seasons = j.value("seasons", Json::object());
+    for (int i = 0; i < 4; ++i) {
+        if (!seasons.contains(kSeasonNames[i])) continue;
+        const Json& s = seasons.at(kSeasonNames[i]);
+        warnUnknown(s, {"temp_c", "temp_sd", "rain_mm", "wet_chance", "_doc"}, "climate.seasons", W);
+        SeasonClimate& sc = d.seasons[i];
+        sc.tempC = opt(s, "temp_c", sc.tempC);
+        sc.tempSd = opt(s, "temp_sd", sc.tempSd);
+        sc.rainMm = opt(s, "rain_mm", sc.rainMm);
+        sc.wetChance = std::clamp(opt(s, "wet_chance", sc.wetChance), 0.01, 0.99);
+    }
+    d.biomeRainMult = opt(j, "biome_rain_mult", std::map<std::string, double>{});
+    d.biomeTempAdd = opt(j, "biome_temp_add", std::map<std::string, double>{});
+    for (const auto& [biome, s] : j.value("soils", Json::object()).items()) {
+        if (biome.rfind('_', 0) == 0) continue;
+        warnUnknown(s, {"fertility", "depth", "drainage", "capacity_mm", "_doc"}, "climate.soils", W);
+        SoilDef sd;
+        sd.fertility = opt(s, "fertility", sd.fertility);
+        sd.depth = opt(s, "depth", sd.depth);
+        sd.drainage = opt(s, "drainage", sd.drainage);
+        sd.capacityMm = opt(s, "capacity_mm", sd.capacityMm);
+        d.soils[biome] = sd;
+    }
+    return d;
+}
+
+CareDef parseCare(const Json& j, std::vector<std::string>& W) {
+    CareDef d;
+    if (!j.is_object()) return d;
+    d.threshold = opt(j, "need_threshold", d.threshold);
+    d.circles = opt(j, "circles", std::map<std::string, double>{});
+    for (const auto& x : j.value("dependents", Json::array())) {
+        warnUnknown(x, {"id", "age_lt", "age_ge", "health_lt", "trait", "weight", "needs", "_doc"}, "care.dependents", W);
+        DependentDef dd;
+        dd.id = x.at("id").get<std::string>();
+        dd.ageLt = opt(x, "age_lt", dd.ageLt);
+        dd.ageGe = opt(x, "age_ge", dd.ageGe);
+        dd.healthLt = opt(x, "health_lt", dd.healthLt);
+        dd.trait = opt(x, "trait", std::string());
+        dd.weight = opt(x, "weight", dd.weight);
+        dd.needs = strings(x, "needs");
+        d.dependents.push_back(dd);
+    }
+    return d;
+}
+
 Content Content::load(const std::string& dir) {
     auto f = [&](const char* name) {
         std::ifstream probe(dir + "/" + name);
@@ -627,6 +718,8 @@ Content Content::load(const std::string& dir) {
     Content c = fromJson(f("items.json"), f("objects.json"), f("needs.json"), f("traits.json"), f("goals.json"),
                          f("htn.json"), f("interactions.json"), f("fsm.json"), f("config.json"), f("dialogue.json"),
                          f("knowledge.json"), f("species.json"));
+    c.climate = parseClimate(f("climate.json"), c.warnings);
+    c.care = parseCare(f("care.json"), c.warnings);
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);
     if (!v.ok()) {

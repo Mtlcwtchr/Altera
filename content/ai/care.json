@@ -1,0 +1,84 @@
+{
+ "_doc": "Забота (care.cpp). Подопечные: кто за себя не справляется, с весом и потребностями, за которыми нужен присмотр. Заботящийся взвешивает каждого подопечного рядом: вес категории × насколько просела потребность × круг (свой дом, родня, соседи по отношению). Сам подопечный о других не заботится. Характер меняет вес цели care (traits.json goal_mult).",
+ "_part": "H",
+ "need_threshold": 0.55,
+ "circles": {
+  "household": 1.0,
+  "kin": 0.6,
+  "neighbour": 0.3
+ },
+ "dependents": [
+  {
+   "id": "infant",
+   "age_lt": 4,
+   "weight": 1.0,
+   "needs": [
+    "hunger",
+    "warmth",
+    "hygiene",
+    "social"
+   ],
+   "_doc": "младенец: всё за него"
+  },
+  {
+   "id": "child",
+   "age_lt": 10,
+   "weight": 0.75,
+   "needs": [
+    "hunger",
+    "warmth",
+    "hygiene"
+   ]
+  },
+  {
+   "id": "youngster",
+   "age_lt": 14,
+   "weight": 0.4,
+   "needs": [
+    "hunger"
+   ],
+   "_doc": "подросток сам многое может, но кормит его семья"
+  },
+  {
+   "id": "sick",
+   "health_lt": 0.45,
+   "weight": 0.85,
+   "needs": [
+    "hunger",
+    "warmth",
+    "social"
+   ]
+  },
+  {
+   "id": "crippled",
+   "trait": "crippled",
+   "weight": 0.7,
+   "needs": [
+    "hunger",
+    "warmth",
+    "hygiene"
+   ]
+  },
+  {
+   "id": "elder",
+   "age_ge": 62,
+   "weight": 0.55,
+   "needs": [
+    "hunger",
+    "warmth",
+    "social"
+   ]
+  },
+  {
+   "id": "frail_elder",
+   "age_ge": 70,
+   "weight": 0.8,
+   "needs": [
+    "hunger",
+    "warmth",
+    "hygiene",
+    "social"
+   ]
+  }
+ ]
+}

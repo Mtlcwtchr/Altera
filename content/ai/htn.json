@@ -449,6 +449,40 @@
       }
      ],
      "_part": "H"
+    },
+    {
+     "id": "eat_seed_corn",
+     "pre": [
+      "need:hunger<0.2",
+      "home:grain<1",
+      "home:seed_grain>=20",
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:firewood>=1"
+     ],
+     "cost": 9.0,
+     "steps": [
+      {
+       "do": "eat_into_seed_corn"
+      },
+      {
+       "achieve": [
+        "has:grain>=1"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "cook_porridge"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_doc": "последнее средство: семена в котёл",
+     "_part": "H"
     }
    ]
   },
@@ -1415,6 +1449,283 @@
        }
       }
      ]
+    }
+   ]
+  },
+  {
+   "id": "tend_fields_task",
+   "methods": [
+    {
+     "id": "reap_and_thresh",
+     "pre": [
+      "knows:farming",
+      "known:field",
+      "farm:ripe>=2"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:sheaf>=2"
+       ],
+       "allow": [
+        "reap_field"
+       ]
+      },
+      {
+       "do": "thresh_sheaves"
+      },
+      {
+       "do": "store_grain"
+      }
+     ]
+    },
+    {
+     "id": "sow_from_pack",
+     "pre": [
+      "knows:farming",
+      "known:field",
+      "farm:tilled>=1",
+      "has:seed_grain>=20"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "do": "sow_field"
+      }
+     ]
+    },
+    {
+     "id": "sow_tilled",
+     "pre": [
+      "knows:farming",
+      "known:field",
+      "known:storage",
+      "farm:tilled>=1",
+      "home:seed_grain>=20"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:seed_grain>=20"
+       ],
+       "allow": [
+        "take_seed_grain"
+       ]
+      },
+      {
+       "do": "sow_field"
+      }
+     ]
+    },
+    {
+     "id": "till_strip",
+     "pre": [
+      "knows:farming",
+      "known:field",
+      "farm:free>=1"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "do": "till_field"
+      }
+     ]
+    },
+    {
+     "id": "weed_strips",
+     "pre": [
+      "known:field",
+      "farm:weeds>=2"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "do": "weed_field"
+      }
+     ]
+    },
+    {
+     "id": "put_seed_aside",
+     "pre": [
+      "known:storage",
+      "farm:seed_need>=20",
+      "home:grain>=20"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "do": "set_aside_seed"
+      }
+     ]
+    }
+   ],
+   "_part": "H"
+  },
+  {
+   "id": "care_task",
+   "_doc": "забота о подопечном: цель care ставит его целью, акты *_ward идут к нему",
+   "_part": "H",
+   "methods": [
+    {
+     "id": "feed_ward_carried",
+     "pre": [
+      "care:hunger>=0.2",
+      "has:meal>=1"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "do": "feed_ward"
+      }
+     ]
+    },
+    {
+     "id": "feed_ward_from_store",
+     "pre": [
+      "care:hunger>=0.2",
+      "home:meal>=1",
+      "known:storage"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:meal>=1"
+       ],
+       "allow": [
+        "take_meal"
+       ]
+      },
+      {
+       "do": "feed_ward"
+      }
+     ]
+    },
+    {
+     "id": "cook_porridge_for_ward",
+     "pre": [
+      "care:hunger>=0.2",
+      "knows:cooking",
+      "known:hearth",
+      "home:grain>=1",
+      "home:firewood>=1"
+     ],
+     "cost": 2.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:grain>=1"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "cook_porridge"
+      },
+      {
+       "do": "feed_ward"
+      }
+     ]
+    },
+    {
+     "id": "cook_roots_for_ward",
+     "pre": [
+      "care:hunger>=0.2",
+      "knows:cooking",
+      "known:hearth",
+      "home:roots>=2",
+      "home:firewood>=1"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:roots>=2"
+       ],
+       "allow": [
+        "take_roots"
+       ]
+      },
+      {
+       "do": "cook_meal"
+      },
+      {
+       "do": "feed_ward"
+      }
+     ]
+    },
+    {
+     "id": "warm_the_ward",
+     "pre": [
+      "care:warmth>=0.25"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "do": "warm_ward"
+      }
+     ]
+    },
+    {
+     "id": "wash_the_ward",
+     "pre": [
+      "care:hygiene>=0.3"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "do": "wash_ward"
+      }
+     ]
+    },
+    {
+     "id": "comfort_the_ward",
+     "pre": [
+      "care:social>=0.3"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "do": "comfort_ward"
+      }
+     ]
+    },
+    {
+     "id": "seed_corn_for_ward",
+     "pre": [
+      "care:hunger>=0.5",
+      "home:grain<1",
+      "home:seed_grain>=20",
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:firewood>=1"
+     ],
+     "cost": 6.0,
+     "steps": [
+      {
+       "do": "eat_into_seed_corn"
+      },
+      {
+       "achieve": [
+        "has:grain>=1"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "cook_porridge"
+      },
+      {
+       "do": "feed_ward"
+      }
+     ],
+     "_doc": "дети голодают, а в амбаре семена: весной будет нечем сеять, но это потом",
+     "_part": "H"
     }
    ]
   }

@@ -270,6 +270,40 @@
    "id": "grave",
    "owned": false,
    "_doc": "spawn:grave из погребения (часть C)"
+  },
+  {
+   "id": "field",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "crop": {
+    "seed": "seed_grain",
+    "produce": "sheaf",
+    "seed_per_strip": 20,
+    "grain_per_sheaf": 20,
+    "sow": [
+     8,
+     50
+    ],
+    "grow_days": 115,
+    "yield": [
+     3.4,
+     5.4
+    ],
+    "weeds_every": 12,
+    "weed_loss": 0.0015,
+    "spoil_after": 15,
+    "spoil_per_day": 0.05,
+    "_doc": "яровой хлеб: сев ранней весной, созревает к концу лета. Урожай = что даёт почва (плодородие, глубина) минус то, что взял сезон: засуха или вымокание по влажности почвы, заморозки после сева, жара в цветение, дожди по стоящему хлебу, сорняки",
+    "drought_at": 0.4,
+    "waterlog_at": 1.08,
+    "drought_loss": 1.0,
+    "frost_c": -2.0,
+    "frost_loss": 600,
+    "wet_harvest_mm": 6.0
+   },
+   "_doc": "поле семьи: полосы (strips) по числу едоков задаёт worldgen; состояние в stock (tilled, sown, grown, weeds, ripe...)",
+   "_part": "H"
   }
  ]
 }

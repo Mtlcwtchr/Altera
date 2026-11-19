@@ -30,6 +30,8 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
     if (subj == "mood") return (c.mood(w.now()) + 1.0) * 0.5;
     if (subj == "home_food_days") return clamp01(homeFoodDays(w, c) / norm);
     if (subj == "season") return w.season() == key ? 1.0 : 0.0;
+    if (subj == "farm") return clamp01(farmValue(w, c, nullptr, key) / norm);
+    if (subj == "care") return clamp01(careValue(w, c, key) / norm);
     if (subj == "trait") return c.hasTrait(key) ? 1.0 : 0.0;
     if (subj == "age") return c.body.stage() == key ? 1.0 : 0.0;
     return 1.0; // const
@@ -110,6 +112,12 @@ std::vector<GoalScore> scoreGoals(const World& w, const Character& c) {
             }
             score += cfg.hysteresisBonus * hm;
             gs.why["hold"] = round3(cfg.hysteresisBonus * hm);
+        }
+        // A care goal is about someone: the ward becomes the goal's target.
+        if (inputs.contains("care:need")) {
+            const CareChoice ch = bestWard(w, c);
+            gs.target = ch.ward;
+            if (ch.ward != kNone) gs.why["ward"] = {{"id", ch.ward}, {"need", ch.need}};
         }
         gs.why["in"] = inputs;
         gs.score = std::max(0.0, score);

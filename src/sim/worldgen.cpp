@@ -298,7 +298,11 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             if (!def.settlement) continue;
             const int n = def.perFamily + def.perPerson * people;
             for (int k = 0; k < n; ++k) {
-                const Vec2 p{house.x + rng.range(-6.0, 6.0), house.y + rng.range(-6.0, 6.0)};
+                Vec2 p{house.x + rng.range(-6.0, 6.0), house.y + rng.range(-6.0, 6.0)};
+                if (def.hasCrop) { // fields lie outside the houses, behind each household's yard
+                    const double far = rad + rng.range(90.0, 160.0) + 40.0 * k;
+                    p = {center.x + std::cos(ang) * far, center.y + std::sin(ang) * far};
+                }
                 const EntityId oid = spawnSettlementObject(type, p, fam.id);
                 if (type == "storage" && fam.storage == kNone) fam.storage = oid;
                 if (type == "hearth" && fam.hearth == kNone) fam.hearth = oid;
@@ -362,6 +366,9 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     }
     w.settlements()[st.id] = st;
 
+    // --- fields ---------------------------------------------------------------
+    seedFields(w, seed, cfg);
+
     // --- last year's stores ------------------------------------------------
     // Until the history generator runs N years before the start, each
     // household's store is a cheap model of last year: how many days of food
@@ -369,12 +376,19 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     // season (autumn: the harvest is in; spring: the hungry gap). Spread
     // between households on purpose - a poorer neighbour makes situations.
     if (!content.knowledge.empty()) {
-        // A household's staple has to last until the next harvest (no fields
-        // yet: the stores stand in for last year's farming). It covers a share
+        // A household's staple has to last until the next harvest (the
+        // stores stand in for last year's farming). It covers a share
         // of the days left - the rest is foraging, fishing, hunting and the
         // neighbours. carryover_days {season: [lo, hi]} overrides it (tests).
         const Json carry = cfg.value("carryover_days", Json::object());
-        const int harvestDay = cfg.value("harvest_day", 180); // the end of summer
+        // The next harvest: when the fields ripen (mid sowing + growth + reaping).
+        int cropHarvest = 180;
+        for (const auto& [oid, od] : content.objects)
+            if (od.hasCrop) {
+                const int len = (od.crop.sowTo - od.crop.sowFrom + kDaysPerYear) % kDaysPerYear + 1;
+                cropHarvest = (od.crop.sowFrom + len / 2 + od.crop.growDays + 10) % kDaysPerYear;
+            }
+        const int harvestDay = cfg.value("harvest_day", cropHarvest);
         const int doy = w.startDay() % kDaysPerYear;
         const int daysToHarvest = ((harvestDay - doy) % kDaysPerYear + kDaysPerYear) % kDaysPerYear;
         const Json share = cfg.value("carryover_share", Json::array({0.55, 0.8}));
@@ -423,7 +437,39 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             double grain = 0.6, fish = fisher ? 0.15 : 0.0, meat = hunter ? 0.1 : 0.0, berries = 0.1;
             const double rest = 1.0 - grain - fish - meat - berries;
             grain += rest;
-            put("grain", grain);
+            // The staple comes from the household's own fields: last harvest
+            // replayed from that year's weather and soil, less the seed kept
+            // back and what has been eaten since. Without fields, the share.
+            double fieldGrain = -1.0;
+            for (const auto& [oid, od] : content.objects) {
+                if (!od.hasCrop) continue;
+                for (EntityId fidObj : w.objectsOfType(oid)) {
+                    const WorldObject* f = w.object(fidObj);
+                    if (!f || f->ownerFamily != fam.id) continue;
+                    const CropDef& cd = od.crop;
+                    const int lastYear = doy >= harvestDay ? 0 : -1;
+                    const int strips = f->stock.count("strips") ? f->stock.at("strips") : 0;
+                    const double harvest = strips * cd.seedPerStrip * pastSeasonYield(w, *f, lastYear);
+                    // The seed sown or stored for the next sowing came out of it.
+                    const double seedOut = strips * cd.seedPerStrip;
+                    fieldGrain = std::max(0.0, fieldGrain) + std::max(0.0, harvest - seedOut);
+                }
+            }
+            if (fieldGrain >= 0.0) {
+                const auto gd = content.items.find("grain");
+                const double nut = gd == content.items.end() ? 0.45 : std::max(0.05, gd->second.nutrition);
+                const int sinceHarvest = ((doy - harvestDay) % kDaysPerYear + kDaysPerYear) % kDaysPerYear;
+                const double eaten = sinceHarvest * people * perDay * grain / nut;
+                // A famine year in the stand-in history is softened to a lean
+                // one: until history generation plays it out (deaths, flight,
+                // help from kin), nobody starts with less than ~80% of the
+                // staple to the next harvest.
+                const double floorGrain = 0.8 * std::max(10, daysToHarvest) * people * perDay * grain / nut;
+                const double left = std::max(fieldGrain - eaten, floorGrain) * work * fr.range(0.9, 1.1);
+                store->stock["grain"] += static_cast<int>(std::round(left));
+            } else {
+                put("grain", grain);
+            }
             put("smoked_fish", fish);
             put("dried_meat", meat);
             put("dried_berries", berries);

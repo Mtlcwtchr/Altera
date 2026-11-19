@@ -1090,7 +1090,9 @@
    "category": "family",
    "target": "character",
    "pre": [
-    "has:meal>=1"
+    "has:meal>=1",
+    "t.need:hunger<0.6",
+    "t.has:meal<1"
    ],
    "eff": [
     "has:meal-1",
@@ -1110,7 +1112,8 @@
    ],
    "social": {
     "meaning": "gift"
-   }
+   },
+   "_doc": "кормят голодного и с пустыми руками: иначе еда ходит по кругу и портится"
   },
   {
    "id": "comfort",
@@ -4177,10 +4180,10 @@
    "eff": [
     "has:grain-1",
     "home:firewood-1",
-    "has:meal+2",
+    "has:meal+1",
     "skill:cooking+0.01"
    ],
-   "duration": 3,
+   "duration": 2,
    "cost": 2,
    "_part": "H"
   },
@@ -4416,6 +4419,277 @@
     "request",
     "command"
    ],
+   "_part": "H"
+  },
+  {
+   "id": "till_field",
+   "category": "work",
+   "target": "object:field",
+   "pre": [
+    "target_owner:family",
+    "knows:farming",
+    "farm:free>=1"
+   ],
+   "eff": [
+    "target_stock:tilled+1",
+    "skill:farming+0.01",
+    "body:fatigue+0.08"
+   ],
+   "duration": 36,
+   "cost": 6,
+   "fsm": "Work",
+   "reserve": true,
+   "_doc": "вскопать/вспахать одну полосу; только в окно сева и только под имеющиеся семена",
+   "_part": "H"
+  },
+  {
+   "id": "sow_field",
+   "category": "work",
+   "target": "object:field",
+   "pre": [
+    "target_owner:family",
+    "knows:farming",
+    "target_stock:tilled>=1",
+    "has:seed_grain>=20"
+   ],
+   "eff": [
+    "target_stock:tilled-1",
+    "target_stock:sown+1",
+    "has:seed_grain-20",
+    "skill:farming+0.01",
+    "body:fatigue+0.02"
+   ],
+   "duration": 8,
+   "cost": 2,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H"
+  },
+  {
+   "id": "weed_field",
+   "category": "work",
+   "target": "object:field",
+   "pre": [
+    "target_owner:family",
+    "target_stock:weeds>=2"
+   ],
+   "eff": [
+    "target_stock:weeds-2",
+    "skill:farming+0.005",
+    "body:fatigue+0.04"
+   ],
+   "duration": 18,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H"
+  },
+  {
+   "id": "reap_field",
+   "category": "work",
+   "target": "object:field",
+   "pre": [
+    "target_owner:family",
+    "knows:farming",
+    "target_stock:ripe>=2"
+   ],
+   "eff": [
+    "target_stock:ripe-2",
+    "has:sheaf+2",
+    "skill:farming+0.01",
+    "body:fatigue+0.05"
+   ],
+   "duration": 12,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H"
+  },
+  {
+   "id": "thresh_sheaves",
+   "category": "work",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:sheaf>=2"
+   ],
+   "eff": [
+    "has:sheaf-2",
+    "has:grain+40",
+    "body:fatigue+0.04"
+   ],
+   "duration": 12,
+   "cost": 3,
+   "fsm": "Work",
+   "_doc": "обмолот у своего амбара: два снопа -> 40 мер зерна",
+   "_part": "H"
+  },
+  {
+   "id": "store_grain",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:grain>=40"
+   ],
+   "eff": [
+    "has:grain-40",
+    "home:grain+40"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "_part": "H"
+  },
+  {
+   "id": "take_seed_grain",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:seed_grain>=20"
+   ],
+   "eff": [
+    "has:seed_grain+20",
+    "home:seed_grain-20"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H"
+  },
+  {
+   "id": "set_aside_seed",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "farm:seed_need>=20",
+    "home:grain>=20"
+   ],
+   "eff": [
+    "home:grain-20",
+    "home:seed_grain+20"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_doc": "отложить семена на следующий сев из нового зерна",
+   "_part": "H"
+  },
+  {
+   "id": "eat_into_seed_corn",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:seed_grain>=20"
+   ],
+   "eff": [
+    "home:seed_grain-20",
+    "home:grain+20",
+    "memory:ate_seed_corn"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "visibility": "public",
+   "_doc": "голод: пустить семенное зерно в котёл; весной сеять будет нечем",
+   "_part": "H"
+  },
+  {
+   "id": "feed_ward",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "has:meal>=1",
+    "t.need:hunger<0.6"
+   ],
+   "eff": [
+    "has:meal-1",
+    "t.need:hunger+0.45",
+    "rel_back:affinity+0.05",
+    "rel_back:trust+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "_doc": "накормить подопечного (ребёнка, старика, больного) с рук",
+   "_part": "H"
+  },
+  {
+   "id": "warm_ward",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "t.need:warmth<0.55"
+   ],
+   "eff": [
+    "t.need:warmth+0.35",
+    "rel_back:affinity+0.03",
+    "body:fatigue+0.01"
+   ],
+   "duration": 6,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "_doc": "укутать, отвести к огню",
+   "_part": "H"
+  },
+  {
+   "id": "wash_ward",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "t.need:hygiene<0.5"
+   ],
+   "eff": [
+    "t.need:hygiene+0.5",
+    "rel_back:affinity+0.02",
+    "body:fatigue+0.01"
+   ],
+   "duration": 4,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "_doc": "умыть, переодеть",
+   "_part": "H"
+  },
+  {
+   "id": "comfort_ward",
+   "category": "family",
+   "target": "character",
+   "pre": [
+    "t.need:social<0.5"
+   ],
+   "eff": [
+    "t.need:social+0.3",
+    "t.need:fun+0.1",
+    "need:social+0.1",
+    "rel_back:affinity+0.04"
+   ],
+   "duration": 4,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "_doc": "посидеть рядом, утешить, поиграть",
    "_part": "H"
   }
  ]

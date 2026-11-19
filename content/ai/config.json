@@ -85,7 +85,8 @@
   "attacked_by_beast": 0.7,
   "saw_beast": 0.3,
   "good_hunt": 0.3,
-  "food_spoiled": 0.2
+  "food_spoiled": 0.2,
+  "ate_seed_corn": 0.6
  },
  "loc": {
   "_doc": "Локализация: видимые тексты только ключами (name_key, desc_key, thought_key; memory.<id>.text по типу памяти). Строки — content/loc/<язык>/*.json (часть B — ai.json), плоский словарь; значение — строка, массив вариантов или объект CLDR-форм {one,few,many,other}. Падежи отдельными ключами (.acc, .gen…). Слоты: {person}, {person.gen|dat|acc|ins}, {person.g:м|ж}, {speaker.g:м|ж}, {qty item}. Грамматика имён — loc/ru.grammar.json (C). Нет ключа в языке → fallback_language, нет и там → сам ключ (видно в отладке).",

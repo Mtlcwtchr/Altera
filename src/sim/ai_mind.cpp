@@ -525,6 +525,7 @@ void installAi(World& w) {
         if (world.now() % kTicksPerDay == 0 && world.now() > 0) {
             animalsDaily(world);
             spoilFood(world);
+            cropsDaily(world);
         }
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {

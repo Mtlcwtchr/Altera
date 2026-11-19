@@ -271,6 +271,52 @@
    "cooldown_on_fail": 24
   },
   {
+   "id": "tend_fields",
+   "task": "tend_fields_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.85,
+   "considerations": [
+    {
+     "input": "farm:work",
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     },
+     "_doc": "срочность полевой работы: жатва > сев > пахота > прополка > семена",
+     "norm": 1
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "body:fatigue",
+     "curve": {
+      "type": "linear",
+      "m": -0.6,
+      "b": 1.0
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.95,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 24,
+   "_part": "H"
+  },
+  {
    "id": "stock_firewood",
    "task": "gather_firewood_for_home",
    "priority_class": "work",
@@ -313,6 +359,44 @@
    ],
    "min_ticks": 6,
    "cooldown_on_fail": 24
+  },
+  {
+   "id": "care",
+   "task": "care_task",
+   "priority_class": "need",
+   "aggregate": "product",
+   "base": 0.95,
+   "considerations": [
+    {
+     "input": "care:need",
+     "norm": 1,
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     },
+     "_doc": "самый нуждающийся подопечный: вес категории × нехватка × круг"
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.4,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 2,
+   "cooldown_on_fail": 12,
+   "_part": "H"
   },
   {
    "id": "share_food",

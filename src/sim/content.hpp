@@ -20,8 +20,71 @@ struct ItemDef {
     double spoilDays = 0.0; // 0 = keeps
 };
 
+// objects.json `crop`: a field sown from `seed` in a day-of-year window,
+// ripening `grow_days` later (farming.cpp). Field state lives in the object's
+// stock under kCropKeys; `strips` is the size, set per household by worldgen.
+struct CropDef {
+    std::string seed;                // item sown (kept apart from food in the store)
+    std::string produce = "sheaf";   // what reaping gives
+    int seedPerStrip = 10;           // seed units per strip
+    int grainPerSheaf = 10;          // seed-equivalent units per sheaf (threshing)
+    int sowFrom = 0, sowTo = 0;      // sowing window, day of year (inclusive)
+    int growDays = 120;              // from sowing to ripe
+    double yieldLo = 3.0, yieldHi = 5.0; // harvest per seed: poorest .. best soil, no stress
+    // Stress from the field's own weather (weather.cpp, farming.cpp):
+    double droughtAt = 0.4;          // soil water below this share of capacity dries the crop
+    double waterlogAt = 1.08;        // above this the roots drown
+    double droughtLoss = 1.6;        // yield lost per unit of season-average water stress
+    double frostC = -2.0;            // a growing crop is hurt below this
+    double frostLoss = 600.0;        // frost units (0.1 degC-days below frost_c) that cost half the crop
+    double wetHarvestMm = 6.0;       // rain on a standing ripe crop above this sprouts and lodges it
+    int weedsEvery = 12;             // days between weed growth
+    double weedLoss = 0.0015;        // yield lost per weed-day above the first weed
+    int spoilAfter = 15;             // days a ripe crop stands before it starts to shatter
+    double spoilPerDay = 0.05;       // share of the standing crop lost per day after that
+};
+bool isCropKey(const std::string& key);
+
+// climate.json: the seasons' weather of the region and the soils by biome.
+// Daily weather is drawn from it per settlement (weather.cpp).
+struct SeasonClimate {
+    double tempC = 10.0, tempSd = 3.0; // mean and spread at the season's middle
+    double rainMm = 2.0;               // mean rain per day
+    double wetChance = 0.4;            // share of days with rain
+};
+struct SoilDef {
+    double fertility = 0.7, depth = 0.7, drainage = 0.5; // 0..1
+    double capacityMm = 120.0;                           // water the root zone holds
+};
+struct ClimateDef {
+    bool loaded = false;
+    SeasonClimate seasons[4]; // spring, summer, autumn, winter
+    std::map<std::string, double> biomeRainMult;
+    std::map<std::string, double> biomeTempAdd;
+    std::map<std::string, SoilDef> soils; // by biome; "default" for the rest
+    const SoilDef& soil(const std::string& biome) const;
+};
+
+// care.json: dependents (who needs looking after) and how much the carer's
+// circle counts (care.cpp).
+struct DependentDef {
+    std::string id;
+    int ageLt = -1, ageGe = -1;    // age in years; -1 = not used
+    double healthLt = -1.0;        // -1 = not used
+    std::string trait;             // empty = not used
+    double weight = 0.5;           // how much their need weighs on a carer
+    std::vector<std::string> needs; // the needs others see to
+};
+struct CareDef {
+    std::vector<DependentDef> dependents;
+    std::map<std::string, double> circles; // household, kin, neighbour
+    double threshold = 0.55;               // a need below this starts to count
+};
+
 struct ObjectDef {
     std::string id;
+    bool hasCrop = false;
+    CropDef crop;
     std::map<std::string, int> stock;
     std::map<std::string, int> maxStock;
     std::map<std::string, int> regrow;
@@ -337,6 +400,8 @@ struct Content {
     Json dialogueRules = Json::object(); // the rest of dialogue.json (plans, menu, consent, ...)
     std::map<std::string, KnowledgeDef> knowledge;
     std::map<std::string, SpeciesDef> species;
+    ClimateDef climate;
+    CareDef care;
     const SpeciesDef* speciesOf(const std::string& id) const {
         auto it = species.find(id);
         return it == species.end() ? nullptr : &it->second;

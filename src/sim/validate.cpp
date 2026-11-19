@@ -11,7 +11,7 @@ namespace {
 
 const std::set<std::string> kCondSubjects = {"has", "at", "need", "knows", "skill", "trait", "age", "body", "time",
                                              "known", "home", "target_stock", "target_owner", "rel", "moodlet",
-                                             "reputation", "status_pair", "status_pair_any", "right", "verdict"};
+                                             "reputation", "status_pair", "status_pair_any", "right", "verdict", "farm", "care"};
 // t.<subject>: conditions on the target character.
 const std::set<std::string> kTargetCondSubjects = {"need", "skill", "body", "age", "moodlet", "has", "trait",
                                                    "knows", "reputation", "status_pair_any", "right", "verdict"};
@@ -95,8 +95,12 @@ struct V {
         }
         if ((k.subject == "rel" || k.subject == "status_pair") && !sc.charTarget) err(where + ": '" + k.text + "' needs a character target");
         if (!param(k.subject, k.key, k.text, where, sc)) return;
-        if ((k.subject == "has" || k.subject == "home" || k.subject == "target_stock") && !c.items.count(k.key))
+        if ((k.subject == "has" || k.subject == "home" || k.subject == "target_stock") && !c.items.count(k.key) &&
+            !(k.subject == "target_stock" && isCropKey(k.key)))
             err(where + ": unknown item '" + k.key + "' in '" + k.text + "'");
+        if (k.subject == "farm" && !isCropKey(k.key) && k.key != "sow_window" && k.key != "free" &&
+            k.key != "seed_need" && k.key != "work")
+            err(where + ": unknown farm key '" + k.key + "'");
         if ((k.subject == "at" || k.subject == "known") && !c.objects.count(k.key) && !c.species.count(k.key))
             err(where + ": unknown object type '" + k.key + "' in '" + k.text + "'");
         if (k.subject == "need" && !c.need(k.key)) err(where + ": unknown need '" + k.key + "'");
@@ -145,7 +149,8 @@ struct V {
             err(where + ": effect '" + e.text + "' has the wrong form");
         }
         if (!param(e.subject, e.key, e.text, where, sc)) return;
-        if ((e.subject == "has" || e.subject == "home" || e.subject == "target_stock") && !c.items.count(e.key))
+        if ((e.subject == "has" || e.subject == "home" || e.subject == "target_stock") && !c.items.count(e.key) &&
+            !(e.subject == "target_stock" && isCropKey(e.key)))
             err(where + ": unknown item '" + e.key + "' in '" + e.text + "'");
         if ((e.subject == "need" || e.subject == "target_need") && !c.need(e.key))
             err(where + ": unknown need '" + e.key + "'");
@@ -452,7 +457,8 @@ ValidationReport validate(const Content& c) {
                 v.err(where + ": unknown item input '" + k.input + "'");
             else if (subj != "need" && subj != "has" && subj != "home" && subj != "time" && subj != "body" &&
                      subj != "mood" && subj != "const" && subj != "trait" && subj != "age" && subj != "home_food_days" &&
-                     subj != "season")
+                     subj != "season" && subj != "farm" &&
+                     subj != "care")
                 v.err(where + ": unknown input '" + k.input + "'");
         }
         // Score identically zero over the whole range?
@@ -473,6 +479,12 @@ ValidationReport validate(const Content& c) {
     for (const auto& [id, o] : c.objects) {
         for (const auto& [it, n] : o.stock) objectItems[id].insert(it);
         for (const auto& [it, n] : o.regrow) objectItems[id].insert(it);
+        // A field's state grows by itself (farming.cpp): tilled by hand, ripe by time.
+        if (o.hasCrop)
+            for (const char* k : {"strips", "tilled", "sown", "grown", "weeds", "weed_load", "ripe", "ripe_age",
+                                  "moisture", "capacity", "drainage", "soil_depth", "fertility", "soil_fertility",
+                                  "water_stress", "frost"})
+                objectItems[id].insert(k);
     }
     for (bool changed = true; changed;) {
         changed = false;

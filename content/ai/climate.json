@@ -1,0 +1,73 @@
+{
+ "_doc": "Климат региона и почвы по биомам (weather.cpp, farming.cpp). Погода дня — функция сида мира, деревни и дня: сезонная норма плюс плавные колебания на масштабах дней, недель и года, поэтому засухи, затяжные дожди и холодные вёсны складываются сами. Пока это стенд-ин; позже значения придут из полей мира (Moisture, Temperature, Fertility, SoilDepth, Drainage) генератора рельефа.",
+ "_part": "H",
+ "seasons": {
+  "spring": {
+   "temp_c": 8.0,
+   "temp_sd": 3.5,
+   "rain_mm": 1.8,
+   "wet_chance": 0.42
+  },
+  "summer": {
+   "temp_c": 18.0,
+   "temp_sd": 3.0,
+   "rain_mm": 2.3,
+   "wet_chance": 0.36
+  },
+  "autumn": {
+   "temp_c": 8.5,
+   "temp_sd": 3.5,
+   "rain_mm": 2.0,
+   "wet_chance": 0.45
+  },
+  "winter": {
+   "temp_c": -3.0,
+   "temp_sd": 4.5,
+   "rain_mm": 1.4,
+   "wet_chance": 0.4
+  }
+ },
+ "biome_rain_mult": {
+  "marsh": 1.1,
+  "forest": 1.05
+ },
+ "biome_temp_add": {
+  "marsh": -0.5
+ },
+ "soils": {
+  "_doc": "fertility, depth, drainage 0..1; capacity_mm — сколько воды держит корнеобитаемый слой",
+  "meadow": {
+   "fertility": 0.75,
+   "depth": 0.8,
+   "drainage": 0.6,
+   "capacity_mm": 130
+  },
+  "forest": {
+   "fertility": 0.6,
+   "depth": 0.6,
+   "drainage": 0.7,
+   "capacity_mm": 110,
+   "_doc": "подзол на вырубке"
+  },
+  "river": {
+   "fertility": 0.9,
+   "depth": 0.9,
+   "drainage": 0.35,
+   "capacity_mm": 150,
+   "_doc": "аллювий поймы"
+  },
+  "marsh": {
+   "fertility": 0.55,
+   "depth": 0.7,
+   "drainage": 0.15,
+   "capacity_mm": 160,
+   "_doc": "торф и глей: в дождливый год корни мокнут"
+  },
+  "default": {
+   "fertility": 0.65,
+   "depth": 0.65,
+   "drainage": 0.55,
+   "capacity_mm": 120
+  }
+ }
+}

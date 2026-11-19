@@ -10,7 +10,8 @@
     "make_clothes": 0.7,
     "build_home": 0.75,
     "rest": 1.4,
-    "sleep": 1.15
+    "sleep": 1.15,
+    "care": 0.8
    },
    "need_mult": {
     "energy": 1.2
@@ -84,7 +85,8 @@
   {
    "id": "loner",
    "goal_mult": {
-    "socialize": 0.6
+    "socialize": 0.6,
+    "care": 0.8
    },
    "need_mult": {
     "social": 0.5
@@ -104,7 +106,8 @@
     "trespass": 2.0
    },
    "inherit": 0.2,
-   "weight_in_pool": 1.0
+   "weight_in_pool": 1.0,
+   "goal_mult": {}
   },
   {
    "id": "unscrupulous",
@@ -114,7 +117,10 @@
    },
    "inherit": 0.2,
    "weight_in_pool": 0.5,
-   "_doc": "в схеме-примере desperate_thief"
+   "_doc": "в схеме-примере desperate_thief",
+   "goal_mult": {
+    "care": 0.7
+   }
   },
   {
    "id": "proud",
@@ -122,7 +128,8 @@
     "ask_family_for_food": 4.0
    },
    "goal_mult": {
-    "build_home": 1.15
+    "build_home": 1.15,
+    "care": 0.9
    },
    "inherit": 0.2,
    "weight_in_pool": 0.6
@@ -133,7 +140,8 @@
     "stock_food": 1.25,
     "stock_firewood": 1.2,
     "build_home": 1.3,
-    "socialize": 1.1
+    "socialize": 1.1,
+    "care": 1.35
    },
    "method_bias": {
     "ask_family_for_food": -1.5,
@@ -146,7 +154,8 @@
    "id": "stubborn",
    "hysteresis_mult": 1.6,
    "inherit": 0.25,
-   "weight_in_pool": 0.8
+   "weight_in_pool": 0.8,
+   "goal_mult": {}
   },
   {
    "id": "fickle",
@@ -257,13 +266,29 @@
     "share_food_with_family": -2.5
    },
    "goal_mult": {
-    "socialize": 1.05
+    "socialize": 1.05,
+    "care": 1.25
    },
    "legal_penalty": {
     "theft": 1.5
    },
    "inherit": 0.2,
    "weight_in_pool": 0.8
+  },
+  {
+   "id": "crippled",
+   "need_mult": {
+    "energy": 1.2
+   },
+   "goal_mult": {
+    "stock_food": 0.5,
+    "tend_fields": 0.4,
+    "stock_firewood": 0.5
+   },
+   "inherit": 0.0,
+   "weight_in_pool": 0.08,
+   "_doc": "увечье: работает мало, нуждается в уходе (care.json)",
+   "_part": "H"
   }
  ],
  "exclusive": [

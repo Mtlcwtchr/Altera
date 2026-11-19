@@ -53,6 +53,43 @@ void animalThink(World& w, Character& a, const AnimalTick& tick);
 void animalsDaily(World& w);
 void spawnAnimals(World& w, std::uint64_t seed);
 void loseHeads(World& w, Character& herd, int n, const std::string& cause);
+// Fields (farming.cpp): `farm:<key>` conditions and utility inputs - of the
+// target field when there is one, else summed over the household's fields
+// (sow_window, free, tilled, sown, ripe, weeds, strips, seed_need, work).
+double farmValue(const World& w, const Character& c, const WorldObject* target, const std::string& key);
+// Harvest per seed of a field now: what its soil can give (fertility, depth)
+// less the season's water stress, frost and weeds.
+double cropYield(const World& w, const WorldObject& field);
+// Weather (weather.cpp): a settlement's day, a pure function of the world
+// seed, the settlement and the day counted from year 0 (start_day + day).
+struct DayWeather {
+    double tempC = 10.0;
+    double rainMm = 0.0;
+    bool wet = false;
+};
+DayWeather weatherAt(const World& w, EntityId settlement, int epochDay);
+DayWeather weatherToday(const World& w, EntityId settlement);
+// A past season of a field replayed day by day from that year's weather
+// (`year` counts from year 0 of start_day; -1 is the year before the start):
+// the harvest per seed it gave. Worldgen's stand-in for last year's harvest.
+double pastSeasonYield(const World& w, const WorldObject& field, int year);
+// Once a day: growth, weeds, ripening, shattering of a standing crop.
+void cropsDaily(World& w);
+// World generation: field sizes per household and their state on the start
+// day (sown, ripe, seed corn in the store).
+void seedFields(World& w, std::uint64_t seed, const Json& cfg);
+// Care (care.cpp): the dependent category a character falls in (nullptr: none),
+// and the most pressing ward of a carer - who, which need, how urgent
+// (circle x category weight x shortfall). `care:need` is that urgency,
+// `care:<need>` the ward's shortfall in that need.
+const DependentDef* dependencyOf(const World& w, const Character& c);
+struct CareChoice {
+    EntityId ward = kNone;
+    std::string need;
+    double urgency = 0.0;
+};
+CareChoice bestWard(const World& w, const Character& carer);
+double careValue(const World& w, const Character& carer, const std::string& key);
 // Food left in a household store, in days per member (items' nutrition).
 double homeFoodDays(const World& w, const Character& c);
 // Daily spoilage of perishable food (items' spoil_days) in packs and stores.

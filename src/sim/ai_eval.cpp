@@ -53,6 +53,8 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
         auto it = x.target->stock.find(k.key);
         return it == x.target->stock.end() ? 0.0 : it->second;
     }
+    if (s == "farm") return farmValue(x.w, c, x.target, k.key);
+    if (s == "care") return careValue(x.w, c, k.key);
     if (s == "target_owner") {
         const std::string r = ownerRelation(c, x.target);
         return (r == k.key || (k.key == "self" && r == "family")) ? 1.0 : 0.0;
@@ -149,7 +151,13 @@ bool consents(const World& w, const Character& actor, const Character& target, c
     if (target.status.family == actor.status.family) p += 0.35;
     // Asked to give away food while hungry yourself: unlikely.
     for (const auto& e : d.eff)
-        if (e.onTarget && e.subject == "has" && e.signedDelta() < 0.0 && target.need("hunger") < 0.35) p -= 0.5;
+        if (e.onTarget && e.subject == "has" && e.signedDelta() < 0.0) {
+            if (target.need("hunger") < 0.35) p -= 0.5;
+            // ...or out of a thin store: another household's need is weighed
+            // against the days your own family has left.
+            if (target.status.family != actor.status.family)
+                p -= 0.6 * (1.0 - clamp01(homeFoodDays(w, target) / 90.0));
+        }
     Rng r = agentRng(w.seed(), target.id, w.now(), "consent:" + d.id + ":" + std::to_string(actor.id));
     return r.uniform() < std::clamp(p, 0.02, 0.98);
 }
@@ -608,7 +616,7 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
         const EvalCtx x{w, c, o, nullptr};
         bool ok = true;
         for (const auto& k : d.pre) {
-            if (k.subject != "target_stock" && k.subject != "target_owner") continue;
+            if (k.subject != "target_stock" && k.subject != "target_owner" && k.subject != "farm") continue;
             if (!evalCondition(x, k)) {
                 ok = false;
                 lastWhy = "target:" + k.text;
