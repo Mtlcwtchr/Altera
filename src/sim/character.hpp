@@ -19,10 +19,31 @@ struct Body {
     char sex = 'f';
     bool alive = true;
     std::string causeOfDeath;
+    double blood = 100.0; // combat units (combat_config stamina/blood scale); bleeding and wounds lower it
+    Tick downUntil = 0;   // knocked out / carried off after a fight: the mind does not run until then
     std::string stage() const {
         const int years = ageDays / kDaysPerYear;
         return years < 14 ? "child" : (years >= 60 ? "elder" : "adult");
     }
+};
+
+// A wound kept in the character's profile after a fight (Kenshi-like, COMBAT_DESIGN §6):
+// it heals in the ordinary 10-minute ticks (src/sim/wounds.cpp, content/combat/recovery.json),
+// weakens the zone in the next fight and may leave a permanent injury.
+struct Wound {
+    std::string zone, severity;   // combat_config zones, wounds.json severity ids
+    double dmg = 0.0;             // zone hp the wound took
+    double healthDebt = 0.0;      // share of body.health it took; given back while it heals
+    double daysTotal = 0.0, daysLeft = 0.0;
+    std::string treatment = "none"; // wounds.json treatment ids
+    bool bleeding = false, aided = false, infectionRolled = false, infected = false;
+    Tick since = 0, feverAt = 0;
+};
+
+// Permanent result of a badly healed wound (limp, crippled arm, scar...).
+struct Injury {
+    std::string zone, kind;
+    Tick since = 0;
 };
 
 struct Moodlet {
@@ -82,6 +103,9 @@ struct Controller {
     bool freeWill = true; // Sims "free will": idle player characters go back to their own plan
     Tick since = 0;
     Tick idleSince = 0; // player: since when no player order is running
+    // Player focus for the end of a won fight (COMBAT_DESIGN §4 "взять живым / убить"):
+    // spare | kill | bind; empty = the character decides by its own motivation.
+    std::string combatFinish;
     bool isPlayer() const { return kind == Kind::Player; }
 };
 
@@ -225,6 +249,8 @@ struct Character {
     std::map<std::string, double> reputation; // reputation:<axis>, -1..1 (config.reputation_axes)
     Status status;
     std::map<std::string, int> inventory;
+    std::vector<Wound> wounds;
+    std::vector<Injury> injuries;
     Vec2 pos;
     EntityId home = kNone; // the family's storage object
     Controller controller;

@@ -318,6 +318,7 @@ add_library(altera_sim STATIC
         src/sim/ai_control.cpp
         src/sim/loc.cpp
         src/sim/combat_bridge.cpp
+        src/sim/wounds.cpp
         src/sim/ai_report.cpp)
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_warnings)

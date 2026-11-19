@@ -54,6 +54,12 @@ const CombatBridge* combatBridge(const Content& c) {
         if (!d.hasWeapon(b->animalWeapon)) err.push_back("sim_bridge.animal.weapon: unknown weapon '" + b->animalWeapon + "'");
         for (const char* o : {"win", "lose", "draw", "flee"})
             if (!b->memory.count(o)) err.push_back(std::string("sim_bridge.memory: no type for '") + o + "'");
+        if (fs::exists(dir / "recovery.json")) {
+            std::ifstream rf(dir / "recovery.json", std::ios::binary);
+            b->recovery = loadRecovery(Json::parse(rf), d, c, err);
+        } else {
+            err.push_back("recovery.json: missing next to sim_bridge.json");
+        }
         if (!err.empty()) throw combat::DataError(err);
     }
     return (cache[c.dir] = std::move(b)).get();
@@ -88,11 +94,13 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
 
 namespace {
 
-double healthLeft(const combat::CombatData& d, const combat::Fighter& f) {
+// Share of health this fight took: zone hp lost since the start (old wounds
+// already count in body.health), over the whole body.
+double healthLeft(const combat::CombatData& d, const combat::Fighter& f, const std::vector<double>& hpStart) {
     double lost = 0.0, total = 0.0;
     for (std::size_t z = 0; z < d.zoneHp.size(); ++z) {
         total += d.zoneHp[z];
-        lost += std::max(0.0, std::min(d.zoneHp[z], d.zoneHp[z] - f.hp[z]));
+        lost += std::max(0.0, std::min(hpStart[z], hpStart[z] - f.hp[z]));
     }
     return total > 0 ? 1.0 - lost / total : 1.0;
 }
@@ -109,6 +117,9 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     combat::Engine e(cd, combat::combatSeed(w.seed(), pair, static_cast<std::uint64_t>(w.now())), events);
     combat::Fighter a = e.make(fighterOf(*b, actor, d.combat.attackSkill), static_cast<std::int64_t>(actor.id), 0);
     combat::Fighter t = e.make(fighterOf(*b, target, d.combat.defenseSkill), static_cast<std::int64_t>(target.id), 1);
+    carryWounds(cd, b->recovery, actor, a);
+    carryWounds(cd, b->recovery, target, t);
+    const std::vector<double> hpA = a.hp, hpT = t.hp;
     r.ran = true;
     r.rounds = e.fight(a, t);
     r.actorState = combat::stateId(a.state);
@@ -119,8 +130,12 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     else r.outcome = "draw";
     r.actorDead = a.state == combat::State::Dead;
     r.targetDead = t.state == combat::State::Dead;
-    r.actorHealth = healthLeft(cd, a);
-    r.targetHealth = healthLeft(cd, t);
+    r.actorHealth = healthLeft(cd, a, hpA);
+    r.targetHealth = healthLeft(cd, t, hpT);
+    r.actorHits = woundHits(a);
+    r.targetHits = woundHits(t);
+    r.actorBlood = a.blood;
+    r.targetBlood = t.blood;
     for (int s : a.wounds) r.actorWounds.push_back(cd.severity[s].id);
     for (int s : t.wounds) r.targetWounds.push_back(cd.severity[s].id);
     r.actorWeapon = cd.weapons[a.weapon].id;

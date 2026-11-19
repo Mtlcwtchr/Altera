@@ -259,6 +259,8 @@ void Engine::wound(Fighter& d, int zone, double dmg) {
         if (frac >= d_.severity[i].minFrac) si = static_cast<int>(i);
     const SeverityDef& sev = d_.severity[si];
     d.wounds.push_back(si);
+    d.woundZone.push_back(zone);
+    d.woundDmg.push_back(dmg);
     {
         Event e;
         e.kind = EventKind::Wound;

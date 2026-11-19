@@ -581,13 +581,16 @@ std::string mirrorOutcome(const std::string& o, const std::string& targetState) 
 void applyCombatResult(World& w, Character& c, Character& t, const InteractionDef& d, const CombatResolution& cr,
                        WorldObject* target, const std::vector<EntityId>& wit) {
     const CombatBridge& b = *combatBridge(w.content());
-    auto hurt = [&](Character& who, double mult, bool dead) {
+    auto hurt = [&](Character& who, double mult, bool dead, const std::vector<WoundHit>& hits, double blood) {
         if (dead && d.combat.lethal) return kill(w, who, "combat");
+        const double before = who.body.health;
         who.body.health = std::max(b.healthMinAfter, who.body.health * mult);
         if (dead) who.body.health = b.healthMinAfter; // a non-lethal fight leaves the body down, not dead
+        // The wounds stay in the profile and heal in the ordinary ticks (wounds.cpp).
+        addCombatWounds(w, who, hits, dead ? std::max(blood, 1.0) : blood, before - who.body.health);
     };
-    hurt(c, cr.actorHealth, cr.actorDead);
-    hurt(t, cr.targetHealth, cr.targetDead);
+    hurt(c, cr.actorHealth, cr.actorDead, cr.actorHits, cr.actorBlood);
+    hurt(t, cr.targetHealth, cr.targetDead, cr.targetHits, cr.targetBlood);
     auto out = d.combat.outcomes.find(cr.outcome);
     if (out != d.combat.outcomes.end()) applyEffectList(w, c, out->second, target, &t, &wit);
     auto remember = [&](Character& who, EntityId other, const std::string& o) {

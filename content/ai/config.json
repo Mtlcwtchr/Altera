@@ -90,7 +90,17 @@
   "won_fight": 0.5,
   "lost_fight": 0.7,
   "fought_draw": 0.3,
-  "fled_fight": 0.5
+  "fled_fight": 0.5,
+  "was_treated": 0.3,
+  "treated_wound": 0.2,
+  "maimed": 0.8,
+  "spared_foe": 0.4,
+  "was_spared": 0.6,
+  "killed_foe": 0.7,
+  "bound_foe": 0.5,
+  "was_bound": 0.8,
+  "rescued": 0.7,
+  "rescued_someone": 0.4
  },
  "loc": {
   "_doc": "Локализация: видимые тексты только ключами (name_key, desc_key, thought_key; memory.<id>.text по типу памяти). Строки — content/loc/<язык>/*.json (часть B — ai.json), плоский словарь; значение — строка, массив вариантов или объект CLDR-форм {one,few,many,other}. Падежи отдельными ключами (.acc, .gen…). Слоты: {person}, {person.gen|dat|acc|ins}, {person.g:м|ж}, {speaker.g:м|ж}, {qty item}. Грамматика имён — loc/ru.grammar.json (C). Нет ключа в языке → fallback_language, нет и там → сам ключ (видно в отладке).",

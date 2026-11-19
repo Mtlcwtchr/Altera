@@ -49,7 +49,11 @@ double Character::mood(Tick now) const {
     return std::clamp(m, -1.0, 1.0);
 }
 
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Body, health, fatigue, ageDays, sex, alive, causeOfDeath)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Body, health, fatigue, ageDays, sex, alive, causeOfDeath, blood,
+                                                downUntil)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Wound, zone, severity, dmg, healthDebt, daysTotal, daysLeft, treatment,
+                                                bleeding, aided, infectionRolled, infected, since, feverAt)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Injury, zone, kind, since)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Moodlet, id, value, until)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MemoryEntry, tick, type, who, object, valence, salience, source,
                                                 confidence)
@@ -70,7 +74,8 @@ bool Status::hasPairAny(const std::string& id) const {
     return false;
 }
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince,
+                                                combatFinish)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, allow, method, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanAction, interaction, target, targetType, cost)
@@ -102,6 +107,8 @@ void to_json(Json& j, const Character& c) {
              {"reputation", c.reputation},
              {"status", c.status},
              {"inventory", c.inventory},
+             {"wounds", c.wounds},
+             {"injuries", c.injuries},
              {"pos", c.pos},
              {"home", c.home},
              {"controller", c.controller},
@@ -130,6 +137,8 @@ void from_json(const Json& j, Character& c) {
     c.reputation = j.value("reputation", std::map<std::string, double>{});
     c.status = j.value("status", Status{});
     c.inventory = j.value("inventory", std::map<std::string, int>{});
+    c.wounds = j.value("wounds", std::vector<Wound>{});
+    c.injuries = j.value("injuries", std::vector<Injury>{});
     c.pos = j.value("pos", Vec2{});
     c.home = j.value("home", kNone);
     c.controller = j.value("controller", Controller{});

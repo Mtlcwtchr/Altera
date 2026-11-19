@@ -254,7 +254,8 @@ void World::updateBodies() {
             c.body.health = clamp01(c.body.health - 1.0 / (kTicksPerDay * 12.0));
             ++c.ai.stats.starvingTicks;
             if (tick_ % kTicksPerDay == 0) remember(c, {0, "starved", {}, kNone, -0.6, 0.0, "seen", 1.0});
-        } else if (c.body.health < 1.0 && c.need("hunger") > 0.3) {
+        } else if (c.body.health < 1.0 && c.need("hunger") > 0.3 && c.wounds.empty()) {
+            // (a wound gives its share of health back as it heals: wounds.cpp)
             c.body.health = clamp01(c.body.health + 1.0 / (kTicksPerDay * 20.0));
         }
         if (c.body.health <= 0.0) {

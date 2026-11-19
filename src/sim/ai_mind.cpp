@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/wounds.hpp"
 
 namespace altera::sim {
 
@@ -497,6 +498,7 @@ void aiThink(World& w, Character& c) {
 
 void thinkCharacter(World& w, Character& c) {
     if (!c.body.alive) return;
+    if (c.body.downUntil > w.now()) return; // knocked out or carried off after a fight
     AiState& ai = c.ai;
     // Expire modifiers and stale queued tasks.
     ai.mods.erase(std::remove_if(ai.mods.begin(), ai.mods.end(),
@@ -527,6 +529,7 @@ void installAi(World& w) {
             spoilFood(world);
             cropsDaily(world);
         }
+        healWounds(world); // wounds in the profile heal in the ordinary ticks
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
             if (!c.body.alive) continue;

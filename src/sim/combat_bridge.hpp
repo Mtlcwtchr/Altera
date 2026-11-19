@@ -14,6 +14,7 @@
 
 #include "sim/combat/combat.hpp"
 #include "sim/content.hpp"
+#include "sim/wounds.hpp"
 
 namespace altera::sim {
 
@@ -30,6 +31,7 @@ struct CombatBridge {
     std::map<std::string, std::string> memory;            // outcome -> memory type
     std::map<std::string, double> memoryValence;
     std::string chronicle = "chronicle.combat";
+    RecoveryRules recovery; // recovery.json: wounds in the profile, healing
 };
 
 // Loaded once per content directory; nullptr when there is no content/combat.
@@ -43,7 +45,9 @@ struct CombatResolution {
     double actorHealth = 1.0, targetHealth = 1.0; // multipliers of current health
     bool actorDead = false, targetDead = false;
     int rounds = 0;
-    std::vector<std::string> actorWounds, targetWounds; // severity ids
+    std::vector<std::string> actorWounds, targetWounds; // severity ids (new wounds of this fight)
+    std::vector<WoundHit> actorHits, targetHits;        // the same with zone and damage
+    double actorBlood = 100.0, targetBlood = 100.0;     // after the fight
     std::string actorWeapon, targetWeapon;
 };
 

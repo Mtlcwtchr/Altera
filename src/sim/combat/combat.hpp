@@ -89,6 +89,8 @@ struct Fighter {
     State state = State::Fight;
     std::uint32_t disabled = 0;   // bit per zone
     std::vector<int> wounds;      // severity index per wound, in order
+    std::vector<int> woundZone;   // zone of each wound (parallel to wounds)
+    std::vector<double> woundDmg; // zone hp each wound took
 
     bool fighting() const { return state == State::Fight; }
 };

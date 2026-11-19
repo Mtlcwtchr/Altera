@@ -10,6 +10,7 @@
 #include "sim/worldgen.hpp"
 
 using namespace altera::sim;
+namespace combat = altera::combat;
 
 namespace {
 
@@ -90,4 +91,162 @@ TEST(altera_sim_combat_act_applies_outcome) {
     }
     CHECK(fights == 20);
     CHECK(wins >= 15); // a master with a spear against an unarmed novice
+}
+
+TEST(altera_sim_combat_wounds_stay_in_profile) {
+    World w = makeTestWorld(real(), loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    auto ps = people(w);
+    Character& a = *ps[0];
+    Character& b = *ps[1];
+    a.inventory["axe"] = 1;
+    for (const auto& item : combatBridge(real())->weaponItems) b.inventory.erase(item);
+    a.skills["fighting"] = 0.8;
+    b.skills["fighting"] = 0.2;
+    const InteractionDef& brawl = *real().interaction("brawl");
+    for (int i = 0; i < 10 && b.wounds.empty(); ++i) {
+        applyEffects(w, a, brawl, nullptr, &b);
+        w.step();
+    }
+    CHECK(!b.wounds.empty());
+    const combat::CombatData& cd = *combatBridge(real())->data;
+    double debt = 0.0;
+    for (const Wound& wd : b.wounds) {
+        CHECK(cd.zoneIx.count(wd.zone) == 1);
+        CHECK(cd.sevIx.count(wd.severity) == 1);
+        CHECK(wd.dmg > 0.0);
+        CHECK(wd.daysLeft > 0.0 && wd.daysLeft == wd.daysTotal);
+        debt += wd.healthDebt;
+    }
+    CHECK(debt > 0.0 && debt <= 1.0);
+    CHECK(b.body.blood <= cd.bloodMax);
+    // The profile survives a save.
+    Json j = b;
+    Character back = j.get<Character>();
+    CHECK_EQ(back.wounds.size(), b.wounds.size());
+    CHECK_EQ(back.wounds.front().zone, b.wounds.front().zone);
+    // Old wounds weaken the zone in the next fight.
+    combat::Engine e(cd, 1);
+    combat::Fighter fresh = e.make(fighterOf(*combatBridge(real()), b, "fighting"));
+    combat::Fighter hurt = fresh;
+    carryWounds(cd, combatBridge(real())->recovery, b, hurt);
+    const int z = cd.zone(b.wounds.front().zone);
+    CHECK(hurt.hp[z] < fresh.hp[z]);
+    CHECK(hurt.pain > fresh.pain);
+    // A permanent injury disables its zone.
+    Character maimed = b;
+    maimed.wounds.clear();
+    maimed.injuries.push_back({"leg_l", "limp", 0});
+    combat::Fighter lame = fresh;
+    carryWounds(cd, combatBridge(real())->recovery, maimed, lame);
+    CHECK((lame.disabled & (1u << cd.zone("leg_l"))) != 0);
+}
+
+namespace {
+
+Wound freshWound(const World& w, const std::string& zone, const std::string& sev, double dmg) {
+    const combat::CombatData& cd = *combatBridge(real())->data;
+    Wound wd;
+    wd.zone = zone;
+    wd.severity = sev;
+    wd.dmg = dmg;
+    wd.healthDebt = 0.2;
+    wd.daysTotal = wd.daysLeft = cd.treat.recoverDays[cd.sev(sev)];
+    wd.bleeding = cd.bleedRate[cd.sev(sev)] > 0.0;
+    wd.aided = !wd.bleeding;
+    wd.since = w.now();
+    return wd;
+}
+
+void liveDays(World& w, int days) {
+    // No minds here (makeTestWorld): keep the bodies fed so only the wounds matter.
+    for (int i = 0; i < days * kTicksPerDay; ++i) {
+        for (auto& [id, c] : w.characters())
+            for (auto& [n, v] : c.needs) v = 1.0;
+        w.step();
+        healWounds(w);
+    }
+}
+
+} // namespace
+
+TEST(altera_sim_combat_wounds_heal_in_ticks) {
+    World w = makeTestWorld(real(), loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    auto ps = people(w);
+    Character& a = *ps[0];
+    Character& b = *ps[1];
+    for (Character* c : {&a, &b}) {
+        c->needs["hunger"] = 1.0;
+        c->skills["herbalism"] = 0.0;
+        c->inventory.erase("bandage");
+        c->inventory.erase("herbs");
+        c->inventory.erase("dried_herbs");
+    }
+    if (WorldObject* home = w.object(a.home)) {
+        home->stock.erase("bandage");
+        home->stock.erase("herbs");
+        home->stock.erase("dried_herbs");
+    }
+    // A cut with a bandage at hand: bandaged within the hour, healed in days, health back.
+    a.inventory["bandage"] = 1;
+    a.body.health = 0.7;
+    a.wounds.push_back(freshWound(w, "arm_l", "cut", 6.0));
+    liveDays(w, 1);
+    CHECK(a.wounds.empty() || a.wounds.front().treatment == "bandage");
+    CHECK_EQ(a.has("bandage"), 0);
+    liveDays(w, 25);
+    CHECK(a.body.alive);
+    CHECK(a.wounds.empty());
+    CHECK(a.body.health > 0.85);
+    // A healer of the same settlement with herbs treats a deep wound.
+    b.status.settlement = a.status.settlement;
+    b.skills["herbalism"] = 0.9;
+    b.inventory["dried_herbs"] = 2;
+    a.body.blood = 100.0;
+    a.wounds.push_back(freshWound(w, "leg_r", "deep", 15.0));
+    liveDays(w, 1);
+    CHECK(!a.wounds.empty());
+    CHECK_EQ(a.wounds.front().treatment, std::string("healer"));
+    CHECK_EQ(b.has("dried_herbs"), 1);
+    CHECK(!a.wounds.front().bleeding);
+}
+
+TEST(altera_sim_combat_wounds_kill_npcs_not_the_player) {
+    // heal_sim: an untreated deep wound with little blood left bleeds out in
+    // about (1 - p_stop) * bleed_death * 3 = 27% of cases; the player never does.
+    World w = makeTestWorld(real(), loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    auto ps = people(w);
+    int npcDead = 0, playerDead = 0, trials = 0;
+    for (int round = 0; round < 40; ++round) {
+        for (std::size_t k = 0; k < ps.size(); ++k) {
+            Character& c = *ps[k];
+            if (!c.body.alive) continue;
+            c.inventory.clear();
+            c.skills["herbalism"] = 0.0;
+            c.controller.kind = k == 0 ? Controller::Kind::Player : Controller::Kind::Ai;
+            c.body.blood = 40.0;
+            c.wounds.clear();
+            c.wounds.push_back(freshWound(w, "torso", "deep", 20.0));
+        }
+        for (Character* c : ps)
+            if (WorldObject* home = w.object(c->home)) home->stock.clear();
+        for (int i = 0; i < 2 * (kTicksPerDay / 24); ++i) {
+            w.step();
+            healWounds(w);
+        }
+        for (std::size_t k = 0; k < ps.size(); ++k) {
+            if (k == 0) playerDead += !ps[k]->body.alive;
+            else {
+                ++trials;
+                npcDead += !ps[k]->body.alive;
+            }
+        }
+        for (Character* c : ps) {
+            c->body.alive = true; // reuse the bodies for the next round
+            c->body.health = 1.0;
+            c->body.causeOfDeath.clear();
+        }
+    }
+    CHECK_EQ(playerDead, 0);
+    const double share = static_cast<double>(npcDead) / std::max(1, trials);
+    CHECK(share > 0.12 && share < 0.42);
 }

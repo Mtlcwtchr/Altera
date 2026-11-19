@@ -1,0 +1,53 @@
+{
+  "_doc": "Раны в профиле персонажа и их заживление в обычных тиках симуляции (10 минут), как в Kenshi. Боевое ядро даёт раны (зона, тяжесть, урон); здесь правила, как они переносятся в следующий бой, как идёт первая помощь, заражение, выздоровление и увечья. Шансы лечения берутся из wounds.json treatment; тут только то, что прототип heal_sim держал в коде, и правила симуляции.",
+  "carry": {
+    "_doc": "незажившая рана в следующем бою: зона теряет dmg * (осталось дней / всего дней) hp, боль pain тяжести * долю * pain_share; тяжёлая рана с disable_zone отключает зону, пока осталось больше disable_while_left; hp зоны не ниже min_zone_hp_share от максимума",
+    "pain_share": 0.5,
+    "disable_while_left": 0.5,
+    "min_zone_hp_share": 0.05
+  },
+  "heal": {
+    "_doc": "first_aid_hours: окно первой помощи, в конце бросок остановки крови (treatment.p_stop); infection_check_hours: когда видно заражение; fever_days: через сколько дней лихорадки бросок смерти от заражения. bleed_death_*: из heal_sim (кровь ниже порога, множитель к bleed_death_untreated_deep), infection_death_ref: опорный шанс заражения для смерти. pace: скорость заживления (сытость, сон).",
+    "first_aid_hours": 1,
+    "infection_check_hours": 24,
+    "fever_days": 3,
+    "bleed_death_blood_below": 60,
+    "bleed_death_mult": 3,
+    "infection_death_ref": 0.35,
+    "blood_regen_per_day": 15,
+    "treat_min_severity": "cut",
+    "pace": {
+      "base": 1.0,
+      "hungry_need": "hunger",
+      "hungry_below": 0.3,
+      "hungry_mult": 0.5,
+      "rest_fsm": ["Sleep"],
+      "rest_mult": 1.5
+    },
+    "player_wound_death": false,
+    "death_cause": "combat"
+  },
+  "treatment_rank": ["none", "bandage", "herbs", "healer"],
+  "treatment_sources": [
+    {
+      "_doc": "лекарь: живой человек того же поселения с навыком не ниже min (не сам раненый), тратит одну единицу травы на рану",
+      "treatment": "healer",
+      "helper": { "skill": "herbalism", "min": 0.5, "scope": "settlement" },
+      "consumes_any": ["dried_herbs", "herbs"]
+    },
+    { "treatment": "herbs", "consumes_any": ["dried_herbs", "herbs"] },
+    { "treatment": "bandage", "consumes_any": ["bandage"] }
+  ],
+  "consume_from": ["self", "home", "helper"],
+  "injuries": {
+    "_doc": "увечье по зоне, если тяжёлая рана зажила плохо (wounds.json treatment.perm * perm_mult); в бою зона увечья отключена (wounds.json disable)",
+    "head": "scarred_face",
+    "torso": "old_wound",
+    "arm_l": "crippled_arm",
+    "arm_r": "crippled_arm",
+    "leg_l": "limp",
+    "leg_r": "limp"
+  },
+  "memory": { "treated": "was_treated", "treater": "treated_wound", "injury": "maimed" },
+  "chronicle": { "injury": "chronicle.maimed", "death": "chronicle.died_of_wounds" }
+}
