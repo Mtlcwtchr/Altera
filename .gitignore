@@ -99,3 +99,5 @@ __pycache__/
 
 # --- retargeted humanoid clips (tools/anim_retarget): third-party licences, rebuilt from sources ---
 content/animations/humanoid_ual/clips/
+# --- baked clips for the game (tools/game_assets/bake_people.py): same licences as the clips ---
+content/animations/humanoid_ual/baked/*.aanim

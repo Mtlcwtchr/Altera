@@ -8,6 +8,7 @@
 // the sim's own names), so this file holds no display strings.
 
 #include "game_view/game_layer.hpp"
+#include "game_view/skinned.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -23,6 +24,7 @@
 #include <vector>
 
 #include "engine/render/device.hpp"
+#include "engine/world_source/png_io.hpp"
 #include "engine/ui/canvas.hpp"
 #include "engine/ui/font.hpp"
 #include "engine/ui/ui.hpp"
@@ -44,7 +46,7 @@ constexpr double kPi = 3.14159265358979;
 // ---- what the sim thread hands the frame --------------------------------
 struct ActorSnap {
     EntityId id = kNone;
-    std::string name, species, family, state, act, goal;
+    std::string name, species, family, state, act, goal, interaction;
     bool animal = false, alive = true, player = false, down = false, fighting = false;
     char sex = 'f';
     int age = 0, group = 1, wounds = 0;
@@ -165,6 +167,7 @@ public:
         ui_.shutdown();
         if (uiTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), uiTransfer_);
         if (instTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), instTransfer_);
+        if (shotTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), shotTransfer_);
     }
 
     bool open(double centreX, double centreY, const GameOptions& o, std::string* why) {
@@ -215,6 +218,7 @@ public:
                 break;
             }
         if (!openGpu(why)) return false;
+        loadScript();
         thread_ = std::thread([this] { simLoop(); });
         return true;
     }
@@ -232,6 +236,11 @@ public:
             if (e.key.key == SDLK_H) showChronicle_ = !showChronicle_;
             if (e.key.key == SDLK_T) showThoughts_ = !showThoughts_;
             if (e.key.key == SDLK_F) follow_ = true;
+            if (e.key.key == SDLK_F9) {
+                char n[64];
+                std::snprintf(n, sizeof n, "game_%03d.png", ++shotCounter_);
+                shotWanted_ = (fs::path(opts_.root) / "terrain_lab_out/shots_for_user" / n).string();
+            }
             break;
         case SDL_EVENT_MOUSE_MOTION:
             input_.mouseX = e.motion.x;
@@ -273,6 +282,8 @@ public:
 
     // ---- camera and clock ---------------------------------------------------
     void update(double dt, CameraRig& cam, double& timeOfDay) override {
+        finishShot();
+        runScript(dt);
         {
             std::lock_guard<std::mutex> lock(snapMutex_);
             shown_ = snap_;
@@ -322,6 +333,7 @@ public:
         viewW_ = width;
         viewH_ = height;
         buildInstances();
+        people_.prepare(commands, figures_);
         if (instances_.empty() || !instBuffer_) return;
         const std::uint32_t bytes = std::uint32_t(instances_.size() * sizeof(Instance));
         void* map = SDL_MapGPUTransferBuffer(device_.handle(), instTransfer_, true);
@@ -337,6 +349,7 @@ public:
 
     void drawOpaque(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass,
                     const terrain_core::LightUniforms& light) override {
+        people_.draw(commands, pass, vp_, light);
         if (instances_.empty() || !actorsPipe_) return;
         SDL_BindGPUGraphicsPipeline(pass, actorsPipe_.get());
         const SDL_GPUBufferBinding bufs[2] = {{vertBuffer_.get(), 0}, {instBuffer_.get(), 0}};
@@ -420,9 +433,105 @@ public:
         SDL_BindGPUFragmentSamplers(pass, 0, &pic, 1);
         SDL_DrawGPUPrimitives(pass, 3, 1, 0, 0);
         SDL_EndGPURenderPass(pass);
+        if (!shotWanted_.empty()) captureShot(commands, target, width, height);
     }
 
 private:
+    // ---- pictures of the game window (F9, and the scripted run) -------------
+    // ALTERA_GAME_SCRIPT names a JSON list of steps, each at `at` seconds after
+    // the world opened: camera (zoom, pitch, yawDeg), `select` (a person by
+    // index among the living people), `speed`, `panel` (none|sheet|wheel|kin|annals),
+    // `shot` (file under terrain_lab_out/shots_for_user), `quit`.
+    void loadScript() {
+        const char* path = std::getenv("ALTERA_GAME_SCRIPT");
+        if (!path || !*path) return;
+        try {
+            script_ = loadJsonFile(path);
+        } catch (const std::exception& e) {
+            SDL_Log("altera_game: script %s: %s", path, e.what());
+        }
+    }
+    void runScript(double dt) {
+        if (!script_.is_array()) return;
+        scriptClock_ += dt;
+        while (scriptStep_ < script_.size() && scriptClock_ >= script_[scriptStep_].value("at", 0.0)) {
+            const Json& st = script_[scriptStep_++];
+            if (st.contains("zoom")) zoom_ = st["zoom"].get<double>();
+            if (st.contains("pitch")) orbitPitch_ = st["pitch"].get<double>();
+            if (st.contains("yawDeg")) orbitYaw_ = st["yawDeg"].get<double>() * kPi / 180.0;
+            if (st.contains("speed")) post({"speed", st["speed"].get<int>()});
+            if (st.contains("select")) {
+                int k = st["select"].get<int>();
+                for (const auto& a : shown_.actors)
+                    if (!a.animal && a.alive && k-- == 0) {
+                        select(a.id);
+                        break;
+                    }
+            }
+            if (st.contains("panel")) panel_ = st["panel"].get<std::string>();
+            if (st.contains("shot"))
+                shotWanted_ = (fs::path(opts_.root) / "terrain_lab_out/shots_for_user" / st["shot"].get<std::string>()).string();
+            if (st.value("quit", false)) {
+                SDL_Event q{};
+                q.type = SDL_EVENT_QUIT;
+                SDL_PushEvent(&q);
+            }
+        }
+    }
+    void captureShot(SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target, std::uint32_t w, std::uint32_t h) {
+        if (shotTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), shotTransfer_);
+        SDL_GPUTransferBufferCreateInfo t{};
+        t.usage = SDL_GPU_TRANSFERBUFFERUSAGE_DOWNLOAD;
+        t.size = w * h * 4;
+        shotTransfer_ = SDL_CreateGPUTransferBuffer(device_.handle(), &t);
+        if (!shotTransfer_) {
+            shotWanted_.clear();
+            return;
+        }
+        SDL_GPUCopyPass* copy = SDL_BeginGPUCopyPass(commands);
+        SDL_GPUTextureRegion src{};
+        src.texture = target;
+        src.w = w;
+        src.h = h;
+        src.d = 1;
+        SDL_GPUTextureTransferInfo dst{};
+        dst.transfer_buffer = shotTransfer_;
+        dst.pixels_per_row = w;
+        dst.rows_per_layer = h;
+        SDL_DownloadFromGPUTexture(copy, &src, &dst);
+        SDL_EndGPUCopyPass(copy);
+        shotPending_ = shotWanted_;
+        shotW_ = w;
+        shotH_ = h;
+        shotWanted_.clear();
+    }
+    void finishShot() {
+        if (shotPending_.empty() || !shotTransfer_) return;
+        SDL_WaitForGPUIdle(device_.handle());
+        const auto* px = static_cast<const std::uint8_t*>(SDL_MapGPUTransferBuffer(device_.handle(), shotTransfer_, false));
+        if (px) {
+            engine::world_source::Image img;
+            img.width = shotW_;
+            img.height = shotH_;
+            img.channels = 3;
+            img.allocate();
+            // The view hands its own frame target (engine::Device::kColourFormat, RGBA).
+            const bool bgra = engine::Device::kColourFormat == SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM;
+            for (std::size_t i = 0, n = std::size_t(shotW_) * shotH_; i < n; ++i) {
+                img.bytes[i * 3 + 0] = px[i * 4 + (bgra ? 2 : 0)];
+                img.bytes[i * 3 + 1] = px[i * 4 + 1];
+                img.bytes[i * 3 + 2] = px[i * 4 + (bgra ? 0 : 2)];
+            }
+            SDL_UnmapGPUTransferBuffer(device_.handle(), shotTransfer_);
+            std::error_code ec;
+            fs::create_directories(fs::path(shotPending_).parent_path(), ec);
+            std::string why;
+            if (!engine::world_source::writePng(shotPending_, img, &why)) SDL_Log("altera_game: shot: %s", why.c_str());
+            else SDL_Log("altera_game: saved %s", shotPending_.c_str());
+        }
+        shotPending_.clear();
+    }
+
     struct Command {
         std::string op;
         int n = 0;
@@ -532,6 +641,7 @@ private:
             a.wounds = int(c.wounds.size());
             a.state = c.ai.fsm.state;
             a.fighting = a.state == "Fight";
+            a.interaction = c.ai.fsm.interaction;
             if (!c.ai.fsm.interaction.empty() && c.ai.fsm.interaction != "goto" && c.ai.fsm.interaction != "wait")
                 a.act = name("interaction", c.ai.fsm.interaction);
             else if (c.ai.plan.actionIndex + 1 < c.ai.plan.actions.size() &&
@@ -653,8 +763,114 @@ private:
         hsv(h, 0.55, 0.62, out);
     }
 
+    // What a person plays now, from what the sim says they do.
+    int personClip(const ActorSnap& a, double speed, double& rate) const {
+        rate = 1.0;
+        auto st = [&](const char* s) { return people_.stateClip(s); };
+        if (!a.alive) return st("death");
+        if (a.down) return st("down");
+        if (speed > 0.25) {
+            if (a.state == "Flee" || speed > 5.5) {
+                rate = std::clamp(speed / 6.0, 0.8, 1.6);
+                return st("sprint");
+            }
+            if (speed > 2.6) {
+                rate = std::clamp(speed / 3.5, 0.8, 1.6);
+                return st("run");
+            }
+            rate = std::clamp(speed / 1.3, 0.6, 1.8);
+            return st("walk");
+        }
+        if (!a.interaction.empty() && a.interaction != "goto" && a.interaction != "wait") {
+            const int c = people_.interactionClip(a.interaction);
+            if (c >= 0) return c;
+        }
+        static const std::pair<const char*, const char*> kByState[] = {
+            {"Sleep", "sleep"}, {"Rest", "sit"}, {"Talk", "talk"}, {"Pray", "pray"}, {"Fight", "fight"},
+            {"Pain", "pain"}, {"Eat", "eat"}, {"Work", "work"}, {"Act", "work"}, {"Cast", "cast"},
+            {"Interact", "work"}, {"Flee", "sprint"}, {"Incapacitated", "down"}};
+        for (const auto& [s, c] : kByState)
+            if (a.state == s) {
+                const int k = st(c);
+                if (k >= 0) return k;
+            }
+        return st("idle");
+    }
+
+    Figure personFigure(const ActorSnap& a, double rx, double ry, double rz, double moveYaw, float highlight) {
+        const double nowS = lastFrameS_;
+        Anim& an = anims_[a.id];
+        // Visual speed: the sim's step over the real time a tick takes.
+        const double step = std::hypot(a.x - a.px, a.y - a.py);
+        const double speed = shown_.paused ? 0.0 : step / std::max(0.05, shown_.tickSeconds);
+        double rate = 1;
+        const int want = personClip(a, speed, rate);
+        if (want != an.clip) {
+            an.from = an.clip;
+            an.fromStart = an.start;
+            an.fromRate = an.rate;
+            an.clip = want;
+            an.start = nowS;
+            an.switched = nowS;
+        }
+        an.rate += (rate - an.rate) * std::min(1.0, frameDt_ * 4.0);
+        // Turn towards the way of travel, not in a snap.
+        const float target = float(moveYaw);
+        if (!an.yawSet) {
+            an.yaw = target;
+            an.yawSet = true;
+        }
+        if (step > 0.05) {
+            const float d = std::remainder(target - an.yaw, float(2 * kPi));
+            an.yaw += d * float(std::min(1.0, frameDt_ * 8.0));
+        }
+        Figure f;
+        const std::uint64_t h = std::uint64_t(a.id) * 0x9E3779B97F4A7C15ull;
+        const auto& pool = a.sex == 'f' ? femaleLooks_ : maleLooks_;
+        f.look = pool.empty() ? 0 : pool[std::size_t((h >> 17) % pool.size())];
+        f.clip = an.clip;
+        f.time = (nowS - an.start) * an.rate;
+        if (an.from >= 0 && nowS - an.switched < 0.35) {
+            f.fromClip = an.from;
+            f.fromTime = (nowS - an.fromStart) * an.fromRate;
+            f.fade = float(1.0 - (nowS - an.switched) / 0.35);
+        }
+        f.rel[0] = rx;
+        f.rel[1] = ry;
+        f.rel[2] = rz;
+        f.yaw = an.yaw;
+        f.scale = a.age < 16 ? float(0.55 + 0.028 * a.age) : 1.0f;
+        f.highlight = highlight;
+        personTints(a, f.skin, f.hair, f.cloth);
+        return f;
+    }
+
+    // Skin from a small range of tones, hair from the family's line, cloth a
+    // muted shade of the family's colour. Shared by the figure and its portrait.
+    void personTints(const ActorSnap& a, float skin[3], float hair[3], float cloth[3]) const {
+        static const float kSkin[][3] = {{1.00f, 0.92f, 0.86f}, {0.94f, 0.80f, 0.70f}, {0.82f, 0.66f, 0.54f},
+                                         {0.66f, 0.50f, 0.40f}, {1.05f, 0.88f, 0.78f}};
+        static const float kHair[][3] = {{0.32f, 0.22f, 0.14f}, {0.16f, 0.12f, 0.10f}, {0.55f, 0.38f, 0.20f},
+                                         {0.70f, 0.55f, 0.32f}, {0.45f, 0.20f, 0.10f}, {0.08f, 0.07f, 0.07f}};
+        const std::uint64_t h = std::uint64_t(a.id) * 0x9E3779B97F4A7C15ull;
+        const std::uint64_t fh = hashStr(a.family);
+        const auto& sk = kSkin[(fh + (h >> 29) % 2) % 5];
+        const auto& hr = kHair[(fh >> 7) % 6];
+        for (int k = 0; k < 3; ++k) {
+            skin[k] = sk[k];
+            hair[k] = a.age > 50 ? hr[k] * 0.4f + 0.45f : hr[k];
+        }
+        float fc[3];
+        familyColour(a.family, fc);
+        for (int k = 0; k < 3; ++k) cloth[k] = (0.62f + fc[k] * 0.55f) * (a.alive ? 1.0f : 0.6f);
+    }
+
     void buildInstances() {
         instances_.clear();
+        figures_.clear();
+        const double nowS = std::chrono::duration<double>(Clock::now() - started_).count();
+        frameDt_ = std::clamp(nowS - lastFrameS_, 0.0, 0.1);
+        lastFrameS_ = nowS;
         std::vector<Instance> per[kMeshes];
         const double alpha = tickAlpha();
         const double range = std::max(1500.0, zoom_ * 4.0);
@@ -672,7 +888,9 @@ private:
             Instance in{};
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry), in.placeYaw[2] = float(rz), in.placeYaw[3] = float(yaw);
             const float hl = (a.id == selected_ ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
-            if (!a.animal) {
+            if (!a.animal && people_.loaded()) {
+                if (figures_.size() < SkinnedSet::kMaxFigures) figures_.push_back(personFigure(a, rx, ry, rz, yaw, hl));
+            } else if (!a.animal) {
                 const float s = a.age < 14 ? 0.55f + 0.03f * float(a.age) : 1.0f;
                 in.scale[0] = in.scale[1] = in.scale[2] = s;
                 in.scale[3] = hl;
@@ -815,6 +1033,16 @@ private:
         if (!vertBuffer_ || !instBuffer_ || !instTransfer_ || !actorsPipe_ || !overlayPipe_ || !sampler_) {
             if (why) *why = "game GPU objects: " + device_.error();
             return false;
+        }
+        {   // The people on the UAL rig; without the bake they stay placeholder shapes.
+            const fs::path root(opts_.root);
+            std::string whyPeople;
+            if (!people_.load(device_, root / "assets/altera_game/people/people.askin",
+                              root / "content/animations/humanoid_ual/baked/people.aanim",
+                              root / "content/animations/humanoid_ual/baked/people_anim.json", &whyPeople))
+                SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
+            for (int i = 0; i < people_.lookCount(); ++i)
+                (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
         }
         const fs::path fonts = fs::path(opts_.root) / "assets" / "fonts";
         font_ = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
@@ -1094,7 +1322,14 @@ private:
     static constexpr std::size_t kMaxInstances = 8192;
 
     engine::Device& device_;
-    [[maybe_unused]] SDL_Window* window_;
+    SDL_Window* window_;
+    Json script_;
+    std::size_t scriptStep_ = 0;
+    double scriptClock_ = 0;
+    std::string shotWanted_, shotPending_, panel_ = "none";
+    SDL_GPUTransferBuffer* shotTransfer_ = nullptr;
+    std::uint32_t shotW_ = 0, shotH_ = 0;
+    int shotCounter_ = 0;
     terrain_core::GroundHeight ground_;
     double worldSize_;
     GameOptions opts_;
@@ -1138,6 +1373,18 @@ private:
     std::uint32_t viewW_ = 1, viewH_ = 1;
 
     std::vector<Instance> instances_;
+    SkinnedSet people_;
+    std::vector<int> maleLooks_, femaleLooks_;
+    std::vector<Figure> figures_;
+    struct Anim {
+        int clip = -1, from = -1;
+        double start = 0, fromStart = 0, switched = -10, rate = 1, fromRate = 1;
+        float yaw = 0;
+        bool yawSet = false;
+    };
+    std::map<EntityId, Anim> anims_;
+    Clock::time_point started_ = Clock::now();
+    double lastFrameS_ = 0, frameDt_ = 0;
     MeshRange meshes_[kMeshes], batch_[kMeshes];
     engine::Buffer vertBuffer_, instBuffer_;
     SDL_GPUTransferBuffer* instTransfer_ = nullptr;

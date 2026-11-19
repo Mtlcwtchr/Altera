@@ -1,0 +1,7 @@
+[
+ {"at": 1, "zoom": 7, "pitch": 0.75, "yawDeg": 40, "speed": 2, "select": 0},
+ {"at": 8, "shot": "people_top.png"},
+ {"at": 9, "zoom": 4, "pitch": 0.35, "select": 5},
+ {"at": 12, "shot": "people_close.png"},
+ {"at": 13, "quit": true}
+]
