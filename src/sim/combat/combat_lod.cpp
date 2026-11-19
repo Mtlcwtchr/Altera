@@ -1,5 +1,6 @@
 #include "sim/combat/combat_lod.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstdio>
 
@@ -76,6 +77,38 @@ const DuelSample& DuelTable::resolve(const FighterSpec& a, const FighterSpec& b,
     const std::vector<DuelSample>& c = cell(ga, gb);
     const std::size_t i = static_cast<std::size_t>(rng.next() % static_cast<std::uint64_t>(c.size()));
     return c[i];
+}
+
+double DuelTable::winShare(const FighterSpec& a, const FighterSpec& b) {
+    auto grid = [&](double skill, double& lo, double& frac) {
+        const double step = cfg_.skillStep;
+        if (step <= 0.0) {
+            lo = skill;
+            frac = 0.0;
+            return;
+        }
+        lo = std::floor(skill / step) * step;
+        frac = (skill - lo) / step;
+    };
+    double la, fa, lb, fb;
+    grid(a.skill, la, fa);
+    grid(b.skill, lb, fb);
+    double share = 0.0;
+    for (int i = 0; i < 2; ++i)
+        for (int j = 0; j < 2; ++j) {
+            const double wgt = (i ? fa : 1.0 - fa) * (j ? fb : 1.0 - fb);
+            if (wgt <= 0.0) continue;
+            FighterSpec ga = a, gb = b;
+            ga.skill = la + (i ? cfg_.skillStep : 0.0);
+            gb.skill = lb + (j ? cfg_.skillStep : 0.0);
+            if (ga.know < 0) ga.know = d_.core.defaultKnow;
+            if (gb.know < 0) gb.know = d_.core.defaultKnow;
+            const std::vector<DuelSample>& c = cell(ga, gb);
+            int wins = 0;
+            for (const auto& s : c) wins += (s.a == State::Fight && s.b != State::Fight) ? 1 : 0;
+            share += wgt * static_cast<double>(wins) / static_cast<double>(std::max<std::size_t>(1, c.size()));
+        }
+    return share;
 }
 
 void DuelTable::apply(const DuelSample& s, Fighter& a, Fighter& b) const {

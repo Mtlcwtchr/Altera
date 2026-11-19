@@ -1134,11 +1134,18 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             const Rect row{P.x + 20, y, P.w - 40, 50};
             const bool hot = ui_->hovered(row) && canAct;
             if (hot) ui_->roundRect(row, Colour::rgb(122, 92, 40, 0.12f), 10);
-            const double toneK = tone_ == 1 || tone_ == 2 ? 0.05 : tone_ == 6 ? -0.15 : tone_ == 5 ? -0.08 : 0.0;
-            const double chance = std::clamp(base + 0.3 * rel.affinity + 0.2 * rel.trust - 0.15 * rel.enmity + toneK, 0.02, 0.97);
+            // The sim's own chance (sim/tones.hpp actChance) for this tone; the
+            // old estimate from the relation only while the sim has not sent it yet.
+            double chance = std::clamp(base + 0.3 * rel.affinity + 0.2 * rel.trust - 0.15 * rel.enmity, 0.02, 0.97);
+            std::string kind;
+            if (auto ch = s.wheel.chance.find(id); ch != s.wheel.chance.end() && !ch->second.empty()) {
+                chance = ch->second[std::size_t(std::clamp(tone_, 0, int(ch->second.size()) - 1))];
+                kind = s.wheel.kind.count(id) ? s.wheel.kind.at(id) : std::string();
+            }
             const int pc = int(std::round(chance * 100));
             const std::string nm = host_->interactionName(id);
-            label(row.x + 8, row.y + 14, ui_->fit(nm, row.w - 80, 1.0f), canAct ? kInk : kInkSoft, 15);
+            label(row.x + 8, row.y + 6, ui_->fit(nm, row.w - 80, 1.0f), canAct ? kInk : kInkSoft, 15);
+            if (!kind.empty()) label(row.x + 8, row.y + 28, host_->text("hud.wheel.kind." + kind), kInkSoft, 12);
             const float ccx = row.right() - 26, ccy = row.y + 25;
             arc(ccx, ccy, 18, 4, 0, 360, Colour::rgb(43, 38, 32, 0.16f));
             arc(ccx, ccy, 18, 4, -90, float(360 * chance), chance > 0.6 ? kGood : chance > 0.35 ? kMid : kBad);
@@ -1146,7 +1153,9 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             label(ccx - textW(ps, 13) / 2, ccy - 9, ps, kInk, 13);
             ui_->line(row.x, row.bottom() + 2, row.right(), row.bottom() + 2, Colour::rgb(122, 92, 40, 0.25f));
             if (canAct && clicked(row)) {
-                host_->command("perform", {{"id", s.controlled}, {"interaction", id}, {"target", t->id}});
+                sim::Json args = {{"id", s.controlled}, {"interaction", id}, {"target", t->id}};
+                if (tone_ >= 0 && tone_ < int(s.wheel.tones.size())) args["tone"] = s.wheel.tones[std::size_t(tone_)];
+                host_->command("perform", args);
                 panel = "none";
             }
             y += 54;
@@ -1167,7 +1176,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         x += w + 8;
     }
     const std::string note = !canAct ? host_->text(s.controlled == t->id ? "hud.wheel.self" : "hud.wheel.need_control")
-                                     : host_->text("hud.wheel.estimate");
+                                     : host_->text(s.wheel.chance.empty() ? "hud.wheel.estimate" : "hud.wheel.real");
     label(P.x + 24, P.bottom() + 14, ui_->fit(note, P.w, 13 / 15.f), canAct ? kText.withAlpha(0.8f) : kRingBad, 13, true);
 }
 

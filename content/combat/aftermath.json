@@ -55,7 +55,7 @@
         { "trait": "unscrupulous", "add": 0.2 },
         { "loser": "animal", "add": -5.0 }
       ],
-      "eff": ["status_pair:captor_captive", "rel_back:fear+0.1", "rel_back:enmity+0.1"],
+      "eff": ["status_pair:captor_captive", "captivity:take", "rel_back:fear+0.1", "rel_back:enmity+0.1"],
       "person_winner": true,
       "memory": { "winner": "bound_foe", "loser": "was_bound" },
       "valence": { "winner": 0.1, "loser": -0.6 }

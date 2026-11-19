@@ -21,16 +21,16 @@ const std::set<std::string> kEffSubjects = {"has",        "need",           "tar
                                             "skill",      "body",           "moodlet",        "memory",
                                             "rel",        "rel_back",       "spawn",          "target_need",
                                             "reputation", "status_pair",    "household_join", "household_adopt",
-                                            "household_leave", "household_found", "commitment", "death"};
+                                            "household_leave", "household_found", "commitment", "death", "captivity"};
 const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death",
-                                                  "group", "home"};
+                                                  "group", "home", "memory"};
 // Flag effects: subject:key with no operator.
 const std::set<std::string> kFlagEffects = {"moodlet",         "memory",          "spawn",           "household_join",
                                             "household_adopt", "household_leave", "household_found", "commitment",
-                                            "death"};
+                                            "death", "captivity"};
 // Effects and conditions that need a target character.
 const std::set<std::string> kNeedsCharTarget = {"rel", "rel_back", "target_need", "status_pair", "household_join",
-                                                "household_adopt", "commitment"};
+                                                "household_adopt", "commitment", "captivity"};
 const std::set<std::string> kParamTypes = {"item", "skill", "place", "need", "trait"};
 
 bool contains(const std::vector<std::string>& v, const std::string& x) {

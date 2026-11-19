@@ -4,7 +4,27 @@
   "combat_finish": "{winner} decides the fate of {loser}: {decision}",
   "rescue": "{who} lost consciousness; rescued: {loc}",
   "maimed": "{who}: a wound healed badly ({kind})",
-  "died_of_wounds": "{who} dies of wounds"
+  "died_of_wounds": "{who} dies of wounds",
+  "combat_group": "Skirmish: {actor} against {target} ({act}), {heads_a} on {heads_b}; outcome for the attackers: {outcome}, fallen {fallen_a} and {fallen_b}",
+  "captivity": {
+   "taken": "{captor} takes {captive} captive",
+   "taken_over": "{captive} passes to another captor",
+   "captor_gone": "{captive} is free: the captor is no longer near",
+   "released": "{captor} lets {captive} go",
+   "escaped": "{captive} escapes from {captor}",
+   "release": "{captor} decides to let {captive} go",
+   "ransom": "The family ransoms {captive} from {captor}",
+   "trial": "{captor} hands {captive} over to a trial",
+   "sentence_punish": "{captive} is punished and let go",
+   "sentence_exile": "{captive} is driven out of the settlement",
+   "sentence_acquit": "{captive} is acquitted and let go",
+   "verdict_execute": "Judged by {judge}: {captive} is sentenced to death",
+   "verdict_punish": "Judged by {judge}: {captive} is to be punished",
+   "verdict_exile": "Judged by {judge}: {captive} is exiled",
+   "verdict_acquit": "Judged by {judge}: {captive} is acquitted"
+  },
+  "succession": "After the death of {who} the line goes on with {heir}",
+  "succession_none": "{who} died, and nobody is left to carry on the line"
  },
  "rescue": {
   "family": "the family pulled them out",

@@ -75,7 +75,8 @@ bool Status::hasPairAny(const std::string& id) const {
 }
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince,
-                                                combatFinish)
+                                                combatFinish, tone)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Captivity, captor, since, decideAt, nextTry, stage, verdict, tries)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, allow, method, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanAction, interaction, target, targetType, cost)
@@ -119,6 +120,7 @@ void to_json(Json& j, const Character& c) {
         j["den"] = c.den;
         j["starve_days"] = c.starveDays;
     }
+    if (c.captivity.held()) j["captivity"] = c.captivity;
 }
 
 void from_json(const Json& j, Character& c) {
@@ -147,6 +149,7 @@ void from_json(const Json& j, Character& c) {
     c.group = j.value("group", 1);
     c.den = j.value("den", Vec2{});
     c.starveDays = j.value("starve_days", 0);
+    c.captivity = j.value("captivity", Captivity{});
 }
 
 } // namespace altera::sim

@@ -5,7 +5,10 @@
 #include <algorithm>
 
 #include "sim/ai.hpp"
+#include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
+#include "sim/group_combat.hpp"
+#include "sim/tones.hpp"
 
 namespace altera::sim {
 
@@ -151,9 +154,10 @@ EntityId findPerson(const World& w, const Character& c, const InteractionDef& d,
     return best;
 }
 
-bool consents(const World& w, const Character& actor, const Character& target, const InteractionDef& d) {
-    if (d.consent != "target") return true;
-    if (!target.body.alive) return false;
+double consentChance(const World& w, const Character& actor, const Character& target, const InteractionDef& d,
+                     const std::string& tone) {
+    if (d.consent != "target") return 1.0;
+    if (!target.body.alive) return 0.0;
     auto rel = target.relations.find(actor.id);
     const double aff = rel == target.relations.end() ? 0.0 : rel->second.affinity;
     const double trust = rel == target.relations.end() ? 0.0 : rel->second.trust;
@@ -168,8 +172,16 @@ bool consents(const World& w, const Character& actor, const Character& target, c
             if (target.status.family != actor.status.family)
                 p -= 0.6 * (1.0 - clamp01(homeFoodDays(w, target) / 90.0));
         }
+    // The player's tone (tones.json) moves the answer.
+    if (const ToneRules* tr = toneRules(w.content()); tr && !tone.empty()) p += toneShift(*tr, tone, d, actor, target);
+    return std::clamp(p, 0.02, 0.98);
+}
+
+bool consents(const World& w, const Character& actor, const Character& target, const InteractionDef& d) {
+    if (d.consent != "target") return true;
+    if (!target.body.alive) return false;
     Rng r = agentRng(w.seed(), target.id, w.now(), "consent:" + d.id + ":" + std::to_string(actor.id));
-    return r.uniform() < std::clamp(p, 0.02, 0.98);
+    return r.uniform() < consentChance(w, actor, target, d, toneOf(w, actor, &target));
 }
 
 void runConversation(World& w, Character& c, Character& other, const Json& params) {
@@ -537,7 +549,8 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             MemoryEntry m;
             m.type = e.key;
             m.object = target ? target->id : kNone;
-            if (targetChar) m.who = {targetChar->id};
+            if (e.onTarget) m.who = {actor.id}; // t.memory: the target remembers the actor
+            else if (targetChar) m.who = {targetChar->id};
             if (target && target->ownerFamily != kNone && target->ownerFamily != c.status.family) {
                 auto f = w.families().find(target->ownerFamily);
                 if (f != w.families().end()) m.who = f->second.members;
@@ -565,6 +578,10 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             if (targetChar) addRel(*targetChar, actor.id, e);
         } else if (s == "death") {
             kill(w, c, e.key);
+        } else if (s == "captivity") {
+            // captivity:take - the actor holds the target (captivity.json); captivity:release - lets go.
+            if (targetChar && e.key == "take") takeCaptive(w, actor, *targetChar);
+            else if (targetChar && e.key == "release") freeCaptive(w, *targetChar, "released");
         }
     }
 }
@@ -626,18 +643,41 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     // chance: one deterministic roll per (actor, tick, interaction); a failed
     // roll applies on_fail instead of eff. Risks roll independently after.
     bool success = true;
+    // The player's tone (tones.json): it moves the chance roll, makes the
+    // target's reception of a social act a roll of its own, and adds effects.
+    const ToneRules* tr = toneRules(w.content());
+    const std::string tone = d.continuous ? std::string() : toneOf(w, c, targetChar);
+    bool received = true;
     if (d.chance.set) {
-        const double p = chanceOf(w, c, d, targetChar);
+        double p = chanceOf(w, c, d, targetChar);
+        if (tr && !tone.empty() && targetChar)
+            p = std::clamp(p + toneShift(*tr, tone, d, c, *targetChar), d.chance.min, d.chance.max);
         Rng r = w.rng(c.id, "chance:" + d.id);
         success = r.uniform() < p;
+    } else if (tr && !tone.empty() && targetChar && receptionRolls(*tr, d)) {
+        Rng r = w.rng(c.id, "reception:" + d.id);
+        received = success = r.uniform() < receptionChance(w, *tr, c, d, *targetChar, tone);
     }
     const std::vector<EntityId> wit = witnessesOf(w, c, d, targetChar);
     applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar, &wit);
+    if (!tone.empty() && tr) {
+        const ToneDef& td = tr->tones.at(tone);
+        applyEffectList(w, c, success ? td.eff : td.onFail, target, targetChar, &wit);
+        if (!received) applyEffectList(w, c, tr->receptionOnFail, target, targetChar, &wit);
+    }
     // Fight (FSM state of an act with a combat block): the combat core plays it
     // out; the outcome's effects, health, deaths, memory and chronicle follow.
+    // More than two fighters (a pack, helpers who join) make a group fight,
+    // resolved at once by the battle loop (group.json).
     if (success && d.combat.set && targetChar && targetChar->body.alive && c.body.alive) {
-        const CombatResolution cr = resolveCombat(w, c, d, *targetChar);
-        if (cr.ran) applyCombatResult(w, c, *targetChar, d, cr, target, wit);
+        const Sides sides = gatherSides(w, c, d, *targetChar);
+        if (sides.group()) {
+            const GroupResolution gr = resolveGroupCombat(w, sides, d);
+            if (gr.ran) applyGroupResult(w, sides, d, gr, target, wit);
+        } else {
+            const CombatResolution cr = resolveCombat(w, c, d, *targetChar);
+            if (cr.ran) applyCombatResult(w, c, *targetChar, d, cr, target, wit);
+        }
     }
     for (const auto& rk : d.risk) {
         Rng r = w.rng(c.id, "risk:" + d.id + ":" + rk.id);

@@ -33,6 +33,10 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
 EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why);
 // consent: "target" - the other's mind decides (relation, kinship, own need).
 bool consents(const World& w, const Character& actor, const Character& target, const InteractionDef& d);
+// The chance consents() rolls against (1 for acts without consent); `tone`
+// is the player's tone of the act (tones.json), "" = none.
+double consentChance(const World& w, const Character& actor, const Character& target, const InteractionDef& d,
+                     const std::string& tone = "");
 // A conversation opened by start_dialog, run by the built-in provider until a
 // dialogue runtime/agent takes over: small talk feeds both sides' social need;
 // ask_favor for food puts a "share food with me" task in the other's queue.
@@ -185,6 +189,8 @@ void installAi(World& w);
 // (ai_control.cpp). Layers 2-4 are shared: executePlan.
 void aiThink(World& w, Character& c);
 void playerThink(World& w, Character& c);
+// Hands `player`'s control to `to` (releasing the one held before); false + why when it cannot.
+bool switchControl(World& w, int player, EntityId to, std::string& why);
 void executePlan(World& w, Character& c);
 bool adoptGoal(World& w, Character& c, const GoalScore& gs, const std::string& source);
 void installControl(World& w);

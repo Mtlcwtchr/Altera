@@ -46,6 +46,18 @@ struct Injury {
     Tick since = 0;
 };
 
+// Held by someone after a fight or an arrest (content/combat/captivity.json):
+// the captor decides the fate at decideAt (release, ransom, trial), the
+// captive tries to escape meanwhile; a trial may end in an execution.
+struct Captivity {
+    EntityId captor = kNone;
+    Tick since = 0, decideAt = 0, nextTry = 0;
+    std::string stage;   // held | trial
+    std::string verdict; // after a trial: execute | punish | exile | acquit
+    int tries = 0;
+    bool held() const { return captor != kNone; }
+};
+
 struct Moodlet {
     std::string id;
     double value = 0.0;
@@ -106,6 +118,10 @@ struct Controller {
     // Player focus for the end of a won fight (COMBAT_DESIGN §4 "взять живым / убить"):
     // spare | kill | bind; empty = the character decides by its own motivation.
     std::string combatFinish;
+    // Tone the player picked on the interaction wheel (content/ai/tones.json):
+    // it changes the chance and the effects of the acts this character does to
+    // a person; empty = no tone (NPCs), the plain rules.
+    std::string tone;
     bool isPlayer() const { return kind == Kind::Player; }
 };
 
@@ -254,6 +270,7 @@ struct Character {
     Vec2 pos;
     EntityId home = kNone; // the family's storage object
     Controller controller;
+    Captivity captivity;
     AiState ai;
 
     bool hasTrait(const std::string& t) const;

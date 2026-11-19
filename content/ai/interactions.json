@@ -1577,6 +1577,7 @@
     "rel_back:affinity-0.1",
     "rel_back:fear+0.02",
     "memory:insulted_someone",
+    "t.memory:was_insulted",
     "t.moodlet:insulted",
     "t.reputation:valor-0.02"
    ],
@@ -3312,7 +3313,8 @@
    "eff": [
     "rel_back:fear+0.1",
     "rel_back:affinity-0.15",
-    "status_pair:captor_captive"
+    "status_pair:captor_captive",
+    "captivity:take"
    ],
    "duration": 1,
    "cost": 2,
@@ -3352,7 +3354,8 @@
    "eff": [
     "rel_back:affinity+0.1",
     "status_pair:captor_captive=0",
-    "status_pair:captor_captive=0"
+    "status_pair:captor_captive=0",
+    "captivity:release"
    ],
    "duration": 1,
    "cost": 1,

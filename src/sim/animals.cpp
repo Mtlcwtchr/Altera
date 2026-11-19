@@ -25,6 +25,8 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/combat_bridge.hpp"
+#include "sim/group_combat.hpp"
 
 namespace altera::sim {
 
@@ -94,6 +96,24 @@ void bite(World& w, Character& wolf, Character& victim, const SpeciesDef& s) {
         victim.body.causeOfDeath = "beast";
         w.chronicle("death", {victim.id}, "chronicle.death", {{"who", victim.id}, {"cause", "beast"}});
     }
+}
+
+// A pack that closes in on a person fights it through the combat core, all
+// heads at once and whoever stands by (group.json); false = no combat data.
+bool packFight(World& w, Character& pack, Character& victim) {
+    const CombatBridge* b = combatBridge(w.content());
+    if (!b || !b->group.enabled || !b->group.beastAttack) return false;
+    const InteractionDef* d = w.content().interaction(b->group.beastAct);
+    if (!d || !d->combat.set) return false;
+    const Sides sides = gatherSides(w, pack, *d, victim);
+    const GroupResolution r = resolveGroupCombat(w, sides, *d);
+    if (!r.ran) return false;
+    const std::vector<EntityId> wit = witnessesOf(w, pack, *d, &victim);
+    applyGroupResult(w, sides, *d, r, nullptr, wit);
+    // Win or lose, the pack backs off for a while; a kill feeds it.
+    pack.moodlets.push_back({"alarmed", 0.0, w.now() + 12});
+    if (!victim.body.alive) pack.needs["hunger"] = clamp01(pack.need("hunger") + 0.4);
+    return true;
 }
 
 Character* nearestPrey(World& w, const Character& a, const SpeciesDef& s, double radius) {
@@ -440,7 +460,10 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
                             w.rng(a.id, "dare").uniform() < s.aggression;
         if (attack) {
             moveToward(a, person->pos, s.speedMPerTick);
-            if (dist(a.pos, person->pos) <= 5.0) bite(w, a, *w.character(person->id), s);
+            if (dist(a.pos, person->pos) <= 5.0) {
+                Character& victim = *w.character(person->id);
+                if (!packFight(w, a, victim)) bite(w, a, victim, s);
+            }
             return;
         }
         // Flee: away from the person, back toward the den when cornered at the edge.

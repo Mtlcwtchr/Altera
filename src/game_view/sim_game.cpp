@@ -34,6 +34,7 @@
 #include "engine/ui/ui.hpp"
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
+#include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
 #include "terrain_core/clearings.hpp"
@@ -568,6 +569,7 @@ private:
                         }
                 }
             }
+            if (st.contains("tone")) hud_.setTone(st["tone"].get<int>());
             if (st.contains("take")) {
                 int k = st["take"].get<int>();
                 for (const auto& a : shown_.actors)
@@ -579,6 +581,14 @@ private:
             {
                 std::string counts;
                 for (const auto& [k, v] : beastFigures_) counts += k + "=" + std::to_string(v.size()) + " ";
+                int shoals = 0;
+                double nearest = 1e18;
+                for (const auto& a : shown_.actors)
+                    if (a.species == "fish_shoal" && a.alive) {
+                        ++shoals;
+                        nearest = std::min(nearest, std::hypot(originX_ + a.x - eye_[0], originY_ + a.y - eye_[1]));
+                    }
+                counts += "shoals=" + std::to_string(shoals) + " nearest=" + std::to_string(int(nearest)) + " ";
                 SDL_Log("altera_game: step %zu people=%zu %s", scriptStep_, figures_.size(), counts.c_str());
             }
             if (st.contains("shot"))
@@ -753,6 +763,8 @@ private:
             a.wounds = int(c.wounds.size());
             a.state = c.ai.fsm.state;
             a.fighting = a.state == "Fight";
+            a.captive = c.captivity.held();
+            if (a.captive) a.down = false; // led along on foot, not lying
             a.interaction = c.ai.fsm.interaction;
             a.role = c.status.role;
             a.spouse = c.status.spouse;
@@ -848,11 +860,64 @@ private:
                 s.wheel.toActor.respect = it->second.respect, s.wheel.toActor.familiarity = it->second.familiarity;
             }
         }
+        wheelChances(s.wheel);
         s.centre[0] = villageCentre_[0];
         s.centre[1] = villageCentre_[1];
         s.mapSize = w.map().sizeM;
         std::lock_guard<std::mutex> lock(snapMutex_);
         snap_ = std::move(s);
+    }
+
+    // The sim's chance of every act of the wheel, per tone (sim/tones.hpp):
+    // recomputed when the pair changes, else every few ticks (a group fight's
+    // chance draws battles, not for every frame).
+    void wheelChances(WheelSnap& ws) {
+        Character* actor = world_->character(ws.actor);
+        Character* target = world_->character(ws.target);
+        if (!wheelOpen_ || !actor || !target || actor == target || !actor->body.alive || !target->body.alive) {
+            if (!wheelOpen_) wheelCacheFor_[1] = kNone; // recompute when the wheel opens again
+            else wheelCache_ = {};
+            return;
+        }
+        const bool fresh = wheelCacheFor_[0] == ws.actor && wheelCacheFor_[1] == ws.target &&
+                           world_->now() - wheelCacheTick_ < 6;
+        if (!fresh) {
+            WheelSnap c;
+            const sim::ToneRules* tr = sim::toneRules(world_->content());
+            if (tr) c.tones = tr->order;
+            if (c.tones.empty()) c.tones = {""};
+            if (wheelActs_.empty()) {
+                const Json spec = sim::loadJsonFile((fs::path(opts_.root) / "content/ui/wheel.json").string());
+                const Json spheres = spec.value("spheres", Json::array());
+                for (const auto& sp : spheres) {
+                    const Json subs = sp.value("subs", Json::array());
+                    for (const auto& sub : subs)
+                        for (const auto& id : sub.value("interactions", Json::array())) wheelActs_.push_back(id.get<std::string>());
+                }
+            }
+            for (const auto& id : wheelActs_) {
+                const sim::InteractionDef* d = world_->content().interaction(id);
+                if (!d) continue;
+                std::vector<float> per;
+                std::string kind;
+                for (const auto& tone : c.tones) {
+                    const sim::ActChance ac = sim::actChance(*world_, *actor, *d, target, tone);
+                    per.push_back(float(ac.p));
+                    kind = ac.kind;
+                    if (ac.kind == "win" || ac.kind == "certain") break; // the tone does not move these
+                }
+                while (per.size() < c.tones.size()) per.push_back(per.back());
+                c.chance[id] = std::move(per);
+                c.kind[id] = kind;
+            }
+            wheelCache_ = std::move(c);
+            wheelCacheFor_[0] = ws.actor;
+            wheelCacheFor_[1] = ws.target;
+            wheelCacheTick_ = world_->now();
+        }
+        ws.tones = wheelCache_.tones;
+        ws.chance = wheelCache_.chance;
+        ws.kind = wheelCache_.kind;
     }
 
     // ---- placement --------------------------------------------------------
@@ -1166,7 +1231,8 @@ private:
         const double alpha = tickAlpha();
         const double range = std::max(1500.0, zoom_ * 4.0);
         for (const auto& a : shown_.actors) {
-            if (a.species == "fish_shoal") continue;
+            const bool fish = a.species == "fish_shoal";
+            if (fish && !beasts_.count("fish_shoal")) continue;
             double wx, wy;
             actorWorld(a, alpha, wx, wy);
             const double rx = wx - eye_[0], ry = wy - eye_[1];
@@ -1213,12 +1279,17 @@ private:
                     for (int k = 0; k < heads && list.size() < SkinnedSet::kMaxFigures; ++k) {
                         double bx = wx, by = wy;
                         if (k) {
-                            const double ang = double(k) * 2.4 + double(a.id), r = 1.2 + 0.6 * k;
+                            const double ang = double(k) * 2.4 + double(a.id), r = (fish ? 0.5 + 0.3 * k : 1.2 + 0.6 * k);
                             bx += std::cos(ang) * r;
                             by += std::sin(ang) * r;
                         }
-                        list.push_back(beastFigure(*bs->second, a, k, bx - eye_[0], by - eye_[1],
-                                                   groundAt(bx, by) - eye_[2], yaw, hl));
+                        // A shoal swims under the surface (below the sea line, or over a stream's bed).
+                        double bz = groundAt(bx, by);
+                        if (fish) {
+                            const double raw = double(ground_.at(bx, by, 2.0));
+                            bz = raw < 0.0 ? std::max(raw + 0.3, -0.5) - 0.1 * double(k % 3) : raw + 0.2;
+                        }
+                        list.push_back(beastFigure(*bs->second, a, k, bx - eye_[0], by - eye_[1], bz - eye_[2], yaw, hl));
                     }
                     continue;
                 }
@@ -1354,8 +1425,8 @@ private:
             std::string whyVillage;
             if (!village_.load(device_, root / "assets/altera_game/buildings/buildings.astm", &whyVillage))
                 SDL_Log("altera_game: buildings stay placeholders: %s", whyVillage.c_str());
-            // Beasts with a bake of their own; the rest (hens, fish) keep the shapes.
-            for (const char* sp : {"deer", "wolf", "hare", "boar", "pig", "goats"}) {
+            // Beasts with a bake of their own (hens and fish: tools/game_assets/proc_beasts.py).
+            for (const char* sp : {"deer", "wolf", "hare", "boar", "pig", "goats", "hens", "fish_shoal"}) {
                 const fs::path base = root / "assets/altera_game/beasts" / sp;
                 auto set = std::make_unique<SkinnedSet>();
                 std::string whyBeast;
@@ -1396,6 +1467,7 @@ private:
 
     void buildHud(float W, float H) {
         hud_.draw(ui_, input_, shown_, selected_, *this, W, H);
+        wheelOpen_ = hud_.panel == "wheel";
         // Selection by portraits and names: the hud calls select(); keep the sim's detail in step.
         selectedWanted_ = selected_;
     }
@@ -1477,6 +1549,11 @@ private:
     std::map<EntityId, Vec2> prevPos_;
     std::atomic<EntityId> selectedWanted_{kNone};
     std::atomic<EntityId> wheelWanted_{kNone};
+    std::atomic<bool> wheelOpen_{false};
+    WheelSnap wheelCache_;
+    EntityId wheelCacheFor_[2] = {kNone, kNone};
+    Tick wheelCacheTick_ = 0;
+    std::vector<std::string> wheelActs_;
     EntityId snapSelected_ = kNone;
 
     std::mutex cmdMutex_;

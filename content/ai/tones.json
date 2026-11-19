@@ -1,0 +1,54 @@
+{
+ "_doc": "Тон, которым игрок совершает акт над человеком (колесо взаимодействий HUD, src/sim/tones.cpp). Тон меняет шанс акта и добавляет эффекты к исходу. Без тона (NPC) действуют обычные правила. Шанс акта: для актов с chance это chance + поправка тона; для актов с consent это согласие цели + поправка; для остальных актов над человеком это приём цели (reception): база по категории + отношение цели к актору + поправка тона. Акты с боем показывают шанс победы, тон на него не влияет. Поправка тона: chance[смысл акта] (social.meaning из interactions.json), иначе chance._; к ней rel: множители к отношению цели к актору (например, тёплый тон лучше работает у того, кто и так расположен). eff добавляется при успехе, on_fail при неудаче (вместе с on_fail самого акта).",
+ "order": ["neutral", "warm", "polite", "playful", "pleading", "cold", "hostile"],
+ "reception": {
+  "_doc": "Приём цели для актов без chance и consent. base по категории акта; без категории в списке приём не катится (акт в руках актора).",
+  "base": { "social": 0.6, "family": 0.55, "economy": 0.45, "politics": 0.35, "knowledge": 0.55, "faith": 0.5, "medicine": 0.7 },
+  "rel": { "affinity": 0.3, "trust": 0.2, "respect": 0.1, "enmity": -0.2, "fear": 0.05 },
+  "kin_add": 0.15,
+  "mood_mult": 0.15,
+  "min": 0.03,
+  "max": 0.97,
+  "skip_meanings": ["gift", "care", "violence", "protection", "execution", "punishment", "dominance", "honor", "chat", "observation"],
+  "on_fail": ["rel_back:affinity-0.02"]
+ },
+ "tones": {
+  "neutral": {},
+  "warm": {
+   "chance": { "intimacy": 0.1, "support": 0.1, "courtship": 0.1, "loyalty": 0.06, "sociability": 0.05, "request_help": 0.06, "respect": 0.04, "_": 0.03, "dominance": -0.1, "extortion": -0.12, "authority": -0.04 },
+   "rel": { "affinity": 0.08 },
+   "eff": ["rel_back:affinity+0.02", "rel_back:trust+0.01"],
+   "on_fail": []
+  },
+  "polite": {
+   "chance": { "authority": 0.06, "exchange": 0.06, "loan": 0.06, "request": 0.05, "justice": 0.05, "respect": 0.06, "_": 0.04, "playfulness": -0.05, "intimacy": -0.04 },
+   "rel": { "respect": 0.08 },
+   "eff": ["rel_back:respect+0.02"],
+   "on_fail": []
+  },
+  "playful": {
+   "chance": { "playfulness": 0.12, "sociability": 0.08, "intimacy": 0.05, "culture": 0.06, "_": 0.0, "authority": -0.12, "justice": -0.15, "submission": -0.1, "accusation": -0.1 },
+   "rel": { "familiarity": 0.1, "affinity": 0.05 },
+   "eff": ["t.need:fun+0.05", "rel_back:familiarity+0.02"],
+   "on_fail": ["rel_back:respect-0.02"]
+  },
+  "pleading": {
+   "chance": { "request_help": 0.12, "request": 0.1, "loan": 0.08, "submission": 0.1, "_": 0.02, "authority": -0.1, "extortion": -0.2, "dominance": -0.2 },
+   "rel": { "affinity": 0.1, "respect": -0.05 },
+   "eff": ["rel_back:respect-0.02", "reputation:valor-0.01"],
+   "on_fail": ["rel_back:respect-0.03"]
+  },
+  "cold": {
+   "chance": { "exchange": 0.04, "authority": 0.03, "_": -0.06, "intimacy": -0.15, "courtship": -0.15, "support": -0.12, "playfulness": -0.1 },
+   "rel": { "fear": 0.05 },
+   "eff": ["rel_back:affinity-0.01"],
+   "on_fail": ["rel_back:affinity-0.02"]
+  },
+  "hostile": {
+   "chance": { "extortion": 0.15, "dominance": 0.12, "accusation": 0.06, "authority": 0.04, "hostility": 0.05, "disrespect": 0.05, "_": -0.15, "intimacy": -0.3, "courtship": -0.3, "support": -0.25, "request_help": -0.2, "loan": -0.15, "exchange": -0.1 },
+   "rel": { "fear": 0.25, "affinity": -0.1 },
+   "eff": ["rel_back:fear+0.03", "rel_back:enmity+0.02", "rel_back:affinity-0.03"],
+   "on_fail": ["rel_back:enmity+0.03", "rel_back:affinity-0.04", "rel_back:fear+0.02"]
+  }
+ }
+}

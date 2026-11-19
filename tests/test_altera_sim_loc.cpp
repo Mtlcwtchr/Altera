@@ -287,7 +287,7 @@ TEST(altera_sim_schema_validator_extensions) {
        "pre": ["has:$item>=1", "has:$other>=1"], "duration": 1},
       {"id": "t_on_self", "category": "social", "target": "self", "eff": ["t.need:hunger+0.1", "rel:trust+0.1"], "duration": 1},
       {"id": "bad_axes", "category": "social", "target": "character",
-       "pre": ["rel:love>0.1", "reputation:fame>0", "t.knows_all:x"], "eff": ["t.memory:x"], "duration": 1},
+       "pre": ["rel:love>0.1", "reputation:fame>0", "t.knows_all:x"], "eff": ["t.spawn:x"], "duration": 1},
       {"id": "bad_social", "category": "social", "target": "character",
        "eff": ["status_pair:cousins", "household_join:king", "commitment:oath", "death:boredom", "status_pair:married+1"],
        "duration": 1},
@@ -320,7 +320,7 @@ TEST(altera_sim_schema_validator_extensions) {
     CHECK(has("bad_axes: unknown rel axis 'love'"));
     CHECK(has("bad_axes: unknown reputation axis 'fame'"));
     CHECK(has("bad_axes: t.knows_all is not a target condition"));
-    CHECK(has("bad_axes: t.memory is not a target effect"));
+    CHECK(has("bad_axes: t.spawn is not a target effect"));
     CHECK(has("bad_social: unknown status pair 'cousins'"));
     CHECK(has("bad_social: unknown household role 'king'"));
     CHECK(has("bad_social: unknown commitment 'oath'"));

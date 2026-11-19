@@ -43,6 +43,10 @@ public:
     // states, wounds, zone hp and blood (the shape Engine::fight leaves).
     void apply(const DuelSample& s, Fighter& a, Fighter& b) const;
 
+    // Share of fights `a` wins (b leaves the fight, a stays), interpolated
+    // over the skill grid the way resolve() draws its cell.
+    double winShare(const FighterSpec& a, const FighterSpec& b);
+
     std::size_t cells() const;
 
 private:

@@ -100,7 +100,16 @@
   "bound_foe": 0.5,
   "was_bound": 0.8,
   "rescued": 0.7,
-  "rescued_someone": 0.4
+  "rescued_someone": 0.4,
+  "released_captive": 0.4,
+  "was_released": 0.6,
+  "ransomed": 0.5,
+  "paid_ransom": 0.6,
+  "was_sentenced": 0.8,
+  "escaped": 0.7,
+  "captive_escaped": 0.5,
+  "exiled": 0.9,
+  "was_punished": 0.7
  },
  "loc": {
   "_doc": "Локализация: видимые тексты только ключами (name_key, desc_key, thought_key; memory.<id>.text по типу памяти). Строки — content/loc/<язык>/*.json (часть B — ai.json), плоский словарь; значение — строка, массив вариантов или объект CLDR-форм {one,few,many,other}. Падежи отдельными ключами (.acc, .gen…). Слоты: {person}, {person.gen|dat|acc|ins}, {person.g:м|ж}, {speaker.g:м|ж}, {qty item}. Грамматика имён — loc/ru.grammar.json (C). Нет ключа в языке → fallback_language, нет и там → сам ключ (видно в отладке).",

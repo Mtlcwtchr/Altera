@@ -1,5 +1,6 @@
 """Bake the sim's beasts: Quaternius Ultimate Animated Animals (glTF) and Farm Animals
-Animated (FBX), each species its own set (mesh, skeleton, its own clips), in the formats
+Animated (the .blend files: they carry Walk/Run/Death, the FBX only Idle), plus procedural hens
+and fish (proc_beasts.py), each species its own set (mesh, skeleton, its own clips), in the formats
 of bake_people.py (ASKN v1 / AANM v1, see there), flat-coloured materials as cells of a
 small atlas.
 
@@ -8,7 +9,7 @@ blender -b --factory-startup -P bake_animals.py -- --src D:/AlteraGame/_asset_sr
 Writes assets/altera_game/beasts/<species>.askin, .aanim, _anim.json (Quaternius, CC0)."""
 import bpy, sys, os, json, struct, math
 import numpy as np
-from mathutils import Vector
+from mathutils import Vector, Matrix
 
 a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 def opt(k, d=None):
@@ -18,19 +19,23 @@ REPO = opt('--repo', 'D:/AlteraGame/altera')
 OUT = REPO + '/assets/altera_game/beasts'
 os.makedirs(OUT, exist_ok=True)
 UAA = SRC + '/UAA/Ultimate Animated Animals - July 2021/glTF/'
-FAA = SRC + '/FAA/FBX/'
+FAA = SRC + '/FAA/Blends/'
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import proc_beasts
 
-STD = {'idle': ['Idle'], 'idle2': ['Idle_2', 'Idle_Headlow', 'Idle_2_HeadLow'], 'walk': ['Walk'],
-       'run': ['Gallop'], 'eat': ['Eating'], 'death': ['Death'], 'attack': ['Attack', 'Attack_Headbutt', 'Attack_Kick'],
+STD = {'idle': ['Idle'], 'idle2': ['Idle_2', 'Idle_Headlow', 'Idle_2_HeadLow', 'WalkSlow'], 'walk': ['Walk'],
+       'run': ['Gallop', 'Run'], 'eat': ['Eating'], 'death': ['Death'], 'attack': ['Attack', 'Attack_Headbutt', 'Attack_Kick'],
        'pain': ['Idle_HitReact1']}
 # species: file, body length (m), tint multiplier
 SPECIES = {
     'deer': (UAA + 'Deer.gltf', 1.7, (1, 1, 1)),
     'wolf': (UAA + 'Wolf.gltf', 1.35, (1, 1, 1)),
     'hare': (UAA + 'Fox.gltf', 0.55, (0.72, 0.62, 0.55)),
-    'boar': (FAA + 'Pig.fbx', 1.4, (0.42, 0.33, 0.28)),
-    'pig': (FAA + 'Pig.fbx', 1.25, (1, 1, 1)),
-    'goats': (FAA + 'Sheep.fbx', 1.1, (0.95, 0.9, 0.82)),
+    'boar': (FAA + 'Pig.blend', 1.4, (0.42, 0.33, 0.28)),
+    'pig': (FAA + 'Pig.blend', 1.25, (1, 1, 1)),
+    'goats': (FAA + 'Sheep.blend', 1.1, (0.95, 0.9, 0.82)),
+    'hens': ('proc:hen', 0.42, (1, 1, 1)),
+    'fish_shoal': ('proc:fish', 0.34, (1, 1, 1)),
 }
 FPS = 15.0
 HOLD = {'Death'}
@@ -51,9 +56,12 @@ def lin2srgb(x):
     return 12.92 * x if x <= 0.0031308 else 1.055 * x ** (1 / 2.4) - 0.055
 
 def bake(name, path, length, tint):
-    bpy.ops.wm.read_factory_settings(use_empty=True)
-    if path.endswith('.fbx'): bpy.ops.import_scene.fbx(filepath=path)
-    else: bpy.ops.import_scene.gltf(filepath=path)
+    if path.startswith('proc:'): proc_beasts.build(path[5:])
+    elif path.endswith('.blend'): bpy.ops.wm.open_mainfile(filepath=path)
+    else:
+        bpy.ops.wm.read_factory_settings(use_empty=True)
+        if path.endswith('.fbx'): bpy.ops.import_scene.fbx(filepath=path)
+        else: bpy.ops.import_scene.gltf(filepath=path)
     for o in list(bpy.data.objects):
         if o.type == 'MESH' and o.name.startswith('Icosphere'): bpy.data.objects.remove(o)
     arm = next(o for o in bpy.data.objects if o.type == 'ARMATURE')
@@ -151,17 +159,23 @@ def bake(name, path, length, tint):
         ad.action = ac
         if hasattr(ad, 'action_slot') and ac.slots: ad.action_slot = ac.slots[0]
         f0, f1 = ac.frame_range
-        dur = (f1 - f0) / 24.0 if path.endswith('.fbx') else (f1 - f0) / 24.0
+        fps = sc.render.fps / sc.render.fps_base if path.endswith('.blend') else 24.0
+        dur = (f1 - f0) / fps
         loop = cname not in HOLD and 'Attack' not in cname and 'HitReact' not in cname
         n = max(2, int(round(dur * FPS)) + (0 if loop else 1))
         rows, pel = [], []
         for k in range(n):
-            fr = f0 + (k / FPS) * 24.0
+            fr = f0 + (k / FPS) * fps
             sc.frame_set(int(math.floor(fr)), subframe=fr - math.floor(fr))
             row = bytearray()
             for nm in names:
                 pb = arm.pose.bones[nm]
-                loc, q, _ = pb.matrix_basis.decompose()
+                # The visual pose (constraints solved: the farm pack's legs are IK):
+                # basis = restRel^-1 @ parentPose^-1 @ pose, what the runtime composes back.
+                bn = pb.bone
+                rest = bn.matrix_local if not bn.parent else bn.parent.matrix_local.inverted() @ bn.matrix_local
+                par = pb.parent.matrix if pb.parent else Matrix.Identity(4)
+                loc, q, _ = (rest.inverted() @ par.inverted() @ pb.matrix).decompose()
                 row.extend(struct.pack('<7f', q.x, q.y, q.z, q.w, loc.x * S, loc.y * S, loc.z * S))
             t = arm.pose.bones[names[body]].matrix.translation
             pel.append((t.x * S, t.y * S))

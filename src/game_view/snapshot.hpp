@@ -4,6 +4,7 @@
 // strings in here are already looked up in content/loc.
 
 #include <chrono>
+#include <map>
 #include <string>
 #include <utility>
 #include <vector>
@@ -19,7 +20,7 @@ using SnapClock = std::chrono::steady_clock;
 struct ActorSnap {
     EntityId id = sim::kNone;
     std::string name, species, family, state, act, goal, interaction, role;
-    bool animal = false, alive = true, player = false, down = false, fighting = false;
+    bool animal = false, alive = true, player = false, down = false, fighting = false, captive = false;
     char sex = 'f';
     int age = 0, group = 1, wounds = 0;
     double px = 0, py = 0, x = 0, y = 0;   // sim metres, last tick and this one
@@ -64,10 +65,15 @@ struct Detail {
     std::vector<std::string> wants;   // goal now, queued tasks
 };
 
-// How the wheel's target feels about the player's own character.
+// How the wheel's target feels about the player's own character, and the
+// sim's own chance of every act of the wheel per tone (content/ai/tones.json
+// order): what the sim rolls with (sim/tones.hpp actChance).
 struct WheelSnap {
     EntityId target = sim::kNone, actor = sim::kNone;
     RelSnap toActor;
+    std::vector<std::string> tones;                    // tone ids, the wheel's chips
+    std::map<std::string, std::vector<float>> chance;  // interaction -> per tone
+    std::map<std::string, std::string> kind;           // certain | chance | consent | reception | win
 };
 
 struct Snapshot {

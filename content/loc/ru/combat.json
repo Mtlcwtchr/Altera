@@ -4,7 +4,27 @@
   "combat_finish": "{winner} решает судьбу {loser}: {decision}",
   "rescue": "{who} без сознания; спасение: {loc}",
   "maimed": "{who}: рана зажила плохо ({kind})",
-  "died_of_wounds": "{who} умирает от ран"
+  "died_of_wounds": "{who} умирает от ран",
+  "combat_group": "Стычка: {actor} против {target} ({act}), {heads_a} на {heads_b}; исход для нападавших: {outcome}, пали {fallen_a} и {fallen_b}",
+  "captivity": {
+   "taken": "{captor} берёт в плен {captive}",
+   "taken_over": "{captive} переходит к другому пленителю",
+   "captor_gone": "{captive} свободен: пленителя больше нет рядом",
+   "released": "{captor} отпускает {captive}",
+   "escaped": "{captive} бежит из плена от {captor}",
+   "release": "{captor} решает отпустить {captive}",
+   "ransom": "Семья выкупает {captive} у {captor}",
+   "trial": "{captor} отдаёт {captive} под суд",
+   "sentence_punish": "{captive} наказан и отпущен",
+   "sentence_exile": "{captive} изгнан из поселения",
+   "sentence_acquit": "{captive} оправдан и отпущен",
+   "verdict_execute": "Суд {judge}: {captive} приговорён к смерти",
+   "verdict_punish": "Суд {judge}: {captive} будет наказан",
+   "verdict_exile": "Суд {judge}: {captive} изгоняется",
+   "verdict_acquit": "Суд {judge}: {captive} оправдан"
+  },
+  "succession": "После смерти {who} род продолжает {heir}",
+  "succession_none": "{who} умер, и некому продолжить род"
  },
  "combat": {
   "_doc": "Реплики боя: варианты 1..N, выбор по seed боя (COMBAT_PRESENTATION §5).",

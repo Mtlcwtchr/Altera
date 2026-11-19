@@ -195,6 +195,8 @@ bool handle(World& w, Command& cmd) {
             const std::string x = cmd.args.at("interaction").get<std::string>();
             const InteractionDef* d = w.content().interaction(x);
             if (!d) throw std::runtime_error("unknown interaction");
+            // The tone the act is done in (tones.json); stays until another order names one.
+            if (cmd.args.contains("tone")) c->controller.tone = cmd.args["tone"].get<std::string>();
             gs.goal = "player_action";
             gs.task = x;
         } else {

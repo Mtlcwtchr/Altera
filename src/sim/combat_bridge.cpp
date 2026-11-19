@@ -80,6 +80,13 @@ const CombatBridge* combatBridge(const Content& c) {
             if (std::string(f) == "aftermath.json") b->aftermath = loadAftermath(aj, c, err);
             else b->rescue = loadRescue(aj, c, err);
         }
+        for (const char* f : {"group.json", "captivity.json"}) {
+            if (!fs::exists(dir / f)) continue; // optional: without them, duels only / no captivity follow-up
+            std::ifstream gf(dir / f, std::ios::binary);
+            const Json gj = Json::parse(gf);
+            if (std::string(f) == "group.json") b->group = loadGroupRules(gj, c, err);
+            else b->captivity = loadCaptivity(gj, c, err);
+        }
         for (const auto& rr : b->rescue.rescuers)
             if (!d.treatIx.count(rr.treatment))
                 err.push_back("rescue.rescuers." + rr.id + ".treatment: unknown treatment '" + rr.treatment + "'");

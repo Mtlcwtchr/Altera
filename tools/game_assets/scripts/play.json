@@ -1,0 +1,17 @@
+[
+ {"at": 1, "zoom": 8, "pitch": 0.3, "yawDeg": 40, "speed": 1, "take": 4, "beast": "hens"},
+ {"at": 6, "shot": "play_01_hens.png"},
+ {"at": 7, "zoom": 9, "pitch": 0.3, "beast": "pig"},
+ {"at": 11, "shot": "play_02_pig.png"},
+ {"at": 12, "zoom": 10, "pitch": 0.3, "beast": "goats"},
+ {"at": 16, "shot": "play_03_goats.png"},
+ {"at": 17, "zoom": 7, "pitch": 0.45, "beast": "fish_shoal"},
+ {"at": 21, "shot": "play_04_fish.png"},
+ {"at": 22, "select": 4, "zoom": 9, "pitch": 0.4},
+ {"at": 24, "panel": "wheel", "tone": 1},
+ {"at": 27, "shot": "play_05_wheel_warm.png"},
+ {"at": 28, "tone": 6},
+ {"at": 30, "shot": "play_06_wheel_hostile.png"},
+ {"at": 31, "panel": "none"},
+ {"at": 32, "quit": true}
+]

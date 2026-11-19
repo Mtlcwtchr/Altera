@@ -1,0 +1,129 @@
+{
+  "_doc": "Судьба пленника (COMBAT_DESIGN §7, §17): связанный после боя (aftermath bind) или задержанный (restrain) идёт за пленителем, его разум стоит. Каждые check_hours пленник пробует бежать; через decide_hours пленитель решает судьбу по своей мотивации (как в aftermath.json: base + слагаемые + шум): отпустить, взять выкуп с семьи пленника, отдать под суд или держать дальше (keep, не больше max_keeps раз). Суд ведёт тот, у кого право judge в поселении пленителя, иначе старейший взрослый поселения (обычай), иначе сам пленитель; приговор выбирается так же по слагаемым судьи. Казнь это настоящая смерть, в том числе для игрока: управление переходит к наследнику династии (succession). Пленитель-игрок решает сам актами колеса (release_captive, execute), автоматическое решение к нему не применяется. Слагаемые: trait (у решающего), rel (ось отношения решающего к пленнику, mul), kin, right (право решающего), crimes (за каждое воспоминание saw_crime о пленнике у людей поселения решающего, не выше cap), offended (решающий помнит оскорбление от пленника), can_pay (семья пленника может заплатить выкуп), captive_player, captor_player.",
+  "check_hours": 2,
+  "decide_hours": [8, 30],
+  "follow_m": 2.0,
+  "noise": 0.15,
+  "max_keeps": 2,
+  "escape": {
+    "base": 0.03,
+    "skill": "hunting",
+    "per_skill": 0.1,
+    "captor_away_m": 40,
+    "away_mult": 3.0,
+    "night_mult": 1.5,
+    "wounded_below": 0.4,
+    "wounded_mult": 0.4,
+    "max": 0.4,
+    "run_m": 60
+  },
+  "ransom": {
+    "value": 6,
+    "goods": { "meal": 1, "grain": 1, "meat": 1, "smoked_fish": 1, "dried_meat": 1, "cheese": 2, "cloth": 3, "stone_blade": 2, "axe": 4, "spear": 3, "honey": 2, "remedy": 2 }
+  },
+  "fates": [
+    {
+      "id": "release",
+      "base": 0.25,
+      "terms": [
+        { "rel": "affinity", "mul": 1.2 },
+        { "kin": true, "add": 1.5 },
+        { "trait": "generous", "add": 0.3 },
+        { "trait": "pious", "add": 0.15 },
+        { "crimes": 0, "add": -0.15, "cap": -0.9 },
+        { "offended": true, "add": -0.6 }
+      ],
+      "memory": { "captor": "released_captive", "captive": "was_released" },
+      "valence": { "captor": 0.1, "captive": 0.4 },
+      "eff": ["rel_back:affinity+0.05"]
+    },
+    {
+      "id": "ransom",
+      "base": 0.15,
+      "terms": [
+        { "can_pay": true, "add": 0.6 },
+        { "can_pay": false, "add": -9.0 },
+        { "trait": "unscrupulous", "add": 0.3 },
+        { "trait": "generous", "add": -0.2 },
+        { "rel": "enmity", "mul": 0.3 },
+        { "kin": true, "add": -2.0 }
+      ],
+      "memory": { "captor": "ransomed", "captive": "was_released", "payer": "paid_ransom" },
+      "valence": { "captor": 0.2, "captive": 0.2, "payer": -0.3 },
+      "eff": ["rel_back:enmity+0.05"]
+    },
+    {
+      "id": "trial",
+      "base": -0.3,
+      "terms": [
+        { "right": "judge", "add": 0.8 },
+        { "right": "arrest", "add": 0.5 },
+        { "crimes": 0, "add": 0.3, "cap": 1.5 },
+        { "offended": true, "add": 0.9 },
+        { "rel": "enmity", "mul": 0.8 },
+        { "kin": true, "add": -1.5 }
+      ],
+      "memory": { "captor": "judged", "captive": "was_sentenced" },
+      "valence": { "captor": 0.1, "captive": -0.4 }
+    },
+    {
+      "id": "keep",
+      "base": -0.1,
+      "terms": [
+        { "rel": "enmity", "mul": 0.4 },
+        { "trait": "unscrupulous", "add": 0.2 },
+        { "trait": "stubborn", "add": 0.2 }
+      ]
+    }
+  ],
+  "verdicts": [
+    {
+      "id": "execute",
+      "base": -1.1,
+      "terms": [
+        { "crimes": 0, "add": 0.35, "cap": 1.4 },
+        { "offended": true, "add": 1.0 },
+        { "rel": "enmity", "mul": 1.5 },
+        { "rel": "affinity", "mul": -1.5 },
+        { "trait": "unscrupulous", "add": 0.3 },
+        { "trait": "pious", "add": -0.2 },
+        { "trait": "generous", "add": -0.3 },
+        { "kin": true, "add": -3.0 }
+      ]
+    },
+    {
+      "id": "punish",
+      "base": 0.0,
+      "terms": [
+        { "crimes": 0, "add": 0.2, "cap": 0.8 },
+        { "offended": true, "add": 0.4 },
+        { "rel": "enmity", "mul": 0.5 }
+      ],
+      "eff": ["t.body:health-0.15", "t.reputation:valor-0.05"]
+    },
+    {
+      "id": "exile",
+      "base": -0.4,
+      "terms": [
+        { "crimes": 0, "add": 0.25, "cap": 1.0 },
+        { "rel": "enmity", "mul": 0.6 },
+        { "kin": true, "add": -1.0 }
+      ],
+      "exile_m": 500
+    },
+    {
+      "id": "acquit",
+      "base": 0.2,
+      "terms": [
+        { "crimes": 0, "add": -0.3, "cap": -1.5 },
+        { "offended": true, "add": -0.8 },
+        { "rel": "affinity", "mul": 1.0 },
+        { "kin": true, "add": 1.5 }
+      ]
+    }
+  ],
+  "execution": { "cause": "execution", "witness_radius_m": 80, "witness_memory": "saw_execution", "executor_memory": "executed" },
+  "memory": { "escaped": "escaped", "captor_escaped": "captive_escaped", "freed": "was_released", "exiled": "exiled", "punished": "was_punished" },
+  "succession": { "chronicle": "chronicle.succession" },
+  "chronicle": "chronicle.captivity"
+}

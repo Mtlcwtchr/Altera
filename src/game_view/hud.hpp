@@ -63,6 +63,7 @@ public:
         sphere_ = 0;
         sub_ = 0;
     }
+    void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
     bool showThoughts = false;
 
 private:

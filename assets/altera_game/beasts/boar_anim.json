@@ -1,9 +1,17 @@
 {
  "clips": [
-  "Idle"
+  "Death",
+  "Idle",
+  "Run",
+  "Walk",
+  "WalkSlow"
  ],
  "state": {
-  "idle": "Idle"
+  "idle": "Idle",
+  "idle2": "WalkSlow",
+  "walk": "Walk",
+  "run": "Run",
+  "death": "Death"
  },
  "interaction": {}
 }

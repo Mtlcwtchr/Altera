@@ -16,6 +16,8 @@
 #include "sim/combat/combat_lod.hpp"
 #include "sim/content.hpp"
 #include "sim/aftermath.hpp"
+#include "sim/captivity.hpp"
+#include "sim/group_combat.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -36,6 +38,8 @@ struct CombatBridge {
     RecoveryRules recovery; // recovery.json: wounds in the profile, healing
     AftermathRules aftermath; // aftermath.json: the winner's decision
     RescueRules rescue;       // rescue.json: a defeated player is rescued, not killed
+    GroupRules group;         // group.json: more than two fighters fight at once
+    CaptivityRules captivity; // captivity.json: the captive's fate, trials, executions
     // LOD (CORE_SPEC §7): fights far from every player are drawn from a table
     // of outcomes of the same core instead of the round loop.
     bool lodEnabled = false;
