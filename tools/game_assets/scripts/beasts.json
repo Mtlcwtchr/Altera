@@ -1,0 +1,9 @@
+[
+ {"at": 1, "zoom": 9, "pitch": 0.35, "yawDeg": 30, "speed": 1, "beast": "deer"},
+ {"at": 6, "shot": "beast_deer.png", "beast": "boar"},
+ {"at": 10, "shot": "beast_boar.png", "beast": "goats"},
+ {"at": 14, "shot": "beast_goats.png", "beast": "wolf"},
+ {"at": 18, "shot": "beast_wolf.png", "beast": "hare", "zoom": 4},
+ {"at": 22, "shot": "beast_hare.png"},
+ {"at": 23, "quit": true}
+]

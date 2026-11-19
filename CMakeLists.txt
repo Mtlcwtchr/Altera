@@ -606,7 +606,7 @@ if(ASR_BUILD_CLIENT)
     # beasts and buildings as a scene layer, the HUD, the player's orders
     # (src/game_view, doc engine_merge/MERGE_PLAN.md stage 4-6 fast path).
     add_library(altera_game_view STATIC src/game_view/sim_game.cpp src/game_view/loading_screen.cpp
-                                       src/game_view/skinned.cpp)
+                                       src/game_view/skinned.cpp src/game_view/statics.cpp)
     target_include_directories(altera_game_view PUBLIC src)
     target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
 

@@ -25,7 +25,7 @@ import bpy, sys, os, json, struct, math
 import numpy as np
 from mathutils import Matrix, Vector
 
-a = sys.argv[sys.argv.index('--') + 1:]
+a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 def opt(k, d=None):
     return a[a.index(k) + 1] if k in a else d
 SRC = opt('--src', 'D:/AlteraGame/_asset_src/chr')

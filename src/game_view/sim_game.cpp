@@ -9,6 +9,7 @@
 
 #include "game_view/game_layer.hpp"
 #include "game_view/skinned.hpp"
+#include "game_view/statics.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -19,6 +20,7 @@
 #include <deque>
 #include <filesystem>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <thread>
 #include <vector>
@@ -31,6 +33,7 @@
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
 #include "sim/worldgen.hpp"
+#include "terrain_core/clearings.hpp"
 #include "terrain_core/ground_height.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
@@ -164,6 +167,7 @@ public:
     ~SimGame() override {
         stop_ = true;
         if (thread_.joinable()) thread_.join();
+        terrain_core::clearings().info[0] = 0;
         ui_.shutdown();
         if (uiTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), uiTransfer_);
         if (instTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), instTransfer_);
@@ -197,6 +201,10 @@ public:
             target_[0] = originX_ + s.center.x;
             target_[1] = originY_ + s.center.y;
         }
+        if (!world_->settlements().empty()) {
+            villageCentre_[0] = world_->settlements().begin()->second.center.x;
+            villageCentre_[1] = world_->settlements().begin()->second.center.y;
+        }
         for (const auto& [id, ob] : world_->objects()) {
             static const char* kShown[] = {"house", "storage", "hearth", "field", "garden", "shrine", "village_fire"};
             for (const char* t : kShown)
@@ -218,6 +226,7 @@ public:
                 break;
             }
         if (!openGpu(why)) return false;
+        setClearings();
         loadScript();
         thread_ = std::thread([this] { simLoop(); });
         return true;
@@ -334,6 +343,8 @@ public:
         viewH_ = height;
         buildInstances();
         people_.prepare(commands, figures_);
+        village_.prepare(commands, placed_);
+        for (auto& [k, set] : beasts_) set->prepare(commands, beastFigures_[k]);
         if (instances_.empty() || !instBuffer_) return;
         const std::uint32_t bytes = std::uint32_t(instances_.size() * sizeof(Instance));
         void* map = SDL_MapGPUTransferBuffer(device_.handle(), instTransfer_, true);
@@ -349,7 +360,9 @@ public:
 
     void drawOpaque(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass,
                     const terrain_core::LightUniforms& light) override {
+        village_.draw(commands, pass, vp_, light);
         people_.draw(commands, pass, vp_, light);
+        for (auto& [k, set] : beasts_) set->draw(commands, pass, vp_, light);
         if (instances_.empty() || !actorsPipe_) return;
         SDL_BindGPUGraphicsPipeline(pass, actorsPipe_.get());
         const SDL_GPUBufferBinding bufs[2] = {{vertBuffer_.get(), 0}, {instBuffer_.get(), 0}};
@@ -468,7 +481,20 @@ private:
                         break;
                     }
             }
+            if (st.contains("beast")) {
+                const std::string sp = st["beast"].get<std::string>();
+                for (const auto& a : shown_.actors)
+                    if (a.animal && a.alive && a.species == sp) {
+                        select(a.id);
+                        break;
+                    }
+            }
             if (st.contains("panel")) panel_ = st["panel"].get<std::string>();
+            {
+                std::string counts;
+                for (const auto& [k, v] : beastFigures_) counts += k + "=" + std::to_string(v.size()) + " ";
+                SDL_Log("altera_game: step %zu people=%zu %s", scriptStep_, figures_.size(), counts.c_str());
+            }
             if (st.contains("shot"))
                 shotWanted_ = (fs::path(opts_.root) / "terrain_lab_out/shots_for_user" / st["shot"].get<std::string>()).string();
             if (st.value("quit", false)) {
@@ -845,6 +871,55 @@ private:
         return f;
     }
 
+    Figure beastFigure(const SkinnedSet& set, const ActorSnap& a, int head, double rx, double ry, double rz,
+                       double moveYaw, float highlight) {
+        const double nowS = lastFrameS_;
+        Anim& an = beastAnims_[{a.id, head}];
+        const double step = std::hypot(a.x - a.px, a.y - a.py);
+        const double speed = shown_.paused ? 0.0 : step / std::max(0.05, shown_.tickSeconds);
+        double rate = 1;
+        int want;
+        auto st = [&](const char* s) { return set.stateClip(s); };
+        if (!a.alive) want = st("death");
+        else if (a.fighting) want = st("attack");
+        else if (speed > 0.25) {
+            const bool fast = speed > 3.0 || a.state == "Flee";
+            want = st(fast ? "run" : "walk");
+            rate = std::clamp(speed / (fast ? 6.0 : 1.4), 0.6, 1.8);
+        } else if (a.state == "Eat" || (a.id + head) % 3 == 1) want = st("eat");
+        else want = st((a.id + head) % 2 ? "idle2" : "idle");
+        if (want < 0) want = st("idle");
+        if (want != an.clip) {
+            an.from = an.clip;
+            an.fromStart = an.start;
+            an.fromRate = an.rate;
+            an.clip = want;
+            an.start = nowS - double((a.id * 7 + head * 13) % 50) * 0.1;   // herds out of step
+            an.switched = nowS;
+        }
+        an.rate += (rate - an.rate) * std::min(1.0, frameDt_ * 4.0);
+        if (!an.yawSet) {
+            an.yaw = float(moveYaw) + float(head) * 0.7f;
+            an.yawSet = true;
+        }
+        if (step > 0.05) an.yaw += std::remainder(float(moveYaw) - an.yaw, float(2 * kPi)) * float(std::min(1.0, frameDt_ * 6.0));
+        Figure f;
+        f.clip = an.clip;
+        f.time = (nowS - an.start) * an.rate;
+        if (an.from >= 0 && nowS - an.switched < 0.35) {
+            f.fromClip = an.from;
+            f.fromTime = (nowS - an.fromStart) * an.fromRate;
+            f.fade = float(1.0 - (nowS - an.switched) / 0.35);
+        }
+        f.rel[0] = rx;
+        f.rel[1] = ry;
+        f.rel[2] = rz;
+        f.yaw = an.yaw;
+        f.scale = head ? 0.85f + 0.05f * float((a.id + head) % 4) : 1.0f;
+        f.highlight = head ? 0.0f : highlight;
+        return f;
+    }
+
     // Skin from a small range of tones, hair from the family's line, cloth a
     // muted shade of the family's colour. Shared by the figure and its portrait.
     void personTints(const ActorSnap& a, float skin[3], float hair[3], float cloth[3]) const {
@@ -865,9 +940,78 @@ private:
         for (int k = 0; k < 3; ++k) cloth[k] = (0.62f + fc[k] * 0.55f) * (a.alive ? 1.0f : 0.6f);
     }
 
+    // No forest through the houses: the village is an open place with yards
+    // round every building (the foliage and grass passes read these discs).
+    void setClearings() {
+        auto& c = terrain_core::clearings();
+        int n = 0;
+        auto add = [&](double x, double y, double inner, double outer) {
+            if (n >= 32) return;
+            c.discs[n][0] = float(originX_ + x), c.discs[n][1] = float(originY_ + y);
+            c.discs[n][2] = float(inner), c.discs[n][3] = float(outer);
+            ++n;
+        };
+        double far = 0;
+        for (const auto& b : buildings_)
+            far = std::max(far, std::hypot(b.x - villageCentre_[0], b.y - villageCentre_[1]));
+        add(villageCentre_[0], villageCentre_[1], std::max(12.0, far * 0.7), far + 18.0);
+        for (const auto& b : buildings_) {
+            double r = 5.0;
+            if (b.type == "field") r = 24.0;
+            else if (b.type == "garden") r = 9.0;
+            else if (b.type == "house") r = 7.0;
+            else if (b.type == "shrine") r = 4.5;
+            if (std::hypot(b.x - villageCentre_[0], b.y - villageCentre_[1]) + r < far * 0.7) continue;
+            add(b.x, b.y, r, r + 8.0);
+        }
+        c.info[0] = float(n);
+    }
+
+    // The settlement's buildings from the kit bake: houses vary by family,
+    // doors turned to the village's centre, set on the lowest ground under them.
+    void placeBuildings(double range) {
+        placed_.clear();
+        double cx = 0, cy = 0;
+        if (!world_->settlements().empty()) {
+            // the centre as the sim had it when the world opened (the sim thread owns the world now)
+            cx = villageCentre_[0];
+            cy = villageCentre_[1];
+        }
+        for (const auto& b : buildings_) {
+            const double wx = originX_ + b.x, wy = originY_ + b.y;
+            const double rx = wx - eye_[0], ry = wy - eye_[1];
+            if (rx * rx + ry * ry > range * range * 4) continue;
+            std::string piece = b.type;
+            const std::uint64_t h = hashStr(b.type + std::to_string(int(b.x)) + "," + std::to_string(int(b.y)));
+            if (b.type == "house") {
+                static const char* kHouses[] = {"house_daub", "house_stone", "house_log"};
+                piece = kHouses[(h >> 9) % 3];
+            }
+            const int id = village_.piece(piece);
+            if (id < 0) continue;
+            Placed pl;
+            pl.piece = id;
+            const double dx = cx - b.x, dy = cy - b.y;
+            pl.yaw = (dx * dx + dy * dy > 1.0) ? float(std::atan2(dx, -dy)) : float((h % 4) * kPi * 0.5);
+            if (b.type == "field" || b.type == "garden") pl.yaw = float(std::round(pl.yaw / (kPi * 0.5)) * kPi * 0.5);
+            float hx, hy;
+            village_.halfSize(id, hx, hy);
+            double z = groundAt(wx, wy);
+            const double r = std::min<double>(std::max(hx, hy), 6.0) * 0.8;
+            for (int k = 0; k < 4; ++k) z = std::min(z, groundAt(wx + r * std::cos(k * kPi * 0.5 + 0.7), wy + r * std::sin(k * kPi * 0.5 + 0.7)));
+            pl.rel[0] = rx;
+            pl.rel[1] = ry;
+            pl.rel[2] = z - eye_[2];
+            const float t = 0.92f + 0.16f * float((h >> 21) % 100) / 100.0f;
+            pl.tint[0] = pl.tint[1] = pl.tint[2] = t;
+            placed_.push_back(pl);
+        }
+    }
+
     void buildInstances() {
         instances_.clear();
         figures_.clear();
+        for (auto& [k, v] : beastFigures_) v.clear();
         const double nowS = std::chrono::duration<double>(Clock::now() - started_).count();
         frameDt_ = std::clamp(nowS - lastFrameS_, 0.0, 0.1);
         lastFrameS_ = nowS;
@@ -916,6 +1060,21 @@ private:
                 else if (sp == "pig") s = 0.9f, col[0] = 0.85f, col[1] = 0.62f, col[2] = 0.58f;
                 // A herd or a pack is several heads: a few beside the leader.
                 const int heads = std::clamp(a.group, 1, 6);
+                const auto bs = beasts_.find(sp);
+                if (bs != beasts_.end()) {
+                    auto& list = beastFigures_[sp];
+                    for (int k = 0; k < heads && list.size() < SkinnedSet::kMaxFigures; ++k) {
+                        double bx = wx, by = wy;
+                        if (k) {
+                            const double ang = double(k) * 2.4 + double(a.id), r = 1.2 + 0.6 * k;
+                            bx += std::cos(ang) * r;
+                            by += std::sin(ang) * r;
+                        }
+                        list.push_back(beastFigure(*bs->second, a, k, bx - eye_[0], by - eye_[1],
+                                                   groundAt(bx, by) - eye_[2], yaw, hl));
+                    }
+                    continue;
+                }
                 for (int k = 0; k < heads; ++k) {
                     Instance b = in;
                     if (k) {
@@ -934,7 +1093,9 @@ private:
                 }
             }
         }
+        if (village_.loaded()) placeBuildings(range);
         for (const auto& b : buildings_) {
+            if (village_.loaded()) break;
             const double wx = originX_ + b.x, wy = originY_ + b.y;
             const double rx = wx - eye_[0], ry = wy - eye_[1];
             if (rx * rx + ry * ry > range * range * 4) continue;
@@ -1043,6 +1204,20 @@ private:
                 SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
             for (int i = 0; i < people_.lookCount(); ++i)
                 (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
+            std::string whyVillage;
+            if (!village_.load(device_, root / "assets/altera_game/buildings/buildings.astm", &whyVillage))
+                SDL_Log("altera_game: buildings stay placeholders: %s", whyVillage.c_str());
+            // Beasts with a bake of their own; the rest (hens, fish) keep the shapes.
+            for (const char* sp : {"deer", "wolf", "hare", "boar", "pig", "goats"}) {
+                const fs::path base = root / "assets/altera_game/beasts" / sp;
+                auto set = std::make_unique<SkinnedSet>();
+                std::string whyBeast;
+                if (set->load(device_, fs::path(base.string() + ".askin"), fs::path(base.string() + ".aanim"),
+                              fs::path(base.string() + "_anim.json"), &whyBeast))
+                    beasts_[sp] = std::move(set);
+                else
+                    SDL_Log("altera_game: %s stays a placeholder: %s", sp, whyBeast.c_str());
+            }
         }
         const fs::path fonts = fs::path(opts_.root) / "assets" / "fonts";
         font_ = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
@@ -1337,6 +1512,7 @@ private:
     std::unique_ptr<Loc> loc_;
     std::unique_ptr<World> world_;
     double originX_ = 0, originY_ = 0;
+    double villageCentre_[2] = {0, 0};
     std::vector<BuildingSnap> buildings_;
     std::vector<std::string> goalIds_, goalNames_;
     int goalChoice_ = 0;
@@ -1383,6 +1559,11 @@ private:
         bool yawSet = false;
     };
     std::map<EntityId, Anim> anims_;
+    std::map<std::string, std::unique_ptr<SkinnedSet>> beasts_;
+    StaticSet village_;
+    std::vector<Placed> placed_;
+    std::map<std::string, std::vector<Figure>> beastFigures_;
+    std::map<std::pair<EntityId, int>, Anim> beastAnims_;
     Clock::time_point started_ = Clock::now();
     double lastFrameS_ = 0, frameDt_ = 0;
     MeshRange meshes_[kMeshes], batch_[kMeshes];

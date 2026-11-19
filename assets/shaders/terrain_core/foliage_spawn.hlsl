@@ -35,6 +35,7 @@ SamplerState waterSampler : register(s2, space0);
 #define RIVER_TILES register(t6, space0)
 #define RIVER_LIST register(t7, space0)
 #include "rivers.hlsli"
+#include "clearings.hlsli"
 RWStructuredBuffer<Instance> instances : register(u0, space1);
 RWStructuredBuffer<uint> counters : register(u1, space1);
 
@@ -157,6 +158,7 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
         const float n = cellNoise(p, int(rule.y), seed + 7u) * 0.7 + cellNoise(p, int(rule.y) - 2, seed + 11u) * 0.3;
         chance *= smoothstep(1.0 - rule.z - 0.08, 1.0 - rule.z + 0.08, n);
     }
+    chance *= clearingKeep(metres);   // the village's yards and works
     const uint h2 = hashCell(cell, seed + 101u);
     if (unit(h2) >= chance) return;
 

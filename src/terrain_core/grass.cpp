@@ -1,4 +1,5 @@
 #include "terrain_core/grass.hpp"
+#include "terrain_core/clearings.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -162,6 +163,7 @@ void Grass::spawn(SDL_GPUCommandBuffer* commands, const GrassFrame& frame, SDL_G
             }
             candidates_ += std::uint64_t(u.gridSide) * u.gridSide;
             SDL_PushGPUComputeUniformData(commands, 0, &u, sizeof(u));
+            SDL_PushGPUComputeUniformData(commands, 3, &clearings(), sizeof(ClearingUniforms));
             SDL_DispatchGPUCompute(pass, (u.gridSide + 7) / 8, (u.gridSide + 7) / 8, 1);
             inner = radius;
             radius *= 2.0;

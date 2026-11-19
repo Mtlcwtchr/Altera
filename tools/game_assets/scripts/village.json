@@ -1,0 +1,9 @@
+[
+ {"at": 1, "zoom": 45, "pitch": 0.6, "yawDeg": 30, "speed": 1, "select": 0},
+ {"at": 7, "shot": "village_top.png"},
+ {"at": 8, "zoom": 20, "pitch": 0.3, "yawDeg": 120},
+ {"at": 12, "shot": "village_mid.png"},
+ {"at": 13, "zoom": 6, "pitch": 0.2, "select": 4},
+ {"at": 17, "shot": "village_close.png"},
+ {"at": 18, "quit": true}
+]

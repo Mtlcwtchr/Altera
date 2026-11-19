@@ -29,6 +29,8 @@ SamplerState waterSampler : register(s5, space0);
 #define RIVER_TILES register(t7, space0)
 #define RIVER_LIST register(t8, space0)
 #include "rivers.hlsli"
+#define CLEARINGS_REGISTER register(b3, space2)
+#include "clearings.hlsli"
 
 struct Tuft {
     float4 positionYaw;   // eye-relative foot (m), yaw
@@ -145,7 +147,8 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     const float normalZ = rsqrt(1.0 + dot(hg.yz, hg.yz));
     const float4 ground = groundSample(p, hg.x, normalZ, false);
     const uint h2 = hashCell(cell, seed + 101u);
-    if (unit(h2) >= ground.a * 1.15 - 0.1) return;
+    const float cleared = clearingKeep((float2(p.base) + p.sub) * spacing0);
+    if (unit(h2) >= (ground.a * 1.15 - 0.1) * (0.35 + 0.65 * cleared)) return;
 
     // The ground's colour unlit and its normal: the draw lights both exactly
     // as the ground is lit, shadows and all.

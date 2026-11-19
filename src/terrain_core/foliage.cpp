@@ -1,4 +1,5 @@
 #include "terrain_core/foliage.hpp"
+#include "terrain_core/clearings.hpp"
 
 #include <nlohmann/json.hpp>
 
@@ -287,6 +288,7 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
                 for (int j = 0; j < 4; ++j) u.biomeRules[b][j] = layer.rules[b][j];
             layer.candidates = u.gridSide * u.gridSide;
             SDL_PushGPUComputeUniformData(commands, 0, &u, sizeof(u));
+            SDL_PushGPUComputeUniformData(commands, 1, &clearings(), sizeof(ClearingUniforms));
             SDL_DispatchGPUCompute(pass, (u.gridSide + 7) / 8, (u.gridSide + 7) / 8, 1);
         }
         SDL_EndGPUComputePass(pass);

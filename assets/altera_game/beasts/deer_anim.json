@@ -1,0 +1,23 @@
+{
+ "clips": [
+  "Attack_Headbutt",
+  "Death",
+  "Eating",
+  "Gallop",
+  "Idle",
+  "Idle_2",
+  "Idle_HitReact1",
+  "Walk"
+ ],
+ "state": {
+  "idle": "Idle",
+  "idle2": "Idle_2",
+  "walk": "Walk",
+  "run": "Gallop",
+  "eat": "Eating",
+  "death": "Death",
+  "attack": "Attack_Headbutt",
+  "pain": "Idle_HitReact1"
+ },
+ "interaction": {}
+}
