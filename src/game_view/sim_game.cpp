@@ -8,7 +8,9 @@
 // the sim's own names), so this file holds no display strings.
 
 #include "game_view/game_layer.hpp"
+#include "game_view/hud.hpp"
 #include "game_view/skinned.hpp"
+#include "game_view/snapshot.hpp"
 #include "game_view/statics.hpp"
 
 #include <algorithm>
@@ -33,6 +35,7 @@
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
 #include "sim/worldgen.hpp"
+#include "terrain_core/biomes.hpp"
 #include "terrain_core/clearings.hpp"
 #include "terrain_core/ground_height.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -46,51 +49,10 @@ using namespace altera::sim;
 using Clock = std::chrono::steady_clock;
 constexpr double kPi = 3.14159265358979;
 
-// ---- what the sim thread hands the frame --------------------------------
-struct ActorSnap {
-    EntityId id = kNone;
-    std::string name, species, family, state, act, goal, interaction;
-    bool animal = false, alive = true, player = false, down = false, fighting = false;
-    char sex = 'f';
-    int age = 0, group = 1, wounds = 0;
-    double px = 0, py = 0, x = 0, y = 0;   // sim metres, last tick and this one
-    double hp = 1;
-};
-
 struct BuildingSnap {
     std::string type;
     double x = 0, y = 0;
     EntityId family = kNone;
-};
-
-struct Line {
-    int day = 0;
-    std::string time, text, kind;
-    std::vector<EntityId> who;
-};
-
-struct Detail {
-    EntityId id = kNone;
-    std::vector<std::pair<std::string, double>> needs;
-    double mood = 0, fatigue = 0, blood = 100;
-    bool freeWill = true;
-    std::vector<Line> trace;
-    std::vector<std::string> inventory;
-};
-
-struct Snapshot {
-    Tick tick = 0;
-    Clock::time_point tickAt = Clock::now();
-    double tickSeconds = 1.0;   // real seconds one tick takes at this speed
-    std::string season;
-    double tempC = 0, rain = 0;
-    std::vector<ActorSnap> actors;
-    std::vector<Line> chronicle;   // newest last, a bounded tail
-    Detail detail;
-    bool paused = false;
-    int speed = 1;
-    std::string result;
-    std::string settlement;
 };
 
 std::string clockText(Tick t) {
@@ -158,7 +120,7 @@ struct MeshRange {
 };
 
 // ---- the game ---------------------------------------------------------------
-class SimGame final : public GameLayer {
+class SimGame final : public GameLayer, public HudHost {
 public:
     SimGame(engine::Device& device, SDL_Window* window, const terrain_core::MacroMap& macro,
             const terrain_core::Params& params)
@@ -168,6 +130,7 @@ public:
         stop_ = true;
         if (thread_.joinable()) thread_.join();
         terrain_core::clearings().info[0] = 0;
+        hud_.shutdown();
         ui_.shutdown();
         if (uiTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), uiTransfer_);
         if (instTransfer_) SDL_ReleaseGPUTransferBuffer(device_.handle(), instTransfer_);
@@ -184,6 +147,7 @@ public:
                 cfg.erase("start_day");
                 cfg["season"] = o.season;
             }
+            if (o.biomes && o.biomes->size()) mapFromWorld(*o.biomes, cfg, centreX, centreY);
             world_ = std::make_unique<World>(makeTestWorld(*content_, cfg, o.seed));
             installAi(*world_);
             // The world starts at midnight; the player arrives with the morning.
@@ -232,18 +196,105 @@ public:
         return true;
     }
 
+    // ---- the sim's map from the world ------------------------------------
+    // The village goes to an open, dry, level place near where the world view
+    // starts (a river valley or a plateau, a forest's edge, by water if there
+    // is any), and the sim's grid of biomes and water is read from the world's
+    // biome map round it, so the sim's forests, marshes and lakes are the ones
+    // on screen.
+    void mapFromWorld(const terrain_core::BiomeMap& bm, Json& cfg, double& centreX, double& centreY) {
+        std::map<int, std::string> names;
+        try {
+            const Json t = loadJsonFile(opts_.root + "/content/config/terrain_core/biomes.json");
+            const Json list = t.value("biomes", Json::array());
+            for (const auto& b : list)
+                if (b.is_object() && b.contains("id") && b.contains("name")) names[b["id"].get<int>()] = b["name"].get<std::string>();
+        } catch (const std::exception& e) {
+            SDL_Log("altera_game: biome names: %s", e.what());
+        }
+        const auto& ids = bm.ids();
+        const double bs = double(bm.size());
+        auto biomeName = [&](double x, double y) -> std::string {
+            const int bx = std::clamp(int(x / worldSize_ * bs), 0, int(bs) - 1);
+            const int by = std::clamp(int(y / worldSize_ * bs), 0, int(bs) - 1);
+            const auto it = names.find(ids[std::size_t(by) * std::size_t(bs) + std::size_t(bx)]);
+            return it == names.end() ? std::string() : it->second;
+        };
+        auto has = [](const std::string& n, std::initializer_list<const char*> keys) {
+            for (const char* k : keys)
+                if (n.find(k) != std::string::npos) return true;
+            return false;
+        };
+        auto wet = [&](const std::string& n, double h) { return h < 0.3 || n == "sea" || has(n, {"lake"}); };
+        // the site
+        double bestScore = -1e9, bx = centreX, by = centreY;
+        for (double dy = -4000; dy <= 4000; dy += 125)
+            for (double dx = -4000; dx <= 4000; dx += 125) {
+                const double x = centreX + dx, y = centreY + dy;
+                if (x < 2000 || y < 2000 || x > worldSize_ - 2000 || y > worldSize_ - 2000) continue;
+                const double h = ground_.at(x, y, 2.0);
+                const std::string n = biomeName(x, y);
+                if (wet(n, h) || has(n, {"marsh", "mountain", "cliff", "shard", "scree", "volcan", "desert", "canyon_floor"})) continue;
+                double slope = 0;
+                for (int k = 0; k < 4; ++k) {
+                    const double a = k * kPi * 0.5;
+                    slope = std::max(slope, std::fabs(ground_.at(x + 30 * std::cos(a), y + 30 * std::sin(a), 2.0) - h) / 30.0);
+                }
+                if (slope > 0.12) continue;
+                double open = has(n, {"river_valley"}) ? 1.0 : has(n, {"plateau"}) ? 0.8 : has(n, {"edge", "glade"}) ? 0.6
+                            : has(n, {"steppe"}) ? 0.4 : has(n, {"forest"}) ? -0.2 : 0.2;
+                double water = 0;
+                for (int k = 0; k < 8 && water == 0; ++k) {
+                    const double a = k * kPi * 0.25;
+                    const double qx = x + 700 * std::cos(a), qy = y + 700 * std::sin(a);
+                    if (wet(biomeName(qx, qy), ground_.at(qx, qy, 2.0))) water = 0.5;
+                }
+                const double score = open + water - slope * 6.0 - std::hypot(dx, dy) / 5000.0;
+                if (score > bestScore) bestScore = score, bx = x, by = y;
+            }
+        centreX = bx;
+        centreY = by;
+        // the grid, as the sim will lay it (worldgen: size_m, cell_m)
+        const double size = std::clamp(cfg.value("size_m", 12000.0), 8000.0, 16000.0);
+        const double cell = cfg.value("cell_m", 250.0);
+        const int n = int(size / cell);
+        const double ox = std::clamp(centreX - size * 0.5, 0.0, std::max(0.0, worldSize_ - size));
+        const double oy = std::clamp(centreY - size * 0.5, 0.0, std::max(0.0, worldSize_ - size));
+        Json mb = Json::array(), mw = Json::array();
+        for (int y = 0; y < n; ++y)
+            for (int x = 0; x < n; ++x) {
+                const double wx = ox + (x + 0.5) * cell, wy = oy + (y + 0.5) * cell;
+                const std::string b = biomeName(wx, wy);
+                const double h = ground_.at(wx, wy, 2.0);
+                mw.push_back(wet(b, h) ? 1 : 0);
+                mb.push_back(has(b, {"marsh"}) ? "marsh" : has(b, {"dark_forest"}) ? "forest" : "meadow");
+            }
+        cfg["map_biome"] = std::move(mb);
+        cfg["map_water"] = std::move(mw);
+        cfg["river"] = false;   // the water is the world's
+        SDL_Log("altera_game: village site %.0f, %.0f (%s), score %.2f", centreX, centreY, biomeName(centreX, centreY).c_str(), bestScore);
+    }
+
     // ---- input ---------------------------------------------------------
     bool event(const SDL_Event& e) override {
         switch (e.type) {
         case SDL_EVENT_QUIT: return false;
         case SDL_EVENT_KEY_DOWN:
-            if (e.key.key == SDLK_ESCAPE) return false;
+            if (e.key.key == SDLK_ESCAPE) {
+                if (hud_.panel != "none") {
+                    hud_.panel = "none";
+                    break;
+                }
+                return false;
+            }
             if (e.key.repeat) break;
             if (e.key.key == SDLK_SPACE) post({"pause"});
             if (e.key.key >= SDLK_1 && e.key.key <= SDLK_4) post({"speed", int(e.key.key - SDLK_1) + 1});
             if (e.key.key == SDLK_TAB) follow_ = !follow_;
-            if (e.key.key == SDLK_H) showChronicle_ = !showChronicle_;
-            if (e.key.key == SDLK_T) showThoughts_ = !showThoughts_;
+            if (e.key.key == SDLK_H) hud_.panel = hud_.panel == "annals" ? "none" : "annals";
+            if (e.key.key == SDLK_C) hud_.panel = hud_.panel == "sheet" ? "none" : "sheet";
+            if (e.key.key == SDLK_K) hud_.panel = hud_.panel == "kin" ? "none" : "kin";
+            if (e.key.key == SDLK_T) hud_.showThoughts = !hud_.showThoughts;
             if (e.key.key == SDLK_F) follow_ = true;
             if (e.key.key == SDLK_F9) {
                 char n[64];
@@ -268,6 +319,8 @@ public:
             if (e.button.button == SDL_BUTTON_RIGHT) {
                 input_.rightPressed = input_.rightDown = true;
                 if (!overUi_) rmb_ = true;
+                rmbAt_[0] = e.button.x;
+                rmbAt_[1] = e.button.y;
             }
             break;
         case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -277,6 +330,8 @@ public:
             }
             if (e.button.button == SDL_BUTTON_RIGHT) {
                 input_.rightDown = false;
+                // A right click (not a drag of the camera) on a person: the wheel.
+                if (rmb_ && std::hypot(e.button.x - rmbAt_[0], e.button.y - rmbAt_[1]) < 5) wheelAt_ = {e.button.x, e.button.y, true};
                 rmb_ = false;
             }
             break;
@@ -302,6 +357,15 @@ public:
         const double ticks = double(shown_.tick % kTicksPerDay) + alpha;
         timeOfDay = ticks / double(kTicksPerDay) * 24.0;
 
+        if (wheelAt_.pending) {
+            wheelAt_.pending = false;
+            const EntityId hit = pick(wheelAt_.x, wheelAt_.y);
+            const ActorSnap* t = actor(hit);
+            if (t && !t->animal && t->alive) {
+                hud_.openWheel(hit);
+                wheelWanted_ = hit;
+            }
+        }
         if (pickAt_.pending) {
             pickAt_.pending = false;
             const EntityId hit = pick(pickAt_.x, pickAt_.y);
@@ -380,8 +444,11 @@ public:
         if (canvas_.wouldResize(int(width), int(height))) {
             ui_.shutdown();
             canvas_.size(int(width), int(height));
+            hud_.shutdown();
             ui_.init(canvas_.renderer());
             if (font_) ui_.setFont(font_, fontBold_, 15, 1.0f);
+            std::string whyHud;
+            if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("altera_game: %s", whyHud.c_str());
             styleTheme();
             uiTexture_ = {};
         }
@@ -489,7 +556,26 @@ private:
                         break;
                     }
             }
-            if (st.contains("panel")) panel_ = st["panel"].get<std::string>();
+            if (st.contains("panel")) {
+                hud_.panel = st["panel"].get<std::string>();
+                if (hud_.panel == "wheel") {
+                    // the wheel on the nearest other person
+                    for (const auto& a : shown_.actors)
+                        if (!a.animal && a.alive && a.id != selected_) {
+                            hud_.openWheel(a.id);
+                            wheelWanted_ = a.id;
+                            break;
+                        }
+                }
+            }
+            if (st.contains("take")) {
+                int k = st["take"].get<int>();
+                for (const auto& a : shown_.actors)
+                    if (!a.animal && a.alive && k-- == 0) {
+                        post({"cmd", 0, "take_control", {{"id", a.id}}});
+                        break;
+                    }
+            }
             {
                 std::string counts;
                 for (const auto& [k, v] : beastFigures_) counts += k + "=" + std::to_string(v.size()) + " ";
@@ -627,7 +713,7 @@ private:
         const std::string k = kind + "." + id + ".name";
         return loc_->has(opts_.lang, k) ? loc_->text(opts_.lang, k) : id;
     }
-    std::string text(const std::string& key, const Json& args = Json::object()) const {
+    std::string text(const std::string& key, const Json& args = Json::object()) const override {
         return loc_->has(opts_.lang, key) ? loc_->text(opts_.lang, key, args) : key;
     }
 
@@ -668,6 +754,15 @@ private:
             a.state = c.ai.fsm.state;
             a.fighting = a.state == "Fight";
             a.interaction = c.ai.fsm.interaction;
+            a.role = c.status.role;
+            a.spouse = c.status.spouse;
+            a.mother = c.status.mother;
+            a.father = c.status.father;
+            for (const auto& [k, v] : c.needs)
+                if (v < a.lowNeed) {
+                    a.lowNeed = v;
+                    a.lowNeedId = k;
+                }
             if (!c.ai.fsm.interaction.empty() && c.ai.fsm.interaction != "goto" && c.ai.fsm.interaction != "wait")
                 a.act = name("interaction", c.ai.fsm.interaction);
             else if (c.ai.plan.actionIndex + 1 < c.ai.plan.actions.size() &&
@@ -699,31 +794,69 @@ private:
         if (const Character* c = w.character(sel)) {
             Detail& d = s.detail;
             d.id = sel;
-            for (const auto& [k, v] : c->needs) d.needs.push_back({name("need", k), v});
+            for (const auto& [k, v] : c->needs) d.needs.push_back({k, name("need", k), v});
             d.mood = c->mood(w.now());
             d.fatigue = c->body.fatigue;
             d.blood = c->body.blood;
             d.freeWill = c->controller.freeWill;
             for (const auto& [k, v] : c->inventory)
-                if (v > 0) d.inventory.push_back(name("item", k) + " " + std::to_string(v));
+                if (v > 0) d.inventory.push_back({k, name("item", k), v});
+            for (const auto& t : c->traits) d.traits.push_back(name("trait", t));
+            for (const auto& m : c->moodlets)
+                if (m.until > w.now()) d.moodlets.push_back({name("moodlet", m.id), m.value});
+            for (const auto& [k, v] : c->skills) d.skills.push_back({name("skill", k), v});
+            std::sort(d.skills.begin(), d.skills.end(), [](auto& x, auto& y) { return x.second > y.second; });
+            for (const auto& [k, v] : c->reputation) d.reputation.push_back({name("reputation", k), v});
+            for (const auto& [oid, r] : c->relations) {
+                const Character* o = w.character(oid);
+                if (!o || o->isAnimal()) continue;
+                RelSnap rs;
+                rs.id = oid;
+                rs.name = o->name;
+                rs.kin = oid == c->status.spouse ? "spouse" : oid == c->status.mother ? "mother"
+                       : oid == c->status.father ? "father"
+                       : std::find(c->status.children.begin(), c->status.children.end(), oid) != c->status.children.end() ? "child"
+                       : "";
+                rs.affinity = r.affinity, rs.trust = r.trust, rs.fear = r.fear, rs.enmity = r.enmity;
+                rs.respect = r.respect, rs.familiarity = r.familiarity;
+                d.relations.push_back(rs);
+            }
+            std::sort(d.relations.begin(), d.relations.end(), [](const RelSnap& x, const RelSnap& y) {
+                const double a = (x.kin.empty() ? 0 : 2) + std::fabs(x.affinity) + x.familiarity;
+                const double b = (y.kin.empty() ? 0 : 2) + std::fabs(y.affinity) + y.familiarity;
+                return a > b;
+            });
+            if (c->ai.goal.valid())
+                d.wants.push_back(c->ai.goal.id == "player_action" ? name("interaction", c->ai.goal.task) : name("goal", c->ai.goal.id));
+            for (const auto& q : c->ai.queue) d.wants.push_back(name("interaction", q.task));
             const size_t from = c->ai.trace.size() > 14 ? c->ai.trace.size() - 14 : 0;
             for (size_t i = from; i < c->ai.trace.size(); ++i) {
                 const TraceEntry& e = c->ai.trace[i];
                 d.trace.push_back({int(e.tick / kTicksPerDay) + 1, clockText(e.tick), traceText(*loc_, opts_.lang, w, *c, e), "", {}});
             }
         }
+        // The wheel: how its target feels about the player's own character.
+        for (const auto& [id, c] : w.characters())
+            if (c.controller.isPlayer()) s.controlled = id;
+        s.wheel.target = wheelWanted_;
+        s.wheel.actor = s.controlled;
+        if (const Character* t = w.character(wheelWanted_)) {
+            const auto it = t->relations.find(s.controlled);
+            if (it != t->relations.end()) {
+                s.wheel.toActor.affinity = it->second.affinity, s.wheel.toActor.trust = it->second.trust;
+                s.wheel.toActor.fear = it->second.fear, s.wheel.toActor.enmity = it->second.enmity;
+                s.wheel.toActor.respect = it->second.respect, s.wheel.toActor.familiarity = it->second.familiarity;
+            }
+        }
+        s.centre[0] = villageCentre_[0];
+        s.centre[1] = villageCentre_[1];
+        s.mapSize = w.map().sizeM;
         std::lock_guard<std::mutex> lock(snapMutex_);
         snap_ = std::move(s);
     }
 
     // ---- placement --------------------------------------------------------
     double groundAt(double x, double y) const { return std::max(0.0, double(ground_.at(x, y, 2.0))); }
-
-    double tickAlpha() const {
-        if (shown_.paused) return 1.0;
-        const double since = std::chrono::duration<double>(Clock::now() - shown_.tickAt).count();
-        return std::clamp(since / std::max(1e-3, shown_.tickSeconds), 0.0, 1.0);
-    }
 
     void actorWorld(const ActorSnap& a, double alpha, double& x, double& y) const {
         x = originX_ + a.px + (a.x - a.px) * alpha;
@@ -736,11 +869,6 @@ private:
         return nullptr;
     }
 
-    void select(EntityId id) {
-        selected_ = id;
-        selectedWanted_ = id;
-        follow_ = true;
-    }
 
     // Eye-relative position to screen pixels; false behind the eye.
     bool project(double rx, double ry, double rz, float& sx, float& sy) const {
@@ -784,9 +912,11 @@ private:
         else r = c, b = x;
         out[0] = float(r + m), out[1] = float(g + m), out[2] = float(b + m);
     }
-    void familyColour(const std::string& f, float out[3]) const {
-        const double h = double(hashStr(f) % 360);
-        hsv(h, 0.55, 0.62, out);
+
+    int lookIndex(const ActorSnap& a) const {
+        const std::uint64_t h = std::uint64_t(a.id) * 0x9E3779B97F4A7C15ull;
+        const auto& pool = a.sex == 'f' ? femaleLooks_ : maleLooks_;
+        return pool.empty() ? -1 : pool[std::size_t((h >> 17) % pool.size())];
     }
 
     // What a person plays now, from what the sim says they do.
@@ -851,9 +981,7 @@ private:
             an.yaw += d * float(std::min(1.0, frameDt_ * 8.0));
         }
         Figure f;
-        const std::uint64_t h = std::uint64_t(a.id) * 0x9E3779B97F4A7C15ull;
-        const auto& pool = a.sex == 'f' ? femaleLooks_ : maleLooks_;
-        f.look = pool.empty() ? 0 : pool[std::size_t((h >> 17) % pool.size())];
+        f.look = std::max(0, lookIndex(a));
         f.clip = an.clip;
         f.time = (nowS - an.start) * an.rate;
         if (an.from >= 0 && nowS - an.switched < 0.35) {
@@ -977,7 +1105,26 @@ private:
             cx = villageCentre_[0];
             cy = villageCentre_[1];
         }
-        for (const auto& b : buildings_) {
+        for (const auto& b0 : buildings_) {
+            BuildingSnap b = b0;
+            // Works the sim set inside or against a house: a hearth inside is
+            // the house's own chimney; a store or a shrine steps out of the walls.
+            bool hidden = false;
+            if (b.type != "house" && b.type != "field" && b.type != "garden")
+                for (const auto& h : buildings_) {
+                    if (h.type != "house") continue;
+                    const double dx = b.x - h.x, dy = b.y - h.y, d = std::hypot(dx, dy);
+                    const double need = b.type == "hearth" ? 6.0 : 8.5;
+                    if (d >= need) continue;
+                    if (b.type == "hearth" && d < 4.5) {
+                        hidden = true;
+                        break;
+                    }
+                    const double ux = d > 0.1 ? dx / d : 1.0, uy = d > 0.1 ? dy / d : 0.0;
+                    b.x = h.x + ux * need;
+                    b.y = h.y + uy * need;
+                }
+            if (hidden) continue;
             const double wx = originX_ + b.x, wy = originY_ + b.y;
             const double rx = wx - eye_[0], ry = wy - eye_[1];
             if (rx * rx + ry * ry > range * range * 4) continue;
@@ -1220,8 +1367,13 @@ private:
             }
         }
         const fs::path fonts = fs::path(opts_.root) / "assets" / "fonts";
-        font_ = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
-        fontBold_ = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
+        // Nunito for the text, Kurale for names and titles (the "bold" face of ui::Ui).
+        font_ = ui::FontFace::load(fonts / "Nunito-SemiBold.ttf");
+        fontBold_ = ui::FontFace::load(fonts / "Kurale-Regular.ttf");
+        if (!font_ || !fontBold_) {
+            font_ = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
+            fontBold_ = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
+        }
         return true;
     }
 
@@ -1242,256 +1394,53 @@ private:
         t.gauge = ui::Colour::rgb(16, 22, 30, 0.85f);
     }
 
-    const ui::Colour kNavy = ui::Colour::rgb(22, 29, 40, 0.93f);
-    const ui::Colour kGold = ui::Colour::rgb(226, 197, 122);
-    const ui::Colour kGoldPale = ui::Colour::rgb(243, 226, 168);
-    const ui::Colour kGoldDark = ui::Colour::rgb(168, 135, 62);
-    const ui::Colour kText = ui::Colour::rgb(239, 230, 207);
-    const ui::Colour kSoft = ui::Colour::rgb(176, 166, 140);
-    const ui::Colour kInk = ui::Colour::rgb(43, 38, 32);
-    const ui::Colour kRed = ui::Colour::rgb(200, 64, 44);
-    const ui::Colour kGreen = ui::Colour::rgb(79, 154, 76);
-    const ui::Colour kAmber = ui::Colour::rgb(201, 150, 42);
-
-    void pill(const ui::Rect& r) {
-        ui_.roundRect(r, kNavy, r.h * 0.5f);
-        ui_.border(r, kGoldPale, 1.5f, r.h * 0.5f);
-        ui_.claim(r);
-    }
-    void leather(const ui::Rect& r) {
-        ui_.roundRect(r, kNavy, 14);
-        ui_.border(r, kGoldDark, 2.0f, 14);
-        ui_.claim(r);
-    }
-    void paper(const ui::Rect& r) {
-        ui_.roundRect(r, ui::Colour::rgb(239, 228, 200, 0.97f), 16);
-        ui_.border(r, kGoldDark, 2.0f, 16);
-        ui_.claim(r);
-    }
-    ui::Colour needColour(double v) const { return v < 0.25 ? kRed : v < 0.5 ? kAmber : kGreen; }
-
-    std::string stateText(const ActorSnap& a) const {
-        if (!a.alive) return text(a.sex == 'f' ? "game.dead_f" : "game.dead");
-        if (a.down) return text("game.unconscious");
-        std::string s = text("game.fsm." + a.state);
-        if (!a.act.empty()) s += ": " + a.act;
-        return s;
-    }
-
     void buildHud(float W, float H) {
-        const Snapshot& s = shown_;
-        const ActorSnap* sel = actor(selected_);
-        const double alpha = tickAlpha();
-
-        // Names over the people near the camera.
-        for (const auto& a : s.actors) {
-            if (a.animal && a.id != selected_) continue;
-            double wx, wy;
-            actorWorld(a, alpha, wx, wy);
-            const double rx = wx - eye_[0], ry = wy - eye_[1];
-            const double d2 = rx * rx + ry * ry;
-            if (d2 > 120.0 * 120.0 && a.id != selected_) continue;
-            if (!a.alive && a.id != selected_) continue;
-            float sx, sy;
-            if (!project(rx, ry, groundAt(wx, wy) + 2.1 - eye_[2], sx, sy)) continue;
-            const std::string label = a.player ? "* " + a.name : a.name;
-            const float tw = ui_.textWidth(label, 0.9f);
-            const ui::Colour c = a.id == selected_ ? kGoldPale : (a.alive ? kText : kSoft);
-            ui_.rect({sx - tw * 0.5f - 5, sy - 10, tw + 10, 19}, ui::Colour::rgb(10, 14, 20, 0.55f));
-            ui_.text(sx - tw * 0.5f, sy - 9, label, c, 0.9f);
-        }
-
-        // Top right: the clock and the place.
-        {
-            const ui::Rect r{W - 300, 18, 282, 58};
-            leather(r);
-            const int day = int(s.tick / kTicksPerDay) + 1;
-            std::string line1 = text("game.day", {{"day", day}}) + ", " + clockText(s.tick);
-            ui_.text(r.x + 16, r.y + 8, line1, kGoldPale, 1.15f, true);
-            char t[32];
-            std::snprintf(t, sizeof t, "%.0f", s.tempC);
-            std::string line2 = s.settlement + " | " + text("game.season." + s.season) + " | " +
-                                text("game.temp", {{"t", std::string(t)}});
-            if (s.rain > 0.5) line2 += ", " + text("game.rain");
-            ui_.text(r.x + 16, r.y + 33, ui_.fit(line2, r.w - 24), kSoft, 0.9f);
-        }
-
-        // Top left: the families and their people.
-        {
-            float y = 18;
-            std::map<std::string, std::vector<const ActorSnap*>> fam;
-            for (const auto& a : s.actors)
-                if (!a.animal) fam[a.family].push_back(&a);
-            for (auto& [f, list] : fam) {
-                const float h = 28.0f + 24.0f * float(list.size());
-                const ui::Rect r{18, y, 250, h};
-                leather(r);
-                float col[3];
-                familyColour(f, col);
-                ui_.text(r.x + 14, r.y + 6, f, ui::Colour(col[0], col[1], col[2]), 1.0f, true);
-                float ly = r.y + 28;
-                for (const ActorSnap* a : list) {
-                    const ui::Rect row{r.x + 6, ly, r.w - 12, 23};
-                    if (ui_.selectable(ui::widgetId("hud.person", int(a->id)), row, a->id == selected_)) select(a->id);
-                    const ui::Colour c = !a->alive ? kSoft : (a->id == selected_ ? kGoldPale : kText);
-                    std::string nm = (a->player ? "* " : "") + a->name;
-                    ui_.text(row.x + 8, row.y + 3, ui_.fit(nm, 120, 0.9f), c, 0.9f);
-                    ui_.text(row.x + 128, row.y + 4, ui_.fit(stateText(*a), 108, 0.8f), kSoft, 0.8f);
-                    ly += 24;
-                }
-                y += h + 10;
-                if (y > H * 0.55f) break;
-            }
-        }
-
-        // Bottom right: pause and speed.
-        {
-            const ui::Rect r{W - 252, H - 62, 234, 44};
-            pill(r);
-            float x = r.x + 8;
-            if (ui_.button(ui::widgetId("hud.pause"), {x, r.y + 6, 44, 32}, s.paused ? ">" : "||",
-                           s.paused ? kGold : kNavy, s.paused ? kInk : kText))
-                post({"pause"});
-            x += 50;
-            static const char* kLabels[] = {"", ">", ">>", ">>>", "MAX"};
-            for (int k = 1; k <= 4; ++k) {
-                const float w = k == 4 ? 50.0f : 36.0f;
-                const bool on = !s.paused && s.speed == k;
-                if (ui_.button(ui::widgetId("hud.speed", k), {x, r.y + 6, w, 32}, kLabels[k], on ? kGold : kNavy,
-                               on ? kInk : kText))
-                    post({"speed", k});
-                x += w + 6;
-            }
-        }
-
-        // Bottom left: the selected character.
-        if (sel) {
-            const Detail& d = s.detail;
-            const bool person = !sel->animal;
-            const float rows = person ? float(d.needs.size()) : 0.0f;
-            const float h = 150 + rows * 22;
-            const ui::Rect r{18, H - h - 18, 340, h};
-            leather(r);
-            float col[3];
-            familyColour(sel->family, col);
-            const ui::Rect face{r.x + 16, r.y + 16, 54, 54};
-            ui_.roundRect(face, ui::Colour(col[0], col[1], col[2]), 27);
-            ui_.border(face, kGoldPale, 2, 27);
-            ui_.textCentred(face, sel->name.substr(0, 1), kInk, 1.6f, true);
-            ui_.text(r.x + 82, r.y + 14, ui_.fit(sel->name, r.w - 96, 1.2f, true), kGoldPale, 1.2f, true);
-            std::string sub = person ? sel->family + ", " + text("game.age", {{"n", sel->age}}) : "";
-            if (sel->animal && sel->group > 1) sub = "x" + std::to_string(sel->group);
-            ui_.text(r.x + 82, r.y + 40, ui_.fit(sub, r.w - 96, 0.85f), kSoft, 0.85f);
-            float y = r.y + 80;
-            ui_.text(r.x + 16, y, ui_.fit(stateText(*sel), r.w - 32), kText);
-            y += 22;
-            ui_.text(r.x + 16, y, ui_.fit(text("game.goal", {{"goal", sel->goal.empty() ? text("game.no_goal") : sel->goal}}), r.w - 32, 0.9f),
-                     kSoft, 0.9f);
-            y += 24;
-            auto bar = [&](const std::string& label, double v, const ui::Colour& c) {
-                ui_.text(r.x + 16, y, ui_.fit(label, 120, 0.85f), kText, 0.85f);
-                ui_.gauge({r.x + 140, y + 5, r.w - 156, 9}, float(std::clamp(v, 0.0, 1.0)), c, ui::Colour::rgb(0, 0, 0, 0.45f));
-                y += 22;
-            };
-            bar(text("game.health"), sel->hp, needColour(sel->hp));
-            if (person) {
-                for (const auto& [nm, v] : d.needs) bar(nm, v, needColour(v));
-            }
-            if (sel->wounds) ui_.text(r.x + 16, y, text("game.wounds", {{"n", sel->wounds}}), kRed, 0.85f);
-        }
-
-        // Bottom centre: the player's orders for the selected person.
-        if (sel && !sel->animal && sel->alive) {
-            const float w = 640;
-            const ui::Rect r{(W - w) * 0.5f, H - 108, w, 90};
-            leather(r);
-            float x = r.x + 12;
-            if (!sel->player) {
-                if (ui_.button(ui::widgetId("hud.take"), {x, r.y + 10, 150, 32}, text("game.take_control"), kGold, kInk))
-                    post({"cmd", 0, "take_control", {{"id", sel->id}}});
-            } else {
-                if (ui_.button(ui::widgetId("hud.release"), {x, r.y + 10, 150, 32}, text("game.release")))
-                    post({"cmd", 0, "release_control", {{"id", sel->id}}});
-            }
-            x += 158;
-            // The goal to order or hint: a button that opens the list upwards
-            // (a list down from the bottom bar would leave the screen).
-            const std::string chosen = goalChoice_ >= 0 && goalChoice_ < int(goalNames_.size())
-                                           ? goalNames_[size_t(goalChoice_)] : "";
-            if (ui_.button(ui::widgetId("hud.goal"), {x, r.y + 10, 250, 32}, ui_.fit(chosen, 230)))
-                goalListOpen_ = !goalListOpen_;
-            if (goalListOpen_) {
-                const int n = int(goalNames_.size()), cols = 3, rows = (n + cols - 1) / cols;
-                const float cw = 210, rh = 28;
-                const ui::Rect list{(W - cw * cols) * 0.5f - 8, r.y - rows * rh - 24, cw * cols + 16, rows * rh + 16};
-                leather(list);
-                for (int i = 0; i < n; ++i) {
-                    const ui::Rect cell{list.x + 8 + cw * float(i / rows), list.y + 8 + rh * float(i % rows), cw - 4, rh - 2};
-                    if (ui_.selectable(ui::widgetId("hud.goal.item", i), cell, i == goalChoice_)) {
-                        goalChoice_ = i;
-                        goalListOpen_ = false;
-                    }
-                    ui_.text(cell.x + 6, cell.y + 4, ui_.fit(goalNames_[size_t(i)], cw - 16, 0.85f),
-                             i == goalChoice_ ? kGoldPale : kText, 0.85f);
-                }
-            }
-            x += 258;
-            const std::string g = goalChoice_ >= 0 && goalChoice_ < int(goalIds_.size()) ? goalIds_[size_t(goalChoice_)] : "";
-            if (sel->player) {
-                if (ui_.button(ui::widgetId("hud.order"), {x, r.y + 10, 100, 32}, text("game.order"), kGold, kInk) && !g.empty())
-                    post({"cmd", 0, "set_goal", {{"id", sel->id}, {"goal", g}}});
-                x += 108;
-                if (ui_.button(ui::widgetId("hud.cancel"), {x, r.y + 10, 100, 32}, text("game.cancel")))
-                    post({"cmd", 0, "cancel_goal", {{"id", sel->id}}});
-            }
-            float x2 = r.x + 12 + 158;
-            if (ui_.button(ui::widgetId("hud.want"), {x2, r.y + 50, 120, 30}, text("game.want")) && !g.empty())
-                post({"cmd", 0, "hint", {{"id", sel->id}, {"goal", g}, {"delta", 0.4}, {"ttl", 144}}});
-            if (ui_.button(ui::widgetId("hud.dontwant"), {x2 + 128, r.y + 50, 120, 30}, text("game.dont_want")) && !g.empty())
-                post({"cmd", 0, "hint", {{"id", sel->id}, {"goal", g}, {"delta", -0.4}, {"ttl", 144}}});
-            if (sel->player) {
-                const bool fw = s.detail.freeWill;
-                if (ui_.button(ui::widgetId("hud.freewill"), {x2 + 256, r.y + 50, 200, 30},
-                               text(fw ? "game.free_will_on" : "game.free_will_off")))
-                    post({"cmd", 0, "set_free_will", {{"id", sel->id}, {"on", !fw}}});
-            }
-            if (!s.result.empty() && s.result != "ok")
-                ui_.text(r.x + 12, r.y + 56, ui_.fit(s.result, 150, 0.75f), kRed, 0.75f);
-        }
-
-        // Right: the chronicle on paper, the thoughts under it.
-        float py = 90;
-        if (showChronicle_) {
-            const float w = 420, h = 250;
-            const ui::Rect r{W - w - 18, py, w, h};
-            paper(r);
-            ui_.text(r.x + 18, r.y + 10, text("game.chronicle"), kInk, 1.15f, true);
-            float y = r.y + h - 26;
-            for (auto it = s.chronicle.rbegin(); it != s.chronicle.rend() && y > r.y + 38; ++it) {
-                const std::string line = "d" + std::to_string(it->day) + " " + it->time + "  " + it->text;
-                const ui::Colour c = it->kind == "death" ? ui::Colour::rgb(150, 40, 31)
-                                                         : (it->kind.rfind("combat", 0) == 0 ? ui::Colour::rgb(140, 80, 20) : kInk);
-                ui_.text(r.x + 16, y, ui_.fit(line, r.w - 32, 0.85f), c, 0.85f);
-                y -= 20;
-            }
-            py += h + 10;
-        }
-        if (showThoughts_ && sel && !s.detail.trace.empty()) {
-            const float w = 420, h = 300;
-            const ui::Rect r{W - w - 18, py, w, h};
-            leather(r);
-            ui_.text(r.x + 16, r.y + 10, text("game.thoughts"), kGoldPale, 1.05f, true);
-            float y = r.y + h - 24;
-            for (auto it = s.detail.trace.rbegin(); it != s.detail.trace.rend() && y > r.y + 34; ++it) {
-                ui_.text(r.x + 14, y, ui_.fit(it->time + "  " + it->text, r.w - 28, 0.8f), kText, 0.8f);
-                y -= 19;
-            }
-        }
-        // The keys, faint, along the top.
-        ui_.text(W * 0.5f - ui_.textWidth(text("game.help"), 0.75f) * 0.5f, 6, text("game.help"),
-                 ui::Colour::rgb(239, 230, 207, 0.55f), 0.75f);
-        // Selection by name rows: the ui sets selected_ directly; keep the sim's detail in step.
+        hud_.draw(ui_, input_, shown_, selected_, *this, W, H);
+        // Selection by portraits and names: the hud calls select(); keep the sim's detail in step.
         selectedWanted_ = selected_;
+    }
+
+    // ---- HudHost ------------------------------------------------------------
+    std::string interactionName(const std::string& id) const override { return name("interaction", id); }
+    void command(const std::string& type, const Json& args) override { post({"cmd", 0, type, args}); }
+    void pause() override { post({"pause"}); }
+    void speed(int n) override { post({"speed", n}); }
+    void select(EntityId id) override {
+        selected_ = id;
+        selectedWanted_ = id;
+        follow_ = true;
+    }
+    void wheelTarget(EntityId id) override { wheelWanted_ = id; }
+    std::vector<std::pair<std::string, std::string>> goals() const override {
+        std::vector<std::pair<std::string, std::string>> out;
+        for (std::size_t i = 0; i < goalIds_.size(); ++i) out.push_back({goalIds_[i], goalNames_[i]});
+        return out;
+    }
+    std::string lookOf(const ActorSnap& a) const override {
+        const int k = lookIndex(a);
+        return k >= 0 && k < people_.lookCount() ? people_.lookName(k) : std::string();
+    }
+    void tintsOf(const ActorSnap& a, float skin[3], float hair[3], float cloth[3]) const override {
+        personTints(a, skin, hair, cloth);
+    }
+    void familyColour(const std::string& f, float out[3]) const override {
+        const double h = double(hashStr(f) % 360);
+        hsv(h, 0.55, 0.62, out);
+    }
+    bool overHead(const ActorSnap& a, float& x, float& y) const override {
+        double wx, wy;
+        actorWorld(a, tickAlpha(), wx, wy);
+        const double rx = wx - eye_[0], ry = wy - eye_[1];
+        if (rx * rx + ry * ry > 90.0 * 90.0 && a.id != selected_) return false;
+        const double h = a.animal ? 1.4 : (a.age < 16 ? 0.55 + 0.028 * a.age : 1.0) * 2.05;
+        return project(rx, ry, groundAt(wx, wy) + h - eye_[2], x, y) && x > -50 && y > -50 && x < viewW_ + 50 &&
+               y < viewH_ + 50;
+    }
+    double groundHeight(double x, double y) const override { return groundAt(originX_ + x, originY_ + y); }
+    double tickAlpha() const override {
+        if (shown_.paused) return 1.0;
+        const double since = std::chrono::duration<double>(Clock::now() - shown_.tickAt).count();
+        return std::clamp(since / std::max(1e-3, shown_.tickSeconds), 0.0, 1.0);
     }
 
     static constexpr std::size_t kMaxInstances = 8192;
@@ -1527,6 +1476,7 @@ private:
     Clock::time_point tickAt_ = Clock::now();
     std::map<EntityId, Vec2> prevPos_;
     std::atomic<EntityId> selectedWanted_{kNone};
+    std::atomic<EntityId> wheelWanted_{kNone};
     EntityId snapSelected_ = kNone;
 
     std::mutex cmdMutex_;
@@ -1541,7 +1491,9 @@ private:
     struct PickAt {
         float x = 0, y = 0;
         bool pending = false;
-    } pickAt_;
+    } pickAt_, wheelAt_;
+    float rmbAt_[2] = {0, 0};
+    Hud hud_;
     double target_[2] = {0, 0};
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
     float vp_[16] = {};

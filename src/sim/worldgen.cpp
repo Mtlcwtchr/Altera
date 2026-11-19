@@ -138,6 +138,19 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             }
         }
 
+    // A map from outside (the game reads it from the world it draws): biome
+    // names and water a cell, row by row, w x h of this grid.
+    if (cfg.contains("map_biome") && cfg.contains("map_water")) {
+        const Json& mb = cfg.at("map_biome");
+        const Json& mw = cfg.at("map_water");
+        if (mb.size() == m.biome.size() && mw.size() == m.water.size())
+            for (size_t i = 0; i < m.biome.size(); ++i) {
+                const int b = biomeIdx(mb[i].get<std::string>());
+                m.biome[i] = static_cast<std::uint8_t>(b >= 0 ? b : iMeadow);
+                m.water[i] = static_cast<std::uint8_t>(mw[i].get<int>() ? 1 : 0);
+            }
+    }
+
     // --- settlement site: the meadow cell nearest the map centre beside the river
     Vec2 center{m.sizeM * 0.5, m.sizeM * 0.5};
     {

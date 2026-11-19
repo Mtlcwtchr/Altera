@@ -1,0 +1,209 @@
+{
+ "_doc": "Колесо взаимодействий HUD (src/game_view/hud.cpp): сферы по категориям взаимодействий сима, в каждой поднаправления со списком взаимодействий с другим человеком. Тексты: hud.wheel.sphere.<id>, hud.wheel.sub.<id>[.d]; имена взаимодействий из interaction.<id>.name.",
+ "base_chance": {
+  "social": 0.7,
+  "family": 0.55,
+  "economy": 0.5,
+  "politics": 0.35,
+  "knowledge": 0.55,
+  "faith": 0.5,
+  "violence": 0.3,
+  "medicine": 0.65
+ },
+ "spheres": [
+  {
+   "id": "social",
+   "icon": "w_social",
+   "subs": [
+    {
+     "id": "talk",
+     "interactions": [
+      "chat",
+      "greet",
+      "joke",
+      "tell_story",
+      "gossip",
+      "start_dialog"
+     ]
+    },
+    {
+     "id": "feel",
+     "interactions": [
+      "comfort",
+      "compliment",
+      "flirt",
+      "embrace",
+      "thank",
+      "apologize",
+      "swear_friendship",
+      "share_meal",
+      "intimacy",
+      "make_peace"
+     ]
+    },
+    {
+     "id": "quarrel",
+     "interactions": [
+      "insult",
+      "argue",
+      "ignore",
+      "ask_help",
+      "help_with_task"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "family",
+   "icon": "w_family",
+   "subs": [
+    {
+     "id": "care",
+     "interactions": [
+      "ask_for_food",
+      "give_food",
+      "care_child",
+      "feed_child",
+      "feed_ward",
+      "warm_ward",
+      "wash_ward",
+      "comfort_ward"
+     ]
+    },
+    {
+     "id": "bond",
+     "interactions": [
+      "propose_marriage",
+      "marry",
+      "divorce",
+      "adopt",
+      "name_heir",
+      "disown"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "economy",
+   "icon": "w_economy",
+   "subs": [
+    {
+     "id": "deal",
+     "interactions": [
+      "trade",
+      "lend",
+      "repay_debt",
+      "hire",
+      "give",
+      "give_grain_sack",
+      "give_vegetables_basket",
+      "give_cheese"
+     ]
+    },
+    {
+     "id": "press",
+     "interactions": [
+      "collect_debt",
+      "extort"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "politics",
+   "icon": "w_politics",
+   "subs": [
+    {
+     "id": "council",
+     "interactions": [
+      "invite_to_settle",
+      "call_council",
+      "vote",
+      "propose_law",
+      "swear_fealty",
+      "appoint_office"
+     ]
+    },
+    {
+     "id": "rule",
+     "interactions": [
+      "accuse_publicly",
+      "judge_case",
+      "punish",
+      "exile",
+      "seize_power",
+      "declare_war"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "knowledge",
+   "icon": "w_knowledge",
+   "subs": [
+    {
+     "id": "learn",
+     "interactions": [
+      "observe_work",
+      "learn",
+      "reveal_secret"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "faith",
+   "icon": "w_faith",
+   "subs": [
+    {
+     "id": "rite",
+     "interactions": [
+      "bless",
+      "curse"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "violence",
+   "icon": "w_violence",
+   "subs": [
+    {
+     "id": "scuffle",
+     "interactions": [
+      "shove",
+      "brawl",
+      "defend_other",
+      "restrain"
+     ]
+    },
+    {
+     "id": "blood",
+     "interactions": [
+      "attack",
+      "duel",
+      "release_captive",
+      "execute",
+      "surrender"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "medicine",
+   "icon": "w_medicine",
+   "subs": [
+    {
+     "id": "heal",
+     "interactions": [
+      "examine",
+      "treat_wound",
+      "tend_sick",
+      "give_remedy",
+      "assist_birth"
+     ]
+    }
+   ]
+  }
+ ]
+}

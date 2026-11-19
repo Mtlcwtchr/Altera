@@ -1,0 +1,22 @@
+[
+ {"at": 1, "zoom": 45, "pitch": 0.55, "yawDeg": 30, "speed": 1, "select": 0, "take": 4},
+ {"at": 7, "shot": "tour_01_village.png"},
+ {"at": 8, "zoom": 16, "pitch": 0.3, "yawDeg": 120, "select": 2},
+ {"at": 12, "shot": "tour_02_houses.png"},
+ {"at": 13, "zoom": 6, "pitch": 0.2, "select": 4},
+ {"at": 17, "shot": "tour_03_person.png"},
+ {"at": 18, "zoom": 10, "pitch": 0.35, "beast": "deer"},
+ {"at": 23, "shot": "tour_04_deer.png"},
+ {"at": 24, "select": 4, "zoom": 9, "pitch": 0.4},
+ {"at": 27, "panel": "sheet"},
+ {"at": 29, "shot": "tour_05_sheet.png"},
+ {"at": 30, "panel": "wheel"},
+ {"at": 32, "shot": "tour_06_wheel.png"},
+ {"at": 33, "panel": "kin"},
+ {"at": 35, "shot": "tour_07_kin.png"},
+ {"at": 36, "panel": "annals"},
+ {"at": 38, "shot": "tour_08_annals.png"},
+ {"at": 39, "panel": "none", "speed": 3},
+ {"at": 50, "shot": "tour_09_hud.png"},
+ {"at": 51, "quit": true}
+]

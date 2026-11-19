@@ -1,0 +1,13 @@
+[
+ {"at": 1, "zoom": 9, "pitch": 0.4, "yawDeg": 40, "speed": 1, "select": 4, "take": 4},
+ {"at": 6, "shot": "hud_main.png"},
+ {"at": 7, "panel": "sheet"},
+ {"at": 9, "shot": "hud_sheet.png"},
+ {"at": 10, "panel": "wheel"},
+ {"at": 12, "shot": "hud_wheel.png"},
+ {"at": 13, "panel": "kin"},
+ {"at": 15, "shot": "hud_kin.png"},
+ {"at": 16, "panel": "annals"},
+ {"at": 18, "shot": "hud_annals.png"},
+ {"at": 19, "quit": true}
+]

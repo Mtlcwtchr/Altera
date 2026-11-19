@@ -14,7 +14,7 @@
 #include "terrain_core/lighting.hpp"
 
 namespace engine { class Device; }
-namespace terrain_core { class MacroMap; struct Params; }
+namespace terrain_core { class MacroMap; class BiomeMap; struct Params; }
 
 namespace altera::game {
 
@@ -48,6 +48,9 @@ struct GameOptions {
     std::string season;          // spring | summer | autumn | winter; empty: the world file's
     std::string lang = "ru";
     std::string root;            // the repository (content/, assets/)
+    // The world's biome map: the sim's map (forest, marsh, water) is read
+    // from it and the village is set in an open, dry, level place.
+    const terrain_core::BiomeMap* biomes = nullptr;
 };
 
 // The life-sim (altera_sim) on a region of the world centred on (x, y) metres.

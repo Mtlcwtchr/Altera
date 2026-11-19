@@ -1501,6 +1501,7 @@ int main(int argc, char** argv) {
             altera::game::GameOptions go;
             go.seed = options.gameSeed;
             go.season = options.gameSeason;
+            go.biomes = &lab.biomes;
 #ifdef ALTERA_SOURCE_DIR
             go.root = ALTERA_SOURCE_DIR;
 #else
