@@ -96,3 +96,6 @@ __pycache__/
 /imgui.ini
 /CMakeUserPresets.json
 /terrain_lab_out/
+
+# --- retargeted humanoid clips (tools/anim_retarget): third-party licences, rebuilt from sources ---
+content/animations/humanoid_ual/clips/
