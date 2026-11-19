@@ -438,6 +438,7 @@ struct Content {
     std::vector<std::string> settlementMust;
     AiConfig config;
     std::vector<std::string> warnings;
+    std::string dir; // directory load() read (content/ai); empty for fromJson
 
     const NeedDef* need(const std::string& id) const;
     const GoalDef* goal(const std::string& id) const;

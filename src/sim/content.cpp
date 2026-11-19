@@ -767,6 +767,7 @@ Content Content::load(const std::string& dir) {
                          f("knowledge.json"), f("species.json"));
     c.climate = parseClimate(f("climate.json"), c.warnings);
     c.care = parseCare(f("care.json"), c.warnings);
+    c.dir = dir;
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);
     if (!v.ok()) {

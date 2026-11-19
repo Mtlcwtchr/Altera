@@ -1,0 +1,5 @@
+{
+ "chronicle": {
+  "combat": "{actor} and {target}: fight ({act}), outcome for the attacker: {outcome}"
+ }
+}

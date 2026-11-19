@@ -1,0 +1,56 @@
+// altera_sim <-> combat core (src/sim/combat). An interaction with a `combat`
+// block (interactions.json) runs as the FSM state Fight; when the act ends the
+// core plays the fight out round by round from a seed of (world seed, the two
+// ids, the tick) and the result comes back as an outcome of the actor
+// (win/lose/draw/flee), health of both sides, deaths. Data: content/combat next
+// to the content/ai directory; without it the bridge is off and the quick form
+// (CombatDef.damage) is used. Spec: COMBAT_CORE_SPEC_v0.1.md §6.
+#pragma once
+
+#include <map>
+#include <memory>
+#include <string>
+#include <vector>
+
+#include "sim/combat/combat.hpp"
+#include "sim/content.hpp"
+
+namespace altera::sim {
+
+class World;
+struct Character;
+
+struct CombatBridge {
+    std::shared_ptr<const combat::CombatData> data;
+    double skillScale = 100.0, defaultSkill = 0.2, healthMinAfter = 0.05;
+    std::vector<std::string> weaponItems;                 // preference order
+    std::map<std::string, std::string> weaponOfItem, armorOfItem;
+    std::string animalWeapon = "fangs", animalSkillKey = "fighting";
+    double animalDefaultSkill = 0.4;
+    std::map<std::string, std::string> memory;            // outcome -> memory type
+    std::map<std::string, double> memoryValence;
+    std::string chronicle = "chronicle.combat";
+};
+
+// Loaded once per content directory; nullptr when there is no content/combat.
+// Throws combat::DataError on broken combat data.
+const CombatBridge* combatBridge(const Content& c);
+
+struct CombatResolution {
+    bool ran = false;
+    std::string outcome;             // actor's: win | lose | draw | flee
+    std::string actorState, targetState;
+    double actorHealth = 1.0, targetHealth = 1.0; // multipliers of current health
+    bool actorDead = false, targetDead = false;
+    int rounds = 0;
+    std::vector<std::string> actorWounds, targetWounds; // severity ids
+    std::string actorWeapon, targetWeapon;
+};
+
+combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const std::string& skillKey);
+
+// Plays the fight; events go to `events` when given (client, tests).
+CombatResolution resolveCombat(const World& w, const Character& actor, const InteractionDef& d, const Character& target,
+                               combat::EventStream* events = nullptr);
+
+} // namespace altera::sim

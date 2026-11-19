@@ -317,9 +317,10 @@ add_library(altera_sim STATIC
         src/sim/ai_mind.cpp
         src/sim/ai_control.cpp
         src/sim/loc.cpp
+        src/sim/combat_bridge.cpp
         src/sim/ai_report.cpp)
 target_include_directories(altera_sim PUBLIC src)
-target_link_libraries(altera_sim PUBLIC nlohmann_json PRIVATE asr_warnings)
+target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_warnings)
 
 # altera_combat - combat core (gdd/combat/COMBAT_CORE_SPEC_v0.1.md): a port of
 # the combat_sim.py prototype, numbers from content/combat/*.json, deterministic
@@ -715,7 +716,8 @@ if(ASR_BUILD_TESTS)
     enable_testing()
     add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_content.cpp
-            tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp)
+            tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
+            tests/test_altera_sim_combat.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

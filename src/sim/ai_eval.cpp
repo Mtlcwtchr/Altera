@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "sim/ai.hpp"
+#include "sim/combat_bridge.hpp"
 
 namespace altera::sim {
 
@@ -568,6 +569,45 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
     }
 }
 
+namespace {
+
+std::string mirrorOutcome(const std::string& o, const std::string& targetState) {
+    if (targetState == "flee") return "flee";
+    if (o == "win") return "lose";
+    if (o == "lose" || o == "flee") return "win";
+    return "draw";
+}
+
+void applyCombatResult(World& w, Character& c, Character& t, const InteractionDef& d, const CombatResolution& cr,
+                       WorldObject* target, const std::vector<EntityId>& wit) {
+    const CombatBridge& b = *combatBridge(w.content());
+    auto hurt = [&](Character& who, double mult, bool dead) {
+        if (dead && d.combat.lethal) return kill(w, who, "combat");
+        who.body.health = std::max(b.healthMinAfter, who.body.health * mult);
+        if (dead) who.body.health = b.healthMinAfter; // a non-lethal fight leaves the body down, not dead
+    };
+    hurt(c, cr.actorHealth, cr.actorDead);
+    hurt(t, cr.targetHealth, cr.targetDead);
+    auto out = d.combat.outcomes.find(cr.outcome);
+    if (out != d.combat.outcomes.end()) applyEffectList(w, c, out->second, target, &t, &wit);
+    auto remember = [&](Character& who, EntityId other, const std::string& o) {
+        if (!who.body.alive) return;
+        MemoryEntry m;
+        m.type = b.memory.at(o);
+        m.who = {other};
+        auto v = b.memoryValence.find(o);
+        m.valence = v == b.memoryValence.end() ? 0.0 : v->second;
+        w.remember(who, std::move(m));
+    };
+    remember(c, t.id, cr.outcome);
+    remember(t, c.id, mirrorOutcome(cr.outcome, cr.targetState));
+    w.chronicle("combat", {c.id, t.id}, b.chronicle,
+                {{"actor", c.id}, {"target", t.id}, {"act", d.id}, {"outcome", cr.outcome}, {"rounds", cr.rounds},
+                 {"actor_state", cr.actorState}, {"target_state", cr.targetState}});
+}
+
+} // namespace
+
 void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar) {
     // chance: one deterministic roll per (actor, tick, interaction); a failed
     // roll applies on_fail instead of eff. Risks roll independently after.
@@ -579,6 +619,12 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     }
     const std::vector<EntityId> wit = witnessesOf(w, c, d, targetChar);
     applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar, &wit);
+    // Fight (FSM state of an act with a combat block): the combat core plays it
+    // out; the outcome's effects, health, deaths, memory and chronicle follow.
+    if (success && d.combat.set && targetChar && targetChar->body.alive && c.body.alive) {
+        const CombatResolution cr = resolveCombat(w, c, d, *targetChar);
+        if (cr.ran) applyCombatResult(w, c, *targetChar, d, cr, target, wit);
+    }
     for (const auto& rk : d.risk) {
         Rng r = w.rng(c.id, "risk:" + d.id + ":" + rk.id);
         if (r.uniform() < rk.p) applyEffectList(w, c, rk.eff, target, targetChar, &wit);

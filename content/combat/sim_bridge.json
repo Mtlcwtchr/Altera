@@ -1,0 +1,13 @@
+{
+  "_doc": "Мост между altera_sim и боевым ядром: как персонаж симуляции становится бойцом (навык, оружие из инвентаря, броня) и как итог боя возвращается в симуляцию (здоровье, память, хроника). Блок combat в interactions.json остаётся быстрой формой: attack_skill/defense_skill, lethal и outcomes берутся оттуда; damage используется только без боевых данных.",
+  "skill_scale": 100,
+  "default_skill": 0.2,
+  "weapon_items": ["spear", "axe", "stone_blade"],
+  "weapon_of_item": { "spear": "spear", "axe": "axe", "stone_blade": "dagger" },
+  "armor_of_item": {},
+  "animal": { "weapon": "fangs", "skill_key": "fighting", "default_skill": 0.4 },
+  "health_min_after": 0.05,
+  "memory": { "win": "won_fight", "lose": "lost_fight", "draw": "fought_draw", "flee": "fled_fight" },
+  "memory_valence": { "win": 0.2, "lose": -0.5, "draw": -0.1, "flee": -0.3 },
+  "chronicle": "chronicle.combat"
+}
