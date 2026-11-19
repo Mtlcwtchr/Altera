@@ -197,7 +197,7 @@ TEST(altera_sim_farm_year_closes) {
     CHECK_EQ(alive, people);
     int ripened = 0;
     for (const auto& e : w.chronicleLog())
-        if (e.type == "crop_ripe") ++ripened;
+        if (e.type == "crop_ripe" && e.params.value("crop", "") == "field") ++ripened;
     CHECK_EQ(ripened, static_cast<int>(w.families().size()));
     for (WorldObject* f : fields(w)) CHECK(stockOf(*f, "sown") > 0); // the second sowing
 }

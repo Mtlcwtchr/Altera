@@ -483,6 +483,370 @@
      ],
      "_doc": "последнее средство: семена в котёл",
      "_part": "H"
+    },
+    {
+     "id": "drink_stored_milk",
+     "pre": [
+      "home:milk>=1",
+      "known:storage"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:milk>=1"
+       ],
+       "allow": [
+        "take_milk"
+       ]
+      },
+      {
+       "do": "drink_milk"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "eat_fresh_bread",
+     "pre": [
+      "has:bread>=1"
+     ],
+     "cost": 0.8,
+     "steps": [
+      {
+       "do": "eat_bread"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "eat_stored_bread",
+     "pre": [
+      "home:bread>=1",
+      "known:storage"
+     ],
+     "cost": 1.1,
+     "steps": [
+      {
+       "achieve": [
+        "has:bread>=1"
+       ],
+       "allow": [
+        "take_bread"
+       ]
+      },
+      {
+       "do": "eat_bread"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "cook_stored_eggs",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:eggs>=4",
+      "home:firewood>=1"
+     ],
+     "cost": 1.4,
+     "steps": [
+      {
+       "achieve": [
+        "has:eggs>=4"
+       ],
+       "allow": [
+        "take_eggs"
+       ]
+      },
+      {
+       "do": "cook_eggs"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "cook_stored_vegetables",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:vegetables>=2",
+      "home:firewood>=1"
+     ],
+     "cost": 1.7,
+     "steps": [
+      {
+       "achieve": [
+        "has:vegetables>=2"
+       ],
+       "allow": [
+        "take_vegetables"
+       ]
+      },
+      {
+       "do": "cook_vegetables"
+      },
+      {
+       "do": "eat_meal"
+      },
+      {
+       "do": "store_meal"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "cook_stored_pottage",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:vegetables>=1",
+      "home:grain>=1",
+      "home:firewood>=1"
+     ],
+     "cost": 1.8,
+     "steps": [
+      {
+       "achieve": [
+        "has:vegetables>=1"
+       ],
+       "allow": [
+        "take_vegetables"
+       ]
+      },
+      {
+       "achieve": [
+        "has:grain>=1"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "cook_pottage"
+      },
+      {
+       "do": "eat_meal"
+      },
+      {
+       "do": "store_meal"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "bake_and_eat_bread",
+     "pre": [
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:grain>=4",
+      "home:firewood>=1"
+     ],
+     "cost": 2.1,
+     "steps": [
+      {
+       "achieve": [
+        "has:grain>=4"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "bake_bread"
+      },
+      {
+       "do": "eat_bread"
+      },
+      {
+       "do": "store_bread"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "eat_stored_apples",
+     "pre": [
+      "home:apples>=1",
+      "known:storage"
+     ],
+     "cost": 1.6,
+     "steps": [
+      {
+       "achieve": [
+        "has:apples>=1"
+       ],
+       "allow": [
+        "take_apples"
+       ]
+      },
+      {
+       "do": "eat_apples"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "eat_stored_cheese",
+     "pre": [
+      "home:cheese>=1",
+      "known:storage"
+     ],
+     "cost": 2.3,
+     "steps": [
+      {
+       "achieve": [
+        "has:cheese>=1"
+       ],
+       "allow": [
+        "take_cheese"
+       ]
+      },
+      {
+       "do": "eat_cheese"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "eat_stored_hazelnuts",
+     "pre": [
+      "home:hazelnuts>=1",
+      "known:storage"
+     ],
+     "cost": 2.4,
+     "steps": [
+      {
+       "achieve": [
+        "has:hazelnuts>=1"
+       ],
+       "allow": [
+        "take_hazelnuts"
+       ]
+      },
+      {
+       "do": "eat_hazelnuts"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "eat_stored_honey",
+     "pre": [
+      "home:honey>=1",
+      "known:storage"
+     ],
+     "cost": 2.8,
+     "steps": [
+      {
+       "achieve": [
+        "has:honey>=1"
+       ],
+       "allow": [
+        "take_honey"
+       ]
+      },
+      {
+       "do": "eat_honey"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "greens_pottage",
+     "pre": [
+      "knows:foraging",
+      "knows:cooking",
+      "known:wild_greens_patch",
+      "known:hearth",
+      "known:storage",
+      "home:grain>=1",
+      "home:firewood>=1"
+     ],
+     "cost": 2.6,
+     "steps": [
+      {
+       "achieve": [
+        "has:wild_greens>=4"
+       ],
+       "allow": [
+        "gather_greens"
+       ]
+      },
+      {
+       "achieve": [
+        "has:grain>=1"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "cook_greens_pottage"
+      },
+      {
+       "do": "eat_meal"
+      },
+      {
+       "do": "store_meal"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "forage_greens_raw",
+     "pre": [
+      "knows:foraging",
+      "known:wild_greens_patch"
+     ],
+     "cost": 5.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:wild_greens>=4"
+       ],
+       "allow": [
+        "gather_greens"
+       ]
+      },
+      {
+       "do": "eat_greens"
+      },
+      {
+       "do": "eat_greens"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "hen_for_the_pot",
+     "pre": [
+      "need:hunger<0.2",
+      "knows:cooking",
+      "known:hens",
+      "known:hearth",
+      "home:firewood>=1"
+     ],
+     "cost": 7.0,
+     "steps": [
+      {
+       "do": "kill_hen_for_pot"
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "eat_meal"
+      }
+     ],
+     "_part": "H2"
     }
    ]
   },
@@ -694,6 +1058,75 @@
        "do": "wander"
       }
      ]
+    },
+    {
+     "id": "ale_at_the_fire",
+     "pre": [
+      "known:village_fire",
+      "known:storage",
+      "home:ale>=1"
+     ],
+     "cost": 0.9,
+     "steps": [
+      {
+       "achieve": [
+        "has:ale>=1"
+       ],
+       "allow": [
+        "take_ale"
+       ]
+      },
+      {
+       "do": "drink_ale_at_fire"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "mead_at_the_fire",
+     "pre": [
+      "known:village_fire",
+      "known:storage",
+      "home:mead>=1"
+     ],
+     "cost": 0.9,
+     "steps": [
+      {
+       "achieve": [
+        "has:mead>=1"
+       ],
+       "allow": [
+        "take_mead"
+       ]
+      },
+      {
+       "do": "drink_mead_at_fire"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "cider_at_the_fire",
+     "pre": [
+      "known:village_fire",
+      "known:storage",
+      "home:cider>=1"
+     ],
+     "cost": 0.95,
+     "steps": [
+      {
+       "achieve": [
+        "has:cider>=1"
+       ],
+       "allow": [
+        "take_cider"
+       ]
+      },
+      {
+       "do": "drink_cider_at_fire"
+      }
+     ],
+     "_part": "H2"
     }
    ]
   },
@@ -1026,6 +1459,107 @@
       }
      ],
      "_part": "H"
+    },
+    {
+     "id": "apples_to_store",
+     "pre": [
+      "known:fruit_tree",
+      "known:storage"
+     ],
+     "cost": 2.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:apples>=4"
+       ],
+       "allow": [
+        "pick_apples"
+       ]
+      },
+      {
+       "do": "store_apples"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "nuts_to_store",
+     "pre": [
+      "knows:foraging",
+      "known:hazel_thicket",
+      "known:storage"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:hazelnuts>=4"
+       ],
+       "allow": [
+        "gather_hazelnuts"
+       ]
+      },
+      {
+       "do": "store_hazelnuts"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "honey_to_store",
+     "pre": [
+      "knows:foraging",
+      "known:bee_tree",
+      "known:storage",
+      "has:firewood>=1"
+     ],
+     "cost": 3.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:honey>=2"
+       ],
+       "allow": [
+        "gather_honey"
+       ]
+      },
+      {
+       "do": "store_honey"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "honey_to_store_take_wood",
+     "pre": [
+      "knows:foraging",
+      "known:bee_tree",
+      "known:storage",
+      "home:firewood>=2"
+     ],
+     "cost": 3.4,
+     "steps": [
+      {
+       "achieve": [
+        "has:firewood>=1"
+       ],
+       "allow": [
+        "take_firewood"
+       ]
+      },
+      {
+       "achieve": [
+        "has:honey>=2"
+       ],
+       "allow": [
+        "gather_honey"
+       ]
+      },
+      {
+       "do": "store_honey"
+      }
+     ],
+     "_part": "H2"
     }
    ]
   },
@@ -1726,8 +2260,641 @@
      ],
      "_doc": "дети голодают, а в амбаре семена: весной будет нечем сеять, но это потом",
      "_part": "H"
+    },
+    {
+     "id": "cook_vegetables_for_ward",
+     "pre": [
+      "care:hunger>=0.2",
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:vegetables>=2",
+      "home:firewood>=1"
+     ],
+     "cost": 2.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:vegetables>=2"
+       ],
+       "allow": [
+        "take_vegetables"
+       ]
+      },
+      {
+       "do": "cook_vegetables"
+      },
+      {
+       "do": "feed_ward"
+      }
+     ],
+     "_part": "H2"
+    },
+    {
+     "id": "cook_eggs_for_ward",
+     "pre": [
+      "care:hunger>=0.2",
+      "knows:cooking",
+      "known:hearth",
+      "known:storage",
+      "home:eggs>=4",
+      "home:firewood>=1"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:eggs>=4"
+       ],
+       "allow": [
+        "take_eggs"
+       ]
+      },
+      {
+       "do": "cook_eggs"
+      },
+      {
+       "do": "feed_ward"
+      }
+     ],
+     "_part": "H2"
     }
    ]
+  },
+  {
+   "id": "tend_garden_task",
+   "methods": [
+    {
+     "id": "harvest_beds",
+     "pre": [
+      "knows:gardening",
+      "known:garden",
+      "known:storage",
+      "garden:ripe>=3"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:vegetables>=3"
+       ],
+       "allow": [
+        "harvest_garden"
+       ]
+      },
+      {
+       "do": "store_vegetables"
+      }
+     ]
+    },
+    {
+     "id": "sow_beds_from_pack",
+     "pre": [
+      "knows:gardening",
+      "known:garden",
+      "garden:tilled>=1",
+      "has:seed_veg>=1"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "do": "sow_garden"
+      }
+     ]
+    },
+    {
+     "id": "sow_beds",
+     "pre": [
+      "knows:gardening",
+      "known:garden",
+      "known:storage",
+      "garden:tilled>=1",
+      "home:seed_veg>=1"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:seed_veg>=1"
+       ],
+       "allow": [
+        "take_seed_veg"
+       ]
+      },
+      {
+       "do": "sow_garden"
+      }
+     ]
+    },
+    {
+     "id": "dig_bed",
+     "pre": [
+      "knows:gardening",
+      "known:garden",
+      "garden:free>=1"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "do": "dig_garden"
+      }
+     ]
+    },
+    {
+     "id": "weed_beds",
+     "pre": [
+      "known:garden",
+      "garden:weeds>=2"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "do": "weed_garden"
+      }
+     ]
+    },
+    {
+     "id": "keep_veg_seed",
+     "pre": [
+      "known:storage",
+      "garden:seed_need>=1",
+      "home:vegetables>=1"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "do": "set_aside_veg_seed"
+      }
+     ]
+    }
+   ],
+   "_doc": "огород: копать, сеять, полоть, убирать, оставлять семя",
+   "_part": "H2"
+  },
+  {
+   "id": "tend_livestock_task",
+   "methods": [
+    {
+     "id": "hay_for_goats",
+     "pre": [
+      "known:goats",
+      "herd:goats_trough>=1",
+      "home:hay>=3"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "do": "fill_trough_goats"
+      }
+     ]
+    },
+    {
+     "id": "grain_for_hens",
+     "pre": [
+      "known:hens",
+      "herd:hens_trough>=1",
+      "home:grain>=1"
+     ],
+     "cost": 1.1,
+     "steps": [
+      {
+       "do": "fill_trough_hens"
+      }
+     ]
+    },
+    {
+     "id": "mast_for_pig",
+     "pre": [
+      "known:pig",
+      "herd:pig_trough>=1",
+      "home:acorns>=3"
+     ],
+     "cost": 1.1,
+     "steps": [
+      {
+       "do": "fill_trough_pig"
+      }
+     ]
+    },
+    {
+     "id": "milk_into_cheese",
+     "pre": [
+      "knows:husbandry",
+      "known:goats",
+      "known:hearth",
+      "herd:milk>=4",
+      "home:firewood>=1"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:milk>=4"
+       ],
+       "allow": [
+        "milk_goats"
+       ]
+      },
+      {
+       "do": "make_cheese"
+      },
+      {
+       "do": "store_cheese"
+      }
+     ]
+    },
+    {
+     "id": "milk_for_the_house",
+     "pre": [
+      "knows:husbandry",
+      "known:goats",
+      "known:storage",
+      "herd:milk>=2"
+     ],
+     "cost": 1.6,
+     "steps": [
+      {
+       "achieve": [
+        "has:milk>=2"
+       ],
+       "allow": [
+        "milk_goats"
+       ]
+      },
+      {
+       "do": "store_milk"
+      }
+     ]
+    },
+    {
+     "id": "gather_eggs",
+     "pre": [
+      "known:hens",
+      "known:storage",
+      "herd:eggs>=2"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:eggs>=2"
+       ],
+       "allow": [
+        "collect_eggs"
+       ]
+      },
+      {
+       "do": "store_eggs"
+      }
+     ]
+    },
+    {
+     "id": "pig_to_larder",
+     "pre": [
+      "knows:husbandry",
+      "knows:cooking",
+      "known:pig",
+      "known:hearth",
+      "known:storage",
+      "herd:cull>=1",
+      "has:stone_blade>=1",
+      "home:firewood>=3"
+     ],
+     "cost": 1.3,
+     "steps": [
+      {
+       "do": "slaughter_pig"
+      },
+      {
+       "do": "butcher_carcass"
+      },
+      {
+       "do": "butcher_carcass"
+      },
+      {
+       "do": "smoke_meat"
+      },
+      {
+       "do": "smoke_meat"
+      },
+      {
+       "do": "smoke_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      }
+     ]
+    },
+    {
+     "id": "goat_to_larder",
+     "pre": [
+      "knows:husbandry",
+      "knows:cooking",
+      "known:goats",
+      "known:hearth",
+      "known:storage",
+      "herd:cull>=1",
+      "has:stone_blade>=1",
+      "home:firewood>=2"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "do": "slaughter_goat"
+      },
+      {
+       "do": "butcher_carcass"
+      },
+      {
+       "do": "smoke_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      },
+      {
+       "do": "store_dried_meat"
+      }
+     ]
+    },
+    {
+     "id": "hen_to_pot",
+     "pre": [
+      "knows:cooking",
+      "known:hens",
+      "known:hearth",
+      "known:storage",
+      "herd:cull>=1",
+      "home:firewood>=1"
+     ],
+     "cost": 1.6,
+     "steps": [
+      {
+       "do": "kill_hen"
+      },
+      {
+       "do": "cook_meat"
+      },
+      {
+       "do": "store_meal"
+      },
+      {
+       "do": "store_meal"
+      }
+     ]
+    },
+    {
+     "id": "make_hay",
+     "pre": [
+      "knows:husbandry",
+      "known:hay_meadow",
+      "known:storage",
+      "herd:hay_need>=1",
+      "has:stone_blade>=1"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:hay>=6"
+       ],
+       "allow": [
+        "mow_hay"
+       ]
+      },
+      {
+       "do": "store_hay"
+      }
+     ]
+    },
+    {
+     "id": "gather_mast",
+     "pre": [
+      "knows:foraging",
+      "known:oak_grove",
+      "known:storage",
+      "herd:acorns_need>=1"
+     ],
+     "cost": 2.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:acorns>=5"
+       ],
+       "allow": [
+        "gather_acorns"
+       ]
+      },
+      {
+       "do": "store_acorns"
+      }
+     ]
+    }
+   ],
+   "_doc": "скот: задать корма, собрать яйца, подоить, наготовить сена и желудей, заколоть в сезон",
+   "_part": "H2"
+  },
+  {
+   "id": "brew_task",
+   "methods": [
+    {
+     "id": "brew_ale_from_store",
+     "pre": [
+      "knows:brewing",
+      "known:hearth",
+      "known:storage",
+      "home:grain>=60",
+      "home:firewood>=1"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:grain>=6"
+       ],
+       "allow": [
+        "take_grain"
+       ]
+      },
+      {
+       "do": "brew_ale"
+      },
+      {
+       "do": "store_ale"
+      }
+     ]
+    },
+    {
+     "id": "brew_mead_from_store",
+     "pre": [
+      "knows:brewing",
+      "known:hearth",
+      "known:storage",
+      "home:honey>=2"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:honey>=2"
+       ],
+       "allow": [
+        "take_honey"
+       ]
+      },
+      {
+       "do": "brew_mead"
+      },
+      {
+       "do": "store_mead"
+      }
+     ]
+    },
+    {
+     "id": "press_cider_from_store",
+     "pre": [
+      "knows:brewing",
+      "known:storage",
+      "home:apples>=8"
+     ],
+     "cost": 1.3,
+     "steps": [
+      {
+       "achieve": [
+        "has:apples>=8"
+       ],
+       "allow": [
+        "take_apples"
+       ]
+      },
+      {
+       "do": "press_cider"
+      },
+      {
+       "do": "store_cider"
+      }
+     ]
+    }
+   ],
+   "_doc": "варить эль из лишнего зерна, ставить мёд, давить сидр",
+   "_part": "H2"
+  },
+  {
+   "id": "stock_herbs_task",
+   "methods": [
+    {
+     "id": "gather_and_dry_herbs",
+     "pre": [
+      "knows:herbalism",
+      "known:herb_patch",
+      "known:storage"
+     ],
+     "cost": 1.5,
+     "steps": [
+      {
+       "achieve": [
+        "has:herbs>=2"
+       ],
+       "allow": [
+        "gather_herbs"
+       ]
+      },
+      {
+       "do": "dry_herbs"
+      },
+      {
+       "do": "store_dried_herbs"
+      }
+     ]
+    },
+    {
+     "id": "brew_remedy_for_store",
+     "pre": [
+      "knows:herbalism",
+      "known:hearth",
+      "known:storage",
+      "home:dried_herbs>=1",
+      "home:remedy<2",
+      "home:firewood>=1"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "achieve": [
+        "has:dried_herbs>=1"
+       ],
+       "allow": [
+        "take_dried_herbs"
+       ]
+      },
+      {
+       "do": "brew_remedy_dried"
+      },
+      {
+       "do": "store_remedy"
+      }
+     ]
+    }
+   ],
+   "_doc": "травник: собрать и высушить травы, сварить снадобья впрок",
+   "_part": "H2"
+  },
+  {
+   "id": "help_neighbours_task",
+   "methods": [
+    {
+     "id": "bring_grain",
+     "pre": [
+      "home:grain>=60"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "do": "give_grain_sack"
+      }
+     ]
+    },
+    {
+     "id": "bring_vegetables",
+     "pre": [
+      "home:vegetables>=20"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "do": "give_vegetables_basket"
+      }
+     ]
+    },
+    {
+     "id": "bring_cheese",
+     "pre": [
+      "home:cheese>=6"
+     ],
+     "cost": 1.4,
+     "steps": [
+      {
+       "do": "give_cheese"
+      }
+     ]
+    }
+   ],
+   "_doc": "помочь соседскому двору, у которого кончается еда",
+   "_part": "H2"
   }
  ]
 }

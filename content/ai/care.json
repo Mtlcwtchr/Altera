@@ -80,5 +80,8 @@
     "social"
    ]
   }
- ]
+ ],
+ "charity_days": 20,
+ "charity_spare_days": 60,
+ "_doc_charity": "Помощь соседям: двор, у которого еды меньше charity_days дней на едока, - нуждающийся; сосед помогает из того, что сверх charity_spare_days дней своего запаса (charity:need, charity:target)."
 }

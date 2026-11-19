@@ -10,16 +10,18 @@ namespace altera::sim {
 
 namespace {
 
-std::string ownerRelation(const Character& c, const WorldObject* o) {
-    if (!o || o->ownerFamily == kNone) return "none";
-    return o->ownerFamily == c.status.family ? "family" : "other";
+std::string ownerRelation(const Character& c, const WorldObject* o, const Character* beast = nullptr) {
+    // Livestock is owned like a thing: by the household that keeps it.
+    const EntityId owner = o ? o->ownerFamily : (beast && beast->isAnimal() ? beast->status.family : kNone);
+    if (owner == kNone) return "none";
+    return owner == c.status.family ? "family" : "other";
 }
 
 const WorldObject* homeStorage(const World& w, const Character& c) { return w.object(c.home); }
 
 } // namespace
 
-bool goapFact(const Condition& k) { return k.subject == "has" || k.subject == "at"; }
+bool goapFact(const Condition& k) { return (k.subject == "has" && !k.onTarget) || k.subject == "at"; }
 
 double evalSubject(const EvalCtx& x, const Condition& k) {
     // t.<subject>: the same subjects, read from the target character.
@@ -53,18 +55,24 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
         auto it = x.target->stock.find(k.key);
         return it == x.target->stock.end() ? 0.0 : it->second;
     }
-    if (s == "farm") return farmValue(x.w, c, x.target, k.key);
+    if (s == "herd") return herdValue(x.w, c, x.targetChar && x.targetChar->isAnimal() ? x.targetChar : nullptr, k.key);
+    if (const std::string crop = cropSubjectType(x.w.content(), s); !crop.empty())
+        return farmValue(x.w, c, x.target, k.key, crop);
     if (s == "care") return careValue(x.w, c, k.key);
+    if (s == "charity") return charityValue(x.w, c, x.targetChar, k.key);
     if (s == "target_owner") {
-        const std::string r = ownerRelation(c, x.target);
+        const std::string r = ownerRelation(c, x.target, x.targetChar);
         return (r == k.key || (k.key == "self" && r == "family")) ? 1.0 : 0.0;
     }
     if ((s == "known" || s == "at") && x.w.content().speciesOf(k.key)) {
         // Animals move: known = a live group within the tracking radius.
         const double radius = s == "known" ? x.w.content().config.trackRadiusM : x.w.content().config.interactionRangeM * 4;
         int n = 0;
+        const bool tame = x.w.content().speciesOf(k.key)->domestic;
         for (const auto& [id, o] : x.w.characters())
-            if (o.body.alive && o.species == k.key && dist(o.pos, c.pos) <= radius) ++n;
+            if (o.body.alive && o.species == k.key && dist(o.pos, c.pos) <= radius &&
+                (!tame || o.status.family == c.status.family)) // livestock: only the household's own
+                ++n;
         return n;
     }
     if (s == "known" || s == "at") {
@@ -119,7 +127,8 @@ EntityId findPerson(const World& w, const Character& c, const InteractionDef& d,
     // Gifts go to the needy: eff gives the target something.
     bool gift = false;
     for (const auto& e : d.eff)
-        if (e.onTarget && (e.subject == "has" || e.subject == "need") && e.signedDelta() > 0.0) gift = true;
+        if (e.onTarget && (e.subject == "has" || e.subject == "need" || e.subject == "home") && e.signedDelta() > 0.0)
+            gift = true;
     EntityId best = kNone;
     double bestScore = 1e18;
     for (const auto& [id, o] : w.characters()) {
@@ -215,11 +224,14 @@ double reachOf(const World& w, const InteractionDef& d) {
     return d.rangeM > 0.0 ? d.rangeM : w.content().config.interactionRangeM;
 }
 
-EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius) {
+EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius, EntityId family) {
     EntityId best = kNone;
     double bd = radius;
+    const SpeciesDef* tame = w.content().speciesOf(species);
+    const bool own = tame && tame->domestic;
     for (const auto& [id, o] : w.characters()) {
         if (!o.body.alive || o.species != species || o.group <= 0) continue;
+        if (own && o.status.family != family) continue; // the household's own livestock
         if (const SpeciesDef* sp = w.content().speciesOf(species); sp && sp->habitat == "water" && o.group <= 4) continue;
         const double d = dist(o.pos, from);
         if (d <= bd) {
@@ -589,14 +601,14 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,
                     bool ignoreReservations) {
     if (d.targetsCreature()) {
-        const EntityId t = findCreature(w, d.targetType, from, w.content().config.trackRadiusM);
+        const EntityId t = findCreature(w, d.targetType, from, w.content().config.trackRadiusM, c.status.family);
         if (t == kNone && why) *why = "unknown:" + d.targetType;
         return t;
     }
     if (!d.targetsObject()) return kNone;
     EntityId best = kNone;
     double bestD = 1e18;
-    bool anyOfType = false;
+    bool anyOfType = false, sawReserved = false;
     std::string lastWhy;
     for (EntityId id : w.objectsOfType(d.targetType)) {
         if (!c.knownObjects.count(id)) continue;
@@ -609,6 +621,7 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
         }
         if (!ignoreReservations && o->reservedFor(c.id, w.now())) {
             lastWhy = "reserved:" + d.targetType;
+            sawReserved = true;
             continue;
         }
         // Target-side conditions only; actor conditions (has:, knows:) are the
@@ -630,7 +643,9 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
             best = id;
         }
     }
-    if (best == kNone && why) *why = anyOfType ? lastWhy : "unknown:" + d.targetType;
+    // Held by someone else is the reason worth reporting: it passes (the caller waits).
+    if (best == kNone && why)
+        *why = sawReserved ? "reserved:" + d.targetType : (anyOfType ? lastWhy : "unknown:" + d.targetType);
     return best;
 }
 

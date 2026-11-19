@@ -40,7 +40,8 @@ void runConversation(World& w, Character& c, Character& other, const Json& param
 // The reach of an act: its range_m, else config.interaction_range_m.
 double reachOf(const World& w, const InteractionDef& d);
 // The nearest live group of a species within the tracking radius of `from`.
-EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius);
+// Livestock (domestic species) is found only among `family`'s own herds.
+EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius, EntityId family = kNone);
 // Where the target of a plan action is now (object or creature).
 bool targetPos(const World& w, EntityId id, Vec2& out);
 // Animals (animals.cpp): reactive drivers per tick, daily breeding and
@@ -56,7 +57,18 @@ void loseHeads(World& w, Character& herd, int n, const std::string& cause);
 // Fields (farming.cpp): `farm:<key>` conditions and utility inputs - of the
 // target field when there is one, else summed over the household's fields
 // (sow_window, free, tilled, sown, ripe, weeds, strips, seed_need, work).
-double farmValue(const World& w, const Character& c, const WorldObject* target, const std::string& key);
+// `type` is the crop object type summed over: farm:<key> reads the household's
+// "field"s, <type>:<key> any other crop object type (garden:ripe).
+double farmValue(const World& w, const Character& c, const WorldObject* target, const std::string& key,
+                 const std::string& type = "field");
+// Livestock (animals.cpp): `herd:<key>` of the target herd when there is one,
+// else summed over the household's herds - work (how pressing the chores are,
+// 0..1), trough (fodder missing in the troughs of herds kept in), fodder_need
+// (fodder still to put by for the stalled season), cull (heads over what is
+// kept, in the slaughter season), <product item> (waiting to be collected).
+double herdValue(const World& w, const Character& c, const Character* target, const std::string& key);
+// Starting livestock of every household (species with per_family).
+void spawnLivestock(World& w, std::uint64_t seed);
 // Harvest per seed of a field now: what its soil can give (fertility, depth)
 // less the season's water stress, frost and weeds.
 double cropYield(const World& w, const WorldObject& field);
@@ -90,6 +102,11 @@ struct CareChoice {
 };
 CareChoice bestWard(const World& w, const Character& carer);
 double careValue(const World& w, const Character& carer, const std::string& key);
+// Help between households (care.cpp, care.json charity_*): charity:need is how
+// short the neediest other household of the village is, times how much the
+// giver's own store can spare; charity:target (on a person) is 1 for a member
+// of another household of the village that is running out of food.
+double charityValue(const World& w, const Character& giver, const Character* target, const std::string& key);
 // Food left in a household store, in days per member (items' nutrition).
 double homeFoodDays(const World& w, const Character& c);
 // Daily spoilage of perishable food (items' spoil_days) in packs and stores.

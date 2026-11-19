@@ -50,9 +50,9 @@ const CropDef* cropOf(const World& w, const WorldObject& o) {
 // Every field (object type with a crop), through the type index - never a
 // scan of all objects (tens of thousands of trees).
 template <class W, class F>
-void forEachField(W& w, F&& f) {
+void forEachField(W& w, F&& f, const std::string& only = std::string()) {
     for (const auto& [type, def] : w.content().objects) {
-        if (!def.hasCrop) continue;
+        if (!def.hasCrop || (!only.empty() && type != only)) continue;
         for (EntityId id : w.objectsOfType(type))
             if (auto* o = w.object(id)) f(*o, def.crop);
     }
@@ -78,10 +78,10 @@ struct FarmSums {
     int strips = 0, tilled = 0, sown = 0, ripe = 0, weeds = 0, free = 0, seedNeed = 0;
     bool window = false;
     int seedPerStrip = 10;
-    std::string seed;
+    std::string seed, seedFrom = "grain";
 };
 
-FarmSums familyFarm(const World& w, const Character& c) {
+FarmSums familyFarm(const World& w, const Character& c, const std::string& type) {
     FarmSums s;
     if (c.status.family == kNone) return s;
     forEachField(w, [&](const WorldObject& o, const CropDef& crop) {
@@ -96,7 +96,8 @@ FarmSums familyFarm(const World& w, const Character& c) {
         s.weeds = std::max(s.weeds, st(o, "weeds"));
         s.free += freeStrips(w, o, *cd);
         s.window = s.window || inWindow(dayOfYear(w), cd->sowFrom, cd->sowTo);
-    });
+        s.seedFrom = cd->seedFrom;
+    }, type);
     if (s.seed.empty()) return s;
     const int have = seedHave(w, c, s.seed);
     // Nobody tills what they cannot sow.
@@ -113,7 +114,14 @@ bool isCropKey(const std::string& key) {
     return false;
 }
 
-double farmValue(const World& w, const Character& c, const WorldObject* target, const std::string& key) {
+std::string cropSubjectType(const Content& ct, const std::string& subject) {
+    if (subject == "farm") return "field";
+    auto d = ct.objects.find(subject);
+    return d != ct.objects.end() && d->second.hasCrop ? subject : std::string();
+}
+
+double farmValue(const World& w, const Character& c, const WorldObject* target, const std::string& key,
+                 const std::string& type) {
     const CropDef* cd = target ? cropOf(w, *target) : nullptr;
     if (target && cd) {
         if (key == "sow_window") return inWindow(dayOfYear(w), cd->sowFrom, cd->sowTo) ? 1.0 : 0.0;
@@ -124,7 +132,7 @@ double farmValue(const World& w, const Character& c, const WorldObject* target, 
         if (isCropKey(key)) return st(*target, key.c_str());
         return 0.0;
     }
-    const FarmSums s = familyFarm(w, c);
+    const FarmSums s = familyFarm(w, c, type);
     if (key == "sow_window") return s.window ? 1.0 : 0.0;
     if (key == "free") return s.free;
     if (key == "tilled") return s.tilled;
@@ -141,7 +149,7 @@ double farmValue(const World& w, const Character& c, const WorldObject* target, 
         if (s.weeds >= 2) return 0.5;
         if (s.seedNeed >= s.seedPerStrip) {
             if (const WorldObject* h = w.object(c.home)) {
-                auto it = h->stock.find("grain");
+                auto it = h->stock.find(s.seedFrom);
                 if (it != h->stock.end() && it->second >= s.seedPerStrip) return 0.4;
             }
         }
@@ -262,7 +270,7 @@ void cropsDaily(World& w) {
                 if (auto f = w.families().find(o.ownerFamily); f != w.families().end()) fam = &f->second;
                 w.chronicle("crop_ripe", {fam && !fam->members.empty() ? fam->members.front() : kNone},
                             "chronicle.crop_ripe",
-                            {{"family", fam ? fam->name : std::string()}, {"sheaves", sheaves},
+                            {{"family", fam ? fam->name : std::string()}, {"crop", o.type}, {"sheaves", sheaves},
                              {"ratio", std::round(ratio * 10.0) / 10.0}, {"stress", stressPct}, {"frost", frost}});
             }
         } else {
@@ -306,14 +314,16 @@ void seedFields(World& w, std::uint64_t seed, const Json& cfg) {
         auto f = w.families().find(o.ownerFamily);
         if (f == w.families().end()) continue;
         Family& fam = f->second;
-        int fields = 0; // the household's land split over its fields
+        int fields = 0; // the household's land of this kind split over its plots
         forEachField(w, [&](const WorldObject& other, const CropDef&) {
             if (other.ownerFamily == fam.id) ++fields;
-        });
+        }, o.type);
+        const double perLo = cd->stripsLo >= 0.0 ? cd->stripsLo : per.at(0).get<double>();
+        const double perHi = cd->stripsHi >= 0.0 ? cd->stripsHi : per.at(1).get<double>();
         Rng fr(hashCombine(seed, hashCombine(o.id, hashStr("field_strips"))));
         const double people = std::max<size_t>(1, fam.members.size());
         const int strips = std::max(1, static_cast<int>(std::round(
-                                           people * fr.range(per.at(0).get<double>(), per.at(1).get<double>()) /
+                                           people * fr.range(perLo, perHi) /
                                            std::max(1, fields))));
         auto& s = o.stock;
         s["strips"] = strips;

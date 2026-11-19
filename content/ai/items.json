@@ -301,7 +301,7 @@
     "food",
     "preserved"
    ],
-   "nutrition": 0.35,
+   "nutrition": 0.8,
    "spoil_days": 150,
    "_part": "H"
   },
@@ -362,6 +362,183 @@
    "spoil_days": 600,
    "_doc": "сноп с поля; обмолот даёт зерно (thresh_sheaves)",
    "_part": "H"
+  },
+  {
+   "id": "vegetables",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.4,
+   "stack": 10,
+   "spoil_days": 150,
+   "_doc": "корзина огородного: репа, капуста, лук, бобы; лежит в погребе месяцами",
+   "_part": "H2"
+  },
+  {
+   "id": "seed_veg",
+   "tags": [
+    "seed"
+   ],
+   "stack": 10,
+   "spoil_days": 600,
+   "_doc": "семена огорода (одна корзина оставлена на семя -> одна грядка)",
+   "_part": "H2"
+  },
+  {
+   "id": "eggs",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.1,
+   "stack": 24,
+   "spoil_days": 20,
+   "_part": "H2"
+  },
+  {
+   "id": "milk",
+   "tags": [
+    "food",
+    "drink"
+   ],
+   "nutrition": 0.15,
+   "stack": 10,
+   "spoil_days": 1.5,
+   "_doc": "кувшин козьего молока; не хранится",
+   "_part": "H2"
+  },
+  {
+   "id": "cheese",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "nutrition": 0.5,
+   "stack": 10,
+   "spoil_days": 300,
+   "_doc": "четыре кувшина молока -> круг сыра, лежит до весны",
+   "_part": "H2"
+  },
+  {
+   "id": "hay",
+   "tags": [
+    "fodder"
+   ],
+   "stack": 30,
+   "_doc": "сено: зимний корм коз",
+   "_part": "H2"
+  },
+  {
+   "id": "acorns",
+   "tags": [
+    "fodder"
+   ],
+   "stack": 30,
+   "spoil_days": 200,
+   "_doc": "жёлуди: корм свиней (людям только в голод)",
+   "_part": "H2"
+  },
+  {
+   "id": "hazelnuts",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "nutrition": 0.15,
+   "stack": 30,
+   "spoil_days": 300,
+   "_part": "H2"
+  },
+  {
+   "id": "wild_greens",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.05,
+   "stack": 20,
+   "spoil_days": 2,
+   "_doc": "весенняя зелень: крапива, щавель, черемша; мало сытости, но растягивает крупу в голодный промежуток",
+   "_part": "H2"
+  },
+  {
+   "id": "honey",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "nutrition": 0.35,
+   "stack": 10,
+   "_doc": "дикий мёд, не портится",
+   "_part": "H2"
+  },
+  {
+   "id": "apples",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.08,
+   "stack": 30,
+   "spoil_days": 60,
+   "_part": "H2"
+  },
+  {
+   "id": "bread",
+   "tags": [
+    "food",
+    "cooked"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 8,
+   "_doc": "хлеб: печь на четыре каравая за одну вязанку дров (каша - вязанка на миску)",
+   "_part": "H2"
+  },
+  {
+   "id": "ale",
+   "tags": [
+    "drink",
+    "food"
+   ],
+   "nutrition": 0.25,
+   "stack": 10,
+   "spoil_days": 20,
+   "_doc": "эль: шесть мер зерна -> шесть кувшинов; пища и веселье",
+   "_part": "H2"
+  },
+  {
+   "id": "cider",
+   "tags": [
+    "drink",
+    "food"
+   ],
+   "nutrition": 0.12,
+   "stack": 10,
+   "spoil_days": 120,
+   "_part": "H2"
+  },
+  {
+   "id": "mead",
+   "tags": [
+    "drink",
+    "food"
+   ],
+   "nutrition": 0.2,
+   "stack": 10,
+   "spoil_days": 600,
+   "_part": "H2"
+  },
+  {
+   "id": "dried_herbs",
+   "tags": [
+    "medicine"
+   ],
+   "stack": 20,
+   "spoil_days": 400,
+   "_doc": "сушёные травы: лекарства на зиму",
+   "_part": "H2"
   }
  ]
 }

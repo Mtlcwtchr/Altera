@@ -11,7 +11,7 @@ namespace {
 
 const std::set<std::string> kCondSubjects = {"has", "at", "need", "knows", "skill", "trait", "age", "body", "time",
                                              "known", "home", "target_stock", "target_owner", "rel", "moodlet",
-                                             "reputation", "status_pair", "status_pair_any", "right", "verdict", "farm", "care"};
+                                             "reputation", "status_pair", "status_pair_any", "right", "verdict", "farm", "care", "herd", "charity"};
 // t.<subject>: conditions on the target character.
 const std::set<std::string> kTargetCondSubjects = {"need", "skill", "body", "age", "moodlet", "has", "trait",
                                                    "knows", "reputation", "status_pair_any", "right", "verdict"};
@@ -23,7 +23,7 @@ const std::set<std::string> kEffSubjects = {"has",        "need",           "tar
                                             "reputation", "status_pair",    "household_join", "household_adopt",
                                             "household_leave", "household_found", "commitment", "death"};
 const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death",
-                                                  "group"};
+                                                  "group", "home"};
 // Flag effects: subject:key with no operator.
 const std::set<std::string> kFlagEffects = {"moodlet",         "memory",          "spawn",           "household_join",
                                             "household_adopt", "household_leave", "household_found", "commitment",
@@ -90,7 +90,7 @@ struct V {
             if (!kTargetCondSubjects.count(k.subject))
                 return err(where + ": t." + k.subject + " is not a target condition ('" + k.text + "')");
             if (!sc.charTarget) err(where + ": '" + k.text + "' needs a character target");
-        } else if (!kCondSubjects.count(k.subject)) {
+        } else if (!kCondSubjects.count(k.subject) && cropSubjectType(c, k.subject).empty()) {
             return err(where + ": unknown condition subject '" + k.subject + "'");
         }
         if ((k.subject == "rel" || k.subject == "status_pair") && !sc.charTarget) err(where + ": '" + k.text + "' needs a character target");
@@ -98,7 +98,8 @@ struct V {
         if ((k.subject == "has" || k.subject == "home" || k.subject == "target_stock") && !c.items.count(k.key) &&
             !(k.subject == "target_stock" && isCropKey(k.key)))
             err(where + ": unknown item '" + k.key + "' in '" + k.text + "'");
-        if (k.subject == "farm" && !isCropKey(k.key) && k.key != "sow_window" && k.key != "free" &&
+        if (k.subject == "herd" && !isHerdKey(c, k.key)) err(where + ": unknown herd key '" + k.key + "'");
+        if (!cropSubjectType(c, k.subject).empty() && !isCropKey(k.key) && k.key != "sow_window" && k.key != "free" &&
             k.key != "seed_need" && k.key != "work")
             err(where + ": unknown farm key '" + k.key + "'");
         if ((k.subject == "at" || k.subject == "known") && !c.objects.count(k.key) && !c.species.count(k.key))
@@ -457,7 +458,7 @@ ValidationReport validate(const Content& c) {
                 v.err(where + ": unknown item input '" + k.input + "'");
             else if (subj != "need" && subj != "has" && subj != "home" && subj != "time" && subj != "body" &&
                      subj != "mood" && subj != "const" && subj != "trait" && subj != "age" && subj != "home_food_days" &&
-                     subj != "season" && subj != "farm" &&
+                     subj != "season" && cropSubjectType(c, subj).empty() && subj != "herd" && subj != "knows" && subj != "charity" &&
                      subj != "care")
                 v.err(where + ": unknown input '" + k.input + "'");
         }

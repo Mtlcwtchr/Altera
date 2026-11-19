@@ -12,6 +12,14 @@
 //   feed     - grazers eat where their biome is; predators hunt prey groups;
 //   wander   - otherwise drift around the territory centre (den);
 // and once per day: breeding, starvation, migration of the den.
+//
+// Livestock (species with domestic: true) is the same kind of character, owned
+// by a household (status.family) and kept by its house (den): tame, out to
+// graze by day in its grazing seasons, in by night, fed from its trough (its
+// own inventory, filled by the household) when the grass is gone. Fed animals
+// give their products (eggs, milk) into the same inventory, to be collected;
+// they bear young once a year in their birth season and are culled down to
+// what the household keeps over the stalled season.
 
 #include <algorithm>
 #include <cmath>
@@ -94,6 +102,13 @@ Character* nearestPrey(World& w, const Character& a, const SpeciesDef& s, double
     for (auto& [id, o] : w.characters()) {
         if (!o.body.alive || o.species.empty() || o.id == a.id) continue;
         if (std::find(s.prey.begin(), s.prey.end(), o.species) == s.prey.end()) continue;
+        if (const SpeciesDef* ps = w.content().speciesOf(o.species); ps && ps->domestic && a.need("hunger") > 0.15) {
+            // A fed pack keeps away from the houses: livestock in the village is safe from it.
+            bool village = false;
+            for (const auto& [sid, st] : w.settlements())
+                if (dist(o.pos, st.center) < 300.0) village = true;
+            if (village) continue;
+        }
         const double d = dist(o.pos, a.pos);
         if (d <= bd) {
             bd = d;
@@ -103,7 +118,288 @@ Character* nearestPrey(World& w, const Character& a, const SpeciesDef& s, double
     return best;
 }
 
+int dayOfYear(const World& w) { return (w.startDay() + w.day()) % kDaysPerYear; }
+
+bool inDays(int doy, int from, int to) {
+    return from <= to ? (doy >= from && doy <= to) : (doy >= from || doy <= to);
+}
+
+std::string seasonOfDay(int doy) {
+    static const char* const k[] = {"spring", "summer", "autumn", "winter"};
+    return k[std::clamp(doy / (kDaysPerYear / 4), 0, 3)];
+}
+
+bool grazesOn(const SpeciesDef& s, int doy) {
+    return std::find(s.grazeSeasons.begin(), s.grazeSeasons.end(), seasonOfDay(doy)) != s.grazeSeasons.end();
+}
+
+// Days from `doy` until the herd can graze again (0 when it grazes today).
+int stalledDaysLeft(const SpeciesDef& s, int doy) {
+    for (int d = 0; d < kDaysPerYear; ++d)
+        if (grazesOn(s, (doy + d) % kDaysPerYear)) return d;
+    return kDaysPerYear;
+}
+
+int stalledDaysPerYear(const SpeciesDef& s) {
+    int n = 0;
+    for (int d = 0; d < kDaysPerYear; ++d)
+        if (!grazesOn(s, d)) ++n;
+    return n;
+}
+
+int roundChance(World& w, EntityId id, const std::string& salt, double x) {
+    int n = static_cast<int>(x);
+    if (w.rng(id, salt).uniform() < x - n) ++n;
+    return n;
+}
+
+// Tame drivers: no flight from people; out to graze by day, in by night,
+// kept in when there is nothing to graze.
+void livestockThink(World& w, Character& a, const SpeciesDef& s) {
+    double& hunger = a.needs["hunger"];
+    const bool graze = grazesOn(s, dayOfYear(w));
+    if (w.isNight() || !graze) {
+        if (dist(a.pos, a.den) > 5.0) moveToward(a, a.den, s.speedMPerTick * 0.6);
+        return;
+    }
+    if (hunger < 0.95 && inBiome(w, s, a.pos)) hunger = clamp01(hunger + 2.5 / static_cast<double>(kTicksPerDay));
+    Rng r = w.rng(a.id, "graze");
+    if (r.uniform() < 0.2) {
+        const double ang = r.range(0.0, 2.0 * kPi);
+        const double rad = r.range(0.0, std::max(20.0, s.territoryM));
+        const Vec2 to = clampToMap(w, {a.den.x + std::cos(ang) * rad, a.den.y + std::sin(ang) * rad});
+        if (inBiome(w, s, to)) moveToward(a, to, s.speedMPerTick * 0.5);
+    }
+}
+
+void livestockDaily(World& w, Character& a, const SpeciesDef& s) {
+    const int doy = dayOfYear(w);
+    double& hunger = a.needs["hunger"];
+    const int heads = std::max(0, a.group);
+    // The trough: fodder when the grass is gone.
+    if (!grazesOn(s, doy) && !s.fodder.empty() && s.fodderPerHead > 0.0 && heads > 0) {
+        const double need = heads * s.fodderPerHead;
+        auto it = a.inventory.find(s.fodder);
+        const int have = it == a.inventory.end() ? 0 : it->second;
+        // Fodder comes in whole units (a bundle of hay, a handful of grain):
+        // a unit taken from the trough is eaten over the next days
+        // (trough_credit, in units).
+        double& credit = a.needs["trough_credit"];
+        int taken = 0;
+        while (credit < need && taken < have) {
+            credit += 1.0;
+            ++taken;
+        }
+        if (taken > 0) {
+            if (have - taken <= 0) a.inventory.erase(s.fodder);
+            else a.inventory[s.fodder] = have - taken;
+        }
+        const double fed = std::min(credit, need);
+        credit -= fed;
+        hunger = clamp01(hunger + s.hungerPerDay * 1.4 * fed / need);
+    }
+    // Products of fed animals in their season (left uncollected, they stop).
+    if (hunger > 0.4)
+        for (const auto& p : s.products) {
+            if (!inDays(doy, p.from, p.to)) continue;
+            const int cap = static_cast<int>(std::round(heads * p.capPerHead));
+            auto it = a.inventory.find(p.item);
+            const int have = it == a.inventory.end() ? 0 : it->second;
+            const int n = std::min(cap, have + roundChance(w, a.id, "lay:" + p.item, heads * p.perHeadDay));
+            if (n > 0) a.inventory[p.item] = n;
+        }
+    // Young once a year, in the birth season.
+    if (s.breedFrom >= 0 && inDays(doy, s.breedFrom, s.breedTo) && hunger > 0.45 && heads >= 1 &&
+        a.group < s.maxGroup && !a.hasMoodlet("bred", w.now())) {
+        const int len = (s.breedTo - s.breedFrom + kDaysPerYear) % kDaysPerYear + 1;
+        Rng r = w.rng(a.id, "breed");
+        if (r.uniform() < 1.5 / len) {
+            const int mothers = std::max(1, heads / 2);
+            int young = 0;
+            for (int m = 0; m < mothers; ++m) young += r.irange(s.broodLo, s.broodHi);
+            a.group = std::min(s.maxGroup, a.group + young);
+            a.moodlets.push_back({"bred", 0.0, w.now() + static_cast<Tick>(len + 30) * kTicksPerDay});
+        }
+    }
+}
+
+const SpeciesDef* tameSpecies(const World& w, const Character& a) {
+    if (!a.isAnimal() || !a.body.alive) return nullptr;
+    const SpeciesDef* s = w.content().speciesOf(a.species);
+    return s && s->domestic ? s : nullptr;
+}
+
+int invOf(const Character& a, const std::string& item) {
+    auto it = a.inventory.find(item);
+    return it == a.inventory.end() ? 0 : it->second;
+}
+
+double herdOf(const World& w, const Character& a, const SpeciesDef& s, const std::string& key) {
+    const int doy = dayOfYear(w);
+    const int heads = std::max(0, a.group);
+    if (key == "heads") return heads;
+    if (key == "trough") {
+        if (grazesOn(s, doy) || s.fodder.empty()) return 0.0;
+        return std::max(0.0, std::ceil(heads * s.fodderPerHead * 3.0) - invOf(a, s.fodder)); // three days' worth
+    }
+    if (key == "cull") {
+        int over = 0;
+        if (s.cullFrom >= 0 && inDays(doy, s.cullFrom, s.cullTo)) over = heads - std::max(1, s.keep);
+        // Not enough fodder put by for the rest of the stalled season: the
+        // ones it cannot carry go to the larder before they starve.
+        if (!grazesOn(s, doy) && !s.fodder.empty() && s.fodderPerHead > 0.0) {
+            double have = invOf(a, s.fodder);
+            if (auto f = w.families().find(a.status.family); f != w.families().end())
+                if (const WorldObject* st = w.object(f->second.storage)) {
+                    auto it = st->stock.find(s.fodder);
+                    if (it != st->stock.end()) have += it->second;
+                }
+            const int carry = static_cast<int>(have / (s.fodderPerHead * std::max(1, stalledDaysLeft(s, doy))));
+            if (carry < heads) over = std::max(over, heads - std::max(1, carry));
+            if (a.need("hunger") < 0.25 && invOf(a, s.fodder) == 0) over = std::max(over, heads > 1 ? 1 : 0);
+        }
+        return std::max(0, over);
+    }
+    if (key == "fodder_need") {
+        if (s.fodder.empty() || s.fodderPerHead <= 0.0) return 0.0;
+        const int kept = s.keep > 0 ? std::min(heads, s.keep) : heads;
+        const int days = grazesOn(s, doy) ? stalledDaysPerYear(s) : stalledDaysLeft(s, doy);
+        return kept * s.fodderPerHead * days - invOf(a, s.fodder);
+    }
+    for (const auto& p : s.products)
+        if (p.item == key) return invOf(a, key);
+    return 0.0;
+}
+
 } // namespace
+
+namespace {
+
+// "<fodder>_need" (hay_need, acorns_need): the fodder_need of one fodder.
+// "<species>_trough" (goats_trough): the trough of one kind of beast.
+std::string speciesOfTroughKey(const std::string& key) {
+    const std::string suf = "_trough";
+    if (key.size() <= suf.size() || key.compare(key.size() - suf.size(), suf.size(), suf) != 0) return {};
+    return key.substr(0, key.size() - suf.size());
+}
+
+std::string fodderOfKey(const std::string& key) {
+    const std::string suf = "_need";
+    if (key.size() <= suf.size() || key.compare(key.size() - suf.size(), suf.size(), suf) != 0) return {};
+    return key.substr(0, key.size() - suf.size());
+}
+
+} // namespace
+
+bool isHerdKey(const Content& ct, const std::string& key) {
+    if (key == "work" || key == "trough" || key == "fodder_need" || key == "cull" || key == "heads") return true;
+    const std::string fodder = fodderOfKey(key);
+    const std::string troughOf = speciesOfTroughKey(key);
+    if (!troughOf.empty()) {
+        const auto sp = ct.species.find(troughOf);
+        return sp != ct.species.end() && sp->second.domestic;
+    }
+    for (const auto& [id, s] : ct.species) {
+        if (!fodder.empty() && s.fodder == fodder) return true;
+        for (const auto& p : s.products)
+            if (p.item == key) return true;
+    }
+    return false;
+}
+
+double herdValue(const World& w, const Character& c, const Character* target, const std::string& key) {
+    if (target) {
+        const SpeciesDef* s = tameSpecies(w, *target);
+        if (!s || target->status.family != c.status.family || key == "work") return 0.0;
+        return herdOf(w, *target, *s, key);
+    }
+    if (c.status.family == kNone) return 0.0;
+    const WorldObject* home = w.object(c.home);
+    auto homeHas = [&](const std::string& item) {
+        if (!home) return 0;
+        auto it = home->stock.find(item);
+        return it == home->stock.end() ? 0 : it->second;
+    };
+    const int doy = dayOfYear(w);
+    const std::string onlyFodder = key == "fodder_need" ? std::string() : fodderOfKey(key);
+    const bool needKey = key == "fodder_need" || !onlyFodder.empty();
+    double sum = 0.0, cull = 0.0, product = 0.0;
+    std::map<std::string, double> needByFodder;
+    bool troughFillable = false;
+    for (const auto& [id, a] : w.characters()) {
+        const SpeciesDef* s = tameSpecies(w, a);
+        if (!s || a.status.family != c.status.family) continue;
+        if (needKey) {
+            if (onlyFodder.empty() || s->fodder == onlyFodder) needByFodder[s->fodder] += herdOf(w, a, *s, "fodder_need");
+            continue;
+        }
+        if (key != "work") {
+            const std::string troughOf = speciesOfTroughKey(key);
+            if (troughOf.empty()) sum += herdOf(w, a, *s, key);
+            else if (a.species == troughOf) sum += herdOf(w, a, *s, "trough");
+            continue;
+        }
+        if (herdOf(w, a, *s, "trough") > 0.0 && homeHas(s->fodder) >= 1) troughFillable = true;
+        cull += herdOf(w, a, *s, "cull");
+        for (const auto& p : s->products) product += herdOf(w, a, *s, p.item);
+        if (grazesOn(*s, doy)) needByFodder[s->fodder] += herdOf(w, a, *s, "fodder_need");
+    }
+    double fodderNeed = 0.0;
+    for (const auto& [item, n] : needByFodder) fodderNeed += std::max(0.0, n - homeHas(item));
+    if (needKey) return fodderNeed;
+    if (key != "work") return sum;
+    // How pressing the chores are today, 0..1 (utility input herd:work).
+    if (troughFillable) return 0.9;    // hungry beasts in the byre
+    if (product >= 3.0) return 0.6;    // eggs and milk will not keep
+    if (cull > 0.0) return 0.55;       // the slaughter season
+    if (fodderNeed > 0.0) return 0.45; // hay and mast for the winter
+    return 0.0;
+}
+
+void spawnLivestock(World& w, std::uint64_t seed) {
+    for (const auto& [sid, s] : w.content().species) {
+        if (!s.domestic || s.perFamilyHi <= 0) continue;
+        for (const auto& [fid, fam] : w.families()) {
+            const WorldObject* store = w.object(fam.storage);
+            if (!store) continue;
+            Rng r(hashCombine(seed, hashCombine(static_cast<std::uint64_t>(fid), hashStr("livestock:" + sid))));
+            if (!r.chance(s.perFamilyChance)) continue;
+            const int heads = r.irange(s.perFamilyLo, s.perFamilyHi);
+            if (heads <= 0) continue;
+            Character a;
+            a.species = sid;
+            a.name = sid;
+            a.group = heads;
+            a.den = {store->pos.x + r.range(-6.0, 6.0), store->pos.y + r.range(-6.0, 6.0)};
+            a.pos = a.den;
+            a.status.family = fid;
+            a.needs["hunger"] = r.range(0.6, 0.9);
+            a.body.ageDays = 2 * kDaysPerYear;
+            a.body.sex = 'f';
+            w.addCharacter(std::move(a));
+            // Last year's fodder in the barn (stand-in until history generation):
+            // the hay and mast put by for the stalled season - none yet before
+            // the making season, half in it, all of it after; in the stalled
+            // season what is left of it.
+            auto fd = w.content().items.find(s.fodder);
+            if (s.fodder.empty() || s.fodderPerHead <= 0.0 || fd == w.content().items.end() || fd->second.nutrition > 0.0)
+                continue;
+            const int doy = w.startDay() % kDaysPerYear;
+            // Heads still to be culled this season are not fed through the winter.
+            const bool culling = s.cullFrom >= 0 && (grazesOn(s, doy) || inDays(doy, s.cullFrom, s.cullTo));
+            const int kept = s.keep > 0 && culling ? std::min(heads, s.keep) : heads;
+            double days = stalledDaysLeft(s, doy);
+            if (days <= 0.0) {
+                const std::string season = seasonOfDay(doy);
+                const double made = season == "spring" ? 0.0 : (season == "summer" ? 0.5 : 1.0);
+                days = made * stalledDaysPerYear(s);
+            }
+            const int put = static_cast<int>(std::round(kept * s.fodderPerHead * days * r.range(0.8, 1.15)));
+            if (put > 0)
+                if (WorldObject* st = w.object(fam.storage)) st->stock[s.fodder] += put;
+        }
+    }
+}
 
 void loseHeads(World& w, Character& herd, int n, const std::string& cause) {
     herd.group -= n;
@@ -125,6 +421,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     double& hunger = a.needs["hunger"];
     hunger = clamp01(hunger - s.hungerPerDay / static_cast<double>(kTicksPerDay));
     if (s.speedMPerTick <= 0.0) return; // fish: no movement drivers
+    if (s.domestic) return livestockThink(w, a, s);
 
     const bool alarmed = a.hasMoodlet("alarmed", now);
     // --- threat ---------------------------------------------------------------
@@ -223,6 +520,10 @@ void animalsDaily(World& w) {
             }
         } else {
             a.starveDays = 0;
+        }
+        if (s.domestic) {
+            livestockDaily(w, a, s);
+            continue;
         }
         // Fish: the shoal regrows every day toward its carrying size (logistic).
         if (s.habitat == "water") {

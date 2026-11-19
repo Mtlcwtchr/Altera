@@ -42,8 +42,17 @@ struct CropDef {
     double weedLoss = 0.0015;        // yield lost per weed-day above the first weed
     int spoilAfter = 15;             // days a ripe crop stands before it starts to shatter
     double spoilPerDay = 0.05;       // share of the standing crop lost per day after that
+    bool staple = true;              // the household's bread: last year's stores and the harvest day
+    std::string seedFrom = "grain";  // what the seed is put aside from (1:1)
+    double stripsLo = -1.0, stripsHi = -1.0; // strips per person (negative: worldgen config)
 };
 bool isCropKey(const std::string& key);
+struct Content;
+// Subject of a farm-like condition: "farm" -> "field", a crop object type ->
+// itself, anything else -> empty (farming.cpp).
+std::string cropSubjectType(const Content& ct, const std::string& subject);
+// Keys of herd:<key> (animals.cpp).
+bool isHerdKey(const Content& ct, const std::string& key);
 
 // climate.json: the seasons' weather of the region and the soils by biome.
 // Daily weather is drawn from it per settlement (weather.cpp).
@@ -76,6 +85,8 @@ struct DependentDef {
     std::vector<std::string> needs; // the needs others see to
 };
 struct CareDef {
+    double charityDays = 20.0;  // a neighbour's store below this many days per member is short
+    double charitySpare = 60.0; // a giver keeps this many days of food for its own household
     std::vector<DependentDef> dependents;
     std::map<std::string, double> circles; // household, kin, neighbour
     double threshold = 0.55;               // a need below this starts to count
@@ -119,6 +130,23 @@ struct SpeciesDef {
     int breedEveryDays = 0;
     double territoryM = 0.0;
     int starveDays = 0;
+    // Livestock (domestic): owned by a household, tame, kept by the house.
+    bool domestic = false;
+    int perFamilyLo = 0, perFamilyHi = 0; // group size per household at the start (0 = none)
+    double perFamilyChance = 1.0;         // share of households that keep this kind at all
+    std::vector<std::string> grazeSeasons; // seasons it feeds itself outside
+    std::string fodder;                   // what it eats from the trough otherwise
+    double fodderPerHead = 0.0;           // fodder units per head per day
+    struct Product {
+        std::string item;
+        double perHeadDay = 0.0; // units per head and day when fed
+        int from = 0, to = 359;  // day-of-year window
+        double capPerHead = 4.0; // left uncollected, no more than this per head
+    };
+    std::vector<Product> products;
+    int breedFrom = -1, breedTo = -1; // birth season (day of year); -1: breed_every_days
+    int broodLo = 1, broodHi = 1;     // young per birth
+    int cullFrom = -1, cullTo = -1, keep = 0; // slaughter season and heads kept over winter
 };
 
 struct NeedDef {

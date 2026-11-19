@@ -304,6 +304,183 @@
    },
    "_doc": "поле семьи: полосы (strips) по числу едоков задаёт worldgen; состояние в stock (tilled, sown, grown, weeds, ripe...)",
    "_part": "H"
+  },
+  {
+   "id": "garden",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "crop": {
+    "seed": "seed_veg",
+    "produce": "vegetables",
+    "seed_per_strip": 1,
+    "grain_per_sheaf": 1,
+    "sow": [
+     5,
+     110
+    ],
+    "grow_days": 70,
+    "yield": [
+     16,
+     28
+    ],
+    "drought_at": 0.45,
+    "drought_loss": 1.0,
+    "frost_c": -1.0,
+    "weeds_every": 8,
+    "weed_loss": 0.002,
+    "spoil_after": 25,
+    "spoil_per_day": 0.03,
+    "staple": false,
+    "seed_from": "vegetables",
+    "strips_per_person": [
+     2.5,
+     3.5
+    ],
+    "_doc": "огород у дома: грядки (strips) копают и засевают с весны до начала лета, урожай через 70 дней; семя - корзина, оставленная от урожая"
+   },
+   "_doc": "огород семьи: та же модель почвы и погоды, что у поля",
+   "_part": "H2"
+  },
+  {
+   "id": "fruit_tree",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "stock": {
+    "apples": 20
+   },
+   "regrow": {
+    "apples": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "apples": 40
+   },
+   "season": [
+    "autumn"
+   ],
+   "_doc": "яблоня во дворе: плоды осенью",
+   "_part": "H2"
+  },
+  {
+   "id": "hay_meadow",
+   "biomes": [
+    "meadow",
+    "river"
+   ],
+   "per_km2": 6,
+   "owned": false,
+   "stock": {
+    "hay": 30
+   },
+   "regrow": {
+    "hay": 6
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "hay": 30
+   },
+   "season": [
+    "summer"
+   ],
+   "_doc": "сенокос: косят летом",
+   "_part": "H2"
+  },
+  {
+   "id": "oak_grove",
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 4,
+   "owned": false,
+   "stock": {
+    "acorns": 30
+   },
+   "regrow": {
+    "acorns": 5
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "acorns": 30
+   },
+   "season": [
+    "autumn"
+   ],
+   "_doc": "дубрава: жёлуди осенью (корм свиней)",
+   "_part": "H2"
+  },
+  {
+   "id": "hazel_thicket",
+   "biomes": [
+    "forest",
+    "meadow"
+   ],
+   "per_km2": 4,
+   "owned": false,
+   "stock": {
+    "hazelnuts": 12
+   },
+   "regrow": {
+    "hazelnuts": 2
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "hazelnuts": 12
+   },
+   "season": [
+    "autumn"
+   ],
+   "_part": "H2"
+  },
+  {
+   "id": "wild_greens_patch",
+   "biomes": [
+    "meadow",
+    "forest",
+    "river"
+   ],
+   "per_km2": 8,
+   "owned": false,
+   "stock": {
+    "wild_greens": 10
+   },
+   "regrow": {
+    "wild_greens": 2
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "wild_greens": 10
+   },
+   "season": [
+    "spring"
+   ],
+   "_doc": "весенняя зелень",
+   "_part": "H2"
+  },
+  {
+   "id": "bee_tree",
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 1.5,
+   "owned": false,
+   "stock": {
+    "honey": 4
+   },
+   "regrow": {
+    "honey": 1
+   },
+   "regrow_every": 432,
+   "max_stock": {
+    "honey": 6
+   },
+   "season": [
+    "summer",
+    "autumn"
+   ],
+   "_doc": "борть диких пчёл в дупле",
+   "_part": "H2"
   }
  ]
 }

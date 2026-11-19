@@ -150,6 +150,34 @@
    "self_ticks": 180,
    "start": "all_from_youth",
    "_part": "H"
+  },
+  {
+   "id": "gardening",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 120,
+   "start": "all_from_child",
+   "_part": "H2"
+  },
+  {
+   "id": "husbandry",
+   "requires": [],
+   "learn_ticks": 18,
+   "self_ticks": 180,
+   "start": "all_from_child",
+   "_doc": "уход за скотом: кормить, доить, резать, косить сено",
+   "_part": "H2"
+  },
+  {
+   "id": "brewing",
+   "requires": [
+    "cooking"
+   ],
+   "learn_ticks": 24,
+   "self_ticks": 240,
+   "start_chance_adult": 0.45,
+   "family_knowledge": true,
+   "_part": "H2"
   }
  ],
  "household_must": [

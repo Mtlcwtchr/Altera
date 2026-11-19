@@ -229,7 +229,8 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
             const Json& k = j.at("crop");
             warnUnknown(k, {"seed", "produce", "seed_per_strip", "grain_per_sheaf", "sow", "grow_days", "yield",
                             "drought_at", "waterlog_at", "drought_loss", "frost_c", "frost_loss", "wet_harvest_mm",
-                            "weeds_every", "weed_loss", "spoil_after", "spoil_per_day", "_doc"},
+                            "weeds_every", "weed_loss", "spoil_after", "spoil_per_day", "staple", "seed_from",
+                            "strips_per_person", "_doc"},
                         "objects.crop", W);
             d.hasCrop = true;
             CropDef& cd = d.crop;
@@ -256,6 +257,12 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
             cd.weedLoss = opt(k, "weed_loss", cd.weedLoss);
             cd.spoilAfter = opt(k, "spoil_after", cd.spoilAfter);
             cd.spoilPerDay = opt(k, "spoil_per_day", cd.spoilPerDay);
+            cd.staple = opt(k, "staple", cd.staple);
+            cd.seedFrom = opt(k, "seed_from", cd.seedFrom);
+            if (k.contains("strips_per_person")) {
+                cd.stripsLo = k.at("strips_per_person").at(0).get<double>();
+                cd.stripsHi = k.at("strips_per_person").at(1).get<double>();
+            }
         }
         if (!c.objects.emplace(d.id, d).second) err.add("objects: duplicate id " + d.id);
     }
@@ -541,7 +548,9 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : species.value("species", Json::array())) {
         warnUnknown(j, {"id", "habitat", "biomes", "per_km2", "group", "max_group", "speed_m_per_tick", "notice_m",
                         "flee_m", "diet", "prey", "aggression", "attack", "hunger_per_day", "breed_every_days",
-                        "territory_m", "starve_days"},
+                        "territory_m", "starve_days", "domestic", "per_family", "per_family_chance",
+                        "graze_seasons", "fodder", "fodder_per_head", "products", "breed_season", "brood", "cull",
+                        "_doc"},
                     "species", W);
         SpeciesDef s;
         s.id = j.at("id").get<std::string>();
@@ -570,6 +579,42 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         s.breedEveryDays = opt(j, "breed_every_days", 0);
         s.territoryM = opt(j, "territory_m", 0.0);
         s.starveDays = opt(j, "starve_days", 0);
+        s.domestic = opt(j, "domestic", false);
+        if (j.contains("per_family")) {
+            s.perFamilyLo = j["per_family"].at(0).get<int>();
+            s.perFamilyHi = j["per_family"].at(1).get<int>();
+        }
+        s.perFamilyChance = opt(j, "per_family_chance", 1.0);
+        s.grazeSeasons = strings(j, "graze_seasons");
+        s.fodder = opt<std::string>(j, "fodder", "");
+        s.fodderPerHead = opt(j, "fodder_per_head", 0.0);
+        for (const auto& pj : j.value("products", Json::array())) {
+            SpeciesDef::Product pr;
+            pr.item = pj.at("item").get<std::string>();
+            pr.perHeadDay = opt(pj, "per_head_day", 0.0);
+            if (pj.contains("days")) {
+                pr.from = pj["days"].at(0).get<int>();
+                pr.to = pj["days"].at(1).get<int>();
+            }
+            pr.capPerHead = opt(pj, "cap_per_head", pr.capPerHead);
+            s.products.push_back(pr);
+        }
+        if (j.contains("breed_season")) {
+            s.breedFrom = j["breed_season"].at(0).get<int>();
+            s.breedTo = j["breed_season"].at(1).get<int>();
+        }
+        if (j.contains("brood")) {
+            s.broodLo = j["brood"].at(0).get<int>();
+            s.broodHi = j["brood"].at(1).get<int>();
+        }
+        if (j.contains("cull")) {
+            const Json& cj = j["cull"];
+            if (cj.contains("days")) {
+                s.cullFrom = cj["days"].at(0).get<int>();
+                s.cullTo = cj["days"].at(1).get<int>();
+            }
+            s.keep = opt(cj, "keep", 0);
+        }
         if (!c.species.emplace(s.id, s).second) err.add("species: duplicate id " + s.id);
     }
     c.householdMust = strings(knowledge, "household_must");
@@ -694,6 +739,8 @@ CareDef parseCare(const Json& j, std::vector<std::string>& W) {
     CareDef d;
     if (!j.is_object()) return d;
     d.threshold = opt(j, "need_threshold", d.threshold);
+    d.charityDays = opt(j, "charity_days", d.charityDays);
+    d.charitySpare = opt(j, "charity_spare_days", d.charitySpare);
     d.circles = opt(j, "circles", std::map<std::string, double>{});
     for (const auto& x : j.value("dependents", Json::array())) {
         warnUnknown(x, {"id", "age_lt", "age_ge", "health_lt", "trait", "weight", "needs", "_doc"}, "care.dependents", W);

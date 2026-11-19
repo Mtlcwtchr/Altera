@@ -701,7 +701,7 @@ if(ASR_BUILD_TESTS)
     enable_testing()
     add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_content.cpp
-            tests/test_altera_sim_farming.cpp)
+            tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

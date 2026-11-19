@@ -384,7 +384,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         // The next harvest: when the fields ripen (mid sowing + growth + reaping).
         int cropHarvest = 180;
         for (const auto& [oid, od] : content.objects)
-            if (od.hasCrop) {
+            if (od.hasCrop && od.crop.staple) {
                 const int len = (od.crop.sowTo - od.crop.sowFrom + kDaysPerYear) % kDaysPerYear + 1;
                 cropHarvest = (od.crop.sowFrom + len / 2 + od.crop.growDays + 10) % kDaysPerYear;
             }
@@ -443,6 +443,29 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             double fieldGrain = -1.0;
             for (const auto& [oid, od] : content.objects) {
                 if (!od.hasCrop) continue;
+                if (!od.crop.staple) {
+                    // A kitchen garden's last crop: what is left of it in the
+                    // cellar (it rots at its spoil_days half-life) and the seed
+                    // kept for the next sowing.
+                    for (EntityId gid : w.objectsOfType(oid)) {
+                        const WorldObject* g = w.object(gid);
+                        if (!g || g->ownerFamily != fam.id) continue;
+                        const CropDef& cd = od.crop;
+                        const int ripeDay = (cd.sowFrom + cd.growDays + 10) % kDaysPerYear;
+                        const int since = ((doy - ripeDay) % kDaysPerYear + kDaysPerYear) % kDaysPerYear;
+                        const int strips = g->stock.count("strips") ? g->stock.at("strips") : 0;
+                        const double crop = strips * cd.seedPerStrip *
+                                            pastSeasonYield(w, *g, doy >= ripeDay ? 0 : -1) / cd.grainPerSheaf;
+                        auto pd = content.items.find(cd.produce);
+                        const double half = pd == content.items.end() ? 0.0 : pd->second.spoilDays;
+                        const double keep = half > 0.0 ? std::exp(-0.6931471805599453 * since / half) : 1.0;
+                        // Eaten since the harvest as well: a third of it by the turn of the year.
+                        const double eaten = std::clamp(1.0 - since / 270.0, 0.2, 1.0);
+                        const int left = static_cast<int>(std::round(crop * keep * eaten * work));
+                        if (left > 0) store->stock[cd.produce] += left;
+                    }
+                    continue;
+                }
                 for (EntityId fidObj : w.objectsOfType(oid)) {
                     const WorldObject* f = w.object(fidObj);
                     if (!f || f->ownerFamily != fam.id) continue;
@@ -536,6 +559,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     }
     // --- animals: groups of every species over their habitat ------------
     spawnAnimals(w, seed);
+    spawnLivestock(w, seed);
     return w;
 }
 

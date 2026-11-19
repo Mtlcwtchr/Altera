@@ -660,6 +660,235 @@
    "min_ticks": 2,
    "cooldown_on_fail": 0,
    "_doc": "запасная цель: всегда выполнима"
+  },
+  {
+   "id": "tend_garden",
+   "task": "tend_garden_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.8,
+   "considerations": [
+    {
+     "input": "garden:work",
+     "norm": 1,
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     },
+     "_doc": "срочность работы на огороде"
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "body:fatigue",
+     "curve": {
+      "type": "linear",
+      "m": -0.6,
+      "b": 1.0
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.95,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 24,
+   "_part": "H2"
+  },
+  {
+   "id": "tend_livestock",
+   "task": "tend_livestock_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.85,
+   "considerations": [
+    {
+     "input": "herd:work",
+     "norm": 1,
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     },
+     "_doc": "кормушка > яйца и молоко > забой > сено"
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "body:fatigue",
+     "curve": {
+      "type": "linear",
+      "m": -0.6,
+      "b": 1.0
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.95,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 4,
+   "cooldown_on_fail": 24,
+   "_part": "H2"
+  },
+  {
+   "id": "brew",
+   "task": "brew_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.45,
+   "considerations": [
+    {
+     "input": "knows:brewing",
+     "curve": {
+      "type": "step",
+      "x0": 0.5,
+      "lo": 0.0,
+      "hi": 1.0
+     }
+    },
+    {
+     "input": "home_food_days",
+     "norm": 120,
+     "curve": {
+      "type": "step",
+      "x0": 0.7,
+      "lo": 0.0,
+      "hi": 1.0
+     },
+     "_doc": "варят, когда хлеба больше чем на ~три месяца"
+    },
+    {
+     "input": "home:ale",
+     "norm": 12,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.95,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 48,
+   "_part": "H2"
+  },
+  {
+   "id": "stock_herbs",
+   "task": "stock_herbs_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.4,
+   "considerations": [
+    {
+     "input": "knows:herbalism",
+     "curve": {
+      "type": "step",
+      "x0": 0.5,
+      "lo": 0.0,
+      "hi": 1.0
+     }
+    },
+    {
+     "input": "home:dried_herbs",
+     "norm": 8,
+     "curve": {
+      "type": "inverse"
+     }
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.95,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 6,
+   "cooldown_on_fail": 48,
+   "_part": "H2"
+  },
+  {
+   "id": "help_neighbours",
+   "task": "help_neighbours_task",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.7,
+   "considerations": [
+    {
+     "input": "charity:need",
+     "norm": 1,
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     },
+     "_doc": "нужда соседей x сколько можем уделить"
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.95,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "cooldown_on_fail": 24,
+   "_part": "H2"
   }
  ]
 }

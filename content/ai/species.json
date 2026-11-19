@@ -135,6 +135,180 @@
    "territory_m": 0,
    "starve_days": 0,
    "_doc": "Косяк в воде у берега: не убегает, вылов уменьшает его, нерест восполняет."
+  },
+  {
+   "id": "hens",
+   "domestic": true,
+   "habitat": "land",
+   "biomes": [
+    "meadow",
+    "forest",
+    "river",
+    "marsh"
+   ],
+   "per_km2": 0,
+   "per_family": [
+    3,
+    8
+   ],
+   "per_family_chance": 1.0,
+   "group": [
+    3,
+    8
+   ],
+   "max_group": 14,
+   "speed_m_per_tick": 3,
+   "diet": "graze",
+   "hunger_per_day": 0.6,
+   "starve_days": 8,
+   "territory_m": 40,
+   "graze_seasons": [
+    "spring",
+    "summer",
+    "autumn"
+   ],
+   "fodder": "grain",
+   "fodder_per_head": 0.05,
+   "products": [
+    {
+     "item": "eggs",
+     "per_head_day": 0.5,
+     "days": [
+      30,
+      230
+     ],
+     "cap_per_head": 4
+    }
+   ],
+   "breed_season": [
+    60,
+    110
+   ],
+   "brood": [
+    3,
+    6
+   ],
+   "cull": {
+    "days": [
+     200,
+     260
+    ],
+    "keep": 6
+   },
+   "_doc": "куры: кормятся сами во дворе, зимой - горсть зерна; несутся с весны до осени",
+   "_part": "H2"
+  },
+  {
+   "id": "goats",
+   "domestic": true,
+   "habitat": "land",
+   "biomes": [
+    "meadow",
+    "forest",
+    "river",
+    "marsh"
+   ],
+   "per_km2": 0,
+   "per_family": [
+    1,
+    3
+   ],
+   "per_family_chance": 0.7,
+   "group": [
+    1,
+    3
+   ],
+   "max_group": 6,
+   "speed_m_per_tick": 4,
+   "diet": "graze",
+   "hunger_per_day": 0.6,
+   "starve_days": 10,
+   "territory_m": 250,
+   "graze_seasons": [
+    "spring",
+    "summer",
+    "autumn"
+   ],
+   "fodder": "hay",
+   "fodder_per_head": 0.5,
+   "products": [
+    {
+     "item": "milk",
+     "per_head_day": 0.9,
+     "days": [
+      20,
+      220
+     ],
+     "cap_per_head": 3
+    }
+   ],
+   "breed_season": [
+    10,
+    40
+   ],
+   "brood": [
+    1,
+    2
+   ],
+   "cull": {
+    "days": [
+     235,
+     265
+    ],
+    "keep": 2
+   },
+   "_doc": "козы: пасутся, зимой на сене; козлята ранней весной, молоко до осени",
+   "_part": "H2"
+  },
+  {
+   "id": "pig",
+   "domestic": true,
+   "habitat": "land",
+   "biomes": [
+    "forest",
+    "meadow",
+    "river"
+   ],
+   "per_km2": 0,
+   "per_family": [
+    1,
+    2
+   ],
+   "per_family_chance": 0.6,
+   "group": [
+    1,
+    2
+   ],
+   "max_group": 8,
+   "speed_m_per_tick": 3,
+   "diet": "graze",
+   "hunger_per_day": 0.6,
+   "starve_days": 8,
+   "territory_m": 300,
+   "graze_seasons": [
+    "spring",
+    "summer",
+    "autumn"
+   ],
+   "fodder": "acorns",
+   "fodder_per_head": 1.0,
+   "breed_season": [
+    40,
+    80
+   ],
+   "brood": [
+    3,
+    6
+   ],
+   "cull": {
+    "days": [
+     240,
+     275
+    ],
+    "keep": 1
+   },
+   "_doc": "свиньи: роются в лесу, осенью на желудях; поросята весной, забой поздней осенью, на зиму оставляют свиноматку",
+   "_part": "H2"
   }
  ]
 }

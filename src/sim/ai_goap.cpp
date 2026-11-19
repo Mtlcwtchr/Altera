@@ -42,7 +42,12 @@ bool satisfied(const Node& n, const Condition& k) {
 
 bool staticOk(const World& w, const Character& c, const InteractionDef& d, std::string* why,
               const Character* person = nullptr) {
-    const EvalCtx x{w, c, nullptr, person};
+    // A creature act is judged against the herd it would go to (t.has:eggs,
+    // herd:cull of that herd).
+    const Character* beast = nullptr;
+    if (!person && d.targetsCreature())
+        beast = w.character(findCreature(w, d.targetType, c.pos, w.content().config.trackRadiusM, c.status.family));
+    const EvalCtx x{w, c, nullptr, person ? person : beast};
     for (const auto& k : d.pre) {
         if (goapFact(k) || k.subject == "target_stock" || k.subject == "target_owner") continue;
         if (!evalCondition(x, k)) {
@@ -84,7 +89,7 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
             return res;
         }
         for (const auto& k : finalAction->pre)
-            if (k.subject == "has") goal.push_back(k);
+            if ((k.subject == "has" && !k.onTarget)) goal.push_back(k);
         if (finalAction->targetsObject() || finalAction->targetsCreature() || finalAction->targetsCharacter()) {
             Condition at;
             at.subject = "at";
@@ -121,10 +126,10 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
     {
         std::set<std::string> need;
         for (const auto& k : goal)
-            if (k.subject == "has") need.insert(k.key);
+            if ((k.subject == "has" && !k.onTarget)) need.insert(k.key);
         if (finalAction)
             for (const auto& k : finalAction->pre)
-                if (k.subject == "has") need.insert(k.key);
+                if ((k.subject == "has" && !k.onTarget)) need.insert(k.key);
         std::vector<bool> keep(allowed.size(), false);
         // An at:<type> goal keeps one action of that type so the type is located.
         for (const auto& k : goal)
@@ -140,12 +145,12 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
                 if (keep[i]) continue;
                 bool produces = false;
                 for (const auto& e : allowed[i]->eff)
-                    if (e.subject == "has" && e.signedDelta() > 0.0 && need.count(e.key)) produces = true;
+                    if (e.subject == "has" && !e.onTarget && e.signedDelta() > 0.0 && need.count(e.key)) produces = true;
                 if (!produces) continue;
                 keep[i] = true;
                 changed = true;
                 for (const auto& k : allowed[i]->pre)
-                    if (k.subject == "has") need.insert(k.key);
+                    if ((k.subject == "has" && !k.onTarget)) need.insert(k.key);
             }
         }
         std::vector<const InteractionDef*> kept;
@@ -257,12 +262,12 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
             if ((d->targetsObject() || d->targetsCreature()) && d->targetType != n.at) continue;
             bool ok = true;
             for (const auto& k : d->pre)
-                if (k.subject == "has" && !satisfied(n, k)) ok = false;
+                if ((k.subject == "has" && !k.onTarget) && !satisfied(n, k)) ok = false;
             if (!ok) continue;
             Node m = n;
             bool progress = false;
             for (const auto& e : d->eff) {
-                if (e.subject != "has") continue;
+                if (e.subject != "has" || e.onTarget) continue; // t.has: the target's, not the plan's
                 int& v = m.has[e.key];
                 v = e.op == '=' ? static_cast<int>(e.value) : v + static_cast<int>(e.signedDelta());
                 if (v < 0) ok = false;

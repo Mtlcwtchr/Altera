@@ -4126,7 +4126,7 @@
    "eff": [
     "has:fish-3",
     "home:firewood-1",
-    "has:smoked_fish+1"
+    "has:smoked_fish+2"
    ],
    "duration": 6,
    "cost": 3,
@@ -4146,7 +4146,7 @@
    "eff": [
     "has:meat-2",
     "home:firewood-1",
-    "has:dried_meat+1"
+    "has:dried_meat+2"
    ],
    "duration": 8,
    "cost": 3,
@@ -4212,7 +4212,7 @@
    ],
    "eff": [
     "has:dried_meat-1",
-    "need:hunger+0.35",
+    "need:hunger+0.8",
     "moodlet:ate_meal"
    ],
    "duration": 1,
@@ -4691,6 +4691,1421 @@
    },
    "_doc": "посидеть рядом, утешить, поиграть",
    "_part": "H"
+  },
+  {
+   "id": "dig_garden",
+   "category": "work",
+   "target": "object:garden",
+   "pre": [
+    "target_owner:family",
+    "knows:gardening",
+    "garden:free>=1"
+   ],
+   "eff": [
+    "target_stock:tilled+1",
+    "skill:gardening+0.01",
+    "body:fatigue+0.05"
+   ],
+   "duration": 12,
+   "cost": 4,
+   "fsm": "Work",
+   "reserve": true,
+   "_doc": "вскопать грядку под посев",
+   "_part": "H2"
+  },
+  {
+   "id": "sow_garden",
+   "category": "work",
+   "target": "object:garden",
+   "pre": [
+    "target_owner:family",
+    "knows:gardening",
+    "target_stock:tilled>=1",
+    "has:seed_veg>=1"
+   ],
+   "eff": [
+    "target_stock:tilled-1",
+    "target_stock:sown+1",
+    "has:seed_veg-1",
+    "skill:gardening+0.01"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "weed_garden",
+   "category": "work",
+   "target": "object:garden",
+   "pre": [
+    "target_owner:family",
+    "target_stock:weeds>=2"
+   ],
+   "eff": [
+    "target_stock:weeds-2",
+    "skill:gardening+0.005",
+    "body:fatigue+0.03"
+   ],
+   "duration": 8,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "harvest_garden",
+   "category": "work",
+   "target": "object:garden",
+   "pre": [
+    "target_owner:family",
+    "target_stock:ripe>=3"
+   ],
+   "eff": [
+    "target_stock:ripe-3",
+    "has:vegetables+3",
+    "skill:gardening+0.01",
+    "body:fatigue+0.03"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "store_vegetables",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:vegetables>=3"
+   ],
+   "eff": [
+    "has:vegetables-3",
+    "home:vegetables+3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_vegetables",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:vegetables>=1"
+   ],
+   "eff": [
+    "has:vegetables+1",
+    "home:vegetables-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "set_aside_veg_seed",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "garden:seed_need>=1",
+    "home:vegetables>=1"
+   ],
+   "eff": [
+    "home:vegetables-1",
+    "home:seed_veg+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_doc": "оставить корзину огородного на семя",
+   "_part": "H2"
+  },
+  {
+   "id": "take_seed_veg",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:seed_veg>=1"
+   ],
+   "eff": [
+    "has:seed_veg+1",
+    "home:seed_veg-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "cook_vegetables",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:vegetables>=2",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:vegetables-2",
+    "home:firewood-1",
+    "has:meal+2",
+    "skill:cooking+0.01"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "варево из репы и капусты",
+   "_part": "H2"
+  },
+  {
+   "id": "cook_pottage",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:vegetables>=1",
+    "has:grain>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:vegetables-1",
+    "has:grain-1",
+    "home:firewood-1",
+    "has:meal+2",
+    "skill:cooking+0.01"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "похлёбка: крупа с огородным",
+   "_part": "H2"
+  },
+  {
+   "id": "cook_stew",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:meat>=1",
+    "has:vegetables>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:meat-1",
+    "has:vegetables-1",
+    "home:firewood-1",
+    "has:meal+3",
+    "skill:cooking+0.015"
+   ],
+   "duration": 5,
+   "cost": 3,
+   "_doc": "мясная похлёбка с овощами",
+   "_part": "H2"
+  },
+  {
+   "id": "pick_apples",
+   "category": "work",
+   "target": "object:fruit_tree",
+   "pre": [
+    "target_owner:family",
+    "target_stock:apples>=4"
+   ],
+   "eff": [
+    "target_stock:apples-4",
+    "has:apples+4",
+    "skill:foraging+0.005"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "store_apples",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:apples>=4"
+   ],
+   "eff": [
+    "has:apples-4",
+    "home:apples+4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_apples",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:apples>=1"
+   ],
+   "eff": [
+    "has:apples+1",
+    "home:apples-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "eat_apples",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:apples>=1"
+   ],
+   "eff": [
+    "has:apples-1",
+    "need:hunger+0.08",
+    "moodlet:ate_raw"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "collect_eggs",
+   "category": "work",
+   "target": "creature:hens",
+   "pre": [
+    "target_owner:family",
+    "t.has:eggs>=2"
+   ],
+   "eff": [
+    "t.has:eggs-2",
+    "has:eggs+2",
+    "skill:husbandry+0.005"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Work",
+   "range_m": 8,
+   "_part": "H2"
+  },
+  {
+   "id": "milk_goats",
+   "category": "work",
+   "target": "creature:goats",
+   "pre": [
+    "target_owner:family",
+    "knows:husbandry",
+    "t.has:milk>=2"
+   ],
+   "eff": [
+    "t.has:milk-2",
+    "has:milk+2",
+    "skill:husbandry+0.01"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Work",
+   "range_m": 6,
+   "_part": "H2"
+  },
+  {
+   "id": "fill_trough_goats",
+   "category": "work",
+   "target": "creature:goats",
+   "pre": [
+    "target_owner:family",
+    "herd:trough>=1",
+    "home:hay>=3"
+   ],
+   "eff": [
+    "home:hay-3",
+    "t.has:hay+3",
+    "skill:husbandry+0.005"
+   ],
+   "duration": 3,
+   "cost": 1,
+   "fsm": "Work",
+   "range_m": 8,
+   "_doc": "задать козам сена из сарая",
+   "_part": "H2"
+  },
+  {
+   "id": "fill_trough_hens",
+   "category": "work",
+   "target": "creature:hens",
+   "pre": [
+    "target_owner:family",
+    "herd:trough>=1",
+    "home:grain>=1"
+   ],
+   "eff": [
+    "home:grain-1",
+    "t.has:grain+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Work",
+   "range_m": 8,
+   "_part": "H2"
+  },
+  {
+   "id": "fill_trough_pig",
+   "category": "work",
+   "target": "creature:pig",
+   "pre": [
+    "target_owner:family",
+    "herd:trough>=1",
+    "home:acorns>=3"
+   ],
+   "eff": [
+    "home:acorns-3",
+    "t.has:acorns+3"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Work",
+   "range_m": 8,
+   "_part": "H2"
+  },
+  {
+   "id": "slaughter_pig",
+   "category": "work",
+   "target": "creature:pig",
+   "pre": [
+    "target_owner:family",
+    "knows:husbandry",
+    "has:stone_blade>=1",
+    "herd:cull>=1"
+   ],
+   "eff": [
+    "t.group:heads-1",
+    "has:carcass+2",
+    "skill:husbandry+0.01",
+    "body:fatigue+0.06"
+   ],
+   "duration": 8,
+   "cost": 4,
+   "fsm": "Work",
+   "range_m": 6,
+   "visibility": "public",
+   "_doc": "заколоть свинью в забойный сезон (или когда кормить нечем)",
+   "_part": "H2"
+  },
+  {
+   "id": "slaughter_goat",
+   "category": "work",
+   "target": "creature:goats",
+   "pre": [
+    "target_owner:family",
+    "knows:husbandry",
+    "has:stone_blade>=1",
+    "herd:cull>=1"
+   ],
+   "eff": [
+    "t.group:heads-1",
+    "has:carcass+1",
+    "skill:husbandry+0.01",
+    "body:fatigue+0.04"
+   ],
+   "duration": 6,
+   "cost": 4,
+   "fsm": "Work",
+   "range_m": 6,
+   "visibility": "public",
+   "_part": "H2"
+  },
+  {
+   "id": "kill_hen",
+   "category": "work",
+   "target": "creature:hens",
+   "pre": [
+    "target_owner:family",
+    "herd:cull>=1"
+   ],
+   "eff": [
+    "t.group:heads-1",
+    "has:meat+1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "range_m": 6,
+   "_part": "H2"
+  },
+  {
+   "id": "kill_hen_for_pot",
+   "category": "work",
+   "target": "creature:hens",
+   "pre": [
+    "target_owner:family",
+    "need:hunger<0.2",
+    "herd:heads>=2"
+   ],
+   "eff": [
+    "t.group:heads-1",
+    "has:meat+1"
+   ],
+   "duration": 2,
+   "cost": 6,
+   "fsm": "Work",
+   "range_m": 6,
+   "_doc": "в голод зарубить несушку: мясо сейчас вместо яиц потом",
+   "_part": "H2"
+  },
+  {
+   "id": "mow_hay",
+   "category": "work",
+   "target": "object:hay_meadow",
+   "pre": [
+    "knows:husbandry",
+    "has:stone_blade>=1",
+    "target_stock:hay>=6"
+   ],
+   "eff": [
+    "target_stock:hay-6",
+    "has:hay+6",
+    "skill:husbandry+0.01",
+    "body:fatigue+0.06"
+   ],
+   "duration": 24,
+   "cost": 5,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "store_hay",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:hay>=6"
+   ],
+   "eff": [
+    "has:hay-6",
+    "home:hay+6"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "store_eggs",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:eggs>=2"
+   ],
+   "eff": [
+    "has:eggs-2",
+    "home:eggs+2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_eggs",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:eggs>=4"
+   ],
+   "eff": [
+    "has:eggs+4",
+    "home:eggs-4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "store_milk",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:milk>=2"
+   ],
+   "eff": [
+    "has:milk-2",
+    "home:milk+2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_milk",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:milk>=1"
+   ],
+   "eff": [
+    "has:milk+1",
+    "home:milk-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "gather_acorns",
+   "category": "work",
+   "target": "object:oak_grove",
+   "pre": [
+    "knows:foraging",
+    "target_stock:acorns>=5"
+   ],
+   "eff": [
+    "target_stock:acorns-5",
+    "has:acorns+5",
+    "body:fatigue+0.02"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "store_acorns",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:acorns>=5"
+   ],
+   "eff": [
+    "has:acorns-5",
+    "home:acorns+5"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "make_cheese",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:husbandry",
+    "has:milk>=4",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:milk-4",
+    "home:firewood-1",
+    "has:cheese+1",
+    "skill:husbandry+0.01"
+   ],
+   "duration": 6,
+   "cost": 3,
+   "_part": "H2"
+  },
+  {
+   "id": "store_cheese",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:cheese>=1"
+   ],
+   "eff": [
+    "has:cheese-1",
+    "home:cheese+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_cheese",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:cheese>=1"
+   ],
+   "eff": [
+    "has:cheese+1",
+    "home:cheese-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "eat_cheese",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:cheese>=1"
+   ],
+   "eff": [
+    "has:cheese-1",
+    "need:hunger+0.5",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "drink_milk",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:milk>=1"
+   ],
+   "eff": [
+    "has:milk-1",
+    "need:hunger+0.15",
+    "need:thirst+0.3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "cook_eggs",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:eggs>=4",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:eggs-4",
+    "home:firewood-1",
+    "has:meal+1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "_part": "H2"
+  },
+  {
+   "id": "gather_greens",
+   "category": "work",
+   "target": "object:wild_greens_patch",
+   "pre": [
+    "knows:foraging",
+    "target_stock:wild_greens>=4"
+   ],
+   "eff": [
+    "target_stock:wild_greens-4",
+    "has:wild_greens+4",
+    "skill:foraging+0.005"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "eat_greens",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:wild_greens>=1"
+   ],
+   "eff": [
+    "has:wild_greens-1",
+    "need:hunger+0.05",
+    "moodlet:ate_raw"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "cook_greens_pottage",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:wild_greens>=4",
+    "has:grain>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:wild_greens-4",
+    "has:grain-1",
+    "home:firewood-1",
+    "has:meal+2"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "крапивные щи: горсть крупы на двоих",
+   "_part": "H2"
+  },
+  {
+   "id": "gather_hazelnuts",
+   "category": "work",
+   "target": "object:hazel_thicket",
+   "pre": [
+    "knows:foraging",
+    "target_stock:hazelnuts>=4"
+   ],
+   "eff": [
+    "target_stock:hazelnuts-4",
+    "has:hazelnuts+4",
+    "skill:foraging+0.005"
+   ],
+   "duration": 4,
+   "cost": 3,
+   "fsm": "Work",
+   "reserve": true,
+   "_part": "H2"
+  },
+  {
+   "id": "store_hazelnuts",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:hazelnuts>=4"
+   ],
+   "eff": [
+    "has:hazelnuts-4",
+    "home:hazelnuts+4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_hazelnuts",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:hazelnuts>=1"
+   ],
+   "eff": [
+    "has:hazelnuts+1",
+    "home:hazelnuts-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "eat_hazelnuts",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:hazelnuts>=1"
+   ],
+   "eff": [
+    "has:hazelnuts-1",
+    "need:hunger+0.15"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "gather_honey",
+   "category": "work",
+   "target": "object:bee_tree",
+   "pre": [
+    "knows:foraging",
+    "has:firewood>=1",
+    "target_stock:honey>=2"
+   ],
+   "eff": [
+    "target_stock:honey-2",
+    "has:honey+2",
+    "has:firewood-1",
+    "skill:foraging+0.01"
+   ],
+   "duration": 6,
+   "cost": 4,
+   "fsm": "Work",
+   "reserve": true,
+   "risk": [
+    {
+     "id": "bee_stings",
+     "p": 0.35,
+     "eff": [
+      "moodlet:stung",
+      "body:health-0.02"
+     ]
+    }
+   ],
+   "_doc": "выкурить диких пчёл дымом и вынуть соты",
+   "_part": "H2"
+  },
+  {
+   "id": "store_honey",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:honey>=2"
+   ],
+   "eff": [
+    "has:honey-2",
+    "home:honey+2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_honey",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:honey>=1"
+   ],
+   "eff": [
+    "has:honey+1",
+    "home:honey-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "eat_honey",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:honey>=1"
+   ],
+   "eff": [
+    "has:honey-1",
+    "need:hunger+0.35",
+    "need:fun+0.05"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "dry_herbs",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "knows:herbalism",
+    "has:herbs>=2"
+   ],
+   "eff": [
+    "has:herbs-2",
+    "has:dried_herbs+1",
+    "skill:herbalism+0.005"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_part": "H2"
+  },
+  {
+   "id": "brew_remedy_dried",
+   "category": "medicine",
+   "target": "object:hearth",
+   "pre": [
+    "knows:herbalism",
+    "has:dried_herbs>=1",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:dried_herbs-1",
+    "home:firewood-1",
+    "has:remedy+1",
+    "skill:herbalism+0.01"
+   ],
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "_part": "H2"
+  },
+  {
+   "id": "store_dried_herbs",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:dried_herbs>=1"
+   ],
+   "eff": [
+    "has:dried_herbs-1",
+    "home:dried_herbs+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_dried_herbs",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:dried_herbs>=1"
+   ],
+   "eff": [
+    "has:dried_herbs+1",
+    "home:dried_herbs-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "store_remedy",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:remedy>=1"
+   ],
+   "eff": [
+    "has:remedy-1",
+    "home:remedy+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_remedy",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:remedy>=1"
+   ],
+   "eff": [
+    "has:remedy+1",
+    "home:remedy-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "bake_bread",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:grain>=4",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:grain-4",
+    "home:firewood-1",
+    "has:bread+4",
+    "skill:cooking+0.015"
+   ],
+   "duration": 8,
+   "cost": 3,
+   "fsm": "Work",
+   "_part": "H2"
+  },
+  {
+   "id": "store_bread",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:bread>=3"
+   ],
+   "eff": [
+    "has:bread-3",
+    "home:bread+3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_bread",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:bread>=1"
+   ],
+   "eff": [
+    "has:bread+1",
+    "home:bread-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "eat_bread",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:bread>=1"
+   ],
+   "eff": [
+    "has:bread-1",
+    "need:hunger+0.45",
+    "moodlet:ate_meal",
+    "moodlet:fresh_bread"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "brew_ale",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:brewing",
+    "has:grain>=6",
+    "home:firewood>=1"
+   ],
+   "eff": [
+    "has:grain-6",
+    "home:firewood-1",
+    "has:ale+6",
+    "skill:brewing+0.02",
+    "moodlet:made_something"
+   ],
+   "duration": 12,
+   "cost": 4,
+   "fsm": "Work",
+   "_part": "H2"
+  },
+  {
+   "id": "brew_mead",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:brewing",
+    "has:honey>=2"
+   ],
+   "eff": [
+    "has:honey-2",
+    "has:mead+3",
+    "skill:brewing+0.02",
+    "moodlet:made_something"
+   ],
+   "duration": 8,
+   "cost": 4,
+   "fsm": "Work",
+   "_part": "H2"
+  },
+  {
+   "id": "press_cider",
+   "category": "work",
+   "target": "self",
+   "pre": [
+    "knows:brewing",
+    "has:apples>=8"
+   ],
+   "eff": [
+    "has:apples-8",
+    "has:cider+4",
+    "skill:brewing+0.01"
+   ],
+   "duration": 8,
+   "cost": 3,
+   "fsm": "Work",
+   "_part": "H2"
+  },
+  {
+   "id": "store_ale",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:ale>=6"
+   ],
+   "eff": [
+    "has:ale-6",
+    "home:ale+6"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_ale",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:ale>=1"
+   ],
+   "eff": [
+    "has:ale+1",
+    "home:ale-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "drink_ale_at_fire",
+   "category": "social",
+   "target": "object:village_fire",
+   "pre": [
+    "has:ale>=1"
+   ],
+   "eff": [
+    "has:ale-1",
+    "need:hunger+0.25",
+    "need:thirst+0.3",
+    "need:fun+0.25",
+    "need:social+0.2",
+    "moodlet:merry"
+   ],
+   "duration": 6,
+   "cost": 2,
+   "fsm": "Talk",
+   "visibility": "public",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.12,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ],
+   "_part": "H2"
+  },
+  {
+   "id": "store_mead",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:mead>=3"
+   ],
+   "eff": [
+    "has:mead-3",
+    "home:mead+3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_mead",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:mead>=1"
+   ],
+   "eff": [
+    "has:mead+1",
+    "home:mead-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "drink_mead_at_fire",
+   "category": "social",
+   "target": "object:village_fire",
+   "pre": [
+    "has:mead>=1"
+   ],
+   "eff": [
+    "has:mead-1",
+    "need:hunger+0.2",
+    "need:thirst+0.3",
+    "need:fun+0.25",
+    "need:social+0.2",
+    "moodlet:merry"
+   ],
+   "duration": 6,
+   "cost": 2,
+   "fsm": "Talk",
+   "visibility": "public",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.12,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ],
+   "_part": "H2"
+  },
+  {
+   "id": "store_cider",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:cider>=4"
+   ],
+   "eff": [
+    "has:cider-4",
+    "home:cider+4"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "take_cider",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:cider>=1"
+   ],
+   "eff": [
+    "has:cider+1",
+    "home:cider-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "H2"
+  },
+  {
+   "id": "drink_cider_at_fire",
+   "category": "social",
+   "target": "object:village_fire",
+   "pre": [
+    "has:cider>=1"
+   ],
+   "eff": [
+    "has:cider-1",
+    "need:hunger+0.12",
+    "need:thirst+0.3",
+    "need:fun+0.25",
+    "need:social+0.2",
+    "moodlet:merry"
+   ],
+   "duration": 6,
+   "cost": 2,
+   "fsm": "Talk",
+   "visibility": "public",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.12,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ],
+   "_part": "H2"
+  },
+  {
+   "id": "give_grain_sack",
+   "pre": [
+    "home:grain>=60",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:grain-15",
+    "t.home:grain+15",
+    "rel_back:affinity+0.12",
+    "rel_back:trust+0.05",
+    "reputation:generosity+0.03",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "отнести мешок зерна двору, где кончается еда (из своего запаса, сверх нужного своим)",
+   "_part": "H2"
+  },
+  {
+   "id": "give_vegetables_basket",
+   "pre": [
+    "home:vegetables>=20",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:vegetables-6",
+    "t.home:vegetables+6",
+    "rel_back:affinity+0.08",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_part": "H2"
+  },
+  {
+   "id": "give_cheese",
+   "pre": [
+    "home:cheese>=6",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:cheese-3",
+    "t.home:cheese+3",
+    "rel_back:affinity+0.08",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_part": "H2"
   }
  ]
 }

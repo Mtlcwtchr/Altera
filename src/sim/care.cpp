@@ -90,6 +90,53 @@ CareChoice bestWard(const World& w, const Character& carer) {
     return out;
 }
 
+namespace {
+
+EntityId settlementOfFamily(const World& w, EntityId family) {
+    auto f = w.families().find(family);
+    return f == w.families().end() ? kNone : f->second.settlement;
+}
+
+// How short another household is: 1 with an empty store, 0 from
+// charity_days of food per member up.
+double shortfall(const World& w, const Family& fam, double days) {
+    for (EntityId m : fam.members)
+        if (const Character* p = w.character(m); p && p->body.alive)
+            return std::clamp(1.0 - homeFoodDays(w, *p) / std::max(1.0, days), 0.0, 1.0);
+    return 0.0;
+}
+
+} // namespace
+
+double charityValue(const World& w, const Character& giver, const Character* target, const std::string& key) {
+    if (giver.status.family == kNone || giver.isAnimal()) return 0.0;
+    const CareDef& cd = w.content().care;
+    const EntityId here = settlementOfFamily(w, giver.status.family);
+    if (target) {
+        // charity:target - a member of another household of the village that is running out.
+        if (key != "target" || target->isAnimal() || target->status.family == kNone ||
+            target->status.family == giver.status.family || settlementOfFamily(w, target->status.family) != here)
+            return 0.0;
+        auto f = w.families().find(target->status.family);
+        return f != w.families().end() && shortfall(w, f->second, cd.charityDays) > 0.0 ? 1.0 : 0.0;
+    }
+    // charity:need - the neediest neighbour's shortfall, as far as the
+    // giver's own store can spare it (nothing below charity_spare days).
+    const double own = homeFoodDays(w, giver);
+    const double spare = std::clamp((own - cd.charitySpare) / std::max(1.0, cd.charitySpare), 0.0, 1.0);
+    if (spare <= 0.0) return 0.0;
+    double worst = 0.0;
+    for (const auto& [fid, fam] : w.families()) {
+        if (fid == giver.status.family || fam.settlement != here) continue;
+        double s = shortfall(w, fam, cd.charityDays);
+        // Small children in the house weigh more.
+        for (EntityId m : fam.members)
+            if (const Character* p = w.character(m); p && p->body.alive && p->body.stage() == "child") s *= 1.15;
+        worst = std::max(worst, std::min(1.0, s));
+    }
+    return worst * spare;
+}
+
 double careValue(const World& w, const Character& carer, const std::string& key) {
     const CareChoice ch = bestWard(w, carer);
     if (key.empty() || key == "need") return ch.urgency;

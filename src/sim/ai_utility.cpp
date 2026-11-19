@@ -30,8 +30,12 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
     if (subj == "mood") return (c.mood(w.now()) + 1.0) * 0.5;
     if (subj == "home_food_days") return clamp01(homeFoodDays(w, c) / norm);
     if (subj == "season") return w.season() == key ? 1.0 : 0.0;
-    if (subj == "farm") return clamp01(farmValue(w, c, nullptr, key) / norm);
+    if (const std::string crop = cropSubjectType(w.content(), subj); !crop.empty())
+        return clamp01(farmValue(w, c, nullptr, key, crop) / norm);
+    if (subj == "herd") return clamp01(herdValue(w, c, nullptr, key) / norm);
+    if (subj == "knows") return c.knowledge.count(key) ? 1.0 : 0.0;
     if (subj == "care") return clamp01(careValue(w, c, key) / norm);
+    if (subj == "charity") return clamp01(charityValue(w, c, nullptr, key) / norm);
     if (subj == "trait") return c.hasTrait(key) ? 1.0 : 0.0;
     if (subj == "age") return c.body.stage() == key ? 1.0 : 0.0;
     return 1.0; // const
