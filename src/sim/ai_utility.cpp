@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/building.hpp"
 
 namespace altera::sim {
 
@@ -35,6 +36,7 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
     if (subj == "herd") return clamp01(herdValue(w, c, nullptr, key) / norm);
     if (subj == "knows") return c.knowledge.count(key) ? 1.0 : 0.0;
     if (subj == "care") return clamp01(careValue(w, c, key) / norm);
+    if (subj == "build") return clamp01(buildValue(w, c, key) / norm);
     if (subj == "charity") return clamp01(charityValue(w, c, nullptr, key) / norm);
     if (subj == "trait") return c.hasTrait(key) ? 1.0 : 0.0;
     if (subj == "age") return c.body.stage() == key ? 1.0 : 0.0;

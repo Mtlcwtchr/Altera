@@ -1,0 +1,16 @@
+[
+ {"at": 1, "speed": 1, "take_chief": true},
+ {"at": 3, "give": true, "plan": "house", "dx": 10, "dy": 4, "zoom": 16, "pitch": 0.38, "yawDeg": 35},
+ {"at": 6, "shot": "build_01_planned.png"},
+ {"at": 7, "panel": "build", "pick": 2, "mouse": [960, 560]},
+ {"at": 9, "shot": "build_02_mode.png"},
+ {"at": 10, "panel": "none", "speed": 4},
+ {"at": 40, "speed": 1, "look_at_build": true, "zoom": 14, "pitch": 0.32, "yawDeg": 215},
+ {"at": 43, "shot": "build_03_built.png"},
+ {"at": 44, "yawDeg": 35, "zoom": 12, "pitch": 0.25},
+ {"at": 46, "shot": "build_04_built_front.png"},
+ {"at": 47, "panel": "colony"},
+ {"at": 49, "shot": "build_05_colony.png"},
+ {"at": 50, "panel": "none"},
+ {"at": 51, "quit": true}
+]

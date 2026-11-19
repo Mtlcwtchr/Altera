@@ -889,6 +889,52 @@
    "min_ticks": 3,
    "cooldown_on_fail": 24,
    "_part": "H2"
+  },
+  {
+   "id": "build",
+   "task": "construct_task",
+   "priority_class": "work",
+   "aggregate": "product",
+   "base": 0.8,
+   "considerations": [
+    {
+     "input": "build:work",
+     "norm": 1,
+     "curve": {
+      "type": "linear",
+      "m": 1.0,
+      "b": 0.0
+     },
+     "_doc": "у семьи есть стройка, на которой можно что-то сделать"
+    },
+    {
+     "input": "need:hunger",
+     "curve": {
+      "type": "linear",
+      "m": 0.6,
+      "b": 0.4
+     }
+    },
+    {
+     "input": "need:energy",
+     "curve": {
+      "type": "linear",
+      "m": 0.5,
+      "b": 0.5
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.9,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 12,
+   "cooldown_on_fail": 36,
+   "_part": "build"
   }
  ]
 }

@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/wounds.hpp"
 
@@ -531,6 +532,7 @@ void installAi(World& w) {
             cropsDaily(world);
         }
         healWounds(world); // wounds in the profile heal in the ordinary ticks
+        buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
@@ -545,6 +547,7 @@ void installAi(World& w) {
         }
     });
     installControl(w);
+    installBuilding(w);
 }
 
 } // namespace altera::sim

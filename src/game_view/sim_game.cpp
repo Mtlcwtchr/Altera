@@ -24,6 +24,7 @@
 #include <map>
 #include <memory>
 #include <mutex>
+#include <set>
 #include <thread>
 #include <vector>
 
@@ -33,12 +34,14 @@
 #include "engine/ui/font.hpp"
 #include "engine/ui/ui.hpp"
 #include "sim/ai.hpp"
+#include "sim/building.hpp"
 #include "sim/loc.hpp"
 #include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
 #include "terrain_core/clearings.hpp"
 #include "terrain_core/ground_height.hpp"
+#include "terrain_core/hydrology.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
 
@@ -175,6 +178,11 @@ public:
             for (const char* t : kShown)
                 if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily});
         }
+        for (const auto& d : content_->build.pieces) {
+            std::string cost;
+            for (const auto& [item, n] : d.cost) cost += (cost.empty() ? "" : ", ") + name("item", item) + " " + std::to_string(n);
+            hud_.buildPalette.push_back({text("hud.build.piece." + d.id), cost});
+        }
         for (const auto& g : content_->goals) {
             goalIds_.push_back(g.id);
             goalNames_.push_back(name("goal", g.id));
@@ -226,6 +234,26 @@ public:
                 if (n.find(k) != std::string::npos) return true;
             return false;
         };
+        // Rivers of the world's graph wider than a brook, rasterised at 125 m:
+        // they are water to the sim as the sea and lakes are (fish, drinking).
+        const double rc = 125.0;
+        const int rn = int(std::ceil(worldSize_ / rc));
+        std::vector<std::uint8_t> river(std::size_t(rn) * std::size_t(rn), 0);
+        if (opts_.rivers)
+            for (const auto& seg : *opts_.rivers) {
+                if (std::max(seg.width0, seg.width1) < 3.0f) continue;
+                const double len = std::hypot(double(seg.x1 - seg.x0), double(seg.y1 - seg.y0));
+                const int steps = std::max(1, int(len / 40.0));
+                for (int k = 0; k <= steps; ++k) {
+                    const double t = double(k) / steps;
+                    const int cx = int((seg.x0 + (seg.x1 - seg.x0) * t) / rc), cy = int((seg.y0 + (seg.y1 - seg.y0) * t) / rc);
+                    if (cx >= 0 && cy >= 0 && cx < rn && cy < rn) river[std::size_t(cy) * std::size_t(rn) + std::size_t(cx)] = 1;
+                }
+            }
+        auto riverAt = [&](double x, double y) {
+            const int cx = int(x / rc), cy = int(y / rc);
+            return cx >= 0 && cy >= 0 && cx < rn && cy < rn && river[std::size_t(cy) * std::size_t(rn) + std::size_t(cx)];
+        };
         auto wet = [&](const std::string& n, double h) { return h < 0.3 || n == "sea" || has(n, {"lake"}); };
         // the site
         double bestScore = -1e9, bx = centreX, by = centreY;
@@ -235,7 +263,7 @@ public:
                 if (x < 2000 || y < 2000 || x > worldSize_ - 2000 || y > worldSize_ - 2000) continue;
                 const double h = ground_.at(x, y, 2.0);
                 const std::string n = biomeName(x, y);
-                if (wet(n, h) || has(n, {"marsh", "mountain", "cliff", "shard", "scree", "volcan", "desert", "canyon_floor"})) continue;
+                if (wet(n, h) || riverAt(x, y) || has(n, {"marsh", "mountain", "cliff", "shard", "scree", "volcan", "desert", "canyon_floor"})) continue;
                 double slope = 0;
                 for (int k = 0; k < 4; ++k) {
                     const double a = k * kPi * 0.5;
@@ -248,7 +276,7 @@ public:
                 for (int k = 0; k < 8 && water == 0; ++k) {
                     const double a = k * kPi * 0.25;
                     const double qx = x + 700 * std::cos(a), qy = y + 700 * std::sin(a);
-                    if (wet(biomeName(qx, qy), ground_.at(qx, qy, 2.0))) water = 0.5;
+                    if (wet(biomeName(qx, qy), ground_.at(qx, qy, 2.0)) || riverAt(qx, qy)) water = 0.5;
                 }
                 const double score = open + water - slope * 6.0 - std::hypot(dx, dy) / 5000.0;
                 if (score > bestScore) bestScore = score, bx = x, by = y;
@@ -262,18 +290,26 @@ public:
         const double ox = std::clamp(centreX - size * 0.5, 0.0, std::max(0.0, worldSize_ - size));
         const double oy = std::clamp(centreY - size * 0.5, 0.0, std::max(0.0, worldSize_ - size));
         Json mb = Json::array(), mw = Json::array();
+        int wetCells = 0;
         for (int y = 0; y < n; ++y)
             for (int x = 0; x < n; ++x) {
                 const double wx = ox + (x + 0.5) * cell, wy = oy + (y + 0.5) * cell;
                 const std::string b = biomeName(wx, wy);
                 const double h = ground_.at(wx, wy, 2.0);
-                mw.push_back(wet(b, h) ? 1 : 0);
+                // a river anywhere in the sim's cell (sampled on the 125 m raster)
+                bool riv = false;
+                for (double sy = -0.375; sy <= 0.376 && !riv; sy += 0.25)
+                    for (double sx = -0.375; sx <= 0.376 && !riv; sx += 0.25) riv = riverAt(wx + sx * cell, wy + sy * cell);
+                const bool w = wet(b, h) || riv;
+                mw.push_back(w ? 1 : 0);
+                wetCells += w;
                 mb.push_back(has(b, {"marsh"}) ? "marsh" : has(b, {"dark_forest"}) ? "forest" : "meadow");
             }
         cfg["map_biome"] = std::move(mb);
         cfg["map_water"] = std::move(mw);
         cfg["river"] = false;   // the water is the world's
-        SDL_Log("altera_game: village site %.0f, %.0f (%s), score %.2f", centreX, centreY, biomeName(centreX, centreY).c_str(), bestScore);
+        SDL_Log("altera_game: village site %.0f, %.0f (%s), score %.2f, %d wet cells of %d", centreX, centreY,
+                biomeName(centreX, centreY).c_str(), bestScore, wetCells, n * n);
     }
 
     // ---- input ---------------------------------------------------------
@@ -296,6 +332,14 @@ public:
             if (e.key.key == SDLK_C) hud_.panel = hud_.panel == "sheet" ? "none" : "sheet";
             if (e.key.key == SDLK_K) hud_.panel = hud_.panel == "kin" ? "none" : "kin";
             if (e.key.key == SDLK_T) hud_.showThoughts = !hud_.showThoughts;
+            if (e.key.key == SDLK_B) hud_.panel = hud_.panel == "build" ? "none" : "build";
+            if (e.key.key == SDLK_O) hud_.panel = hud_.panel == "colony" ? "none" : "colony";
+            if (hud_.panel == "build") {
+                if (e.key.key == SDLK_R) buildRot_ = (buildRot_ + 1) % 4;
+                if (e.key.key == SDLK_PAGEUP) ++buildBump_;
+                if (e.key.key == SDLK_PAGEDOWN) buildBump_ = std::max(0, buildBump_ - 1);
+                if (e.key.key == SDLK_X || e.key.key == SDLK_DELETE) removeWanted_ = true;
+            }
             if (e.key.key == SDLK_F) follow_ = true;
             if (e.key.key == SDLK_F9) {
                 char n[64];
@@ -369,8 +413,17 @@ public:
         }
         if (pickAt_.pending) {
             pickAt_.pending = false;
-            const EntityId hit = pick(pickAt_.x, pickAt_.y);
-            if (hit != kNone) select(hit);
+            if (hud_.panel == "build") placeWanted_ = true;
+            else {
+                const EntityId hit = pick(pickAt_.x, pickAt_.y);
+                if (hit != kNone) select(hit);
+            }
+        }
+        if (hud_.panel == "build") updateBuild();
+        else hasPreview_ = false;
+        if (shown_.pieces.size() != clearedPieces_) {
+            clearedPieces_ = shown_.pieces.size();
+            setClearings();
         }
         const bool* keys = SDL_GetKeyboardState(nullptr);
         const ActorSnap* sel = actor(selected_);
@@ -570,6 +623,30 @@ private:
                 }
             }
             if (st.contains("tone")) hud_.setTone(st["tone"].get<int>());
+            // building and the colony
+            if (st.value("take_chief", false) && shown_.colony.chief != kNone)
+                post({"cmd", 0, "take_control", {{"id", shown_.colony.chief}}});
+            if (st.contains("mouse")) {
+                input_.mouseX = st["mouse"][0].get<float>();
+                input_.mouseY = st["mouse"][1].get<float>();
+            }
+            if (st.contains("pick")) hud_.buildPick = st["pick"].get<int>();
+            if (st.contains("rot")) buildRot_ = st["rot"].get<int>();
+            if (st.value("give", false) && shown_.builder != kNone) post({"give", 0, "", {{"id", shown_.builder}}});
+            if (st.contains("plan") && shown_.builder != kNone)
+                if (const ActorSnap* b = actor(shown_.builder)) {
+                    const double dx = st.value("dx", 9.0), dy = st.value("dy", 3.0);
+                    planHouse(b->x + dx, b->y + dy);
+                    target_[0] = originX_ + b->x + dx + 2;
+                    target_[1] = originY_ + b->y + dy + 2;
+                    follow_ = false;
+                }
+            if (st.contains("look_at_build") && !shown_.pieces.empty()) {
+                const BuildPiece& p0 = shown_.pieces.begin()->second;
+                target_[0] = originX_ + (p0.x + 1) * content_->build.cellM;
+                target_[1] = originY_ + (p0.y + 1) * content_->build.cellM;
+                follow_ = false;
+            }
             if (st.contains("take")) {
                 int k = st["take"].get<int>();
                 for (const auto& a : shown_.actors)
@@ -589,6 +666,10 @@ private:
                         nearest = std::min(nearest, std::hypot(originX_ + a.x - eye_[0], originY_ + a.y - eye_[1]));
                     }
                 counts += "shoals=" + std::to_string(shoals) + " nearest=" + std::to_string(int(nearest)) + " ";
+                int builtN = 0;
+                for (const auto& [id, p] : shown_.pieces) builtN += p.built;
+                counts += "pieces=" + std::to_string(shown_.pieces.size()) + " built=" + std::to_string(builtN) + " result=" +
+                          shown_.result + " ";
                 SDL_Log("altera_game: step %zu people=%zu %s", scriptStep_, figures_.size(), counts.c_str());
             }
             if (st.contains("shot"))
@@ -684,6 +765,11 @@ private:
                 else if (c.op == "speed") {
                     speed_ = std::clamp(c.n, 1, 4);
                     paused_ = false;
+                } else if (c.op == "give") {
+                    // tour scripts: the builder's household gets what a house takes
+                    if (Character* b = world_->character(c.args.value("id", kNone)))
+                        for (const char* it : {"stone", "log", "branch", "clay", "thatch"})
+                            b->inventory[it] += std::string(it) == "thatch" ? 12 : 40;
                 } else if (c.op == "cmd") {
                     altera::sim::Command cmd;
                     cmd.source = "player:1";
@@ -864,6 +950,56 @@ private:
         s.centre[0] = villageCentre_[0];
         s.centre[1] = villageCentre_[1];
         s.mapSize = w.map().sizeM;
+        // building: the pieces, what the planned ones lack, who builds
+        s.pieces = w.pieces();
+        for (const auto& [id, p] : w.pieces())
+            if (!p.built) s.missing[id] = missingOf(w, p);
+        const EntityId by = s.controlled != kNone ? s.controlled : sel;
+        const Character* bc = w.character(by);
+        if (bc && !bc->isAnimal() && bc->body.alive) {
+            s.builder = by;
+            s.builderFamily = bc->status.family;
+        }
+        // the colony (GDD §2.2)
+        if (!w.settlements().empty()) {
+            const Settlement& st = w.settlements().begin()->second;
+            ColonySnap& cs = s.colony;
+            cs.settlement = st.id;
+            cs.institution = st.institution;
+            cs.chief = st.chief;
+            cs.rights = w.content().config.rights;
+            const Character* chief = w.character(st.chief);
+            if (chief) {
+                cs.chiefName = chief->name;
+                const Family* f = w.familyOf(*chief);
+                cs.chiefFamily = f ? f->name : "";
+            }
+            cs.judge = judgeNow(w, st.id);
+            if (const Character* j = w.character(cs.judge)) {
+                cs.judgeName = j->name;
+                cs.judgeByRight = j->status.rights.count("judge") > 0;
+            }
+            cs.mandate = chief && bc && chief->body.alive && chief->status.dynasty == bc->status.dynasty;
+            cs.actor = cs.mandate ? chief->id : kNone;
+            for (const auto& [id, c] : w.characters()) {
+                if (c.isAnimal() || !c.body.alive || c.status.settlement != st.id || c.body.stage() == "child") continue;
+                ColonyMember m;
+                m.id = id;
+                m.name = c.name;
+                const Family* f = w.familyOf(c);
+                m.family = f ? f->name : "";
+                m.age = c.body.ageDays / kDaysPerYear;
+                m.chief = id == st.chief;
+                for (const auto& r : cs.rights)
+                    if (c.status.rights.count(r)) m.rights.push_back(r);
+                cs.members.push_back(std::move(m));
+            }
+            std::sort(cs.members.begin(), cs.members.end(), [](const ColonyMember& a, const ColonyMember& b) {
+                if (a.chief != b.chief) return a.chief;
+                if (a.family != b.family) return a.family < b.family;
+                return a.age > b.age;
+            });
+        }
         std::lock_guard<std::mutex> lock(snapMutex_);
         snap_ = std::move(s);
     }
@@ -918,6 +1054,231 @@ private:
         ws.tones = wheelCache_.tones;
         ws.chance = wheelCache_.chance;
         ws.kind = wheelCache_.kind;
+    }
+
+    // ---- building (sim/building.hpp) ------------------------------------------
+    // The ground under the mouse: a ray from the eye through the pixel, marched
+    // against the terrain. World metres.
+    bool groundRay(float mx, float my, double& hx, double& hy) const {
+        double m[16], inv[16];
+        for (int i = 0; i < 16; ++i) m[i] = vp_[i];
+        if (!invert4(m, inv)) return false;
+        const double nx = double(mx) / viewW_ * 2.0 - 1.0, ny = 1.0 - double(my) / viewH_ * 2.0;
+        double q[4];
+        for (int r = 0; r < 4; ++r) q[r] = inv[r * 4 + 0] * nx + inv[r * 4 + 1] * ny + inv[r * 4 + 2] * 0.5 + inv[r * 4 + 3];
+        if (std::fabs(q[3]) < 1e-12) return false;
+        double d[3] = {q[0] / q[3], q[1] / q[3], q[2] / q[3]};
+        const double len = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+        if (len < 1e-9) return false;
+        for (double& v : d) v /= len;
+        auto above = [&](double t) { return t * d[2] - (groundAt(eye_[0] + t * d[0], eye_[1] + t * d[1]) - eye_[2]); };
+        double t0 = 0.0, t = 0.5;
+        while (t < 4000.0 && above(t) > 0) {
+            t0 = t;
+            t += std::max(0.25, t * 0.02);
+        }
+        if (t >= 4000.0) return false;
+        for (int k = 0; k < 24; ++k) {
+            const double mid = 0.5 * (t0 + t);
+            (above(mid) > 0 ? t0 : t) = mid;
+        }
+        hx = eye_[0] + t * d[0];
+        hy = eye_[1] + t * d[1];
+        return true;
+    }
+    static bool invert4(const double* a, double* out) {
+        double m[4][8];
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 8; ++c) m[r][c] = c < 4 ? a[r * 4 + c] : (c - 4 == r ? 1.0 : 0.0);
+        for (int c = 0; c < 4; ++c) {
+            int piv = c;
+            for (int r = c + 1; r < 4; ++r)
+                if (std::fabs(m[r][c]) > std::fabs(m[piv][c])) piv = r;
+            if (std::fabs(m[piv][c]) < 1e-15) return false;
+            for (int k = 0; k < 8; ++k) std::swap(m[c][k], m[piv][k]);
+            const double f = m[c][c];
+            for (int k = 0; k < 8; ++k) m[c][k] /= f;
+            for (int r = 0; r < 4; ++r) {
+                if (r == c) continue;
+                const double g = m[r][c];
+                for (int k = 0; k < 8; ++k) m[r][k] -= g * m[c][k];
+            }
+        }
+        for (int r = 0; r < 4; ++r)
+            for (int c = 0; c < 4; ++c) out[r * 4 + c] = m[r][c + 4];
+        return true;
+    }
+
+    // A piece of the palette at a sim point: the slot nearest the point, the
+    // lowest storey it fits from the bump up, the structure's ground floor.
+    BuildPiece pieceAt(const BuildPieceDef& d, double sx, double sy, int turn, int bump, std::string& why) const {
+        const BuildCatalog& cat = content_->build;
+        const double c = cat.cellM;
+        BuildPiece p;
+        p.kind = d.id;
+        p.x = int(std::floor(sx / c));
+        p.y = int(std::floor(sy / c));
+        const double fx = sx - p.x * c, fy = sy - p.y * c;
+        if (d.slot == "edge") {
+            const double ds[4] = {fy, c - fx, c - fy, fx};   // -y, +x, +y, -x
+            p.rot = int(std::min_element(ds, ds + 4) - ds);
+            if (turn & 1) {   // the same edge, the other face outwards
+                const int dx = p.rot == 1 ? 1 : p.rot == 3 ? -1 : 0, dy = p.rot == 0 ? -1 : p.rot == 2 ? 1 : 0;
+                p.x += dx, p.y += dy;
+                p.rot = (p.rot + 2) % 4;
+            }
+            if (d.mirror && (turn & 2)) p.rot += 4;
+        } else if (d.slot == "corner") {
+            p.rot = fx < c / 2 ? (fy < c / 2 ? 0 : 3) : (fy < c / 2 ? 1 : 2);
+        } else if (d.slot == "roof") {
+            p.rot = turn % 4;
+        }
+        const int z = autoStorey(cat, shown_.pieces, p, bump);
+        p.z = z < 0 ? bump : z;
+        if (d.category == "foundation") p.z = 0;
+        if (d.category == "floor") p.z = std::max(1, p.z);
+        why = checkPlacement(cat, shown_.pieces, p);
+        // the ground under a cell: the stone plinth goes 1.4 m down
+        const double wx = originX_ + (p.x + 0.5) * c, wy = originY_ + (p.y + 0.5) * c;
+        double gmin = 1e9, gmax = -1e9;
+        for (int k = 0; k < 5; ++k) {
+            const double ox = k == 4 ? 0 : (k & 1 ? 0.95 : -0.95), oy = k == 4 ? 0 : (k & 2 ? 0.95 : -0.95);
+            const double g = groundAt(wx + ox, wy + oy);
+            gmin = std::min(gmin, g), gmax = std::max(gmax, g);
+        }
+        double h = 0;
+        if (joinHeight(cat, shown_.pieces, p, h)) p.h = h;
+        else p.h = gmax + 0.05;
+        if (d.category == "foundation" && why.empty() && (p.h - gmin > 1.3 || gmax > p.h + 0.6)) why = "ground_steep";
+        return p;
+    }
+
+    void updateBuild() {
+        const BuildCatalog& cat = content_->build;
+        hasPreview_ = false;
+        if (cat.pieces.empty()) return;
+        buildPick_ = std::clamp(hud_.buildPick, 0, int(cat.pieces.size()) - 1);
+        const BuildPieceDef& d = cat.pieces[std::size_t(buildPick_)];
+        double hx = 0, hy = 0;
+        const bool hit = !overUi_ && groundRay(input_.mouseX, input_.mouseY, hx, hy);
+        if (hit) {
+            buildPreview_ = pieceAt(d, hx - originX_, hy - originY_, buildRot_, buildBump_, buildWhy_);
+            hasPreview_ = true;
+        }
+        if (shown_.builder == kNone) buildWhy_ = "no_builder";
+        hud_.buildStatus = !hit ? "" : buildWhy_.empty() ? text("hud.build.ok", {{"storey", buildPreview_.z + 1}})
+                                                           : text("hud.build.why." + buildWhy_);
+        // what the family's plan still lacks
+        std::map<std::string, int> lack;
+        int planned = 0, built = 0;
+        for (const auto& [id, p] : shown_.pieces) {
+            if (p.family != shown_.builderFamily) continue;
+            if (p.built) {
+                ++built;
+                continue;
+            }
+            ++planned;
+            auto it = shown_.missing.find(id);
+            if (it != shown_.missing.end())
+                for (const auto& [k, v] : it->second) lack[k] += v;
+        }
+        std::string need;
+        for (const auto& [k, v] : lack) need += (need.empty() ? "" : ", ") + name("item", k) + " " + std::to_string(v);
+        hud_.buildPlan = text("hud.build.plan", {{"planned", planned}, {"built", built}}) +
+                         (need.empty() ? "" : "  \xC2\xB7  " + text("hud.build.lack", {{"list", need}}));
+        if (placeWanted_) {
+            placeWanted_ = false;
+            if (hasPreview_ && buildWhy_.empty())
+                post({"cmd", 0, "place_piece",
+                      {{"id", shown_.builder}, {"kind", buildPreview_.kind}, {"x", buildPreview_.x}, {"y", buildPreview_.y},
+                       {"z", buildPreview_.z}, {"rot", buildPreview_.rot}, {"h", buildPreview_.h}}});
+        }
+        if (removeWanted_) {
+            removeWanted_ = false;
+            if (!hit) return;
+            EntityId best = kNone;
+            double bd = 1.6;
+            for (const auto& [id, p] : shown_.pieces) {
+                const BuildPieceDef* pd = cat.find(p.kind);
+                if (!pd || p.family != shown_.builderFamily) continue;
+                const Vec2 c = pieceCentre(cat, *pd, p);
+                // the highest piece near the cursor
+                const double dd = std::hypot(originX_ + c.x - hx, originY_ + c.y - hy) - p.z * 0.25;
+                if (dd < bd) best = id, bd = dd;
+            }
+            if (best != kNone) post({"cmd", 0, "remove_piece", {{"id", shown_.builder}, {"piece", best}}});
+        }
+    }
+
+    // A ready-made little house for the tour scripts: 2 x 2 cells at a sim
+    // point - stone footing, log and daub walls with a door, gables and a
+    // steep thatch roof, corner posts.
+    void planHouse(double ox, double oy) {
+        const BuildCatalog& cat = content_->build;
+        const int x0 = int(std::floor(ox / cat.cellM)), y0 = int(std::floor(oy / cat.cellM));
+        double gmax = -1e9;
+        for (double dx = 0; dx <= 4; dx += 1)
+            for (double dy = 0; dy <= 4; dy += 1)
+                gmax = std::max(gmax, groundAt(originX_ + x0 * cat.cellM + dx, originY_ + y0 * cat.cellM + dy));
+        const double h = gmax + 0.05;
+        auto put = [&](const char* kind, int x, int y, int z, int rot) {
+            post({"cmd", 0, "place_piece",
+                  {{"id", shown_.builder}, {"kind", kind}, {"x", x0 + x}, {"y", y0 + y}, {"z", z}, {"rot", rot}, {"h", h}}});
+        };
+        for (int x = 0; x < 2; ++x)
+            for (int y = 0; y < 2; ++y) put("foundation_stone", x, y, 0, 0);
+        put("wall_door_log", 0, 0, 0, 0);
+        put("wall_window_log", 1, 0, 0, 0);
+        put("wall_log", 0, 1, 0, 2);
+        put("wall_log", 1, 1, 0, 2);
+        put("wall_daub", 0, 0, 0, 3);
+        put("wall_window_daub", 0, 1, 0, 3);
+        put("wall_daub", 1, 0, 0, 1);
+        put("wall_daub", 1, 1, 0, 1);
+        put("pillar_log", 0, 0, 0, 0);
+        put("pillar_log", 1, 0, 0, 1);
+        put("pillar_log", 1, 1, 0, 2);
+        put("pillar_log", 0, 1, 0, 3);
+        // the ridge runs along x between the rows: gables on the west and east ends
+        put("gable_daub", 0, 0, 1, 3 + 4);
+        put("gable_daub", 0, 1, 1, 3);
+        put("gable_daub", 1, 0, 1, 1);
+        put("gable_daub", 1, 1, 1, 1 + 4);
+        for (int x = 0; x < 2; ++x) {
+            put("roof_thatch", x, 0, 1, 0);
+            put("roof_thatch", x, 1, 1, 2);
+        }
+    }
+
+    // The pieces as the kit bake has them: planned ones pale, the preview
+    // green (or red where it cannot go).
+    void placePieces(double range) {
+        const BuildCatalog& cat = content_->build;
+        auto add = [&](const BuildPiece& p, const float tint[3], float hl) {
+            const BuildPieceDef* d = cat.find(p.kind);
+            if (!d) return;
+            const std::string mesh = d->mirror && p.rot >= 4 ? d->mesh + "_m" : d->mesh;
+            auto it = pieceMesh_.find(mesh);
+            if (it == pieceMesh_.end()) it = pieceMesh_.emplace(mesh, village_.piece(mesh)).first;
+            if (it->second < 0) return;
+            const Vec2 c = pieceCentre(cat, *d, p);
+            const double wx = originX_ + c.x, wy = originY_ + c.y;
+            const double rx = wx - eye_[0], ry = wy - eye_[1];
+            if (rx * rx + ry * ry > range * range * 4) return;
+            Placed pl;
+            pl.piece = it->second;
+            pl.rel[0] = rx;
+            pl.rel[1] = ry;
+            pl.rel[2] = p.h + p.z * cat.storeyM - eye_[2];
+            pl.yaw = float((p.rot % 4) * kPi * 0.5);
+            pl.highlight = hl;
+            for (int k = 0; k < 3; ++k) pl.tint[k] = tint[k];
+            placed_.push_back(pl);
+        };
+        static const float kBuilt[3] = {1, 1, 1}, kPlanned[3] = {0.55f, 0.62f, 0.78f}, kOk[3] = {0.7f, 1.35f, 0.7f},
+                           kBad[3] = {1.5f, 0.45f, 0.4f};
+        for (const auto& [id, p] : shown_.pieces) add(p, p.built ? kBuilt : kPlanned, p.built ? 0.0f : 0.25f);
+        if (hasPreview_) add(buildPreview_, buildWhy_.empty() ? kOk : kBad, 0.9f);
     }
 
     // ---- placement --------------------------------------------------------
@@ -1157,6 +1518,13 @@ private:
             if (std::hypot(b.x - villageCentre_[0], b.y - villageCentre_[1]) + r < far * 0.7) continue;
             add(b.x, b.y, r, r + 8.0);
         }
+        // the household's own building: a yard round every 8 m of footing
+        std::set<std::pair<int, int>> yards;
+        for (const auto& [id, p] : shown_.pieces) {
+            if (p.z != 0 || p.kind.rfind("foundation", 0) != 0) continue;
+            const double x = (p.x + 0.5) * content_->build.cellM, y = (p.y + 0.5) * content_->build.cellM;
+            if (yards.insert({int(std::floor(x / 8.0)), int(std::floor(y / 8.0))}).second) add(x, y, 4.0, 9.0);
+        }
         c.info[0] = float(n);
     }
 
@@ -1311,7 +1679,10 @@ private:
                 }
             }
         }
-        if (village_.loaded()) placeBuildings(range);
+        if (village_.loaded()) {
+            placeBuildings(range);
+            placePieces(range);
+        }
         for (const auto& b : buildings_) {
             if (village_.loaded()) break;
             const double wx = originX_ + b.x, wy = originY_ + b.y;
@@ -1591,6 +1962,12 @@ private:
     std::map<std::string, std::unique_ptr<SkinnedSet>> beasts_;
     StaticSet village_;
     std::vector<Placed> placed_;
+    std::map<std::string, int> pieceMesh_;
+    int buildPick_ = 0, buildRot_ = 0, buildBump_ = 0;
+    bool hasPreview_ = false, placeWanted_ = false, removeWanted_ = false;
+    BuildPiece buildPreview_;
+    std::string buildWhy_;
+    std::size_t clearedPieces_ = 0;
     std::map<std::string, std::vector<Figure>> beastFigures_;
     std::map<std::pair<EntityId, int>, Anim> beastAnims_;
     Clock::time_point started_ = Clock::now();

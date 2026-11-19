@@ -409,6 +409,36 @@ struct AiConfig {
     std::map<std::string, CommitmentDef> commitments;
 };
 
+// build.json: the modules a household builds from (gdd/blueprints/
+// ALTERA_BLUEPRINTS_SPEC_v0.2 §1-2, Valheim-like): a 3D grid of 2 x 2 x 3 m
+// cells; a piece takes a cell (foundation, floor), a cell's volume (a roof
+// slope), an edge (a wall, a gable) or a corner (a pillar) of one storey.
+struct BuildPieceDef {
+    std::string id;
+    std::string slot;      // cell | roof | edge | corner
+    std::string category;  // foundation | floor | wall | gable | pillar | roof
+    std::string material;
+    std::string mesh;      // the kit bake's piece name (default: id)
+    std::map<std::string, int> cost; // items delivered to the site
+    int work = 1;          // construct_piece acts once the materials are in
+    double carry = 0.8;    // stability passed on (stability = best support x carry)
+    bool shelter = false;  // a roof: the needs' sheltered multiplier applies under it
+    bool mirror = false;   // a gable: rotations 4..7 are the mirrored triangle
+    bool door = false;
+};
+struct BuildCatalog {
+    double cellM = 2.0;
+    double storeyM = 3.0;
+    double minStability = 0.2;
+    int maxPerFamily = 400;
+    std::vector<BuildPieceDef> pieces; // palette order
+    const BuildPieceDef* find(const std::string& id) const {
+        for (const auto& p : pieces)
+            if (p.id == id) return &p;
+        return nullptr;
+    }
+};
+
 // Relation axes (rel:<axis>), -1..1 except familiarity/debt (0..1 / any).
 const std::vector<std::string>& relAxes();
 
@@ -430,6 +460,7 @@ struct Content {
     std::map<std::string, SpeciesDef> species;
     ClimateDef climate;
     CareDef care;
+    BuildCatalog build;
     const SpeciesDef* speciesOf(const std::string& id) const {
         auto it = species.find(id);
         return it == species.end() ? nullptr : &it->second;
@@ -462,5 +493,6 @@ struct ValidationReport {
 };
 
 ValidationReport validate(const Content& c);
+BuildCatalog parseBuild(const Json& j);
 
 } // namespace altera::sim

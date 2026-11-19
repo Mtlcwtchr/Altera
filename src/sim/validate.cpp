@@ -11,7 +11,8 @@ namespace {
 
 const std::set<std::string> kCondSubjects = {"has", "at", "need", "knows", "skill", "trait", "age", "body", "time",
                                              "known", "home", "target_stock", "target_owner", "rel", "moodlet",
-                                             "reputation", "status_pair", "status_pair_any", "right", "verdict", "farm", "care", "herd", "charity"};
+                                             "reputation", "status_pair", "status_pair_any", "right", "verdict", "farm", "care", "herd", "charity",
+                                             "site", "build"};
 // t.<subject>: conditions on the target character.
 const std::set<std::string> kTargetCondSubjects = {"need", "skill", "body", "age", "moodlet", "has", "trait",
                                                    "knows", "reputation", "status_pair_any", "right", "verdict"};
@@ -21,13 +22,13 @@ const std::set<std::string> kEffSubjects = {"has",        "need",           "tar
                                             "skill",      "body",           "moodlet",        "memory",
                                             "rel",        "rel_back",       "spawn",          "target_need",
                                             "reputation", "status_pair",    "household_join", "household_adopt",
-                                            "household_leave", "household_found", "commitment", "death", "captivity"};
+                                            "household_leave", "household_found", "commitment", "death", "captivity", "site"};
 const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death",
                                                   "group", "home", "memory"};
 // Flag effects: subject:key with no operator.
 const std::set<std::string> kFlagEffects = {"moodlet",         "memory",          "spawn",           "household_join",
                                             "household_adopt", "household_leave", "household_found", "commitment",
-                                            "death", "captivity"};
+                                            "death", "captivity", "site"};
 // Effects and conditions that need a target character.
 const std::set<std::string> kNeedsCharTarget = {"rel", "rel_back", "target_need", "status_pair", "household_join",
                                                 "household_adopt", "commitment", "captivity"};
@@ -459,7 +460,7 @@ ValidationReport validate(const Content& c) {
             else if (subj != "need" && subj != "has" && subj != "home" && subj != "time" && subj != "body" &&
                      subj != "mood" && subj != "const" && subj != "trait" && subj != "age" && subj != "home_food_days" &&
                      subj != "season" && cropSubjectType(c, subj).empty() && subj != "herd" && subj != "knows" && subj != "charity" &&
-                     subj != "care")
+                     subj != "care" && subj != "build")
                 v.err(where + ": unknown input '" + k.input + "'");
         }
         // Score identically zero over the whole range?
@@ -526,6 +527,27 @@ ValidationReport validate(const Content& c) {
     for (const auto& [id, d] : c.interactions)
         // Character-targeted interactions are reached through dialogue and the player.
         if (!d.goap && !d.targetsCharacter() && !referenced.count(id)) v.warn("interaction " + id + ": not reachable by any plan");
+
+    // build.json: slots, categories, costs.
+    {
+        static const std::set<std::string> slots = {"cell", "roof", "edge", "corner"};
+        static const std::set<std::string> cats = {"foundation", "floor", "wall", "gable", "pillar", "roof"};
+        std::set<std::string> seen;
+        for (const auto& p : c.build.pieces) {
+            const std::string where = "build " + p.id;
+            if (!seen.insert(p.id).second) v.err(where + ": duplicate id");
+            if (!slots.count(p.slot)) v.err(where + ": bad slot '" + p.slot + "'");
+            if (!cats.count(p.category)) v.err(where + ": bad category '" + p.category + "'");
+            if (p.carry <= 0.0 || p.carry > 1.0) v.err(where + ": carry out of (0, 1]");
+            if (p.cost.empty()) v.err(where + ": no cost");
+            for (const auto& [item, n] : p.cost) {
+                if (!c.items.count(item)) v.err(where + ": unknown item '" + item + "'");
+                if (n <= 0) v.err(where + ": cost of '" + item + "' must be positive");
+            }
+        }
+        if (!c.build.pieces.empty() && !c.objects.count("build_site"))
+            v.err("build: objects.json has no build_site");
+    }
     return r;
 }
 

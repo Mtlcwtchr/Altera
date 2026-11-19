@@ -2895,6 +2895,208 @@
    ],
    "_doc": "помочь соседскому двору, у которого кончается еда",
    "_part": "H2"
+  },
+  {
+   "id": "construct_task",
+   "_doc": "стройка из модулей (build.json): поставить готовую деталь, отдать принесённое, сходить за недостающим",
+   "_part": "build",
+   "methods": [
+    {
+     "id": "deliver_carried",
+     "pre": [
+      "build:carried>=1"
+     ],
+     "cost": 0.8,
+     "steps": [
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    },
+    {
+     "id": "raise_piece",
+     "pre": [
+      "build:ready>=1"
+     ],
+     "cost": 1.0,
+     "steps": [
+      {
+       "do": "construct_piece"
+      }
+     ]
+    },
+    {
+     "id": "bring_logs",
+     "pre": [
+      "build:log>=1",
+      "knows:woodcutting",
+      "has:axe>=1",
+      "known:tree"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:log>=2"
+       ],
+       "allow": [
+        "chop_tree"
+       ]
+      },
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    },
+    {
+     "id": "bring_logs_new_axe",
+     "pre": [
+      "build:log>=1",
+      "knows:woodcutting",
+      "knows:toolmaking",
+      "knows:knapping",
+      "knows:fiber_working",
+      "known:tree",
+      "known:riverbank",
+      "known:deadwood",
+      "known:nettle_patch"
+     ],
+     "cost": 4.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:axe>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:log>=2"
+       ],
+       "allow": [
+        "chop_tree"
+       ]
+      },
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    },
+    {
+     "id": "bring_branches",
+     "pre": [
+      "build:branch>=1",
+      "known:deadwood"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:branch>=4"
+       ],
+       "allow": [
+        "gather_branches"
+       ]
+      },
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    },
+    {
+     "id": "bring_stones",
+     "pre": [
+      "build:stone>=1",
+      "known:riverbank"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone>=4"
+       ],
+       "allow": [
+        "gather_stones"
+       ]
+      },
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    },
+    {
+     "id": "bring_clay",
+     "pre": [
+      "build:clay>=1",
+      "known:riverbank"
+     ],
+     "cost": 2.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:clay>=3"
+       ],
+       "allow": [
+        "dig_clay"
+       ]
+      },
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    },
+    {
+     "id": "bring_thatch",
+     "pre": [
+      "build:thatch>=1",
+      "knows:fiber_working",
+      "knows:knapping",
+      "known:reed_bed",
+      "known:nettle_patch",
+      "known:riverbank"
+     ],
+     "cost": 3.0,
+     "steps": [
+      {
+       "achieve": [
+        "has:stone_blade>=1"
+       ]
+      },
+      {
+       "achieve": [
+        "has:cord>=1"
+       ],
+       "allow": [
+        "gather_fiber",
+        "twist_cord"
+       ]
+      },
+      {
+       "achieve": [
+        "has:reeds>=4"
+       ],
+       "allow": [
+        "cut_reeds"
+       ]
+      },
+      {
+       "achieve": [
+        "has:thatch>=1"
+       ],
+       "allow": [
+        "bundle_thatch"
+       ]
+      },
+      {
+       "do": "deliver_to_site"
+      }
+     ]
+    }
+   ]
   }
  ]
 }

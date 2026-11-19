@@ -56,7 +56,12 @@ public:
     void draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selected, HudHost& host, float width,
               float height);
 
-    std::string panel = "none";   // none | sheet | wheel | kin | annals
+    std::string panel = "none";   // none | sheet | wheel | kin | annals | build | colony
+    // The build mode's bar, filled by the game: palette (name, cost), the
+    // piece picked, the state of the piece under the mouse, the plan.
+    std::vector<std::pair<std::string, std::string>> buildPalette;
+    int buildPick = 0;
+    std::string buildStatus, buildPlan;
     void openWheel(EntityId target) {
         panel = "wheel";
         wheelTarget_ = target;
@@ -104,6 +109,8 @@ private:
     void wheel(const Snapshot& s, float W, float H);
     void kin(const Snapshot& s, const ActorSnap* a, float W, float H);
     void annals(const Snapshot& s, float W, float H);
+    void buildBar(const Snapshot& s, float W, float H);
+    void colony(const Snapshot& s, float W, float H);
     void dimmer(float W, float H, float a);
 
     struct Row {

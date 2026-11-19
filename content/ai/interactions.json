@@ -6109,6 +6109,44 @@
    "duration": 3,
    "cost": 2,
    "_part": "H2"
+  },
+  {
+   "id": "deliver_to_site",
+   "category": "work",
+   "target": "object:build_site",
+   "pre": [
+    "target_owner:self",
+    "site:deliverable>=1"
+   ],
+   "eff": [
+    "site:deliver",
+    "body:fatigue+0.01"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Work",
+   "_doc": "отдать на стройку своей семьи всё, что ей нужно из того, что несёшь",
+   "_part": "build"
+  },
+  {
+   "id": "construct_piece",
+   "category": "work",
+   "target": "object:build_site",
+   "pre": [
+    "target_owner:self",
+    "site:ready>=1"
+   ],
+   "eff": [
+    "site:work",
+    "skill:building+0.01",
+    "body:fatigue+0.04"
+   ],
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "visibility": "public",
+   "_doc": "поставить деталь: материалы на месте, опора стоит; деталь встаёт после work актов (build.json)",
+   "_part": "build"
   }
  ]
 }
