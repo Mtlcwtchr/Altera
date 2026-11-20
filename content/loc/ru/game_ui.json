@@ -70,6 +70,8 @@
  "hud.menu.annals": "Хроника",
  "hud.menu.map": "Карта",
  "hud.soon": "Скоро",
+ "hud.beast.nothing": "Тут нечего делать",
+ "hud.controls": "WASD — идти, Shift — бегом, ПКМ — повернуть камеру, клик по человеку или зверю — действия",
  "hud.close": "Закрыть",
  "hud.tier.body": "Тело",
  "hud.tier.safety": "Защита",

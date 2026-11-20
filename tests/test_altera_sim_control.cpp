@@ -221,6 +221,27 @@ TEST(altera_sim_control_rules) {
     CHECK(m.ttl <= w.content().config.modMaxTtl);
 }
 
+TEST(altera_sim_steer_moves_the_player_person) {
+    World w = aiWorld();
+    const auto [A, B] = twoAdults(w);
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}}, 1)).result, kOk);
+    CHECK_EQ(w.applyNow(cmdOf("set_goal", {{"id", A}, {"goal", "eat"}}, 1)).result, kOk);
+    CHECK(w.character(A)->ai.goal.valid());
+    const Vec2 to{w.character(A)->pos.x + 6.0, w.character(A)->pos.y - 4.0};
+    // Steering: the order gives way, the person stands where the client walked it.
+    CHECK_EQ(w.applyNow(cmdOf("steer", {{"id", A}, {"x", to.x}, {"y", to.y}}, 1)).result, kOk);
+    CHECK(!w.character(A)->ai.goal.valid());
+    CHECK(dist(w.character(A)->pos, to) < 1e-9);
+    // Free will waits as after any order: the person stays put for a while.
+    for (int k = 0; k < 2; ++k) w.step();
+    CHECK(dist(w.character(A)->pos, to) < 1e-9);
+    // Only the person you control; never off the map.
+    CHECK(w.applyNow(cmdOf("steer", {{"id", B}, {"x", 1.0}, {"y", 1.0}}, 1)).result.rfind("rejected:", 0) == 0);
+    w.applyNow(cmdOf("steer", {{"id", A}, {"x", -50.0}, {"y", 1e9}}, 1));
+    CHECK(w.character(A)->pos.x == 0.0);
+    CHECK(w.character(A)->pos.y == w.map().sizeM);
+}
+
 TEST(altera_sim_player_and_npc_share_the_catalog) {
     // Every interaction: the same availability verdict and the same effects
     // whether the character is driven by its AI or by a player.

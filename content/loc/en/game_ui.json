@@ -70,6 +70,8 @@
  "hud.menu.annals": "Chronicle",
  "hud.menu.map": "Map",
  "hud.soon": "Soon",
+ "hud.beast.nothing": "Nothing to do here",
+ "hud.controls": "WASD walk, Shift run, right drag turns the camera, click a person or a beast for actions",
  "hud.close": "Close",
  "hud.tier.body": "Body",
  "hud.tier.safety": "Safety",
