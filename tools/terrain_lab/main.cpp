@@ -389,8 +389,7 @@ struct Lab {
         std::string why;
         OutlineSettings fresh;
         if (loadOutlineSettings(outlineFile, fresh, &why)) outlineSettings = fresh;
-        else std::fprintf(stderr, "outline: %s (defaults)
-", why.c_str());
+        else std::fprintf(stderr, "outline: %s (defaults)\n", why.c_str());
     }
     void toggleOutline() {
         const bool on = !outlineSettings.enabled;
@@ -669,13 +668,11 @@ struct Lab {
             std::printf("psx: %s, %s (%ux, %u bits)\n", psxReady ? "ready" : "no pipeline",
                         psxSettings.enabled ? "on" : "off", psxSettings.pixelScale, psxSettings.colourBits);
             outlineReady = outline.open(device);
-            if (!outlineReady) std::fprintf(stderr, "outline off: %s
-", device.error().c_str());
+            if (!outlineReady) std::fprintf(stderr, "outline off: %s\n", device.error().c_str());
             outlineFile = foliageFile.parent_path() / "outline.json";
             loadOutline();
             if (options.outline >= 0) outlineSettings.enabled = options.outline == 1;
-            std::printf("outline: %s, %s
-", outlineReady ? "ready" : "no pipeline", outlineSettings.enabled ? "on" : "off");
+            std::printf("outline: %s, %s\n", outlineReady ? "ready" : "no pipeline", outlineSettings.enabled ? "on" : "off");
             {
                 // Opened even with the water off - one dry texel - since the
                 // plants' spawns read the water map either way.
