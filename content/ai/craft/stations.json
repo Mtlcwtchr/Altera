@@ -1,0 +1,175 @@
+{
+ "_doc": "Stations (gdd crafting v0.2 §3): objects of the world (objects.json station field). tags: what processes ask for; temp_max: heat level it gives (none = no heat); even: how evenly it heats (0..1); quality_bonus: added to competence; clean_default: hygiene when nobody cleaned it; no_air: closed (fermenting, charring); needs: what must stand by it to work (bellows).",
+ "stations": [
+  {
+   "id": "campfire",
+   "tags": [
+    "campfire"
+   ],
+   "temp_max": 1,
+   "quality_bonus": 0.0,
+   "even": 0.3
+  },
+  {
+   "id": "hearth",
+   "tags": [
+    "hearth"
+   ],
+   "temp_max": 2,
+   "quality_bonus": 0.05,
+   "even": 0.6
+  },
+  {
+   "id": "oven",
+   "tags": [
+    "oven",
+    "hearth"
+   ],
+   "temp_max": 2,
+   "quality_bonus": 0.1,
+   "even": 0.8
+  },
+  {
+   "id": "forge",
+   "tags": [
+    "forge"
+   ],
+   "temp_max": 3,
+   "quality_bonus": 0.1,
+   "even": 0.6
+  },
+  {
+   "id": "furnace",
+   "tags": [
+    "furnace",
+    "forge"
+   ],
+   "temp_max": 4,
+   "quality_bonus": 0.15,
+   "even": 0.7,
+   "needs": [
+    "bellows"
+   ]
+  },
+  {
+   "id": "anvil",
+   "tags": [
+    "anvil"
+   ],
+   "quality_bonus": 0.1
+  },
+  {
+   "id": "quench_tub",
+   "tags": [
+    "quench_tub"
+   ],
+   "quality_bonus": 0.0
+  },
+  {
+   "id": "grindstone",
+   "tags": [
+    "grindstone"
+   ],
+   "quality_bonus": 0.1
+  },
+  {
+   "id": "bench",
+   "tags": [
+    "bench"
+   ],
+   "quality_bonus": 0.05
+  },
+  {
+   "id": "loom",
+   "tags": [
+    "loom"
+   ],
+   "quality_bonus": 0.1
+  },
+  {
+   "id": "frame",
+   "tags": [
+    "frame"
+   ],
+   "quality_bonus": 0.0
+  },
+  {
+   "id": "wheel",
+   "tags": [
+    "wheel"
+   ],
+   "quality_bonus": 0.1
+  },
+  {
+   "id": "tub",
+   "tags": [
+    "tub"
+   ],
+   "quality_bonus": 0.0
+  },
+  {
+   "id": "pot",
+   "tags": [
+    "pot"
+   ],
+   "quality_bonus": 0.0
+  },
+  {
+   "id": "vat",
+   "tags": [
+    "vat"
+   ],
+   "quality_bonus": 0.05,
+   "clean_default": 0.5,
+   "no_air": true
+  },
+  {
+   "id": "jar",
+   "tags": [
+    "jar"
+   ],
+   "quality_bonus": 0.0,
+   "clean_default": 0.5,
+   "no_air": true
+  },
+  {
+   "id": "barrel",
+   "tags": [
+    "barrel",
+    "vat"
+   ],
+   "quality_bonus": 0.1,
+   "clean_default": 0.6,
+   "no_air": true
+  },
+  {
+   "id": "rack",
+   "tags": [
+    "rack"
+   ],
+   "quality_bonus": 0.0
+  },
+  {
+   "id": "mortar",
+   "tags": [
+    "mortar"
+   ],
+   "quality_bonus": 0.0
+  },
+  {
+   "id": "tanning_pit",
+   "tags": [
+    "tanning_pit"
+   ],
+   "quality_bonus": 0.05
+  },
+  {
+   "id": "quern",
+   "tags": [
+    "quern",
+    "mortar"
+   ],
+   "quality_bonus": 0.05
+  }
+ ]
+}

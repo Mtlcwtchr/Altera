@@ -1,0 +1,1117 @@
+{
+ "_doc": "Крафт (gdd crafting v0.2): материалы, формы заготовок, процессы и режимы, архетипы, изъяны, станции, ярлыки качества и исходов, причины отказа и остановки. material.<id>.made — шаблон имени вещи из этого материала: {form} — существительное формы, окончание прилагательного по его роду.",
+ "material.oak_wood.name": {
+  "nom": "дуб",
+  "g": "m"
+ },
+ "material.oak_wood.made": "дубов{form:g|ый|ая|ое|ые} {form}",
+ "material.ash_wood.name": {
+  "nom": "ясень",
+  "g": "m"
+ },
+ "material.ash_wood.made": "ясенев{form:g|ый|ая|ое|ые} {form}",
+ "material.pine_wood.name": {
+  "nom": "сосна",
+  "g": "f"
+ },
+ "material.pine_wood.made": "соснов{form:g|ый|ая|ое|ые} {form}",
+ "material.birch_bark.name": {
+  "nom": "берёста",
+  "g": "f"
+ },
+ "material.birch_bark.made": "берестян{form:g|ой|ая|ое|ые} {form}",
+ "material.willow_bark.name": {
+  "nom": "ивовая кора",
+  "g": "f"
+ },
+ "material.willow_bark.made": "лыков{form:g|ый|ая|ое|ые} {form}",
+ "material.willow_withy.name": {
+  "nom": "лоза",
+  "g": "f"
+ },
+ "material.willow_withy.made": "ивов{form:g|ый|ая|ое|ые} {form}",
+ "material.charcoal.name": {
+  "nom": "древесный уголь",
+  "g": "m"
+ },
+ "material.charcoal.made": "угольн{form:g|ый|ая|ое|ые} {form}",
+ "material.wood_ash.name": {
+  "nom": "зола",
+  "g": "f"
+ },
+ "material.wood_ash.made": "зольн{form:g|ый|ая|ое|ые} {form}",
+ "material.resin.name": {
+  "nom": "смола",
+  "g": "f"
+ },
+ "material.resin.made": "смолян{form:g|ой|ая|ое|ые} {form}",
+ "material.flint.name": {
+  "nom": "кремень",
+  "g": "m"
+ },
+ "material.flint.made": "кремнёв{form:g|ый|ая|ое|ые} {form}",
+ "material.granite.name": {
+  "nom": "гранит",
+  "g": "m"
+ },
+ "material.granite.made": "гранитн{form:g|ый|ая|ое|ые} {form}",
+ "material.limestone.name": {
+  "nom": "известняк",
+  "g": "m"
+ },
+ "material.limestone.made": "известняков{form:g|ый|ая|ое|ые} {form}",
+ "material.quicklime.name": {
+  "nom": "известь",
+  "g": "f"
+ },
+ "material.quicklime.made": "известков{form:g|ый|ая|ое|ые} {form}",
+ "material.clay.name": {
+  "nom": "глина",
+  "g": "f"
+ },
+ "material.clay.made": "глинян{form:g|ый|ая|ое|ые} {form}",
+ "material.sand.name": {
+  "nom": "песок",
+  "g": "m"
+ },
+ "material.sand.made": "песчан{form:g|ый|ая|ое|ые} {form}",
+ "material.salt.name": {
+  "nom": "соль",
+  "g": "f"
+ },
+ "material.salt.made": "солян{form:g|ой|ая|ое|ые} {form}",
+ "material.bog_iron_ore.name": {
+  "nom": "болотная руда",
+  "g": "f"
+ },
+ "material.bog_iron_ore.made": "рудн{form:g|ый|ая|ое|ые} {form}",
+ "material.iron_bloom.name": {
+  "nom": "крица",
+  "g": "f"
+ },
+ "material.iron_bloom.made": "кричн{form:g|ый|ая|ое|ые} {form}",
+ "material.wrought_iron.name": {
+  "nom": "кованое железо",
+  "g": "m"
+ },
+ "material.wrought_iron.made": "железн{form:g|ый|ая|ое|ые} {form}",
+ "material.steel.name": {
+  "nom": "сталь",
+  "g": "f"
+ },
+ "material.steel.made": "стальн{form:g|ой|ая|ое|ые} {form}",
+ "material.copper_ore.name": {
+  "nom": "медная руда",
+  "g": "f"
+ },
+ "material.copper_ore.made": "рудн{form:g|ый|ая|ое|ые} {form}",
+ "material.tin_ore.name": {
+  "nom": "оловянная руда",
+  "g": "f"
+ },
+ "material.tin_ore.made": "рудн{form:g|ый|ая|ое|ые} {form}",
+ "material.copper.name": {
+  "nom": "медь",
+  "g": "f"
+ },
+ "material.copper.made": "медн{form:g|ый|ая|ое|ые} {form}",
+ "material.tin.name": {
+  "nom": "олово",
+  "g": "m"
+ },
+ "material.tin.made": "оловянн{form:g|ый|ая|ое|ые} {form}",
+ "material.bronze.name": {
+  "nom": "бронза",
+  "g": "f"
+ },
+ "material.bronze.made": "бронзов{form:g|ый|ая|ое|ые} {form}",
+ "material.flax_fiber.name": {
+  "nom": "лён",
+  "g": "m"
+ },
+ "material.flax_fiber.made": "льнян{form:g|ой|ая|ое|ые} {form}",
+ "material.wool_raw.name": {
+  "nom": "шерсть",
+  "g": "f"
+ },
+ "material.wool_raw.made": "шерстян{form:g|ой|ая|ое|ые} {form}",
+ "material.hide_raw.name": {
+  "nom": "сырая шкура",
+  "g": "f"
+ },
+ "material.hide_raw.made": "сыромятн{form:g|ый|ая|ое|ые} {form}",
+ "material.leather.name": {
+  "nom": "кожа",
+  "g": "f"
+ },
+ "material.leather.made": "кожан{form:g|ый|ая|ое|ые} {form}",
+ "material.sinew.name": {
+  "nom": "сухожилие",
+  "g": "n"
+ },
+ "material.sinew.made": "жильн{form:g|ый|ая|ое|ые} {form}",
+ "material.bone.name": {
+  "nom": "кость",
+  "g": "f"
+ },
+ "material.bone.made": "костян{form:g|ой|ая|ое|ые} {form}",
+ "material.animal_fat.name": {
+  "nom": "жир",
+  "g": "m"
+ },
+ "material.animal_fat.made": "жиров{form:g|ой|ая|ое|ые} {form}",
+ "material.beeswax.name": {
+  "nom": "воск",
+  "g": "m"
+ },
+ "material.beeswax.made": "восков{form:g|ой|ая|ое|ые} {form}",
+ "material.wheat_grain.name": {
+  "nom": "пшеница",
+  "g": "f"
+ },
+ "material.wheat_grain.made": "пшеничн{form:g|ый|ая|ое|ые} {form}",
+ "material.barley_grain.name": {
+  "nom": "ячмень",
+  "g": "m"
+ },
+ "material.barley_grain.made": "ячменн{form:g|ый|ая|ое|ые} {form}",
+ "material.barley_malt.name": {
+  "nom": "солод",
+  "g": "m"
+ },
+ "material.barley_malt.made": "солодов{form:g|ый|ая|ое|ые} {form}",
+ "material.flour.name": {
+  "nom": "мука",
+  "g": "f"
+ },
+ "material.flour.made": "мучн{form:g|ой|ая|ое|ые} {form}",
+ "material.water.name": {
+  "nom": "вода",
+  "g": "f"
+ },
+ "material.water.made": "водян{form:g|ой|ая|ое|ые} {form}",
+ "material.yeast.name": {
+  "nom": "дрожжи",
+  "g": "pl"
+ },
+ "material.yeast.made": "дрожжев{form:g|ой|ая|ое|ые} {form}",
+ "material.honey.name": {
+  "nom": "мёд",
+  "g": "m"
+ },
+ "material.honey.made": "медов{form:g|ый|ая|ое|ые} {form}",
+ "material.meat_raw.name": {
+  "nom": "сырое мясо",
+  "g": "n"
+ },
+ "material.meat_raw.made": "мясн{form:g|ой|ая|ое|ые} {form}",
+ "material.egg.name": {
+  "nom": "яйцо",
+  "g": "n"
+ },
+ "material.egg.made": "яичн{form:g|ый|ая|ое|ые} {form}",
+ "material.milk.name": {
+  "nom": "молоко",
+  "g": "n"
+ },
+ "material.milk.made": "молочн{form:g|ый|ая|ое|ые} {form}",
+ "material.apple.name": {
+  "nom": "яблоко",
+  "g": "n"
+ },
+ "material.apple.made": "яблочн{form:g|ый|ая|ое|ые} {form}",
+ "material.berries.name": {
+  "nom": "ягоды",
+  "g": "pl"
+ },
+ "material.berries.made": "ягодн{form:g|ый|ая|ое|ые} {form}",
+ "material.mint.name": {
+  "nom": "мята",
+  "g": "f"
+ },
+ "material.mint.made": "мятн{form:g|ый|ая|ое|ые} {form}",
+ "material.nettle.name": {
+  "nom": "крапива",
+  "g": "f"
+ },
+ "material.nettle.made": "крапивн{form:g|ый|ая|ое|ые} {form}",
+ "material.poppy.name": {
+  "nom": "мак",
+  "g": "m"
+ },
+ "material.poppy.made": "маков{form:g|ый|ая|ое|ые} {form}",
+ "material.hemlock.name": {
+  "nom": "болиголов",
+  "g": "m"
+ },
+ "material.hemlock.made": "болиголовн{form:g|ый|ая|ое|ые} {form}",
+ "material.garlic.name": {
+  "nom": "чеснок",
+  "g": "m"
+ },
+ "material.garlic.made": "чесночн{form:g|ый|ая|ое|ые} {form}",
+ "material.alcohol.name": {
+  "nom": "хмельное",
+  "g": "n"
+ },
+ "material.alcohol.made": "хмельн{form:g|ой|ая|ое|ые} {form}",
+ "material.vinegar.name": {
+  "nom": "уксус",
+  "g": "m"
+ },
+ "material.vinegar.made": "уксусн{form:g|ый|ая|ое|ые} {form}",
+ "material.lye.name": {
+  "nom": "щёлок",
+  "g": "m"
+ },
+ "material.lye.made": "щелочн{form:g|ой|ая|ое|ые} {form}",
+ "material.soap.name": {
+  "nom": "мыло",
+  "g": "n"
+ },
+ "material.soap.made": "мыльн{form:g|ый|ая|ое|ые} {form}",
+ "material.mortar_lime.name": {
+  "nom": "известковый раствор",
+  "g": "m"
+ },
+ "material.mortar_lime.made": "известков{form:g|ый|ая|ое|ые} {form}",
+ "material.curd.name": {
+  "nom": "творог",
+  "g": "m"
+ },
+ "material.curd.made": "творожн{form:g|ый|ая|ое|ые} {form}",
+ "material.shards.name": {
+  "nom": "черепки",
+  "g": "pl"
+ },
+ "material.shards.made": "глинян{form:g|ый|ая|ое|ые} {form}",
+ "material.scrap.name": {
+  "nom": "лом",
+  "g": "m"
+ },
+ "material.scrap.made": "ломан{form:g|ый|ая|ое|ые} {form}",
+ "shape.lump.name": {
+  "nom": "кусок",
+  "g": "m"
+ },
+ "shape.powder.name": {
+  "nom": "порошок",
+  "g": "m"
+ },
+ "shape.liquid.name": {
+  "nom": "жидкость",
+  "g": "f"
+ },
+ "shape.scrap.name": {
+  "nom": "обломки",
+  "g": "pl"
+ },
+ "shape.log.name": {
+  "nom": "бревно",
+  "g": "n"
+ },
+ "shape.strip.name": {
+  "nom": "полоса",
+  "g": "f"
+ },
+ "shape.fiber_raw.name": {
+  "nom": "кудель",
+  "g": "f"
+ },
+ "shape.withy.name": {
+  "nom": "прут",
+  "g": "m"
+ },
+ "shape.hide.name": {
+  "nom": "шкура",
+  "g": "f"
+ },
+ "shape.bone.name": {
+  "nom": "кость",
+  "g": "f"
+ },
+ "shape.strand.name": {
+  "nom": "нить",
+  "g": "f"
+ },
+ "shape.cord.name": {
+  "nom": "шнур",
+  "g": "m"
+ },
+ "shape.rope.name": {
+  "nom": "верёвка",
+  "g": "f"
+ },
+ "shape.plank.name": {
+  "nom": "доска",
+  "g": "f"
+ },
+ "shape.beam.name": {
+  "nom": "брус",
+  "g": "m"
+ },
+ "shape.stave.name": {
+  "nom": "клёпка",
+  "g": "f"
+ },
+ "shape.handle.name": {
+  "nom": "рукоять",
+  "g": "f"
+ },
+ "shape.shaft.name": {
+  "nom": "древко",
+  "g": "n"
+ },
+ "shape.bow_stave.name": {
+  "nom": "лучное плечо",
+  "g": "n"
+ },
+ "shape.bowl_raw.name": {
+  "nom": "миска",
+  "g": "f"
+ },
+ "shape.vessel_raw.name": {
+  "nom": "сосуд",
+  "g": "m"
+ },
+ "shape.needle_blank.name": {
+  "nom": "заготовка иглы",
+  "g": "f"
+ },
+ "shape.bar.name": {
+  "nom": "брусок",
+  "g": "m"
+ },
+ "shape.bar_thin.name": {
+  "nom": "прут",
+  "g": "m"
+ },
+ "shape.wire.name": {
+  "nom": "проволока",
+  "g": "f"
+ },
+ "shape.nail.name": {
+  "nom": "гвоздь",
+  "g": "m"
+ },
+ "shape.rivet.name": {
+  "nom": "заклёпка",
+  "g": "f"
+ },
+ "shape.plate.name": {
+  "nom": "пластина",
+  "g": "f"
+ },
+ "shape.blank_blade.name": {
+  "nom": "заготовка клинка",
+  "g": "f"
+ },
+ "shape.blade.name": {
+  "nom": "клинок",
+  "g": "m"
+ },
+ "shape.blank_head.name": {
+  "nom": "навершие",
+  "g": "n"
+ },
+ "shape.sheet_metal.name": {
+  "nom": "лист",
+  "g": "m"
+ },
+ "shape.blank_helm.name": {
+  "nom": "колпак",
+  "g": "m"
+ },
+ "shape.ring_mail.name": {
+  "nom": "кольчужное полотно",
+  "g": "n"
+ },
+ "shape.cloth.name": {
+  "nom": "полотно",
+  "g": "n"
+ },
+ "shape.net.name": {
+  "nom": "сеть",
+  "g": "f"
+ },
+ "shape.basket_raw.name": {
+  "nom": "плетёнка",
+  "g": "f"
+ },
+ "shape.sheet.name": {
+  "nom": "лоскут",
+  "g": "m"
+ },
+ "shape.garment_raw.name": {
+  "nom": "одёжа",
+  "g": "f"
+ },
+ "shape.padded_raw.name": {
+  "nom": "стёганка",
+  "g": "f"
+ },
+ "shape.armor_raw.name": {
+  "nom": "нагрудник",
+  "g": "m"
+ },
+ "shape.pouch_raw.name": {
+  "nom": "мешочек",
+  "g": "m"
+ },
+ "shape.boot_raw.name": {
+  "nom": "обувка",
+  "g": "f"
+ },
+ "shape.brick_raw.name": {
+  "nom": "кирпич-сырец",
+  "g": "m"
+ },
+ "shape.tile_raw.name": {
+  "nom": "плитка",
+  "g": "f"
+ },
+ "shape.candle_raw.name": {
+  "nom": "свечка",
+  "g": "f"
+ },
+ "shape.cask_raw.name": {
+  "nom": "бадья",
+  "g": "f"
+ },
+ "shape.whet_blank.name": {
+  "nom": "брусок-точило",
+  "g": "m"
+ },
+ "shape.assembly.name": {
+  "nom": "изделие",
+  "g": "n"
+ },
+ "process.heat.name": {
+  "nom": "нагрев",
+  "g": "m"
+ },
+ "process.smelt.name": {
+  "nom": "плавка",
+  "g": "f"
+ },
+ "process.cut.name": {
+  "nom": "резка",
+  "g": "f"
+ },
+ "process.carve.name": {
+  "nom": "тесание",
+  "g": "n"
+ },
+ "process.knap.name": {
+  "nom": "оббивка",
+  "g": "f"
+ },
+ "process.hammer.name": {
+  "nom": "ковка",
+  "g": "f"
+ },
+ "process.quench.name": {
+  "nom": "закалка",
+  "g": "f"
+ },
+ "process.link.name": {
+  "nom": "плетение колец",
+  "g": "n"
+ },
+ "process.grind.name": {
+  "nom": "шлифовка",
+  "g": "f"
+ },
+ "process.mill.name": {
+  "nom": "помол",
+  "g": "m"
+ },
+ "process.soak.name": {
+  "nom": "замачивание",
+  "g": "n"
+ },
+ "process.dry.name": {
+  "nom": "сушка",
+  "g": "f"
+ },
+ "process.ferment.name": {
+  "nom": "брожение",
+  "g": "n"
+ },
+ "process.twist.name": {
+  "nom": "скручивание",
+  "g": "n"
+ },
+ "process.weave.name": {
+  "nom": "плетение",
+  "g": "n"
+ },
+ "process.sew.name": {
+  "nom": "шитьё",
+  "g": "n"
+ },
+ "process.join.name": {
+  "nom": "соединение",
+  "g": "n"
+ },
+ "process.mix.name": {
+  "nom": "смешивание",
+  "g": "n"
+ },
+ "process.mould.name": {
+  "nom": "лепка",
+  "g": "f"
+ },
+ "process.tan.name": {
+  "nom": "дубление",
+  "g": "n"
+ },
+ "process.alloy.name": {
+  "nom": "сплавление",
+  "g": "n"
+ },
+ "process.repair.name": {
+  "nom": "ремонт",
+  "g": "m"
+ },
+ "process.mode.roast.name": "жарить",
+ "process.mode.boil.name": "варить",
+ "process.mode.bake.name": "печь",
+ "process.mode.fire.name": "обжигать",
+ "process.mode.calcine.name": "прокаливать",
+ "process.mode.char.name": "томить без воздуха",
+ "process.mode.smoke.name": "коптить",
+ "process.mode.hone.name": "править",
+ "process.mode.polish.name": "полировать",
+ "process.mode.sharpen.name": "точить",
+ "process.mode.steep.name": "настаивать",
+ "process.mode.malt.name": "солодить",
+ "process.mode.ret.name": "мочить лыко",
+ "process.mode.brine.name": "солить",
+ "process.mode.brew.name": "варить пиво",
+ "process.mode.pickle.name": "квасить",
+ "process.mode.sour.name": "сквашивать",
+ "process.mode.knead.name": "месить",
+ "process.mode.grind_herbs.name": "растирать травы",
+ "process.mode.stir.name": "мешать",
+ "process.mode.patch.name": "латать",
+ "process.mode.rivet.name": "клепать",
+ "process.mode.straighten.name": "выправлять",
+ "form.dagger.name": {
+  "nom": "кинжал",
+  "g": "m"
+ },
+ "form.sword.name": {
+  "nom": "меч",
+  "g": "m"
+ },
+ "form.axe.name": {
+  "nom": "топор",
+  "g": "m"
+ },
+ "form.mace.name": {
+  "nom": "булава",
+  "g": "f"
+ },
+ "form.spear.name": {
+  "nom": "копьё",
+  "g": "n"
+ },
+ "form.club.name": {
+  "nom": "дубина",
+  "g": "f"
+ },
+ "form.short_bow.name": {
+  "nom": "короткий лук",
+  "g": "m"
+ },
+ "form.gambeson.name": {
+  "nom": "гамбезон",
+  "g": "m"
+ },
+ "form.leather_armor.name": {
+  "nom": "доспех",
+  "g": "m"
+ },
+ "form.mail_shirt.name": {
+  "nom": "кольчуга",
+  "g": "f"
+ },
+ "form.helmet.name": {
+  "nom": "шлем",
+  "g": "m"
+ },
+ "form.tunic.name": {
+  "nom": "туника",
+  "g": "f"
+ },
+ "form.cloak.name": {
+  "nom": "плащ",
+  "g": "m"
+ },
+ "form.boots.name": {
+  "nom": "сапоги",
+  "g": "pl"
+ },
+ "form.knife.name": {
+  "nom": "нож",
+  "g": "m"
+ },
+ "form.hammer_tool.name": {
+  "nom": "молот",
+  "g": "m"
+ },
+ "form.tongs.name": {
+  "nom": "клещи",
+  "g": "pl"
+ },
+ "form.saw.name": {
+  "nom": "пила",
+  "g": "f"
+ },
+ "form.whetstone.name": {
+  "nom": "точильный камень",
+  "g": "m"
+ },
+ "form.bone_needle.name": {
+  "nom": "игла",
+  "g": "f"
+ },
+ "form.clay_pot.name": {
+  "nom": "горшок",
+  "g": "m"
+ },
+ "form.bowl.name": {
+  "nom": "миска",
+  "g": "f"
+ },
+ "form.wooden_bucket.name": {
+  "nom": "ведро",
+  "g": "n"
+ },
+ "form.barrel.name": {
+  "nom": "бочка",
+  "g": "f"
+ },
+ "form.basket.name": {
+  "nom": "корзина",
+  "g": "f"
+ },
+ "form.pouch.name": {
+  "nom": "кошель",
+  "g": "m"
+ },
+ "form.cord.name": {
+  "nom": "шнур",
+  "g": "m"
+ },
+ "form.rope.name": {
+  "nom": "верёвка",
+  "g": "f"
+ },
+ "form.thread.name": {
+  "nom": "нить",
+  "g": "f"
+ },
+ "form.cloth.name": {
+  "nom": "ткань",
+  "g": "f"
+ },
+ "form.fishing_net.name": {
+  "nom": "рыболовная сеть",
+  "g": "f"
+ },
+ "form.leather_sheet.name": {
+  "nom": "кожаный лист",
+  "g": "m"
+ },
+ "form.plank.name": {
+  "nom": "доска",
+  "g": "f"
+ },
+ "form.beam.name": {
+  "nom": "брус",
+  "g": "m"
+ },
+ "form.brick.name": {
+  "nom": "кирпич",
+  "g": "m"
+ },
+ "form.roof_tile.name": {
+  "nom": "черепица",
+  "g": "f"
+ },
+ "form.mortar_lime.name": {
+  "nom": "известковый раствор",
+  "g": "m"
+ },
+ "form.bread.name": {
+  "nom": "хлеб",
+  "g": "m"
+ },
+ "form.stew.name": {
+  "nom": "рагу",
+  "g": "n"
+ },
+ "form.roast_meat.name": {
+  "nom": "жаркое",
+  "g": "n"
+ },
+ "form.ale.name": {
+  "nom": "эль",
+  "g": "m"
+ },
+ "form.mead.name": {
+  "nom": "медовуха",
+  "g": "f"
+ },
+ "form.cider.name": {
+  "nom": "сидр",
+  "g": "m"
+ },
+ "form.herbal_tea.name": {
+  "nom": "травяной чай",
+  "g": "m"
+ },
+ "form.cheese.name": {
+  "nom": "сыр",
+  "g": "m"
+ },
+ "form.poultice.name": {
+  "nom": "припарка",
+  "g": "f"
+ },
+ "form.healing_draught.name": {
+  "nom": "целебное снадобье",
+  "g": "n"
+ },
+ "form.poison.name": {
+  "nom": "яд",
+  "g": "m"
+ },
+ "form.tincture.name": {
+  "nom": "настойка",
+  "g": "f"
+ },
+ "form.soap.name": {
+  "nom": "мыло",
+  "g": "n"
+ },
+ "form.candle.name": {
+  "nom": "свеча",
+  "g": "f"
+ },
+ "form.torch.name": {
+  "nom": "факел",
+  "g": "m"
+ },
+ "form.improvised_blade.name": {
+  "nom": "что-то режущее",
+  "g": "n"
+ },
+ "form.improvised_club.name": {
+  "nom": "что-то тяжёлое",
+  "g": "n"
+ },
+ "form.improvised_vessel.name": {
+  "nom": "что-то вмещающее",
+  "g": "n"
+ },
+ "form.improvised_food.name": {
+  "nom": "что-то съедобное",
+  "g": "n"
+ },
+ "form.improvised_drink.name": {
+  "nom": "что-то питьевое",
+  "g": "n"
+ },
+ "form.improvised_thing.name": {
+  "nom": "самоделка",
+  "g": "f"
+ },
+ "flaw.crack.name": {
+  "nom": "трещина",
+  "g": "f"
+ },
+ "flaw.brittle.name": {
+  "nom": "хрупкость",
+  "g": "f"
+ },
+ "flaw.uneven.name": {
+  "nom": "неровность",
+  "g": "f"
+ },
+ "flaw.impure.name": {
+  "nom": "примеси",
+  "g": "pl"
+ },
+ "flaw.damp.name": {
+  "nom": "сырость",
+  "g": "f"
+ },
+ "flaw.burnt.name": {
+  "nom": "пригорелость",
+  "g": "f"
+ },
+ "flaw.raw.name": {
+  "nom": "недоготовленность",
+  "g": "f"
+ },
+ "flaw.loose_joint.name": {
+  "nom": "слабое крепление",
+  "g": "f"
+ },
+ "flaw.rot.name": {
+  "nom": "гниль",
+  "g": "f"
+ },
+ "flaw.tainted.name": {
+  "nom": "порча",
+  "g": "f"
+ },
+ "station.campfire.name": {
+  "nom": "костёр",
+  "g": "m"
+ },
+ "station.hearth.name": {
+  "nom": "очаг",
+  "g": "m"
+ },
+ "station.oven.name": {
+  "nom": "печь",
+  "g": "f"
+ },
+ "station.forge.name": {
+  "nom": "горн",
+  "g": "m"
+ },
+ "station.furnace.name": {
+  "nom": "плавильная печь",
+  "g": "f"
+ },
+ "station.anvil.name": {
+  "nom": "наковальня",
+  "g": "f"
+ },
+ "station.quench_tub.name": {
+  "nom": "закалочная кадка",
+  "g": "f"
+ },
+ "station.grindstone.name": {
+  "nom": "точило",
+  "g": "n"
+ },
+ "station.bench.name": {
+  "nom": "верстак",
+  "g": "m"
+ },
+ "station.loom.name": {
+  "nom": "ткацкий стан",
+  "g": "m"
+ },
+ "station.frame.name": {
+  "nom": "рама для плетения",
+  "g": "f"
+ },
+ "station.wheel.name": {
+  "nom": "гончарный круг",
+  "g": "m"
+ },
+ "station.tub.name": {
+  "nom": "лохань",
+  "g": "f"
+ },
+ "station.pot.name": {
+  "nom": "котёл",
+  "g": "m"
+ },
+ "station.vat.name": {
+  "nom": "чан",
+  "g": "m"
+ },
+ "station.jar.name": {
+  "nom": "корчага",
+  "g": "f"
+ },
+ "station.barrel.name": {
+  "nom": "бочка",
+  "g": "f"
+ },
+ "station.rack.name": {
+  "nom": "сушильня",
+  "g": "f"
+ },
+ "station.mortar.name": {
+  "nom": "ступка",
+  "g": "f"
+ },
+ "station.tanning_pit.name": {
+  "nom": "дубильная яма",
+  "g": "f"
+ },
+ "station.quern.name": {
+  "nom": "жернова",
+  "g": "pl"
+ },
+ "object.forge.name": {
+  "nom": "горн",
+  "g": "m"
+ },
+ "object.furnace.name": {
+  "nom": "плавильная печь",
+  "g": "f"
+ },
+ "object.anvil.name": {
+  "nom": "наковальня",
+  "g": "f"
+ },
+ "object.quench_tub.name": {
+  "nom": "закалочная кадка",
+  "g": "f"
+ },
+ "object.grindstone.name": {
+  "nom": "точило",
+  "g": "n"
+ },
+ "object.workbench.name": {
+  "nom": "верстак",
+  "g": "m"
+ },
+ "object.loom_frame.name": {
+  "nom": "ткацкий стан",
+  "g": "m"
+ },
+ "object.weaving_frame.name": {
+  "nom": "рама для плетения",
+  "g": "f"
+ },
+ "object.potter_wheel.name": {
+  "nom": "гончарный круг",
+  "g": "m"
+ },
+ "object.wash_tub.name": {
+  "nom": "лохань",
+  "g": "f"
+ },
+ "object.cook_pot.name": {
+  "nom": "котёл",
+  "g": "m"
+ },
+ "object.brewing_vat.name": {
+  "nom": "чан",
+  "g": "m"
+ },
+ "object.storage_jar.name": {
+  "nom": "корчага",
+  "g": "f"
+ },
+ "object.barrel_stand.name": {
+  "nom": "бочка",
+  "g": "f"
+ },
+ "object.drying_rack.name": {
+  "nom": "сушильня",
+  "g": "f"
+ },
+ "object.mortar.name": {
+  "nom": "ступка",
+  "g": "f"
+ },
+ "object.quern.name": {
+  "nom": "жернова",
+  "g": "pl"
+ },
+ "object.tanning_pit.name": {
+  "nom": "дубильная яма",
+  "g": "f"
+ },
+ "object.oven.name": {
+  "nom": "печь",
+  "g": "f"
+ },
+ "craft.tier.crude": "грубая работа",
+ "craft.tier.common": "обычная работа",
+ "craft.tier.good": "добротная работа",
+ "craft.tier.masterwork": "мастерская работа",
+ "craft.outcome.catastrophe": "беда",
+ "craft.outcome.ruined": "испорчено",
+ "craft.outcome.flawed": "с изъяном",
+ "craft.outcome.ok": "получилось",
+ "craft.outcome.good": "хорошо вышло",
+ "craft.outcome.masterwork": "образцово",
+ "craft.reason.unknown_process": "так не делают",
+ "craft.reason.missing_input": "не хватает: {slot}",
+ "craft.reason.too_many": "слишком много: {slot}",
+ "craft.reason.wrong_input": "сюда не годится: {slot}",
+ "craft.reason.unknown_slot": "лишнее: {slot}",
+ "craft.reason.no_tool": "нужен инструмент: {tool}",
+ "craft.reason.tool_too_soft": "инструмент слишком мягкий: {tool}",
+ "craft.reason.no_station": "нужно место: {station}",
+ "craft.reason.station_needs": "станции не хватает: {need}",
+ "craft.reason.too_cold": "мало жара, нужна ступень {level}",
+ "craft.reason.bad_mode": "так это не делают: {mode}",
+ "craft.reason.bad_target": "так не выйдет: {shape}",
+ "craft.reason.too_many_parts": "слишком много деталей",
+ "craft.stop.missing": "остановился: не хватает {what}",
+ "craft.stop.cannot_start": "остановился: {why}",
+ "craft.stop.ruined": "остановился: работа испорчена",
+ "craft.stop.hurt": "остановился: поранился",
+ "craft.stop.too_long": "слишком длинная цепочка: {stages} стадий",
+ "craft.stop.unknown_step": "в записи пусто",
+ "craft.stop.done": "готово",
+ "craft.unknown": "не знаю, что выйдет",
+ "craft.likely": "скорее всего выйдет: {form}",
+ "craft.hidden_flaw": "что-то не так",
+ "interaction.craft:dagger.name": "сделать: кинжал",
+ "interaction.craft:sword.name": "сделать: меч",
+ "interaction.craft:axe.name": "сделать: топор",
+ "interaction.craft:mace.name": "сделать: булава",
+ "interaction.craft:spear.name": "сделать: копьё",
+ "interaction.craft:club.name": "сделать: дубина",
+ "interaction.craft:short_bow.name": "сделать: короткий лук",
+ "interaction.craft:gambeson.name": "сделать: гамбезон",
+ "interaction.craft:leather_armor.name": "сделать: доспех",
+ "interaction.craft:mail_shirt.name": "сделать: кольчуга",
+ "interaction.craft:helmet.name": "сделать: шлем",
+ "interaction.craft:tunic.name": "сделать: туника",
+ "interaction.craft:cloak.name": "сделать: плащ",
+ "interaction.craft:boots.name": "сделать: сапоги",
+ "interaction.craft:knife.name": "сделать: нож",
+ "interaction.craft:hammer_tool.name": "сделать: молот",
+ "interaction.craft:tongs.name": "сделать: клещи",
+ "interaction.craft:saw.name": "сделать: пила",
+ "interaction.craft:whetstone.name": "сделать: точильный камень",
+ "interaction.craft:bone_needle.name": "сделать: игла",
+ "interaction.craft:clay_pot.name": "сделать: горшок",
+ "interaction.craft:bowl.name": "сделать: миска",
+ "interaction.craft:wooden_bucket.name": "сделать: ведро",
+ "interaction.craft:barrel.name": "сделать: бочка",
+ "interaction.craft:basket.name": "сделать: корзина",
+ "interaction.craft:pouch.name": "сделать: кошель",
+ "interaction.craft:cord.name": "сделать: шнур",
+ "interaction.craft:rope.name": "сделать: верёвка",
+ "interaction.craft:thread.name": "сделать: нить",
+ "interaction.craft:cloth.name": "сделать: ткань",
+ "interaction.craft:fishing_net.name": "сделать: рыболовная сеть",
+ "interaction.craft:leather_sheet.name": "сделать: кожаный лист",
+ "interaction.craft:plank.name": "сделать: доска",
+ "interaction.craft:beam.name": "сделать: брус",
+ "interaction.craft:brick.name": "сделать: кирпич",
+ "interaction.craft:roof_tile.name": "сделать: черепица",
+ "interaction.craft:mortar_lime.name": "сделать: известковый раствор",
+ "interaction.craft:bread.name": "сделать: хлеб",
+ "interaction.craft:stew.name": "сделать: рагу",
+ "interaction.craft:roast_meat.name": "сделать: жаркое",
+ "interaction.craft:ale.name": "сделать: эль",
+ "interaction.craft:mead.name": "сделать: медовуха",
+ "interaction.craft:cider.name": "сделать: сидр",
+ "interaction.craft:herbal_tea.name": "сделать: травяной чай",
+ "interaction.craft:cheese.name": "сделать: сыр",
+ "interaction.craft:poultice.name": "сделать: припарка",
+ "interaction.craft:healing_draught.name": "сделать: целебное снадобье",
+ "interaction.craft:poison.name": "сделать: яд",
+ "interaction.craft:tincture.name": "сделать: настойка",
+ "interaction.craft:soap.name": "сделать: мыло",
+ "interaction.craft:candle.name": "сделать: свеча",
+ "interaction.craft:torch.name": "сделать: факел"
+}

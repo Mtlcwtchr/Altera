@@ -1,0 +1,35 @@
+{
+ "_doc": "Functions of a made thing (gdd crafting v0.2 §5, §16.2), craft-expr evaluated in order (a function may read the ones above it). Names: properties of the whole (blended over parts), <role>.<property> / <role>.len of a part (blade, head, handle, shaft, stave, string, binder, body), shape.<v> of the item's shape, len, thick, q, joint, solo (1 = a single piece), liquid (1 = a liquid), wear. Calls: has(role), count(role) (parts of an assembly), role(r) (a single piece of that role), mass(role), mass(), flaw(id), state(id), tag(t), eff(effect). blend: how a property of a mixture or an assembly comes from its inputs (avg_mass | max | min | sum_cap | product). effect_rules: stack (sum), dominant (strongest wins), cancel (pairs eat each other). Flaw mods multiply properties before and functions after. See doc/design/CRAFT_EXPR.md.",
+ "functions": [
+  {"id": "edge", "f": "clamp(max(blade.edge*(0.6+0.4*blade.hardness), head.edge*(0.6+0.4*head.hardness), solo*edge*(0.6+0.4*hardness)), 0, 1)"},
+  {"id": "blunt", "f": "clamp(0.5*mass(head)*head.hardness + 0.15*mass()*hardness, 0, 1)"},
+  {"id": "reach", "f": "clamp(floor((blade.len + head.len + handle.len + shaft.len + solo*len) / 2), 1, 3)"},
+  {"id": "grip", "f": "clamp(max(has(handle)*(0.3+0.7*handle.toughness)*joint, has(shaft)*(0.2+0.6*shaft.toughness)*joint, solo*role(handle)*(0.3+0.7*toughness), solo*role(shaft)*(0.2+0.6*toughness), shape.grip*(0.5+0.5*toughness)), 0, 1)"},
+  {"id": "head_ratio", "f": "(mass(head) + mass(blade)) / max(mass(), 0.01)"},
+  {"id": "balance", "f": "clamp(1 - abs(head_ratio - 0.65)*1.5, 0, 1)"},
+  {"id": "capacity", "f": "clamp(shape.capacity*len/2, 0, 1)"},
+  {"id": "waterproof", "f": "clamp(max(1 - porous + 0.6*state(glazed), waterproof), 0, 1)"},
+  {"id": "warmth", "f": "clamp(warmth*(0.6+0.2*thick), 0, 1)"},
+  {"id": "cover", "f": "clamp(shape.cover*(0.6+0.4*toughness), 0, 1)"},
+  {"id": "bind", "f": "clamp(max(string.fiber*(0.5+0.5*string.toughness)*string.len/2, solo*fiber*(0.5+0.5*toughness)*len/2), 0, 1)"},
+  {"id": "flexion", "f": "clamp((has(stave) ? stave.flex : flex)*(1 - 0.5*flaw(brittle)), 0, 1)"},
+  {"id": "fuel", "f": "clamp(flammable*(0.4 + 0.6*min(1, mass()/2)), 0, 1)"},
+  {"id": "safe", "f": "clamp(1 - toxic - 0.5*flaw(rot) - 0.3*flaw(raw) - eff(poison), 0, 1)"},
+  {"id": "taste", "f": "clamp(0.4 + 0.3*min(1, eff(sweet) + eff(salty) + eff(umami) + eff(rich) + eff(fresh) + 0.5*eff(sour) + eff(warm)) - 0.4*max(0, eff(bitter) - 0.3) - 0.3*eff(caustic), 0, 1)"},
+  {"id": "food", "f": "(tag(food) or tag(curd)) ? clamp(nutrition*safe*(0.5 + 0.5*taste), 0, 1) : 0"},
+  {"id": "drink", "f": "liquid ? clamp(taste*safe, 0, 1) : 0"},
+  {"id": "light", "f": "clamp(flammable*((tag(wax) or tag(fat) or tag(sap)) ? 1 : 0)*(has(string) ? 1 : 0.7), 0, 1)"},
+  {"id": "joint_strength", "f": "solo ? 1 : joint"}
+ ],
+ "blend": {
+  "hardness": "avg_mass", "toughness": "avg_mass", "density": "avg_mass", "flex": "avg_mass", "edge": "max",
+  "melt": "min", "flammable": "max", "porous": "avg_mass", "fiber": "avg_mass", "moisture": "avg_mass",
+  "purity": "min", "nutrition": "sum_cap", "sugar": "sum_cap", "toxic": "max", "tacky": "max", "workable": "avg_mass",
+  "warmth": "avg_mass", "cover": "max", "waterproof": "max"
+ },
+ "effect_rules": {
+  "stack": ["pain_relief", "sweet", "sour", "salty", "umami", "bitter", "fresh", "pungent", "tonic", "digestive", "rich", "antiseptic", "preserves", "warm", "sting"],
+  "dominant": ["poison", "sedative", "caustic", "alkaline"],
+  "cancel": [["sedative", "tonic"], ["sweet", "bitter"]]
+ }
+}

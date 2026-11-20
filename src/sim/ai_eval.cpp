@@ -659,7 +659,9 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
         received = success = r.uniform() < receptionChance(w, *tr, c, d, *targetChar, tone);
     }
     const std::vector<EntityId> wit = witnessesOf(w, c, d, targetChar);
-    applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar, &wit);
+    // a crafting act's eff is what the planner expects; the resolver decides
+    // what really comes of it (craftAct, called by the FSM with the step's params)
+    if (d.craft.empty()) applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar, &wit);
     if (!tone.empty() && tr) {
         const ToneDef& td = tr->tones.at(tone);
         applyEffectList(w, c, success ? td.eff : td.onFail, target, targetChar, &wit);

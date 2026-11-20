@@ -1,0 +1,115 @@
+{
+ "_doc": "Crafting numbers (gdd crafting v0.2 §4.4, §6, §17, §18): outcome thresholds on the margin m = competence - difficulty (+ noise), quality q_step = clamp(0.5 + k*m + noise), weights of tool/station/material knowledge/traits, quality tiers, recognition (tau, falloff of a numeric condition, improvised_min, effect_present), salvage share, experience, recipe book and breakthroughs; traits: per-trait modifiers (quality, speed, risk, xp, breakthrough).",
+ "outcome": {
+  "k": 1.2,
+  "noise": 0.15,
+  "thresholds": {
+   "catastrophe": -0.45,
+   "flawed": -0.15,
+   "ok": 0.1,
+   "good": 0.3,
+   "masterwork": 0.55
+  }
+ },
+ "weights": {
+  "tool": 0.15,
+  "station": 0.15,
+  "material_knowledge": 0.15,
+  "trait": 0.1,
+  "repeat_bonus": 0.1
+ },
+ "quality_tiers": {
+  "crude": 0.3,
+  "good": 0.6,
+  "masterwork": 0.85
+ },
+ "form_match": {
+  "tau": 0.6,
+  "falloff": 0.25,
+  "improvised_min": 0.25,
+  "effect_present": 0.08
+ },
+ "salvage": {
+  "min": 0.3,
+  "max": 0.6
+ },
+ "xp": {
+  "rate": 0.0008,
+  "challenge_window": 0.25,
+  "fail_ratio": 0.4,
+  "know_gain": 0.05
+ },
+ "recipe_book": {
+  "master_threshold": 0.85,
+  "master_successes": 5,
+  "fast_craft_max_stages": 12,
+  "forget": "none",
+  "fragments_per_success": 1,
+  "mastery_per_success": 0.12,
+  "teach_share": 0.8
+ },
+ "breakthrough": {
+  "base_expert": 0.015,
+  "base_novice": 0.001,
+  "cap": 0.05,
+  "cooldown_days": 14,
+  "novelty_boost": 2.0,
+  "on_hit": {
+   "q_bonus": 0.1,
+   "chain_shortcut": true,
+   "memory": "breakthrough",
+   "moodlet": "insight"
+  }
+ },
+ "heat": {
+  "levels": {
+   "0": 0,
+   "1": 150,
+   "2": 700,
+   "3": 1100,
+   "4": 1400
+  }
+ },
+ "limits": {
+  "max_inputs_per_step": 6,
+  "max_parts_per_item": 8,
+  "cache_ticks": 1
+ },
+ "novice_skill": 0.05,
+ "bare_tool_quality": 0.3,
+ "dry_below": 0.15,
+ "traits": {
+  "fastidious": {
+   "quality": 0.05,
+   "speed": -0.2,
+   "risk": -0.3
+  },
+  "handy": {
+   "quality": 0.06,
+   "xp": 0.1
+  },
+  "slob": {
+   "quality": -0.04,
+   "risk": 0.3
+  },
+  "fickle": {
+   "speed": 0.15,
+   "risk": 0.3,
+   "quality": -0.02
+  },
+  "curious": {
+   "xp": 0.3,
+   "breakthrough": 0.8
+  },
+  "lazy": {
+   "quality": -0.03,
+   "speed": -0.15
+  },
+  "diligent": {
+   "quality": 0.04
+  },
+  "stubborn": {
+   "breakthrough": -0.3
+  }
+ }
+}

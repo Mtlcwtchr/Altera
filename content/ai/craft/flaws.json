@@ -1,0 +1,102 @@
+{
+ "_doc": "Flaws (gdd crafting v0.2 §6). visible=false: hidden until inspected or used. fix: the process that can remove it (processes[].fixes). mods: multipliers of properties (before functions) or of functions (after); joint multiplies the assembly's joint. salvage: material a ruined piece with this flaw leaves.",
+ "flaws": [
+  {
+   "id": "crack",
+   "visible": false,
+   "fix": "rework",
+   "mods": {
+    "toughness": 0.7,
+    "waterproof": 0.5
+   },
+   "salvage": "scrap"
+  },
+  {
+   "id": "brittle",
+   "visible": false,
+   "fix": "rework",
+   "mods": {
+    "toughness": 0.6
+   },
+   "salvage": "scrap"
+  },
+  {
+   "id": "uneven",
+   "visible": true,
+   "fix": "grind",
+   "mods": {
+    "balance": 0.8,
+    "edge": 0.9
+   },
+   "salvage": null
+  },
+  {
+   "id": "impure",
+   "visible": false,
+   "fix": "rework",
+   "mods": {
+    "purity": 0.7,
+    "hardness": 0.9
+   },
+   "salvage": "scrap"
+  },
+  {
+   "id": "damp",
+   "visible": true,
+   "fix": "dry",
+   "mods": {
+    "flammable": 0.6
+   },
+   "salvage": null
+  },
+  {
+   "id": "burnt",
+   "visible": true,
+   "fix": null,
+   "mods": {
+    "nutrition": 0.5,
+    "taste": 0.4
+   },
+   "salvage": "wood_ash"
+  },
+  {
+   "id": "raw",
+   "visible": true,
+   "fix": "heat",
+   "mods": {
+    "safe": 0.6
+   },
+   "salvage": null
+  },
+  {
+   "id": "loose_joint",
+   "visible": false,
+   "fix": "join",
+   "mods": {
+    "joint": 0.5
+   },
+   "salvage": null
+  },
+  {
+   "id": "rot",
+   "visible": true,
+   "fix": null,
+   "mods": {
+    "safe": 0.2,
+    "nutrition": 0.4,
+    "toughness": 0.5
+   },
+   "salvage": null
+  },
+  {
+   "id": "tainted",
+   "visible": false,
+   "fix": null,
+   "mods": {
+    "safe": 0.4,
+    "taste": 0.5
+   },
+   "salvage": null
+  }
+ ]
+}

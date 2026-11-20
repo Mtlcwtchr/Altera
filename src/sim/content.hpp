@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "sim/core.hpp"
+#include "sim/craft/craft_data.hpp"
 #include "sim/rules.hpp"
 
 namespace altera::sim {
@@ -18,6 +19,7 @@ struct ItemDef {
     double warmth = 0.0;    // clothing: slows warmth decay while carried (needs.clothing_mult)
     double toolWear = 0.0;  // chance per use that the tool breaks (stage 2)
     double spoilDays = 0.0; // 0 = keeps
+    std::string material;   // crafting material it is (content/ai/craft/materials.json); empty = none
 };
 
 // objects.json `crop`: a field sown from `seed` in a day-of-year window,
@@ -94,6 +96,7 @@ struct CareDef {
 
 struct ObjectDef {
     std::string id;
+    std::string station; // crafting station it is (content/ai/craft/stations.json); empty = none
     bool hasCrop = false;
     CropDef crop;
     std::map<std::string, int> stock;
@@ -330,6 +333,7 @@ struct InteractionDef {
     CombatDef combat;
     TermsDef terms;
     double rangeM = -1.0;          // reach of the act (spear throw, line); <0 = config.interaction_range_m
+    std::string craft;             // resolved by the crafting resolver (craft_sim.hpp): design:<id> | recipe | attempt | inspect | teach | repair
     bool targetsObject() const { return target.rfind("object:", 0) == 0; }
     // creature:<species> - an animal group (a Character with that species)
     bool targetsCreature() const { return target.rfind("creature:", 0) == 0; }
@@ -430,6 +434,7 @@ struct Content {
     std::map<std::string, SpeciesDef> species;
     ClimateDef climate;
     CareDef care;
+    craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)
     const SpeciesDef* speciesOf(const std::string& id) const {
         auto it = species.find(id);
         return it == species.end() ? nullptr : &it->second;
