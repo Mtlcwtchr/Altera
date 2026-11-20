@@ -1,0 +1,216 @@
+{
+ "_doc": "Модули стройки (gdd/blueprints/ALTERA_BLUEPRINTS_SPEC_v0.2 §1-2, как в Valheim): сетка клеток cell_m x cell_m, ярусы storey_m. slot: cell (фундамент, пол), roof (объём клетки: скат), edge (ребро яруса: стена, щипец), corner (угол: столб). Устойчивость = лучшая опора x carry, земля даёт 1; ниже min_stability деталь не держится. Скат крутой: подъём на ярус (3 м) за клетку (2 м), на широком доме верхние скаты лежат на нижних. cost — что принести на стройку (build_site), work — сколько актов construct_piece. Меш = id в buildings.astm (tools/game_assets/bake_buildings.py).",
+ "cell_m": 2.0,
+ "storey_m": 3.0,
+ "min_stability": 0.2,
+ "max_per_family": 400,
+ "pieces": [
+  {
+   "id": "foundation_stone",
+   "slot": "cell",
+   "category": "foundation",
+   "material": "rubble_stone",
+   "cost": {
+    "stone": 8
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "floor_plank",
+   "slot": "cell",
+   "category": "floor",
+   "material": "plank",
+   "cost": {
+    "log": 2
+   },
+   "work": 2,
+   "carry": 0.8
+  },
+  {
+   "id": "wall_log",
+   "slot": "edge",
+   "category": "wall",
+   "material": "log",
+   "cost": {
+    "log": 4
+   },
+   "work": 3,
+   "carry": 0.85
+  },
+  {
+   "id": "wall_door_log",
+   "slot": "edge",
+   "category": "wall",
+   "material": "log",
+   "cost": {
+    "log": 2,
+    "branch": 4
+   },
+   "work": 3,
+   "carry": 0.8,
+   "door": true
+  },
+  {
+   "id": "wall_window_log",
+   "slot": "edge",
+   "category": "wall",
+   "material": "log",
+   "cost": {
+    "log": 4
+   },
+   "work": 3,
+   "carry": 0.8
+  },
+  {
+   "id": "wall_daub",
+   "slot": "edge",
+   "category": "wall",
+   "material": "wattle_daub",
+   "cost": {
+    "branch": 8,
+    "clay": 3
+   },
+   "work": 3,
+   "carry": 0.7
+  },
+  {
+   "id": "wall_door_daub",
+   "slot": "edge",
+   "category": "wall",
+   "material": "wattle_daub",
+   "cost": {
+    "branch": 4,
+    "clay": 3,
+    "log": 2
+   },
+   "work": 3,
+   "carry": 0.65,
+   "door": true
+  },
+  {
+   "id": "wall_window_daub",
+   "slot": "edge",
+   "category": "wall",
+   "material": "wattle_daub",
+   "cost": {
+    "branch": 8,
+    "clay": 3
+   },
+   "work": 3,
+   "carry": 0.65
+  },
+  {
+   "id": "wall_stone",
+   "slot": "edge",
+   "category": "wall",
+   "material": "rubble_stone",
+   "cost": {
+    "stone": 8,
+    "clay": 3
+   },
+   "work": 4,
+   "carry": 0.95
+  },
+  {
+   "id": "wall_door_stone",
+   "slot": "edge",
+   "category": "wall",
+   "material": "rubble_stone",
+   "cost": {
+    "stone": 8,
+    "log": 2
+   },
+   "work": 4,
+   "carry": 0.9,
+   "door": true
+  },
+  {
+   "id": "wall_window_stone",
+   "slot": "edge",
+   "category": "wall",
+   "material": "rubble_stone",
+   "cost": {
+    "stone": 8,
+    "clay": 3
+   },
+   "work": 4,
+   "carry": 0.9
+  },
+  {
+   "id": "gable_log",
+   "slot": "edge",
+   "category": "gable",
+   "material": "log",
+   "cost": {
+    "log": 2
+   },
+   "work": 2,
+   "carry": 0.7,
+   "mirror": true
+  },
+  {
+   "id": "gable_daub",
+   "slot": "edge",
+   "category": "gable",
+   "material": "wattle_daub",
+   "cost": {
+    "branch": 4,
+    "clay": 3
+   },
+   "work": 2,
+   "carry": 0.6,
+   "mirror": true
+  },
+  {
+   "id": "gable_stone",
+   "slot": "edge",
+   "category": "gable",
+   "material": "rubble_stone",
+   "cost": {
+    "stone": 4,
+    "clay": 3
+   },
+   "work": 2,
+   "carry": 0.8,
+   "mirror": true
+  },
+  {
+   "id": "pillar_log",
+   "slot": "corner",
+   "category": "pillar",
+   "material": "log",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 0.9
+  },
+  {
+   "id": "roof_thatch",
+   "slot": "roof",
+   "category": "roof",
+   "material": "thatch",
+   "cost": {
+    "thatch": 2,
+    "branch": 4
+   },
+   "work": 2,
+   "carry": 0.6,
+   "shelter": true
+  },
+  {
+   "id": "roof_shingle",
+   "slot": "roof",
+   "category": "roof",
+   "material": "shingle",
+   "cost": {
+    "log": 2,
+    "branch": 4
+   },
+   "work": 3,
+   "carry": 0.65,
+   "shelter": true
+  }
+ ]
+}

@@ -604,8 +604,10 @@ struct Lab {
         }
         std::printf("river graph on the GPU: %.1f MB, %u tiles a side, longest tile list %u\n",
                     double(rivers.gpuBytes()) / (1 << 20), rivers.tilesPerSide(), rivers.longestList());
-        riverSegments.clear();
-        riverSegments.shrink_to_fit();
+        if (!options.game) {   // the game reads the rivers into the sim's map
+            riverSegments.clear();
+            riverSegments.shrink_to_fit();
+        }
         renderer.setRivers(&rivers);
         {
             // The fine relief beside an imported world's heightmap (a marsh
@@ -1502,6 +1504,7 @@ int main(int argc, char** argv) {
             go.seed = options.gameSeed;
             go.season = options.gameSeason;
             go.biomes = &lab.biomes;
+            go.rivers = &lab.riverSegments;
 #ifdef ALTERA_SOURCE_DIR
             go.root = ALTERA_SOURCE_DIR;
 #else

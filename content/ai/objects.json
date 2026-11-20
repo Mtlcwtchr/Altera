@@ -503,6 +503,19 @@
   {"id": "mortar", "settlement": true, "station": "mortar", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
   {"id": "quern", "settlement": true, "station": "quern", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
   {"id": "tanning_pit", "settlement": true, "station": "tanning_pit", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
-  {"id": "oven", "settlement": true, "station": "oven", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"}
+  {"id": "oven", "settlement": true, "station": "oven", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {
+   "id": "build_site",
+   "owned": true,
+   "_doc": "запланированная деталь постройки (build.json): в stock — сколько чего ещё принести; ставится командой place_piece, уходит из мира, когда деталь поставлена",
+   "_part": "build"
+  },
+  {
+   "id": "roof_piece",
+   "owned": true,
+   "shelter": true,
+   "_doc": "поставленный скат крыши: под ним кров (needs.sheltered_mult)",
+   "_part": "build"
+  }
  ]
 }

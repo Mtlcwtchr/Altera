@@ -761,6 +761,33 @@ CareDef parseCare(const Json& j, std::vector<std::string>& W) {
     return d;
 }
 
+BuildCatalog parseBuild(const Json& j) {
+    BuildCatalog b;
+    if (!j.is_object()) return b;
+    b.cellM = j.value("cell_m", b.cellM);
+    b.storeyM = j.value("storey_m", b.storeyM);
+    b.minStability = j.value("min_stability", b.minStability);
+    b.maxPerFamily = j.value("max_per_family", b.maxPerFamily);
+    const Json list = j.value("pieces", Json::array());
+    for (const auto& p : list) {
+        BuildPieceDef d;
+        d.id = p.at("id").get<std::string>();
+        d.slot = p.at("slot").get<std::string>();
+        d.category = p.at("category").get<std::string>();
+        d.material = p.value("material", std::string());
+        d.mesh = p.value("mesh", d.id);
+        if (p.contains("cost"))
+            for (const auto& [k, v] : p["cost"].items()) d.cost[k] = v.get<int>();
+        d.work = std::max(1, p.value("work", 1));
+        d.carry = p.value("carry", d.carry);
+        d.shelter = p.value("shelter", false);
+        d.mirror = p.value("mirror", false);
+        d.door = p.value("door", false);
+        b.pieces.push_back(std::move(d));
+    }
+    return b;
+}
+
 Content Content::load(const std::string& dir) {
     auto f = [&](const char* name) {
         std::ifstream probe(dir + "/" + name);
@@ -774,6 +801,7 @@ Content Content::load(const std::string& dir) {
     c.craft = craft::CraftData::load(dir + "/craft");
     if (c.craft.loaded && c.craft.cfg.goapDesigns)
         for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
+    c.build = parseBuild(f("build.json"));
     c.dir = dir;
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);

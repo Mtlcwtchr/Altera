@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "sim/ai.hpp"
+#include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/group_combat.hpp"
@@ -63,6 +64,8 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
     if (const std::string crop = cropSubjectType(x.w.content(), s); !crop.empty())
         return farmValue(x.w, c, x.target, k.key, crop);
     if (s == "care") return careValue(x.w, c, k.key);
+    if (s == "site") return siteValue(x.w, c, x.target, k.key);
+    if (s == "build") return buildValue(x.w, c, k.key);
     if (s == "charity") return charityValue(x.w, c, x.targetChar, k.key);
     if (s == "target_owner") {
         const std::string r = ownerRelation(c, x.target, x.targetChar);
@@ -578,6 +581,8 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             if (targetChar) addRel(*targetChar, actor.id, e);
         } else if (s == "death") {
             kill(w, c, e.key);
+        } else if (s == "site") {
+            if (target) siteEffect(w, c, *target, e.key);
         } else if (s == "captivity") {
             // captivity:take - the actor holds the target (captivity.json); captivity:release - lets go.
             if (targetChar && e.key == "take") takeCaptive(w, actor, *targetChar);
@@ -731,7 +736,8 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
         const EvalCtx x{w, c, o, nullptr};
         bool ok = true;
         for (const auto& k : d.pre) {
-            if (k.subject != "target_stock" && k.subject != "target_owner" && k.subject != "farm") continue;
+            if (k.subject != "target_stock" && k.subject != "target_owner" && k.subject != "farm" && k.subject != "site")
+                continue;
             if (!evalCondition(x, k)) {
                 ok = false;
                 lastWhy = "target:" + k.text;

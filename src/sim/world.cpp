@@ -63,6 +63,20 @@ WorldObject& World::addObject(WorldObject o) {
     return it->second;
 }
 
+bool World::removeObject(EntityId id) {
+    auto it = objects_.find(id);
+    if (it == objects_.end()) return false;
+    auto& list = byType_[it->second.type];
+    list.erase(std::remove(list.begin(), list.end(), id), list.end());
+    objects_.erase(it);
+    roofs_.clear();
+    for (const auto& [oid, o] : objects_) {
+        auto d = content_->objects.find(o.type);
+        if (d != content_->objects.end() && d->second.shelter) roofs_.push_back(o.pos);
+    }
+    return true;
+}
+
 void World::indexObject(const WorldObject& o) {
     byType_[o.type].push_back(o.id);
     auto d = content_->objects.find(o.type);
@@ -300,7 +314,7 @@ void World::run(Tick ticks) {
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Family, id, name, dynasty, settlement, members, storage, hearth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Dynasty, id, name, founder)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settlement, id, name, center, families)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settlement, id, name, center, families, institution, chief)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, code, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MapGrid, sizeM, cellM, w, h, biomeNames, biome, water)
 
@@ -344,6 +358,21 @@ void from_json(const Json& j, Event& e) {
     e.data = j.value("data", Json());
 }
 
+void to_json(Json& j, const BuildPiece& p) {
+    j = Json{{"id", p.id}, {"kind", p.kind}, {"x", p.x}, {"y", p.y}, {"z", p.z}, {"rot", p.rot}, {"h", p.h},
+             {"built", p.built}, {"work", p.work}, {"family", p.family}, {"site", p.site}};
+}
+void from_json(const Json& j, BuildPiece& p) {
+    p.id = j.at("id").get<EntityId>();
+    p.kind = j.at("kind").get<std::string>();
+    p.x = j.value("x", 0), p.y = j.value("y", 0), p.z = j.value("z", 0), p.rot = j.value("rot", 0);
+    p.h = j.value("h", 0.0);
+    p.built = j.value("built", false);
+    p.work = j.value("work", 0);
+    p.family = j.value("family", kNone);
+    p.site = j.value("site", kNone);
+}
+
 Json World::toJson() const {
     std::vector<Event> ev = events_;
     std::sort(ev.begin(), ev.end(), [](const Event& a, const Event& b) { return laterEvent(b, a); });
@@ -357,6 +386,8 @@ Json World::toJson() const {
     for (const auto& [id, d] : dynasties_) dyns.push_back(d);
     Json sets = Json::array();
     for (const auto& [id, s] : settlements_) sets.push_back(s);
+    Json pcs = Json::array();
+    for (const auto& [id, p] : pieces_) pcs.push_back(p);
     return Json{{"format", "altera.sim.world/1"},
                 {"seed", seed_},
                 {"tick", tick_},
@@ -370,6 +401,7 @@ Json World::toJson() const {
                 {"families", fams},
                 {"dynasties", dyns},
                 {"settlements", sets},
+                {"pieces", pcs},
                 {"events", ev},
                 {"pending", pending_},
                 {"command_log", commandLog_},
@@ -415,6 +447,12 @@ void World::loadJson(const Json& j) {
         Settlement s = sj.get<Settlement>();
         settlements_.emplace(s.id, std::move(s));
     }
+    pieces_.clear();
+    for (const auto& pj : j.value("pieces", Json::array())) {
+        BuildPiece p = pj.get<BuildPiece>();
+        pieces_.emplace(p.id, std::move(p));
+    }
+    piecesDirty = true;
     events_ = j.at("events").get<std::vector<Event>>();
     std::make_heap(events_.begin(), events_.end(), laterEvent);
     pending_ = j.at("pending").get<std::vector<Command>>();

@@ -8,13 +8,14 @@
 #include <cstdint>
 #include <memory>
 #include <string>
+#include <vector>
 
 #include <SDL3/SDL.h>
 
 #include "terrain_core/lighting.hpp"
 
 namespace engine { class Device; }
-namespace terrain_core { class MacroMap; class BiomeMap; struct Params; }
+namespace terrain_core { class MacroMap; class BiomeMap; struct Params; struct RiverSegment; }
 
 namespace altera::game {
 
@@ -51,6 +52,8 @@ struct GameOptions {
     // The world's biome map: the sim's map (forest, marsh, water) is read
     // from it and the village is set in an open, dry, level place.
     const terrain_core::BiomeMap* biomes = nullptr;
+    // The river graph (terrain_core/hydrology.hpp): rivers are water on the sim's map (fish, drinking).
+    const std::vector<terrain_core::RiverSegment>* rivers = nullptr;
 };
 
 // The life-sim (altera_sim) on a region of the world centred on (x, y) metres.

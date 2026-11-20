@@ -45,6 +45,29 @@ struct Settlement {
     std::string name;
     Vec2 center;
     std::vector<EntityId> families;
+    // The colony's institution (GDD §2.2): "chief" - a head who drew people to
+    // himself holds the mandate and its rights (config.rights); the rights he
+    // hands on (appoint) are offices of others. kNone: nobody rules.
+    std::string institution = "chief";
+    EntityId chief = kNone;
+};
+
+// One module of a building on the household's plan or standing (build.json,
+// BLUEPRINTS_SPEC §2.6). Grid cell (x, y) of cell_m, storey z of storey_m;
+// rot 0..3 turns the piece to face -y, +x, +y, -x (a gable 4..7: mirrored).
+// h is the height of the structure's ground floor (metres, for the view).
+struct BuildPiece {
+    EntityId id = kNone;
+    std::string kind;
+    int x = 0, y = 0, z = 0, rot = 0;
+    double h = 0.0;
+    bool built = false;
+    int work = 0;              // construct acts done
+    EntityId family = kNone;
+    EntityId site = kNone;     // the build_site object while planned
+    // derived (sim/building.cpp refreshPieces), not saved
+    double stability = 0.0;      // counting planned pieces
+    double builtStability = 0.0; // counting built pieces only: can it go up now
 };
 
 // A coarse grid: biome per cell, water flags. A stub of the real world's
@@ -129,6 +152,10 @@ public:
     std::map<EntityId, Dynasty>& dynasties() { return dynasties_; }
     std::map<EntityId, Settlement>& settlements() { return settlements_; }
     const std::map<EntityId, Settlement>& settlements() const { return settlements_; }
+    std::map<EntityId, BuildPiece>& pieces() { return pieces_; }
+    const std::map<EntityId, BuildPiece>& pieces() const { return pieces_; }
+    bool piecesDirty = true; // set when pieces change; building.cpp refreshes derived state
+    bool removeObject(EntityId id);
     MapGrid& map() { return map_; }
     const MapGrid& map() const { return map_; }
     const Family* familyOf(const Character& c) const;
@@ -196,6 +223,7 @@ private:
     std::map<EntityId, Family> families_;
     std::map<EntityId, Dynasty> dynasties_;
     std::map<EntityId, Settlement> settlements_;
+    std::map<EntityId, BuildPiece> pieces_;
     std::vector<Event> events_; // min-heap on (tick, seq)
     std::vector<Command> pending_;
     std::vector<Command> replay_;
@@ -213,5 +241,7 @@ void to_json(Json& j, const Command& c);
 void from_json(const Json& j, Command& c);
 void to_json(Json& j, const Event& e);
 void from_json(const Json& j, Event& e);
+void to_json(Json& j, const BuildPiece& p);
+void from_json(const Json& j, BuildPiece& p);
 
 } // namespace altera::sim

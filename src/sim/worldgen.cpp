@@ -2,6 +2,7 @@
 #include <functional>
 #include "sim/worldgen.hpp"
 #include "sim/ai.hpp"
+#include "sim/building.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -378,6 +379,18 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         everyone.insert(everyone.end(), members.begin(), members.end());
     }
     w.settlements()[st.id] = st;
+
+    // --- the colony's mandate (GDD §2.2): the start is a chief - the head of
+    // the eldest household, who drew the others to himself - holding every
+    // right; "none" leaves the colony without a ruler.
+    if (cfg.value("mandate", std::string("eldest_head")) == "eldest_head") {
+        const Character* chief = nullptr;
+        for (const auto& [id, c] : w.characters())
+            if (!c.isAnimal() && c.status.settlement == st.id && c.status.role == "head" &&
+                (!chief || c.body.ageDays > chief->body.ageDays))
+                chief = &c;
+        if (chief) grantStartMandate(w, st.id, chief->id);
+    }
 
     // --- fields ---------------------------------------------------------------
     seedFields(w, seed, cfg);

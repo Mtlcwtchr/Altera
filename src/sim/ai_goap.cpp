@@ -49,7 +49,7 @@ bool staticOk(const World& w, const Character& c, const InteractionDef& d, std::
         beast = w.character(findCreature(w, d.targetType, c.pos, w.content().config.trackRadiusM, c.status.family));
     const EvalCtx x{w, c, nullptr, person ? person : beast};
     for (const auto& k : d.pre) {
-        if (goapFact(k) || k.subject == "target_stock" || k.subject == "target_owner") continue;
+        if (goapFact(k) || k.subject == "target_stock" || k.subject == "target_owner" || k.subject == "site") continue;
         if (!evalCondition(x, k)) {
             if (why) *why = d.id + ":" + k.text;
             return false;

@@ -526,6 +526,13 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "wheel") wheel(s, W, H);
     if (panel == "kin") kin(s, sel, W, H);
     if (panel == "annals") annals(s, W, H);
+    if (panel == "build") {
+        topMenu(W);
+        toasts(s, W);
+        clockPill(s, W, H);
+        buildBar(s, W, H);
+    }
+    if (panel == "colony") colony(s, W, H);
     if (!s.result.empty() && s.result != "ok") {
         const std::string t = ui.fit(s.result, 600, 14 / 15.f);
         const float w = textW(t, 14) + 28;
@@ -568,8 +575,11 @@ void Hud::topMenu(float W) {
     box(Skin::Leather, r, 26);
     for (int i = 0; i < 6; ++i) {
         const Rect b{r.x + 4 + i * 48.f, r.y + 4, 44, 44};
-        const bool on = (i == 0 && panel == "sheet") || (i == 1 && panel == "kin") || (i == 4 && panel == "annals");
-        if (roundButton(b, kMenu[i][0], on, host_->text(kMenu[i][1]) + (i == 2 || i == 3 || i == 5 ? " · " + host_->text("hud.soon") : ""))) {
+        const bool on = (i == 0 && panel == "sheet") || (i == 1 && panel == "kin") || (i == 2 && panel == "colony") ||
+                        (i == 3 && panel == "build") || (i == 4 && panel == "annals");
+        if (roundButton(b, kMenu[i][0], on, host_->text(kMenu[i][1]) + (i == 5 ? " · " + host_->text("hud.soon") : ""))) {
+            if (i == 2) panel = panel == "colony" ? "none" : "colony";
+            if (i == 3) panel = panel == "build" ? "none" : "build";
             if (i == 0) panel = panel == "sheet" ? "none" : "sheet";
             if (i == 1) panel = panel == "kin" ? "none" : "kin";
             if (i == 4) panel = panel == "annals" ? "none" : "annals";
@@ -1413,6 +1423,119 @@ void Hud::annals(const Snapshot& s, float W, float H) {
         }
     }
     if (!shown) label(P.x + 38, P.y + 110, host_->text("hud.annals.empty"), kInkSoft, 15);
+}
+
+
+// The build mode (sim/building.hpp): the palette of modules on a leather bar,
+// the state of the piece under the mouse and of the household's plan. The
+// world takes the clicks; the game draws the preview.
+void Hud::buildBar(const Snapshot& s, float W, float H) {
+    (void)s;
+    const int n = int(buildPalette.size());
+    if (n == 0) return;
+    const int perRow = (n + 1) / 2;
+    const float bw = std::clamp((W - 160) / float(perRow) - 6, 96.0f, 150.0f), bh = 34;
+    const float w = perRow * (bw + 6) + 18;
+    const Rect r{(W - w) * 0.5f, H - 30 - (2 * (bh + 6) + 22), w, 2 * (bh + 6) + 22};
+    box(Skin::Leather, r, 24);
+    for (int i = 0; i < n; ++i) {
+        const Rect b{r.x + 12 + (i % perRow) * (bw + 6), r.y + 11 + (i / perRow) * (bh + 6), bw, bh};
+        const std::string t = ui_->fit(buildPalette[std::size_t(i)].first, bw - 14, 14 / 15.f);
+        if (textButton(b, t, i == buildPick)) buildPick = i;
+        if (ui_->hovered(b)) {
+            const std::string& cost = buildPalette[std::size_t(i)].second;
+            const float tw = textW(cost, 14) + 20;
+            box(Skin::Leather, {b.x + bw / 2 - tw / 2, r.y - 40, tw, 28}, 14);
+            label(b.x + bw / 2 - tw / 2 + 10, r.y - 35, cost, kText, 14);
+        }
+    }
+    // the piece under the mouse, the plan, the keys
+    float y = r.y - 76;
+    const std::string pick = buildPick >= 0 && buildPick < n ? buildPalette[std::size_t(buildPick)].first : "";
+    const std::string lines[3] = {pick + (buildStatus.empty() ? "" : "  \xC2\xB7  " + buildStatus), buildPlan,
+                                  host_->text("hud.build.keys")};
+    for (const auto& l : lines) {
+        if (l.empty()) continue;
+        const std::string t = ui_->fit(l, W - 120, 14 / 15.f);
+        const float tw = textW(t, 14) + 28;
+        const Rect p{(W - tw) * 0.5f, y, tw, 26};
+        box(Skin::Paper, p, 13);
+        label(p.x + 14, p.y + 4, t, kInk, 14);
+        y -= 30;
+    }
+    if (roundButton({W - 84, 30, 48, 48}, "close", false, host_->text("hud.close")) || in_->escape) panel = "none";
+}
+
+// The colony (GDD §2.2): its institution, the chief who holds the mandate,
+// who judges now, and the rights of every grown person. With the mandate the
+// player hands rights out and takes them back; the sim judges by them at once.
+void Hud::colony(const Snapshot& s, float W, float H) {
+    dimmer(W, H, 0.6f);
+    if (roundButton({W - 84, 30, 48, 48}, "close", false, host_->text("hud.close")) || in_->escape) {
+        panel = "none";
+        return;
+    }
+    const ColonySnap& c = s.colony;
+    const float pw = std::min(W - 120, 1100.0f), ph = std::min(H - 120, 760.0f);
+    const Rect P{(W - pw) * 0.5f, (H - ph) * 0.5f, pw, ph};
+    box(Skin::Paper, P, 22);
+    title(P.x + 32, P.y + 22, host_->text("hud.colony.title", {{"name", s.settlement}}), kInk, 30);
+    float y = P.y + 70;
+    label(P.x + 32, y, host_->text("hud.colony.institution." + (c.institution.empty() ? std::string("none") : c.institution)), kInkSoft, 15);
+    y += 26;
+    label(P.x + 32, y,
+          c.chief == sim::kNone ? host_->text("hud.colony.no_chief")
+                                : host_->text("hud.colony.chief", {{"name", c.chiefName}, {"family", c.chiefFamily}}),
+          kInk, 16);
+    y += 26;
+    if (c.judge != sim::kNone)
+        label(P.x + 32, y,
+              host_->text(c.judgeByRight ? "hud.colony.judge_right" : "hud.colony.judge_custom", {{"name", c.judgeName}}),
+              kInk, 16);
+    y += 30;
+    seal(P.right() - 60, P.y + 52);
+    label(P.x + 32, y, host_->text(c.mandate ? "hud.colony.mandate_yes" : "hud.colony.mandate_no", {{"family", c.chiefFamily}}),
+          c.mandate ? kGood : kInkRed, 15);
+    y += 36;
+    // the table: name, house, age, the rights
+    const float colName = P.x + 32, colFam = P.x + 300, colAge = P.x + 470, colR = P.x + 530;
+    const float chipW = std::min(130.0f, (P.right() - 32 - colR) / std::max<float>(1, float(c.rights.size())) - 8);
+    label(colName, y, host_->text("hud.colony.col.name"), kInkSoft, 13);
+    label(colFam, y, host_->text("hud.colony.col.house"), kInkSoft, 13);
+    label(colAge, y, host_->text("hud.colony.col.age"), kInkSoft, 13);
+    for (std::size_t k = 0; k < c.rights.size(); ++k)
+        label(colR + k * (chipW + 8) + 8, y, host_->text("hud.right." + c.rights[k]), kInkSoft, 13);
+    y += 24;
+    const float rowH = 34;
+    const int rows = int((P.bottom() - 60 - y) / rowH);
+    int shown = 0;
+    for (const ColonyMember& m : c.members) {
+        if (shown >= rows) break;
+        ++shown;
+        if (shown % 2 == 0) ui_->roundRect({P.x + 20, y - 4, pw - 40, rowH}, Colour::rgb(122, 92, 40, 0.07f), 8);
+        label(colName, y + 4, ui_->fit(m.name, colFam - colName - 12, 15 / 15.f) + (m.chief ? "  \xE2\x99\x9B" : ""),
+              m.chief ? kInkRed : kInk, 15);
+        label(colFam, y + 4, ui_->fit(m.family, colAge - colFam - 12, 15 / 15.f), kInk, 15);
+        label(colAge, y + 4, std::to_string(m.age), kInk, 15);
+        for (std::size_t k = 0; k < c.rights.size(); ++k) {
+            const std::string& r = c.rights[k];
+            const bool has = std::find(m.rights.begin(), m.rights.end(), r) != m.rights.end();
+            const Rect b{colR + k * (chipW + 8), y, chipW, 26};
+            const std::string t = host_->text(has ? "hud.colony.has" : "hud.colony.not");
+            if (c.mandate && !m.chief) {
+                if (textButton(b, t, has))
+                    host_->command(has ? "revoke_right" : "grant_right", {{"id", c.actor}, {"to", m.id}, {"right", r}});
+            } else {
+                box(has ? Skin::ChipOn : Skin::Chip, b, 13);
+                const float tw = textW(t, 13);
+                label(b.x + (b.w - tw) * 0.5f, b.y + 4, t, has ? Colour::rgb(239, 228, 200) : kInkSoft, 13);
+            }
+        }
+        y += rowH;
+    }
+    if (shown < int(c.members.size()))
+        label(colName, y + 4, host_->text("hud.colony.more", {{"n", int(c.members.size()) - shown}}), kInkSoft, 13);
+    label(P.x + 32, P.bottom() - 40, ui_->fit(host_->text("hud.colony.note"), pw - 64, 13 / 15.f), kInkSoft, 13);
 }
 
 } // namespace altera::game

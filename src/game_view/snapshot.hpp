@@ -9,7 +9,7 @@
 #include <utility>
 #include <vector>
 
-#include "sim/core.hpp"
+#include "sim/building.hpp"
 
 namespace altera::game {
 
@@ -76,6 +76,25 @@ struct WheelSnap {
     std::map<std::string, std::string> kind;           // certain | chance | consent | reception | win
 };
 
+// The colony as the "Колония" panel shows it (GDD §2.2): who rules, who
+// judges now, every grown person with the rights they hold.
+struct ColonyMember {
+    EntityId id = sim::kNone;
+    std::string name, family;
+    int age = 0;
+    bool chief = false;
+    std::vector<std::string> rights;
+};
+struct ColonySnap {
+    EntityId settlement = sim::kNone, chief = sim::kNone, judge = sim::kNone;
+    std::string institution, chiefName, chiefFamily, judgeName;
+    bool judgeByRight = false;
+    bool mandate = false;        // the player's dynasty holds it
+    EntityId actor = sim::kNone; // who signs the player's orders (the chief of the player's dynasty)
+    std::vector<std::string> rights; // config.rights
+    std::vector<ColonyMember> members;
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -93,6 +112,12 @@ struct Snapshot {
     std::string settlement;
     double centre[2] = {0, 0};   // the settlement's centre, sim metres
     double mapSize = 0;
+    // Building (sim/building.hpp): every piece, what planned ones still lack,
+    // and the family the player builds for.
+    sim::PieceMap pieces;
+    std::map<EntityId, std::map<std::string, int>> missing;
+    EntityId builder = sim::kNone, builderFamily = sim::kNone;
+    ColonySnap colony;
 };
 
 } // namespace altera::game

@@ -145,6 +145,77 @@ PIECES = {
 }
 
 
+# ------------------------------------------------------------------ modules
+# The pieces a household builds from (content/ai/build.json): a grid of 2 x 2 m
+# cells and 3 m storeys. Not recentred: z = 0 is the storey's floor level,
+#   cell / roof pieces: origin at the cell centre; a roof slope's eave (low
+#     side) towards -y at z = 0, its ridge over +y at z = 3 (one storey a cell);
+#   edge pieces (walls, gables): origin at the middle of the edge, the wall
+#     along x, its outer face towards -y (the game turns it to face out);
+#   corner pieces (pillars): origin at the grid point.
+WALL_MAT = dict(log='log', daub='wattle_daub', stone='rubble_stone')
+
+
+def module_foundation():
+    o = K.box('plinth', (-1.0, -1.0, -1.4), (1.0, 1.0, -0.02), K.M('rubble_stone'), 1.0)
+    return [o] + K.place(K.vmk('Floor_WoodDark'), (0, 0, -0.02), 0)
+
+
+def module_floor():
+    objs = K.place(K.vmk('Floor_WoodDark'), (0, 0, -0.02), 0)
+    for y in (-0.7, 0.0, 0.7):
+        objs.append(K.box('joist', (-1.0, y - 0.09, -0.3), (1.0, y + 0.09, -0.02), K.M('plank'), 1.0))
+    return objs
+
+
+def module_gable(mat, mirror):
+    hx = -1.0 if mirror else 1.0
+    wm = 'plank' if mat == 'log' else mat
+    tri = [(-1.0, 0.0, 0.0), (1.0, 0.0, 0.0), (hx, 0.0, 3.0)]
+    o = K.mesh_obj('gable', tri, [(0, 1, 2)], [K.M(wm)], tile=2.0)
+    sm = o.modifiers.new('s', 'SOLIDIFY'); sm.thickness = 0.2; sm.offset = 0
+    objs = [o]
+    if mat == 'wattle_daub' and not K.GREY:
+        lo = -hx
+        objs.append(K.beam((lo, -0.11, 0.0), (hx, -0.11, 3.0), 0.12))
+        objs.append(K.beam((hx, -0.11, 0.0), (hx, -0.11, 3.0), 0.12))
+        objs.append(K.beam((0.0, -0.11, 0.0), (0.0, -0.11, 1.5), 0.12))
+    return objs
+
+
+def module_pillar():
+    o = K.log_cyl('pillar', 0, 3.0, 0, 0, 0.16)
+    o.rotation_euler = (0, -math.pi / 2, 0)
+    pad = K.box('pad', (-0.28, -0.28, -0.05), (0.28, 0.28, 0.08), K.M('rubble_stone'), 1.0)
+    return [o, pad]
+
+
+def module_roof(mat):
+    th = 0.32 if mat in ('thatch', 'reed') else 0.08
+    rise = 3.0 / 2.0                      # 3 m over a 2 m cell
+    y0, y1 = -1.0 - 0.45, 1.0 + 0.08      # eave overhang, a little past the ridge
+    z = lambda y: (y + 1.0) * rise
+    q = [(-1.01, y0, z(y0)), (1.01, y0, z(y0)), (1.01, y1, z(y1)), (-1.01, y1, z(y1))]
+    o = K.mesh_obj('roof', q, [(0, 1, 2, 3)], [K.M(mat)], tile=2.0)
+    me = o.data; uvl = me.uv_layers.active
+    for poly in me.polygons:
+        for li in poly.loop_indices:
+            c = Vector(q[me.loops[li].vertex_index])
+            uvl.data[li].uv = (c.x / 2.0, (y1 - c.y) * math.sqrt(1 + rise * rise) / 1.6)
+    sm = o.modifiers.new('s', 'SOLIDIFY'); sm.thickness = th; sm.offset = 1.0
+    return [o]
+
+
+MODULES = {'foundation_stone': module_foundation, 'floor_plank': module_floor, 'pillar_log': module_pillar,
+           'roof_thatch': lambda: module_roof('thatch'), 'roof_shingle': lambda: module_roof('shingle')}
+for key, mat in WALL_MAT.items():
+    MODULES['wall_' + key] = (lambda m: lambda: K.piece_wall('wall', m))(mat)
+    MODULES['wall_door_' + key] = (lambda m: lambda: K.piece_wall('wall_door', m))(mat)
+    MODULES['wall_window_' + key] = (lambda m: lambda: K.piece_wall('wall_window', m))(mat)
+    MODULES['gable_' + key] = (lambda m: lambda: module_gable(m, False))(mat)
+    MODULES['gable_' + key + '_m'] = (lambda m: lambda: module_gable(m, True))(mat)
+
+
 # ------------------------------------------------------------------ export
 layers, layer_of = [], {}
 
@@ -190,7 +261,7 @@ meshes, verts, idx = [], bytearray(), []
 nv = 0
 
 
-def export(name, objs):
+def export(name, objs, recentre=True):
     global nv
     dg = bpy.context.evaluated_depsgraph_get()
     dg.update()
@@ -220,7 +291,7 @@ def export(name, objs):
     pts = np.array(pts)
     mn, mx = pts.min(0), pts.max(0)
     # recentre on the footprint
-    c = np.array([(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, 0.0], np.float32)
+    c = np.array([(mn[0] + mx[0]) / 2, (mn[1] + mx[1]) / 2, 0.0] if recentre else [0.0, 0.0, 0.0], np.float32)
     start = (nv - (len(idx) - first)) * 36
     arr = np.frombuffer(verts, np.uint8)[start:].copy().view(np.float32).reshape(-1, 9)
     arr[:, 0:3] -= c
@@ -240,6 +311,9 @@ for name, bp in BLUEPRINTS.items():
 for name, fn in PIECES.items():
     clear_scene()
     export(name, fn())
+for name, fn in MODULES.items():
+    clear_scene()
+    export(name, fn(), recentre=False)
 
 with open(OUT + '/buildings.astm', 'wb') as f:
     f.write(b'ASTM' + struct.pack('<6I', 1, len(meshes), nv, len(idx), len(layers), LS))
