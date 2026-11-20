@@ -163,6 +163,10 @@ public:
             return false;
         }
         const MapGrid& m = world_->map();
+        simSize_ = m.sizeM;
+        // the act ring over beasts: every act whose target is a species
+        for (const auto& [id, d] : content_->interactions)
+            if (d.targetsCreature()) hud_.beastActs[d.target.substr(9)].push_back(id);
         originX_ = std::clamp(centreX - m.sizeM * 0.5, 0.0, std::max(0.0, worldSize_ - m.sizeM));
         originY_ = std::clamp(centreY - m.sizeM * 0.5, 0.0, std::max(0.0, worldSize_ - m.sizeM));
         if (!world_->settlements().empty()) {
@@ -427,18 +431,27 @@ public:
         if (wheelAt_.pending) {
             wheelAt_.pending = false;
             const EntityId hit = pick(wheelAt_.x, wheelAt_.y);
-            const ActorSnap* t = actor(hit);
-            if (t && !t->animal && t->alive) {
-                hud_.openWheel(hit);
-                wheelWanted_ = hit;
-            }
+            if (hit != kNone && hit != shown_.controlled) openActions(hit, wheelAt_.x, wheelAt_.y);
         }
         if (pickAt_.pending) {
             pickAt_.pending = false;
             if (hud_.panel == "build") placeWanted_ = true;
             else {
+                // A click picks a target and opens what can be done to it; it
+                // never moves the control (that is the Dynasty panel's "Lead").
+                // Without a person of one's own (before the backstory) it only
+                // shows whom it hit, as before.
                 const EntityId hit = pick(pickAt_.x, pickAt_.y);
-                if (hit != kNone) select(hit);
+                if (shown_.controlled == kNone) {
+                    if (hit != kNone) select(hit);
+                } else if (hit == kNone) {
+                    hud_.aim = kNone;
+                } else if (hit == shown_.controlled) {
+                    hud_.aim = kNone;
+                    select(hit);
+                } else {
+                    openActions(hit, pickAt_.x, pickAt_.y);
+                }
             }
         }
         if (hud_.panel == "build") updateBuild();
@@ -448,8 +461,13 @@ public:
             setClearings();
         }
         const bool* keys = SDL_GetKeyboardState(nullptr);
+        const bool walking = driveAvatar(dt, keys, alpha);
         const ActorSnap* sel = actor(selected_);
-        if (follow_ && sel) {
+        if (walking) {
+            // the camera stays on the walker, without the follow's lag
+            target_[0] = avatar_.x;
+            target_[1] = avatar_.y;
+        } else if (follow_ && sel) {
             double wx, wy;
             actorWorld(*sel, alpha, wx, wy);
             target_[0] += (wx - target_[0]) * std::min(1.0, dt * 6.0);
@@ -474,6 +492,99 @@ public:
         cam.eye[0] = target_[0] - f[0] * zoom_;
         cam.eye[1] = target_[1] - f[1] * zoom_;
         cam.eye[2] = std::max(tz - f[2] * zoom_, groundAt(cam.eye[0], cam.eye[1]) + 1.5);
+    }
+
+    // ---- direct control ------------------------------------------------------
+    // WASD walk the player's person on this side at a walker's pace (Shift:
+    // running), relative to the camera; the sim hears where they are ten times
+    // a second (`steer`), which also drops what they were doing. Out of the
+    // world map's water and the sim's map nobody walks. True while walking
+    // (keys held), the camera then rides on the walker.
+    bool driveAvatar(double dt, const bool* keys, double alpha) {
+        const ActorSnap* me = actor(shown_.controlled);
+        const double nowS = std::chrono::duration<double>(Clock::now() - started_).count();
+        if (!me || !me->alive || me->down || me->captive || me->fighting) {
+            avatar_.driven = false;
+            avatar_.id = me ? me->id : kNone;
+            avatar_.speed = 0;
+            return false;
+        }
+        if (avatar_.id != me->id) {
+            avatar_ = Avatar{};
+            avatar_.id = me->id;
+        }
+        double fwd = 0, side = 0;
+        if (hud_.panel == "none" && !script_.is_array()) {
+            if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP]) fwd += 1;
+            if (keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN]) fwd -= 1;
+            if (keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT]) side += 1;
+            if (keys[SDL_SCANCODE_A] || keys[SDL_SCANCODE_LEFT]) side -= 1;
+        }
+        if (scriptWalk_[2] > 0) {   // tour scripts: walk {fwd, side} for a while
+            fwd = scriptWalk_[0];
+            side = scriptWalk_[1];
+            scriptWalk_[2] -= dt;
+        }
+        const bool input = fwd != 0 || side != 0;
+        if (input) {
+            if (!avatar_.driven) {
+                actorWorld(*me, alpha, avatar_.x, avatar_.y);
+                avatar_.driven = true;
+            }
+            if (selected_ != me->id) select(me->id);
+            follow_ = true;
+            const double c = std::cos(orbitYaw_), s = std::sin(orbitYaw_);
+            double dx = c * fwd + s * side, dy = s * fwd - c * side;
+            const double l = std::hypot(dx, dy);
+            dx /= l;
+            dy /= l;
+            const bool run = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT] || scriptRun_;
+            const double v = run ? 5.2 : 1.9;
+            const double nx = avatar_.x + dx * v * dt, ny = avatar_.y + dy * v * dt;
+            const bool inMap = nx > originX_ + 1 && ny > originY_ + 1 && nx < originX_ + simSize_ - 1 && ny < originY_ + simSize_ - 1;
+            const bool dry = ground_.at(nx, ny, 2.0) > 0.3;
+            if (inMap && dry) {
+                avatar_.x = nx;
+                avatar_.y = ny;
+                avatar_.speed = v;
+            } else {
+                avatar_.speed = 0;
+            }
+            avatar_.yaw = std::atan2(dy, dx);
+            avatar_.lastInput = nowS;
+        } else {
+            avatar_.speed = 0;
+        }
+        if (!avatar_.driven) return false;
+        // tell the sim, at most ten times a second and once more when the keys let go
+        const bool moved = std::hypot(avatar_.x - avatar_.sentX, avatar_.y - avatar_.sentY) > 0.02;
+        if (moved && (nowS - avatar_.lastSent > 0.1 || !input)) {
+            post({"steer", 0, "", {{"id", me->id}, {"x", avatar_.x - originX_}, {"y", avatar_.y - originY_}}});
+            avatar_.sentX = avatar_.x;
+            avatar_.sentY = avatar_.y;
+            avatar_.lastSent = nowS;
+        }
+        // Let go: back to the snapshots once the sim stands them where we left
+        // them (or, after a while, wherever the sim has them).
+        if (!input && nowS - avatar_.lastInput > 0.3) {
+            const double sx = originX_ + me->x, sy = originY_ + me->y;
+            if (std::hypot(sx - avatar_.x, sy - avatar_.y) < 0.05 || nowS - avatar_.lastInput > 2.0) avatar_.driven = false;
+        }
+        return input;
+    }
+
+    // A click on someone else: they become the target, and what can be done
+    // to them opens - the wheel for a person, the act ring for a beast.
+    void openActions(EntityId hit, float x, float y) {
+        const ActorSnap* t = actor(hit);
+        if (!t) return;
+        hud_.aim = hit;
+        if (!t->alive) return;
+        if (t->animal) hud_.openBeast(hit, x, y);
+        else {
+            hud_.openWheel(hit);
+            wheelWanted_ = hit;
+        }
     }
 
     // ---- drawing ------------------------------------------------------------
@@ -618,6 +729,33 @@ private:
             if (st.contains("pitch")) orbitPitch_ = st["pitch"].get<double>();
             if (st.contains("yawDeg")) orbitYaw_ = st["yawDeg"].get<double>() * kPi / 180.0;
             if (st.contains("speed")) post({"speed", st["speed"].get<int>()});
+            // direct control: walk [forward, side, seconds] as WASD would, run: Shift held;
+            // aim_beast / aim_person: a click on the nearest such (opens its menu)
+            if (st.contains("walk")) {
+                scriptWalk_[0] = st["walk"][0].get<double>();
+                scriptWalk_[1] = st["walk"][1].get<double>();
+                scriptWalk_[2] = st["walk"][2].get<double>();
+            }
+            if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
+            if (st.contains("aim_beast") || st.contains("aim_person")) {
+                const ActorSnap* me = actor(shown_.controlled);
+                const std::string sp = st.value("aim_beast", std::string());
+                const ActorSnap* best = nullptr;
+                double bd = 1e18;
+                for (const auto& a : shown_.actors) {
+                    if (!a.alive || !me || a.id == me->id || a.animal != st.contains("aim_beast")) continue;
+                    if (!sp.empty() && sp != "any" && a.species != sp) continue;
+                    const double d = std::hypot(a.x - me->x, a.y - me->y);
+                    if (d < bd) bd = d, best = &a;
+                }
+                if (best) {
+                    double wx, wy;
+                    actorWorld(*best, 1.0, wx, wy);
+                    float sx = float(viewW_) * 0.5f, sy = float(viewH_) * 0.5f;
+                    project(wx - eye_[0], wy - eye_[1], groundAt(wx, wy) + 0.8 - eye_[2], sx, sy);
+                    openActions(best->id, sx, sy);
+                }
+            }
             if (st.contains("select")) {
                 int k = st["select"].get<int>();
                 for (const auto& a : shown_.actors)
@@ -854,6 +992,17 @@ private:
                             b->inventory[it] += std::string(it) == "thatch" ? 12 : 40;
                 } else if (c.op == "craft_draft") {
                     craftDraft_ = c.args;
+                } else if (c.op == "steer") {
+                    // direct control: no result line for each step, and no slide
+                    // back between ticks (the step is where the person stands now)
+                    altera::sim::Command cmd;
+                    cmd.source = "player:1";
+                    cmd.type = "steer";
+                    cmd.args = c.args;
+                    cmd.args["player"] = 1;
+                    const auto r = world_->applyNow(cmd);
+                    if (r.result != "ok") result_ = r.result;
+                    if (const Character* me = world_->character(c.args.value("id", kNone))) prevPos_[me->id] = me->pos;
                 } else if (c.op == "craft_kit") {
                     if (Character* b = world_->character(c.args.value("id", kNone))) craftKit(*b);
                 } else if (c.op == "cmd") {
@@ -1784,6 +1933,11 @@ private:
     double groundAt(double x, double y) const { return std::max(0.0, double(ground_.at(x, y, 2.0))); }
 
     void actorWorld(const ActorSnap& a, double alpha, double& x, double& y) const {
+        if (avatar_.driven && a.id == avatar_.id) {
+            x = avatar_.x;
+            y = avatar_.y;
+            return;
+        }
         x = originX_ + a.px + (a.x - a.px) * alpha;
         y = originY_ + a.py + (a.y - a.py) * alpha;
     }
@@ -1881,9 +2035,11 @@ private:
     Figure personFigure(const ActorSnap& a, double rx, double ry, double rz, double moveYaw, float highlight) {
         const double nowS = lastFrameS_;
         Anim& an = anims_[a.id];
-        // Visual speed: the sim's step over the real time a tick takes.
-        const double step = std::hypot(a.x - a.px, a.y - a.py);
-        const double speed = shown_.paused ? 0.0 : step / std::max(0.05, shown_.tickSeconds);
+        // Visual speed: the sim's step over the real time a tick takes (the
+        // walker's own pace while the player drives them).
+        const bool walker = avatar_.driven && a.id == avatar_.id;
+        const double step = walker ? (avatar_.speed > 0 ? 1.0 : 0.0) : std::hypot(a.x - a.px, a.y - a.py);
+        const double speed = walker ? avatar_.speed : shown_.paused ? 0.0 : step / std::max(0.05, shown_.tickSeconds);
         double rate = 1;
         const int want = personClip(a, speed, rate);
         if (want != an.clip) {
@@ -2107,11 +2263,12 @@ private:
             const double rz = groundAt(wx, wy) - eye_[2];
             double yaw = 0;
             const double mx = a.x - a.px, my = a.y - a.py;
-            if (mx * mx + my * my > 0.01) yaw = std::atan2(my, mx);
+            if (avatar_.driven && a.id == avatar_.id) yaw = avatar_.yaw;
+            else if (mx * mx + my * my > 0.01) yaw = std::atan2(my, mx);
             else yaw = double(a.id % 628) / 100.0;
             Instance in{};
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry), in.placeYaw[2] = float(rz), in.placeYaw[3] = float(yaw);
-            const float hl = (a.id == selected_ ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
+            const float hl = (a.id == selected_ || a.id == hud_.aim ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
             if (!a.animal && people_.loaded()) {
                 if (figures_.size() < SkinnedSet::kMaxFigures) figures_.push_back(personFigure(a, rx, ry, rz, yaw, hl));
             } else if (!a.animal) {
@@ -2374,7 +2531,7 @@ private:
         double wx, wy;
         actorWorld(a, tickAlpha(), wx, wy);
         const double rx = wx - eye_[0], ry = wy - eye_[1];
-        if (rx * rx + ry * ry > 90.0 * 90.0 && a.id != selected_) return false;
+        if (rx * rx + ry * ry > 90.0 * 90.0 && a.id != selected_ && a.id != hud_.aim) return false;
         const double h = a.animal ? 1.4 : (a.age < 16 ? 0.55 + 0.028 * a.age : 1.0) * 2.05;
         return project(rx, ry, groundAt(wx, wy) + h - eye_[2], x, y) && x > -50 && y > -50 && x < viewW_ + 50 &&
                y < viewH_ + 50;
@@ -2452,6 +2609,18 @@ private:
     float rmbAt_[2] = {0, 0};
     Hud hud_;
     double target_[2] = {0, 0};
+    // Direct control: the player's person walked by WASD on this side in real
+    // time (world metres), sent to the sim as `steer`; drawn from here while
+    // driven, from the snapshots otherwise.
+    struct Avatar {
+        EntityId id = kNone;
+        bool driven = false;
+        double x = 0, y = 0, yaw = 0, speed = 0;
+        double lastInput = -1, lastSent = -1, sentX = 0, sentY = 0;
+    } avatar_;
+    double simSize_ = 0;   // the sim map's side, metres
+    double scriptWalk_[3] = {0, 0, 0};
+    bool scriptRun_ = false;
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
     float vp_[16] = {};
     double eye_[3] = {};
