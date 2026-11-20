@@ -35,6 +35,7 @@
 #include "engine/ui/ui.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/craft_sim.hpp"
 #include "sim/loc.hpp"
 #include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
@@ -334,6 +335,7 @@ public:
             if (e.key.key == SDLK_T) hud_.showThoughts = !hud_.showThoughts;
             if (e.key.key == SDLK_B) hud_.panel = hud_.panel == "build" ? "none" : "build";
             if (e.key.key == SDLK_O) hud_.panel = hud_.panel == "colony" ? "none" : "colony";
+            if (e.key.key == SDLK_J) hud_.panel = hud_.panel == "workshop" ? "none" : "workshop";
             if (hud_.panel == "build") {
                 if (e.key.key == SDLK_R) buildRot_ = (buildRot_ + 1) % 4;
                 if (e.key.key == SDLK_PAGEUP) ++buildBump_;
@@ -631,6 +633,44 @@ private:
                 input_.mouseY = st["mouse"][1].get<float>();
             }
             if (st.contains("pick")) hud_.buildPick = st["pick"].get<int>();
+            // the workshop: craft_kit gives the person materials, tools and the
+            // starter recipes; craft_draft fills the attempt; craft_try runs it;
+            // craft_same runs the first mastered recipe
+            {
+                const EntityId who = shown_.craft.actor != kNone ? shown_.craft.actor : selected_;
+                if (st.value("craft_kit", false) && who != kNone) post({"craft_kit", 0, "", {{"id", who}}});
+                if (st.contains("craft_draft")) {
+                    const Json& d = st["craft_draft"];
+                    hud_.craftProc = -1;
+                    for (size_t i = 0; i < shown_.craft.processes.size(); ++i)
+                        if (shown_.craft.processes[i].id == d.value("process", "")) hud_.craftProc = int(i);
+                    hud_.craftSlots.clear();
+                    if (d.contains("slots"))
+                        for (auto it = d["slots"].begin(); it != d["slots"].end(); ++it)
+                            hud_.craftSlots[it.key()] = it.value().get<std::vector<std::string>>();
+                    hud_.craftShape = d.value("shape", "");
+                    hud_.craftMode = d.value("mode", "");
+                }
+                if (st.value("craft_try", false) && who != kNone && hud_.craftProc >= 0 &&
+                    hud_.craftProc < int(shown_.craft.processes.size())) {
+                    Json a = Json::object();
+                    a["id"] = who;
+                    a["process"] = shown_.craft.processes[size_t(hud_.craftProc)].id;
+                    Json slots = Json::object();
+                    for (const auto& [k, v] : hud_.craftSlots) slots[k] = v;
+                    a["slots"] = slots;
+                    if (!hud_.craftShape.empty()) a["shape"] = hud_.craftShape;
+                    if (!hud_.craftMode.empty()) a["mode"] = hud_.craftMode;
+                    post({"cmd", 0, "craft_attempt", a});
+                    hud_.craftSlots.clear();
+                }
+                if (st.value("craft_same", false) && who != kNone)
+                    for (const auto& r : shown_.craft.recipes)
+                        if (r.master) {
+                            post({"cmd", 0, "craft_fast", {{"id", who}, {"recipe", r.id}, {"count", 1}}});
+                            break;
+                        }
+            }
             if (st.contains("rot")) buildRot_ = st["rot"].get<int>();
             if (st.value("give", false) && shown_.builder != kNone) post({"give", 0, "", {{"id", shown_.builder}}});
             if (st.contains("plan") && shown_.builder != kNone)
@@ -770,6 +810,10 @@ private:
                     if (Character* b = world_->character(c.args.value("id", kNone)))
                         for (const char* it : {"stone", "log", "branch", "clay", "thatch"})
                             b->inventory[it] += std::string(it) == "thatch" ? 12 : 40;
+                } else if (c.op == "craft_draft") {
+                    craftDraft_ = c.args;
+                } else if (c.op == "craft_kit") {
+                    if (Character* b = world_->character(c.args.value("id", kNone))) craftKit(*b);
                 } else if (c.op == "cmd") {
                     altera::sim::Command cmd;
                     cmd.source = "player:1";
@@ -801,6 +845,123 @@ private:
                 lastSnap = Clock::now();
             }
             if (!steps) std::this_thread::sleep_for(std::chrono::milliseconds(4));
+        }
+    }
+
+    // ---- the workshop (gdd crafting §9) ----
+    void craftKit(Character& c) {
+        // a tour kit: gathered materials, a knife, a hammer and a needle made by
+        // a master, and the starter recipes of a few crafts
+        for (const char* it : {"fiber_raw", "log", "stone", "clay", "hide", "meat", "bast_fiber", "branch", "grain"})
+            c.inventory[it] += 6;
+        const auto& d = world_->content().craft;
+        if (!d.loaded) return;
+        craft::Actor master;
+        for (const auto& [pid, p] : d.processes) master.skills[p.skill] = 0.95;
+        craft::Workplace wp;
+        for (const auto& [id, st] : d.stations) wp.stations.push_back(id);
+        craft::Tool t;
+        t.tags = {"cutting", "saw", "striking", "tongs", "whetstone", "grit", "needle", "bellows"};
+        t.hardness = 0.9;
+        t.q = 0.8;
+        wp.tools.push_back(t);
+        for (const char* ds : {"knife", "hammer_tool", "bone_needle", "sword"})
+            if (const craft::DesignDef* def = d.design(ds)) {
+                craft::Recipe r = craft::recipeFromDesign(d, *def, 1.0, true);
+                std::vector<craft::Item> pool;
+                craft::ChainOpts o;
+                o.rawFromNothing = true;
+                o.stopOnRisk = false;
+                craft::ChainRun run = craft::runChain(d, r.steps, pool, master, wp, 7, 0, o);
+                if (run.done) c.craft.items.push_back(run.out);
+            }
+        for (const char* ds : {"cord", "thread", "roast_meat", "clay_pot", "plank", "knife"}) giveDesign(*world_, c, ds);
+        c.skills["spinning"] = std::max(c.skills["spinning"], 0.5);
+        c.skills["carpentry"] = std::max(c.skills["carpentry"], 0.4);
+        c.skills["cooking"] = std::max(c.skills["cooking"], 0.5);
+    }
+
+    void craftSnap(const World& w, const Character& c, CraftSnap& cs) const {
+        const auto& d = w.content().craft;
+        if (!d.loaded) return;
+        cs.actor = c.id;
+        const std::string& L = opts_.lang;
+        for (const auto& [item, n] : c.inventory) {
+            auto def = w.content().items.find(item);
+            if (n <= 0 || def == w.content().items.end() || def->second.material.empty()) continue;
+            const craft::MaterialDef* m = d.material(def->second.material);
+            cs.materials.push_back({"inv:" + item, name("item", item), m ? m->shape : "", "", n, -1});
+        }
+        for (size_t i = 0; i < c.craft.items.size(); ++i) {
+            const craft::Item& it = c.craft.items[i];
+            std::string note = text("craft.tier." + craft::qualityTier(d, it.q));
+            for (const auto& f : it.flaws)
+                if (f.revealed) note += ", " + text("flaw." + f.id + ".name") + "!";
+            if (it.wear > 0.05) note += ", " + text("hud.craft.worn", {{"n", int(it.wear * 100)}});
+            cs.made.push_back({"made:" + std::to_string(i), craftItemName(*loc_, L, d, it), it.shape, note, 1, it.q});
+        }
+        const craft::Workplace wp = craftWorkplace(w, c);
+        for (const auto& st : wp.stations)
+            if (d.station(st)) cs.stations.push_back(text("station." + st + ".name"));
+        for (const auto& pid : d.processOrder) {
+            const craft::ProcessDef& p = d.processes.at(pid);
+            CraftProcessSnap ps;
+            ps.id = pid;
+            ps.name = text("process." + pid + ".name");
+            for (const auto& sl : p.slots) ps.slots.push_back({sl.name, text("hud.craft.slot." + sl.name)});
+            for (const auto& m : p.modes) ps.modes.push_back({m, text("process.mode." + m + ".name")});
+            for (const auto& [from, tos] : p.shapeMap)
+                for (const auto& to : tos) ps.targets[from].push_back({to, text("shape." + to + ".name")});
+            cs.processes.push_back(std::move(ps));
+        }
+        for (const auto& r : c.craft.book.recipes) {
+            CraftRecipeSnap rs;
+            rs.id = r.id;
+            rs.name = !r.nameUser.empty() ? r.nameUser : !r.nameKey.empty() ? text(r.nameKey) : text("hud.craft.unnamed");
+            rs.mastery = r.mastery;
+            rs.bestQ = r.bestQ;
+            rs.known = r.knownCount();
+            rs.total = int(r.steps.size());
+            rs.master = r.master(d.cfg);
+            cs.recipes.push_back(std::move(rs));
+        }
+        // the draft's forecast (§9): blurred for a novice
+        if (craftDraft_.contains("process")) {
+            CraftCommand cmd;
+            cmd.process = craftDraft_.value("process", "");
+            if (craftDraft_.contains("slots"))
+                for (auto it = craftDraft_["slots"].begin(); it != craftDraft_["slots"].end(); ++it)
+                    cmd.slots[it.key()] = it.value().get<std::vector<std::string>>();
+            cmd.target.shape = craftDraft_.value("shape", "");
+            cmd.target.mode = craftDraft_.value("mode", "");
+            const craft::Preview pv = craftPreview(w, c, cmd);
+            cs.canStart = pv.canStart;
+            if (pv.canStart) {
+                const std::string tier = text("craft.tier." + craft::qualityTier(d, pv.expectedQ));
+                const std::string likely = pv.likelyForm.empty()
+                                               ? text("craft.unknown")
+                                               : text("craft.likely", {{"form", text("form." + pv.likelyForm + ".name")}});
+                cs.forecast = text(pv.certainty >= 0.5 ? "hud.craft.forecast" : "hud.craft.forecast_vague",
+                                   {{"tier", tier}, {"ruin", int(std::lround(pv.pRuin * 100))},
+                                    {"flaw", int(std::lround(pv.pFlaw * 100))}, {"time", pv.time}, {"likely", likely}});
+            } else {
+                Json args = {{"slot", text("hud.craft.slot." + pv.reasonArg)}, {"tool", pv.reasonArg}, {"station", pv.reasonArg},
+                             {"need", pv.reasonArg}, {"level", pv.reasonArg}, {"mode", pv.reasonArg},
+                             {"shape", text("shape." + pv.reasonArg + ".name")}};
+                if (d.station(pv.reasonArg)) args["station"] = text("station." + pv.reasonArg + ".name");
+                cs.why = text("craft.reason." + pv.reason, args);
+            }
+        }
+        if (!c.craft.lastOutcome.empty()) {
+            std::string what;
+            if (c.craft.lastMade >= 0 && c.craft.lastMade < int(c.craft.items.size()))
+                what = craftItemName(*loc_, L, d, c.craft.items[size_t(c.craft.lastMade)]);
+            const std::string head = loc_->has(L, "craft.outcome." + c.craft.lastOutcome)
+                                         ? text("craft.outcome." + c.craft.lastOutcome)
+                                         : text("craft.stop." + c.craft.lastOutcome, {{"what", c.craft.lastArg}, {"why", c.craft.lastArg},
+                                                                                      {"stages", c.craft.lastArg}});
+            cs.last = what.empty() ? head : text("hud.craft.last", {{"outcome", head}, {"what", what}});
+            if (c.craft.lastBreakthrough_) cs.last += "  " + text("hud.craft.breakthrough");
         }
     }
 
@@ -960,6 +1121,7 @@ private:
             s.builder = by;
             s.builderFamily = bc->status.family;
         }
+        if (bc && !bc->isAnimal() && bc->body.alive) craftSnap(w, *bc, s.craft);
         // the colony (GDD §2.2)
         if (!w.settlements().empty()) {
             const Settlement& st = w.settlements().begin()->second;
@@ -1854,6 +2016,7 @@ private:
         follow_ = true;
     }
     void wheelTarget(EntityId id) override { wheelWanted_ = id; }
+    void craftDraft(const Json& draft) override { post({"craft_draft", 0, "", draft}); }
     std::vector<std::pair<std::string, std::string>> goals() const override {
         std::vector<std::pair<std::string, std::string>> out;
         for (std::size_t i = 0; i < goalIds_.size(); ++i) out.push_back({goalIds_[i], goalNames_[i]});
@@ -1891,6 +2054,7 @@ private:
     engine::Device& device_;
     SDL_Window* window_;
     Json script_;
+    Json craftDraft_ = Json::object();   // the workshop's attempt as the HUD has it (sim thread)
     std::size_t scriptStep_ = 0;
     double scriptClock_ = 0;
     std::string shotWanted_, shotPending_, panel_ = "none";

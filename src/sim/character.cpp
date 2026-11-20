@@ -121,6 +121,7 @@ void to_json(Json& j, const Character& c) {
         j["starve_days"] = c.starveDays;
     }
     if (c.captivity.held()) j["captivity"] = c.captivity;
+    if (!c.craft.empty()) j["craft"] = c.craft;
 }
 
 void from_json(const Json& j, Character& c) {
@@ -150,6 +151,7 @@ void from_json(const Json& j, Character& c) {
     c.den = j.value("den", Vec2{});
     c.starveDays = j.value("starve_days", 0);
     c.captivity = j.value("captivity", Captivity{});
+    c.craft = j.value("craft", craft::CraftState{});
 }
 
 } // namespace altera::sim

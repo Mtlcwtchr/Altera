@@ -192,6 +192,7 @@
   },
   {
    "id": "village_fire",
+   "station": "campfire",
    "settlement": true,
    "per_settlement": 1,
    "owned": false,
@@ -208,6 +209,7 @@
   },
   {
    "id": "hearth",
+   "station": "hearth",
    "settlement": true,
    "per_family": 1,
    "owned": true,
@@ -232,6 +234,7 @@
   },
   {
    "id": "campfire",
+   "station": "campfire",
    "owned": false,
    "warmth": true,
    "_doc": "кострище, spawn:campfire из build_campfire; гаснет через 2 суток (событие исполнителя)"
@@ -482,6 +485,25 @@
    "_doc": "борть диких пчёл в дупле",
    "_part": "H2"
   },
+  {"id": "forge", "settlement": true, "station": "forge", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "furnace", "settlement": true, "station": "furnace", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "anvil", "settlement": true, "station": "anvil", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "quench_tub", "settlement": true, "station": "quench_tub", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "grindstone", "settlement": true, "station": "grindstone", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "workbench", "settlement": true, "station": "bench", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "loom_frame", "settlement": true, "station": "loom", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "weaving_frame", "settlement": true, "station": "frame", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "potter_wheel", "settlement": true, "station": "wheel", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "wash_tub", "settlement": true, "station": "tub", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "cook_pot", "settlement": true, "station": "pot", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "brewing_vat", "settlement": true, "station": "vat", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "storage_jar", "settlement": true, "station": "jar", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "barrel_stand", "settlement": true, "station": "barrel", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "drying_rack", "settlement": true, "station": "rack", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "mortar", "settlement": true, "station": "mortar", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "quern", "settlement": true, "station": "quern", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "tanning_pit", "settlement": true, "station": "tanning_pit", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
+  {"id": "oven", "settlement": true, "station": "oven", "_doc": "crafting station (content/ai/craft/stations.json); placed by building, not spawned"},
   {
    "id": "build_site",
    "owned": true,

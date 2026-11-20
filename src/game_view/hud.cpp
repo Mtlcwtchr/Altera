@@ -533,6 +533,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         buildBar(s, W, H);
     }
     if (panel == "colony") colony(s, W, H);
+    if (panel == "workshop") workshop(s, W, H);
     if (!s.result.empty() && s.result != "ok") {
         const std::string t = ui.fit(s.result, 600, 14 / 15.f);
         const float w = textW(t, 14) + 28;
@@ -569,20 +570,23 @@ void Hud::names(const Snapshot& s) {
 
 void Hud::topMenu(float W) {
     static const char* kMenu[][2] = {{"sheet", "hud.menu.sheet"}, {"dynasty", "hud.menu.dynasty"}, {"colony", "hud.menu.colony"},
-                                     {"build", "hud.menu.build"}, {"annals", "hud.menu.annals"}, {"map", "hud.menu.map"}};
-    const float w = 6 * 44 + 5 * 4 + 8;
+                                     {"build", "hud.menu.build"}, {"annals", "hud.menu.annals"}, {"i_tool", "hud.menu.workshop"},
+                                     {"map", "hud.menu.map"}};
+    const int n = 7;
+    const float w = n * 44 + (n - 1) * 4 + 8;
     const Rect r{(W - w) * 0.5f, 24, w, 52};
     box(Skin::Leather, r, 26);
-    for (int i = 0; i < 6; ++i) {
+    for (int i = 0; i < n; ++i) {
         const Rect b{r.x + 4 + i * 48.f, r.y + 4, 44, 44};
         const bool on = (i == 0 && panel == "sheet") || (i == 1 && panel == "kin") || (i == 2 && panel == "colony") ||
-                        (i == 3 && panel == "build") || (i == 4 && panel == "annals");
-        if (roundButton(b, kMenu[i][0], on, host_->text(kMenu[i][1]) + (i == 5 ? " · " + host_->text("hud.soon") : ""))) {
+                        (i == 3 && panel == "build") || (i == 4 && panel == "annals") || (i == 5 && panel == "workshop");
+        if (roundButton(b, kMenu[i][0], on, host_->text(kMenu[i][1]) + (i == 6 ? " · " + host_->text("hud.soon") : ""))) {
             if (i == 2) panel = panel == "colony" ? "none" : "colony";
             if (i == 3) panel = panel == "build" ? "none" : "build";
             if (i == 0) panel = panel == "sheet" ? "none" : "sheet";
             if (i == 1) panel = panel == "kin" ? "none" : "kin";
             if (i == 4) panel = panel == "annals" ? "none" : "annals";
+            if (i == 5) panel = panel == "workshop" ? "none" : "workshop";
         }
     }
 }
@@ -1536,6 +1540,259 @@ void Hud::colony(const Snapshot& s, float W, float H) {
     if (shown < int(c.members.size()))
         label(colName, y + 4, host_->text("hud.colony.more", {{"n", int(c.members.size()) - shown}}), kInkSoft, 13);
     label(P.x + 32, P.bottom() - 40, ui_->fit(host_->text("hud.colony.note"), pw - 64, 13 / 15.f), kInkSoft, 13);
+}
+
+// The workshop (gdd crafting §9, §17): what the person has (gathered
+// materials, made things) on the left, the attempt in the middle (a process,
+// its slots filled by clicking things, the target shape and mode, the
+// forecast blurred by what the person knows, "Try"), the recipe book on the
+// right with "Make it the same way" for mastered records. No mini-games.
+sim::Json Hud::craftDraftJson(const Snapshot& s) const {
+    sim::Json d = sim::Json::object();
+    const CraftSnap& c = s.craft;
+    if (craftProc < 0 || craftProc >= int(c.processes.size())) return d;
+    d["process"] = c.processes[size_t(craftProc)].id;
+    sim::Json slots = sim::Json::object();
+    for (const auto& [slot, refs] : craftSlots) slots[slot] = refs;
+    d["slots"] = slots;
+    if (!craftShape.empty()) d["shape"] = craftShape;
+    if (!craftMode.empty()) d["mode"] = craftMode;
+    return d;
+}
+
+void Hud::workshop(const Snapshot& s, float W, float H) {
+    dimmer(W, H, 0.6f);
+    if (roundButton({W - 84, 30, 48, 48}, "close", false, host_->text("hud.close")) || in_->escape) {
+        panel = "none";
+        return;
+    }
+    const CraftSnap& c = s.craft;
+    const float pw = std::min(W - 80, 1280.0f), ph = std::min(H - 100, 800.0f);
+    const Rect P{(W - pw) * 0.5f, (H - ph) * 0.5f, pw, ph};
+    box(Skin::Paper, P, 22);
+    const ActorSnap* who = actor(s, c.actor);
+    title(P.x + 32, P.y + 22, host_->text("hud.craft.title", {{"name", who ? who->name : std::string()}}), kInk, 30);
+    seal(P.right() - 60, P.y + 52);
+    {
+        std::string near;
+        for (const auto& st : c.stations) near += (near.empty() ? "" : ", ") + st;
+        label(P.x + 32, P.y + 64,
+              ui_->fit(near.empty() ? host_->text("hud.craft.near_none") : host_->text("hud.craft.near", {{"list", near}}),
+                       pw - 140, 14 / 15.f),
+              kInkSoft, 14);
+    }
+    if (c.actor == sim::kNone) {
+        label(P.x + 32, P.y + 110, host_->text("hud.craft.nobody"), kInkRed, 16);
+        return;
+    }
+    const float top = P.y + 100, colW1 = 300, colW3 = 330;
+    const Rect L{P.x + 24, top, colW1, P.bottom() - top - 24};
+    const Rect R{P.right() - 24 - colW3, top, colW3, P.bottom() - top - 24};
+    const Rect M{L.right() + 20, top, R.x - L.right() - 40, P.bottom() - top - 24};
+
+    // ---- left: what there is
+    auto addToSlot = [&](const std::string& ref) {
+        if (craftProc < 0 || craftProc >= int(c.processes.size())) return;
+        const auto& pr = c.processes[size_t(craftProc)];
+        if (craftSlot.empty() && !pr.slots.empty()) craftSlot = pr.slots.front().first;
+        auto& v = craftSlots[craftSlot];
+        if (ref.rfind("made:", 0) == 0 && std::find(v.begin(), v.end(), ref) != v.end()) return;
+        v.push_back(ref);
+        // the next empty slot gets the focus
+        for (const auto& [slot, nm] : pr.slots)
+            if (craftSlots[slot].empty()) {
+                craftSlot = slot;
+                break;
+            }
+    };
+    float y = L.y;
+    label(L.x, y, host_->text("hud.craft.materials"), kInkSoft, 13);
+    y += 22;
+    const float rowH = 28;
+    int shown = 0;
+    const int maxRows = int((L.h * 0.5f) / rowH);
+    for (const auto& m : c.materials) {
+        if (shown++ >= maxRows) break;
+        const Rect r{L.x, y, L.w, rowH - 4};
+        if (ui_->hovered(r)) ui_->roundRect(r, Colour::rgb(122, 92, 40, 0.10f), 8);
+        label(r.x + 8, r.y + 4, ui_->fit(m.name, r.w - 60, 14 / 15.f), kInk, 14);
+        label(r.right() - 44, r.y + 4, "x" + std::to_string(m.count), kInkSoft, 14);
+        if (clicked(r)) addToSlot(m.ref);
+        y += rowH;
+    }
+    if (c.materials.empty()) {
+        label(L.x + 8, y, host_->text("hud.craft.empty"), kInkSoft, 14);
+        y += rowH;
+    }
+    y += 10;
+    label(L.x, y, host_->text("hud.craft.made"), kInkSoft, 13);
+    y += 22;
+    shown = 0;
+    const int maxMade = int((L.bottom() - y) / rowH);
+    for (const auto& m : c.made) {
+        if (shown++ >= maxMade) break;
+        const Rect r{L.x, y, L.w, rowH - 4};
+        if (ui_->hovered(r)) ui_->roundRect(r, Colour::rgb(122, 92, 40, 0.10f), 8);
+        label(r.x + 8, r.y + 4, ui_->fit(m.name, r.w * 0.62f, 14 / 15.f), kInk, 14);
+        label(r.x + r.w * 0.64f, r.y + 5, ui_->fit(m.note, r.w * 0.36f - 6, 12 / 15.f), m.note.find('!') != std::string::npos ? kInkRed : kInkSoft, 12);
+        if (clicked(r)) addToSlot(m.ref);
+        y += rowH;
+    }
+    if (c.made.empty()) label(L.x + 8, y, host_->text("hud.craft.empty"), kInkSoft, 14);
+
+    // ---- middle: the attempt
+    y = M.y;
+    label(M.x, y, host_->text("hud.craft.process"), kInkSoft, 13);
+    y += 22;
+    float x = M.x;
+    for (size_t i = 0; i < c.processes.size(); ++i) {
+        const auto& pr = c.processes[i];
+        const float w = textW(pr.name, 15) + 26;
+        if (x + w > M.right()) {
+            x = M.x;
+            y += 34;
+        }
+        if (textButton({x, y, w, 28}, pr.name, int(i) == craftProc)) {
+            if (craftProc != int(i)) {
+                craftProc = int(i);
+                craftSlots.clear();
+                craftShape.clear();
+                craftMode.clear();
+                craftSlot = pr.slots.empty() ? "" : pr.slots.front().first;
+            }
+        }
+        x += w + 6;
+    }
+    y += 46;
+    if (craftProc >= 0 && craftProc < int(c.processes.size())) {
+        const auto& pr = c.processes[size_t(craftProc)];
+        auto nameOf = [&](const std::string& ref) {
+            for (const auto& m : c.materials)
+                if (m.ref == ref) return m.name;
+            for (const auto& m : c.made)
+                if (m.ref == ref) return m.name;
+            return ref;
+        };
+        auto shapeOf = [&](const std::string& ref) {
+            for (const auto& m : c.materials)
+                if (m.ref == ref) return m.shape;
+            for (const auto& m : c.made)
+                if (m.ref == ref) return m.shape;
+            return std::string();
+        };
+        for (const auto& [slot, slotName] : pr.slots) {
+            const Rect sr{M.x, y, 150, 28};
+            if (textButton(sr, slotName, craftSlot == slot)) craftSlot = slot;
+            float cx = sr.right() + 8;
+            auto& v = craftSlots[slot];
+            for (size_t k = 0; k < v.size(); ++k) {
+                const std::string t = ui_->fit(nameOf(v[k]), 180, 14 / 15.f) + "  \xC3\x97";
+                const float w = textW(t, 14) + 20;
+                if (cx + w > M.right()) break;
+                const Rect b{cx, y, w, 28};
+                box(Skin::Chip, b, 14);
+                label(b.x + 10, b.y + 5, t, kInk, 14);
+                if (clicked(b)) {
+                    v.erase(v.begin() + long(k));
+                    break;
+                }
+                cx += w + 6;
+            }
+            if (v.empty()) label(cx + 4, y + 6, host_->text("hud.craft.slot_hint"), kInkSoft, 13);
+            y += 36;
+        }
+        // target shape from the work piece
+        std::string from;
+        if (!pr.slots.empty()) {
+            const auto& v = craftSlots[pr.slots.front().first];
+            if (!v.empty()) from = shapeOf(v.front());
+        }
+        auto t = pr.targets.find(from);
+        if (t != pr.targets.end() && !t->second.empty()) {
+            y += 6;
+            label(M.x, y, host_->text("hud.craft.target"), kInkSoft, 13);
+            y += 22;
+            x = M.x;
+            for (const auto& [shape, nm] : t->second) {
+                const float w = textW(nm, 14) + 24;
+                if (x + w > M.right()) {
+                    x = M.x;
+                    y += 34;
+                }
+                if (textButton({x, y, w, 28}, nm, craftShape == shape)) craftShape = craftShape == shape ? "" : shape;
+                x += w + 6;
+            }
+            y += 40;
+        }
+        if (!pr.modes.empty()) {
+            label(M.x, y, host_->text("hud.craft.mode"), kInkSoft, 13);
+            y += 22;
+            x = M.x;
+            for (const auto& [mode, nm] : pr.modes) {
+                const float w = textW(nm, 14) + 24;
+                if (x + w > M.right()) {
+                    x = M.x;
+                    y += 34;
+                }
+                if (textButton({x, y, w, 28}, nm, craftMode == mode)) craftMode = craftMode == mode ? "" : mode;
+                x += w + 6;
+            }
+            y += 40;
+        }
+        // the forecast and the buttons
+        const Rect fc{M.x, std::max(y + 6, M.bottom() - 170), M.w, 88};
+        box(Skin::Leather, fc, 16);
+        label(fc.x + 16, fc.y + 12, ui_->fit(c.canStart ? c.forecast : c.why, fc.w - 32, 15 / 15.f),
+              c.canStart ? kGoldPale : kRingBad, 15);
+        if (!c.last.empty()) label(fc.x + 16, fc.y + 50, ui_->fit(c.last, fc.w - 32, 14 / 15.f), kText, 14);
+        const Rect tryB{M.x, fc.bottom() + 14, 200, 40};
+        if (textButton(tryB, host_->text("hud.craft.try"), true) && c.canStart) {
+            sim::Json a = craftDraftJson(s);
+            a["id"] = c.actor;
+            host_->command("craft_attempt", a);
+            craftSlots.clear();
+            craftShape.clear();
+            craftSlot = pr.slots.empty() ? "" : pr.slots.front().first;
+        }
+        if (textButton({tryB.right() + 12, tryB.y, 160, 40}, host_->text("hud.craft.clear"), false)) {
+            craftSlots.clear();
+            craftShape.clear();
+            craftMode.clear();
+        }
+    } else {
+        label(M.x, y, ui_->fit(host_->text("hud.craft.pick_process"), M.w, 14 / 15.f), kInkSoft, 14);
+    }
+    // the draft goes to the sim for its forecast when it changed
+    {
+        const std::string d = craftDraftJson(s).dump();
+        if (d != sentDraft_) {
+            sentDraft_ = d;
+            host_->craftDraft(craftDraftJson(s));
+        }
+    }
+
+    // ---- right: the recipe book
+    y = R.y;
+    label(R.x, y, host_->text("hud.craft.book"), kInkSoft, 13);
+    y += 24;
+    if (c.recipes.empty()) label(R.x + 8, y, ui_->fit(host_->text("hud.craft.book_empty"), R.w - 8, 13 / 15.f), kInkSoft, 13);
+    for (const auto& r : c.recipes) {
+        if (y + 66 > R.bottom()) break;
+        const Rect row{R.x, y, R.w, 60};
+        ui_->roundRect(row, Colour::rgb(122, 92, 40, 0.07f), 10);
+        label(row.x + 10, row.y + 6, ui_->fit(r.name, row.w - 20, 15 / 15.f), kInk, 15);
+        const Rect bar{row.x + 10, row.y + 32, row.w * 0.45f, 8};
+        ui_->roundRect(bar, Colour::rgb(122, 92, 40, 0.18f), 4);
+        ui_->roundRect({bar.x, bar.y, std::max(4.f, float(bar.w * r.mastery)), bar.h}, r.master ? kGood : kMid, 4);
+        label(bar.right() + 8, row.y + 26,
+              host_->text("hud.craft.known", {{"known", r.known}, {"total", r.total}}), kInkSoft, 12);
+        if (r.master) {
+            const Rect b{row.right() - 112, row.y + 22, 104, 30};
+            if (textButton(b, host_->text("hud.craft.same"), true))
+                host_->command("craft_fast", {{"id", c.actor}, {"recipe", r.id}, {"count", 1}});
+        }
+        y += 68;
+    }
 }
 
 } // namespace altera::game

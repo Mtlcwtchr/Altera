@@ -72,6 +72,10 @@ struct FighterSpec {
     std::vector<std::string> armor;
     double know = -1.0;      // <0 = core.default_know
     std::string shield;      // empty = none
+    // A made weapon / armour (crafting derive): multipliers on the data's numbers.
+    double damageMult = 1.0, durabilityMult = 1.0;
+    std::vector<double> armorEff;   // per armour layer: effectiveness multiplier (empty = 1)
+    std::vector<double> armorGap;   // per armour layer: extra gap (badly riveted plates)
 };
 
 struct Fighter {
@@ -85,6 +89,8 @@ struct Fighter {
     double stam = 100.0, blood = 100.0, pain = 0.0, morale = 100.0, bleed = 0.0, ap = 0.0;
     int down = 0;
     double weaponCond = 1.0;
+    double damageMult = 1.0, durabilityMult = 1.0;
+    std::vector<double> armorEff, armorGap; // per layer
     int broke = 0, hits = 0;
     State state = State::Fight;
     std::uint32_t disabled = 0;   // bit per zone

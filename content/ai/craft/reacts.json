@@ -1,0 +1,86 @@
+{
+ "_doc": "Reactions (gdd crafting v0.2 §16.2): the only way to get a qualitatively new substance. when: every entry must hold — a material id or tag (a|b = any of them) among the inputs' profile, no_air (a closed station), no_yeast, eff:<effect> (present), <property><op><value> on the blended item. at_heat: heat level needed. make: the material it makes; replace: the item becomes that material (otherwise its tags and effects join the profile). p: property transforms after (craft-expr, x = old). ratio: '<material> lo..hi' mass share of that material among the inputs. extract: extraction method it applies (all = every effect fully). risk_tainted: chance of the tainted flaw.",
+ "reacts": [
+  {
+   "id": "ferment_alcohol",
+   "when": [
+    "sugar>=0.3",
+    "yeast",
+    "no_air"
+   ],
+   "make": "alcohol",
+   "p": {
+    "sugar": "x*0.4"
+   }
+  },
+  {
+   "id": "ferment_sour",
+   "when": [
+    "sugar>=0.2",
+    "no_air",
+    "no_yeast"
+   ],
+   "make": "vinegar",
+   "p": {
+    "sugar": "x*0.6"
+   },
+   "risk_tainted": 0.2
+  },
+  {
+   "id": "tincture",
+   "when": [
+    "herb",
+    "alcohol"
+   ],
+   "extract": "all"
+  },
+  {
+   "id": "lye",
+   "when": [
+    "ash",
+    "water"
+   ],
+   "make": "lye",
+   "replace": true
+  },
+  {
+   "id": "soap",
+   "when": [
+    "fat",
+    "lye"
+   ],
+   "at_heat": 1,
+   "make": "soap",
+   "replace": true
+  },
+  {
+   "id": "quicklime_slake",
+   "when": [
+    "quicklime",
+    "water"
+   ],
+   "make": "mortar_lime",
+   "replace": true
+  },
+  {
+   "id": "alloy_bronze",
+   "when": [
+    "copper",
+    "tin"
+   ],
+   "at_heat": 3,
+   "ratio": "copper 0.75..0.95",
+   "make": "bronze",
+   "replace": true
+  },
+  {
+   "id": "curdle",
+   "when": [
+    "dairy",
+    "eff:sour|acid"
+   ],
+   "make": "curd",
+   "replace": true
+  }
+ ]
+}

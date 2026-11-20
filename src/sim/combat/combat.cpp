@@ -156,6 +156,14 @@ Fighter Engine::make(const FighterSpec& s, std::int64_t id, int team) const {
     f.shield = s.shield.empty() ? -1 : d_.shield(s.shield);
     for (const auto& a : s.armor) f.armor.push_back(d_.armor(a));
     f.armorCond.assign(f.armor.size(), 1.0);
+    f.damageMult = s.damageMult;
+    f.durabilityMult = s.durabilityMult > 0 ? s.durabilityMult : 1.0;
+    f.armorEff.assign(f.armor.size(), 1.0);
+    f.armorGap.assign(f.armor.size(), 0.0);
+    for (std::size_t i = 0; i < f.armor.size(); ++i) {
+        if (i < s.armorEff.size()) f.armorEff[i] = s.armorEff[i];
+        if (i < s.armorGap.size()) f.armorGap[i] = s.armorGap[i];
+    }
     f.hp = d_.zoneHp;
     f.stam = d_.staminaMax;
     f.blood = d_.bloodMax;
@@ -182,8 +190,10 @@ double Engine::absorb(const Fighter& f, int zone, int dtype, Rng* rng, double pi
         const ArmorDef& A = d_.armors[f.armor[i]];
         if (!A.cover[zone]) continue;
         if (nogap && A.hasGap) continue;
-        if (rng && rng->random() < A.gap) continue;
-        const double eff = d_.wear.armorMinEff + (1.0 - d_.wear.armorMinEff) * f.armorCond[i];
+        const double gapAdd = i < f.armorGap.size() ? f.armorGap[i] : 0.0;
+        if (rng && rng->random() < A.gap + gapAdd) continue;
+        const double made = i < f.armorEff.size() ? f.armorEff[i] : 1.0;
+        const double eff = std::min(1.0, made * (d_.wear.armorMinEff + (1.0 - d_.wear.armorMinEff) * f.armorCond[i]));
         tr *= 1.0 - (1.0 - A.trans[dtype]) * eff;
         if (!impact) {
             const double p = A.pen[dtype] * eff;
@@ -198,13 +208,13 @@ double Engine::weaponMult(const Fighter& f) const {
     double m = 1.0;
     for (std::size_t z = 0; z < d_.zones.size(); ++z)
         if (f.disabled & (1u << z)) m *= d_.disable[z].attackMult;
-    return m * (d_.wear.minDmgMult + (1.0 - d_.wear.minDmgMult) * f.weaponCond);
+    return m * f.damageMult * (d_.wear.minDmgMult + (1.0 - d_.wear.minDmgMult) * f.weaponCond);
 }
 
 void Engine::wearWeapon(Fighter& f, double cost) {
     const WeaponDef& w = d_.weapons[f.weapon];
     if (w.indestructible) return;
-    f.weaponCond -= cost / w.durability;
+    f.weaponCond -= cost / (w.durability * f.durabilityMult);
     if (f.weaponCond <= 0.0) {
         Event e;
         e.kind = EventKind::WeaponBreak;

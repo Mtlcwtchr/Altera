@@ -532,6 +532,8 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const auto& r : reasonCodes()) k.insert("reason." + r);
     for (const auto& i : idleCodes()) k.insert("report.idle." + i);
     k.insert("chronicle.death");
+    if (c.craft.loaded)
+        for (const auto& ck : craft::craftLocKeys(c.craft)) k.insert(ck);
     return {k.begin(), k.end()};
 }
 

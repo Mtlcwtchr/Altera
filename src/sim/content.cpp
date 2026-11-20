@@ -1,4 +1,5 @@
 #include "sim/content.hpp"
+#include "sim/craft_sim.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -194,7 +195,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     auto& W = c.warnings;
 
     for (const auto& j : items.value("items", Json::array())) {
-        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days"}, "items", W);
+        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days", "material"}, "items", W);
         ItemDef d;
         d.id = j.at("id").get<std::string>();
         d.tags = strings(j, "tags");
@@ -202,12 +203,13 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.warmth = opt(j, "warmth", 0.0);
         d.toolWear = opt(j, "tool_wear", 0.0);
         d.spoilDays = opt(j, "spoil_days", 0.0);
+        d.material = opt(j, "material", std::string());
         if (!c.items.emplace(d.id, d).second) err.add("items: duplicate id " + d.id);
     }
 
     for (const auto& j : objects.value("objects", Json::array())) {
         warnUnknown(j, {"id", "stock", "max_stock", "regrow", "regrow_every", "biomes", "per_km2", "owned",
-                        "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season", "crop"},
+                        "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season", "crop", "station"},
                     "objects", W);
         ObjectDef d;
         d.id = j.at("id").get<std::string>();
@@ -220,6 +222,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.owned = opt(j, "owned", false);
         d.settlement = opt(j, "settlement", false);
         d.perFamily = opt(j, "per_family", 0);
+        d.station = opt(j, "station", std::string());
         d.perPerson = opt(j, "per_person", 0);
         d.warmth = opt(j, "warmth", false);
         d.shelter = opt(j, "shelter", false);
@@ -384,7 +387,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : interactions.value("interactions", Json::array())) {
         warnUnknown(j, {"id", "category", "target", "pre", "eff", "from_target", "duration", "cost", "fsm", "reserve",
                         "goap", "legal", "visibility", "social", "speech", "continuous", "until", "params", "chance",
-                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents", "range_m"},
+                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents", "range_m", "craft"},
                     "interactions", W);
         InteractionDef d;
         d.id = j.at("id").get<std::string>();
@@ -474,6 +477,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.duration = opt<Tick>(j, "duration", 1);
         d.cost = opt(j, "cost", 1.0);
         d.fsm = opt<std::string>(j, "fsm", "Interact");
+        d.craft = opt<std::string>(j, "craft", "");
         d.reserve = opt(j, "reserve", false);
         d.goap = opt(j, "goap", d.target != "character" && d.params.empty());
         d.legal = strings(j, "legal");
@@ -794,6 +798,9 @@ Content Content::load(const std::string& dir) {
                          f("knowledge.json"), f("species.json"));
     c.climate = parseClimate(f("climate.json"), c.warnings);
     c.care = parseCare(f("care.json"), c.warnings);
+    c.craft = craft::CraftData::load(dir + "/craft");
+    if (c.craft.loaded && c.craft.cfg.goapDesigns)
+        for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
     c.build = parseBuild(f("build.json"));
     c.dir = dir;
     ValidationReport v = validate(c);

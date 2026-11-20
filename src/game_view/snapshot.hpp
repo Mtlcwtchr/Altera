@@ -95,6 +95,35 @@ struct ColonySnap {
     std::vector<ColonyMember> members;
 };
 
+// The workshop (gdd crafting §9, §17): what the person has to work with, the
+// processes and their targets, the draft's forecast, the recipe book.
+struct CraftThing {
+    std::string ref, name, shape, note; // ref: inv:<item> | made:<n>; note: quality tier, flaws
+    int count = 1;
+    double q = -1;
+};
+struct CraftProcessSnap {
+    std::string id, name;
+    std::vector<std::pair<std::string, std::string>> slots;   // slot, its loc name
+    std::vector<std::pair<std::string, std::string>> modes;   // mode, name
+    std::map<std::string, std::vector<std::pair<std::string, std::string>>> targets; // from shape -> (shape, name)
+};
+struct CraftRecipeSnap {
+    std::string id, name;
+    double mastery = 0, bestQ = 0;
+    int known = 0, total = 0;
+    bool master = false;
+};
+struct CraftSnap {
+    EntityId actor = sim::kNone;
+    std::vector<CraftThing> materials, made;
+    std::vector<CraftProcessSnap> processes;
+    std::vector<std::string> stations;        // names of what stands near
+    std::vector<CraftRecipeSnap> recipes;
+    bool canStart = false;
+    std::string forecast, why, last;          // display texts
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -118,6 +147,7 @@ struct Snapshot {
     std::map<EntityId, std::map<std::string, int>> missing;
     EntityId builder = sim::kNone, builderFamily = sim::kNone;
     ColonySnap colony;
+    CraftSnap craft;
 };
 
 } // namespace altera::game

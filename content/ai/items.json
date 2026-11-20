@@ -3,6 +3,7 @@
  "items": [
   {
    "id": "berries",
+   "material": "berries",
    "tags": [
     "food",
     "raw"
@@ -52,6 +53,7 @@
   },
   {
    "id": "branch",
+   "material": "willow_withy",
    "tags": [
     "wood"
    ],
@@ -59,6 +61,7 @@
   },
   {
    "id": "log",
+   "material": "oak_wood",
    "tags": [
     "wood",
     "heavy"
@@ -67,6 +70,7 @@
   },
   {
    "id": "stone",
+   "material": "granite",
    "tags": [
     "stone"
    ],
@@ -74,6 +78,7 @@
   },
   {
    "id": "clay",
+   "material": "clay",
    "tags": [
     "building"
    ],
@@ -95,6 +100,7 @@
   },
   {
    "id": "fiber_raw",
+   "material": "flax_fiber",
    "tags": [
     "plant"
    ],
@@ -102,6 +108,7 @@
   },
   {
    "id": "bast_fiber",
+   "material": "willow_bark",
    "tags": [
     "fiber"
    ],
@@ -207,6 +214,7 @@
   },
   {
    "id": "herbs",
+   "material": "mint",
    "tags": [
     "plant",
     "medicine"
@@ -230,6 +238,7 @@
   },
   {
    "id": "hide",
+   "material": "hide_raw",
    "tags": [
     "animal"
    ],
@@ -266,6 +275,7 @@
   },
   {
    "id": "meat",
+   "material": "meat_raw",
    "tags": [
     "food",
     "raw"
@@ -317,6 +327,7 @@
   },
   {
    "id": "grain",
+   "material": "barley_grain",
    "tags": [
     "food",
     "raw",
@@ -387,6 +398,7 @@
   },
   {
    "id": "eggs",
+   "material": "egg",
    "tags": [
     "food",
     "raw"
@@ -398,6 +410,7 @@
   },
   {
    "id": "milk",
+   "material": "milk",
    "tags": [
     "food",
     "drink"
@@ -464,6 +477,7 @@
   },
   {
    "id": "honey",
+   "material": "honey",
    "tags": [
     "food",
     "preserved"
@@ -475,6 +489,7 @@
   },
   {
    "id": "apples",
+   "material": "apple",
    "tags": [
     "food",
     "raw"

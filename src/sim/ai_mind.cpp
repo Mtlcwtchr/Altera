@@ -7,6 +7,7 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/craft_sim.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/wounds.hpp"
@@ -248,6 +249,10 @@ bool tickFsm(World& w, Character& c) {
         return true;
     }
     applyEffects(w, c, *d, target, creature);
+    if (!d->craft.empty()) {
+        const Plan& p = ai.plan;
+        craftAct(w, c, *d, target, creature, p.stepIndex < p.steps.size() ? p.steps[p.stepIndex].params : Json::object());
+    }
     if (d->id == "start_dialog" && creature && !creature->isAnimal()) {
         const Plan& p = ai.plan;
         const Json params = p.stepIndex < p.steps.size() ? p.steps[p.stepIndex].params : Json::object();
@@ -548,6 +553,7 @@ void installAi(World& w) {
     });
     installControl(w);
     installBuilding(w);
+    installCrafting(w);
 }
 
 } // namespace altera::sim

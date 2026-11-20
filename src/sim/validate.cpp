@@ -5,6 +5,7 @@
 #include <set>
 
 #include "sim/content.hpp"
+#include "sim/craft/craft_validate.hpp"
 
 namespace altera::sim {
 namespace {
@@ -527,6 +528,7 @@ ValidationReport validate(const Content& c) {
     for (const auto& [id, d] : c.interactions)
         // Character-targeted interactions are reached through dialogue and the player.
         if (!d.goap && !d.targetsCharacter() && !referenced.count(id)) v.warn("interaction " + id + ": not reachable by any plan");
+    craft::validateCraft(c, r);
 
     // build.json: slots, categories, costs.
     {

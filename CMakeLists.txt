@@ -336,6 +336,13 @@ add_library(altera_sim STATIC
         src/sim/captivity.cpp
         src/sim/tones.cpp
         src/sim/ai_report.cpp
+        src/sim/craft/craft_expr.cpp
+        src/sim/craft/craft_data.cpp
+        src/sim/craft/craft.cpp
+        src/sim/craft/craft_chain.cpp
+        src/sim/craft/craft_validate.cpp
+        src/sim/craft/craft_state.cpp
+        src/sim/craft_sim.cpp
         src/sim/building.cpp)
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_warnings)
@@ -354,6 +361,10 @@ target_link_libraries(altera_combat PUBLIC nlohmann_json PRIVATE asr_warnings)
 add_executable(altera_combat_tables src/sim/combat/tool/combat_tables.cpp)
 target_link_libraries(altera_combat_tables PRIVATE altera_combat asr_warnings)
 target_compile_definitions(altera_combat_tables PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
+add_executable(altera_craft_report src/sim/craft/tool/craft_report.cpp)
+target_link_libraries(altera_craft_report PRIVATE altera_sim asr_warnings)
+target_compile_definitions(altera_craft_report PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
 add_executable(altera_sim_runner src/sim/runner/main.cpp)
 target_link_libraries(altera_sim_runner PRIVATE altera_sim asr_warnings)
@@ -765,6 +776,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
+            tests/test_altera_sim_craft.cpp
             tests/test_altera_sim_build.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)

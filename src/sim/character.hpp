@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "sim/core.hpp"
+#include "sim/craft/craft_state.hpp"
 
 namespace altera::sim {
 
@@ -271,6 +272,7 @@ struct Character {
     EntityId home = kNone; // the family's storage object
     Controller controller;
     Captivity captivity;
+    craft::CraftState craft; // made things, recipe book, known materials (sim/craft)
     AiState ai;
 
     bool hasTrait(const std::string& t) const;

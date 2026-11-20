@@ -1,0 +1,2001 @@
+{
+ "_doc": "Starter designs (gdd crafting v0.2 §7, §8): one known way to make each archetype. Steps: process, slots (refs mat:<id> | form:<id> | shape:<id> | tag:<t> | step:<n> = the output of step n, 1-based; {ref, n} for several), target shape/len/mode/heat. Professions start with these as recipes; tests run every one to prove the archetype is reachable.",
+ "designs": [
+  {
+   "id": "knife",
+   "form": "knife",
+   "steps": [
+    {
+     "process": "knap",
+     "shape": "blade",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:flint"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "handle",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:pine_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "step:2"
+      ],
+      "binder": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "dagger",
+   "form": "dagger",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "blank_blade",
+     "len": 2,
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "grind",
+     "shape": "blade",
+     "slots": {
+      "work": [
+       "step:4"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "handle",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:5"
+      ],
+      "b": [
+       "step:6"
+      ],
+      "binder": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sword",
+   "form": "sword",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "fire",
+     "slots": {
+      "work": [
+       "step:3"
+      ],
+      "with": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "blank_blade",
+     "len": 4,
+     "slots": {
+      "work": [
+       "step:4"
+      ]
+     }
+    },
+    {
+     "process": "quench",
+     "slots": {
+      "work": [
+       "step:5"
+      ]
+     }
+    },
+    {
+     "process": "grind",
+     "shape": "blade",
+     "slots": {
+      "work": [
+       "step:6"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "handle",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:7"
+      ],
+      "b": [
+       "step:8"
+      ],
+      "binder": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "axe",
+   "form": "axe",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "blank_head",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "grind",
+     "slots": {
+      "work": [
+       "step:4"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "shaft",
+     "len": 3,
+     "slots": {
+      "work": [
+       "mat:ash_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:5"
+      ],
+      "b": [
+       "step:6"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mace",
+   "form": "mace",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "blank_head",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "shaft",
+     "len": 3,
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:4"
+      ],
+      "b": [
+       "step:5"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "spear",
+   "form": "spear",
+   "steps": [
+    {
+     "process": "knap",
+     "shape": "blade",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:flint"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "shaft",
+     "len": 5,
+     "slots": {
+      "work": [
+       "mat:ash_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:2"
+      ],
+      "b": [
+       "step:1"
+      ],
+      "binder": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "club",
+   "form": "club",
+   "steps": [
+    {
+     "process": "carve",
+     "shape": "shaft",
+     "len": 4,
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "short_bow",
+   "form": "short_bow",
+   "steps": [
+    {
+     "process": "cut",
+     "shape": "stave",
+     "len": 3,
+     "slots": {
+      "work": [
+       "mat:ash_wood"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "bow_stave",
+     "len": 3,
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:2"
+      ],
+      "b": [
+       "step:4"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "gambeson",
+   "form": "gambeson",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:wool_raw"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:wool_raw"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "padded_raw",
+     "slots": {
+      "work": [
+       "step:2",
+       "step:4"
+      ],
+      "thread": [
+       "step:5"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "leather_armor",
+   "form": "leather_armor",
+   "steps": [
+    {
+     "process": "tan",
+     "slots": {
+      "work": [
+       "mat:hide_raw"
+      ],
+      "agent": [
+       "mat:willow_bark"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "armor_raw",
+     "slots": {
+      "work": [
+       "step:1"
+      ],
+      "thread": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mail_shirt",
+   "form": "mail_shirt",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "wire",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "link",
+     "shape": "ring_mail",
+     "slots": {
+      "work": [
+       "step:4"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "helmet",
+   "form": "helmet",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "plate",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "blank_helm",
+     "slots": {
+      "work": [
+       "step:4"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "tunic",
+   "form": "tunic",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "garment_raw",
+     "len": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ],
+      "thread": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cloak",
+   "form": "cloak",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:wool_raw"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "garment_raw",
+     "len": 3,
+     "slots": {
+      "work": [
+       "step:2"
+      ],
+      "thread": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "boots",
+   "form": "boots",
+   "steps": [
+    {
+     "process": "tan",
+     "slots": {
+      "work": [
+       "mat:hide_raw"
+      ],
+      "agent": [
+       "mat:willow_bark"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "boot_raw",
+     "slots": {
+      "work": [
+       "step:1"
+      ],
+      "thread": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "hammer_tool",
+   "form": "hammer_tool",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "blank_head",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "handle",
+     "len": 2,
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:4"
+      ],
+      "b": [
+       "step:5"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "tongs",
+   "form": "tongs",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar_thin",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "saw",
+   "form": "saw",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:bog_iron_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "plate",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "sheet_metal",
+     "slots": {
+      "work": [
+       "step:4"
+      ]
+     }
+    },
+    {
+     "process": "grind",
+     "slots": {
+      "work": [
+       "step:5"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "whetstone",
+   "form": "whetstone",
+   "steps": [
+    {
+     "process": "grind",
+     "shape": "whet_blank",
+     "slots": {
+      "work": [
+       "mat:granite"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bone_needle",
+   "form": "bone_needle",
+   "steps": [
+    {
+     "process": "carve",
+     "shape": "needle_blank",
+     "slots": {
+      "work": [
+       "mat:bone"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "clay_pot",
+   "form": "clay_pot",
+   "steps": [
+    {
+     "process": "mould",
+     "shape": "vessel_raw",
+     "len": 2,
+     "slots": {
+      "work": [
+       "mat:clay"
+      ]
+     }
+    },
+    {
+     "process": "dry",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "fire",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bowl",
+   "form": "bowl",
+   "steps": [
+    {
+     "process": "carve",
+     "shape": "bowl_raw",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "wooden_bucket",
+   "form": "wooden_bucket",
+   "steps": [
+    {
+     "process": "cut",
+     "shape": "stave",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "cut",
+     "shape": "stave",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "len": 2,
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "step:2"
+      ],
+      "binder": [
+       "step:4"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "barrel",
+   "form": "barrel",
+   "steps": [
+    {
+     "process": "cut",
+     "shape": "stave",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "cut",
+     "shape": "stave",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "len": 3,
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "step:2"
+      ],
+      "binder": [
+       "step:4"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "basket",
+   "form": "basket",
+   "steps": [
+    {
+     "process": "weave",
+     "shape": "basket_raw",
+     "slots": {
+      "work": [
+       {
+        "ref": "mat:willow_withy",
+        "n": 3
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "pouch",
+   "form": "pouch",
+   "steps": [
+    {
+     "process": "tan",
+     "slots": {
+      "work": [
+       "mat:hide_raw"
+      ],
+      "agent": [
+       "mat:willow_bark"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "pouch_raw",
+     "slots": {
+      "work": [
+       "step:1"
+      ],
+      "thread": [
+       "mat:sinew"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cord",
+   "form": "cord",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "rope",
+   "form": "rope",
+   "steps": [
+    {
+     "process": "soak",
+     "mode": "ret",
+     "slots": {
+      "work": [
+       "mat:willow_bark"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "rope",
+     "len": 3,
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "thread",
+   "form": "thread",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cloth",
+   "form": "cloth",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "fishing_net",
+   "form": "fishing_net",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "net",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "leather_sheet",
+   "form": "leather_sheet",
+   "steps": [
+    {
+     "process": "tan",
+     "slots": {
+      "work": [
+       "mat:hide_raw"
+      ],
+      "agent": [
+       "mat:willow_bark"
+      ]
+     }
+    },
+    {
+     "process": "cut",
+     "shape": "sheet",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "plank",
+   "form": "plank",
+   "steps": [
+    {
+     "process": "cut",
+     "shape": "plank",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "beam",
+   "form": "beam",
+   "steps": [
+    {
+     "process": "cut",
+     "shape": "beam",
+     "slots": {
+      "work": [
+       "mat:oak_wood"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "brick",
+   "form": "brick",
+   "steps": [
+    {
+     "process": "mould",
+     "shape": "brick_raw",
+     "slots": {
+      "work": [
+       "mat:clay"
+      ]
+     }
+    },
+    {
+     "process": "dry",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "fire",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "roof_tile",
+   "form": "roof_tile",
+   "steps": [
+    {
+     "process": "mould",
+     "shape": "tile_raw",
+     "slots": {
+      "work": [
+       "mat:clay"
+      ]
+     }
+    },
+    {
+     "process": "dry",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "fire",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mortar_lime",
+   "form": "mortar_lime",
+   "steps": [
+    {
+     "process": "heat",
+     "mode": "calcine",
+     "heat": 3,
+     "slots": {
+      "work": [
+       "mat:limestone"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "mat:water"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "bread",
+   "form": "bread",
+   "steps": [
+    {
+     "process": "mill",
+     "shape": "powder",
+     "slots": {
+      "work": [
+       "mat:wheat_grain"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "knead",
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "bake",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "stew",
+   "form": "stew",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:meat_raw"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "roast_meat",
+   "form": "roast_meat",
+   "steps": [
+    {
+     "process": "heat",
+     "mode": "roast",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "mat:meat_raw"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "ale",
+   "form": "ale",
+   "steps": [
+    {
+     "process": "soak",
+     "mode": "malt",
+     "slots": {
+      "work": [
+       "mat:barley_grain"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "dry",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "step:2"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "ferment",
+     "mode": "brew",
+     "slots": {
+      "base": [
+       "step:4"
+      ],
+      "agent": [
+       "mat:yeast"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "mead",
+   "form": "mead",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:honey"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "ferment",
+     "mode": "brew",
+     "slots": {
+      "base": [
+       "step:1"
+      ],
+      "agent": [
+       "mat:yeast"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cider",
+   "form": "cider",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:apple"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "ferment",
+     "mode": "brew",
+     "slots": {
+      "base": [
+       "step:1"
+      ],
+      "agent": [
+       "mat:yeast"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "herbal_tea",
+   "form": "herbal_tea",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:mint"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "cheese",
+   "form": "cheese",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:milk"
+      ],
+      "b": [
+       "mat:apple"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "poultice",
+   "form": "poultice",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "grind_herbs",
+     "slots": {
+      "a": [
+       "mat:willow_bark"
+      ],
+      "b": [
+       "mat:garlic"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "healing_draught",
+   "form": "healing_draught",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:willow_bark"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "poison",
+   "form": "poison",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:hemlock"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "tincture",
+   "form": "tincture",
+   "steps": [
+    {
+     "process": "soak",
+     "mode": "malt",
+     "slots": {
+      "work": [
+       "mat:barley_grain"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "dry",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "step:2"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "ferment",
+     "mode": "brew",
+     "slots": {
+      "base": [
+       "step:4"
+      ],
+      "agent": [
+       "mat:yeast"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "step:5"
+      ],
+      "b": [
+       "mat:mint"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "soap",
+   "form": "soap",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:wood_ash"
+      ],
+      "b": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:animal_fat"
+      ],
+      "b": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "candle",
+   "form": "candle",
+   "steps": [
+    {
+     "process": "mould",
+     "shape": "candle_raw",
+     "slots": {
+      "work": [
+       "mat:beeswax"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "torch",
+   "form": "torch",
+   "steps": [
+    {
+     "process": "carve",
+     "shape": "shaft",
+     "len": 3,
+     "slots": {
+      "work": [
+       "mat:pine_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "mat:resin"
+      ]
+     }
+    }
+   ]
+  }
+ ]
+}
