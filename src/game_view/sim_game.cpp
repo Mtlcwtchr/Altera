@@ -9,6 +9,7 @@
 
 #include "game_view/game_layer.hpp"
 #include "game_view/hud.hpp"
+#include "game_view/saves.hpp"
 #include "game_view/skinned.hpp"
 #include "game_view/snapshot.hpp"
 #include "game_view/statics.hpp"
@@ -18,7 +19,9 @@
 #include <chrono>
 #include <cmath>
 #include <condition_variable>
+#include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <deque>
 #include <filesystem>
 #include <map>
@@ -153,6 +156,9 @@ public:
                 cfg["season"] = o.season;
             }
             if (o.biomes && o.biomes->size()) mapFromWorld(*o.biomes, cfg, centreX, centreY);
+            settings_ = loadSettings();
+            if (!settings_.lang.empty() && loc_->hasLanguage(settings_.lang)) opts_.lang = settings_.lang;
+            worldCfg_ = cfg;
             world_ = std::make_unique<World>(makeTestWorld(*content_, cfg, o.seed));
             installAi(*world_);
             // The world starts at midnight; the player arrives with the morning.
@@ -169,32 +175,56 @@ public:
             if (d.targetsCreature()) hud_.beastActs[d.target.substr(9)].push_back(id);
         originX_ = std::clamp(centreX - m.sizeM * 0.5, 0.0, std::max(0.0, worldSize_ - m.sizeM));
         originY_ = std::clamp(centreY - m.sizeM * 0.5, 0.0, std::max(0.0, worldSize_ - m.sizeM));
+        refreshTexts();
+        adoptWorld();
+        if (!openGpu(why)) return false;
+        setClearings();
+        loadScript();
+        // The game opens on the main menu (New game leads to the backstory
+        // screen); tour scripts that speak of neither start in the world.
+        std::string first = "menu";
+        if (script_.is_array()) {
+            first = "none";
+            for (const auto& st : script_)
+                if (st.contains("backstory") || st.contains("backstory_begin")) first = "backstory";
+        }
+        if (first == "backstory" && hud_.backstories.empty()) first = "none";
+        hud_.panel = first;
+        if (first == "menu") openMainMenu();
+        if (settings_.fullscreen) SDL_SetWindowFullscreen(window_, true);
+        thread_ = std::thread([this] { simLoop(); });
+        return true;
+    }
+
+    // ---- the world the game shows: the first, a new one, one from a save ----
+    // What the main thread keeps of the world's people and buildings, read
+    // again from world_. The sim thread must not be running.
+    void adoptWorld() {
+        prevPos_.clear();
+        for (const auto& [id, c] : world_->characters()) prevPos_[id] = c.pos;
+        buildings_.clear();
         if (!world_->settlements().empty()) {
             const Settlement& s = world_->settlements().begin()->second;
             target_[0] = originX_ + s.center.x;
             target_[1] = originY_ + s.center.y;
-        }
-        if (!world_->settlements().empty()) {
-            villageCentre_[0] = world_->settlements().begin()->second.center.x;
-            villageCentre_[1] = world_->settlements().begin()->second.center.y;
+            villageCentre_[0] = s.center.x;
+            villageCentre_[1] = s.center.y;
         }
         for (const auto& [id, ob] : world_->objects()) {
             static const char* kShown[] = {"house", "storage", "hearth", "field", "garden", "shrine", "village_fire"};
             for (const char* t : kShown)
                 if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily});
         }
-        for (const auto& d : content_->build.pieces) {
-            std::string cost;
-            for (const auto& [item, n] : d.cost) cost += (cost.empty() ? "" : ", ") + name("item", item) + " " + std::to_string(n);
-            hud_.buildPalette.push_back({text("hud.build.piece." + d.id), cost});
-        }
-        for (const auto& g : content_->goals) {
-            goalIds_.push_back(g.id);
-            goalNames_.push_back(name("goal", g.id));
-        }
-        backstoryCards();
+        anims_.clear();
+        beastAnims_.clear();
+        avatar_ = Avatar{};
+        hud_.resetWorld();
+        selected_ = kNone;
+        selectedWanted_ = kNone;
+        wheelWanted_ = kNone;
         snapshotLocked();
         shown_ = snap_;
+        clearedPieces_ = std::size_t(-1);   // the clearings follow the new buildings
         for (const auto& a : shown_.actors)
             if (!a.animal && a.alive) {
                 select(a.id);
@@ -204,20 +234,262 @@ public:
                 target_[1] = wy;
                 break;
             }
-        if (!openGpu(why)) return false;
-        setClearings();
-        loadScript();
-        // A new game opens on the backstory screen; tour scripts that do not
-        // speak of it start as before.
-        bool scriptSkips = false;
-        if (script_.is_array()) {
-            scriptSkips = true;
-            for (const auto& st : script_)
-                if (st.contains("backstory") || st.contains("backstory_begin")) scriptSkips = false;
+        freshTick_ = world_->now();
+    }
+    // Names the interface keeps (they follow the language).
+    void refreshTexts() {
+        hud_.buildPalette.clear();
+        for (const auto& d : content_->build.pieces) {
+            std::string cost;
+            for (const auto& [item, n] : d.cost) cost += (cost.empty() ? "" : ", ") + name("item", item) + " " + std::to_string(n);
+            hud_.buildPalette.push_back({text("hud.build.piece." + d.id), cost});
         }
-        if (!hud_.backstories.empty() && !scriptSkips) hud_.panel = "backstory";
-        thread_ = std::thread([this] { simLoop(); });
+        goalIds_.clear();
+        goalNames_.clear();
+        for (const auto& g : content_->goals) {
+            goalIds_.push_back(g.id);
+            goalNames_.push_back(name("goal", g.id));
+        }
+        backstoryCards();
+    }
+    void stopSim() {
+        stop_ = true;
+        if (thread_.joinable()) thread_.join();
+        stop_ = false;
+    }
+    void startSim() { thread_ = std::thread([this] { simLoop(); }); }
+    // Untouched since it was made: New game needs no new world.
+    bool worldFresh() const { return shown_.tick == freshTick_ && shown_.controlled == kNone; }
+
+    // ---- the menus --------------------------------------------------------
+    void menuAction(const std::string& action, const Json& args) override { menuQueue_.push_back({action, args}); }
+
+    void openMainMenu() {
+        hud_.panel = "menu";
+        hud_.canLoad = latestSave() >= 0;
+        hud_.canContinue = hud_.canLoad || !worldFresh();
+        hud_.menuNote.clear();
+        post({"hold"});
+    }
+    void openPause() {
+        pauseHeld_ = !shown_.paused;
+        post({"hold"});
+        hud_.panel = "pause";
+        hud_.canLoad = latestSave() >= 0;
+        hud_.menuNote.clear();
+    }
+    void closePause() {
+        hud_.panel = "none";
+        if (pauseHeld_) post({"unhold"});
+        pauseHeld_ = false;
+    }
+    void openSlots(bool save) {
+        if (hud_.panel == "menu" || hud_.panel == "pause") menuBack_ = hud_.panel;
+        hud_.slotsSave = save;
+        hud_.menuSlots.clear();
+        for (const SaveMeta& m : listSaves()) {
+            Hud::MenuSlot s;
+            s.slot = m.slot;
+            s.used = m.used;
+            if (m.used) {
+                s.title = m.person.empty() ? text("menu.slot.no_person") : m.person;
+                if (!m.backstory.empty()) s.title += ", " + text("backstory." + m.backstory + ".name");
+                const int hour = int((m.tick % kTicksPerDay) * 24 / kTicksPerDay);
+                const int minute = int((m.tick % kTicksPerDay) * 24 * 60 / kTicksPerDay % 60);
+                char hm[8];
+                std::snprintf(hm, sizeof hm, "%02d:%02d", hour, minute);
+                s.line = text("menu.slot.line", {{"day", m.day}, {"season", text("game.season." + m.season)},
+                                                 {"time", std::string(hm)}, {"alive", m.alive}});
+                if (m.slot == 0) s.line = text("menu.slot.auto") + " · " + s.line;
+                const std::time_t t = std::time_t(m.savedAt);
+                char when[32] = "";
+                if (const std::tm* lt = std::localtime(&t)) std::strftime(when, sizeof when, "%d.%m.%Y  %H:%M", lt);
+                s.when = when;
+            }
+            hud_.menuSlots.push_back(std::move(s));
+        }
+        hud_.menuNote.clear();
+        hud_.panel = "slots";
+    }
+    void openSettings() {
+        if (hud_.panel == "menu" || hud_.panel == "pause") menuBack_ = hud_.panel;
+        hud_.settingsLang = opts_.lang;
+        hud_.settingsFullscreen = settings_.fullscreen;
+        hud_.settingsAutosave = settings_.autosaveMin;
+        hud_.menuNote.clear();
+        hud_.panel = "settings";
+    }
+    void menuBack() {
+        if (menuBack_ == "menu") openMainMenu();
+        else {
+            hud_.panel = "pause";
+            hud_.canLoad = latestSave() >= 0;
+        }
+    }
+    // Esc inside the menus: one step back.
+    void menuEscape() {
+        if (hud_.panel == "pause") closePause();
+        else if (hud_.panel == "slots" || hud_.panel == "settings") menuBack();
+    }
+
+    void newGame() {
+        if (!worldFresh()) {
+            stopSim();
+            try {
+                auto w = std::make_unique<World>(makeTestWorld(*content_, worldCfg_, opts_.seed));
+                installAi(*w);
+                w->run(7 * kTicksPerDay / 24);
+                world_ = std::move(w);
+            } catch (const std::exception& e) {
+                SDL_Log("altera_game: new game: %s", e.what());
+                hud_.menuNote = text("menu.failed", {{"why", std::string(e.what())}});
+                startSim();
+                return;
+            }
+            paused_ = true;
+            adoptWorld();
+            startSim();
+        }
+        hud_.menuNote.clear();
+        if (hud_.backstories.empty()) {
+            hud_.panel = "none";
+            post({"unhold"});
+        } else hud_.panel = "backstory";
+    }
+
+    bool saveSlot(int slot) {
+        stopSim();
+        Json save{{"format", "altera.save/1"},
+                  {"game",
+                   {{"origin_x", originX_}, {"origin_y", originY_}, {"target_x", target_[0]}, {"target_y", target_[1]},
+                    {"zoom", zoom_}, {"yaw", orbitYaw_}, {"pitch", orbitPitch_}, {"speed", speed_},
+                    {"seed", opts_.seed}, {"lang", opts_.lang}}},
+                  {"world", world_->toJson()}};
+        SaveMeta m;
+        m.slot = slot;
+        m.savedAt = std::int64_t(std::time(nullptr));
+        m.tick = world_->now();
+        m.day = world_->day() + 1;
+        m.season = world_->season();
+        for (const auto& [id, c] : world_->characters()) {
+            if (c.body.alive) ++m.alive;
+            if (c.controller.isPlayer()) {
+                m.person = c.name;
+                m.backstory = c.backstory;
+            }
+        }
+        startSim();
+        std::string why;
+        if (!writeSave(slot, save, m, &why)) {
+            SDL_Log("altera_game: save %d: %s", slot, why.c_str());
+            hud_.menuNote = text("menu.failed", {{"why", why}});
+            return false;
+        }
+        SDL_Log("altera_game: saved slot %d (%s)", slot, slotPath(slot).string().c_str());
         return true;
+    }
+
+    bool loadSlot(int slot) {
+        Json save;
+        try {
+            save = readSave(slot);
+        } catch (const std::exception& e) {
+            SDL_Log("altera_game: load %d: %s", slot, e.what());
+            hud_.menuNote = text("menu.failed", {{"why", std::string(e.what())}});
+            return false;
+        }
+        stopSim();
+        try {
+            world_->loadJson(save.at("world"));
+        } catch (const std::exception& e) {
+            // a half-read world is no world: start a new one
+            SDL_Log("altera_game: load %d: %s", slot, e.what());
+            world_ = std::make_unique<World>(makeTestWorld(*content_, worldCfg_, opts_.seed));
+            installAi(*world_);
+            world_->run(7 * kTicksPerDay / 24);
+            adoptWorld();
+            startSim();
+            hud_.menuNote = text("menu.failed", {{"why", std::string(e.what())}});
+            return false;
+        }
+        const Json g = save.value("game", Json::object());
+        originX_ = g.value("origin_x", originX_);
+        originY_ = g.value("origin_y", originY_);
+        adoptWorld();
+        freshTick_ = Tick(-1);
+        target_[0] = g.value("target_x", target_[0]);
+        target_[1] = g.value("target_y", target_[1]);
+        zoom_ = g.value("zoom", zoom_);
+        orbitYaw_ = g.value("yaw", orbitYaw_);
+        orbitPitch_ = g.value("pitch", orbitPitch_);
+        speed_ = std::clamp(g.value("speed", speed_), 1, 4);
+        paused_ = false;
+        pauseHeld_ = false;
+        startedAs_ = true;   // the player's person is selected once the snapshot shows them
+        autosaveClock_ = 0;
+        startSim();
+        hud_.menuNote.clear();
+        hud_.panel = "none";
+        SDL_Log("altera_game: loaded slot %d", slot);
+        return true;
+    }
+
+    void applySettings(const Json& a) {
+        const std::string lang = a.value("lang", opts_.lang);
+        if (lang != opts_.lang && loc_->hasLanguage(lang)) {
+            stopSim();   // the sim thread reads the language for the snapshot's texts
+            opts_.lang = lang;
+            refreshTexts();
+            startSim();
+        }
+        const bool fs = a.value("fullscreen", settings_.fullscreen);
+        if (fs != settings_.fullscreen) SDL_SetWindowFullscreen(window_, fs);
+        settings_.lang = opts_.lang;
+        settings_.fullscreen = fs;
+        settings_.autosaveMin = std::clamp(a.value("autosave", settings_.autosaveMin), 0, 120);
+        storeSettings(settings_);
+    }
+
+    // The menu buttons of the last frame, and the autosave.
+    void runMenus(double dt) {
+        std::vector<std::pair<std::string, Json>> todo;
+        todo.swap(menuQueue_);
+        for (const auto& [act, args] : todo) {
+            if (act == "continue") {
+                // the game left for the main menu goes on; else the last save
+                if (!worldFresh()) {
+                    hud_.panel = "none";
+                    post({"unhold"});
+                } else if (const int n = latestSave(); n >= 0) loadSlot(n);
+            } else if (act == "new") newGame();
+            else if (act == "open_load") openSlots(false);
+            else if (act == "open_save") openSlots(true);
+            else if (act == "settings") openSettings();
+            else if (act == "resume") closePause();
+            else if (act == "main_menu") {
+                pauseHeld_ = false;
+                openMainMenu();
+            } else if (act == "quit") {
+                SDL_Event q{};
+                q.type = SDL_EVENT_QUIT;
+                SDL_PushEvent(&q);
+            } else if (act == "load") loadSlot(args.value("slot", -1));
+            else if (act == "save") {
+                const int n = args.value("slot", 1);
+                if (saveSlot(n)) {
+                    menuBack();
+                    hud_.menuNote = text("menu.saved", {{"n", n}});
+                }
+            } else if (act == "back") menuBack();
+            else if (act == "apply") applySettings(args);
+        }
+        if (settings_.autosaveMin > 0 && hud_.panel == "none" && !shown_.paused && shown_.controlled != kNone) {
+            autosaveClock_ += dt;
+            if (autosaveClock_ >= settings_.autosaveMin * 60.0) {
+                autosaveClock_ = 0;
+                saveSlot(0);
+            }
+        }
     }
 
     // ---- the sim's map from the world ------------------------------------
@@ -332,7 +604,15 @@ public:
         switch (e.type) {
         case SDL_EVENT_QUIT: return false;
         case SDL_EVENT_KEY_DOWN:
+            if (hud_.inMenu()) {   // the menus: only Esc, one step back
+                if (e.key.key == SDLK_ESCAPE && !e.key.repeat) menuEscape();
+                break;
+            }
             if (hud_.panel == "backstory") {   // the first screen: only its own keys
+                if (e.key.key == SDLK_ESCAPE && !e.key.repeat) {
+                    openMainMenu();
+                    break;
+                }
                 if (e.key.key == SDLK_UP || e.key.key == SDLK_LEFT) --hud_.backstoryPick;
                 if (e.key.key == SDLK_DOWN || e.key.key == SDLK_RIGHT) ++hud_.backstoryPick;
                 if (e.key.key == SDLK_RETURN || e.key.key == SDLK_KP_ENTER) hud_.backstoryBegin = true;
@@ -343,7 +623,8 @@ public:
                     hud_.panel = "none";
                     break;
                 }
-                return false;
+                if (!e.key.repeat) openPause();
+                break;
             }
             if (e.key.repeat) break;
             if (e.key.key == SDLK_SPACE) post({"pause"});
@@ -419,6 +700,8 @@ public:
             std::lock_guard<std::mutex> lock(snapMutex_);
             shown_ = snap_;
         }
+        runMenus(dt);
+        if (hud_.panel == "menu") orbitYaw_ += 0.05 * dt;   // the village turns slowly behind the main menu
         const double alpha = tickAlpha();
         // The hour of the day from the sim's clock, moving smoothly between ticks.
         const double ticks = double(shown_.tick % kTicksPerDay) + alpha;
@@ -460,7 +743,8 @@ public:
             clearedPieces_ = shown_.pieces.size();
             setClearings();
         }
-        const bool* keys = SDL_GetKeyboardState(nullptr);
+        static const bool kNoKeys[SDL_SCANCODE_COUNT] = {};
+        const bool* keys = hud_.inMenu() ? kNoKeys : SDL_GetKeyboardState(nullptr);
         const bool walking = driveAvatar(dt, keys, alpha);
         const ActorSnap* sel = actor(selected_);
         if (walking) {
@@ -710,6 +994,7 @@ private:
     // ALTERA_GAME_SCRIPT names a JSON list of steps, each at `at` seconds after
     // the world opened: camera (zoom, pitch, yawDeg), `select` (a person by
     // index among the living people), `speed`, `panel` (none|sheet|wheel|kin|annals),
+    // `menu`, `save`, `load` (the menus and the save slots),
     // `shot` (file under terrain_lab_out/shots_for_user), `quit`.
     void loadScript() {
         const char* path = std::getenv("ALTERA_GAME_SCRIPT");
@@ -772,6 +1057,16 @@ private:
                         break;
                     }
             }
+            // the menus: `menu` runs a button (continue, new, open_load,
+            // open_save, settings, resume, main_menu), `save` / `load` a slot
+            if (st.contains("menu")) {
+                const std::string m = st["menu"].get<std::string>();
+                if (m == "main_menu") openMainMenu();
+                else if (m == "pause") openPause();
+                else menuAction(m, Json::object());
+            }
+            if (st.contains("save")) saveSlot(st["save"].get<int>());
+            if (st.contains("load")) loadSlot(st["load"].get<int>());
             if (st.contains("panel")) {
                 hud_.panel = st["panel"].get<std::string>();
                 if (hud_.panel == "wheel") {
@@ -982,6 +1277,8 @@ private:
             for (auto& c : todo) {
                 changed = true;
                 if (c.op == "pause") paused_ = !paused_;
+                else if (c.op == "hold") paused_ = true;     // the menus
+                else if (c.op == "unhold") paused_ = false;
                 else if (c.op == "speed") {
                     speed_ = std::clamp(c.n, 1, 4);
                     paused_ = false;
@@ -2565,6 +2862,13 @@ private:
     terrain_core::GroundHeight ground_;
     double worldSize_;
     GameOptions opts_;
+    Json worldCfg_;                      // the sim world's config (New game makes the world again from it)
+    GameSettings settings_;
+    Tick freshTick_ = 0;                 // the tick the world was made at
+    std::vector<std::pair<std::string, Json>> menuQueue_;   // menu buttons, run at the next update
+    std::string menuBack_ = "menu";      // where the slots and the settings go back to
+    bool pauseHeld_ = false;             // the pause menu stopped the clock (and lets it go)
+    double autosaveClock_ = 0;
     std::unique_ptr<Content> content_;
     std::unique_ptr<Loc> loc_;
     std::unique_ptr<World> world_;

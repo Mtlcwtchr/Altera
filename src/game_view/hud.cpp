@@ -603,7 +603,11 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "colony") colony(s, W, H);
     if (panel == "workshop") workshop(s, W, H);
     if (panel == "backstory") backstory(W, H);
-    if (!s.result.empty() && s.result != "ok") {
+    if (panel == "menu") mainMenu(W, H);
+    if (panel == "pause") pauseMenu(W, H);
+    if (panel == "slots") slotsPanel(W, H);
+    if (panel == "settings") settingsPanel(W, H);
+    if (!inMenu() && !s.result.empty() && s.result != "ok") {
         const std::string t = ui.fit(s.result, 600, 14 / 15.f);
         const float w = textW(t, 14) + 28;
         const Rect r{(W - w) * 0.5f, H - 150, w, 30};
