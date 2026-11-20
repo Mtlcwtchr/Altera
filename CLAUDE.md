@@ -53,8 +53,9 @@ check_fast prints only the outcome and the first 20 errors; full logs are in
 
 ## Rules
 
-- **Commit locally, don't push** unless the user explicitly asks in this thread.
-  Never force-push, `reset --hard`, `clean -fd`, `rm -rf`, `del /s`.
+- **Pipeline parallel-agent-dev-workflow (user, 20.11)**: own branch/worktree -> commit -> push -> PR ->
+  self-merge are allowed by default, no need to ask. No GitHub Actions.
+  Never force-push or rewrite others' history; never `reset --hard`, `clean -fd`, `rm -rf`, `del /s`.
 - **Don't touch others' uncommitted edits**: `git status` shows many modified files from
   parallel threads. Stage only your own files/hunks (`git add <file>`, or `git apply --cached`
   of your own patch when a file also carries someone else's edit). Never revert, stash or
