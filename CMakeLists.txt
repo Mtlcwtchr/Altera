@@ -1,6 +1,15 @@
 cmake_minimum_required(VERSION 3.24)
 project(altera LANGUAGES CXX)
 
+# ALTERA_SIM_ONLY - configure only the headless life-sim: altera_sim,
+# altera_combat, altera_sim_runner, altera_combat_tables and their tests. No
+# fetches, no engine, no SDL/D3D12, no shaders or assets, so a configure takes
+# seconds and a build needs nothing but a C++20 compiler (Linux included).
+# Used by the "sim" presets (CMakePresets.json, build dir cmake-build-sim) and
+# tools/check_fast.bat. The shared cmake-build-windows stays the full build.
+option(ALTERA_SIM_ONLY "Configure only the headless life-sim and its tests" OFF)
+
+if(NOT ALTERA_SIM_ONLY)
 include(FetchContent)
 
 # EnTT is header-only. Keep it as a fetched, pinned dependency so the
@@ -56,6 +65,7 @@ FetchContent_Declare(meshoptimizer
         GIT_SHALLOW TRUE
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(meshoptimizer)
+endif() # NOT ALTERA_SIM_ONLY
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -125,6 +135,7 @@ target_compile_options(asr_warnings INTERFACE
 add_library(nlohmann_json INTERFACE)
 target_include_directories(nlohmann_json INTERFACE ${CMAKE_SOURCE_DIR}/third_party)
 
+if(NOT ALTERA_SIM_ONLY)
 # ---------------------------------------------------------------------------
 # engine/core - fixed point, deterministic RNG, ids, calendar. No game concepts.
 # ---------------------------------------------------------------------------
@@ -293,6 +304,7 @@ target_link_libraries(asr_simulation PUBLIC asr_core asr_content asr_generation 
 # ---------------------------------------------------------------------------
 add_executable(sim_runner sim_runner/main.cpp)
 target_link_libraries(sim_runner PRIVATE asr_simulation asr_warnings)
+endif() # NOT ALTERA_SIM_ONLY
 
 # ---------------------------------------------------------------------------
 # altera_sim - the Altera life-sim core (doc/design/ALTERA_CORE_SPEC_v0.1.md):
@@ -355,6 +367,7 @@ if(WIN32)
     target_compile_definitions(altera_sim_view PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 endif()
 
+if(NOT ALTERA_SIM_ONLY)
 # ---------------------------------------------------------------------------
 # tools - content validator.
 # ---------------------------------------------------------------------------
@@ -741,6 +754,7 @@ if(ASR_BUILD_CLIENT)
         add_dependencies(altera_client asr_scene_geometry)
     endif()
 endif()
+endif() # NOT ALTERA_SIM_ONLY
 
 # ---------------------------------------------------------------------------
 # tests
@@ -755,7 +769,10 @@ if(ASR_BUILD_TESTS)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
-    add_test(NAME altera_sim COMMAND altera_sim_tests)
+    # The suite is split by test name: the long multi-year worlds (cmake/test_labels.cmake)
+    # run as altera_sim_slow, label "full"; the rest is altera_sim, label "fast".
+    include(cmake/test_labels.cmake)
+    altera_add_sim_tests(altera_sim_tests)
     add_executable(altera_combat_tests tests/main.cpp tests/test_altera_combat.cpp)
     target_include_directories(altera_combat_tests PRIVATE src tests)
     target_link_libraries(altera_combat_tests PRIVATE altera_combat asr_warnings)
@@ -764,6 +781,10 @@ if(ASR_BUILD_TESTS)
     # C++ core vs the Python prototype's tables (n=3000, seed 1), +-5 pp per cell
     add_test(NAME altera_combat_golden COMMAND altera_combat_tables --n 3000 --seed 1
             --golden ${CMAKE_SOURCE_DIR}/tests/data/combat/golden_combat_sim_n3000_seed1.md --tol 5)
+    if(ALTERA_SIM_ONLY)
+        altera_label_tests()
+        return()
+    endif()
     add_executable(asr_dlss_math_tests tests/main.cpp tests/test_dlss_math.cpp)
     target_include_directories(asr_dlss_math_tests PRIVATE src tests)
     target_link_libraries(asr_dlss_math_tests PRIVATE asr_warnings)
@@ -990,4 +1011,10 @@ if(ASR_BUILD_TESTS)
             tests/test_source_cluster_draws.cpp)
     target_link_libraries(asr_render_system_tests PRIVATE asr_render_systems asr_warnings)
     add_test(NAME render_systems COMMAND asr_render_system_tests)
+endif()
+
+# Every test gets a ctest label: "fast" (the sim's quick checks, the default
+# layer) or "full" (everything else). See cmake/test_labels.cmake.
+if(ASR_BUILD_TESTS)
+    altera_label_tests()
 endif()

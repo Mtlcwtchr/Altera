@@ -1,0 +1,66 @@
+{
+  "version": 6,
+  "configurePresets": [
+    {
+      "name": "sim",
+      "displayName": "Sim only (Windows, clang-cl, RelWithDebInfo)",
+      "description": "Headless life-sim, combat and their tests. No engine, D3D12, shaders or assets. Own build dir per worktree; the full client/lab build stays in cmake-build-windows.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-sim",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "CMAKE_CXX_COMPILER": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-cl.exe",
+        "ALTERA_SIM_ONLY": "ON",
+        "ASR_BUILD_TESTS": "ON"
+      }
+    },
+    {
+      "name": "sim-linux",
+      "displayName": "Sim only (Linux/macOS, default compiler)",
+      "description": "The same sim-only build for a cloud container: needs only CMake, Ninja and a C++20 compiler.",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/cmake-build-sim",
+      "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "cacheVariables": {
+        "CMAKE_BUILD_TYPE": "RelWithDebInfo",
+        "ALTERA_SIM_ONLY": "ON",
+        "ASR_BUILD_TESTS": "ON"
+      }
+    }
+  ],
+  "buildPresets": [
+    { "name": "sim", "configurePreset": "sim" },
+    { "name": "sim-linux", "configurePreset": "sim-linux" }
+  ],
+  "testPresets": [
+    {
+      "name": "sim-fast",
+      "displayName": "Fast layer (label fast)",
+      "configurePreset": "sim",
+      "filter": { "include": { "label": "^fast$" } },
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "sim-full",
+      "displayName": "All sim tests (fast + full)",
+      "configurePreset": "sim",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "sim-linux-fast",
+      "configurePreset": "sim-linux",
+      "filter": { "include": { "label": "^fast$" } },
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    },
+    {
+      "name": "sim-linux-full",
+      "configurePreset": "sim-linux",
+      "output": { "outputOnFailure": true },
+      "execution": { "jobs": 4 }
+    }
+  ]
+}
