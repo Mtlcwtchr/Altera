@@ -1,6 +1,8 @@
 #include "sim/combat_bridge.hpp"
 
+#include <algorithm>
 #include <filesystem>
+#include <set>
 #include <fstream>
 #include <mutex>
 
@@ -119,7 +121,68 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
         auto inv = c.inventory.find(item);
         if (inv != c.inventory.end() && inv->second > 0) s.armor.push_back(armor);
     }
+    applyMadeGear(b, c, s);
     return s;
+}
+
+void wearMadeWeapon(Character& c, double wear) {
+    if (wear <= 0.0) return;
+    craft::Item* best = nullptr;
+    double bestDmg = 0.0;
+    for (auto& it : c.craft.items) {
+        if (it.kind != "weapon" || it.wear >= 1.0) continue;
+        auto dm = it.derived.find("damage_mult");
+        double dmg = dm == it.derived.end() ? 1.0 : dm->second;
+        if (!best || dmg > bestDmg) {
+            best = &it;
+            bestDmg = dmg;
+        }
+    }
+    if (best) best->wear = std::min(1.0, best->wear + wear);
+}
+
+void applyMadeGear(const CombatBridge& b, const Character& c, combat::FighterSpec& s) {
+    // Made things (crafting derive, gdd crafting §10): the best carried weapon
+    // replaces the item-based one with its own numbers; each made armour layer
+    // the data knows is worn with its quality and gaps. Worn-out things do not count.
+    const craft::Item* best = nullptr;
+    double bestDmg = 0.0;
+    for (const auto& it : c.craft.items) {
+        if (it.kind != "weapon" || it.wear >= 1.0) continue;
+        auto w = it.derivedStr.find("weapon_id");
+        if (w == it.derivedStr.end() || !b.data->hasWeapon(w->second)) continue;
+        auto dm = it.derived.find("damage_mult");
+        double dmg = dm == it.derived.end() ? 1.0 : dm->second;
+        if (!best || dmg > bestDmg) {
+            best = &it;
+            bestDmg = dmg;
+        }
+    }
+    if (best) {
+        const std::string& wid = best->derivedStr.at("weapon_id");
+        s.weapon = wid;
+        s.damageMult = bestDmg * (1.0 - 0.5 * best->wear);
+        auto du = best->derived.find("durability");
+        const double base = b.data->weapons[b.data->weapon(wid)].durability;
+        if (du != best->derived.end() && base > 0) s.durabilityMult = std::max(0.1, du->second / base);
+    }
+    std::set<std::string> layers;
+    for (const auto& it : c.craft.items) {
+        if (it.kind != "armor" || it.wear >= 1.0) continue;
+        auto l = it.derivedStr.find("layer");
+        if (l == it.derivedStr.end() || !b.data->armorIx.count(l->second) || !layers.insert(l->second).second) continue;
+        auto have = std::find(s.armor.begin(), s.armor.end(), l->second);
+        size_t i = static_cast<size_t>(have - s.armor.begin());
+        if (have == s.armor.end()) {
+            s.armor.push_back(l->second);
+            i = s.armor.size() - 1;
+        }
+        s.armorEff.resize(s.armor.size(), 1.0);
+        s.armorGap.resize(s.armor.size(), 0.0);
+        s.armorEff[i] = std::clamp((0.6 + 0.6 * it.q) * (1.0 - 0.5 * it.wear), 0.3, 1.2);
+        auto g = it.derived.find("gap");
+        if (g != it.derived.end()) s.armorGap[i] = std::max(0.0, g->second);
+    }
 }
 
 namespace {
@@ -194,6 +257,10 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     for (int s : t.wounds) r.targetWounds.push_back(cd.severity[s].id);
     r.actorWeapon = cd.weapons[a.weapon].id;
     r.targetWeapon = cd.weapons[t.weapon].id;
+    r.actorWeaponBroke = a.broke > 0;
+    r.targetWeaponBroke = t.broke > 0;
+    r.actorWeaponWear = a.broke > 0 ? 1.0 : 1.0 - a.weaponCond;
+    r.targetWeaponWear = t.broke > 0 ? 1.0 : 1.0 - t.weaponCond;
     return r;
 }
 

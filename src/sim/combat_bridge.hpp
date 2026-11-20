@@ -62,10 +62,17 @@ struct CombatResolution {
     std::vector<WoundHit> actorHits, targetHits;        // the same with zone and damage
     double actorBlood = 100.0, targetBlood = 100.0;     // after the fight
     std::string actorWeapon, targetWeapon;
+    // weapon condition lost (0..1) and whether it broke: wear for a made weapon
+    double actorWeaponWear = 0.0, targetWeaponWear = 0.0;
+    bool actorWeaponBroke = false, targetWeaponBroke = false;
     std::string mode = "full"; // full (round loop) | stat (LOD)
 };
 
 combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const std::string& skillKey);
+// Made weapons and armour the character carries (crafting): numbers into the spec.
+void applyMadeGear(const CombatBridge& b, const Character& c, combat::FighterSpec& s);
+// The made weapon applyMadeGear chose wears by `wear` (1 = broke).
+void wearMadeWeapon(Character& c, double wear);
 
 // Full round loop or the statistical table (LOD): full when events are asked
 // for, a player fights or stands within lod.full_radius_m, or a side carries

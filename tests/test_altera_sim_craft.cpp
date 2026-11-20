@@ -580,3 +580,62 @@ TEST(altera_craft_designs_become_goap_actions) {
     CHECK(n >= 2);
     CHECK(ct.interactions.count("craft:cord"));
 }
+
+// --- K4: made weapons and armour in combat, repair ---------------------------
+
+#include "sim/combat_bridge.hpp"
+
+TEST(altera_craft_made_gear_in_combat) {
+    const Content& ct = realContent();
+    const CombatBridge* b = combatBridge(ct);
+    CHECK(b != nullptr);
+    if (!b) return;
+    Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    World w = makeTestWorld(ct, cfg);
+    Character* c = anAdult(w);
+    if (!c) return;
+    c->inventory.clear();
+    c->craft.items.clear();
+    altera::combat::FighterSpec bare = fighterOf(*b, *c, "fighting");
+    // a master's sword and a poor one
+    ChainRun good = runDesign("sword", actorWith(0.95), 2), poor = runDesign("sword", actorWith(0.45), 3);
+    CHECK(good.done && good.out.kind == "weapon");
+    c->craft.items.push_back(good.out);
+    altera::combat::FighterSpec armed = fighterOf(*b, *c, "fighting");
+    CHECK(armed.weapon == "sword" && armed.weapon != bare.weapon);
+    CHECK(std::fabs(armed.damageMult - good.out.derived["damage_mult"]) < 1e-9);
+    CHECK(armed.durabilityMult > 0.1);
+    if (poor.done && poor.out.kind == "weapon") {
+        Character p = *c;
+        p.craft.items = {poor.out};
+        CHECK(fighterOf(*b, p, "fighting").damageMult < armed.damageMult);
+    }
+    // mail and a gambeson are worn with their quality; loose rings leave gaps
+    ChainRun mail = runDesign("mail_shirt", actorWith(0.7), 4), pad = runDesign("gambeson", actorWith(0.7), 5);
+    CHECK(mail.done && mail.out.derivedStr["layer"] == "mail");
+    c->craft.items.push_back(mail.out);
+    if (pad.done) c->craft.items.push_back(pad.out);
+    altera::combat::FighterSpec worn = fighterOf(*b, *c, "fighting");
+    CHECK(std::find(worn.armor.begin(), worn.armor.end(), "mail") != worn.armor.end());
+    CHECK(worn.armorEff.size() == worn.armor.size());
+    // the core plays the numbers: the same fight with the made sword hits harder
+    altera::combat::Engine e(*b->data, 1);
+    altera::combat::Fighter f1 = e.make(armed, 1, 0), f0 = e.make(bare, 1, 0);
+    CHECK(f1.damageMult == armed.damageMult && f0.damageMult == 1.0);
+    // a fight wears the weapon; a smith mends it
+    wearMadeWeapon(*c, 0.5);
+    CHECK(c->craft.items.front().wear >= 0.5 - 1e-9);
+    c->skills["smithing"] = 0.8;
+    c->craft.items.front().form = "sword";
+    // repair needs a striking tool: give the smith a hammer made by a master
+    ChainRun hammer = runDesign("hammer_tool", actorWith(0.9), 6);
+    CHECK(hammer.done && hammer.out.form == "hammer_tool");
+    c->craft.items.push_back(hammer.out);
+    double before = c->craft.items.front().wear;
+    CraftOutcome rep = repairMade(w, *c, 0, "straighten");
+    CHECK(rep.started);
+    bool lower = false;
+    for (const auto& it : c->craft.items)
+        if (it.kind == "weapon" && it.wear < before) lower = true;
+    if (rep.made >= 0) CHECK(lower);
+}

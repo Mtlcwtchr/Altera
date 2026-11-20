@@ -603,6 +603,8 @@ std::string mirrorOutcome(const std::string& o, const std::string& targetState) 
 void applyCombatResult(World& w, Character& c, Character& t, const InteractionDef& d, const CombatResolution& cr,
                        WorldObject* target, const std::vector<EntityId>& wit) {
     const CombatBridge& b = *combatBridge(w.content());
+    wearMadeWeapon(c, cr.actorWeaponWear);
+    wearMadeWeapon(t, cr.targetWeaponWear);
     auto hurt = [&](Character& who, double mult, bool dead, const std::vector<WoundHit>& hits, double blood) {
         // A player is never killed in a fight: defeat means an off-screen rescue
         // (rescue.json); real death comes only from special acts (execution).
