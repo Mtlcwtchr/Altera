@@ -122,6 +122,8 @@ void to_json(Json& j, const Character& c) {
     }
     if (c.captivity.held()) j["captivity"] = c.captivity;
     if (!c.craft.empty()) j["craft"] = c.craft;
+    if (!c.attrs.empty()) j["attrs"] = c.attrs;
+    if (!c.backstory.empty()) j["backstory"] = c.backstory;
 }
 
 void from_json(const Json& j, Character& c) {
@@ -133,6 +135,8 @@ void from_json(const Json& j, Character& c) {
     c.moodlets = j.value("moodlets", std::vector<Moodlet>{});
     c.traits = j.value("traits", std::vector<std::string>{});
     c.skills = j.value("skills", std::map<std::string, double>{});
+    c.attrs = j.value("attrs", std::map<std::string, double>{});
+    c.backstory = j.value("backstory", std::string());
     c.knowledge = j.value("knowledge", std::set<std::string>{});
     c.knownObjects = j.value("known_objects", std::set<EntityId>{});
     c.memory = j.value("memory", std::vector<MemoryEntry>{});

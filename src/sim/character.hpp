@@ -259,6 +259,8 @@ struct Character {
     std::vector<Moodlet> moodlets;
     std::vector<std::string> traits;
     std::map<std::string, double> skills;
+    std::map<std::string, double> attrs; // the 8 attributes 0..1 (expansion attributes.json); empty = not rolled
+    std::string backstory;               // backstories.json id the player started as; empty = none
     std::set<std::string> knowledge;
     std::set<EntityId> knownObjects;
     std::vector<MemoryEntry> memory;

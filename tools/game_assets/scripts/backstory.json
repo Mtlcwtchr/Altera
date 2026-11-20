@@ -1,0 +1,17 @@
+[
+ {"at": 3, "backstory": "peasant"},
+ {"at": 4, "shot": "backstory_01_peasant.png"},
+ {"at": 5, "backstory": "ex_soldier"},
+ {"at": 6, "shot": "backstory_02_ex_soldier.png"},
+ {"at": 7, "backstory": "vagrant"},
+ {"at": 8, "shot": "backstory_03_vagrant.png"},
+ {"at": 9, "backstory": "smith_apprentice", "mouse": [1180, 930]},
+ {"at": 10, "shot": "backstory_04_smith_tooltip.png"},
+ {"at": 11, "backstory": "herbalist", "mouse": [0, 0]},
+ {"at": 12, "shot": "backstory_05_herbalist.png"},
+ {"at": 13, "backstory_begin": true},
+ {"at": 17, "shot": "backstory_06_started.png"},
+ {"at": 18, "panel": "sheet"},
+ {"at": 20, "shot": "backstory_07_sheet.png"},
+ {"at": 21, "quit": true}
+]

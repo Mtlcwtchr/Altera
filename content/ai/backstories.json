@@ -1,0 +1,121 @@
+{
+ "_doc": "Предыстории персонажа игрока (выбор при новой игре; src/sim/backstory.cpp). Предыстория перекраивает выбранного жителя деревни: умения (уровень 0..1, знание с предпосылками добавляется само), прочие умения срезаются до other_skill_cap; черты: always + pick из pool (с учётом exclusive); характеристики: 0.5 ± разброс + attrs (сдвиг); инвентарь заменяется на items + coins монет; recipes - известные чертежи крафта, made - свои вещи заданного качества; start - место старта (config.starts); rights - права Колонии (config.rights); reputation - стартовая молва по осям; relations - сдвиг отношений с роднёй (kin) и остальной деревней (village), в обе стороны. Тексты только ключами: backstory.<id>.name / .desc / .life, иконка - имя из assets/altera_game/ui/icons.json.",
+ "config": {
+  "other_skill_cap": 0.3,
+  "attr_spread": 0.08,
+  "attr_clamp": [0.1, 0.95],
+  "starts": {
+   "home": {"radius_m": 0},
+   "village_edge": {"radius_m": 160},
+   "road": {"radius_m": 420},
+   "wilds": {"radius_m": 900}
+  }
+ },
+ "backstories": [
+  {
+   "id": "peasant",
+   "icon": "c_mill",
+   "skills": {"farming": 0.55, "plough_team": 0.45, "threshing": 0.4, "husbandry": 0.35, "cooking": 0.3, "woodcutting": 0.3, "foraging": 0.3},
+   "traits": {"always": ["hardy"], "pool": ["diligent", "stubborn", "family_minded", "superstitious", "thrifty", "early_bird"], "pick": 2},
+   "attrs": {"strength": 0.1, "endurance": 0.12, "intellect": -0.05},
+   "items": {"digging_stick": 1, "axe": 1, "seed_grain": 10, "bread": 3, "tunic": 1},
+   "coins": 4,
+   "recipes": ["bread", "basket"],
+   "start": "home",
+   "relations": {"kin": {"trust": 0.15, "affinity": 0.1}, "village": {"familiarity": 0.2}},
+   "reputation": {"honesty": 0.1}
+  },
+  {
+   "id": "smith_apprentice",
+   "icon": "c_anvil",
+   "skills": {"smithing": 0.45, "charcoal_burning": 0.35, "firemaking": 0.4, "toolmaking": 0.35, "armorer": 0.15, "weights_measures": 0.2},
+   "traits": {"always": ["handy"], "pool": ["brawny", "patient", "perfectionist", "hot_tempered", "hard_drinker", "nimble_fingers"], "pick": 2},
+   "attrs": {"strength": 0.12, "dexterity": 0.1, "endurance": 0.05},
+   "items": {"charcoal": 6, "stone": 4, "meal": 2, "tunic": 1},
+   "coins": 8,
+   "recipes": ["knife", "hammer_tool", "tongs", "whetstone"],
+   "made": [{"design": "hammer_tool", "q": 0.45}, {"design": "knife", "q": 0.5}],
+   "start": "home",
+   "relations": {"village": {"respect": 0.1, "familiarity": 0.15}},
+   "reputation": {"valor": 0.05}
+  },
+  {
+   "id": "hunter",
+   "icon": "c_cut",
+   "skills": {"hunting": 0.6, "trapping": 0.5, "archery": 0.4, "stealth": 0.4, "butchery": 0.35, "tanning": 0.25, "foraging": 0.35, "navigation": 0.3},
+   "traits": {"always": ["keen_eyed"], "pool": ["loner", "patient", "nimble", "tight_lipped", "animal_friend", "tireless"], "pick": 2},
+   "attrs": {"perception": 0.15, "agility": 0.1, "charisma": -0.05},
+   "items": {"spear": 1, "snare": 3, "stone_blade": 1, "dried_meat": 4, "hide": 2, "cloak": 1},
+   "coins": 3,
+   "recipes": ["short_bow", "roast_meat", "leather_sheet"],
+   "start": "village_edge",
+   "relations": {"village": {"familiarity": -0.1, "respect": 0.05}},
+   "reputation": {"valor": 0.1}
+  },
+  {
+   "id": "ex_soldier",
+   "icon": "w_violence",
+   "skills": {"combat": 0.55, "polearms": 0.5, "shield_use": 0.4, "swordsmanship": 0.35, "brawling": 0.4, "armor_wear": 0.4, "tactics": 0.3, "intimidation": 0.3, "athletics": 0.3},
+   "traits": {"always": ["stoic"], "pool": ["hot_tempered", "hard_drinker", "unforgiving", "dutiful", "brawny", "light_sleeper", "unscrupulous"], "pick": 2},
+   "attrs": {"strength": 0.12, "endurance": 0.1, "willpower": 0.08, "charisma": -0.04},
+   "items": {"spear": 1, "bandage": 2, "dried_meat": 3, "ale": 2, "cloak": 1},
+   "coins": 12,
+   "made": [{"design": "gambeson", "q": 0.4}, {"design": "dagger", "q": 0.45}],
+   "start": "road",
+   "rights": ["arrest"],
+   "relations": {"village": {"fear": 0.15, "familiarity": -0.15}},
+   "reputation": {"valor": 0.25, "notoriety": 0.15}
+  },
+  {
+   "id": "novice",
+   "icon": "w_faith",
+   "skills": {"faith": 0.55, "theology": 0.45, "literacy": 0.4, "singing": 0.35, "herbalism": 0.3, "history_lore": 0.3, "gardening": 0.25},
+   "traits": {"always": ["pious"], "pool": ["ascetic", "bookish", "patient", "superstitious", "modest", "fastidious", "melancholic"], "pick": 2},
+   "attrs": {"intellect": 0.1, "willpower": 0.12, "strength": -0.08},
+   "items": {"household_idol": 1, "candle": 3, "bread": 3, "dried_herbs": 2, "cloak": 1},
+   "coins": 2,
+   "recipes": ["herbal_tea", "candle"],
+   "start": "home",
+   "relations": {"village": {"trust": 0.15, "respect": 0.1}},
+   "reputation": {"piety": 0.35, "honesty": 0.1}
+  },
+  {
+   "id": "trader",
+   "icon": "values",
+   "skills": {"trade": 0.55, "persuasion": 0.45, "arithmetic": 0.4, "weights_measures": 0.4, "diplomacy": 0.3, "deception": 0.25, "riding": 0.25, "navigation": 0.25},
+   "traits": {"always": ["silver_tongue"], "pool": ["charming", "thrifty", "ambitious", "sociable", "unscrupulous", "gossipy", "spendthrift"], "pick": 2},
+   "attrs": {"charisma": 0.15, "intellect": 0.08, "strength": -0.05},
+   "items": {"salt": 6, "cloth": 3, "wine": 2, "loaf": 2, "cloak": 1},
+   "coins": 40,
+   "made": [{"design": "pouch", "q": 0.5}],
+   "start": "road",
+   "relations": {"village": {"familiarity": -0.2, "trust": -0.05}},
+   "reputation": {"generosity": -0.05, "notoriety": 0.05}
+  },
+  {
+   "id": "vagrant",
+   "icon": "follow",
+   "skills": {"foraging": 0.45, "stealth": 0.45, "deception": 0.4, "brawling": 0.35, "daggers": 0.3, "swim": 0.3, "games": 0.3, "fishing": 0.25},
+   "traits": {"always": ["iron_stomach"], "pool": ["unscrupulous", "lucky", "unlucky", "cheerful", "slob", "nimble", "hard_drinker", "skeptic"], "pick": 2},
+   "attrs": {"agility": 0.1, "perception": 0.08, "charisma": -0.06, "endurance": 0.05},
+   "items": {"stone_blade": 1, "berries": 4, "fishing_line": 1},
+   "coins": 1,
+   "start": "wilds",
+   "relations": {"kin": {"affinity": -0.15, "trust": -0.1}, "village": {"familiarity": -0.3, "trust": -0.15}},
+   "reputation": {"honesty": -0.2, "notoriety": 0.1}
+  },
+  {
+   "id": "herbalist",
+   "icon": "i_herb",
+   "skills": {"herbalism": 0.6, "medicine": 0.45, "midwifery": 0.35, "surgery": 0.2, "foraging": 0.45, "brewing": 0.25, "cooking": 0.3},
+   "traits": {"always": ["curious"], "pool": ["green_thumb", "nurturing", "superstitious", "skeptic", "loner", "tight_lipped", "patient"], "pick": 2},
+   "attrs": {"intellect": 0.1, "perception": 0.1, "dexterity": 0.06, "strength": -0.06},
+   "items": {"herbs": 6, "dried_herbs": 4, "bandage": 3, "remedy": 2, "needle": 1, "bread": 2},
+   "coins": 6,
+   "recipes": ["poultice", "healing_draught", "herbal_tea", "tincture"],
+   "start": "village_edge",
+   "relations": {"village": {"respect": 0.1, "fear": 0.05}},
+   "reputation": {"piety": -0.05}
+  }
+ ]
+}

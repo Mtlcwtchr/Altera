@@ -551,6 +551,7 @@ ValidationReport validate(const Content& c) {
             v.err("build: objects.json has no build_site");
     }
     validateExpansion(c, r);
+    validateBackstories(c, r);
     return r;
 }
 
