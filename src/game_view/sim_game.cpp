@@ -625,6 +625,7 @@ private:
                 }
             }
             if (st.contains("tone")) hud_.setTone(st["tone"].get<int>());
+            if (st.contains("slot")) hud_.openSlot(st["slot"].get<int>());
             // building and the colony
             if (st.value("take_chief", false) && shown_.colony.chief != kNone)
                 post({"cmd", 0, "take_control", {{"id", shown_.colony.chief}}});

@@ -424,12 +424,12 @@ std::vector<Hud::Row> Hud::tierRows(const Snapshot& s, const ActorSnap& a, int t
     const Detail& d = s.detail;
     auto need = [&](const char* id) {
         for (const auto& n : d.needs)
-            if (n.id == id) rows.push_back({n.name, n.value, "", n.value < 0.35});
+            if (n.id == id) rows.push_back({n.name, n.value, "", n.value < 0.35, n.id});
     };
     switch (tier) {
     case 0: need("hunger"); need("thirst"); need("energy"); break;
     case 1:
-        rows.push_back({host_->text("hud.vital.health"), a.hp, "", a.hp < 0.35});
+        rows.push_back({host_->text("hud.vital.health"), a.hp, "", a.hp < 0.35, "health"});
         need("warmth");
         need("hygiene");
         break;
@@ -439,16 +439,16 @@ std::vector<Hud::Row> Hud::tierRows(const Snapshot& s, const ActorSnap& a, int t
         int n = 0;
         for (const auto& r : d.relations)
             if (!r.kin.empty()) kin += r.affinity, ++n;
-        if (n) rows.push_back({host_->text("hud.people"), std::clamp(0.5 + kin / n * 0.5, 0.0, 1.0), "", false});
+        if (n) rows.push_back({host_->text("hud.people"), std::clamp(0.5 + kin / n * 0.5, 0.0, 1.0), "", false, "kin"});
         break;
     }
     case 3: {
         double rep = 0, resp = 0;
         for (const auto& [k, v] : d.reputation) rep += v;
-        if (!d.reputation.empty()) rows.push_back({host_->text("hud.values"), std::clamp(0.5 + rep / d.reputation.size() * 0.5, 0.0, 1.0), "", false});
+        if (!d.reputation.empty()) rows.push_back({host_->text("hud.values"), std::clamp(0.5 + rep / d.reputation.size() * 0.5, 0.0, 1.0), "", false, "repute"});
         int n = 0;
         for (const auto& r : d.relations) resp += r.respect, ++n;
-        if (n) rows.push_back({host_->text("hud.people"), std::clamp(0.5 + resp / n * 0.5, 0.0, 1.0), "", false});
+        if (n) rows.push_back({host_->text("hud.people"), std::clamp(0.5 + resp / n * 0.5, 0.0, 1.0), "", false, "respect"});
         break;
     }
     case 4: need("purpose"); need("fun"); break;
@@ -471,7 +471,70 @@ std::vector<Hud::Row> Hud::tierRows(const Snapshot& s, const ActorSnap& a, int t
             rows.push_back({d.reputation[i].first, std::clamp(0.5 + d.reputation[i].second * 0.5, 0.0, 1.0), "", false});
         break;
     }
+    if (tier < 5)
+        for (auto& r : rows)
+            if (r.value >= 0 && !r.id.empty()) statusRow(s, a, r);
     return rows;
+}
+
+// A small trend arrow drawn with lines (the fonts have no arrow glyphs): -1 down, 0 level, 1 up.
+void Hud::trendArrow(float cx, float cy, int dir, const Colour& c) {
+    const float L = 6, H = 3.5f;
+    auto ln = [&](float x0, float y0, float x1, float y1) { // two pixels thick
+        ui_->line(x0, y0, x1, y1, c);
+        ui_->line(x0 + 0.8f, y0 + 0.8f, x1 + 0.8f, y1 + 0.8f, c);
+    };
+    if (dir == 0) {
+        ln(cx - L, cy, cx + L, cy);
+        ln(cx + L, cy, cx + L - H, cy - H);
+        ln(cx + L, cy, cx + L - H, cy + H);
+        return;
+    }
+    const float s = dir < 0 ? 1.0f : -1.0f; // tip below for falling
+    ln(cx, cy - L * s, cx, cy + L * s);
+    ln(cx, cy + L * s, cx - H, cy + (L - H) * s);
+    ln(cx, cy + L * s, cx + H, cy + (L - H) * s);
+}
+
+// One status of the hover panel: its trend from the last game hours, and, when it
+// is low, why (from what the snapshot shows) and what helps (content/loc hud.status.*).
+void Hud::statusRow(const Snapshot& s, const ActorSnap& a, Row& r) const {
+    TrendSample& t = trends_[std::to_string(a.id) + ":" + r.id];
+    const Tick hour = std::max<Tick>(1, sim::kTicksPerDay / 24);
+    if (t.tick == 0 && !t.known && t.value == 0) t = {s.tick, r.value, 0, false};
+    else if (s.tick < t.tick) t = {s.tick, r.value, 0, false};   // a reload
+    else if (s.tick - t.tick >= hour) {
+        const double rate = (r.value - t.value) / double(s.tick - t.tick) * double(sim::kTicksPerDay);
+        t.rate = t.known ? t.rate * 0.6 + rate * 0.4 : rate;
+        t.known = true, t.tick = s.tick, t.value = r.value;
+    }
+    if (t.known) r.arrow = t.rate < -0.04 ? -1 : t.rate > 0.04 ? 1 : 0;
+    else r.arrow = r.value < 0.35 ? -1 : r.value < 0.55 ? 0 : 1;
+    if (r.value >= 0.55) {
+        r.desc = host_->text("hud.status.ok");
+        return;
+    }
+    const Detail& d = s.detail;
+    const std::string k = "hud.status." + r.id;
+    std::string why = host_->text(k + ".why"), help = host_->text(k + ".help");
+    const double h = double(s.tick % sim::kTicksPerDay) / double(sim::kTicksPerDay) * 24.0;
+    if (r.id == "hunger") {
+        static const char* kFood[] = {"bread", "loaf", "meal", "porridge", "berries", "roots", "mushrooms", "meat",
+                                      "fish", "cheese", "honey", "eggs", "egg", "nuts", "apples", "greens"};
+        const ItemSnap* food = nullptr;
+        for (const auto& it : d.inventory)
+            for (const char* f : kFood)
+                if (it.id == f && it.count > 0 && !food) food = &it;
+        if (food) help = host_->text(k + ".help_item", {{"item", food->name}});
+        else why = host_->text(k + ".why_empty");
+    } else if (r.id == "energy" && (h < 5 || h >= 22)) {
+        why = host_->text(k + ".why_night");
+    } else if (r.id == "health" && a.wounds > 0) {
+        why = host_->text(k + ".why_wounds", {{"n", std::to_string(a.wounds)}});
+    } else if (r.id == "warmth" && s.tempC < 8) {
+        why = host_->text(k + ".why_cold", {{"t", std::to_string(int(std::lround(s.tempC)))}});
+    }
+    r.desc = host_->text("hud.status.help", {{"why", why}, {"help", help}});
 }
 
 double Hud::tierValue(const Snapshot& s, const ActorSnap& a, int tier) const {
@@ -732,29 +795,82 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
         icon(kSlotIcons[k], {b.x + 12, b.y + 12, 20, 20}, on ? kDark : kText);
         if (clicked(b)) pin_ = pin_ == k ? -1 : k;
     }
-    // the paper over the slots
+    // the paper over the slots: the group opened into its statuses (value, trend, why, what helps)
     if (shown >= 0) {
-        const auto rows = tierRows(s, a, shown);
-        const float h = 16 + 30 + rows.size() * 28.0f + 14;
+        auto rows = tierRows(s, a, shown);
+        const float tw = 364 - 40;
+        std::vector<std::vector<std::string>> descLines(rows.size());
+        double sum = 0, lo = 1;
+        int bars = 0;
+        float body = 0;
+        for (std::size_t i = 0; i < rows.size(); ++i) {
+            const Row& r = rows[i];
+            if (r.value >= 0) sum += r.value, lo = std::min(lo, r.value), ++bars;
+            if (!r.desc.empty()) {
+                // word wrap into at most two lines
+                std::string line;
+                std::size_t pos = 0;
+                const std::string& t = r.desc;
+                while (pos < t.size() && descLines[i].size() < 2) {
+                    std::size_t sp = t.find(' ', pos);
+                    const std::string word = t.substr(pos, sp == std::string::npos ? std::string::npos : sp - pos);
+                    const std::string next = line.empty() ? word : line + " " + word;
+                    if (!line.empty() && textW(next, 13) > tw) {
+                        descLines[i].push_back(line);
+                        line = word;
+                    } else line = next;
+                    pos = sp == std::string::npos ? t.size() : sp + 1;
+                }
+                if (!line.empty() && descLines[i].size() < 2) descLines[i].push_back(line);
+                else if (!line.empty()) descLines[i].back() = ui_->fit(descLines[i].back() + " " + line, tw, 13 / 15.f);
+            }
+            body += 28 + float(descLines[i].size()) * 17.0f + (descLines[i].empty() ? 0 : 4);
+        }
+        const bool groups = shown < 5;
+        const float h = 16 + 30 + body + (groups ? 22 : 0) + 14;
         const Rect p{pill.x, pill.y - 12 - h, 364, h};
         box(Skin::Paper, p, 18);
         seal(p.right() - 18 - 17 + 17, p.y + 5);
-        title(p.x + 20, p.y + 14, host_->text(kSlotNames[shown]), kInk, 22);
+        std::string head = host_->text(kSlotNames[shown]);
+        if (groups && bars) head += ": " + std::to_string(int(std::lround(sum / bars * 100)));
+        title(p.x + 20, p.y + 14, head, kInk, 22);
+        if (groups && bars) {
+            const char* tk = lo < 0.35 ? "hud.status.trend.down" : lo < 0.55 ? "hud.status.trend.hold" : "hud.status.trend.up";
+            const Colour tc = lo < 0.35 ? kInkRed : lo < 0.55 ? Colour::rgb(138, 106, 28) : Colour::rgb(44, 107, 58);
+            const std::string tt = host_->text(tk);
+            const float tx = p.right() - 20 - 34 - textW(tt, 14, true);
+            title(tx, p.y + 20, tt, tc, 14);
+            trendArrow(tx - 12, p.y + 29, lo < 0.35 ? -1 : lo < 0.55 ? 0 : 1, tc);
+        }
         ui_->line(p.x + 20, p.y + 46, p.right() - 20, p.y + 46, Colour::rgb(122, 92, 40, 0.45f));
         float y = p.y + 54;
-        for (const auto& r : rows) {
+        for (std::size_t i = 0; i < rows.size(); ++i) {
+            const Row& r = rows[i];
             const Colour fg = r.alarm ? kInkRed : kInk;
-            label(p.x + 20, y, ui_->fit(r.label, r.value >= 0 ? 190 : 200, 1.0f), fg, 15);
+            label(p.x + 20, y, ui_->fit(r.label, r.value >= 0 ? 150 : 200, 1.0f), fg, 15);
             if (r.value >= 0) {
-                const Rect bar{p.right() - 20 - 130, y + 6, 130, 8};
+                const Rect bar{p.right() - 20 - 54 - 10 - 110, y + 6, 110, 8};
                 ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.16f), 4);
                 ui_->roundRect({bar.x, bar.y, std::max(8.f, float(bar.w * std::clamp(r.value, 0.0, 1.0))), bar.h}, barColour(r.value), 4);
+                if (!r.id.empty()) {
+                    const std::string num = std::to_string(int(std::lround(std::clamp(r.value, 0.0, 1.0) * 100)));
+                    const Colour nc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? Colour::rgb(138, 106, 28) : Colour::rgb(44, 107, 58);
+                    title(p.right() - 20 - 18 - textW(num, 13, true), y + 1, num, nc, 13);
+                    if (r.arrow >= -1 && r.arrow <= 1) trendArrow(p.right() - 20 - 7, y + 10, r.arrow, nc);
+                }
             } else if (!r.note.empty()) {
                 const float w = textW(r.note, 14);
                 label(p.right() - 20 - w, y + 1, r.note, kInkSoft, 14);
             }
             y += 28;
+            if (!descLines[i].empty()) {
+                const Colour dc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? Colour::rgb(138, 106, 28) : kInkSoft;
+                y -= 6;
+                for (const auto& l : descLines[i]) label(p.x + 20, y, l, dc, 13), y += 17;
+                y += 10;
+            }
         }
+        if (groups) label(p.x + 20, y, ui_->fit(host_->text("hud.status.hint"), tw, 12 / 15.f), Colour::rgb(138, 122, 92), 12);
         // the caret under the shown slot
         const float caret = pill.x + 4 + shown * 45.0f + 22;
         ui_->rect({caret - 7, p.bottom() - 2, 14, 6}, Colour::rgb(233, 221, 192));

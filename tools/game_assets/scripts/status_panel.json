@@ -1,0 +1,16 @@
+[
+ {"at": 1, "zoom": 9, "pitch": 0.35, "yawDeg": 40, "speed": 3, "select": 4, "take": 4},
+ {"at": 14, "speed": 1, "slot": 0},
+ {"at": 16, "shot": "status_01_body.png"},
+ {"at": 17, "slot": 1},
+ {"at": 19, "shot": "status_02_safety.png"},
+ {"at": 20, "slot": 2},
+ {"at": 22, "shot": "status_03_belonging.png"},
+ {"at": 23, "slot": 3},
+ {"at": 25, "shot": "status_04_esteem.png"},
+ {"at": 26, "slot": 4},
+ {"at": 28, "shot": "status_05_calling.png"},
+ {"at": 29, "slot": -1},
+ {"at": 30, "shot": "status_06_closed.png"},
+ {"at": 31, "quit": true}
+]
