@@ -101,27 +101,76 @@ struct CraftThing {
     std::string ref, name, shape, note; // ref: inv:<item> | made:<n>; note: quality tier, flaws
     int count = 1;
     double q = -1;
+    std::string icon;                   // icons.json name (content/ui/craft.json)
+    double wear = 0;                    // made things: wear 0..1
+    bool flawed = false;                // a revealed flaw
 };
 struct CraftProcessSnap {
     std::string id, name;
     std::vector<std::pair<std::string, std::string>> slots;   // slot, its loc name
     std::vector<std::pair<std::string, std::string>> modes;   // mode, name
     std::map<std::string, std::vector<std::pair<std::string, std::string>>> targets; // from shape -> (shape, name)
+    std::vector<std::string> stations;   // any-of station ids it needs (empty: anywhere)
+    bool available = true;               // the stations it needs stand near (or are carried)
+    std::string need;                    // what is missing, for the tooltip
+    int heatMin = 0, time = 1;
 };
 struct CraftRecipeSnap {
     std::string id, name;
     double mastery = 0, bestQ = 0;
     int known = 0, total = 0;
     bool master = false;
+    int successes = 0, stages = 0, time = 0;
+    double expectedQ = 0;
+    std::vector<std::string> steps;      // process ids, in order
+    std::vector<bool> stepKnown;
+    std::vector<std::string> missing;    // display names of what the fast craft lacks
+};
+// A station of the workplace (gdd crafting §9) with where it stands, so the
+// workshop can draw its gauge in the world (board 10).
+struct CraftStationSnap {
+    std::string id, name;
+    int tempMax = -1;                    // heat steps it gives (-1: none)
+    bool placed = false;                 // an object in the world (else carried)
+    double x = 0, y = 0;                 // sim metres
+};
+// The last outcome (boards 11, 13): shown once per seq.
+struct CraftResultSnap {
+    int seq = 0;
+    std::string code, head, what, tier;
+    double q = -1;
+    int made = -1;
+    bool started = false, breakthrough = false;
+    std::string recipe, recipeName;
+    std::vector<std::pair<std::string, double>> links;   // the chain's steps: process name, quality
+    std::vector<std::string> flaws;                      // revealed flaw names
+};
+// The novice helper (board 10b): designs that answer a wish.
+struct CraftCandidate {
+    std::string id, name, icon;
+    double fit = 0;                      // 0..1
+    std::vector<std::pair<std::string, std::string>> steps; // process id, station id it uses ("" anywhere)
+    int next = -1;                       // the step the person can do now (-1: none)
+    std::vector<std::string> missing;    // display names
+    sim::Json draft;                     // the next step as a workshop draft
 };
 struct CraftSnap {
     EntityId actor = sim::kNone;
     std::vector<CraftThing> materials, made;
     std::vector<CraftProcessSnap> processes;
     std::vector<std::string> stations;        // names of what stands near
+    std::vector<CraftStationSnap> stationsAt;
+    int heatMax = -1;                         // the hottest station at hand
     std::vector<CraftRecipeSnap> recipes;
     bool canStart = false;
     std::string forecast, why, last;          // display texts
+    // the draft's forecast as numbers (§9), blurred by `certainty`
+    double expectedQ = 0, qSpread = 0, pRuin = 0, pFlaw = 0, certainty = 0;
+    int time = 0;
+    std::string likely, tier;                 // display names ("" = no idea)
+    CraftResultSnap result;
+    std::string wish;
+    std::vector<CraftCandidate> candidates;
 };
 
 struct Snapshot {

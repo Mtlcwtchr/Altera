@@ -22,6 +22,8 @@ struct CraftState {
     std::string lastOutcome, lastArg;
     int lastMade = -1;
     bool lastBreakthrough_ = false;
+    std::string lastRecipe;                  // recipe learnt or improved by it
+    int lastSeq = 0;                         // counts outcomes: the interface shows each once
     bool empty() const { return items.empty() && book.recipes.empty() && knowsMaterial.empty(); }
 };
 
