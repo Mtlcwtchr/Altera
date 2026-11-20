@@ -127,6 +127,7 @@ bool Hud::init(SDL_Renderer* renderer, const fs::path& root, std::string* why) {
         const sim::Json icons = j.value("icons", sim::Json::object());
         for (const auto& [k, v] : icons.items()) iconIndex_[k] = v.get<int>();
         wheelSpec_ = sim::loadJsonFile((root / "content/ui/wheel.json").string());
+        craftSpec_ = sim::loadJsonFile((root / "content/ui/craft.json").string());
     } catch (const std::exception& e) {
         if (why) *why = std::string("hud: ") + e.what();
         return false;
@@ -1658,14 +1659,51 @@ void Hud::colony(const Snapshot& s, float W, float H) {
     label(P.x + 32, P.bottom() - 40, ui_->fit(host_->text("hud.colony.note"), pw - 64, 13 / 15.f), kInkSoft, 13);
 }
 
-// The workshop (gdd crafting §9, §17): what the person has (gathered
-// materials, made things) on the left, the attempt in the middle (a process,
-// its slots filled by clicking things, the target shape and mode, the
-// forecast blurred by what the person knows, "Try"), the recipe book on the
-// right with "Make it the same way" for mastered records. No mini-games.
+// ---------------------------------------------------------------- the workshop
+// Boards 10-15 of the design canvas (style G; gdd/ui/CRAFT_UI_VARIANTS.md,
+// the decision of 20.11): the work happens at the stations in the world (C),
+// the processes lie on a ring round the work piece (B), the heat is set on the
+// hearth's gauge by the mouse wheel, materials are dragged from the bag onto a
+// station or the piece (A), and the novice helper answers a wish (D). No text
+// buttons: icons, their words in the tooltip; "make" is held (E, or the mouse
+// on the piece). Data: CraftSnap (sim_game.cpp), icons: content/ui/craft.json.
+namespace {
+constexpr float kHoldSeconds = 0.8f;
+const Colour kHeat = Colour::rgb(232, 136, 58);
+const Colour kScene = Colour::rgb(10, 14, 20, 0.72f);
+} // namespace
+
+std::string Hud::craftIconOf(const char* map, const std::string& id, const char* fallback) const {
+    if (craftSpec_.is_object() && craftSpec_.contains(map) && craftSpec_[map].contains(id))
+        return craftSpec_[map][id].get<std::string>();
+    return fallback;
+}
+
+// The tooltip of what is under the mouse: drawn last, over everything.
+void Hud::tipAt(float cx, float y, const std::string& tip) {
+    tipText_ = tip;
+    tipX_ = cx;
+    tipY_ = y;
+}
+
+bool Hud::iconButton(const Rect& r, const std::string& iconName, bool on, const std::string& tip, bool dim) {
+    const bool hot = ui_->hovered(r);
+    const float cx = r.x + r.w * 0.5f, cy = r.y + r.h * 0.5f;
+    box(on ? Skin::ButtonOn : Skin::Button, r, r.h * 0.5f);
+    if (hot && !on) disc(cx, cy, r.w * 0.5f - 1, Colour::rgb(226, 197, 122, 0.16f));
+    if (dim) disc(cx, cy, r.w * 0.5f - 1, Colour::rgb(10, 14, 20, 0.5f));
+    const float s = std::round(r.w * 0.48f);
+    Colour c = on ? kDark : hot ? Colour::rgb(255, 243, 207) : kText;
+    if (dim) c = c.withAlpha(0.45f);
+    icon(iconName, {cx - s * 0.5f, cy - s * 0.5f, s, s}, c);
+    if (hot) tipAt(cx, r.bottom() + 10, tip);
+    return clicked(r);
+}
+
 sim::Json Hud::craftDraftJson(const Snapshot& s) const {
     sim::Json d = sim::Json::object();
     const CraftSnap& c = s.craft;
+    if (!craftWish.empty()) d["wish"] = craftWish;
     if (craftProc < 0 || craftProc >= int(c.processes.size())) return d;
     d["process"] = c.processes[size_t(craftProc)].id;
     sim::Json slots = sim::Json::object();
@@ -1673,242 +1711,901 @@ sim::Json Hud::craftDraftJson(const Snapshot& s) const {
     d["slots"] = slots;
     if (!craftShape.empty()) d["shape"] = craftShape;
     if (!craftMode.empty()) d["mode"] = craftMode;
+    if (craftHeat >= 0) d["heat"] = craftHeat;
+    if (craftLen > 0) d["len"] = craftLen;
     return d;
 }
 
-void Hud::workshop(const Snapshot& s, float W, float H) {
-    dimmer(W, H, 0.6f);
-    if (roundButton({W - 84, 30, 48, 48}, "close", false, host_->text("hud.close")) || in_->escape) {
-        panel = "none";
-        return;
-    }
+void Hud::craftAttempt(const Snapshot& s) {
     const CraftSnap& c = s.craft;
-    const float pw = std::min(W - 80, 1280.0f), ph = std::min(H - 100, 800.0f);
-    const Rect P{(W - pw) * 0.5f, (H - ph) * 0.5f, pw, ph};
-    box(Skin::Paper, P, 22);
+    if (craftProc < 0 || craftProc >= int(c.processes.size()) || !c.canStart) return;
+    sim::Json a = craftDraftJson(s);
+    a.erase("wish");
+    a["id"] = c.actor;
+    lastDraft_ = a;
+    host_->command("craft_attempt", a);
+    craftSlots.clear();
+    craftShape.clear();
+    const auto& pr = c.processes[size_t(craftProc)];
+    craftSlot = pr.slots.empty() ? "" : pr.slots.front().first;
+}
+
+void Hud::workshop(const Snapshot& s, float W, float H) {
+    craftDt_ = float(std::clamp(clock_ - craftClock_, 0.0, 0.1));
+    craftClock_ = clock_;
+    tipText_.clear();
+    const CraftSnap& c = s.craft;
+    if (resultShown_ < 0) resultShown_ = c.result.seq;   // what happened before the window opened is old news
+    if (c.result.seq != resultShown_) {
+        resultShown_ = c.result.seq;
+        resultOpen_ = !c.result.code.empty();
+        renameText_ = c.result.recipeName;
+    }
+    dimmer(W, H, craftTab == 0 && !resultOpen_ ? 0.22f : 0.62f);
+
+    // the title plate and the tabs (boards 10-15: the same row of icons)
     const ActorSnap* who = actor(s, c.actor);
-    title(P.x + 32, P.y + 22, host_->text("hud.craft.title", {{"name", who ? who->name : std::string()}}), kInk, 30);
-    seal(P.right() - 60, P.y + 52);
     {
-        std::string near;
-        for (const auto& st : c.stations) near += (near.empty() ? "" : ", ") + st;
-        label(P.x + 32, P.y + 64,
-              ui_->fit(near.empty() ? host_->text("hud.craft.near_none") : host_->text("hud.craft.near", {{"list", near}}),
-                       pw - 140, 14 / 15.f),
-              kInkSoft, 14);
+        const std::string t = host_->text("hud.craft.title", {{"name", who ? who->name : std::string()}});
+        const float w = textW(t, 22, true) + 40;
+        box(Skin::ButtonOn, {36, 30, w, 46}, 23);
+        title(56, 40, t, kDark, 22);
+    }
+    static const char* kTabIcons[] = {"c_anvil", "a_book", "things", "c_repair"};
+    static const char* kTabTips[] = {"hud.craft.tab.bench", "hud.craft.tab.book", "hud.craft.tab.things", "hud.craft.tab.repair"};
+    const float tx = W - 36 - 6 * 62 + 10;
+    for (int i = 0; i < 4; ++i)
+        if (iconButton({tx + i * 62.f, 28, 52, 52}, kTabIcons[i], craftTab == i, host_->text(kTabTips[i]))) {
+            craftTab = i;
+            resultOpen_ = false;
+        }
+    if (iconButton({tx + 4 * 62.f, 28, 52, 52}, "a_hint", craftHelper, host_->text("hud.craft.helper"))) {
+        craftHelper = !craftHelper;
+        craftTab = 0;
+        if (!craftHelper) craftWish.clear();
+    }
+    if (resultOpen_ && in_->escape && !ui_->typing()) {
+        resultOpen_ = false;
+        in_->escape = false;
+    }
+    if (iconButton({tx + 5 * 62.f, 28, 52, 52}, "close", false, host_->text("hud.close")) || (in_->escape && !ui_->typing())) {
+        panel = "none";
+        dragRef_.clear();
+        resultOpen_ = false;
+        return;
     }
     if (c.actor == sim::kNone) {
-        label(P.x + 32, P.y + 110, host_->text("hud.craft.nobody"), kInkRed, 16);
+        box(Skin::Paper, {W * 0.5f - 200, H * 0.5f - 30, 400, 60}, 20);
+        const float w = textW(host_->text("hud.craft.nobody"), 16);
+        label(W * 0.5f - w * 0.5f, H * 0.5f - 10, host_->text("hud.craft.nobody"), kInkRed, 16);
         return;
     }
-    const float top = P.y + 100, colW1 = 300, colW3 = 330;
-    const Rect L{P.x + 24, top, colW1, P.bottom() - top - 24};
-    const Rect R{P.right() - 24 - colW3, top, colW3, P.bottom() - top - 24};
-    const Rect M{L.right() + 20, top, R.x - L.right() - 40, P.bottom() - top - 24};
 
-    // ---- left: what there is
-    auto addToSlot = [&](const std::string& ref) {
+    if (resultOpen_) craftResultCard(s, W, H);
+    else if (craftTab == 0) {
+        craftBench(s, W, H);
+        if (craftHelper) craftHelperView(s, W, H);
+    } else if (craftTab == 1) craftBook(s, W, H);
+    else if (craftTab == 2) craftThings(s, W, H);
+    else craftRepair(s, W, H);
+
+    // the draft goes to the sim for its forecast when it changed
+    {
+        const sim::Json d = craftDraftJson(s);
+        const std::string ds = d.dump();
+        if (ds != sentDraft_) {
+            sentDraft_ = ds;
+            host_->craftDraft(d);
+        }
+    }
+    // a carried material follows the mouse; let go anywhere else, it goes back
+    if (!dragRef_.empty()) {
+        std::string ic = "s_lump";
+        for (const auto& m : c.materials)
+            if (m.ref == dragRef_) ic = m.icon;
+        for (const auto& m : c.made)
+            if (m.ref == dragRef_) ic = m.icon;
+        disc(in_->mouseX, in_->mouseY, 26, Colour::rgb(10, 14, 20, 0.85f));
+        arc(in_->mouseX, in_->mouseY, 26, 2.5f, 0, 360, kGoldPale);
+        icon(ic, {in_->mouseX - 14, in_->mouseY - 14, 28, 28}, kGoldPale);
+        if (in_->released) dragRef_.clear();
+    }
+    if (!tipText_.empty()) {
+        const float w = std::min(textW(tipText_, 14) + 26, 460.f);
+        float x = std::clamp(tipX_ - w * 0.5f, 8.f, W - w - 8);
+        float y = tipY_;
+        if (y + 34 > H) y = H - 40;
+        const Rect t{x, y, w, 32};
+        box(Skin::Paper, t, 14);
+        label(t.x + 13, t.y + 7, ui_->fit(tipText_, w - 26, 14 / 15.f), kInk, 14);
+    }
+}
+
+// Board 10: the bench in the world.
+void Hud::craftBench(const Snapshot& s, float W, float H) {
+    const CraftSnap& c = s.craft;
+    const float px = W * 0.5f, py = H * 0.46f;
+    const float R = std::clamp(H * 0.19f, 120.f, 170.f);
+    const bool hasProc = craftProc >= 0 && craftProc < int(c.processes.size());
+    const CraftProcessSnap* pr = hasProc ? &c.processes[size_t(craftProc)] : nullptr;
+
+    auto pickProcess = [&](int i) {
+        if (craftProc == i) return;
+        craftProc = i;
+        craftSlots.clear();
+        craftShape.clear();
+        craftMode.clear();
+        craftLen = 0;
+        const auto& p = c.processes[size_t(i)];
+        craftSlot = p.slots.empty() ? "" : p.slots.front().first;
+    };
+    auto addToSlot = [&](const std::string& ref, const std::string& slotWanted) {
         if (craftProc < 0 || craftProc >= int(c.processes.size())) return;
-        const auto& pr = c.processes[size_t(craftProc)];
-        if (craftSlot.empty() && !pr.slots.empty()) craftSlot = pr.slots.front().first;
-        auto& v = craftSlots[craftSlot];
+        const auto& p = c.processes[size_t(craftProc)];
+        std::string slot = slotWanted.empty() ? craftSlot : slotWanted;
+        if (slot.empty() && !p.slots.empty()) slot = p.slots.front().first;
+        auto& v = craftSlots[slot];
         if (ref.rfind("made:", 0) == 0 && std::find(v.begin(), v.end(), ref) != v.end()) return;
         v.push_back(ref);
-        // the next empty slot gets the focus
-        for (const auto& [slot, nm] : pr.slots)
-            if (craftSlots[slot].empty()) {
-                craftSlot = slot;
+        craftSlot = slot;
+        for (const auto& [sl, nm] : p.slots)
+            if (craftSlots[sl].empty()) {
+                craftSlot = sl;
                 break;
             }
     };
-    float y = L.y;
-    label(L.x, y, host_->text("hud.craft.materials"), kInkSoft, 13);
-    y += 22;
-    const float rowH = 28;
-    int shown = 0;
-    const int maxRows = int((L.h * 0.5f) / rowH);
-    for (const auto& m : c.materials) {
-        if (shown++ >= maxRows) break;
-        const Rect r{L.x, y, L.w, rowH - 4};
-        if (ui_->hovered(r)) ui_->roundRect(r, Colour::rgb(122, 92, 40, 0.10f), 8);
-        label(r.x + 8, r.y + 4, ui_->fit(m.name, r.w - 60, 14 / 15.f), kInk, 14);
-        label(r.right() - 44, r.y + 4, "x" + std::to_string(m.count), kInkSoft, 14);
-        if (clicked(r)) addToSlot(m.ref);
-        y += rowH;
-    }
-    if (c.materials.empty()) {
-        label(L.x + 8, y, host_->text("hud.craft.empty"), kInkSoft, 14);
-        y += rowH;
-    }
-    y += 10;
-    label(L.x, y, host_->text("hud.craft.made"), kInkSoft, 13);
-    y += 22;
-    shown = 0;
-    const int maxMade = int((L.bottom() - y) / rowH);
-    for (const auto& m : c.made) {
-        if (shown++ >= maxMade) break;
-        const Rect r{L.x, y, L.w, rowH - 4};
-        if (ui_->hovered(r)) ui_->roundRect(r, Colour::rgb(122, 92, 40, 0.10f), 8);
-        label(r.x + 8, r.y + 4, ui_->fit(m.name, r.w * 0.62f, 14 / 15.f), kInk, 14);
-        label(r.x + r.w * 0.64f, r.y + 5, ui_->fit(m.note, r.w * 0.36f - 6, 12 / 15.f), m.note.find('!') != std::string::npos ? kInkRed : kInkSoft, 12);
-        if (clicked(r)) addToSlot(m.ref);
-        y += rowH;
-    }
-    if (c.made.empty()) label(L.x + 8, y, host_->text("hud.craft.empty"), kInkSoft, 14);
+    auto thingOf = [&](const std::string& ref) -> const CraftThing* {
+        for (const auto& m : c.materials)
+            if (m.ref == ref) return &m;
+        for (const auto& m : c.made)
+            if (m.ref == ref) return &m;
+        return nullptr;
+    };
+    const bool dropping = !dragRef_.empty() && in_->released;
 
-    // ---- middle: the attempt
-    y = M.y;
-    label(M.x, y, host_->text("hud.craft.process"), kInkSoft, 13);
-    y += 22;
-    float x = M.x;
-    for (size_t i = 0; i < c.processes.size(); ++i) {
-        const auto& pr = c.processes[i];
-        const float w = textW(pr.name, 15) + 26;
-        if (x + w > M.right()) {
-            x = M.x;
-            y += 34;
-        }
-        if (textButton({x, y, w, 28}, pr.name, int(i) == craftProc)) {
-            if (craftProc != int(i)) {
-                craftProc = int(i);
-                craftSlots.clear();
-                craftShape.clear();
-                craftMode.clear();
-                craftSlot = pr.slots.empty() ? "" : pr.slots.front().first;
+    // ---- the stations: over their objects when the camera sees them, else
+    // round the bench (heat on the left as on board 10, the rest on the right)
+    stationPos_.clear();
+    std::vector<std::pair<float, float>> used;
+    int left = 0, right = 0;
+    for (const auto& st : c.stationsAt) {
+        float sx = 0, sy = 0;
+        bool ok = st.placed && host_->groundToScreen(st.x, st.y, 1.4, sx, sy);
+        if (ok && std::hypot(sx - px, sy - py) < R + 90) ok = false;
+        if (ok && (sy < 120 || sy > H - 190 || sx < 80 || sx > W - 80)) ok = false;
+        if (!ok) {
+            if (st.tempMax > 0) {
+                sx = px - R - 230 - float(left / 3) * 120;
+                sy = py - 110 + float(left % 3) * 125;
+                ++left;
+            } else {
+                sx = px + R + 210 + float(right / 3) * 120;
+                sy = py - 110 + float(right % 3) * 125;
+                ++right;
             }
         }
-        x += w + 6;
+        for (int guard = 0; guard < 6; ++guard) {
+            bool clash = false;
+            for (const auto& [ux, uy] : used)
+                if (std::hypot(ux - sx, uy - sy) < 110) clash = true;
+            if (!clash) break;
+            sy += 115;
+        }
+        sx = std::clamp(sx, 70.f, W - 70);
+        sy = std::clamp(sy, 140.f, H - 200);
+        used.push_back({sx, sy});
+        stationPos_[st.id] = {sx, sy};
     }
-    y += 46;
-    if (craftProc >= 0 && craftProc < int(c.processes.size())) {
-        const auto& pr = c.processes[size_t(craftProc)];
-        auto nameOf = [&](const std::string& ref) {
-            for (const auto& m : c.materials)
-                if (m.ref == ref) return m.name;
-            for (const auto& m : c.made)
-                if (m.ref == ref) return m.name;
-            return ref;
-        };
-        auto shapeOf = [&](const std::string& ref) {
-            for (const auto& m : c.materials)
-                if (m.ref == ref) return m.shape;
-            for (const auto& m : c.made)
-                if (m.ref == ref) return m.shape;
-            return std::string();
-        };
-        for (const auto& [slot, slotName] : pr.slots) {
-            const Rect sr{M.x, y, 150, 28};
-            if (textButton(sr, slotName, craftSlot == slot)) craftSlot = slot;
-            float cx = sr.right() + 8;
+    for (const auto& st : c.stationsAt) {
+        const auto [sx, sy] = stationPos_[st.id];
+        const Rect hit{sx - 52, sy - 52, 104, 104};
+        const bool hot = ui_->hovered(hit);
+        ui_->claim(hit);
+        const bool usedNow = pr && std::find(pr->stations.begin(), pr->stations.end(), st.id) != pr->stations.end();
+        disc(sx, sy, 40, kScene);
+        arc(sx, sy, 40, 2, 0, 360, usedNow || hot ? kGoldPale : kGoldPale.withAlpha(0.45f));
+        if (!dragRef_.empty()) arc(sx, sy, 46, 3, 0, 360, kGold.withAlpha(0.5f + 0.3f * std::sin(float(clock_) * 6)));
+        const std::string ic = craftIconOf("station_icons", st.id, "c_bench");
+        icon(ic, {sx - 20, sy - 20, 40, 40}, st.tempMax > 0 ? Colour::rgb(240, 160, 100) : kGoldPale);
+        std::string tip = host_->text("hud.craft.station_tip", {{"name", st.name}});
+        if (st.tempMax > 0) {
+            // the heat gauge (manometer) over the hearth: the mouse wheel turns it
+            const int heat = craftHeat < 0 ? st.tempMax : std::min(craftHeat, st.tempMax);
+            arc(sx, sy, 54, 9, 135, 270, Colour::rgb(0, 0, 0, 0.45f));
+            arc(sx, sy, 54, 9, 135, 270.f * float(heat) / float(std::max(1, st.tempMax)), kHeat);
+            for (int k = 1; k < st.tempMax; ++k) {
+                const float a = (135.f + 270.f * float(k) / float(st.tempMax)) * kPiF / 180.f;
+                ui_->line(sx + std::cos(a) * 49, sy + std::sin(a) * 49, sx + std::cos(a) * 59, sy + std::sin(a) * 59,
+                          kRim);
+            }
+            tip = host_->text("hud.craft.heat_tip", {{"name", st.name}, {"n", heat}, {"max", st.tempMax}});
+            if (hot && in_->wheel != 0) {
+                craftHeat = std::clamp(heat + (in_->wheel > 0 ? 1 : -1), 0, st.tempMax);
+                in_->wheel = 0;
+            }
+        }
+        if (hot) tipAt(sx, sy + 64, tip);
+        // a material let go over a station: the station's work takes it
+        if (hot && (dropping || clicked(hit))) {
+            int best = -1;
+            if (pr && usedNow) best = craftProc;
+            for (size_t i = 0; i < c.processes.size() && best < 0; ++i) {
+                const auto& p = c.processes[i];
+                if (p.available && std::find(p.stations.begin(), p.stations.end(), st.id) != p.stations.end()) best = int(i);
+            }
+            if (best >= 0) {
+                pickProcess(best);
+                if (dropping) addToSlot(dragRef_, "");
+            }
+            if (dropping) dragRef_.clear();
+        }
+    }
+
+    // ---- the ring of processes round the piece (board 10, variant B)
+    std::vector<int> order;
+    for (size_t i = 0; i < c.processes.size(); ++i)
+        if (c.processes[i].available && c.processes[i].id != "repair") order.push_back(int(i));
+    for (size_t i = 0; i < c.processes.size(); ++i)
+        if (!c.processes[i].available && c.processes[i].id != "repair") order.push_back(int(i));
+    const int cap = std::max(6, int(2 * kPiF * R / 62));
+    if (int(order.size()) > cap) order.resize(size_t(cap));
+    if (hasProc && std::find(order.begin(), order.end(), craftProc) == order.end()) order.back() = craftProc;
+    disc(px, py, R + 34, Colour::rgb(10, 14, 20, 0.30f));
+    arc(px, py, R + 34, 2, 0, 360, kGoldPale.withAlpha(0.3f));
+    for (size_t k = 0; k < order.size(); ++k) {
+        const auto& p = c.processes[size_t(order[k])];
+        const float a = (-90.f + 360.f * float(k) / float(order.size())) * kPiF / 180.f;
+        const float bx = px + std::cos(a) * R, by = py + std::sin(a) * R;
+        std::string tip = host_->text("hud.craft.proc_tip", {{"name", p.name}, {"time", p.time}});
+        if (p.heatMin > 0) tip += " · " + host_->text("hud.craft.need_heat", {{"n", p.heatMin}});
+        if (!p.available) tip += " · " + p.need;
+        if (iconButton({bx - 27, by - 27, 54, 54}, craftIconOf("process_icons", p.id, "c_hammer"), order[k] == craftProc,
+                       tip, !p.available))
+            pickProcess(order[k]);
+    }
+
+    // ---- the piece in the middle, the slots below it, the targets above
+    const Rect piece{px - 50, py - 50, 100, 100};
+    const bool pieceHot = ui_->hovered(piece);
+    ui_->claim(piece);
+    std::string pieceIcon = pr ? craftIconOf("process_icons", pr->id, "c_hammer") : "c_anvil";
+    if (pr && !pr->slots.empty()) {
+        const auto it = craftSlots.find(pr->slots.front().first);
+        if (it != craftSlots.end() && !it->second.empty())
+            if (const CraftThing* t = thingOf(it->second.front())) pieceIcon = t->icon;
+    }
+    disc(px, py, 46, Colour::rgb(10, 14, 20, 0.85f));
+    arc(px, py, 46, 2, 0, 360, kGoldPale);
+    icon(pieceIcon, {px - 24, py - 24, 48, 48}, kGoldPale);
+    // "make" is held: E, or the left button on the piece
+    const bool holding = (keyE && !ui_->typing()) || (in_->down && pieceHot && dragRef_.empty());
+    if (holding && !holdLatch_ && c.canStart && hasProc) {
+        holdT_ += craftDt_;
+        if (holdT_ >= kHoldSeconds) {
+            craftAttempt(s);
+            holdT_ = 0;
+            holdLatch_ = true;
+        }
+    } else if (!holding) {
+        holdT_ = std::max(0.f, holdT_ - craftDt_ * 3);
+        holdLatch_ = false;
+    }
+    arc(px, py, 58, 8, 0, 360, Colour::rgb(0, 0, 0, 0.5f));
+    if (holdT_ > 0) arc(px, py, 58, 8, -90, 360.f * holdT_ / kHoldSeconds, kGold);
+    else if (c.canStart && hasProc)
+        arc(px, py, 58, 8, -90, 360.f * float(std::clamp(c.expectedQ, 0.05, 1.0)), kGold.withAlpha(0.35f));
+    {   // the key cap under the piece
+        const Rect kc{px - 15, py + 64, 30, 26};
+        box(c.canStart && hasProc ? Skin::ButtonOn : Skin::Button, kc, 9);
+        const float w = textW("E", 15, true);
+        ui_->text(kc.x + (kc.w - w) * 0.5f, kc.y + 4, "E", c.canStart && hasProc ? kDark : kText.withAlpha(0.5f), 1.0f, true);
+    }
+    if (pieceHot)
+        tipAt(px, py + 96, !hasProc ? host_->text("hud.craft.pick_process")
+                           : c.canStart ? host_->text("hud.craft.hold")
+                                        : (c.why.empty() ? host_->text("hud.craft.slot_hint") : c.why));
+    if (dropping && pieceHot && hasProc) {
+        addToSlot(dragRef_, "");
+        dragRef_.clear();
+    }
+    if (pr) {
+        // slots on an inner arc under the piece
+        const size_t n = pr->slots.size();
+        for (size_t k = 0; k < n; ++k) {
+            const auto& [slot, slotName] = pr->slots[k];
+            const float a = (90.f + (float(k) - float(n - 1) * 0.5f) * 34.f) * kPiF / 180.f;
+            const float sx = px + std::cos(a) * (R - 64), sy = py + std::sin(a) * (R - 64) + 26;
+            const Rect sr{sx - 22, sy - 22, 44, 44};
+            const bool hot = ui_->hovered(sr);
             auto& v = craftSlots[slot];
-            for (size_t k = 0; k < v.size(); ++k) {
-                const std::string t = ui_->fit(nameOf(v[k]), 180, 14 / 15.f) + "  \xC3\x97";
-                const float w = textW(t, 14) + 20;
-                if (cx + w > M.right()) break;
-                const Rect b{cx, y, w, 28};
-                box(Skin::Chip, b, 14);
-                label(b.x + 10, b.y + 5, t, kInk, 14);
-                if (clicked(b)) {
-                    v.erase(v.begin() + long(k));
-                    break;
+            disc(sx, sy, 22, Colour::rgb(10, 14, 20, 0.85f));
+            arc(sx, sy, 22, craftSlot == slot ? 3.f : 1.5f, 0, 360, craftSlot == slot ? kGold : kGoldPale.withAlpha(0.5f));
+            std::string list;
+            if (!v.empty()) {
+                const CraftThing* t = thingOf(v.front());
+                icon(t ? t->icon : "s_lump", {sx - 12, sy - 12, 24, 24}, kText);
+                if (v.size() > 1) {
+                    const std::string nn = "x" + std::to_string(v.size());
+                    const float w = textW(nn, 12) + 10;
+                    box(Skin::ChipOn, {sx + 10, sy - 26, w, 18}, 9);
+                    label(sx + 15, sy - 25, nn, kText, 12);
                 }
-                cx += w + 6;
+                for (const auto& r : v) {
+                    const CraftThing* t2 = thingOf(r);
+                    list += (list.empty() ? "" : ", ") + (t2 ? t2->name : r);
+                }
             }
-            if (v.empty()) label(cx + 4, y + 6, host_->text("hud.craft.slot_hint"), kInkSoft, 13);
-            y += 36;
+            if (hot) {
+                tipAt(sx, sy + 30, v.empty() ? host_->text("hud.craft.slot_empty", {{"slot", slotName}})
+                                             : host_->text("hud.craft.slot_tip", {{"slot", slotName}, {"list", list}}));
+                if (dropping) {
+                    addToSlot(dragRef_, slot);
+                    dragRef_.clear();
+                }
+            }
+            if (clicked(sr)) {
+                if (craftSlot == slot && !v.empty()) v.pop_back();
+                craftSlot = slot;
+            }
         }
-        // target shape from the work piece
+        // targets (what shape to make) on the upper inner arc
         std::string from;
-        if (!pr.slots.empty()) {
-            const auto& v = craftSlots[pr.slots.front().first];
-            if (!v.empty()) from = shapeOf(v.front());
+        if (!pr->slots.empty()) {
+            const auto it = craftSlots.find(pr->slots.front().first);
+            if (it != craftSlots.end() && !it->second.empty())
+                if (const CraftThing* t = thingOf(it->second.front())) from = t->shape;
         }
-        auto t = pr.targets.find(from);
-        if (t != pr.targets.end() && !t->second.empty()) {
-            y += 6;
-            label(M.x, y, host_->text("hud.craft.target"), kInkSoft, 13);
-            y += 22;
-            x = M.x;
-            for (const auto& [shape, nm] : t->second) {
-                const float w = textW(nm, 14) + 24;
-                if (x + w > M.right()) {
-                    x = M.x;
-                    y += 34;
-                }
-                if (textButton({x, y, w, 28}, nm, craftShape == shape)) craftShape = craftShape == shape ? "" : shape;
-                x += w + 6;
+        const auto tg = pr->targets.find(from);
+        if (tg != pr->targets.end()) {
+            const size_t m = tg->second.size();
+            for (size_t k = 0; k < m; ++k) {
+                const auto& [shape, nm] = tg->second[k];
+                const float a = (-90.f + (float(k) - float(m - 1) * 0.5f) * 30.f) * kPiF / 180.f;
+                const float sx = px + std::cos(a) * (R - 66), sy = py + std::sin(a) * (R - 66) - 18;
+                if (iconButton({sx - 19, sy - 19, 38, 38}, craftIconOf("shape_icons", shape, "s_lump"), craftShape == shape,
+                               host_->text("hud.craft.target_tip", {{"name", nm}})))
+                    craftShape = craftShape == shape ? "" : shape;
             }
-            y += 40;
         }
-        if (!pr.modes.empty()) {
-            label(M.x, y, host_->text("hud.craft.mode"), kInkSoft, 13);
-            y += 22;
-            x = M.x;
-            for (const auto& [mode, nm] : pr.modes) {
-                const float w = textW(nm, 14) + 24;
-                if (x + w > M.right()) {
-                    x = M.x;
-                    y += 34;
-                }
-                if (textButton({x, y, w, 28}, nm, craftMode == mode)) craftMode = craftMode == mode ? "" : mode;
-                x += w + 6;
+        // modes on the left inner side, the length knob on the right
+        for (size_t k = 0; k < pr->modes.size(); ++k) {
+            const auto& [mode, nm] = pr->modes[k];
+            const float a = (180.f + (float(k) - float(pr->modes.size() - 1) * 0.5f) * 30.f) * kPiF / 180.f;
+            const float sx = px + std::cos(a) * (R - 62), sy = py + std::sin(a) * (R - 62);
+            if (iconButton({sx - 17, sy - 17, 34, 34}, "k_finish", craftMode == mode, host_->text("hud.craft.mode_tip", {{"name", nm}})))
+                craftMode = craftMode == mode ? "" : mode;
+        }
+        if (!craftShape.empty()) {
+            const float sx = px + (R - 62), sy = py;
+            const Rect kr{sx - 18, sy - 18, 36, 36};
+            const bool hot = ui_->hovered(kr);
+            arc(sx, sy, 24, 4, 135, 270, Colour::rgb(0, 0, 0, 0.45f));
+            if (craftLen > 0) arc(sx, sy, 24, 4, 135, 270.f * float(craftLen) / 5.f, kGold);
+            iconButton(kr, "k_len", craftLen > 0, craftLen > 0 ? host_->text("hud.craft.len_tip", {{"n", craftLen}})
+                                                              : host_->text("hud.craft.len_default"));
+            if (hot && in_->wheel != 0) {
+                craftLen = std::clamp(craftLen + (in_->wheel > 0 ? 1 : -1), 0, 5);
+                in_->wheel = 0;
             }
-            y += 40;
         }
-        // the forecast and the buttons
-        const Rect fc{M.x, std::max(y + 6, M.bottom() - 170), M.w, 88};
-        box(Skin::Leather, fc, 16);
-        label(fc.x + 16, fc.y + 12, ui_->fit(c.canStart ? c.forecast : c.why, fc.w - 32, 15 / 15.f),
-              c.canStart ? kGoldPale : kRingBad, 15);
-        if (!c.last.empty()) label(fc.x + 16, fc.y + 50, ui_->fit(c.last, fc.w - 32, 14 / 15.f), kText, 14);
-        const Rect tryB{M.x, fc.bottom() + 14, 200, 40};
-        if (textButton(tryB, host_->text("hud.craft.try"), true) && c.canStart) {
-            sim::Json a = craftDraftJson(s);
-            a["id"] = c.actor;
-            host_->command("craft_attempt", a);
-            craftSlots.clear();
-            craftShape.clear();
-            craftSlot = pr.slots.empty() ? "" : pr.slots.front().first;
-        }
-        if (textButton({tryB.right() + 12, tryB.y, 160, 40}, host_->text("hud.craft.clear"), false)) {
+        // clear the draft: a small icon at the piece's side
+        if (iconButton({px + 58, py + 50, 32, 32}, "a_clear", false, host_->text("hud.craft.clear"))) {
             craftSlots.clear();
             craftShape.clear();
             craftMode.clear();
-        }
-    } else {
-        label(M.x, y, ui_->fit(host_->text("hud.craft.pick_process"), M.w, 14 / 15.f), kInkSoft, 14);
-    }
-    // the draft goes to the sim for its forecast when it changed
-    {
-        const std::string d = craftDraftJson(s).dump();
-        if (d != sentDraft_) {
-            sentDraft_ = d;
-            host_->craftDraft(craftDraftJson(s));
+            craftLen = 0;
         }
     }
 
-    // ---- right: the recipe book
-    y = R.y;
-    label(R.x, y, host_->text("hud.craft.book"), kInkSoft, 13);
-    y += 24;
-    if (c.recipes.empty()) label(R.x + 8, y, ui_->fit(host_->text("hud.craft.book_empty"), R.w - 8, 13 / 15.f), kInkSoft, 13);
-    for (const auto& r : c.recipes) {
-        if (y + 66 > R.bottom()) break;
-        const Rect row{R.x, y, R.w, 60};
-        ui_->roundRect(row, Colour::rgb(122, 92, 40, 0.07f), 10);
-        label(row.x + 10, row.y + 6, ui_->fit(r.name, row.w - 20, 15 / 15.f), kInk, 15);
-        const Rect bar{row.x + 10, row.y + 32, row.w * 0.45f, 8};
-        ui_->roundRect(bar, Colour::rgb(122, 92, 40, 0.18f), 4);
-        ui_->roundRect({bar.x, bar.y, std::max(4.f, float(bar.w * r.mastery)), bar.h}, r.master ? kGood : kMid, 4);
-        label(bar.right() + 8, row.y + 26,
-              host_->text("hud.craft.known", {{"known", r.known}, {"total", r.total}}), kInkSoft, 12);
-        if (r.master) {
-            const Rect b{row.right() - 112, row.y + 22, 104, 30};
-            if (textButton(b, host_->text("hud.craft.same"), true))
-                host_->command("craft_fast", {{"id", c.actor}, {"recipe", r.id}, {"count", 1}});
+    // ---- the forecast as a sheet pinned on the wall (top right)
+    {
+        const Rect sh{W - 360, 104, 316, 168};
+        box(Skin::Paper, sh, 18);
+        disc(sh.x + sh.w * 0.5f, sh.y + 2, 10, Colour::rgb(166, 58, 42));
+        if (!hasProc) {
+            ui_->paragraph(sh.x + 20, sh.y + 26, sh.w - 40, host_->text("hud.craft.sheet_none"), kInkSoft, 14 / 15.f);
+        } else if (!c.canStart) {
+            title(sh.x + 20, sh.y + 20, pr->name, kInk, 20);
+            ui_->paragraph(sh.x + 20, sh.y + 54, sh.w - 40, c.why, kInkRed, 14 / 15.f);
+        } else {
+            const bool vague = c.certainty < 0.5;
+            const std::string form = c.likely.empty() ? host_->text("hud.craft.unknown_form") : c.likely + (vague ? "?" : "");
+            icon(c.likely.empty() || craftShape.empty() ? pieceIcon : craftIconOf("shape_icons", craftShape, "s_lump"),
+                 {sh.x + 18, sh.y + 24, 56, 56}, Colour::rgb(122, 92, 40, vague ? 0.55f : 1.f));
+            title(sh.x + 88, sh.y + 22, ui_->fit(form, sh.w - 108, 20 / 15.f, true), kInk, 20);
+            // quality: a bar, the spread hatched when the person is unsure
+            const Rect bar{sh.x + 88, sh.y + 56, sh.w - 110, 12};
+            ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.18f), 6);
+            const double lo = std::clamp(c.expectedQ - c.qSpread, 0.0, 1.0), hi = std::clamp(c.expectedQ + c.qSpread, 0.0, 1.0);
+            const Rect rg{bar.x + float(lo) * bar.w, bar.y, std::max(6.f, float(hi - lo) * bar.w), bar.h};
+            ui_->roundRect(rg, barColour(c.expectedQ).withAlpha(vague ? 0.55f : 0.9f), 6);
+            if (vague)
+                for (float hx = rg.x - 12; hx < rg.right(); hx += 6)
+                    ui_->line(std::max(hx, rg.x), rg.bottom() - std::max(0.f, rg.x - hx), std::min(hx + 12, rg.right()),
+                              rg.y + std::max(0.f, hx + 12 - rg.right()), Colour::rgb(43, 38, 32, 0.35f));
+            else ui_->rect({bar.x + float(c.expectedQ) * bar.w - 1, bar.y - 3, 2, bar.h + 6}, kInk);
+            label(bar.x, bar.bottom() + 6, ui_->fit(c.tier, bar.w, 13 / 15.f), kInkSoft, 13);
+            float lx = sh.x + 20;
+            const float ly = sh.y + 118;
+            auto stat = [&](const char* ic, const std::string& t, const Colour& col) {
+                icon(ic, {lx, ly, 22, 22}, col);
+                label(lx + 26, ly + 2, t, col, 14);
+                lx += 26 + textW(t, 14) + 18;
+            };
+            stat("a_trash", vague ? "?" : std::to_string(int(std::lround(c.pRuin * 100))) + "%", c.pRuin > 0.3 ? kInkRed : kInkSoft);
+            stat("w_cover", vague ? "?" : std::to_string(int(std::lround(c.pFlaw * 100))) + "%", c.pFlaw > 0.3 ? kInkRed : kInkSoft);
+            stat("pause", host_->text("hud.craft.sheet_time", {{"time", c.time}}), kInkSoft);
         }
-        y += 68;
     }
+
+    // ---- the bag at the bottom: materials, then the made things
+    {
+        std::vector<const CraftThing*> bag;
+        for (const auto& m : c.materials) bag.push_back(&m);
+        for (const auto& m : c.made) bag.push_back(&m);
+        const float tok = 62;
+        const int fit = std::max(1, int((W - 760) / tok));
+        const int shown = std::min<int>(fit, int(bag.size()));
+        bagOff_ = std::clamp(bagOff_, 0, std::max(0, int(bag.size()) - shown));
+        const float bw = std::max(240.f, shown * tok + 24);
+        const Rect B{px - bw * 0.5f, H - 100, bw, 74};
+        box(Skin::Leather, B, 37);
+        if (ui_->hovered(B) && in_->wheel != 0) {
+            bagOff_ = std::clamp(bagOff_ - (in_->wheel > 0 ? 1 : -1), 0, std::max(0, int(bag.size()) - shown));
+            in_->wheel = 0;
+        }
+        if (bag.empty()) {
+            const std::string t = host_->text("hud.craft.empty");
+            label(B.x + (B.w - textW(t, 14)) * 0.5f, B.y + 28, t, kText, 14);
+        }
+        for (int k = 0; k < shown; ++k) {
+            const CraftThing& t = *bag[size_t(k + bagOff_)];
+            const Rect r{B.x + 12 + k * tok + 3, B.y + 10, 54, 54};
+            const bool hot = ui_->hovered(r);
+            const bool made = t.ref.rfind("made:", 0) == 0;
+            box(Skin::Button, r, 27);
+            if (hot) disc(r.x + 27, r.y + 27, 26, Colour::rgb(226, 197, 122, 0.16f));
+            if (made) arc(r.x + 27, r.y + 27, 25, 3, -90, float(360 * std::clamp(t.q, 0.05, 1.0)), ringColour(t.q));
+            icon(t.icon, {r.x + 14, r.y + 14, 26, 26}, t.flawed ? kRingBad : kText);
+            if (t.count > 1) {
+                const std::string nn = "x" + std::to_string(t.count);
+                const float w = textW(nn, 12) + 10;
+                box(Skin::ChipOn, {r.right() - w + 6, r.y - 6, w, 18}, 9);
+                label(r.right() - w + 11, r.y - 5, nn, kText, 12);
+            }
+            if (hot) tipAt(r.x + 27, B.y - 40, t.name + (t.note.empty() ? "" : " · " + t.note));
+            if (clicked(r)) {
+                dragRef_ = t.ref;
+                dragX_ = in_->mouseX;
+                dragY_ = in_->mouseY;
+            }
+            // a click without a drag puts it on the piece
+            if (hot && in_->released && dragRef_ == t.ref && std::hypot(in_->mouseX - dragX_, in_->mouseY - dragY_) < 6) {
+                addToSlot(t.ref, "");
+                dragRef_.clear();
+            }
+        }
+    }
+}
+
+// Board 10b: the novice helper. A wish (icons, bottom left), the designs that
+// answer it with "fits N%" (left), the chain of the chosen one numbered at
+// its stations in the scene; what is missing carries a red "!".
+void Hud::craftHelperView(const Snapshot& s, float W, float H) {
+    (void)W;
+    const CraftSnap& c = s.craft;
+    const sim::Json wishes = craftSpec_.is_object() ? craftSpec_.value("wishes", sim::Json::array()) : sim::Json::array();
+    const Rect P{36, H - 236, 2 * 18 + 4 * 62.f, 136};
+    box(Skin::Leather, P, 30);
+    int k = 0;
+    for (const auto& w : wishes) {
+        const std::string id = w.value("id", "");
+        const Rect r{P.x + 18 + (k % 4) * 62.f, P.y + 14 + (k / 4) * 60.f, 52, 52};
+        if (iconButton(r, w.value("icon", "a_hint"), craftWish == id, host_->text("hud.craft.wish." + id)))
+            craftWish = craftWish == id ? "" : id;
+        ++k;
+    }
+    if (craftWish.empty() || c.wish != craftWish) return;
+    // the candidates
+    float y = 110;
+    int hoverC = -1;
+    for (size_t i = 0; i < c.candidates.size(); ++i) {
+        const CraftCandidate& cd = c.candidates[i];
+        const Rect r{36, y, 300, 74};
+        const bool hot = ui_->hovered(r);
+        if (hot) hoverC = int(i);
+        box(Skin::Leather, r, 22);
+        if (i == 0 || hot) arc(r.x + 37, r.y + 37, 30, 3, 0, 360, kGoldPale);
+        disc(r.x + 37, r.y + 37, 28, Colour::rgb(10, 14, 20, 0.7f));
+        icon(cd.icon, {r.x + 19, r.y + 19, 36, 36}, i == 0 ? kGoldPale : kText.withAlpha(0.75f));
+        title(r.x + 78, r.y + 12, ui_->fit(cd.name, r.w - 120, 18 / 15.f, true), kText, 18);
+        const Rect bar{r.x + 78, r.y + 44, 150, 9};
+        ui_->roundRect(bar, Colour::rgb(0, 0, 0, 0.45f), 4);
+        ui_->roundRect({bar.x, bar.y, std::max(4.f, bar.w * float(cd.fit)), bar.h}, barColour(cd.fit), 4);
+        if (!cd.missing.empty()) {
+            const Rect m{r.right() - 40, r.y + 22, 30, 30};
+            disc(m.x + 15, m.y + 15, 15, kBad);
+            ui_->text(m.x + 12, m.y + 6, "!", Colour::rgb(255, 255, 255), 1.0f, true);
+        }
+        std::string tip = host_->text("hud.craft.fit", {{"n", int(std::lround(cd.fit * 100))}});
+        if (!cd.missing.empty()) {
+            std::string list;
+            for (const auto& m : cd.missing) list += (list.empty() ? "" : ", ") + m;
+            tip += " · " + host_->text("hud.craft.missing", {{"list", list}});
+        }
+        if (cd.next < 0) tip += " · " + host_->text("hud.craft.no_next");
+        if (hot) tipAt(r.x + r.w * 0.5f, r.bottom() + 8, tip);
+        if (clicked(r) && cd.next >= 0 && cd.draft.is_object()) {
+            // the step the person can do now goes onto the bench
+            const sim::Json& d = cd.draft;
+            for (size_t p = 0; p < c.processes.size(); ++p)
+                if (c.processes[p].id == d.value("process", "")) craftProc = int(p);
+            craftSlots.clear();
+            if (d.contains("slots"))
+                for (auto it = d["slots"].begin(); it != d["slots"].end(); ++it)
+                    craftSlots[it.key()] = it.value().get<std::vector<std::string>>();
+            craftShape = d.value("shape", "");
+            craftMode = d.value("mode", "");
+            craftLen = d.value("len", 0);
+            craftHeat = d.value("heat", -1);
+            if (craftProc >= 0 && !c.processes[size_t(craftProc)].slots.empty())
+                craftSlot = c.processes[size_t(craftProc)].slots.front().first;
+        }
+        y += 84;
+    }
+    // the chain of the chosen candidate, numbered at its stations
+    const int pick = hoverC >= 0 ? hoverC : 0;
+    if (pick >= int(c.candidates.size())) return;
+    const CraftCandidate& cd = c.candidates[size_t(pick)];
+    std::map<std::string, int> atStation;
+    float lastX = -1, lastY = -1;
+    for (size_t i = 0; i < cd.steps.size(); ++i) {
+        const auto& [proc, st] = cd.steps[i];
+        float sx = W * 0.5f, sy = H * 0.46f;
+        const auto it = stationPos_.find(st);
+        if (it != stationPos_.end()) sx = it->second.first, sy = it->second.second;
+        const int dup = atStation[st]++;
+        sx += 44 + dup * 34.f;
+        sy += 40;
+        if (lastX >= 0)
+            for (int d = 0; d < 24; d += 2) {
+                const float t0 = d / 24.f, t1 = (d + 1) / 24.f;
+                ui_->line(lastX + (sx - lastX) * t0, lastY + (sy - lastY) * t0, lastX + (sx - lastX) * t1,
+                          lastY + (sy - lastY) * t1, kGoldPale.withAlpha(0.8f));
+            }
+        lastX = sx, lastY = sy;
+        const bool now = int(i) == cd.next;
+        disc(sx, sy, 17, now ? kGold : Colour::rgb(10, 14, 20, 0.85f));
+        arc(sx, sy, 17, 2, 0, 360, kGoldPale);
+        const std::string n = std::to_string(i + 1);
+        ui_->text(sx - textW(n, 15, true) * 0.5f, sy - 9, n, now ? kDark : kGoldPale, 1.0f, true);
+        const Rect hit{sx - 17, sy - 17, 34, 34};
+        if (ui_->hovered(hit)) {
+            std::string pname = proc;
+            for (const auto& p : c.processes)
+                if (p.id == proc) pname = p.name;
+            tipAt(sx, sy + 22, n + ". " + pname);
+        }
+    }
+}
+
+// Board 12: the recipe book. Records on the left; the chosen one's mastery,
+// its stages as icons (the unknown ones blurred), the fast craft.
+void Hud::craftBook(const Snapshot& s, float W, float H) {
+    const CraftSnap& c = s.craft;
+    const float pw = std::min(W - 80, 1100.0f), ph = std::min(H - 140, 660.0f);
+    const Rect P{(W - pw) * 0.5f, 100 + (H - 140 - ph) * 0.5f, pw, ph};
+    box(Skin::Paper, P, 22);
+    title(P.x + 32, P.y + 22, host_->text("hud.craft.tab.book"), kInk, 28);
+    seal(P.right() - 52, P.y + 44);
+    if (c.recipes.empty()) {
+        ui_->paragraph(P.x + 32, P.y + 80, pw - 64, host_->text("hud.craft.book_empty"), kInkSoft, 15 / 15.f);
+        return;
+    }
+    bookPick_ = std::clamp(bookPick_, 0, int(c.recipes.size()) - 1);
+    const Rect L{P.x + 24, P.y + 76, 330, P.h - 100};
+    float y = L.y;
+    for (size_t i = 0; i < c.recipes.size(); ++i) {
+        const auto& r = c.recipes[i];
+        if (y + 58 > L.bottom()) break;
+        const Rect row{L.x, y, L.w, 52};
+        const bool on = int(i) == bookPick_;
+        ui_->roundRect(row, on ? Colour::rgb(226, 197, 122, 0.35f) : ui_->hovered(row) ? Colour::rgb(122, 92, 40, 0.10f)
+                                                                                     : Colour::rgb(122, 92, 40, 0.05f), 12);
+        label(row.x + 14, row.y + 6, ui_->fit(r.name, row.w - 28, 15 / 15.f), kInk, 15);
+        const Rect bar{row.x + 14, row.y + 34, row.w * 0.55f, 7};
+        ui_->roundRect(bar, Colour::rgb(122, 92, 40, 0.18f), 3);
+        ui_->roundRect({bar.x, bar.y, std::max(4.f, float(bar.w * r.mastery)), bar.h}, r.master ? kGood : kMid, 3);
+        if (r.master) icon("esteem", {row.right() - 34, row.y + 14, 22, 22}, kGoldDark);
+        if (clicked(row)) {
+            bookPick_ = int(i);
+            renaming_ = false;
+            bookCount_ = 1;
+        }
+        y += 58;
+    }
+    const auto& r = c.recipes[size_t(bookPick_)];
+    const Rect D{L.right() + 30, P.y + 76, P.right() - L.right() - 60, P.h - 100};
+    if (renaming_) {
+        ui_->textField(ui::widgetId("craft.rename"), {D.x, D.y, D.w - 70, 40}, renameText_, r.name, 60);
+        if (iconButton({D.right() - 52, D.y - 4, 48, 48}, "a_ok", true, host_->text("hud.craft.save_name")) || in_->enter) {
+            if (!renameText_.empty()) host_->command("craft_rename", {{"id", c.actor}, {"recipe", r.id}, {"name", renameText_}});
+            renaming_ = false;
+            ui_->unfocus();
+        }
+    } else {
+        title(D.x, D.y, ui_->fit(r.name, D.w - 70, 26 / 15.f, true), kInk, 26);
+        if (iconButton({D.right() - 52, D.y - 4, 48, 48}, "a_rename", false, host_->text("hud.craft.rename"))) {
+            renaming_ = true;
+            renameText_ = r.name;
+            ui_->focus(ui::widgetId("craft.rename"));
+        }
+    }
+    float dy = D.y + 60;
+    auto bar = [&](const std::string& name, double v, const std::string& right) {
+        label(D.x, dy, name, kInkSoft, 13);
+        const Rect b{D.x + 190, dy + 4, D.w - 300, 10};
+        ui_->roundRect(b, Colour::rgb(122, 92, 40, 0.18f), 5);
+        ui_->roundRect({b.x, b.y, std::max(4.f, float(b.w * std::clamp(v, 0.0, 1.0))), b.h}, barColour(v), 5);
+        label(b.right() + 12, dy, right, kInk, 13);
+        dy += 30;
+    };
+    bar(host_->text("hud.craft.mastery"), r.mastery, std::to_string(int(std::lround(r.mastery * 100))) + "%");
+    bar(host_->text("hud.craft.best"), r.bestQ, host_->text("hud.craft.successes", {{"n", r.successes}}));
+    dy += 8;
+    label(D.x, dy, host_->text("hud.craft.stages"), kInkSoft, 13);
+    dy += 24;
+    float sx = D.x;
+    for (size_t k = 0; k < r.steps.size(); ++k) {
+        if (sx + 46 > D.right()) {
+            sx = D.x;
+            dy += 54;
+        }
+        const bool known = k < r.stepKnown.size() && r.stepKnown[k];
+        std::string pname = r.steps[k];
+        for (const auto& p : c.processes)
+            if (p.id == r.steps[k]) pname = p.name;
+        const Rect b{sx, dy, 44, 44};
+        disc(b.x + 22, b.y + 22, 22, Colour::rgb(43, 38, 32, known ? 0.12f : 0.06f));
+        arc(b.x + 22, b.y + 22, 21, 1.5f, 0, 360, Colour::rgb(122, 92, 40, known ? 0.8f : 0.35f));
+        icon(craftIconOf("process_icons", r.steps[k], "c_hammer"), {b.x + 10, b.y + 10, 24, 24},
+             Colour::rgb(43, 38, 32, known ? 1.f : 0.3f));
+        if (!known) ui_->text(b.x + 30, b.y - 2, "?", kInkRed, 1.0f, true);
+        if (ui_->hovered(b)) tipAt(b.x + 22, b.bottom() + 6, pname + (known ? "" : " · " + host_->text("hud.craft.step_unknown")));
+        if (k + 1 < r.steps.size()) ui_->line(b.right() + 1, b.y + 22, b.right() + 9, b.y + 22, Colour::rgb(122, 92, 40, 0.6f));
+        sx += 54;
+    }
+    dy += 70;
+    // the fast craft: count, time, expected quality, what is missing, "make"
+    label(D.x, dy, host_->text("hud.craft.fast"), kInkSoft, 13);
+    dy += 26;
+    if (iconButton({D.x, dy, 44, 44}, "a_minus", false, host_->text("hud.craft.less"))) bookCount_ = std::max(1, bookCount_ - 1);
+    {
+        const std::string n = std::to_string(bookCount_);
+        title(D.x + 66 - textW(n, 26, true) * 0.5f, dy + 6, n, kInk, 26);
+    }
+    if (iconButton({D.x + 88, dy, 44, 44}, "a_plus", false, host_->text("hud.craft.more"))) bookCount_ = std::min(20, bookCount_ + 1);
+    label(D.x + 150, dy + 4, host_->text("hud.craft.fast_time", {{"time", r.time * bookCount_}, {"stages", r.stages}}), kInk, 14);
+    label(D.x + 150, dy + 24, host_->text("hud.craft.expected", {{"n", int(std::lround(r.expectedQ * 100))}}), kInkSoft, 13);
+    dy += 62;
+    if (!r.missing.empty()) {
+        std::string list;
+        for (const auto& m : r.missing) list += (list.empty() ? "" : ", ") + m;
+        dy += ui_->paragraph(D.x, dy, D.w, host_->text("hud.craft.missing", {{"list", list}}), kInkRed, 14 / 15.f) + 8;
+    } else if (!r.master) {
+        dy += ui_->paragraph(D.x, dy, D.w, host_->text("hud.craft.not_master"), kInkSoft, 14 / 15.f) + 8;
+    }
+    const bool can = r.master && r.missing.empty();
+    const Rect go{D.x, std::min(dy + 6, D.bottom() - 64), 64, 64};
+    if (iconButton(go, "c_hammer", can, host_->text("hud.craft.make_memory"), !can) && can)
+        host_->command("craft_fast", {{"id", c.actor}, {"recipe", r.id}, {"count", bookCount_}});
+}
+
+// Board 14: the made things. A row of tokens; the chosen one opens a small
+// ring of actions round it (inspect, repair, onto the bench).
+void Hud::craftThings(const Snapshot& s, float W, float H) {
+    const CraftSnap& c = s.craft;
+    const float pw = std::min(W - 80, 1100.0f), ph = std::min(H - 140, 560.0f);
+    const Rect P{(W - pw) * 0.5f, 100 + (H - 140 - ph) * 0.5f, pw, ph};
+    box(Skin::Paper, P, 22);
+    title(P.x + 32, P.y + 22, host_->text("hud.craft.tab.things"), kInk, 28);
+    seal(P.right() - 52, P.y + 44);
+    if (c.made.empty()) {
+        label(P.x + 32, P.y + 86, host_->text("hud.craft.things_empty"), kInkSoft, 15);
+        return;
+    }
+    const float tok = 96;
+    const int cols = std::max(1, int((P.w - 64) / tok));
+    for (size_t i = 0; i < c.made.size(); ++i) {
+        const CraftThing& t = c.made[i];
+        const float cx = P.x + 32 + (float(i % size_t(cols)) + 0.5f) * tok, cy = P.y + 120 + float(i / size_t(cols)) * (tok + 20);
+        if (cy + 50 > P.bottom()) break;
+        const Rect r{cx - 34, cy - 34, 68, 68};
+        const bool hot = ui_->hovered(r);
+        disc(cx, cy, 34, Colour::rgb(43, 38, 32, hot || thingPick_ == int(i) ? 0.2f : 0.1f));
+        arc(cx, cy, 33, 4, -90, float(360 * std::clamp(t.q, 0.05, 1.0)), barColour(t.q));
+        if (t.wear > 0.05) arc(cx, cy, 26, 3, -90, float(360 * t.wear), kInkRed.withAlpha(0.7f));
+        icon(t.icon, {cx - 18, cy - 18, 36, 36}, t.flawed ? kInkRed : kInk);
+        if (hot) tipAt(cx, cy + 44, t.name + (t.note.empty() ? "" : " · " + t.note));
+        if (clicked(r)) thingPick_ = thingPick_ == int(i) ? -1 : int(i);
+    }
+    if (thingPick_ >= 0 && thingPick_ < int(c.made.size())) {
+        const size_t i = size_t(thingPick_);
+        const float cx = P.x + 32 + (float(i % size_t(cols)) + 0.5f) * tok, cy = P.y + 120 + float(i / size_t(cols)) * (tok + 20);
+        const int idx = std::atoi(c.made[i].ref.c_str() + 5);
+        struct Act {
+            const char* ic;
+            const char* tip;
+        };
+        static const Act acts[] = {{"a_inspect", "hud.craft.inspect"}, {"c_repair", "hud.craft.repair_go"}, {"hand", "hud.craft.to_bench"}};
+        for (int k = 0; k < 3; ++k) {
+            const float a = (-150.f + k * 60.f) * kPiF / 180.f;
+            const float bx = cx + std::cos(a) * 62, by = cy + std::sin(a) * 62;
+            if (iconButton({bx - 22, by - 22, 44, 44}, acts[k].ic, false, host_->text(acts[k].tip))) {
+                if (k == 0) host_->command("craft_inspect", {{"id", c.actor}, {"item", idx}});
+                if (k == 1) {
+                    repairPick_ = idx;
+                    craftTab = 3;
+                }
+                if (k == 2) {
+                    craftTab = 0;
+                    if (craftProc >= 0 && craftProc < int(c.processes.size())) {
+                        std::string slot = craftSlot.empty() && !c.processes[size_t(craftProc)].slots.empty()
+                                               ? c.processes[size_t(craftProc)].slots.front().first
+                                               : craftSlot;
+                        craftSlots[slot].push_back(c.made[i].ref);
+                    }
+                }
+                thingPick_ = -1;
+                break;
+            }
+        }
+    }
+}
+
+// Board 15: repair and sharpening. What is worn or flawed; the chosen one's
+// wear and flaws; the repair's ways as icons.
+void Hud::craftRepair(const Snapshot& s, float W, float H) {
+    const CraftSnap& c = s.craft;
+    const float pw = std::min(W - 80, 1000.0f), ph = std::min(H - 140, 560.0f);
+    const Rect P{(W - pw) * 0.5f, 100 + (H - 140 - ph) * 0.5f, pw, ph};
+    box(Skin::Paper, P, 22);
+    title(P.x + 32, P.y + 22, host_->text("hud.craft.tab.repair"), kInk, 28);
+    seal(P.right() - 52, P.y + 44);
+    std::vector<std::pair<int, const CraftThing*>> list;
+    for (const auto& t : c.made)
+        if (t.wear > 0.01 || t.flawed) list.push_back({std::atoi(t.ref.c_str() + 5), &t});
+    if (list.empty()) {
+        label(P.x + 32, P.y + 86, host_->text("hud.craft.repair_empty"), kInkSoft, 15);
+        return;
+    }
+    bool found = false;
+    for (const auto& [idx, t] : list) found |= idx == repairPick_;
+    if (!found) repairPick_ = list.front().first;
+    float x = P.x + 32;
+    const float y = P.y + 80;
+    for (const auto& [idx, t] : list) {
+        if (x + 68 > P.right() - 32) break;
+        const Rect r{x, y, 60, 60};
+        disc(x + 30, y + 30, 30, Colour::rgb(43, 38, 32, idx == repairPick_ ? 0.22f : 0.08f));
+        arc(x + 30, y + 30, 29, 3, -90, float(360 * std::clamp(1.0 - t->wear, 0.05, 1.0)), barColour(1.0 - t->wear));
+        icon(t->icon, {x + 14, y + 14, 32, 32}, t->flawed ? kInkRed : kInk);
+        if (ui_->hovered(r)) tipAt(x + 30, y + 66, t->name);
+        if (clicked(r)) repairPick_ = idx;
+        x += 72;
+    }
+    const CraftThing* t = nullptr;
+    for (const auto& [idx, tt] : list)
+        if (idx == repairPick_) t = tt;
+    if (!t) return;
+    float dy = y + 100;
+    title(P.x + 32, dy, ui_->fit(t->name, pw - 64, 24 / 15.f, true), kInk, 24);
+    dy += 44;
+    label(P.x + 32, dy, host_->text("hud.craft.wear"), kInkSoft, 13);
+    const Rect b{P.x + 200, dy + 4, 300, 10};
+    ui_->roundRect(b, Colour::rgb(122, 92, 40, 0.18f), 5);
+    ui_->roundRect({b.x, b.y, std::max(4.f, float(b.w * t->wear)), b.h}, kBad, 5);
+    label(b.right() + 12, dy, std::to_string(int(std::lround(t->wear * 100))) + "%", kInk, 13);
+    dy += 34;
+    label(P.x + 32, dy, host_->text("hud.craft.flaws"), kInkSoft, 13);
+    ui_->paragraph(P.x + 200, dy, pw - 260, t->flawed ? t->note : host_->text("hud.craft.no_flaws"), t->flawed ? kInkRed : kInk,
+                   14 / 15.f);
+    dy += 60;
+    // the repair's ways (process modes); none: one way
+    const CraftProcessSnap* rp = nullptr;
+    for (const auto& p : c.processes)
+        if (p.id == "repair") rp = &p;
+    std::vector<std::pair<std::string, std::string>> ways;
+    if (rp) ways = rp->modes;
+    if (ways.empty()) ways.push_back({"", host_->text("hud.craft.repair_go")});
+    float wx = P.x + 32;
+    for (const auto& [mode, nm] : ways) {
+        std::string tip = nm;
+        if (rp && !rp->available) tip += " · " + rp->need;
+        if (iconButton({wx, dy, 60, 60}, mode.empty() ? "c_repair" : "k_finish", true, tip, rp && !rp->available))
+            host_->command("craft_repair", {{"id", c.actor}, {"item", repairPick_}, {"mode", mode}});
+        wx += 74;
+    }
+}
+
+// Boards 11 and 13: what came out of the attempt (quality, the chain's links,
+// flaws) and, after a breakthrough, the new way with its name to write down.
+void Hud::craftResultCard(const Snapshot& s, float W, float H) {
+    const CraftSnap& c = s.craft;
+    const CraftResultSnap& r = c.result;
+    const float pw = std::min(W - 80, 760.0f), ph = std::min(H - 160, 520.0f);
+    const Rect P{(W - pw) * 0.5f, 110 + (H - 160 - ph) * 0.5f, pw, ph};
+    const float cx = P.x + pw * 0.5f;
+    if (r.breakthrough)   // the rays of the insight behind the card
+        for (int k = 0; k < 16; ++k) {
+            const float a = k * kPiF / 8.f;
+            for (float d = pw * 0.45f; d < pw * 0.9f; d += 26)
+                ui_->line(cx + std::cos(a) * d, P.y + ph * 0.5f + std::sin(a) * d, cx + std::cos(a) * (d + 8),
+                          P.y + ph * 0.5f + std::sin(a) * (d + 8), kGoldPale.withAlpha(0.55f));
+        }
+    box(Skin::Paper, P, 22);
+    const ActorSnap* who = actor(s, c.actor);
+    {
+        const std::string kicker = host_->text(r.breakthrough ? "hud.craft.insight" : "hud.craft.result");
+        label(cx - textW(kicker, 13) * 0.5f, P.y + 22, kicker, Colour::rgb(122, 90, 16), 13);
+        const std::string head = r.breakthrough ? host_->text("hud.craft.insight_lead", {{"name", who ? who->name : std::string()}}) : r.head;
+        title(cx - textW(head, 30, true) * 0.5f, P.y + 44, ui_->fit(head, pw - 60, 30 / 15.f, true), kInk, 30);
+        if (!r.what.empty()) label(cx - textW(r.what, 16) * 0.5f, P.y + 86, ui_->fit(r.what, pw - 60, 16 / 15.f), kInkSoft, 16);
+    }
+    float y = P.y + 124;
+    if (r.q >= 0) {
+        // quality as a ring, the chain's links as bars, the weakest one marked
+        const float qx = P.x + 90, qy = y + 60;
+        disc(qx, qy, 50, Colour::rgb(43, 38, 32, 0.08f));
+        arc(qx, qy, 46, 9, -90, float(360 * std::clamp(r.q, 0.03, 1.0)), barColour(r.q));
+        const std::string qs = std::to_string(int(std::lround(r.q * 100)));
+        title(qx - textW(qs, 26, true) * 0.5f, qy - 16, qs, kInk, 26);
+        label(qx - textW(r.tier, 13) * 0.5f, qy + 58, r.tier, kInkSoft, 13);
+        float ly = y;
+        int weak = -1;
+        for (size_t i = 0; i < r.links.size(); ++i)
+            if (weak < 0 || r.links[i].second < r.links[size_t(weak)].second) weak = int(i);
+        for (size_t i = 0; i < r.links.size() && ly < y + 170; ++i) {
+            const auto& [nm, q] = r.links[i];
+            label(P.x + 180, ly, ui_->fit(nm, 170, 13 / 15.f), int(i) == weak ? kInkRed : kInk, 13);
+            const Rect b{P.x + 360, ly + 4, pw - 420, 9};
+            ui_->roundRect(b, Colour::rgb(122, 92, 40, 0.18f), 4);
+            ui_->roundRect({b.x, b.y, std::max(4.f, float(b.w * std::clamp(q, 0.0, 1.0))), b.h}, barColour(q), 4);
+            ly += 24;
+        }
+        if (weak >= 0 && r.links.size() > 1)
+            label(P.x + 180, ly + 4, ui_->fit(host_->text("hud.craft.weak", {{"name", r.links[size_t(weak)].first}}), pw - 220, 13 / 15.f),
+                  kInkSoft, 13);
+        y += 200;
+    }
+    if (!r.flaws.empty()) {
+        float fx = P.x + 40;
+        for (const auto& f : r.flaws) {
+            const float w = textW(f, 14) + 24;
+            box(Skin::Chip, {fx, y, w, 28}, 14);
+            label(fx + 12, y + 5, f, kInkRed, 14);
+            fx += w + 8;
+        }
+        y += 40;
+    }
+    if (r.breakthrough && !r.recipe.empty()) {
+        label(P.x + 40, y, host_->text("hud.craft.name_way"), kInkSoft, 13);
+        ui_->textField(ui::widgetId("craft.insight"), {P.x + 40, y + 20, pw - 160, 40}, renameText_, r.recipeName, 60);
+        if (iconButton({P.right() - 100, y + 16, 48, 48}, "a_book", true, host_->text("hud.craft.save_name"))) {
+            if (!renameText_.empty()) host_->command("craft_rename", {{"id", c.actor}, {"recipe", r.recipe}, {"name", renameText_}});
+            ui_->unfocus();
+            resultOpen_ = false;
+        }
+    }
+    // the actions: take (close), repeat, inspect
+    const float by = P.bottom() - 82;
+    if (iconButton({cx - 110, by, 60, 60}, "a_ok", true, host_->text("hud.craft.take"))) resultOpen_ = false;
+    if (iconButton({cx - 30, by, 60, 60}, "a_repeat", false, host_->text("hud.craft.repeat"), lastDraft_.is_null())) {
+        if (!lastDraft_.is_null()) host_->command("craft_attempt", lastDraft_);
+        resultOpen_ = false;
+    }
+    if (iconButton({cx + 50, by, 60, 60}, "a_inspect", false, host_->text("hud.craft.inspect"), r.made < 0) && r.made >= 0)
+        host_->command("craft_inspect", {{"id", c.actor}, {"item", r.made}});
 }
 
 } // namespace altera::game

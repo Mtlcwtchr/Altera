@@ -443,7 +443,9 @@ public:
             if (keys[SDL_SCANCODE_A]) { target_[0] -= s * v; target_[1] += c * v; follow_ = false; }
         }
         if (keys[SDL_SCANCODE_Q]) orbitYaw_ += 1.5 * dt;
-        if (keys[SDL_SCANCODE_E]) orbitYaw_ -= 1.5 * dt;
+        // in the workshop E is "make" (held), not the camera
+        hud_.keyE = keys[SDL_SCANCODE_E] && hud_.panel == "workshop";
+        if (keys[SDL_SCANCODE_E] && hud_.panel != "workshop") orbitYaw_ -= 1.5 * dt;
         const double tz = groundAt(target_[0], target_[1]) + 1.2;
         cam.yaw = orbitYaw_;
         cam.pitch = -orbitPitch_;
@@ -651,7 +653,18 @@ private:
                             hud_.craftSlots[it.key()] = it.value().get<std::vector<std::string>>();
                     hud_.craftShape = d.value("shape", "");
                     hud_.craftMode = d.value("mode", "");
+                    hud_.craftHeat = d.value("heat", -1);
+                    hud_.craftLen = d.value("len", 0);
+                    if (!hud_.craftSlots.empty()) hud_.craftSlot = hud_.craftSlots.begin()->first;
                 }
+                // the workshop's tabs and helper (boards 10-15)
+                if (st.contains("craft_tab")) hud_.craftTab = st["craft_tab"].get<int>();
+                if (st.contains("craft_wish")) {
+                    hud_.craftWish = st["craft_wish"].get<std::string>();
+                    hud_.craftHelper = !hud_.craftWish.empty();
+                }
+                if (st.contains("craft_helper")) hud_.craftHelper = st["craft_helper"].get<bool>();
+                if (st.value("craft_close", false)) hud_.closeCraftResult();
                 if (st.value("craft_try", false) && who != kNone && hud_.craftProc >= 0 &&
                     hud_.craftProc < int(shown_.craft.processes.size())) {
                     Json a = Json::object();
@@ -662,6 +675,8 @@ private:
                     a["slots"] = slots;
                     if (!hud_.craftShape.empty()) a["shape"] = hud_.craftShape;
                     if (!hud_.craftMode.empty()) a["mode"] = hud_.craftMode;
+                    if (hud_.craftHeat >= 0) a["heat"] = hud_.craftHeat;
+                    if (hud_.craftLen > 0) a["len"] = hud_.craftLen;
                     post({"cmd", 0, "craft_attempt", a});
                     hud_.craftSlots.clear();
                 }

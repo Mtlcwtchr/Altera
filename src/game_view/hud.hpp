@@ -48,6 +48,11 @@ public:
     virtual std::vector<std::pair<std::string, std::string>> goals() const = 0;
     // The workshop's draft (process, slots, target): the sim forecasts it.
     virtual void craftDraft(const sim::Json& draft) { (void)draft; }
+    // Screen position `up` metres over the ground at a sim point; false off screen.
+    virtual bool groundToScreen(double simX, double simY, double up, float& x, float& y) const {
+        (void)simX, (void)simY, (void)up, (void)x, (void)y;
+        return false;
+    }
 };
 
 class Hud {
@@ -63,6 +68,13 @@ public:
     int craftProc = -1;
     std::map<std::string, std::vector<std::string>> craftSlots;
     std::string craftShape, craftMode, craftSlot;
+    // the workshop scene (boards 10-15): heat step (-1: the most the stations
+    // give), length (0: the shape's default), the helper's wish, the tab
+    // (0 bench, 1 book, 2 things, 3 repair), the helper shown, E held this frame
+    int craftHeat = -1, craftLen = 0, craftTab = 0;
+    std::string craftWish;
+    bool craftHelper = false, keyE = false;
+    void closeCraftResult() { resultOpen_ = false; }   // tour scripts
     // The build mode's bar, filled by the game: palette (name, cost), the
     // piece picked, the state of the piece under the mouse, the plan.
     std::vector<std::pair<std::string, std::string>> buildPalette;
@@ -121,6 +133,28 @@ private:
     void workshop(const Snapshot& s, float W, float H);
     sim::Json craftDraftJson(const Snapshot& s) const;
     std::string sentDraft_;
+    // the workshop's parts (hud.cpp, after the design canvas boards 10-15)
+    bool iconButton(const ui::Rect& r, const std::string& iconName, bool on, const std::string& tip, bool dim = false);
+    void tipAt(float cx, float y, const std::string& tip);
+    void craftBench(const Snapshot& s, float W, float H);
+    void craftHelperView(const Snapshot& s, float W, float H);
+    void craftBook(const Snapshot& s, float W, float H);
+    void craftThings(const Snapshot& s, float W, float H);
+    void craftRepair(const Snapshot& s, float W, float H);
+    void craftResultCard(const Snapshot& s, float W, float H);
+    void craftAttempt(const Snapshot& s);
+    std::string craftIconOf(const char* map, const std::string& id, const char* fallback) const;
+    sim::Json craftSpec_;
+    std::string dragRef_;          // a material carried from the bag
+    float holdT_ = 0;              // how long "make" has been held
+    int resultShown_ = -1, bookPick_ = 0, bookCount_ = 1, thingPick_ = -1, repairPick_ = -1, bagOff_ = 0;
+    bool resultOpen_ = false, renaming_ = false, holdLatch_ = false;
+    std::string renameText_, tipText_;
+    float tipX_ = 0, tipY_ = 0, dragX_ = 0, dragY_ = 0;
+    double craftClock_ = 0;
+    float craftDt_ = 0;
+    std::map<std::string, std::pair<float, float>> stationPos_;   // where each station is drawn this frame
+    sim::Json lastDraft_;          // the last attempt, for "repeat"
     void dimmer(float W, float H, float a);
 
     struct Row {
