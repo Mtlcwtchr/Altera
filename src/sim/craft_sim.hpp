@@ -14,6 +14,7 @@
 #include <vector>
 
 #include "sim/craft/craft_chain.hpp"
+#include "sim/loc.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -62,5 +63,16 @@ void craftAct(World& w, Character& c, const InteractionDef& d, WorldObject* targ
 // craft:<design> for every design whose gathered inputs, tools and stations
 // the world has as items and objects. Called by Content::load.
 std::vector<InteractionDef> designInteractions(const Content& c);
+
+// Player commands (World::command): craft_attempt {id, process, slots, shape,
+// len, mode, heat}, craft_fast {id, recipe, count}, craft_inspect {id, item},
+// craft_repair {id, item, mode}, craft_rename {id, recipe, name}. The outcome
+// goes to cmd.result and to Character::craft.lastOutcome for the interface.
+void installCrafting(World& w);
+
+// Display name of a made thing (loc keys only, gdd crafting §5): an archetype
+// named with its material ("железный меч") or plain ("хлеб"), an improvised
+// thing, or material + shape for an intermediate.
+std::string craftItemName(const Loc& loc, const std::string& lang, const craft::CraftData& d, const craft::Item& it);
 
 } // namespace altera::sim

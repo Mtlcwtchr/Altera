@@ -18,6 +18,10 @@ struct CraftState {
     std::map<std::string, double> knowsMaterial;
     std::int64_t lastBreakthrough = -1;      // tick
     std::map<std::string, int> tried;        // novelty: how often a chain signature was tried
+    // the last outcome for the interface (not saved): outcome / stop code, what came out
+    std::string lastOutcome, lastArg;
+    int lastMade = -1;
+    bool lastBreakthrough_ = false;
     bool empty() const { return items.empty() && book.recipes.empty() && knowsMaterial.empty(); }
 };
 

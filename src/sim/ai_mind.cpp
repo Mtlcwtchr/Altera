@@ -553,6 +553,7 @@ void installAi(World& w) {
     });
     installControl(w);
     installBuilding(w);
+    installCrafting(w);
 }
 
 } // namespace altera::sim

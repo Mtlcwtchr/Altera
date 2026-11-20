@@ -402,5 +402,6 @@
  "interaction.craft:tincture.name": "make: tincture",
  "interaction.craft:soap.name": "make: soap",
  "interaction.craft:candle.name": "make: candle",
- "interaction.craft:torch.name": "make: torch"
+ "interaction.craft:torch.name": "make: torch",
+ "craft.name.raw": "{material} ({shape})"
 }

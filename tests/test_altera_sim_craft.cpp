@@ -639,3 +639,40 @@ TEST(altera_craft_made_gear_in_combat) {
         if (it.kind == "weapon" && it.wear < before) lower = true;
     if (rep.made >= 0) CHECK(lower);
 }
+
+// --- K5 sim side: player commands and names -----------------------------------
+
+#include "sim/ai.hpp"
+
+TEST(altera_craft_commands_and_names) {
+    const Content& ct = realContent();
+    Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    World w = makeTestWorld(ct, cfg);
+    installAi(w);
+    Character* c = anAdult(w);
+    if (!c) return;
+    c->inventory["fiber_raw"] = 2;
+    Command cmd;
+    cmd.source = "player:1";
+    cmd.type = "craft_attempt";
+    cmd.args = {{"id", c->id}, {"process", "twist"}, {"slots", {{"work", {"inv:fiber_raw"}}}}, {"shape", "strand"}};
+    Command r = w.applyNow(cmd);
+    CHECK(r.result.rfind("ok:", 0) == 0);
+    CHECK(!c->craft.lastOutcome.empty());
+    Command bad = cmd;
+    bad.args["process"] = "no_such";
+    CHECK(w.applyNow(bad).result.rfind("rejected:unknown_process", 0) == 0);
+    // names come from loc: an archetype with its material, an intermediate, plain food
+    const Loc loc = Loc::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/loc");
+    ChainRun sword = runDesign("sword", actorWith(0.95), 2);
+    CHECK(sword.done);
+    const std::string ru = craftItemName(loc, "ru", data(), sword.out), en = craftItemName(loc, "en", data(), sword.out);
+    CHECK(ru.find("\xd0\xbc\xd0\xb5\xd1\x87") != std::string::npos && ru.find("\xd1\x81\xd1\x82\xd0\xb0\xd0\xbb\xd1\x8c\xd0\xbd") != std::string::npos);
+    CHECK(en == "steel sword");
+    ChainRun bread = runDesign("bread", actorWith(0.9), 3);
+    if (bread.done && bread.out.form == "bread") CHECK(craftItemName(loc, "en", data(), bread.out) == "bread");
+    Item bar = rawItem(data(), "wrought_iron");
+    recognize(data(), bar);
+    CHECK(craftItemName(loc, "en", data(), bar) == "iron bar");
+    CHECK(craftItemName(loc, "ru", data(), bar).find("\xd0\xb1\xd1\x80\xd1\x83\xd1\x81\xd0\xbe\xd0\xba") != std::string::npos);
+}

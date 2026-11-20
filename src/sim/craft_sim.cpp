@@ -540,4 +540,97 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
     return out;
 }
 
+namespace {
+
+void note(Character& c, const CraftOutcome& o) {
+    c.craft.lastOutcome = o.started ? (o.chain.results.empty() ? outcomeName(o.step.outcome) : (o.reason.empty() ? "done" : o.reason))
+                                    : o.reason;
+    c.craft.lastArg = o.started ? o.reason : o.reasonArg;
+    c.craft.lastMade = o.made;
+    c.craft.lastBreakthrough_ = o.breakthrough;
+}
+
+std::string resultOf(const CraftOutcome& o) {
+    if (!o.started) return "rejected:" + o.reason + (o.reasonArg.empty() ? "" : ":" + o.reasonArg);
+    return "ok:" + (o.chain.results.empty() ? std::string(outcomeName(o.step.outcome)) : o.reason) +
+           (o.breakthrough ? ":breakthrough" : "");
+}
+
+bool handleCraft(World& w, Command& cmd) {
+    const std::string& t = cmd.type;
+    if (t.rfind("craft_", 0) != 0) return false;
+    Character* c = cmd.args.contains("id") ? w.character(cmd.args.at("id").get<EntityId>()) : nullptr;
+    if (!c || !c->body.alive || c->isAnimal()) {
+        cmd.result = "rejected:no_such_character";
+        return true;
+    }
+    if (!w.content().craft.loaded) {
+        cmd.result = "rejected:no_crafting";
+        return true;
+    }
+    const Json& a = cmd.args;
+    if (t == "craft_attempt") {
+        CraftCommand cc;
+        cc.process = a.value("process", "");
+        if (a.contains("slots"))
+            for (auto it = a["slots"].begin(); it != a["slots"].end(); ++it)
+                cc.slots[it.key()] = it.value().get<std::vector<std::string>>();
+        cc.target.shape = a.value("shape", "");
+        cc.target.len = a.value("len", 0);
+        cc.target.mode = a.value("mode", "");
+        cc.target.heat = a.value("heat", -1);
+        CraftOutcome o = craftAttempt(w, *c, cc);
+        note(*c, o);
+        cmd.result = resultOf(o);
+    } else if (t == "craft_fast") {
+        CraftOutcome o = fastCraft(w, *c, a.value("recipe", ""), a.value("count", 1));
+        note(*c, o);
+        cmd.result = resultOf(o);
+    } else if (t == "craft_inspect") {
+        int n = inspectMade(w, *c, a.value("item", -1));
+        cmd.result = n < 0 ? "rejected:no_such_item" : "ok:" + std::to_string(n);
+    } else if (t == "craft_repair") {
+        CraftOutcome o = repairMade(w, *c, a.value("item", -1), a.value("mode", ""));
+        note(*c, o);
+        cmd.result = resultOf(o);
+    } else if (t == "craft_rename") {
+        Recipe* r = c->craft.book.find(a.value("recipe", ""));
+        if (!r) cmd.result = "rejected:no_such_recipe";
+        else {
+            r->nameUser = a.value("name", "");
+            cmd.result = "ok";
+        }
+    } else {
+        cmd.result = "rejected:unknown_command";
+    }
+    return true;
+}
+
+} // namespace
+
+void installCrafting(World& w) { w.addCommandHandler(handleCraft); }
+
+std::string craftItemName(const Loc& loc, const std::string& lang, const craft::CraftData& d, const craft::Item& it) {
+    const Item* main = &it;
+    for (const char* r : {"blade", "head", "stave", "body", "shaft", "handle"})
+        if (const Item* p = it.part(r)) {
+            main = p;
+            break;
+        }
+    if (it.isAssembly() && main == &it) main = &it.parts.front().item.front();
+    const std::string matKey = "material." + main->material + ".made";
+    if (!it.form.empty()) {
+        const FormDef* f = d.form(it.form);
+        const Json noun = loc.noun(lang, "form." + it.form + ".name", it.form);
+        if (f && f->named && loc.has(lang, matKey)) return loc.text(lang, matKey, Json{{"form", noun}});
+        return loc.text(lang, "form." + it.form + ".name");
+    }
+    const Json shape = loc.noun(lang, "shape." + it.shape + ".name", it.shape);
+    if (it.shape == "liquid" || it.shape == "lump" || it.shape == "powder" || it.shape == "scrap" || !loc.has(lang, matKey))
+        return loc.text(lang, "craft.name.raw",
+                        Json{{"material", loc.noun(lang, "material." + main->material + ".name", main->material)},
+                             {"shape", shape}});
+    return loc.text(lang, matKey, Json{{"form", shape}});
+}
+
 } // namespace altera::sim

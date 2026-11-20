@@ -580,7 +580,7 @@ std::vector<std::string> craftLocKeys(const CraftData& d) {
         k.push_back(std::string("craft.reason.") + r);
     for (const char* s : {"missing", "cannot_start", "ruined", "hurt", "too_long", "unknown_step", "done"})
         k.push_back(std::string("craft.stop.") + s);
-    for (const char* s : {"craft.unknown", "craft.likely", "craft.hidden_flaw"}) k.push_back(s);
+    for (const char* s : {"craft.unknown", "craft.likely", "craft.hidden_flaw", "craft.name.raw"}) k.push_back(s);
     std::sort(k.begin(), k.end());
     k.erase(std::unique(k.begin(), k.end()), k.end());
     return k;
