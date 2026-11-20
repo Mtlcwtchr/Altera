@@ -241,6 +241,23 @@ bool handle(World& w, Command& cmd) {
         c->controller.idleSince = w.now();
         return true;
     }
+    if (t == "steer") {
+        // Direct control (WASD in the game): the client walks the player's
+        // person in real time and sends where it is now. A running order or
+        // plan gives way, as when the player clicks elsewhere in The Sims, and
+        // free will waits as after any order.
+        Character* c = nullptr;
+        requireControl(w, cmd, c);
+        if (!c->body.alive) return cmd.result = "rejected:dead", true;
+        if (c->body.downUntil > w.now()) return cmd.result = "rejected:down", true;
+        if (c->captivity.held()) return cmd.result = "rejected:captive", true;
+        if (c->ai.fsm.state == "Fight") return cmd.result = "rejected:fighting", true;
+        if (c->ai.goal.valid()) dropGoal(w, *c, "steered_by_player", false);
+        const double s = w.map().sizeM;
+        c->pos = {std::clamp(cmd.args.at("x").get<double>(), 0.0, s), std::clamp(cmd.args.at("y").get<double>(), 0.0, s)};
+        c->controller.idleSince = w.now();
+        return true;
+    }
     if (t == "set_free_will") {
         Character* c = w.character(cmd.args.at("id").get<EntityId>());
         if (!c) throw std::runtime_error("no such character");

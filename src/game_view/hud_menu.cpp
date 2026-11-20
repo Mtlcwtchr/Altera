@@ -32,7 +32,7 @@ void Hud::resetWorld() {
     trends_.clear();
     toasts_.clear();
     seenChronicle_ = 0;
-    selected_ = wheelTarget_ = kinPick_ = sim::kNone;
+    selected_ = wheelTarget_ = kinPick_ = aim = sim::kNone;
     pin_ = hover_ = -1;
     pendingSlot_ = -1;
 }

@@ -90,6 +90,18 @@ public:
         sphere_ = 0;
         sub_ = 0;
     }
+    // The act ring over a beast (a click on it): the sim's acts whose target is
+    // its species, filled by the game (species -> interaction ids), drawn
+    // round the point clicked.
+    std::map<std::string, std::vector<std::string>> beastActs;
+    void openBeast(EntityId target, float x, float y) {
+        panel = "beast";
+        beastTarget_ = target;
+        beastX_ = x;
+        beastY_ = y;
+        beastFresh_ = true;
+    }
+    EntityId aim = sim::kNone;   // the target the player clicked (marked, its name shown)
     void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
     void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
@@ -167,6 +179,7 @@ private:
     void thoughts(const Snapshot& s, float W);
     void sheet(const Snapshot& s, const ActorSnap& a, float W, float H);
     void wheel(const Snapshot& s, float W, float H);
+    void beast(const Snapshot& s, float W, float H);
     void kin(const Snapshot& s, const ActorSnap* a, float W, float H);
     void annals(const Snapshot& s, float W, float H);
     void buildBar(const Snapshot& s, float W, float H);
@@ -246,7 +259,9 @@ private:
     std::map<EntityId, SDL_Texture*> portraits_;
     SDL_Texture* minimap_ = nullptr;
     sim::Json wheelSpec_;
-    EntityId selected_ = sim::kNone, wheelTarget_ = sim::kNone;
+    EntityId selected_ = sim::kNone, wheelTarget_ = sim::kNone, beastTarget_ = sim::kNone;
+    float beastX_ = 0, beastY_ = 0;
+    bool beastFresh_ = false;   // opened by this frame's click: that click does not close it
     int goalPick_ = -1;
     int pin_ = -1, hover_ = -1, sheetTab_ = 0, sphere_ = 0, sub_ = 0, tone_ = 1, annalsTab_ = 0, annalsFilter_ = 0;
     EntityId kinPick_ = sim::kNone;

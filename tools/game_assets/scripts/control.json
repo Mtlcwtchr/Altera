@@ -1,0 +1,21 @@
+[
+ {"at": 2, "backstory": "peasant"},
+ {"at": 3, "backstory_begin": true},
+ {"at": 7, "zoom": 16, "pitch": 0.42, "yawDeg": 30},
+ {"at": 8, "shot": "control_01_start.png"},
+ {"at": 9, "walk": [1, 0, 3]},
+ {"at": 10.5, "shot": "control_02_walk.png"},
+ {"at": 12.5, "walk": [1, 1, 2.5], "run": true},
+ {"at": 13.5, "shot": "control_03_run.png"},
+ {"at": 15.5, "run": false, "zoom": 30, "pitch": 0.55},
+ {"at": 16.5, "shot": "control_04_stopped.png"},
+ {"at": 17, "aim_person": true},
+ {"at": 18.5, "shot": "control_05_person_wheel.png"},
+ {"at": 19, "panel": "none"},
+ {"at": 19.5, "aim_beast": "any"},
+ {"at": 20.5, "shot": "control_06_beast_ring.png"},
+ {"at": 21, "panel": "none"},
+ {"at": 21.5, "aim_beast": "goats"},
+ {"at": 22.5, "shot": "control_07_goats_ring.png"},
+ {"at": 23, "quit": true}
+]
