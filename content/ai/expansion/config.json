@@ -1,0 +1,13 @@
+{
+ "memory_types": {
+  "overheard": 0.3,
+  "won_contest": 0.15,
+  "danced": 0.1,
+  "sang_together": 0.15,
+  "confided": 0.4,
+  "played_game": 0.05,
+  "scolded_child": 0.2,
+  "read_omen": 0.2,
+  "fasted": 0.3
+ }
+}

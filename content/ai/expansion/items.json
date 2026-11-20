@@ -1,0 +1,151 @@
+{
+ "items": [
+  {
+   "id": "carved_toy",
+   "tags": [
+    "gift",
+    "toy"
+   ],
+   "stack": 5
+  },
+  {
+   "id": "fish",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.2,
+   "stack": 10
+  },
+  {
+   "id": "seeds",
+   "tags": [
+    "seed"
+   ],
+   "stack": 30
+  },
+  {
+   "id": "grain",
+   "tags": [
+    "food",
+    "raw",
+    "grain"
+   ],
+   "nutrition": 0.1,
+   "stack": 30
+  },
+  {
+   "id": "hay",
+   "tags": [
+    "fodder"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "milk",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.12,
+   "stack": 6
+  },
+  {
+   "id": "wool",
+   "tags": [
+    "fiber"
+   ],
+   "stack": 10
+  },
+  {
+   "id": "egg",
+   "tags": [
+    "food",
+    "raw"
+   ],
+   "nutrition": 0.08,
+   "stack": 12
+  },
+  {
+   "id": "honey",
+   "tags": [
+    "food",
+    "sweet"
+   ],
+   "nutrition": 0.18,
+   "stack": 6
+  },
+  {
+   "id": "sheaf",
+   "tags": [
+    "grain",
+    "bulky"
+   ],
+   "stack": 12
+  },
+  {
+   "id": "flour",
+   "tags": [
+    "food",
+    "ground"
+   ],
+   "nutrition": 0.05,
+   "stack": 20
+  },
+  {
+   "id": "loaf",
+   "tags": [
+    "food",
+    "cooked"
+   ],
+   "nutrition": 0.3,
+   "stack": 8
+  },
+  {
+   "id": "cheese",
+   "tags": [
+    "food",
+    "cooked"
+   ],
+   "nutrition": 0.22,
+   "stack": 6
+  },
+  {
+   "id": "salt",
+   "tags": [
+    "preserve"
+   ],
+   "stack": 20
+  },
+  {
+   "id": "candle",
+   "tags": [
+    "light"
+   ],
+   "stack": 12
+  },
+  {
+   "id": "charcoal",
+   "tags": [
+    "fuel"
+   ],
+   "stack": 12
+  },
+  {
+   "id": "wine",
+   "tags": [
+    "drink",
+    "alcohol"
+   ],
+   "stack": 6
+  },
+  {
+   "id": "ale",
+   "tags": [
+    "drink",
+    "alcohol"
+   ],
+   "stack": 6
+  }
+ ]
+}

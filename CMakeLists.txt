@@ -314,6 +314,7 @@ endif() # NOT ALTERA_SIM_ONLY
 add_library(altera_sim STATIC
         src/sim/rules.cpp
         src/sim/content.cpp
+        src/sim/expansion.cpp
         src/sim/validate.cpp
         src/sim/character.cpp
         src/sim/world.cpp

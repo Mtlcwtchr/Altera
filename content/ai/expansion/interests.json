@@ -1,0 +1,951 @@
+{
+ "_doc": "Интересы (предложение к схеме v0.3): что персонажу нравится. Влияют на выбор досуга, обучение, темы разговоров и симпатию. Файл новый, кор читает как справочник.",
+ "model": {
+  "_doc": "Модель интересов: у персонажа 3–6 интересов с силой 0..1 и до 2 антипатий (отрицательная сила). Сила — медленный фактор: растёт от практики связанных действий, угасает без неё.",
+  "count": [
+   3,
+   6
+  ],
+  "dislikes_max": 2,
+  "strength_start": [
+   0.3,
+   0.9
+  ],
+  "dislike_start": [
+   -0.7,
+   -0.3
+  ],
+  "practice_gain_per_action": 0.004,
+  "decay_per_day": 0.0008,
+  "floor_if_practiced_within_days": 60,
+  "max_strength": 1.0,
+  "inherit": {
+   "from_parent_p": 0.35,
+   "shift": [
+    -0.15,
+    0.15
+   ]
+  },
+  "fun_gain": {
+   "_doc": "множитель need:fun от действия из interactions интереса: 1 + 0.6·сила; антипатия: 1 + 0.6·сила (то есть меньше 1)",
+   "like": 0.6,
+   "dislike": 0.6
+  },
+  "goal_mult": {
+   "_doc": "goal_mult интереса применяется в степени силы: mult^сила; антипатия делит"
+  },
+  "method_bias": {
+   "_doc": "method_bias интереса умножается на силу (минус — охотнее)"
+  },
+  "skill_gain": {
+   "_doc": "умения интереса растут от практики на (1 + 0.25·сила)"
+  },
+  "social": {
+   "shared_affinity_per_interest": 0.01,
+   "shared_affinity_cap": 0.05,
+   "opposed_enmity_per_interest": 0.005,
+   "_doc": "общие интересы в разговоре дают +affinity один раз за беседу (до cap); вставляются как темы диалога (topic.<interest id>)"
+  },
+  "age_bias": {
+   "child": {
+    "dancing_and_revels": 1.3,
+    "running_and_climbing": 1.4,
+    "games_of_chance": 0.3,
+    "feasting_and_company": 0.6
+   },
+   "elder": {
+    "lore_and_history": 1.3,
+    "hospitality": 1.2,
+    "wrestling_and_contests": 0.5,
+    "running_and_climbing": 0.4,
+    "rites_and_omens": 1.3
+   }
+  }
+ },
+ "categories": [
+  "craft",
+  "nature",
+  "social",
+  "mind",
+  "body",
+  "arts",
+  "games",
+  "faith",
+  "home",
+  "adventure"
+ ],
+ "interests": [
+  {
+   "id": "woodwork_and_carving",
+   "category": "craft",
+   "skills": [
+    "carpentry",
+    "woodcutting"
+   ],
+   "interactions": [
+    "whittle_toy",
+    "chop_tree"
+   ],
+   "goal_mult": {
+    "have_fun": 1.1
+   },
+   "method_bias": {
+    "fun_whittle": -1.5
+   },
+   "opposes": [],
+   "topic": "topic.woodwork_and_carving",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "metal_and_forge",
+   "category": "craft",
+   "skills": [
+    "smithing",
+    "mining"
+   ],
+   "interactions": [
+    "quarry_stone"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.metal_and_forge",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "textile_arts",
+   "category": "craft",
+   "skills": [
+    "spinning",
+    "weaving",
+    "sewing",
+    "dyeing"
+   ],
+   "interactions": [
+    "spin_thread",
+    "weave_cloth",
+    "sew_tunic"
+   ],
+   "goal_mult": {
+    "make_clothes": 1.15
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.textile_arts",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "pottery_and_clay",
+   "category": "craft",
+   "skills": [
+    "pottery",
+    "basketry"
+   ],
+   "interactions": [
+    "dig_clay"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.pottery_and_clay",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "building_and_stone",
+   "category": "craft",
+   "skills": [
+    "building",
+    "masonry"
+   ],
+   "interactions": [
+    "build_hut",
+    "quarry_stone"
+   ],
+   "goal_mult": {
+    "build_home": 1.15
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.building_and_stone",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "animals_and_beasts",
+   "category": "nature",
+   "skills": [
+    "animal_husbandry",
+    "riding"
+   ],
+   "interactions": [
+    "milk_animal",
+    "shear_sheep",
+    "feed_livestock",
+    "collect_eggs"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [
+    "hunting_and_trails"
+   ],
+   "topic": "topic.animals_and_beasts",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "herbs_and_healing",
+   "category": "nature",
+   "skills": [
+    "herbalism",
+    "medicine",
+    "surgery"
+   ],
+   "interactions": [
+    "gather_herbs",
+    "treat_wound"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.herbs_and_healing",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "gardening_and_fields",
+   "category": "nature",
+   "skills": [
+    "farming",
+    "beekeeping"
+   ],
+   "interactions": [
+    "sow_field",
+    "harvest_field",
+    "weed_field",
+    "gather_honey"
+   ],
+   "goal_mult": {
+    "stock_food": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.gardening_and_fields",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "fishing_and_water",
+   "category": "nature",
+   "skills": [
+    "fishing",
+    "swim"
+   ],
+   "interactions": [
+    "catch_fish",
+    "swim_for_fun"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.fishing_and_water",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "hunting_and_trails",
+   "category": "nature",
+   "skills": [
+    "hunting",
+    "trapping",
+    "archery"
+   ],
+   "interactions": [
+    "hunt_game",
+    "trap_small_game"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [
+    "animals_and_beasts"
+   ],
+   "topic": "topic.hunting_and_trails",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "stargazing",
+   "category": "nature",
+   "skills": [
+    "navigation"
+   ],
+   "interactions": [
+    "stargaze"
+   ],
+   "goal_mult": {},
+   "method_bias": {
+    "fun_stargaze": -1.5
+   },
+   "opposes": [],
+   "topic": "topic.stargazing",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "weather_lore",
+   "category": "nature",
+   "skills": [
+    "navigation",
+    "farming"
+   ],
+   "interactions": [],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.weather_lore",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "gossip_and_news",
+   "category": "social",
+   "skills": [],
+   "interactions": [
+    "gossip"
+   ],
+   "goal_mult": {
+    "socialize": 1.15
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.gossip_and_news",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "feasting_and_company",
+   "category": "social",
+   "skills": [
+    "brewing",
+    "cooking"
+   ],
+   "interactions": [
+    "toast_health",
+    "share_meal",
+    "sip_ale"
+   ],
+   "goal_mult": {
+    "socialize": 1.1
+   },
+   "method_bias": {
+    "fun_sip_ale": -1.0
+   },
+   "opposes": [],
+   "topic": "topic.feasting_and_company",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "romance",
+   "category": "social",
+   "skills": [
+    "singing",
+    "poetry",
+    "dancing"
+   ],
+   "interactions": [
+    "flirt",
+    "serenade",
+    "dance_together"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.romance",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "politics_and_intrigue",
+   "category": "social",
+   "skills": [
+    "persuasion",
+    "leadership",
+    "diplomacy",
+    "deception"
+   ],
+   "interactions": [
+    "call_council",
+    "eavesdrop",
+    "boast"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.politics_and_intrigue",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "child_rearing",
+   "category": "social",
+   "skills": [
+    "childcare",
+    "midwifery"
+   ],
+   "interactions": [
+    "play_with_child",
+    "sing_lullaby",
+    "care_child"
+   ],
+   "goal_mult": {
+    "share_food": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.child_rearing",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "hospitality",
+   "category": "social",
+   "skills": [
+    "housekeeping",
+    "etiquette",
+    "cooking"
+   ],
+   "interactions": [
+    "tidy_house",
+    "share_meal"
+   ],
+   "goal_mult": {
+    "share_food": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.hospitality",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "lore_and_history",
+   "category": "mind",
+   "skills": [
+    "history_lore",
+    "theology"
+   ],
+   "interactions": [
+    "recite_lineage"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.lore_and_history",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "reading_writing",
+   "category": "mind",
+   "skills": [
+    "literacy",
+    "arithmetic"
+   ],
+   "interactions": [
+    "take_inventory"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.reading_writing",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "riddles_and_puzzles",
+   "category": "mind",
+   "skills": [
+    "games",
+    "history_lore"
+   ],
+   "interactions": [
+    "riddle_contest",
+    "play_tafl"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.riddles_and_puzzles",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "law_and_justice",
+   "category": "mind",
+   "skills": [
+    "law",
+    "etiquette"
+   ],
+   "interactions": [
+    "judge_case",
+    "accuse_publicly"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.law_and_justice",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "storytelling_craft",
+   "category": "mind",
+   "skills": [
+    "storytelling",
+    "poetry"
+   ],
+   "interactions": [
+    "tell_story",
+    "tell_stories",
+    "joke"
+   ],
+   "goal_mult": {
+    "socialize": 1.05
+   },
+   "method_bias": {
+    "fun_stories_at_fire": -1.0
+   },
+   "opposes": [],
+   "topic": "topic.storytelling_craft",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "trade_and_markets",
+   "category": "adventure",
+   "skills": [
+    "trade",
+    "arithmetic",
+    "persuasion"
+   ],
+   "interactions": [
+    "trade"
+   ],
+   "goal_mult": {
+    "offer_trade": 1.2
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.trade_and_markets",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "wrestling_and_contests",
+   "category": "body",
+   "skills": [
+    "brawling",
+    "athletics"
+   ],
+   "interactions": [
+    "wrestle_for_fun",
+    "foot_race"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.wrestling_and_contests",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "running_and_climbing",
+   "category": "body",
+   "skills": [
+    "athletics",
+    "stealth"
+   ],
+   "interactions": [
+    "foot_race",
+    "wrestle_for_fun"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.running_and_climbing",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "swimming_and_bathing",
+   "category": "body",
+   "skills": [
+    "swim"
+   ],
+   "interactions": [
+    "swim_for_fun",
+    "wash_in_water"
+   ],
+   "goal_mult": {
+    "wash": 1.1
+   },
+   "method_bias": {
+    "fun_swim": -1.5
+   },
+   "opposes": [],
+   "topic": "topic.swimming_and_bathing",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "dancing_and_revels",
+   "category": "body",
+   "skills": [
+    "dancing",
+    "singing"
+   ],
+   "interactions": [
+    "dance_alone",
+    "dance_together"
+   ],
+   "goal_mult": {
+    "have_fun": 1.1
+   },
+   "method_bias": {
+    "fun_dance_alone": -1.5
+   },
+   "opposes": [],
+   "topic": "topic.dancing_and_revels",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "weapons_practice",
+   "category": "body",
+   "skills": [
+    "combat",
+    "swordsmanship",
+    "axe_mace",
+    "polearms",
+    "daggers",
+    "archery",
+    "shield_use"
+   ],
+   "interactions": [
+    "practice_weapon",
+    "practice_archery"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.weapons_practice",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "poetry_and_song",
+   "category": "arts",
+   "skills": [
+    "singing",
+    "poetry",
+    "music"
+   ],
+   "interactions": [
+    "sing_song",
+    "sing_together",
+    "recite_poem"
+   ],
+   "goal_mult": {
+    "have_fun": 1.05
+   },
+   "method_bias": {
+    "fun_sing": -1.5
+   },
+   "opposes": [],
+   "topic": "topic.poetry_and_song",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "instruments",
+   "category": "arts",
+   "skills": [
+    "music"
+   ],
+   "interactions": [],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.instruments",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "folk_art",
+   "category": "arts",
+   "skills": [
+    "carpentry",
+    "dyeing",
+    "pottery"
+   ],
+   "interactions": [
+    "whittle_toy"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.folk_art",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "games_of_chance",
+   "category": "games",
+   "skills": [
+    "games"
+   ],
+   "interactions": [
+    "play_dice"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.games_of_chance",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "board_games",
+   "category": "games",
+   "skills": [
+    "games",
+    "tactics"
+   ],
+   "interactions": [
+    "play_tafl"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.board_games",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "rites_and_omens",
+   "category": "faith",
+   "skills": [
+    "faith",
+    "theology"
+   ],
+   "interactions": [
+    "pray_at_shrine",
+    "read_omens",
+    "perform_rite"
+   ],
+   "goal_mult": {
+    "pray": 1.15
+   },
+   "method_bias": {
+    "pray_read_omens": -1.0
+   },
+   "opposes": [],
+   "topic": "topic.rites_and_omens",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "fasting_and_vows",
+   "category": "faith",
+   "skills": [
+    "faith"
+   ],
+   "interactions": [
+    "fast_for_gods",
+    "make_offering"
+   ],
+   "goal_mult": {
+    "pray": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.fasting_and_vows",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "cooking_and_baking",
+   "category": "home",
+   "skills": [
+    "cooking",
+    "baking",
+    "butchery"
+   ],
+   "interactions": [
+    "cook_meal",
+    "grill_and_eat_fish"
+   ],
+   "goal_mult": {
+    "stock_food": 1.05
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.cooking_and_baking",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "brewing_and_drinking",
+   "category": "home",
+   "skills": [
+    "brewing",
+    "beekeeping"
+   ],
+   "interactions": [
+    "sip_ale",
+    "toast_health",
+    "gather_honey"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.brewing_and_drinking",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "homekeeping",
+   "category": "home",
+   "skills": [
+    "housekeeping"
+   ],
+   "interactions": [
+    "tidy_house",
+    "take_inventory"
+   ],
+   "goal_mult": {
+    "stock_firewood": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.homekeeping",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "far_travel",
+   "category": "adventure",
+   "skills": [
+    "navigation",
+    "riding"
+   ],
+   "interactions": [
+    "wander",
+    "travel_to"
+   ],
+   "goal_mult": {},
+   "method_bias": {
+    "wander_around": -1.0
+   },
+   "opposes": [],
+   "topic": "topic.far_travel",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "ruins_and_relics",
+   "category": "adventure",
+   "skills": [
+    "history_lore",
+    "stealth"
+   ],
+   "interactions": [
+    "examine"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.ruins_and_relics",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "danger_and_glory",
+   "category": "adventure",
+   "skills": [
+    "combat",
+    "riding",
+    "tactics"
+   ],
+   "interactions": [
+    "practice_weapon"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.danger_and_glory",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "festivals_and_fairs",
+   "category": "social",
+   "skills": [
+    "dancing",
+    "singing",
+    "trade"
+   ],
+   "interactions": [
+    "dance_together",
+    "toast_health",
+    "play_dice"
+   ],
+   "goal_mult": {
+    "have_fun": 1.1,
+    "socialize": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.festivals_and_fairs",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "guild_pride",
+   "category": "craft",
+   "skills": [
+    "smithing",
+    "carpentry",
+    "masonry",
+    "weaving"
+   ],
+   "interactions": [
+    "teach_skill"
+   ],
+   "goal_mult": {
+    "make_axe": 1.1,
+    "make_clothes": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.guild_pride",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "pilgrimage",
+   "category": "faith",
+   "skills": [
+    "faith",
+    "navigation"
+   ],
+   "interactions": [
+    "go_on_pilgrimage",
+    "make_offering"
+   ],
+   "goal_mult": {
+    "pray": 1.1
+   },
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.pilgrimage",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "noble_hunt",
+   "category": "adventure",
+   "skills": [
+    "hunting",
+    "riding",
+    "archery"
+   ],
+   "interactions": [
+    "hunt_game"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.noble_hunt",
+   "weight_in_pool": 1.0
+  },
+  {
+   "id": "village_affairs",
+   "category": "social",
+   "skills": [
+    "estate_management",
+    "weights_measures",
+    "law"
+   ],
+   "interactions": [
+    "stand_surety",
+    "give_counsel",
+    "keep_watch"
+   ],
+   "goal_mult": {},
+   "method_bias": {},
+   "opposes": [],
+   "topic": "topic.village_affairs",
+   "weight_in_pool": 1.0
+  }
+ ]
+}

@@ -1,0 +1,144 @@
+{
+ "moodlets": [
+  {
+   "id": "sang_heartily",
+   "value": 0.07,
+   "ttl": 24
+  },
+  {
+   "id": "sang_together",
+   "value": 0.1,
+   "ttl": 36
+  },
+  {
+   "id": "awed_by_stars",
+   "value": 0.07,
+   "ttl": 48
+  },
+  {
+   "id": "danced",
+   "value": 0.09,
+   "ttl": 24
+  },
+  {
+   "id": "won_game",
+   "value": 0.1,
+   "ttl": 36
+  },
+  {
+   "id": "lost_game",
+   "value": -0.04,
+   "ttl": 18
+  },
+  {
+   "id": "won_contest",
+   "value": 0.12,
+   "ttl": 48
+  },
+  {
+   "id": "lost_contest",
+   "value": -0.06,
+   "ttl": 36
+  },
+  {
+   "id": "tipsy",
+   "value": 0.05,
+   "ttl": 12
+  },
+  {
+   "id": "merry",
+   "value": 0.08,
+   "ttl": 24
+  },
+  {
+   "id": "moved",
+   "value": 0.1,
+   "ttl": 36
+  },
+  {
+   "id": "embarrassed",
+   "value": -0.06,
+   "ttl": 24
+  },
+  {
+   "id": "tidy_home",
+   "value": 0.05,
+   "ttl": 72
+  },
+  {
+   "id": "soothed",
+   "value": 0.08,
+   "ttl": 36
+  },
+  {
+   "id": "scolded",
+   "value": -0.08,
+   "ttl": 24
+  },
+  {
+   "id": "hopeful",
+   "value": 0.08,
+   "ttl": 72
+  },
+  {
+   "id": "dread",
+   "value": -0.1,
+   "ttl": 72
+  },
+  {
+   "id": "omen_read",
+   "value": 0.05,
+   "ttl": 48
+  },
+  {
+   "id": "fasted",
+   "value": 0.1,
+   "ttl": 144
+  },
+  {
+   "id": "refreshed",
+   "value": 0.08,
+   "ttl": 24
+  },
+  {
+   "id": "irritated",
+   "value": -0.07,
+   "ttl": 24
+  },
+  {
+   "id": "calmed",
+   "value": 0.08,
+   "ttl": 24
+  },
+  {
+   "id": "confided_in",
+   "value": 0.08,
+   "ttl": 48
+  },
+  {
+   "id": "proud_of_work",
+   "value": 0.06,
+   "ttl": 48
+  },
+  {
+   "id": "stung_by_bees",
+   "value": -0.12,
+   "ttl": 24
+  },
+  {
+   "id": "sore_muscles",
+   "value": -0.04,
+   "ttl": 36
+  },
+  {
+   "id": "amazed",
+   "value": 0.08,
+   "ttl": 24
+  },
+  {
+   "id": "homesick",
+   "value": -0.1,
+   "ttl": 144
+  }
+ ]
+}

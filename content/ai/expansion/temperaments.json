@@ -1,0 +1,1460 @@
+{
+ "_doc": "Характеры-заготовки (предложение к схеме v0.3).",
+ "model": {
+  "_doc": "Характер — стартовая заготовка для генератора и ручных NPC, не жёсткий класс. Взрослый берёт основной характер (вес weight) + при желании второй (blend), core осей и характеристики — взвешенное среднее с шумом, черты — броски p, интересы — веса категорий. Дальше всё живёт по обычным законам дрейфа (motivation.json): характер — только семена, а не клетка.",
+  "blend": {
+   "secondary_p": 0.4,
+   "secondary_weight": 0.35,
+   "noise_sd": {
+    "core": 0.12,
+    "attrs": 0.04
+   }
+  },
+  "traits_per_person": [
+   2,
+   5
+  ],
+  "traits_conflict": "exclusive пары из traits.json; при конфликте побеждает черта с большим p",
+  "children": {
+   "_doc": "ребёнок: core — среднее родителей ± шум, черты наследуются по traits.inherit, характер — по ближайшему к core; к 14 годам фиксируется как «основной»"
+  },
+  "register": {
+   "_doc": "стиль речи: plain/warm/formal/rude; выбирает варианты реплик (dialogue.json: warm, neutral, formal, cold) через вес; НЕ заменяет отношения",
+   "values": [
+    "plain",
+    "warm",
+    "formal",
+    "rude"
+   ]
+  },
+  "player_dynasty": {
+   "_doc": "игрок и NPC равны: выбор характера для стартового персонажа — каталог из этого списка с ручной правкой черт; случайные — по weight"
+  }
+ },
+ "temperaments": [
+  {
+   "id": "steadfast_guardian",
+   "weight": 1.0,
+   "core": {
+    "honesty": [
+     0.4,
+     0.8
+    ],
+    "compassion": [
+     0.1,
+     0.5
+    ],
+    "pride": [
+     0.1,
+     0.5
+    ],
+    "loyalty": [
+     0.6,
+     0.95
+    ],
+    "piety": [
+     0.1,
+     0.6
+    ],
+    "boldness": [
+     0.3,
+     0.7
+    ]
+   },
+   "attrs": {
+    "strength": [
+     0.05,
+     0.2
+    ],
+    "endurance": [
+     0.05,
+     0.2
+    ],
+    "willpower": [
+     0.05,
+     0.2
+    ]
+   },
+   "traits": {
+    "dutiful": 0.7,
+    "stoic": 0.5,
+    "tight_lipped": 0.4,
+    "robust": 0.3,
+    "patient": 0.3
+   },
+   "interests": {
+    "body": 1.3,
+    "home": 1.0,
+    "social": 0.7
+   },
+   "register": "plain",
+   "occupation_bias": {
+    "soldier": 1.6,
+    "laborer": 1.0,
+    "farmer": 0.8
+   }
+  },
+  {
+   "id": "hearth_keeper",
+   "weight": 1.2,
+   "core": {
+    "honesty": [
+     0.2,
+     0.7
+    ],
+    "compassion": [
+     0.5,
+     0.9
+    ],
+    "pride": [
+     -0.3,
+     0.2
+    ],
+    "loyalty": [
+     0.6,
+     0.95
+    ],
+    "piety": [
+     0.2,
+     0.6
+    ],
+    "boldness": [
+     -0.2,
+     0.3
+    ]
+   },
+   "attrs": {
+    "willpower": [
+     0.05,
+     0.15
+    ],
+    "charisma": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "nurturing": 0.7,
+    "family_minded": 0.6,
+    "thrifty": 0.4,
+    "cheerful": 0.3,
+    "patient": 0.3
+   },
+   "interests": {
+    "home": 1.6,
+    "social": 1.2,
+    "nature": 0.8
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "farmer": 1.2,
+    "healer": 0.8
+   }
+  },
+  {
+   "id": "ambitious_climber",
+   "weight": 0.8,
+   "core": {
+    "honesty": [
+     -0.5,
+     0.3
+    ],
+    "compassion": [
+     -0.4,
+     0.2
+    ],
+    "pride": [
+     0.5,
+     0.95
+    ],
+    "loyalty": [
+     -0.2,
+     0.4
+    ],
+    "piety": [
+     -0.3,
+     0.3
+    ],
+    "boldness": [
+     0.4,
+     0.85
+    ]
+   },
+   "attrs": {
+    "charisma": [
+     0.05,
+     0.2
+    ],
+    "intellect": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "ambitious": 0.9,
+    "silver_tongue": 0.4,
+    "competitive": 0.5,
+    "jealous": 0.3
+   },
+   "interests": {
+    "social": 1.5,
+    "mind": 1.0,
+    "adventure": 1.0
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "recruiter": 1.4,
+    "soldier": 1.0,
+    "peddler": 0.8
+   }
+  },
+  {
+   "id": "wandering_dreamer",
+   "weight": 0.7,
+   "core": {
+    "honesty": [
+     -0.1,
+     0.5
+    ],
+    "compassion": [
+     0.1,
+     0.6
+    ],
+    "pride": [
+     -0.2,
+     0.4
+    ],
+    "loyalty": [
+     -0.5,
+     0.1
+    ],
+    "piety": [
+     -0.2,
+     0.5
+    ],
+    "boldness": [
+     0.1,
+     0.6
+    ]
+   },
+   "attrs": {
+    "perception": [
+     0.0,
+     0.15
+    ],
+    "charisma": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "curious": 0.7,
+    "romantic": 0.5,
+    "singer_born": 0.3,
+    "flaky": 0.4,
+    "melancholic": 0.2
+   },
+   "interests": {
+    "adventure": 1.6,
+    "arts": 1.4,
+    "nature": 1.0
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "minstrel": 1.6,
+    "peddler": 1.0
+   }
+  },
+  {
+   "id": "pious_ascetic",
+   "weight": 0.6,
+   "core": {
+    "honesty": [
+     0.4,
+     0.9
+    ],
+    "compassion": [
+     0.2,
+     0.7
+    ],
+    "pride": [
+     -0.6,
+     0.0
+    ],
+    "loyalty": [
+     0.2,
+     0.7
+    ],
+    "piety": [
+     0.7,
+     1.0
+    ],
+    "boldness": [
+     -0.2,
+     0.4
+    ]
+   },
+   "attrs": {
+    "willpower": [
+     0.1,
+     0.25
+    ]
+   },
+   "traits": {
+    "ascetic": 0.6,
+    "pious": 0.8,
+    "superstitious": 0.4,
+    "modest": 0.6,
+    "stoic": 0.4
+   },
+   "interests": {
+    "faith": 1.8,
+    "mind": 1.0,
+    "home": 0.6
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "priest": 1.8,
+    "healer": 0.8
+   }
+  },
+  {
+   "id": "cunning_trickster",
+   "weight": 0.7,
+   "core": {
+    "honesty": [
+     -0.8,
+     -0.1
+    ],
+    "compassion": [
+     -0.2,
+     0.4
+    ],
+    "pride": [
+     0.0,
+     0.5
+    ],
+    "loyalty": [
+     -0.4,
+     0.3
+    ],
+    "piety": [
+     -0.6,
+     0.1
+    ],
+    "boldness": [
+     0.2,
+     0.7
+    ]
+   },
+   "attrs": {
+    "agility": [
+     0.05,
+     0.2
+    ],
+    "intellect": [
+     0.05,
+     0.15
+    ]
+   },
+   "traits": {
+    "silver_tongue": 0.5,
+    "nimble": 0.4,
+    "gossipy": 0.4,
+    "lucky": 0.2,
+    "unscrupulous": 0.6
+   },
+   "interests": {
+    "games": 1.5,
+    "social": 1.2,
+    "adventure": 1.0
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "thief": 1.4,
+    "peddler": 1.3,
+    "minstrel": 0.8
+   }
+  },
+  {
+   "id": "gruff_craftsman",
+   "weight": 1.0,
+   "core": {
+    "honesty": [
+     0.2,
+     0.8
+    ],
+    "compassion": [
+     -0.1,
+     0.4
+    ],
+    "pride": [
+     0.3,
+     0.8
+    ],
+    "loyalty": [
+     0.2,
+     0.7
+    ],
+    "piety": [
+     -0.2,
+     0.4
+    ],
+    "boldness": [
+     0.0,
+     0.5
+    ]
+   },
+   "attrs": {
+    "dexterity": [
+     0.05,
+     0.2
+    ],
+    "strength": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "perfectionist": 0.5,
+    "handy": 0.6,
+    "diligent": 0.5,
+    "stubborn": 0.5
+   },
+   "interests": {
+    "craft": 1.8,
+    "home": 0.9,
+    "body": 0.7
+   },
+   "register": "plain",
+   "occupation_bias": {
+    "smith": 1.6,
+    "laborer": 1.0
+   }
+  },
+  {
+   "id": "gentle_healer",
+   "weight": 0.7,
+   "core": {
+    "honesty": [
+     0.3,
+     0.8
+    ],
+    "compassion": [
+     0.7,
+     1.0
+    ],
+    "pride": [
+     -0.5,
+     0.1
+    ],
+    "loyalty": [
+     0.3,
+     0.8
+    ],
+    "piety": [
+     0.2,
+     0.7
+    ],
+    "boldness": [
+     -0.3,
+     0.3
+    ]
+   },
+   "attrs": {
+    "dexterity": [
+     0.0,
+     0.15
+    ],
+    "perception": [
+     0.05,
+     0.15
+    ]
+   },
+   "traits": {
+    "nurturing": 0.8,
+    "patient": 0.6,
+    "forgiving": 0.5,
+    "curious": 0.3,
+    "sharp_memory": 0.2
+   },
+   "interests": {
+    "nature": 1.5,
+    "social": 1.0,
+    "home": 1.0
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "healer": 1.8,
+    "priest": 0.6
+   }
+  },
+  {
+   "id": "hot_blooded_warrior",
+   "weight": 0.9,
+   "core": {
+    "honesty": [
+     -0.1,
+     0.5
+    ],
+    "compassion": [
+     -0.4,
+     0.3
+    ],
+    "pride": [
+     0.3,
+     0.8
+    ],
+    "loyalty": [
+     0.2,
+     0.8
+    ],
+    "piety": [
+     -0.3,
+     0.3
+    ],
+    "boldness": [
+     0.6,
+     1.0
+    ]
+   },
+   "attrs": {
+    "strength": [
+     0.1,
+     0.25
+    ],
+    "endurance": [
+     0.0,
+     0.15
+    ],
+    "agility": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "hot_tempered": 0.7,
+    "competitive": 0.6,
+    "brawny": 0.4,
+    "hard_drinker": 0.4,
+    "forgiving": 0.3
+   },
+   "interests": {
+    "body": 1.8,
+    "adventure": 1.3,
+    "games": 1.0
+   },
+   "register": "rude",
+   "occupation_bias": {
+    "soldier": 1.8,
+    "recruiter": 0.6
+   }
+  },
+  {
+   "id": "cautious_steward",
+   "weight": 0.8,
+   "core": {
+    "honesty": [
+     0.2,
+     0.8
+    ],
+    "compassion": [
+     0.0,
+     0.5
+    ],
+    "pride": [
+     0.0,
+     0.5
+    ],
+    "loyalty": [
+     0.4,
+     0.9
+    ],
+    "piety": [
+     0.0,
+     0.5
+    ],
+    "boldness": [
+     -0.6,
+     0.1
+    ]
+   },
+   "attrs": {
+    "intellect": [
+     0.05,
+     0.2
+    ],
+    "willpower": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "thrifty": 0.7,
+    "hoarder": 0.4,
+    "sharp_memory": 0.4,
+    "dutiful": 0.5,
+    "bookish": 0.3
+   },
+   "interests": {
+    "mind": 1.4,
+    "home": 1.2,
+    "social": 0.8
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "peddler": 0.8,
+    "laborer": 0.6
+   }
+  },
+  {
+   "id": "gossip_busybody",
+   "weight": 0.9,
+   "core": {
+    "honesty": [
+     -0.2,
+     0.4
+    ],
+    "compassion": [
+     0.0,
+     0.6
+    ],
+    "pride": [
+     0.0,
+     0.5
+    ],
+    "loyalty": [
+     0.0,
+     0.6
+    ],
+    "piety": [
+     0.0,
+     0.6
+    ],
+    "boldness": [
+     -0.1,
+     0.4
+    ]
+   },
+   "attrs": {
+    "perception": [
+     0.0,
+     0.15
+    ],
+    "charisma": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "gossipy": 0.9,
+    "sociable": 0.7,
+    "cheerful": 0.4,
+    "jealous": 0.3
+   },
+   "interests": {
+    "social": 1.8,
+    "home": 1.0,
+    "faith": 0.8
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "peddler": 0.8
+   }
+  },
+  {
+   "id": "scholarly_recluse",
+   "weight": 0.5,
+   "core": {
+    "honesty": [
+     0.3,
+     0.9
+    ],
+    "compassion": [
+     -0.1,
+     0.5
+    ],
+    "pride": [
+     0.0,
+     0.6
+    ],
+    "loyalty": [
+     -0.1,
+     0.4
+    ],
+    "piety": [
+     -0.3,
+     0.5
+    ],
+    "boldness": [
+     -0.4,
+     0.2
+    ]
+   },
+   "attrs": {
+    "intellect": [
+     0.1,
+     0.25
+    ],
+    "perception": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "bookish": 0.8,
+    "loner": 0.6,
+    "curious": 0.6,
+    "sharp_memory": 0.5,
+    "clumsy": 0.2
+   },
+   "interests": {
+    "mind": 1.9,
+    "nature": 1.0,
+    "adventure": 0.8
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "mage": 1.0,
+    "priest": 0.6
+   }
+  },
+  {
+   "id": "charming_rogue",
+   "weight": 0.7,
+   "core": {
+    "honesty": [
+     -0.5,
+     0.2
+    ],
+    "compassion": [
+     0.0,
+     0.6
+    ],
+    "pride": [
+     0.1,
+     0.6
+    ],
+    "loyalty": [
+     -0.5,
+     0.1
+    ],
+    "piety": [
+     -0.4,
+     0.2
+    ],
+    "boldness": [
+     0.3,
+     0.8
+    ]
+   },
+   "attrs": {
+    "charisma": [
+     0.1,
+     0.25
+    ],
+    "agility": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "charming": 0.7,
+    "romantic": 0.6,
+    "fickle": 0.6,
+    "spendthrift": 0.4,
+    "silver_tongue": 0.3
+   },
+   "interests": {
+    "social": 1.6,
+    "arts": 1.2,
+    "games": 1.2
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "minstrel": 1.2,
+    "thief": 0.8,
+    "peddler": 1.0
+   }
+  },
+  {
+   "id": "stern_judge",
+   "weight": 0.5,
+   "core": {
+    "honesty": [
+     0.6,
+     1.0
+    ],
+    "compassion": [
+     -0.3,
+     0.3
+    ],
+    "pride": [
+     0.2,
+     0.7
+    ],
+    "loyalty": [
+     0.3,
+     0.8
+    ],
+    "piety": [
+     0.1,
+     0.7
+    ],
+    "boldness": [
+     0.1,
+     0.6
+    ]
+   },
+   "attrs": {
+    "willpower": [
+     0.1,
+     0.2
+    ],
+    "intellect": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "honest": 0.8,
+    "unforgiving": 0.5,
+    "dutiful": 0.6,
+    "stoic": 0.5,
+    "born_leader": 0.3
+   },
+   "interests": {
+    "mind": 1.5,
+    "social": 1.0,
+    "faith": 1.0
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "soldier": 0.6
+   }
+  },
+  {
+   "id": "merry_reveler",
+   "weight": 1.0,
+   "core": {
+    "honesty": [
+     0.0,
+     0.6
+    ],
+    "compassion": [
+     0.2,
+     0.7
+    ],
+    "pride": [
+     -0.2,
+     0.3
+    ],
+    "loyalty": [
+     0.1,
+     0.6
+    ],
+    "piety": [
+     -0.3,
+     0.4
+    ],
+    "boldness": [
+     0.1,
+     0.6
+    ]
+   },
+   "attrs": {
+    "charisma": [
+     0.0,
+     0.15
+    ],
+    "endurance": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "cheerful": 0.8,
+    "sociable": 0.6,
+    "hard_drinker": 0.4,
+    "easygoing": 0.5,
+    "singer_born": 0.2,
+    "lazy": 0.2
+   },
+   "interests": {
+    "social": 1.6,
+    "arts": 1.3,
+    "body": 1.0,
+    "home": 0.8
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "minstrel": 1.0,
+    "laborer": 0.8
+   }
+  },
+  {
+   "id": "timid_mouse",
+   "weight": 0.6,
+   "core": {
+    "honesty": [
+     0.2,
+     0.8
+    ],
+    "compassion": [
+     0.2,
+     0.7
+    ],
+    "pride": [
+     -0.7,
+     -0.1
+    ],
+    "loyalty": [
+     0.3,
+     0.8
+    ],
+    "piety": [
+     0.1,
+     0.7
+    ],
+    "boldness": [
+     -0.9,
+     -0.3
+    ]
+   },
+   "attrs": {
+    "agility": [
+     0.0,
+     0.1
+    ],
+    "willpower": [
+     -0.1,
+     0.0
+    ]
+   },
+   "traits": {
+    "sickly": 0.2,
+    "excitable": 0.4,
+    "tight_lipped": 0.5,
+    "superstitious": 0.4,
+    "modest": 0.5
+   },
+   "interests": {
+    "home": 1.4,
+    "nature": 1.1,
+    "faith": 1.1
+   },
+   "register": "plain",
+   "occupation_bias": {
+    "laborer": 0.8,
+    "farmer": 0.9
+   }
+  },
+  {
+   "id": "proud_noble",
+   "weight": 0.5,
+   "core": {
+    "honesty": [
+     -0.1,
+     0.6
+    ],
+    "compassion": [
+     -0.3,
+     0.4
+    ],
+    "pride": [
+     0.7,
+     1.0
+    ],
+    "loyalty": [
+     0.1,
+     0.7
+    ],
+    "piety": [
+     0.0,
+     0.6
+    ],
+    "boldness": [
+     0.2,
+     0.7
+    ]
+   },
+   "attrs": {
+    "charisma": [
+     0.0,
+     0.15
+    ],
+    "willpower": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "ambitious": 0.6,
+    "unforgiving": 0.4,
+    "born_leader": 0.3,
+    "bookish": 0.2
+   },
+   "interests": {
+    "mind": 1.3,
+    "social": 1.4,
+    "body": 1.0
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "soldier": 0.8,
+    "recruiter": 0.8
+   }
+  },
+  {
+   "id": "devoted_servant",
+   "weight": 0.7,
+   "core": {
+    "honesty": [
+     0.3,
+     0.9
+    ],
+    "compassion": [
+     0.3,
+     0.8
+    ],
+    "pride": [
+     -0.8,
+     -0.2
+    ],
+    "loyalty": [
+     0.8,
+     1.0
+    ],
+    "piety": [
+     0.1,
+     0.7
+    ],
+    "boldness": [
+     -0.3,
+     0.3
+    ]
+   },
+   "attrs": {
+    "endurance": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "dutiful": 0.8,
+    "diligent": 0.5,
+    "modest": 0.7,
+    "tight_lipped": 0.4,
+    "tireless": 0.2
+   },
+   "interests": {
+    "home": 1.5,
+    "social": 0.9,
+    "craft": 0.9
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "laborer": 1.2
+   }
+  },
+  {
+   "id": "bitter_survivor",
+   "weight": 0.5,
+   "core": {
+    "honesty": [
+     -0.5,
+     0.2
+    ],
+    "compassion": [
+     -0.7,
+     -0.1
+    ],
+    "pride": [
+     0.0,
+     0.6
+    ],
+    "loyalty": [
+     -0.3,
+     0.4
+    ],
+    "piety": [
+     -0.6,
+     0.0
+    ],
+    "boldness": [
+     0.2,
+     0.8
+    ]
+   },
+   "attrs": {
+    "endurance": [
+     0.05,
+     0.2
+    ],
+    "willpower": [
+     0.05,
+     0.15
+    ]
+   },
+   "traits": {
+    "unforgiving": 0.8,
+    "tight_lipped": 0.5,
+    "hardy": 0.5,
+    "melancholic": 0.4,
+    "skeptic": 0.5,
+    "hoarder": 0.3
+   },
+   "interests": {
+    "body": 1.1,
+    "nature": 1.0,
+    "adventure": 1.0
+   },
+   "register": "rude",
+   "occupation_bias": {
+    "thief": 0.8,
+    "soldier": 0.9,
+    "laborer": 0.8
+   }
+  },
+  {
+   "id": "curious_tinkerer",
+   "weight": 0.8,
+   "core": {
+    "honesty": [
+     0.0,
+     0.6
+    ],
+    "compassion": [
+     0.0,
+     0.5
+    ],
+    "pride": [
+     0.0,
+     0.5
+    ],
+    "loyalty": [
+     0.0,
+     0.5
+    ],
+    "piety": [
+     -0.3,
+     0.3
+    ],
+    "boldness": [
+     0.1,
+     0.6
+    ]
+   },
+   "attrs": {
+    "dexterity": [
+     0.05,
+     0.2
+    ],
+    "intellect": [
+     0.05,
+     0.15
+    ]
+   },
+   "traits": {
+    "curious": 0.9,
+    "handy": 0.6,
+    "quick_learner": 0.4,
+    "forgetful": 0.3,
+    "nimble_fingers": 0.3,
+    "lucky": 0.15
+   },
+   "interests": {
+    "craft": 1.6,
+    "mind": 1.2,
+    "nature": 1.0
+   },
+   "register": "plain",
+   "occupation_bias": {
+    "smith": 0.8,
+    "laborer": 0.8
+   }
+  },
+  {
+   "id": "village_reeve",
+   "weight": 0.5,
+   "core": {
+    "honesty": [
+     0.2,
+     0.8
+    ],
+    "compassion": [
+     0.0,
+     0.5
+    ],
+    "pride": [
+     0.2,
+     0.7
+    ],
+    "loyalty": [
+     0.4,
+     0.9
+    ],
+    "piety": [
+     0.1,
+     0.6
+    ],
+    "boldness": [
+     0.1,
+     0.6
+    ]
+   },
+   "attrs": {
+    "intellect": [
+     0.05,
+     0.15
+    ],
+    "willpower": [
+     0.05,
+     0.15
+    ]
+   },
+   "traits": {
+    "dutiful": 0.7,
+    "born_leader": 0.4,
+    "sharp_memory": 0.5,
+    "thrifty": 0.4,
+    "patient": 0.3
+   },
+   "interests": {
+    "social": 1.5,
+    "mind": 1.2,
+    "home": 1.0
+   },
+   "register": "formal",
+   "occupation_bias": {
+    "farmer": 1.0,
+    "laborer": 0.3
+   }
+  },
+  {
+   "id": "alewife",
+   "weight": 0.5,
+   "core": {
+    "honesty": [
+     -0.1,
+     0.5
+    ],
+    "compassion": [
+     0.1,
+     0.6
+    ],
+    "pride": [
+     0.1,
+     0.6
+    ],
+    "loyalty": [
+     0.2,
+     0.7
+    ],
+    "piety": [
+     -0.1,
+     0.4
+    ],
+    "boldness": [
+     0.2,
+     0.7
+    ]
+   },
+   "attrs": {
+    "charisma": [
+     0.05,
+     0.2
+    ],
+    "endurance": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "gossipy": 0.6,
+    "hard_drinker": 0.5,
+    "thrifty": 0.4,
+    "cheerful": 0.4,
+    "silver_tongue": 0.3
+   },
+   "interests": {
+    "social": 1.7,
+    "home": 1.3,
+    "games": 1.0
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "peddler": 0.6
+   }
+  },
+  {
+   "id": "wandering_friar",
+   "weight": 0.4,
+   "core": {
+    "honesty": [
+     0.2,
+     0.8
+    ],
+    "compassion": [
+     0.4,
+     0.9
+    ],
+    "pride": [
+     -0.8,
+     -0.1
+    ],
+    "loyalty": [
+     0.0,
+     0.5
+    ],
+    "piety": [
+     0.6,
+     1.0
+    ],
+    "boldness": [
+     0.2,
+     0.7
+    ]
+   },
+   "attrs": {
+    "willpower": [
+     0.1,
+     0.25
+    ],
+    "charisma": [
+     0.0,
+     0.15
+    ]
+   },
+   "traits": {
+    "pious": 0.8,
+    "ascetic": 0.6,
+    "born_storyteller": 0.4,
+    "curious": 0.3,
+    "modest": 0.7
+   },
+   "interests": {
+    "faith": 1.8,
+    "adventure": 1.2,
+    "mind": 1.0
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "priest": 1.4
+   }
+  },
+  {
+   "id": "restless_apprentice",
+   "weight": 0.7,
+   "core": {
+    "honesty": [
+     -0.2,
+     0.5
+    ],
+    "compassion": [
+     0.0,
+     0.5
+    ],
+    "pride": [
+     0.2,
+     0.7
+    ],
+    "loyalty": [
+     -0.3,
+     0.3
+    ],
+    "piety": [
+     -0.3,
+     0.3
+    ],
+    "boldness": [
+     0.3,
+     0.8
+    ]
+   },
+   "attrs": {
+    "dexterity": [
+     0.0,
+     0.15
+    ],
+    "agility": [
+     0.0,
+     0.1
+    ]
+   },
+   "traits": {
+    "quick_learner": 0.5,
+    "competitive": 0.5,
+    "flaky": 0.4,
+    "curious": 0.5,
+    "hot_tempered": 0.3
+   },
+   "interests": {
+    "craft": 1.5,
+    "adventure": 1.2,
+    "social": 1.0
+   },
+   "register": "rude",
+   "occupation_bias": {
+    "smith": 0.8,
+    "laborer": 0.6
+   }
+  },
+  {
+   "id": "village_midwife",
+   "weight": 0.4,
+   "core": {
+    "honesty": [
+     0.3,
+     0.8
+    ],
+    "compassion": [
+     0.6,
+     1.0
+    ],
+    "pride": [
+     -0.2,
+     0.4
+    ],
+    "loyalty": [
+     0.4,
+     0.9
+    ],
+    "piety": [
+     0.2,
+     0.7
+    ],
+    "boldness": [
+     0.0,
+     0.5
+    ]
+   },
+   "attrs": {
+    "dexterity": [
+     0.05,
+     0.2
+    ],
+    "willpower": [
+     0.05,
+     0.15
+    ]
+   },
+   "traits": {
+    "nurturing": 0.9,
+    "tight_lipped": 0.6,
+    "patient": 0.5,
+    "sharp_memory": 0.4,
+    "robust": 0.3
+   },
+   "interests": {
+    "nature": 1.4,
+    "social": 1.2,
+    "home": 1.0
+   },
+   "register": "warm",
+   "occupation_bias": {
+    "healer": 1.6
+   }
+  }
+ ]
+}
