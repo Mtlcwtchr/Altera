@@ -46,6 +46,8 @@ public:
     virtual double tickAlpha() const = 0;
     // Goals the player can suggest or order: (id, name).
     virtual std::vector<std::pair<std::string, std::string>> goals() const = 0;
+    // The workshop's draft (process, slots, target): the sim forecasts it.
+    virtual void craftDraft(const sim::Json& draft) { (void)draft; }
 };
 
 class Hud {
@@ -56,7 +58,11 @@ public:
     void draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selected, HudHost& host, float width,
               float height);
 
-    std::string panel = "none";   // none | sheet | wheel | kin | annals | build | colony
+    std::string panel = "none";   // none | sheet | wheel | kin | annals | build | colony | workshop
+    // the workshop's draft (scripts may set it): process index, slot -> refs, target
+    int craftProc = -1;
+    std::map<std::string, std::vector<std::string>> craftSlots;
+    std::string craftShape, craftMode, craftSlot;
     // The build mode's bar, filled by the game: palette (name, cost), the
     // piece picked, the state of the piece under the mouse, the plan.
     std::vector<std::pair<std::string, std::string>> buildPalette;
@@ -111,6 +117,9 @@ private:
     void annals(const Snapshot& s, float W, float H);
     void buildBar(const Snapshot& s, float W, float H);
     void colony(const Snapshot& s, float W, float H);
+    void workshop(const Snapshot& s, float W, float H);
+    sim::Json craftDraftJson(const Snapshot& s) const;
+    std::string sentDraft_;
     void dimmer(float W, float H, float a);
 
     struct Row {
