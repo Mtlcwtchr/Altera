@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "sim/backstory.hpp"
 #include "sim/ai.hpp"
 
 namespace altera::sim {
@@ -164,6 +165,7 @@ bool requireControl(World& w, const Command& cmd, Character*& c) {
 bool handle(World& w, Command& cmd) {
     const std::string& t = cmd.type;
     const AiConfig& cfg = w.content().config;
+    if (handleBackstoryCommand(w, cmd, playerOf(cmd))) return true;
     if (t == "take_control") {
         std::string why;
         if (!switchControl(w, playerOf(cmd), cmd.args.at("id").get<EntityId>(), why)) cmd.result = "rejected:" + why;

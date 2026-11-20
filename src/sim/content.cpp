@@ -807,6 +807,7 @@ Content Content::load(const std::string& dir) {
     if (c.craft.loaded && c.craft.cfg.goapDesigns)
         for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
     c.build = parseBuild(f("build.json"));
+    parseBackstories(f("backstories.json"), c);
     c.dir = dir;
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);

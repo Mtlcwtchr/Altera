@@ -224,6 +224,31 @@ struct ExpansionData {
     int added = 0;
 };
 
+// content/ai/backstories.json: who the player was before the game (picked at a new game;
+// src/sim/backstory.cpp applies one to the person the player starts as).
+struct BackstoryMade {
+    std::string design;
+    double q = 0.5;
+};
+struct BackstoryDef {
+    std::string id, icon, start = "home";
+    std::vector<std::pair<std::string, double>> skills;   // knowledge id -> level 0..1 (file order)
+    std::vector<std::string> traitsAlways, traitPool;
+    int traitPick = 0;
+    std::map<std::string, double> attrs;                  // attribute -> shift from the mean
+    std::map<std::string, int> items;
+    int coins = 0;
+    std::vector<std::string> recipes;                     // craft design ids known
+    std::vector<BackstoryMade> made;                      // own made things
+    std::vector<std::string> rights;                      // config.rights
+    std::map<std::string, double> reputation;             // config.reputation_axes
+    std::map<std::string, std::map<std::string, double>> relations; // kin|village -> rel axis -> shift
+};
+struct BackstoryConfig {
+    double otherSkillCap = 0.3, attrSpread = 0.08, attrLo = 0.1, attrHi = 0.95;
+    std::map<std::string, double> starts;                 // start place -> radius from home (m)
+};
+
 // --- Layer 1: Utility -------------------------------------------------------
 struct Curve {
     std::string type = "linear";
@@ -498,6 +523,13 @@ struct Content {
     craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)
     BuildCatalog build;
     ExpansionData expansion; // content/ai/expansion (not loaded = none)
+    std::vector<BackstoryDef> backstories; // content/ai/backstories.json, file order (none = no choice)
+    BackstoryConfig backstoryCfg;
+    const BackstoryDef* backstory(const std::string& id) const {
+        for (const auto& b : backstories)
+            if (b.id == id) return &b;
+        return nullptr;
+    }
     const SpeciesDef* speciesOf(const std::string& id) const {
         auto it = species.find(id);
         return it == species.end() ? nullptr : &it->second;
@@ -535,5 +567,7 @@ ExpansionData mergeExpansion(const std::string& expDir, Json& items, Json& objec
                              Json& htn, Json& interactions, Json& config, Json& knowledge);
 void validateExpansion(const Content& c, ValidationReport& r);
 BuildCatalog parseBuild(const Json& j);
+void parseBackstories(const Json& j, Content& c);
+void validateBackstories(const Content& c, ValidationReport& r);
 
 } // namespace altera::sim

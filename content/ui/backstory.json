@@ -1,0 +1,15 @@
+{
+ "_doc": "The new-game backstory screen (hud.cpp backstory): icons from assets/altera_game/ui/icons.json for belongings and start places; stubs until the real icons are drawn.",
+ "item_icons": {
+  "axe": "i_tool", "digging_stick": "i_tool", "stone_blade": "i_knife", "spear": "w_violence", "snare": "c_twist",
+  "fishing_line": "c_twist", "needle": "c_sew", "tunic": "i_cloth", "cloak": "i_cloth", "cloth": "i_cloth",
+  "bread": "i_bread", "loaf": "i_bread", "meal": "i_food", "dried_meat": "i_food", "berries": "i_food",
+  "seed_grain": "m_plant", "herbs": "i_herb", "dried_herbs": "i_herb", "remedy": "w_heal", "bandage": "w_heal",
+  "hide": "m_hide", "charcoal": "m_coal", "stone": "i_stone", "candle": "i_torch", "household_idol": "w_faith",
+  "ale": "c_ferment", "wine": "c_ferment", "salt": "m_food", "coin": "values"
+ },
+ "item_icon_default": "things",
+ "start_icons": {"home": "dynasty", "village_edge": "colony", "road": "follow", "wilds": "map"},
+ "random_icon": "a_repeat",
+ "begin_icon": "a_ok"
+}

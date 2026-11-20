@@ -188,6 +188,7 @@ public:
             goalIds_.push_back(g.id);
             goalNames_.push_back(name("goal", g.id));
         }
+        backstoryCards();
         snapshotLocked();
         shown_ = snap_;
         for (const auto& a : shown_.actors)
@@ -202,6 +203,15 @@ public:
         if (!openGpu(why)) return false;
         setClearings();
         loadScript();
+        // A new game opens on the backstory screen; tour scripts that do not
+        // speak of it start as before.
+        bool scriptSkips = false;
+        if (script_.is_array()) {
+            scriptSkips = true;
+            for (const auto& st : script_)
+                if (st.contains("backstory") || st.contains("backstory_begin")) scriptSkips = false;
+        }
+        if (!hud_.backstories.empty() && !scriptSkips) hud_.panel = "backstory";
         thread_ = std::thread([this] { simLoop(); });
         return true;
     }
@@ -318,6 +328,12 @@ public:
         switch (e.type) {
         case SDL_EVENT_QUIT: return false;
         case SDL_EVENT_KEY_DOWN:
+            if (hud_.panel == "backstory") {   // the first screen: only its own keys
+                if (e.key.key == SDLK_UP || e.key.key == SDLK_LEFT) --hud_.backstoryPick;
+                if (e.key.key == SDLK_DOWN || e.key.key == SDLK_RIGHT) ++hud_.backstoryPick;
+                if (e.key.key == SDLK_RETURN || e.key.key == SDLK_KP_ENTER) hud_.backstoryBegin = true;
+                break;
+            }
             if (e.key.key == SDLK_ESCAPE) {
                 if (hud_.panel != "none") {
                     hud_.panel = "none";
@@ -404,6 +420,10 @@ public:
         const double ticks = double(shown_.tick % kTicksPerDay) + alpha;
         timeOfDay = ticks / double(kTicksPerDay) * 24.0;
 
+        if (startedAs_ && shown_.controlled != kNone) {
+            startedAs_ = false;
+            select(shown_.controlled);
+        }
         if (wheelAt_.pending) {
             wheelAt_.pending = false;
             const EntityId hit = pick(wheelAt_.x, wheelAt_.y);
@@ -626,6 +646,12 @@ private:
                         }
                 }
             }
+            if (st.contains("backstory")) {
+                const std::string id = st["backstory"].get<std::string>();
+                for (std::size_t i = 0; i < hud_.backstories.size(); ++i)
+                    if (hud_.backstories[i].id == id) hud_.backstoryPick = int(i);
+            }
+            if (st.value("backstory_begin", false)) hud_.backstoryBegin = true;
             if (st.contains("tone")) hud_.setTone(st["tone"].get<int>());
             if (st.contains("slot")) hud_.openSlot(st["slot"].get<int>());
             // building and the colony
@@ -838,6 +864,10 @@ private:
                     cmd.args["player"] = 1;
                     const auto r = world_->applyNow(cmd);
                     result_ = r.result;
+                    if (c.type == "start_backstory" && r.result.rfind("rejected", 0) != 0) {
+                        paused_ = false;
+                        startedAs_ = true;
+                    }
                 }
             }
             const auto now = Clock::now();
@@ -861,6 +891,43 @@ private:
                 lastSnap = Clock::now();
             }
             if (!steps) std::this_thread::sleep_for(std::chrono::milliseconds(4));
+        }
+    }
+
+    // ---- the backstory screen ----
+    void backstoryCards() {
+        Json ui = Json::object();
+        try {
+            ui = loadJsonFile(opts_.root + "/content/ui/backstory.json");
+        } catch (const std::exception& e) {
+            SDL_Log("altera_game: backstory ui: %s", e.what());
+        }
+        const Json itemIcons = ui.value("item_icons", Json::object());
+        const std::string itemDefault = ui.value("item_icon_default", std::string("things"));
+        const Json startIcons = ui.value("start_icons", Json::object());
+        if (itemIcons.contains("coin")) hud_.coinIcon = itemIcons["coin"].get<std::string>();
+        hud_.backstories.clear();
+        for (const BackstoryDef& b : content_->backstories) {
+            Hud::BackstoryCard c;
+            c.id = b.id;
+            c.icon = b.icon;
+            c.name = text("backstory." + b.id + ".name");
+            c.desc = text("backstory." + b.id + ".desc");
+            c.life = text("backstory." + b.id + ".life");
+            c.start = text("hud.backstory.start." + b.start);
+            c.startIcon = startIcons.value(b.start, std::string("map"));
+            for (const auto& [k, lvl] : b.skills) c.skills.push_back({name("knowledge", k), lvl});
+            for (const auto& t : b.traitsAlways) c.traits.push_back(name("trait", t));
+            for (const auto& t : b.traitPool) c.pool.push_back(name("trait", t));
+            c.pick = b.traitPick;
+            for (const auto& [a, v] : b.attrs)
+                if (std::fabs(v) >= 0.03) c.attrs.push_back({text("attr." + a + ".name"), v});
+            for (const auto& [it, n] : b.items) c.gear.push_back({itemIcons.value(it, itemDefault), name("item", it), n});
+            for (const auto& m : b.made) c.gear.push_back({itemIcons.value(m.design, itemDefault), name("form", m.design), 1});
+            c.coins = b.coins;
+            for (const auto& d : b.recipes) c.recipes.push_back(name("form", d));
+            for (const auto& r : b.rights) c.rights.push_back(text("hud.right." + r));
+            hud_.backstories.push_back(std::move(c));
         }
     }
 
@@ -2362,6 +2429,7 @@ private:
     std::atomic<EntityId> selectedWanted_{kNone};
     std::atomic<EntityId> wheelWanted_{kNone};
     std::atomic<bool> wheelOpen_{false};
+    std::atomic<bool> startedAs_{false};   // a backstory was applied: select the player's person
     WheelSnap wheelCache_;
     EntityId wheelCacheFor_[2] = {kNone, kNone};
     Tick wheelCacheTick_ = 0;

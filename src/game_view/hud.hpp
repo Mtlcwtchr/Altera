@@ -89,6 +89,24 @@ public:
     void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
     void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
+    // The new game's backstory screen (panel "backstory"), filled by the game
+    // from content/ai/backstories.json, its loc and content/ui/backstory.json.
+    struct BackstoryThing {
+        std::string icon, name;
+        int n = 1;
+    };
+    struct BackstoryCard {
+        std::string id, icon, name, desc, life, start, startIcon;
+        std::vector<std::pair<std::string, double>> skills;   // name, level 0..1
+        std::vector<std::string> traits, pool, recipes, rights;
+        int pick = 0, coins = 0;
+        std::vector<std::pair<std::string, double>> attrs;    // name, shift
+        std::vector<BackstoryThing> gear;
+    };
+    std::vector<BackstoryCard> backstories;
+    int backstoryPick = 0;
+    bool backstoryBegin = false;   // Enter or a script: begin with the picked one
+    std::string coinIcon = "values";
 
 private:
     struct Image {
@@ -131,6 +149,7 @@ private:
     void buildBar(const Snapshot& s, float W, float H);
     void colony(const Snapshot& s, float W, float H);
     void workshop(const Snapshot& s, float W, float H);
+    void backstory(float W, float H);
     sim::Json craftDraftJson(const Snapshot& s) const;
     std::string sentDraft_;
     // the workshop's parts (hud.cpp, after the design canvas boards 10-15)

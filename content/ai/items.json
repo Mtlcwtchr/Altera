@@ -554,6 +554,14 @@
    "spoil_days": 400,
    "_doc": "сушёные травы: лекарства на зиму",
    "_part": "H2"
+  },
+  {
+   "id": "coin",
+   "tags": [
+    "money"
+   ],
+   "stack": 999,
+   "_doc": "money: the starting purse of a backstory (backstories.json coins)"
   }
  ]
 }

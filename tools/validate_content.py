@@ -10,6 +10,8 @@
   ai         content_ai (схемы, ссылки, графы) через validate_ai.py
   expansion  content_expansion через validate_expansion.py (слияние с ai + ссылки + loc)
   crafting   crafting/data через validate_k1.py
+  backstory  ai/backstories.json: ссылки на умения, черты, характеристики, предметы, чертежи, права, оси,
+             места старта, иконки (icons.json, ui/backstory.json) и ключи loc backstory.<id>.name/desc/life
   docs       пути в *.md существуют, нет дублей id задач в WORK_PLAN/BACKLOG
 
 Корень: --root, иначе ./content (раскладка репо) или /mnt/project-files/gdd (раскладка общей папки).
@@ -179,6 +181,96 @@ def check_crafting(L):
     return run_ext("crafting", [str(d / "tools" / "validate_k1.py")])
 
 
+# ---------------------------------------------------------------- backstory
+def _ids(d, key):
+    v = d.get(key, []) if isinstance(d, dict) else d
+    return {x["id"] for x in v if isinstance(x, dict) and "id" in x} if isinstance(v, list) else set(v)
+
+
+def check_backstory(L):
+    r = Report("backstory")
+    ai = L.get("ai")
+    f = ai / "backstories.json" if ai else None
+    if not f or not f.exists():
+        r.warn("нет ai/backstories.json, пропуск"); return r
+    d = jload(f)
+    ex = ai / "expansion"
+    J = lambda p: jload(p) if p.exists() else {}
+    skills = _ids(J(ai / "knowledge.json"), "knowledge") | _ids(J(ex / "knowledge.json"), "knowledge")
+    traits = _ids(J(ai / "traits.json"), "traits") | _ids(J(ex / "traits.json"), "traits")
+    items = _ids(J(ai / "items.json"), "items") | _ids(J(ex / "items.json"), "items")
+    attrs = _ids(J(ex / "attributes.json"), "attributes")
+    designs = _ids(J(ai / "craft" / "designs.json"), "designs")
+    cfg = J(ai / "config.json")
+    rights = set(cfg.get("rights", []))
+    rep = set(cfg.get("reputation_axes", ["honesty", "valor", "piety", "generosity", "notoriety"]))
+    rel = {"affinity", "trust", "fear", "familiarity", "debt", "enmity", "respect", "attraction"}
+    excl = [tuple(p) for p in J(ai / "traits.json").get("exclusive", []) + J(ex / "traits.json").get("exclusive", [])
+            if isinstance(p, list) and len(p) == 2]
+    starts = set(d.get("config", {}).get("starts", {"home": {}}))
+    repo = L["root"].parent
+    icons = set(J(repo / "assets" / "altera_game" / "ui" / "icons.json").get("icons", {}))
+    ui = J(L["root"] / "ui" / "backstory.json")
+    lang = {}
+    for loc in L["loc"]:
+        for lg in ("ru", "en"):
+            for p in sorted((loc / lg).glob("*.json")):
+                lang.setdefault(lg, set()).update(jload(p).keys())
+    seen = set(); n = 0
+    for b in d.get("backstories", []):
+        n += 1
+        i = b.get("id", ""); at = f"{i or '<нет id>'}: "
+        if not i: r.err(at + "нет id")
+        elif i in seen: r.err(at + "дубль id")
+        seen.add(i)
+        if icons and b.get("icon") not in icons: r.err(at + f"иконки {b.get('icon')} нет в icons.json")
+        if not b.get("skills"): r.err(at + "нет умений")
+        for k, v in b.get("skills", {}).items():
+            if k not in skills: r.err(at + f"неизвестное умение {k}")
+            if not 0 <= v <= 1: r.err(at + f"умение {k} вне 0..1")
+        t = b.get("traits", {})
+        al, pool = t.get("always", []), t.get("pool", [])
+        for x in al + pool:
+            if x not in traits: r.err(at + f"неизвестная черта {x}")
+        if not 0 <= t.get("pick", 0) <= len(pool): r.err(at + "traits.pick больше пула")
+        for a in al:
+            for c in al:
+                if (a, c) in excl: r.err(at + f"взаимоисключающие черты вместе: {a}, {c}")
+        for a, v in b.get("attrs", {}).items():
+            if attrs and a not in attrs: r.err(at + f"неизвестная характеристика {a}")
+            if abs(v) > 0.5: r.err(at + f"сдвиг {a} больше 0.5")
+        for it, c in b.get("items", {}).items():
+            if it not in items: r.err(at + f"неизвестный предмет {it}")
+            if c <= 0: r.err(at + f"предмет {it}: количество <= 0")
+            if ui and icons and ui.get("item_icons", {}).get(it, ui.get("item_icon_default")) not in icons:
+                r.warn(at + f"иконка предмета {it} не найдена")
+        if b.get("coins", 0) < 0: r.err(at + "coins < 0")
+        if b.get("coins", 0) > 0 and "coin" not in items: r.err(at + "есть монеты, нет предмета coin")
+        for ds in b.get("recipes", []) + [m.get("design") for m in b.get("made", [])]:
+            if designs and ds not in designs: r.err(at + f"неизвестный чертёж {ds}")
+        for m in b.get("made", []):
+            if not 0 <= m.get("q", 0.5) <= 1: r.err(at + f"made {m.get('design')}: q вне 0..1")
+        if b.get("start", "home") not in starts: r.err(at + f"неизвестное место старта {b.get('start')}")
+        for x in b.get("rights", []):
+            if x not in rights: r.err(at + f"неизвестное право {x}")
+        for x, v in b.get("reputation", {}).items():
+            if x not in rep: r.err(at + f"неизвестная ось молвы {x}")
+            if abs(v) > 1: r.err(at + f"молва {x} вне -1..1")
+        for g, axes in b.get("relations", {}).items():
+            if g not in ("kin", "village"): r.err(at + f"relations: неизвестная группа {g} (kin|village)")
+            for x, v in axes.items():
+                if x not in rel: r.err(at + f"relations: неизвестная ось {x}")
+                if abs(v) > 1: r.err(at + f"relations: {x} вне -1..1")
+        for suf in ("name", "desc", "life"):
+            k = f"backstory.{i}.{suf}"
+            if lang and k not in lang.get("ru", set()): r.err(at + f"нет ключа loc {k} в ru")
+            elif lang and k not in lang.get("en", set()): r.warn(at + f"нет ключа loc {k} в en")
+    for s_ in starts:
+        if lang and f"hud.backstory.start.{s_}" not in lang.get("ru", set()): r.err(f"нет ключа loc hud.backstory.start.{s_} в ru")
+    r.info = f"{n} предысторий"
+    return r
+
+
 # ---------------------------------------------------------------- docs
 LINK = re.compile(r"\]\(([^)#\s]+)\)|`((?:/mnt/project-files|gdd|doc|content|tools|src)/[^`\s*<>{}]+\.[A-Za-z0-9]{1,5})`")
 
@@ -207,7 +299,7 @@ def check_docs(L):
 
 
 CHECKS = {"json": check_json, "loc": check_loc, "ai": check_ai, "expansion": check_expansion,
-          "crafting": check_crafting, "docs": check_docs}
+          "crafting": check_crafting, "backstory": check_backstory, "docs": check_docs}
 
 
 def main():

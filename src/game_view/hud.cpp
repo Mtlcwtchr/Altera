@@ -598,6 +598,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     }
     if (panel == "colony") colony(s, W, H);
     if (panel == "workshop") workshop(s, W, H);
+    if (panel == "backstory") backstory(W, H);
     if (!s.result.empty() && s.result != "ok") {
         const std::string t = ui.fit(s.result, 600, 14 / 15.f);
         const float w = textW(t, 14) + 28;
@@ -2606,6 +2607,188 @@ void Hud::craftResultCard(const Snapshot& s, float W, float H) {
     }
     if (iconButton({cx + 50, by, 60, 60}, "a_inspect", false, host_->text("hud.craft.inspect"), r.made < 0) && r.made >= 0)
         host_->command("craft_inspect", {{"id", c.actor}, {"item", r.made}});
+}
+
+// ---------------------------------------------------------------- the backstory
+// The new game's first screen (style G): who the player was before. The
+// backstories stand as medallions on a leather column; the picked one opens
+// on a paper sheet with its skills as bars, traits as chips, the build as
+// rising and falling marks, belongings as icon tiles, the purse and where the
+// life begins. No text buttons: "begin" is the gold seal, "at random" the
+// small ring beside it, their words in the tooltip. Enter begins, the arrows
+// turn the column.
+void Hud::backstory(float W, float H) {
+    if (backstories.empty()) {
+        panel = "none";
+        return;
+    }
+    tipText_.clear();
+    const int n = int(backstories.size());
+    backstoryPick = ((backstoryPick % n) + n) % n;
+    dimmer(W, H, 0.72f);
+    const std::string head = host_->text("hud.backstory.title");
+    title((W - textW(head, 40, true)) * 0.5f, 34, head, kGoldPale, 40);
+    const std::string sub = host_->text("hud.backstory.subtitle");
+    label((W - textW(sub, 16)) * 0.5f, 88, sub, kText, 16, true);
+
+    // the column of medallions
+    const float top = 132, colW = std::min(420.0f, W * 0.27f);
+    const float rowH = std::min(92.0f, (H - top - 150) / float(n));
+    const float total = colW + 28 + std::min(1000.0f, W - 80 - colW - 28);
+    const Rect C{std::max(40.0f, (W - total) * 0.5f), top, colW, rowH * float(n) + 24};
+    box(Skin::Leather, C, 22);
+    for (int i = 0; i < n; ++i) {
+        const BackstoryCard& b = backstories[size_t(i)];
+        const Rect row{C.x + 10, C.y + 12 + rowH * float(i), C.w - 20, rowH - 4};
+        const bool on = i == backstoryPick, hot = ui_->hovered(row);
+        if (on) ui_->roundRect(row, Colour::rgb(226, 197, 122, 0.20f), 16);
+        else if (hot) ui_->roundRect(row, Colour::rgb(226, 197, 122, 0.08f), 16);
+        const float d = std::min(64.0f, rowH - 14);
+        const float cx = row.x + 12 + d * 0.5f, cy = row.y + row.h * 0.5f;
+        box(on ? Skin::ButtonOn : Skin::Button, {cx - d * 0.5f, cy - d * 0.5f, d, d}, d * 0.5f);
+        const float s = std::round(d * 0.52f);
+        icon(b.icon, {cx - s * 0.5f, cy - s * 0.5f, s, s}, on ? kDark : kText);
+        const float tx = cx + d * 0.5f + 14, tw = row.right() - tx - 8;
+        title(tx, cy - 24, ui_->fit(b.name, tw, 21 / 15.f, true), on ? kGoldPale : kText, 21);
+        label(tx, cy + 4, ui_->fit(b.desc, tw, 13 / 15.f), on ? kText : kText.withAlpha(0.7f), 13);
+        if (clicked(row)) backstoryPick = i;
+    }
+
+    // the sheet of the picked one
+    const BackstoryCard& b = backstories[size_t(backstoryPick)];
+    const float px = C.right() + 28;
+    const Rect P{px, top, std::min(W - px - 40, 1000.0f), C.h};
+    box(Skin::Paper, P, 22);
+    seal(P.right() - 44, P.y + 40);
+    const float big = 104, bx = P.x + 36 + big * 0.5f, by = P.y + 30 + big * 0.5f;
+    disc(bx, by, big * 0.5f, kNavy);
+    ring(bx, by, big * 0.5f);
+    icon(b.icon, {bx - 30, by - 30, 60, 60}, kGoldPale);
+    const float tx = P.x + 36 + big + 26, tw = P.right() - tx - 90;
+    title(tx, P.y + 30, b.name, kInk, 34);
+    label(tx, P.y + 76, ui_->fit(b.desc, tw, 16 / 15.f), kInkRed, 16);
+    float y = P.y + 30 + big + 18;
+    y += ui_->paragraph(P.x + 36, y, P.w - 72, b.life, kInk, 15 / 15.f) + 18;
+    ui_->line(P.x + 36, y, P.right() - 36, y, kInkSoft.withAlpha(0.35f));
+    y += 16;
+
+    // left: skills as bars
+    const float lx = P.x + 36, lw = (P.w - 72) * 0.48f, rx = lx + lw + 36, rw = P.right() - 36 - rx;
+    float ly = y;
+    title(lx, ly, host_->text("hud.backstory.skills"), kInkSoft, 17);
+    ly += 30;
+    const float barX = lx + lw * 0.55f, barW = lw - (barX - lx);
+    const float skillRowH = std::clamp((P.bottom() - 170 - ly) / std::max(1.0f, float(b.skills.size())), 18.0f, 26.0f);
+    for (const auto& [name, lvl] : b.skills) {
+        label(lx, ly, ui_->fit(name, barX - lx - 10, 14 / 15.f), kInk, 14);
+        const Rect bar{barX, ly + 5, barW, 9};
+        ui_->roundRect(bar, Colour::rgb(122, 92, 40, 0.18f), 4.5f);
+        ui_->roundRect({bar.x, bar.y, std::max(9.0f, bar.w * float(lvl)), bar.h}, lvl >= 0.5 ? kGoldDark : kMid, 4.5f);
+        ly += skillRowH;
+    }
+
+    // right: traits as chips, the pool dimmer, the build's marks, rights
+    float ry = y;
+    title(rx, ry, host_->text("hud.backstory.traits"), kInkSoft, 17);
+    ry += 30;
+    auto chips = [&](const std::vector<std::string>& list, bool dark, float& cy) {
+        float cxp = rx;
+        for (const auto& t : list) {
+            const float w = textW(t, 13) + 22;
+            if (cxp + w > rx + rw) {
+                cxp = rx;
+                cy += 30;
+            }
+            box(dark ? Skin::ChipOn : Skin::Chip, {cxp, cy, w, 24}, 12);
+            label(cxp + 11, cy + 3, t, dark ? Colour::rgb(239, 228, 200) : kInkSoft, 13);
+            cxp += w + 6;
+        }
+        cy += 32;
+    };
+    chips(b.traits, true, ry);
+    if (b.pick > 0) {
+        label(rx, ry, host_->text("hud.backstory.traits_pool", {{"n", b.pick}}), kInkSoft, 13);
+        ry += 22;
+        chips(b.pool, false, ry);
+    }
+    if (!b.attrs.empty()) {
+        title(rx, ry + 4, host_->text("hud.backstory.attrs"), kInkSoft, 17);
+        ry += 34;
+        float ax = rx;
+        for (const auto& [name, shift] : b.attrs) {
+            const float w = textW(name, 13) + 34;
+            if (ax + w > rx + rw) {
+                ax = rx;
+                ry += 26;
+            }
+            trendArrow(ax + 8, ry + 10, shift > 0 ? 1 : -1, shift > 0 ? kGood : kBad);
+            label(ax + 20, ry + 2, name, shift > 0 ? kGood : kInkRed, 13);
+            ax += w + 6;
+        }
+        ry += 30;
+    }
+    if (!b.rights.empty()) {
+        title(rx, ry + 4, host_->text("hud.backstory.rights"), kInkSoft, 17);
+        ry += 34;
+        chips(b.rights, true, ry);
+    }
+
+    // the bottom band: belongings, purse, start
+    const float gy = P.bottom() - 132;
+    ui_->line(P.x + 36, gy - 12, P.right() - 36, gy - 12, kInkSoft.withAlpha(0.35f));
+    title(P.x + 36, gy, host_->text("hud.backstory.gear"), kInkSoft, 17);
+    float gx = P.x + 36;
+    const float tile = 50, ty = gy + 30;
+    auto tileAt = [&](const std::string& ic, const std::string& tip, int count) {
+        const Rect t{gx, ty, tile, tile};
+        box(Skin::Disc, t, 12, 0x2b3444);
+        icon(ic, {t.x + 9, t.y + 9, 32, 32}, kText);
+        if (count > 1) {
+            const std::string c = std::to_string(count);
+            const float w = textW(c, 12) + 10;
+            ui_->roundRect({t.right() - w + 4, t.bottom() - 14, w, 18}, kInkRed, 9);
+            label(t.right() - w + 9, t.bottom() - 13, c, kGoldPale, 12);
+        }
+        if (ui_->hovered(t)) tipAt(t.x + tile * 0.5f, t.y - 44, tip);
+        gx += tile + 8;
+    };
+    const float gearEnd = P.right() - 330;
+    for (const auto& g : b.gear) {
+        if (gx + tile > gearEnd) break;
+        tileAt(g.icon, g.name, g.n);
+    }
+    if (b.coins > 0 && gx + tile <= gearEnd) tileAt(coinIcon, host_->text("hud.backstory.coins", {{"n", b.coins}}), b.coins);
+    if (!b.recipes.empty()) {
+        std::string r;
+        for (const auto& x : b.recipes) r += (r.empty() ? "" : ", ") + x;
+        label(P.x + 36, ty + tile + 12,
+              ui_->fit(host_->text("hud.backstory.recipes") + ": " + r, gearEnd - P.x - 40, 13 / 15.f), kInkSoft, 13);
+    }
+    const float sx = P.right() - 310;
+    title(sx, gy, host_->text("hud.backstory.start"), kInkSoft, 17);
+    box(Skin::Disc, {sx, ty, tile, tile}, 12, 0x2b3444);
+    icon(b.startIcon, {sx + 9, ty + 9, 32, 32}, kText);
+    ui_->paragraph(sx + tile + 12, ty + 4, P.right() - 36 - (sx + tile + 12), b.start, kInk, 14 / 15.f);
+
+    // begin (the gold seal) and at random
+    const float by2 = C.bottom() + 22, bcx = P.x + P.w * 0.5f;
+    if (iconButton({bcx - 42, by2, 84, 84}, "a_ok", true, host_->text("hud.backstory.begin")) || in_->enter)
+        backstoryBegin = true;
+    if (iconButton({bcx + 62, by2 + 16, 52, 52}, "a_repeat", false, host_->text("hud.backstory.random")))
+        backstoryPick = int((std::uint64_t(clock_ * 1000.0) * 2654435761ull) % std::uint64_t(n));
+    if (backstoryBegin) {
+        backstoryBegin = false;
+        host_->command("start_backstory", {{"backstory", b.id}});
+        panel = "none";
+    }
+    if (!tipText_.empty()) {
+        const float w = std::min(textW(tipText_, 14) + 26, 460.f);
+        const float x = std::clamp(tipX_ - w * 0.5f, 8.f, W - w - 8);
+        const float yy = std::clamp(tipY_, 8.f, H - 40);
+        const Rect t{x, yy, w, 32};
+        box(Skin::Paper, t, 14);
+        label(t.x + 13, t.y + 7, ui_->fit(tipText_, w - 26, 14 / 15.f), kInk, 14);
+    }
 }
 
 } // namespace altera::game
