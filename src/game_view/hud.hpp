@@ -75,6 +75,7 @@ public:
         sub_ = 0;
     }
     void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
+    void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
 
 private:
@@ -127,7 +128,19 @@ private:
         double value = -1;   // 0..1, or -1: no bar
         std::string note;
         bool alarm = false;
+        std::string id;      // status id (need id, health, kin, repute, respect): trend, cause and help
+        int arrow = 2;       // -1 falling, 0 holding, 1 rising, 2 none
+        std::string desc;    // the line under the bar: why it is low and what helps, or "fine"
     };
+    // Trend of every status of the selected person, sampled each game hour.
+    struct TrendSample {
+        Tick tick = 0;
+        double value = 0, rate = 0; // rate per day
+        bool known = false;
+    };
+    mutable std::map<std::string, TrendSample> trends_;
+    void statusRow(const Snapshot& s, const ActorSnap& a, Row& r) const;
+    void trendArrow(float cx, float cy, int dir, const ui::Colour& c);
     std::vector<Row> tierRows(const Snapshot& s, const ActorSnap& a, int tier) const;
     double tierValue(const Snapshot& s, const ActorSnap& a, int tier) const;
     const ActorSnap* actor(const Snapshot& s, EntityId id) const;
@@ -152,7 +165,7 @@ private:
     sim::Json wheelSpec_;
     EntityId selected_ = sim::kNone, wheelTarget_ = sim::kNone;
     int goalPick_ = -1;
-    int pin_ = 0, hover_ = -1, sheetTab_ = 0, sphere_ = 0, sub_ = 0, tone_ = 1, annalsTab_ = 0, annalsFilter_ = 0;
+    int pin_ = -1, hover_ = -1, sheetTab_ = 0, sphere_ = 0, sub_ = 0, tone_ = 1, annalsTab_ = 0, annalsFilter_ = 0;
     EntityId kinPick_ = sim::kNone;
     std::size_t seenChronicle_ = 0;
     struct Toast {

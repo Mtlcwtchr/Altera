@@ -550,6 +550,7 @@ ValidationReport validate(const Content& c) {
         if (!c.build.pieces.empty() && !c.objects.count("build_site"))
             v.err("build: objects.json has no build_site");
     }
+    validateExpansion(c, r);
     return r;
 }
 

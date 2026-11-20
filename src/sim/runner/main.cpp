@@ -65,6 +65,12 @@ int main(int argc, char** argv) {
                       << content.interactions.size() << " interactions, " << content.dialogue.size()
                       << " dialogue templates; loc ok: " << requiredLocKeys(content).size() << " keys, base "
                       << loc.base() << "\n";
+            if (content.expansion.loaded)
+                std::cout << "expansion: +" << content.expansion.added << " entries, " << content.expansion.kept.size()
+                          << " ids kept from the base, " << content.knowledge.size() << " skills, "
+                          << content.traits.size() << " traits, " << content.expansion.interests.size()
+                          << " interests, " << content.expansion.attributes.size() << " attributes, "
+                          << content.expansion.temperaments.size() << " temperaments\n";
             return 0;
         }
         World world = makeTestWorld(content, loadJsonFile(worldFile), seed);

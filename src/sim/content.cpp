@@ -793,9 +793,14 @@ Content Content::load(const std::string& dir) {
         std::ifstream probe(dir + "/" + name);
         return probe ? readJson(dir + "/" + name) : Json::object();
     };
-    Content c = fromJson(f("items.json"), f("objects.json"), f("needs.json"), f("traits.json"), f("goals.json"),
-                         f("htn.json"), f("interactions.json"), f("fsm.json"), f("config.json"), f("dialogue.json"),
-                         f("knowledge.json"), f("species.json"));
+    Json items = f("items.json"), objects = f("objects.json"), needs = f("needs.json"), traits = f("traits.json"),
+         htn = f("htn.json"), interactions = f("interactions.json"), config = f("config.json"),
+         knowledge = f("knowledge.json");
+    ExpansionData expansion =
+        mergeExpansion(dir + "/expansion", items, objects, needs, traits, htn, interactions, config, knowledge);
+    Content c = fromJson(items, objects, needs, traits, f("goals.json"), htn, interactions, f("fsm.json"), config,
+                         f("dialogue.json"), knowledge, f("species.json"));
+    c.expansion = std::move(expansion);
     c.climate = parseClimate(f("climate.json"), c.warnings);
     c.care = parseCare(f("care.json"), c.warnings);
     c.craft = craft::CraftData::load(dir + "/craft");

@@ -269,6 +269,7 @@ TEST(altera_sim_combat_winner_decides_by_motivation) {
     };
     a.status.family = b.status.family = kNone;
     a.status.dynasty = b.status.dynasty = kNone;
+    a.status.rights.clear(); // plain neighbours: no right to bind (the world may have handed some out)
     a.relations[b.id] = Relation{};
     a.traits.clear();
     CHECK_EQ(best(brawl, "ko", 0), std::string("spare")); // a brawl among neighbours

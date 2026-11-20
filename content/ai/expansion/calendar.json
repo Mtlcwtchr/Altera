@@ -1,0 +1,274 @@
+{
+ "_doc": "Календарь и давление общины. Год — доля 0..1 от начала весны. kind: fast (пост), feast (праздник), rite (обряд), work (страда), rest (день отдыха). Давление не запрет: это цена в оценке методов и репутации; степень зависит от профиля культуры (religiosity, observance), так что для других культур достаточно сменить профиль.",
+ "year_days_default": 360,
+ "culture_profiles": {
+  "fantasy_european": {
+   "religiosity": 0.7,
+   "observance": {
+    "rest_day": 0.8,
+    "meatless_day": 0.6,
+    "lent": 0.7,
+    "advent_fast": 0.5,
+    "feasts": 0.6,
+    "rites": 0.5
+   },
+   "fast_strictness": {
+    "lent": 0.8,
+    "advent_fast": 0.4,
+    "meatless_day": 0.7
+   },
+   "fast_forbidden_tags": {
+    "strict": [
+     "meat",
+     "egg",
+     "dairy"
+    ],
+    "lent": [
+     "meat"
+    ],
+    "light": [
+     "meat"
+    ]
+   },
+   "exemptions": [
+    "child_under_7",
+    "sick",
+    "pregnant",
+    "heavy_laborer_partial",
+    "traveler",
+    "elder_partial",
+    "starving"
+   ],
+   "_doc": "Культура по умолчанию: стандартные фэнтези-европейцы. Другие народы Альтеры — свои профили."
+  },
+  "_template": {
+   "religiosity": 0.5,
+   "observance": {},
+   "fast_strictness": {},
+   "fast_forbidden_tags": {},
+   "exemptions": []
+  }
+ },
+ "pressure": {
+  "_doc": "Давление P на персонажа для обычая c: P = culture.observance[c] · доля_соблюдающих_рядом · видимость · (1 + 0.5·(piety_core+1)/2·religiosity) · (1 − 0.6·skeptic) · уклон_образа_жизни",
+  "components": {
+   "share_observing_nearby": "доля соседей с последним соблюдением",
+   "visibility": "public=1, private=0.3, secret=0",
+   "lifestyle": {
+    "pilgrim": 1.4,
+    "cloister": 1.6,
+    "outlaw": 0.3,
+    "mercenary": 0.5,
+    "vagrant": 0.5
+   }
+  },
+  "cost_in_method_score": "ΔS = +8·P·(1 − exemption) для метода, нарушающего обычай; для методов в рамках обычая — +0",
+  "consequence": {
+   "witnessed": [
+    "reputation:piety-0.02·P",
+    "rel:affinity-0.02·P (свидетели)"
+   ],
+   "habitual": "общинный выговор (диалог 'accuse') при P ≥ 0.6 и ≥ 3 нарушениях за сезон",
+   "starvation_override": "при need:hunger < critical пост и день отдыха не соблюдаются без наказания"
+  },
+  "rest_day_effect": {
+   "goal_mult": {
+    "stock_food": 0.3,
+    "stock_firewood": 0.3,
+    "make_axe": 0.2,
+    "make_clothes": 0.3,
+    "build_home": 0.2,
+    "pray": 2.0,
+    "socialize": 1.4,
+    "have_fun": 1.2
+   },
+   "_doc": "множители действуют на цели; в страду (work) давление ослаблено наполовину"
+  },
+  "fast_effect": {
+   "method_filter": "отбросить методы, итоговые предметы которых имеют запрещённый тег поста; добавить рыбу/хлеб/овощи как предпочтительные (-1 к стоимости)"
+  },
+  "feast_effect": {
+   "goal_mult": {
+    "have_fun": 1.4,
+    "socialize": 1.4,
+    "stock_food": 0.6
+   },
+   "moodlet_chance": {
+    "merry": 0.4
+   },
+   "offers": [
+    "dance_together",
+    "sing_together",
+    "toast_health",
+    "play_dice"
+   ]
+  },
+  "rite_effect": {
+   "goal_mult": {
+    "pray": 1.6
+   },
+   "offers": [
+    "make_offering",
+    "perform_rite",
+    "read_omens"
+   ]
+  }
+ },
+ "agricultural_cycle": {
+  "_doc": "Сезонные множители целей и приоритетные действия (годовой круг). Чтобы не было вечной «работы»: вне сезона множитель ниже.",
+  "phases": [
+   {
+    "id": "plough_sow",
+    "from": 0.08,
+    "to": 0.2,
+    "goal_mult": {
+     "stock_food": 1.2
+    },
+    "interactions": [
+     "sow_field",
+     "weed_field",
+     "gather_wild_seeds"
+    ]
+   },
+   {
+    "id": "pasture",
+    "from": 0.2,
+    "to": 0.4,
+    "goal_mult": {},
+    "interactions": [
+     "graze_flock_on_commons",
+     "milk_animal",
+     "shear_sheep"
+    ]
+   },
+   {
+    "id": "hay",
+    "from": 0.4,
+    "to": 0.48,
+    "goal_mult": {
+     "stock_food": 1.1
+    },
+    "interactions": [
+     "cut_hay"
+    ]
+   },
+   {
+    "id": "harvest",
+    "from": 0.62,
+    "to": 0.76,
+    "goal_mult": {
+     "stock_food": 1.5,
+     "have_fun": 0.7
+    },
+    "interactions": [
+     "harvest_field",
+     "thresh_grain",
+     "grind_grain_at_mill"
+    ]
+   },
+   {
+    "id": "slaughter_store",
+    "from": 0.86,
+    "to": 0.92,
+    "goal_mult": {
+     "stock_food": 1.3,
+     "stock_firewood": 1.3
+    },
+    "interactions": [
+     "butcher_carcass",
+     "gather_firewood"
+    ]
+   },
+   {
+    "id": "winter_indoors",
+    "from": 0.92,
+    "to": 1.0,
+    "goal_mult": {
+     "stock_firewood": 1.3,
+     "make_clothes": 1.2,
+     "socialize": 1.1
+    },
+    "interactions": [
+     "bake_loaf_in_common_oven",
+     "tell_stories"
+    ]
+   }
+  ]
+ },
+ "events": [
+  {
+   "id": "lent",
+   "kind": "fast",
+   "from": 0.0,
+   "to": 0.11
+  },
+  {
+   "id": "spring_feast",
+   "kind": "feast",
+   "from": 0.11,
+   "to": 0.125
+  },
+  {
+   "id": "sowing_rite",
+   "kind": "rite",
+   "from": 0.14,
+   "to": 0.16
+  },
+  {
+   "id": "midsummer",
+   "kind": "feast",
+   "from": 0.49,
+   "to": 0.52
+  },
+  {
+   "id": "hay_harvest",
+   "kind": "work",
+   "from": 0.4,
+   "to": 0.48
+  },
+  {
+   "id": "grain_harvest",
+   "kind": "work",
+   "from": 0.62,
+   "to": 0.76
+  },
+  {
+   "id": "harvest_home",
+   "kind": "feast",
+   "from": 0.77,
+   "to": 0.79
+  },
+  {
+   "id": "slaughter_time",
+   "kind": "work",
+   "from": 0.86,
+   "to": 0.9
+  },
+  {
+   "id": "advent_fast",
+   "kind": "fast",
+   "from": 0.92,
+   "to": 0.985
+  },
+  {
+   "id": "midwinter_feast",
+   "kind": "feast",
+   "from": 0.985,
+   "to": 1.0
+  }
+ ],
+ "weekly": [
+  {
+   "id": "rest_day",
+   "every_days": 7,
+   "offset": 6,
+   "kind": "rest"
+  },
+  {
+   "id": "meatless_day",
+   "every_days": 7,
+   "offset": 4,
+   "kind": "fast"
+  }
+ ]
+}

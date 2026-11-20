@@ -1,0 +1,350 @@
+{
+ "_doc": "Социальное положение — набор медленных факторов (скорость как у `slow` в motivation.json), ярлык вычисляется. Меняются событиями: наследство, женитьба, долг, выкуп, бегство в город (год и день), манумиссия, военные заслуги, посвящение.",
+ "estates": [
+  "noble",
+  "clergy",
+  "burgher",
+  "commoner"
+ ],
+ "conditions": [
+  {
+   "id": "free",
+   "freedom": 1.0
+  },
+  {
+   "id": "tenant_free",
+   "freedom": 0.8
+  },
+  {
+   "id": "villein",
+   "freedom": 0.4
+  },
+  {
+   "id": "bound",
+   "freedom": 0.2
+  }
+ ],
+ "strata": [
+  "lord",
+  "knight",
+  "cleric",
+  "burgher",
+  "yeoman",
+  "husbandman",
+  "cottar",
+  "servant",
+  "apprentice",
+  "journeyman",
+  "beggar",
+  "outlaw"
+ ],
+ "world_profiles": {
+  "_doc": "Профили распределения держаний в деревне (доли, сумма нормируется). Параметр prosperity 0..1 двигает массу к зажиточным. Доли знати/клира/города задаются поселением.",
+  "default": {
+   "yeoman": [
+    0.1,
+    0.15
+   ],
+   "husbandman": [
+    0.3,
+    0.4
+   ],
+   "cottar": [
+    0.28,
+    0.4
+   ],
+   "servant_share_of_youth": [
+    0.1,
+    0.2
+   ]
+  },
+  "poor_land": {
+   "yeoman": [
+    0.04,
+    0.08
+   ],
+   "husbandman": [
+    0.2,
+    0.3
+   ],
+   "cottar": [
+    0.45,
+    0.6
+   ],
+   "servant_share_of_youth": [
+    0.15,
+    0.25
+   ]
+  },
+  "rich_land": {
+   "yeoman": [
+    0.18,
+    0.28
+   ],
+   "husbandman": [
+    0.35,
+    0.45
+   ],
+   "cottar": [
+    0.15,
+    0.25
+   ],
+   "servant_share_of_youth": [
+    0.08,
+    0.15
+   ]
+  },
+  "town": {
+   "burgher_master": [
+    0.25,
+    0.35
+   ],
+   "journeyman": [
+    0.1,
+    0.18
+   ],
+   "apprentice": [
+    0.08,
+    0.15
+   ],
+   "day_laborer": [
+    0.2,
+    0.35
+   ],
+   "servant": [
+    0.1,
+    0.18
+   ],
+   "other": [
+    0.05,
+    0.12
+   ]
+  },
+  "settlement_shares": {
+   "noble": [
+    0.01,
+    0.02
+   ],
+   "clergy": [
+    0.02,
+    0.05
+   ],
+   "outsiders": [
+    0.01,
+    0.04
+   ]
+  }
+ },
+ "factors": {
+  "_doc": "Социальное положение — набор медленных факторов (скорость как у `slow` в motivation.json), ярлык вычисляется. Меняются событиями: наследство, женитьба, долг, выкуп, бегство в город (год и день), манумиссия, военные заслуги, посвящение.",
+  "estate": {
+   "type": "enum",
+   "values": [
+    "noble",
+    "clergy",
+    "burgher",
+    "commoner"
+   ],
+   "change": "редко: посвящение, посвящение в рыцари, переход в горожане (год и день в городе)"
+  },
+  "freedom": {
+   "type": "0..1",
+   "default_by_estate": {
+    "noble": 1.0,
+    "clergy": 0.9,
+    "burgher": 0.9,
+    "commoner": 0.6
+   },
+   "bands": [
+    {
+     "id": "free",
+     "from": 0.9
+    },
+    {
+     "id": "tenant_free",
+     "from": 0.7000000000000001
+    },
+    {
+     "id": "villein",
+     "from": 0.30000000000000004
+    },
+    {
+     "id": "bound",
+     "from": 0.1
+    }
+   ],
+   "effects": {
+    "labor_days_per_week": "3·(1−freedom)",
+    "leave_village_needs_permission_p": "1−freedom",
+    "marriage_fee_p": "0.8·(1−freedom)",
+    "inheritance_fee": "лучшая голова скота при freedom<0.5",
+    "court_access": "freedom≥0.6 — в своём праве, иначе через господина",
+    "flight_to_town": "побег: legal 'flight_from_lord' · (1−freedom); год и день без возврата — свобода +0.5"
+   },
+   "paths_up": [
+    "выкуп",
+    "манумиссия за службу",
+    "побег в город и год и день",
+    "женитьба на вольной (+0.1 детям)"
+   ],
+   "paths_down": [
+    "долговая кабала",
+    "плен",
+    "приговор",
+    "брак с зависимым (дети наследуют условие матери/отца по обычаю места)"
+   ]
+  },
+  "holding": {
+   "type": "0..1.5",
+   "meaning": "доля стандартного надела (ярдланд = 1): коттер 0.1–0.3, половина 0.5, полный 1, йомен 1.3+; в городе — домовладение",
+   "effects": {
+    "provision_target_days": "40 + 120·holding (запас до урожая)",
+    "diet_quality": "0.5 + 0.4·min(1, holding)",
+    "house_size": "1 + holding",
+    "tithe_and_dues": "∝ holding",
+    "famine_risk": "высокая при holding<0.3 (первые страдают)"
+   }
+  },
+  "trade": {
+   "type": "список умений-занятий",
+   "source": "motivation/lifestyle.json occupation"
+  },
+  "life_stage": {
+   "stages": [
+    {
+     "id": "child",
+     "from": 0,
+     "to": 7,
+     "work": 0.1
+    },
+    {
+     "id": "youth",
+     "from": 7,
+     "to": 14,
+     "work": 0.4
+    },
+    {
+     "id": "servant_age",
+     "from": 14,
+     "to": 25,
+     "work": 0.9,
+     "_doc": "кто из детей уходит в услужение/ученики: p ∝ (1 − holding_родителей), у бедных до 0.5"
+    },
+    {
+     "id": "adult",
+     "from": 25,
+     "to": 60,
+     "work": 1.0
+    },
+    {
+     "id": "elder",
+     "from": 60,
+     "to": 120,
+     "work": 0.5
+    }
+   ],
+   "marriage_age": {
+    "commoner": {
+     "f": [
+      20,
+      26
+     ],
+     "m": [
+      22,
+      28
+     ]
+    },
+    "noble": {
+     "f": [
+      15,
+      20
+     ],
+     "m": [
+      18,
+      25
+     ]
+    },
+    "burgher": {
+     "f": [
+      18,
+      24
+     ],
+     "m": [
+      22,
+      28
+     ]
+    },
+    "_doc": "диапазон — параметр культуры; у слуг и учеников брак отложен до выхода на свободу"
+   },
+   "household": {
+    "size_mean": 4.5,
+    "composition": "в основном нуклеарная; слуги и ученики живут в доме мастера; вдовы часто ведут дом"
+   }
+  }
+ },
+ "derived_states": [
+  {
+   "id": "landless_pressure",
+   "formula": "max(0, 0.6 − holding) · (иждивенцы / 4)"
+  },
+  {
+   "id": "indebted",
+   "formula": "Σ rel:debt перед другими, нормировано"
+  },
+  {
+   "id": "bound_apprentice",
+   "formula": "status_pair:master_apprentice"
+  },
+  {
+   "id": "servant_of",
+   "formula": "household_role:servant"
+  },
+  {
+   "id": "widow_head",
+   "formula": "household_role:head & !status_pair:married"
+  },
+  {
+   "id": "heir_waiting",
+   "formula": "age≥18 & household_role:child & предполагаемый наследник"
+  }
+ ],
+ "gender_norms": {
+  "_doc": "Настраиваемые обычаи по полу (профиль культуры): мягкие множители стартовой вероятности умений и допуска в цехи; не запреты. Мир реалистичный, слегка упрощённый: женщины в пивоварении, прядении, торговле и ремесле допускаются, ограничения цехов — параметром.",
+  "strength": {
+   "fantasy_european": 0.5,
+   "_doc": "0 — равны, 1 — полная историческая сегрегация"
+  },
+  "start_chance_mult": {
+   "f": {
+    "spinning": 1.6,
+    "weaving": 1.3,
+    "brewing": 1.5,
+    "baking": 1.3,
+    "midwifery": 3.0,
+    "childcare": 1.5,
+    "housekeeping": 1.3,
+    "herbalism": 1.3,
+    "dyeing": 1.2
+   },
+   "m": {
+    "smithing": 1.6,
+    "masonry": 1.5,
+    "carpentry": 1.4,
+    "combat": 1.4,
+    "archery": 1.3,
+    "mining": 1.5,
+    "plough_team": 1.3,
+    "butchery": 1.2,
+    "armorer": 1.6
+   }
+  },
+  "guild": {
+   "exclusion_strength": {
+    "fantasy_european": 0.3
+   },
+   "widow_inherits_shop": true,
+   "women_masters_p_mult": 0.4,
+   "_doc": "доступ: учёба/мастерство у женщин вероятностью, вдова продолжает дело мужа"
+  }
+ }
+}

@@ -385,3 +385,29 @@ TEST(altera_sim_child_asks_and_parent_feeds) {
     CHECK(after.body.alive);
     CHECK(after.need("hunger") > 0.12);
 }
+
+// content/ai/expansion: merged on load, the base wins on a shared id, reference books parsed.
+TEST(altera_sim_content_expansion_merged) {
+    const Content& c = real();
+    const ExpansionData& x = c.expansion;
+    CHECK(x.loaded);
+    CHECK(x.errors.empty());
+    CHECK(c.knowledge.size() >= 69);
+    CHECK(c.knowledge.count("singing") && c.knowledge.count("trapping"));
+    CHECK(c.traits.count("quick_learner") && c.traits.count("night_owl"));
+    CHECK_EQ(x.attributes.size(), std::size_t(8));
+    CHECK(x.interests.size() >= 42);
+    CHECK(x.temperaments.size() >= 20);
+    CHECK(x.calendar.contains("events"));
+    CHECK(x.socialPosition.contains("estates"));
+    // base kept: farming still starts in youth, the working ale keeps its nutrition
+    CHECK_EQ(c.knowledge.at("farming").start, std::string("all_from_youth"));
+    CHECK(c.items.at("ale").nutrition > 0.0);
+    // base knowledge annotated from the expansion
+    CHECK(x.knowledgeExt.count("foraging") && x.knowledgeExt.at("foraging").contains("attrs"));
+    // new HTN methods sit on the existing tasks
+    bool sing = false;
+    for (const auto& m : c.task("have_fun_task")->methods) sing |= m.id == "fun_sing";
+    CHECK(sing);
+    CHECK(x.traitExt.at("quick_learner").contains("skill_mult"));
+}
