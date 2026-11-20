@@ -1,0 +1,99 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|Grep",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard search",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Read|Glob",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "graphify hook-guard read",
+            "timeout": 10
+          }
+        ]
+      }
+    ]
+  },
+  "permissions": {
+    "allow": [
+      "Bash(cmake --build:*)",
+      "Bash(cmake --preset:*)",
+      "Bash(ctest:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git branch:*)",
+      "Bash(git rev-parse:*)",
+      "Bash(python tools/:*)",
+      "Bash(python -I tools/:*)",
+      "Bash(tools\\check_fast.bat:*)",
+      "Bash(tools/check_fast.bat:*)",
+      "Bash(cmd /c tools\\check_fast.bat:*)",
+      "Bash(./cmake-build-sim/altera_sim_:*)",
+      "Bash(cmake-build-sim/altera_sim_:*)",
+      "Bash(./cmake-build-windows/altera_sim_:*)",
+      "Bash(cmake-build-windows/altera_sim_:*)",
+      "Bash(graphify query:*)",
+      "Bash(graphify update:*)",
+      "PowerShell(cmake --build:*)",
+      "PowerShell(cmake --preset:*)",
+      "PowerShell(ctest:*)",
+      "PowerShell(git status:*)",
+      "PowerShell(git diff:*)",
+      "PowerShell(git log:*)",
+      "PowerShell(git show:*)",
+      "PowerShell(git add:*)",
+      "PowerShell(git commit:*)",
+      "PowerShell(git branch:*)",
+      "PowerShell(git rev-parse:*)",
+      "PowerShell(python tools/:*)",
+      "PowerShell(python -I tools/:*)",
+      "PowerShell(tools\\check_fast.bat:*)",
+      "PowerShell(tools/check_fast.bat:*)",
+      "PowerShell(cmd /c tools\\check_fast.bat:*)",
+      "PowerShell(./cmake-build-sim/altera_sim_:*)",
+      "PowerShell(cmake-build-sim/altera_sim_:*)",
+      "PowerShell(./cmake-build-windows/altera_sim_:*)",
+      "PowerShell(cmake-build-windows/altera_sim_:*)",
+      "PowerShell(graphify query:*)",
+      "PowerShell(graphify update:*)",
+      "PowerShell(.\\cmake-build-sim\\altera_sim_:*)",
+      "PowerShell(.\\tools\\check_fast.bat:*)",
+      "PowerShell(& .\\tools\\check_fast.bat:*)"
+    ],
+    "deny": [
+      "Bash(git reset --hard:*)",
+      "Bash(git clean -fd:*)",
+      "Bash(git clean -fdx:*)",
+      "Bash(git push --force:*)",
+      "Bash(git push -f:*)",
+      "Bash(git checkout -- .:*)",
+      "Bash(rm -rf:*)",
+      "Bash(del /s:*)",
+      "Bash(rmdir /s:*)",
+      "Bash(Remove-Item -Recurse:*)",
+      "PowerShell(git reset --hard:*)",
+      "PowerShell(git clean -fd:*)",
+      "PowerShell(git clean -fdx:*)",
+      "PowerShell(git push --force:*)",
+      "PowerShell(git push -f:*)",
+      "PowerShell(git checkout -- .:*)",
+      "PowerShell(rm -rf:*)",
+      "PowerShell(del /s:*)",
+      "PowerShell(rmdir /s:*)",
+      "PowerShell(Remove-Item -Recurse:*)"
+    ]
+  }
+}
