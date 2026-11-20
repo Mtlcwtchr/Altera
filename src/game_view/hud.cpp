@@ -584,15 +584,6 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         quickBar(s, W, H);
         clockPill(s, W, H);
         if (showThoughts) thoughts(s, W);
-        // the keys, for the first minute or so of play
-        if (s.controlled != sim::kNone && controlsHint_ < 3600) {
-            ++controlsHint_;
-            const std::string t = host.text("hud.controls");
-            const float w = textW(t, 14) + 28;
-            const Rect r{(W - w) * 0.5f, 86, w, 30};
-            box(Skin::Leather, r, 15);
-            label(r.x + 14, r.y + 6, t, kText, 14);
-        }
     }
     if (panel == "sheet" && sel && !sel->animal) sheet(s, *sel, W, H);
     else if (panel == "sheet") panel = "none";
