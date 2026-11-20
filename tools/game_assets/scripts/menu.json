@@ -1,0 +1,22 @@
+[
+ {"at": 1, "menu": "main_menu"},
+ {"at": 4, "shot": "menu_01_main.png"},
+ {"at": 5, "menu": "settings"},
+ {"at": 6, "shot": "menu_02_settings.png"},
+ {"at": 7, "menu": "back"},
+ {"at": 8, "menu": "new"},
+ {"at": 10, "backstory": "hunter"},
+ {"at": 11, "backstory_begin": true},
+ {"at": 12, "speed": 3},
+ {"at": 24, "menu": "pause"},
+ {"at": 25, "shot": "menu_03_pause.png"},
+ {"at": 26, "save": 1},
+ {"at": 27, "menu": "open_save"},
+ {"at": 28, "shot": "menu_04_save.png"},
+ {"at": 29, "menu": "back"},
+ {"at": 30, "menu": "open_load"},
+ {"at": 31, "shot": "menu_05_load.png"},
+ {"at": 32, "load": 1},
+ {"at": 36, "shot": "menu_06_loaded.png"},
+ {"at": 38, "quit": true}
+]

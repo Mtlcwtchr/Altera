@@ -53,6 +53,10 @@ public:
         (void)simX, (void)simY, (void)up, (void)x, (void)y;
         return false;
     }
+    // A menu button (hud_menu.cpp): continue, new, open_load, open_save,
+    // settings, resume, main_menu, quit, load {slot}, save {slot}, back,
+    // apply {lang, fullscreen, autosave}. The game sets the panel.
+    virtual void menuAction(const std::string& action, const sim::Json& args) { (void)action, (void)args; }
 };
 
 class Hud {
@@ -108,6 +112,25 @@ public:
     bool backstoryBegin = false;   // Enter or a script: begin with the picked one
     std::string coinIcon = "values";
 
+    // The menus (hud_menu.cpp): panels "menu" (the main menu), "pause",
+    // "slots" (save or load) and "settings", filled by the game.
+    struct MenuSlot {
+        int slot = 0;
+        bool used = false;
+        std::string title, line, when;
+    };
+    std::vector<MenuSlot> menuSlots;
+    bool slotsSave = false;          // the slot panel saves (else it loads)
+    bool canContinue = false;        // a game is on, or a save exists
+    bool canLoad = false;            // a save exists
+    std::string menuNote;            // a line under the menu: saved, or what went wrong
+    std::string settingsLang = "ru";
+    bool settingsFullscreen = false;
+    int settingsAutosave = 10;       // minutes, 0 off
+    bool inMenu() const { return panel == "menu" || panel == "pause" || panel == "slots" || panel == "settings"; }
+    // A new world (a load or a new game): drop what belonged to the old one's people.
+    void resetWorld();
+
 private:
     struct Image {
         int w = 0, h = 0;
@@ -150,6 +173,13 @@ private:
     void colony(const Snapshot& s, float W, float H);
     void workshop(const Snapshot& s, float W, float H);
     void backstory(float W, float H);
+    // the menus (hud_menu.cpp)
+    void mainMenu(float W, float H);
+    void pauseMenu(float W, float H);
+    void slotsPanel(float W, float H);
+    void settingsPanel(float W, float H);
+    bool menuButton(const ui::Rect& r, const std::string& iconName, const std::string& s, bool enabled = true);
+    int pendingSlot_ = -1;           // a used slot clicked once in the save panel: the next click overwrites
     sim::Json craftDraftJson(const Snapshot& s) const;
     std::string sentDraft_;
     // the workshop's parts (hud.cpp, after the design canvas boards 10-15)
