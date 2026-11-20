@@ -48,6 +48,9 @@ craft::Preview craftPreview(const World& w, const Character& c, const CraftComma
 // Fast craft (§17.4): the whole recipe `count` times; stops with a reason.
 CraftOutcome fastCraft(World& w, Character& c, const std::string& recipeId, int count = 1);
 craft::ChainPlan fastCraftPlan(const World& w, const Character& c, const std::string& recipeId);
+// The same preview for a starter design the person does not know yet (the
+// novice helper of the workshop): what of its chain the person has at hand.
+craft::ChainPlan designPlan(const World& w, const Character& c, const std::string& designId);
 // A starter design as a mastered recipe in the book (professions, §8).
 std::string giveDesign(const World& w, Character& c, const std::string& designId, double mastery = 1.0);
 int inspectMade(World& w, Character& c, int index);

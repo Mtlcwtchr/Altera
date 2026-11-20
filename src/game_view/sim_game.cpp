@@ -443,7 +443,9 @@ public:
             if (keys[SDL_SCANCODE_A]) { target_[0] -= s * v; target_[1] += c * v; follow_ = false; }
         }
         if (keys[SDL_SCANCODE_Q]) orbitYaw_ += 1.5 * dt;
-        if (keys[SDL_SCANCODE_E]) orbitYaw_ -= 1.5 * dt;
+        // in the workshop E is "make" (held), not the camera
+        hud_.keyE = keys[SDL_SCANCODE_E] && hud_.panel == "workshop";
+        if (keys[SDL_SCANCODE_E] && hud_.panel != "workshop") orbitYaw_ -= 1.5 * dt;
         const double tz = groundAt(target_[0], target_[1]) + 1.2;
         cam.yaw = orbitYaw_;
         cam.pitch = -orbitPitch_;
@@ -651,7 +653,18 @@ private:
                             hud_.craftSlots[it.key()] = it.value().get<std::vector<std::string>>();
                     hud_.craftShape = d.value("shape", "");
                     hud_.craftMode = d.value("mode", "");
+                    hud_.craftHeat = d.value("heat", -1);
+                    hud_.craftLen = d.value("len", 0);
+                    if (!hud_.craftSlots.empty()) hud_.craftSlot = hud_.craftSlots.begin()->first;
                 }
+                // the workshop's tabs and helper (boards 10-15)
+                if (st.contains("craft_tab")) hud_.craftTab = st["craft_tab"].get<int>();
+                if (st.contains("craft_wish")) {
+                    hud_.craftWish = st["craft_wish"].get<std::string>();
+                    hud_.craftHelper = !hud_.craftWish.empty();
+                }
+                if (st.contains("craft_helper")) hud_.craftHelper = st["craft_helper"].get<bool>();
+                if (st.value("craft_close", false)) hud_.closeCraftResult();
                 if (st.value("craft_try", false) && who != kNone && hud_.craftProc >= 0 &&
                     hud_.craftProc < int(shown_.craft.processes.size())) {
                     Json a = Json::object();
@@ -662,6 +675,8 @@ private:
                     a["slots"] = slots;
                     if (!hud_.craftShape.empty()) a["shape"] = hud_.craftShape;
                     if (!hud_.craftMode.empty()) a["mode"] = hud_.craftMode;
+                    if (hud_.craftHeat >= 0) a["heat"] = hud_.craftHeat;
+                    if (hud_.craftLen > 0) a["len"] = hud_.craftLen;
                     post({"cmd", 0, "craft_attempt", a});
                     hud_.craftSlots.clear();
                 }
@@ -891,24 +906,82 @@ private:
             auto def = w.content().items.find(item);
             if (n <= 0 || def == w.content().items.end() || def->second.material.empty()) continue;
             const craft::MaterialDef* m = d.material(def->second.material);
-            cs.materials.push_back({"inv:" + item, name("item", item), m ? m->shape : "", "", n, -1});
+            CraftThing t{"inv:" + item, name("item", item), m ? m->shape : "", "", n, -1};
+            t.icon = craftIcon("shape_icons", t.shape, "s_lump");
+            if (m)
+                for (const auto& tag : m->tags)
+                    if (craftUi()["material_icons"].contains(tag)) {
+                        t.icon = craftUi()["material_icons"][tag].get<std::string>();
+                        break;
+                    }
+            cs.materials.push_back(std::move(t));
         }
         for (size_t i = 0; i < c.craft.items.size(); ++i) {
             const craft::Item& it = c.craft.items[i];
             std::string note = text("craft.tier." + craft::qualityTier(d, it.q));
+            bool flawed = false;
             for (const auto& f : it.flaws)
-                if (f.revealed) note += ", " + text("flaw." + f.id + ".name") + "!";
+                if (f.revealed) {
+                    note += ", " + text("flaw." + f.id + ".name") + "!";
+                    flawed = true;
+                }
             if (it.wear > 0.05) note += ", " + text("hud.craft.worn", {{"n", int(it.wear * 100)}});
-            cs.made.push_back({"made:" + std::to_string(i), craftItemName(*loc_, L, d, it), it.shape, note, 1, it.q});
+            CraftThing t{"made:" + std::to_string(i), craftItemName(*loc_, L, d, it), it.shape, note, 1, it.q};
+            t.icon = craftIcon("shape_icons", it.shape, "s_lump");
+            t.wear = it.wear;
+            t.flawed = flawed;
+            cs.made.push_back(std::move(t));
         }
         const craft::Workplace wp = craftWorkplace(w, c);
         for (const auto& st : wp.stations)
             if (d.station(st)) cs.stations.push_back(text("station." + st + ".name"));
+        // where the stations stand (board 10: their gauges hang over them in the world)
+        for (const auto& st : wp.stations) {
+            const craft::StationDef* sd = d.station(st);
+            if (!sd) continue;
+            CraftStationSnap ss;
+            ss.id = st;
+            ss.name = text("station." + st + ".name");
+            ss.tempMax = sd->tempMax;
+            double best = 1e18;
+            for (const auto& [type, od] : w.content().objects) {
+                if (od.station != st) continue;
+                for (EntityId id : w.objectsOfType(type))
+                    if (const WorldObject* o = w.object(id)) {
+                        const double dd = dist(o->pos, c.pos);
+                        if (dd <= 12.0 && dd < best) {
+                            best = dd;
+                            ss.placed = true;
+                            ss.x = o->pos.x;
+                            ss.y = o->pos.y;
+                        }
+                    }
+            }
+            cs.heatMax = std::max(cs.heatMax, sd->tempMax);
+            cs.stationsAt.push_back(std::move(ss));
+        }
         for (const auto& pid : d.processOrder) {
             const craft::ProcessDef& p = d.processes.at(pid);
             CraftProcessSnap ps;
             ps.id = pid;
             ps.name = text("process." + pid + ".name");
+            ps.stations = p.stations;
+            ps.heatMin = p.heatMin;
+            ps.time = p.time;
+            if (!p.stations.empty()) {
+                bool any = false;
+                for (const auto& s : p.stations)
+                    if (std::find(wp.stations.begin(), wp.stations.end(), s) != wp.stations.end()) any = true;
+                if (!any) {
+                    ps.available = false;
+                    for (const auto& s : p.stations)
+                        ps.need += (ps.need.empty() ? "" : " / ") + text("station." + s + ".name");
+                }
+            }
+            if (ps.available && p.heatMin > 0 && cs.heatMax < p.heatMin) {
+                ps.available = false;
+                ps.need = text("hud.craft.need_heat", {{"n", p.heatMin}});
+            }
             for (const auto& sl : p.slots) ps.slots.push_back({sl.name, text("hud.craft.slot." + sl.name)});
             for (const auto& m : p.modes) ps.modes.push_back({m, text("process.mode." + m + ".name")});
             for (const auto& [from, tos] : p.shapeMap)
@@ -924,6 +997,17 @@ private:
             rs.known = r.knownCount();
             rs.total = int(r.steps.size());
             rs.master = r.master(d.cfg);
+            rs.successes = r.successes;
+            for (const auto& st : r.steps) {
+                rs.steps.push_back(st.step.process);
+                rs.stepKnown.push_back(st.known);
+            }
+            const craft::ChainPlan plan = fastCraftPlan(w, c, r.id);
+            rs.stages = plan.stages;
+            rs.time = plan.time;
+            rs.expectedQ = plan.expectedQ;
+            for (const auto& m : plan.missing) rs.missing.push_back(craftRefName(m));
+            for (const auto& s : plan.needStations) rs.missing.push_back(text("station." + s + ".name"));
             cs.recipes.push_back(std::move(rs));
         }
         // the draft's forecast (§9): blurred for a novice
@@ -935,8 +1019,18 @@ private:
                     cmd.slots[it.key()] = it.value().get<std::vector<std::string>>();
             cmd.target.shape = craftDraft_.value("shape", "");
             cmd.target.mode = craftDraft_.value("mode", "");
+            cmd.target.heat = craftDraft_.value("heat", -1);
+            cmd.target.len = craftDraft_.value("len", 0);
             const craft::Preview pv = craftPreview(w, c, cmd);
             cs.canStart = pv.canStart;
+            cs.expectedQ = pv.expectedQ;
+            cs.qSpread = pv.qSpread;
+            cs.pRuin = pv.pRuin;
+            cs.pFlaw = pv.pFlaw;
+            cs.certainty = pv.certainty;
+            cs.time = pv.time;
+            cs.likely = pv.likelyForm.empty() ? "" : text("form." + pv.likelyForm + ".name");
+            cs.tier = text("craft.tier." + craft::qualityTier(d, pv.expectedQ));
             if (pv.canStart) {
                 const std::string tier = text("craft.tier." + craft::qualityTier(d, pv.expectedQ));
                 const std::string likely = pv.likelyForm.empty()
@@ -963,7 +1057,182 @@ private:
                                                                                       {"stages", c.craft.lastArg}});
             cs.last = what.empty() ? head : text("hud.craft.last", {{"outcome", head}, {"what", what}});
             if (c.craft.lastBreakthrough_) cs.last += "  " + text("hud.craft.breakthrough");
+            // the result card (board 11) and the insight (board 13)
+            CraftResultSnap& rs = cs.result;
+            rs.seq = c.craft.lastSeq;
+            rs.code = c.craft.lastOutcome;
+            rs.head = head;
+            rs.what = what;
+            rs.made = c.craft.lastMade;
+            rs.started = c.craft.lastMade >= 0 || loc_->has(L, "craft.outcome." + c.craft.lastOutcome);
+            rs.breakthrough = c.craft.lastBreakthrough_;
+            rs.recipe = c.craft.lastRecipe;
+            if (const craft::Recipe* r = c.craft.book.find(rs.recipe))
+                rs.recipeName = !r->nameUser.empty() ? r->nameUser : !r->nameKey.empty() ? text(r->nameKey) : text("hud.craft.unnamed");
+            if (rs.made >= 0 && rs.made < int(c.craft.items.size())) {
+                const craft::Item& it = c.craft.items[size_t(rs.made)];
+                rs.q = it.q;
+                rs.tier = text("craft.tier." + craft::qualityTier(d, it.q));
+                for (const auto& t : it.trace) rs.links.push_back({text("process." + t.process + ".name"), t.q});
+                for (const auto& f : it.flaws)
+                    if (f.revealed) rs.flaws.push_back(text("flaw." + f.id + ".name"));
+            }
         }
+        craftCandidates(w, c, wp, cs);
+    }
+
+    // ---- the workshop's look (content/ui/craft.json) and the novice helper ----
+    const Json& craftUi() const {
+        if (craftUi_.is_null()) {
+            try {
+                craftUi_ = sim::loadJsonFile((fs::path(opts_.root) / "content/ui/craft.json").string());
+            } catch (const std::exception&) {
+                craftUi_ = Json::object();
+            }
+        }
+        return craftUi_;
+    }
+    std::string craftIcon(const char* map, const std::string& id, const char* fallback) const {
+        const Json& u = craftUi();
+        if (u.contains(map) && u[map].contains(id)) return u[map][id].get<std::string>();
+        return fallback;
+    }
+    // "mat:<id>", "form:<id>", "shape:<id>", "tag:<t>" as a name to show
+    std::string craftRefName(const std::string& ref) const {
+        const auto colon = ref.find(':');
+        if (colon == std::string::npos) return ref;
+        const std::string kind = ref.substr(0, colon), id = ref.substr(colon + 1);
+        const std::string& L = opts_.lang;
+        if (kind == "mat") {
+            if (loc_->has(L, "material." + id + ".name")) return text("material." + id + ".name");
+            for (const auto& [item, def] : world_->content().items)
+                if (def.material == id) return name("item", item);
+            return id;
+        }
+        if (kind == "form" || kind == "shape" || kind == "station") return text(kind + "." + id + ".name");
+        return id;
+    }
+
+    // The novice helper (board 10b, gdd crafting §17): the designs whose form
+    // answers the wish, how well they fit what the person has, the stations
+    // along their chain and the step that can be done now as a draft.
+    void craftCandidates(const World& w, const Character& c, const craft::Workplace& wp, CraftSnap& cs) const {
+        const auto& d = w.content().craft;
+        cs.wish = craftDraft_.value("wish", "");
+        if (cs.wish.empty()) return;
+        const Json& u = craftUi();
+        Json wish;
+        for (const auto& x : u.value("wishes", Json::array()))
+            if (x.value("id", "") == cs.wish) wish = x;
+        if (wish.is_null()) return;
+        const auto needs = wish.value("needs", std::vector<std::string>{});
+        const auto cats = wish.value("categories", std::vector<std::string>{});
+        auto has = [&](const std::vector<std::string>& v, const std::string& s) {
+            return std::find(v.begin(), v.end(), s) != v.end();
+        };
+        // what the person has, for resolving a step's inputs
+        auto invOf = [&](const std::string& mat) -> std::string {
+            for (const auto& [item, n] : c.inventory) {
+                if (n <= 0) continue;
+                auto def = w.content().items.find(item);
+                if (def != w.content().items.end() && def->second.material == mat) return item;
+            }
+            return "";
+        };
+        std::vector<CraftCandidate> all;
+        for (const auto& ds : d.designs) {
+            const craft::FormDef* f = d.form(ds.form);
+            if (!f) continue;
+            bool match = has(cats, f->category);
+            for (const auto& n : f->needs) {
+                const std::string k = n.key.substr(0, n.key.find('.'));
+                if (has(needs, n.key) || has(needs, k)) match = true;
+            }
+            if (!match) continue;
+            CraftCandidate cd;
+            cd.id = ds.id;
+            cd.name = text("form." + ds.form + ".name");
+            cd.icon = f->shape.empty() ? "s_lump" : craftIcon("shape_icons", f->shape.front(), "s_lump");
+            const craft::ChainPlan plan = designPlan(w, c, ds.id);
+            double fit = std::clamp(plan.expectedQ, 0.0, 1.0);
+            if (!plan.needStations.empty()) fit *= 0.6;
+            fit *= std::pow(0.75, double(std::min<size_t>(plan.missing.size(), 4)));
+            cd.fit = fit;
+            for (const auto& m : plan.missing) cd.missing.push_back(craftRefName(m));
+            // the chain along the stations; the first step the person can do now
+            std::vector<int> usedMade;
+            bool finished = false;
+            for (const auto& it : c.craft.items)
+                if (it.form == ds.form) finished = true;
+            for (size_t i = 0; i < ds.steps.size(); ++i) {
+                const craft::DesignStep& st = ds.steps[i];
+                std::string at;
+                if (const craft::ProcessDef* p = d.process(st.process)) {
+                    for (const auto& s : p->stations)
+                        if (std::find(wp.stations.begin(), wp.stations.end(), s) != wp.stations.end()) {
+                            at = s;
+                            break;
+                        }
+                    if (at.empty() && !p->stations.empty()) at = p->stations.front();
+                }
+                cd.steps.push_back({st.process, at});
+                if (finished || cd.next >= 0) continue;
+                // already made? (a stored piece of this step's shape)
+                bool made = false;
+                if (!st.shape.empty())
+                    for (const auto& it : c.craft.items)
+                        if (it.shape == st.shape) made = true;
+                if (made) continue;
+                Json slots = Json::object();
+                bool ok = true;
+                std::vector<int> taken;
+                for (const auto& [slot, ins] : st.slots) {
+                    Json refs = Json::array();
+                    for (const auto& in : ins) {
+                        const auto colon = in.ref.find(':');
+                        const std::string kind = in.ref.substr(0, colon), id = in.ref.substr(colon + 1);
+                        if (kind == "mat") {
+                            const std::string item = invOf(id);
+                            if (item.empty()) ok = false;
+                            for (int k = 0; k < in.count && ok; ++k) refs.push_back("inv:" + item);
+                        } else {
+                            // a made piece: step:<n> (1-based), form:<id>, shape:<id>
+                            std::string wantShape, wantForm;
+                            if (kind == "step") {
+                                const int n = std::atoi(id.c_str()) - 1;
+                                if (n >= 0 && n < int(ds.steps.size())) wantShape = ds.steps[size_t(n)].shape;
+                            } else if (kind == "form") wantForm = id;
+                            else if (kind == "shape") wantShape = id;
+                            int found = -1;
+                            for (size_t m = 0; m < c.craft.items.size() && found < 0; ++m) {
+                                if (std::find(taken.begin(), taken.end(), int(m)) != taken.end()) continue;
+                                const craft::Item& it = c.craft.items[m];
+                                if ((!wantShape.empty() && it.shape == wantShape) || (!wantForm.empty() && it.form == wantForm))
+                                    found = int(m);
+                            }
+                            if (found < 0) ok = false;
+                            else {
+                                taken.push_back(found);
+                                refs.push_back("made:" + std::to_string(found));
+                            }
+                        }
+                    }
+                    slots[slot] = refs;
+                }
+                if (!ok) continue;
+                cd.next = int(i);
+                cd.draft = {{"process", st.process}, {"slots", slots}};
+                if (!st.shape.empty()) cd.draft["shape"] = st.shape;
+                if (!st.mode.empty()) cd.draft["mode"] = st.mode;
+                if (st.len > 0) cd.draft["len"] = st.len;
+                if (st.heat >= 0) cd.draft["heat"] = st.heat;
+            }
+            all.push_back(std::move(cd));
+        }
+        std::stable_sort(all.begin(), all.end(), [](const CraftCandidate& a, const CraftCandidate& b) { return a.fit > b.fit; });
+        const size_t keep = size_t(std::max(1, u.value("helper_max", 3)));
+        if (all.size() > keep) all.resize(keep);
+        cs.candidates = std::move(all);
     }
 
     std::string name(const std::string& kind, const std::string& id) const {
@@ -2044,6 +2313,12 @@ private:
                y < viewH_ + 50;
     }
     double groundHeight(double x, double y) const override { return groundAt(originX_ + x, originY_ + y); }
+    bool groundToScreen(double simX, double simY, double up, float& x, float& y) const override {
+        const double wx = originX_ + simX, wy = originY_ + simY;
+        const double rx = wx - eye_[0], ry = wy - eye_[1];
+        if (rx * rx + ry * ry > 120.0 * 120.0) return false;
+        return project(rx, ry, groundAt(wx, wy) + up - eye_[2], x, y) && x > 0 && y > 0 && x < viewW_ && y < viewH_;
+    }
     double tickAlpha() const override {
         if (shown_.paused) return 1.0;
         const double since = std::chrono::duration<double>(Clock::now() - shown_.tickAt).count();
@@ -2056,6 +2331,7 @@ private:
     SDL_Window* window_;
     Json script_;
     Json craftDraft_ = Json::object();   // the workshop's attempt as the HUD has it (sim thread)
+    mutable Json craftUi_;               // content/ui/craft.json, read on first use
     std::size_t scriptStep_ = 0;
     double scriptClock_ = 0;
     std::string shotWanted_, shotPending_, panel_ = "none";

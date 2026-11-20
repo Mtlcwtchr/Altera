@@ -1,0 +1,20 @@
+﻿[
+ {"at": 2, "select": 0, "speed": 1},
+ {"at": 4, "craft_kit": true},
+ {"at": 7, "panel": "workshop"},
+ {"at": 9, "shot": "craft_ui_10_bench.png"},
+ {"at": 10, "craft_draft": {"process": "twist", "slots": {"work": ["inv:fiber_raw"]}, "shape": "strand"}},
+ {"at": 12, "mouse": [800, 420]},
+ {"at": 13, "shot": "craft_ui_10_draft.png"},
+ {"at": 14, "craft_try": true},
+ {"at": 17, "shot": "craft_ui_11_result.png"},
+ {"at": 18, "craft_close": true, "craft_wish": "cut", "craft_draft": {}},
+ {"at": 21, "shot": "craft_ui_10b_helper.png"},
+ {"at": 22, "craft_wish": "", "craft_tab": 1},
+ {"at": 24, "shot": "craft_ui_12_book.png"},
+ {"at": 25, "craft_tab": 2},
+ {"at": 27, "shot": "craft_ui_14_things.png"},
+ {"at": 28, "craft_tab": 3},
+ {"at": 30, "shot": "craft_ui_15_repair.png"},
+ {"at": 31, "quit": true}
+]

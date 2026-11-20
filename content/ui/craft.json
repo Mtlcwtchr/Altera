@@ -1,0 +1,50 @@
+{
+ "_doc": "The workshop's look (boards 10-15 of the design canvas, style G): icons of processes, stations, shapes and materials (assets/altera_game/ui/icons.json names), which stations carry a heat gauge, and the novice helper's wishes (board 10b): a wish matches a design whose form needs one of `needs` (forms.json needs keys) or is in one of `categories`. Read by src/game_view (hud.cpp, sim_game.cpp).",
+ "process_icons": {
+  "heat": "c_flame", "smelt": "c_smelt", "cut": "c_cut", "carve": "c_carve", "knap": "c_knap",
+  "hammer": "c_hammer", "quench": "c_drop", "link": "c_link", "grind": "c_grind", "mill": "c_mill",
+  "soak": "c_soak", "dry": "c_dry", "ferment": "c_ferment", "twist": "c_twist", "weave": "c_weave",
+  "sew": "c_sew", "join": "c_join", "mix": "c_mix", "mould": "c_mould", "tan": "c_tan",
+  "alloy": "c_alloy", "repair": "c_repair"
+ },
+ "station_icons": {
+  "campfire": "c_flame", "hearth": "c_flame", "oven": "c_flame", "forge": "c_flame", "furnace": "c_smelt",
+  "anvil": "c_anvil", "quench_tub": "c_drop", "grindstone": "c_grind", "bench": "c_bench", "loom": "c_loom",
+  "frame": "c_loom", "wheel": "c_wheel", "tub": "c_tub", "pot": "c_pot", "vat": "c_tub", "jar": "c_pot",
+  "barrel": "c_tub", "rack": "c_rack", "mortar": "c_mix", "tanning_pit": "c_tan", "quern": "c_quern"
+ },
+ "shape_icons": {
+  "lump": "s_lump", "powder": "s_lump", "liquid": "c_drop", "scrap": "s_lump", "log": "m_wood",
+  "strip": "s_cord", "fiber_raw": "s_cord", "withy": "s_cord", "hide": "m_hide", "bone": "m_bone",
+  "strand": "s_cord", "cord": "s_cord", "rope": "s_cord", "plank": "s_bar", "beam": "s_bar",
+  "stave": "s_rod", "handle": "s_rod", "shaft": "s_rod", "bow_stave": "s_rod", "bowl_raw": "s_vessel",
+  "vessel_raw": "s_vessel", "needle_blank": "s_rod", "bar": "s_bar", "bar_thin": "s_bar", "wire": "s_cord",
+  "nail": "s_rod", "rivet": "s_ring", "plate": "s_plate", "blank_blade": "s_blade", "blade": "s_blade",
+  "blank_head": "s_head", "sheet_metal": "s_plate", "blank_helm": "w_cover", "ring_mail": "s_ring",
+  "cloth": "s_cloth", "net": "s_cloth", "basket_raw": "s_vessel", "sheet": "s_cloth", "garment_raw": "s_cloth",
+  "padded_raw": "s_cloth", "armor_raw": "w_cover", "pouch_raw": "s_vessel", "boot_raw": "m_hide",
+  "brick_raw": "s_bar", "tile_raw": "s_plate", "candle_raw": "s_rod", "cask_raw": "s_vessel",
+  "whet_blank": "s_bar", "assembly": "c_join"
+ },
+ "_material_icons": "the first tag of a material (materials.json tags) found here gives its icon; else its shape's icon",
+ "material_icons": {
+  "ore": "m_ore", "metal_raw": "m_ore", "metal": "s_bar", "fuel": "m_coal", "wood": "m_wood",
+  "hide": "m_hide", "leather": "m_hide", "clay": "m_clay", "fiber": "m_wool", "wool": "m_wool",
+  "plant": "m_plant", "herb": "m_plant", "grain": "m_plant", "bone": "m_bone", "stone": "s_lump",
+  "food": "m_food", "meat": "m_food", "liquid": "c_drop", "resin": "c_drop", "earth": "m_clay",
+  "bark": "m_wood", "fruit": "m_plant", "flour": "m_food", "sap": "c_drop", "fat": "c_drop", "wax": "c_drop",
+  "mineral": "s_lump", "ash": "s_lump", "alcohol": "c_drop", "curd": "m_food"
+ },
+ "heat_steps": 4,
+ "wishes": [
+  {"id": "cut", "icon": "w_cut", "needs": ["edge"]},
+  {"id": "strike", "icon": "w_strike", "needs": ["blunt", "head_ratio"]},
+  {"id": "hold", "icon": "w_hold", "needs": ["capacity", "waterproof"], "categories": ["container"]},
+  {"id": "warm", "icon": "w_warm", "needs": ["warmth"], "categories": ["garment"]},
+  {"id": "cover", "icon": "w_cover", "needs": ["cover"], "categories": ["armor"]},
+  {"id": "bind", "icon": "w_bind", "needs": ["bind"], "categories": ["material"]},
+  {"id": "feed", "icon": "w_feed", "needs": ["food", "drink", "taste"], "categories": ["food", "drink"]},
+  {"id": "heal", "icon": "w_heal", "categories": ["medicine"]}
+ ],
+ "helper_max": 3
+}

@@ -299,6 +299,23 @@ craft::ChainPlan fastCraftPlan(const World& w, const Character& c, const std::st
     return plan;
 }
 
+craft::ChainPlan designPlan(const World& w, const Character& c, const std::string& designId) {
+    craft::ChainPlan plan;
+    const CraftData& d = w.content().craft;
+    const craft::DesignDef* def = d.design(designId);
+    if (!def) {
+        plan.ok = false;
+        plan.missing.push_back("design:" + designId);
+        return plan;
+    }
+    std::vector<std::string> origin;
+    std::vector<Item> pool = poolOf(w, c, origin);
+    ChainOpts o;
+    o.maxStages = d.cfg.fastCraftMaxStages;
+    const Recipe r = recipeFromDesign(d, *def, 0.0, true);
+    return planChain(d, r.steps, pool, craftActor(w, c), craftWorkplace(w, c), o);
+}
+
 CraftOutcome fastCraft(World& w, Character& c, const std::string& recipeId, int count) {
     CraftOutcome out;
     const CraftData& d = w.content().craft;
@@ -548,6 +565,8 @@ void note(Character& c, const CraftOutcome& o) {
     c.craft.lastArg = o.started ? o.reason : o.reasonArg;
     c.craft.lastMade = o.made;
     c.craft.lastBreakthrough_ = o.breakthrough;
+    c.craft.lastRecipe = o.recipe;
+    ++c.craft.lastSeq;
 }
 
 std::string resultOf(const CraftOutcome& o) {
