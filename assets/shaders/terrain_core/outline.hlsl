@@ -5,13 +5,13 @@
 // Depth is reversed and infinite (Camera::viewProjection): d = near / z, so the
 // distance along the view axis is near / d, and 0 is the sky.
 //   silhouette: a neighbour `width` pixels away is farther by more than
-//               `depthEdge` of this pixel's distance - the line sits on the
+//               `depthEdge` of this pixel's distance - the stroke sits on the
 //               near object, so it hugs the figure, not the ground behind;
 //   crease:     the second difference of distance across the pixel, relative
 //               to the distance - a fold in a cliff, a roof's ridge.
 // The hand-drawn part: the width breathes with a slow noise, the stroke wobbles
 // and breaks in small cells (`roughness`), and fades with distance down to
-// `farStrength`, so far ridges keep a thin line against the sky.
+// `farStrength`, so far ridges keep a thin stroke against the sky.
 
 Texture2D<float4> frame : register(t0, space2);
 Texture2D<float> sceneDepth : register(t1, space2);
@@ -21,7 +21,7 @@ SamplerState depthSampler : register(s1, space2);
 cbuffer Outline : register(b0, space3) {
     float2 source;        // the frame's size, pixels
     float nearPlane;
-    float width;          // line half-width, pixels
+    float width;          // stroke half-width, pixels
     float depthEdge;      // relative distance step that makes a silhouette
     float creaseEdge;     // relative second difference that makes a crease
     float creaseStrength;
@@ -30,7 +30,7 @@ cbuffer Outline : register(b0, space3) {
     float fadeEnd;        // metres: `farStrength` beyond this
     float farStrength;
     float roughness;      // 0: clean lines, 1: very broken and wobbly
-    float4 ink;           // rgb: the line's colour (sRGB-coded, as the frame), a: how much of the picture shows through
+    float4 ink;           // rgb: the stroke's colour (sRGB-coded, as the frame), a: how much of the picture shows through
 };
 
 struct VsOut {
@@ -74,7 +74,7 @@ float4 outlinePs(VsOut input) : SV_Target0 {
     const float r = max(0.75, width * breathe);
 
     const float z = distanceAt(uv);
-    if (z > 1e6) return float4(colour, 1);   // the sky draws no line of its own
+    if (z > 1e6) return float4(colour, 1);   // the sky draws no stroke of its own
 
     const float2 dx = float2(r * texel.x, 0), dy = float2(0, r * texel.y);
     const float zl = distanceAt(uv - dx), zr = distanceAt(uv + dx);
@@ -96,13 +96,13 @@ float4 outlinePs(VsOut input) : SV_Target0 {
     }
 
     const float near = 1.0 - saturate((z - fadeStart) / max(fadeEnd - fadeStart, 1.0));
-    float line = max(silhouette, crease) * lerp(farStrength, 1.0, near);
+    float stroke = max(silhouette, crease) * lerp(farStrength, 1.0, near);
     // Broken in small cells, the dry-brush part.
     const float gap = hash(floor(pixel / 2.0) + 7.7);
-    line *= lerp(1.0, 0.35 + 0.65 * step(roughness * 0.3, gap), roughness);
-    line = saturate(line * opacity);
+    stroke *= lerp(1.0, 0.35 + 0.65 * step(roughness * 0.3, gap), roughness);
+    stroke = saturate(stroke * opacity);
 
     // Ink darkens what is under it rather than painting over: a trace of the colour stays.
     const float3 inked = lerp(ink.rgb, colour * ink.rgb * 4.0, ink.a);
-    return float4(lerp(colour, min(inked, colour), line), 1);
+    return float4(lerp(colour, min(inked, colour), stroke), 1);
 }
