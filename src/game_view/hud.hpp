@@ -232,7 +232,6 @@ private:
     EntityId selected_ = sim::kNone, wheelTarget_ = sim::kNone, beastTarget_ = sim::kNone;
     float beastX_ = 0, beastY_ = 0;
     bool beastFresh_ = false;   // opened by this frame's click: that click does not close it
-    int controlsHint_ = 0;      // frames the keys hint has been shown
     int goalPick_ = -1;
     int pin_ = -1, hover_ = -1, sheetTab_ = 0, sphere_ = 0, sub_ = 0, tone_ = 1, annalsTab_ = 0, annalsFilter_ = 0;
     EntityId kinPick_ = sim::kNone;
