@@ -193,6 +193,37 @@ struct KnowledgeDef {
     bool familyKnowledge = false;  // candidate for a family secret (history generator)
 };
 
+// content/ai/expansion: the content expansion (gdd/content_expansion). The base files win on a
+// shared id; the expansion adds what is missing. Reference books (interests, attributes,
+// temperaments, calendar, social position) are kept as data for the core and the generator.
+struct InterestDef {
+    std::string id, category;
+    std::vector<std::string> skills, interactions, opposes;
+    std::map<std::string, double> goalMult, methodBias;
+    double weightInPool = 1.0;
+};
+struct TemperamentDef {
+    std::string id;
+    double weight = 1.0;
+    std::map<std::string, std::pair<double, double>> core, attrs; // ranges
+    std::map<std::string, double> traits;                         // trait -> chance
+    std::map<std::string, double> interestCategories;             // category -> weight
+    std::string speech;                                           // register
+};
+struct ExpansionData {
+    bool loaded = false;
+    std::vector<std::string> attributes, interestCategories, skillCategories;
+    std::map<std::string, InterestDef> interests;
+    std::map<std::string, TemperamentDef> temperaments;
+    std::map<std::string, Json> traitExt;     // extended trait fields (kind, skill_mult, attr_mod, ...)
+    std::map<std::string, Json> knowledgeExt; // category, attrs
+    Json skillModel = Json::object(), attributeModel = Json::object(), interestModel = Json::object(),
+         temperamentModel = Json::object(), calendar = Json::object(), socialPosition = Json::object();
+    std::vector<std::string> kept;   // ids that were already in the base files (base kept)
+    std::vector<std::string> errors; // merge problems (reported by validate)
+    int added = 0;
+};
+
 // --- Layer 1: Utility -------------------------------------------------------
 struct Curve {
     std::string type = "linear";
@@ -466,6 +497,7 @@ struct Content {
     CareDef care;
     craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)
     BuildCatalog build;
+    ExpansionData expansion; // content/ai/expansion (not loaded = none)
     const SpeciesDef* speciesOf(const std::string& id) const {
         auto it = species.find(id);
         return it == species.end() ? nullptr : &it->second;
@@ -498,6 +530,10 @@ struct ValidationReport {
 };
 
 ValidationReport validate(const Content& c);
+// Merges content/ai/<expDir> into the base JSON before parsing (base wins on a shared id).
+ExpansionData mergeExpansion(const std::string& expDir, Json& items, Json& objects, Json& needs, Json& traits,
+                             Json& htn, Json& interactions, Json& config, Json& knowledge);
+void validateExpansion(const Content& c, ValidationReport& r);
 BuildCatalog parseBuild(const Json& j);
 
 } // namespace altera::sim

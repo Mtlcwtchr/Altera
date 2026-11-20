@@ -1,0 +1,1771 @@
+{
+ "_doc": "Новые взаимодействия (_part: x). Только конфиги: без ассетов и анимаций. fsm — существующие состояния. Параметрические — goap:false. Формат interactions.json; файл подхватывается валидатором как interactions.part_*.json.",
+ "interactions": [
+  {
+   "id": "sing_song",
+   "category": "household",
+   "target": "self",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "skill:singing>=0.03"
+   ],
+   "eff": [
+    "need:fun+0.14",
+    "need:purpose+0.02",
+    "skill:singing+0.01",
+    "moodlet:sang_heartily"
+   ],
+   "social": {
+    "meaning": "culture"
+   },
+   "_part": "x",
+   "speech": []
+  },
+  {
+   "id": "whittle_toy",
+   "category": "work",
+   "target": "self",
+   "duration": 5,
+   "cost": 5,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:woodcutting",
+    "has:branch>=1"
+   ],
+   "eff": [
+    "has:branch-1",
+    "has:carved_toy+1",
+    "need:fun+0.12",
+    "skill:carpentry+0.008",
+    "moodlet:proud_of_work"
+   ],
+   "_doc": "простая поделка без рецептов; полноценный крафт — следующий этап",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "stargaze",
+   "category": "knowledge",
+   "target": "self",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Idle",
+   "legal": [],
+   "visibility": "private",
+   "pre": [
+    "time:night"
+   ],
+   "eff": [
+    "need:fun+0.06",
+    "need:purpose+0.07",
+    "skill:navigation+0.006",
+    "moodlet:awed_by_stars"
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "dance_alone",
+   "category": "household",
+   "target": "self",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "eff": [
+    "need:fun+0.15",
+    "body:fatigue+0.04",
+    "skill:dancing+0.008",
+    "moodlet:danced"
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "swim_for_fun",
+   "category": "household",
+   "target": "object:water",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "!age:elder"
+   ],
+   "eff": [
+    "need:fun+0.12",
+    "need:hygiene+0.2",
+    "body:fatigue+0.05",
+    "skill:swim+0.01",
+    "moodlet:refreshed"
+   ],
+   "risk": [
+    {
+     "id": "cramp_in_water",
+     "p": 0.01,
+     "eff": [
+      "body:health-0.1"
+     ]
+    }
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "sip_ale",
+   "category": "household",
+   "target": "object:ale_barrel",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "private",
+   "pre": [
+    "!age:child",
+    "target_stock:ale>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "target_stock:ale-1",
+    "need:thirst+0.35",
+    "need:hunger+0.04",
+    "need:fun+0.04",
+    "moodlet:tipsy"
+   ],
+   "_doc": "эль — повседневный напиток и калории; метод obtain_water drink_home_ale",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "read_omens",
+   "category": "faith",
+   "target": "object:shrine",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Pray",
+   "legal": [],
+   "visibility": "private",
+   "pre": [
+    "knows:faith"
+   ],
+   "eff": [
+    "need:purpose+0.1",
+    "skill:theology+0.006",
+    "moodlet:omen_read",
+    "memory:read_omen"
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "fast_for_gods",
+   "category": "faith",
+   "target": "self",
+   "duration": 24,
+   "cost": 24,
+   "fsm": "Pray",
+   "legal": [],
+   "visibility": "private",
+   "pre": [
+    "knows:faith",
+    "!age:child",
+    "need:hunger>=0.4",
+    "body:health>=0.5"
+   ],
+   "eff": [
+    "need:hunger-0.2",
+    "need:purpose+0.3",
+    "moodlet:fasted",
+    "reputation:piety+0.02",
+    "memory:fasted"
+   ],
+   "_doc": "добровольный пост сверх обязательного календарного (data/calendar.json)",
+   "risk": [
+    {
+     "id": "overdone_fast",
+     "p": 0.04,
+     "eff": [
+      "body:health-0.1"
+     ]
+    }
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "tidy_house",
+   "category": "household",
+   "target": "object:house",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "target_owner:family"
+   ],
+   "eff": [
+    "skill:housekeeping+0.01",
+    "need:purpose+0.03",
+    "moodlet:tidy_home",
+    "body:fatigue+0.03"
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "take_inventory",
+   "category": "household",
+   "target": "object:storage",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "private",
+   "pre": [
+    "target_owner:family"
+   ],
+   "eff": [
+    "skill:arithmetic+0.006",
+    "need:purpose+0.02"
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "catch_fish",
+   "category": "work",
+   "target": "object:fish_pool",
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:fishing",
+    "target_stock:fish>=1"
+   ],
+   "eff": [
+    "has:fish+1",
+    "target_stock:fish-1",
+    "skill:fishing+0.012",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "chance": {
+    "base": 0.4,
+    "skill": "fishing",
+    "per_skill": 0.55,
+    "min": 0.1,
+    "max": 0.95
+   },
+   "on_fail": [
+    "skill:fishing+0.004",
+    "body:fatigue+0.02"
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "grill_and_eat_fish",
+   "category": "household",
+   "target": "object:campfire",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Eat",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:cooking",
+    "has:fish>=1"
+   ],
+   "eff": [
+    "has:fish-1",
+    "need:hunger+0.35",
+    "moodlet:ate_meal",
+    "skill:cooking+0.005"
+   ],
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "gather_wild_seeds",
+   "category": "work",
+   "target": "object:wild_grass",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "target_stock:seeds>=1"
+   ],
+   "eff": [
+    "has:seeds+3",
+    "target_stock:seeds-3",
+    "skill:foraging+0.005"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "cut_hay",
+   "category": "work",
+   "target": "object:wild_grass",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "target_stock:hay>=1"
+   ],
+   "eff": [
+    "has:hay+3",
+    "target_stock:hay-3",
+    "skill:farming+0.006",
+    "body:fatigue+0.06"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "sow_field",
+   "category": "work",
+   "target": "object:field",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:farming",
+    "has:seeds>=2",
+    "target_owner:family",
+    "target_stock:grain<4"
+   ],
+   "eff": [
+    "has:seeds-2",
+    "target_stock:grain+6",
+    "skill:farming+0.012",
+    "body:fatigue+0.06"
+   ],
+   "reserve": true,
+   "goap": true,
+   "_doc": "зерно созревает не сразу (grow_ticks — предложение коду)",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "harvest_field",
+   "category": "work",
+   "target": "object:field",
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:farming",
+    "target_stock:grain>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:sheaf+3",
+    "target_stock:grain-3",
+    "skill:farming+0.014",
+    "body:fatigue+0.08"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "weed_field",
+   "category": "work",
+   "target": "object:field",
+   "duration": 5,
+   "cost": 5,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:farming",
+    "target_owner:family"
+   ],
+   "eff": [
+    "target_stock:grain+1",
+    "skill:farming+0.006",
+    "body:fatigue+0.05"
+   ],
+   "reserve": true,
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "milk_animal",
+   "category": "work",
+   "target": "object:livestock_pen",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:animal_husbandry",
+    "target_stock:milk>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:milk+1",
+    "target_stock:milk-1",
+    "skill:animal_husbandry+0.008"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "risk": [
+    {
+     "id": "kicked_by_beast",
+     "p": 0.03,
+     "eff": [
+      "body:health-0.05",
+      "moodlet:irritated"
+     ]
+    }
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "shear_sheep",
+   "category": "work",
+   "target": "object:livestock_pen",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:animal_husbandry",
+    "target_stock:wool>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:wool+1",
+    "target_stock:wool-1",
+    "skill:animal_husbandry+0.01",
+    "body:fatigue+0.05"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "collect_eggs",
+   "category": "work",
+   "target": "object:livestock_pen",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "target_stock:egg>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:egg+2",
+    "target_stock:egg-2",
+    "skill:animal_husbandry+0.003"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "feed_livestock",
+   "category": "work",
+   "target": "object:livestock_pen",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "has:hay>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:hay-1",
+    "target_stock:milk+1",
+    "target_stock:egg+1",
+    "skill:animal_husbandry+0.006"
+   ],
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "gather_honey",
+   "category": "work",
+   "target": "object:bee_tree",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:beekeeping",
+    "target_stock:honey>=1"
+   ],
+   "eff": [
+    "has:honey+1",
+    "target_stock:honey-1",
+    "skill:beekeeping+0.012"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "chance": {
+    "base": 0.5,
+    "skill": "beekeeping",
+    "per_skill": 0.4,
+    "min": 0.15,
+    "max": 0.95
+   },
+   "on_fail": [
+    "moodlet:stung_by_bees",
+    "body:health-0.04"
+   ],
+   "risk": [
+    {
+     "id": "bee_stings",
+     "p": 0.1,
+     "eff": [
+      "moodlet:stung_by_bees"
+     ]
+    }
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "quarry_stone",
+   "category": "work",
+   "target": "object:rock_outcrop",
+   "duration": 10,
+   "cost": 10,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:mining",
+    "target_stock:stone>=1"
+   ],
+   "eff": [
+    "has:stone+3",
+    "target_stock:stone-3",
+    "skill:mining+0.012",
+    "body:fatigue+0.12"
+   ],
+   "from_target": true,
+   "reserve": true,
+   "goap": true,
+   "risk": [
+    {
+     "id": "quarry_accident",
+     "p": 0.015,
+     "eff": [
+      "body:health-0.15",
+      "moodlet:injured"
+     ]
+    }
+   ],
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "trap_small_game",
+   "category": "work",
+   "target": "object:game_trail",
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:trapping",
+    "has:cord>=1"
+   ],
+   "eff": [
+    "has:cord-1",
+    "has:meat+1",
+    "skill:trapping+0.012"
+   ],
+   "goap": true,
+   "chance": {
+    "base": 0.3,
+    "skill": "trapping",
+    "per_skill": 0.6,
+    "min": 0.1,
+    "max": 0.9
+   },
+   "on_fail": [
+    "has:cord-1",
+    "skill:trapping+0.005"
+   ],
+   "_doc": "добыча мелкой дичи без объекта-запаса: упрощение",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "practice_weapon",
+   "category": "violence",
+   "target": "object:training_dummy",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "params": {
+    "skill": {
+     "type": "skill",
+     "of": [
+      "swordsmanship",
+      "axe_mace",
+      "polearms",
+      "daggers",
+      "shield_use",
+      "brawling",
+      "combat"
+     ]
+    }
+   },
+   "pre": [
+    "knows:$skill",
+    "!age:child",
+    "body:health>=0.5"
+   ],
+   "eff": [
+    "skill:$skill+0.015",
+    "skill:combat+0.004",
+    "body:fatigue+0.09",
+    "moodlet:sore_muscles"
+   ],
+   "goap": false,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "practice_archery",
+   "category": "violence",
+   "target": "object:archery_butts",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:archery",
+    "!age:child"
+   ],
+   "eff": [
+    "skill:archery+0.014",
+    "body:fatigue+0.06",
+    "need:fun+0.04"
+   ],
+   "goap": false,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "dance_together",
+   "category": "social",
+   "target": "character",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "rel:affinity>=0.1",
+    "!t.age:child"
+   ],
+   "eff": [
+    "need:fun+0.2",
+    "t.need:fun+0.2",
+    "rel_back:affinity+0.05",
+    "skill:dancing+0.01",
+    "moodlet:danced",
+    "t.moodlet:danced",
+    "memory:danced"
+   ],
+   "consent": "target",
+   "social": {
+    "meaning": "celebration"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "accept"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "wrestle_for_fun",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "!age:child",
+    "!t.age:child",
+    "rel:enmity<0.5",
+    "body:health>=0.6"
+   ],
+   "consent": "target",
+   "chance": {
+    "base": 0.5,
+    "skill": "brawling",
+    "per_skill": 0.35,
+    "min": 0.15,
+    "max": 0.85
+   },
+   "eff": [
+    "need:fun+0.15",
+    "rel_back:respect+0.05",
+    "skill:brawling+0.012",
+    "body:fatigue+0.08",
+    "moodlet:won_contest",
+    "t.moodlet:lost_contest",
+    "memory:won_contest"
+   ],
+   "on_fail": [
+    "need:fun+0.1",
+    "rel_back:respect+0.02",
+    "skill:brawling+0.008",
+    "body:fatigue+0.08",
+    "moodlet:lost_contest",
+    "t.moodlet:won_contest"
+   ],
+   "risk": [
+    {
+     "id": "sprain",
+     "p": 0.02,
+     "eff": [
+      "body:health-0.08"
+     ]
+    }
+   ],
+   "social": {
+    "meaning": "contest"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "accept",
+    "refuse"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "foot_race",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "!age:elder",
+    "!t.age:elder",
+    "body:health>=0.6"
+   ],
+   "consent": "target",
+   "chance": {
+    "base": 0.5,
+    "skill": "athletics",
+    "per_skill": 0.35,
+    "min": 0.15,
+    "max": 0.85
+   },
+   "eff": [
+    "need:fun+0.14",
+    "rel_back:respect+0.04",
+    "skill:athletics+0.01",
+    "body:fatigue+0.07",
+    "moodlet:won_contest",
+    "t.moodlet:lost_contest"
+   ],
+   "on_fail": [
+    "need:fun+0.09",
+    "skill:athletics+0.006",
+    "body:fatigue+0.07",
+    "moodlet:lost_contest",
+    "t.moodlet:won_contest"
+   ],
+   "social": {
+    "meaning": "contest"
+   },
+   "speech": [
+    "offer",
+    "accept",
+    "refuse"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "play_dice",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [
+    "gambling"
+   ],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "!age:child"
+   ],
+   "consent": "target",
+   "chance": {
+    "base": 0.5,
+    "skill": "games",
+    "per_skill": 0.2,
+    "min": 0.3,
+    "max": 0.7
+   },
+   "eff": [
+    "need:fun+0.12",
+    "need:social+0.04",
+    "skill:games+0.006",
+    "moodlet:won_game",
+    "t.moodlet:lost_game",
+    "memory:played_game"
+   ],
+   "on_fail": [
+    "need:fun+0.08",
+    "need:social+0.04",
+    "skill:games+0.004",
+    "moodlet:lost_game",
+    "t.moodlet:won_game"
+   ],
+   "social": {
+    "meaning": "play"
+   },
+   "speech": [
+    "offer",
+    "accept",
+    "refuse"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "play_tafl",
+   "category": "social",
+   "target": "character",
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "!age:child",
+    "skill:games>=0.1"
+   ],
+   "consent": "target",
+   "chance": {
+    "base": 0.45,
+    "skill": "games",
+    "per_skill": 0.45,
+    "min": 0.1,
+    "max": 0.9
+   },
+   "eff": [
+    "need:fun+0.14",
+    "need:social+0.06",
+    "skill:games+0.012",
+    "rel_back:respect+0.04",
+    "moodlet:won_game",
+    "t.moodlet:lost_game"
+   ],
+   "on_fail": [
+    "need:fun+0.1",
+    "need:social+0.06",
+    "skill:games+0.01",
+    "moodlet:lost_game",
+    "t.moodlet:won_game"
+   ],
+   "social": {
+    "meaning": "play"
+   },
+   "speech": [
+    "offer",
+    "accept",
+    "refuse"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "riddle_contest",
+   "category": "social",
+   "target": "character",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "!age:child"
+   ],
+   "consent": "target",
+   "chance": {
+    "base": 0.5,
+    "skill": "history_lore",
+    "per_skill": 0.3,
+    "min": 0.2,
+    "max": 0.8
+   },
+   "eff": [
+    "need:fun+0.1",
+    "need:social+0.05",
+    "rel_back:respect+0.04",
+    "t.moodlet:amazed"
+   ],
+   "on_fail": [
+    "need:fun+0.07",
+    "need:social+0.05"
+   ],
+   "social": {
+    "meaning": "play"
+   },
+   "speech": [
+    "offer",
+    "ask",
+    "accept"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "sing_together",
+   "category": "social",
+   "target": "character",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "skill:singing>=0.03"
+   ],
+   "eff": [
+    "need:fun+0.12",
+    "need:social+0.1",
+    "t.need:fun+0.12",
+    "t.need:social+0.1",
+    "rel_back:affinity+0.05",
+    "skill:singing+0.01",
+    "moodlet:sang_together",
+    "t.moodlet:sang_together",
+    "memory:sang_together"
+   ],
+   "consent": "target",
+   "social": {
+    "meaning": "culture"
+   },
+   "speech": [
+    "offer",
+    "accept"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "recite_poem",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "skill:poetry>=0.1"
+   ],
+   "chance": {
+    "base": 0.45,
+    "skill": "poetry",
+    "per_skill": 0.5,
+    "min": 0.1,
+    "max": 0.95
+   },
+   "eff": [
+    "need:purpose+0.04",
+    "skill:poetry+0.01",
+    "rel_back:respect+0.04",
+    "t.moodlet:moved",
+    "reputation:notoriety+0.005"
+   ],
+   "on_fail": [
+    "skill:poetry+0.005",
+    "moodlet:embarrassed"
+   ],
+   "social": {
+    "meaning": "culture"
+   },
+   "speech": [
+    "offer",
+    "accept"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "toast_health",
+   "category": "social",
+   "target": "character",
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "!age:child",
+    "!t.age:child"
+   ],
+   "eff": [
+    "need:social+0.05",
+    "t.need:social+0.05",
+    "rel_back:affinity+0.03",
+    "moodlet:merry",
+    "t.moodlet:merry"
+   ],
+   "social": {
+    "meaning": "celebration"
+   },
+   "speech": [
+    "praise",
+    "offer"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "recite_lineage",
+   "category": "knowledge",
+   "target": "character",
+   "duration": 5,
+   "cost": 5,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "skill:history_lore>=0.15"
+   ],
+   "eff": [
+    "need:purpose+0.04",
+    "skill:history_lore+0.006",
+    "rel_back:respect+0.03",
+    "t.skill:history_lore+0.004"
+   ],
+   "social": {
+    "meaning": "culture"
+   },
+   "speech": [
+    "inform",
+    "offer"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "teach_skill",
+   "category": "knowledge",
+   "target": "character",
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "params": {
+    "skill": {
+     "type": "skill",
+     "of": [
+      "foraging",
+      "firemaking",
+      "cooking",
+      "knapping",
+      "fiber_working",
+      "woodcutting",
+      "sewing",
+      "hunting",
+      "herbalism",
+      "storytelling",
+      "farming",
+      "animal_husbandry",
+      "fishing",
+      "trapping",
+      "mining",
+      "carpentry",
+      "masonry",
+      "smithing",
+      "tanning",
+      "pottery",
+      "basketry",
+      "brewing",
+      "baking",
+      "butchery",
+      "combat",
+      "swordsmanship",
+      "axe_mace",
+      "polearms",
+      "daggers",
+      "archery",
+      "brawling",
+      "shield_use",
+      "athletics",
+      "swim",
+      "stealth",
+      "dancing",
+      "persuasion",
+      "trade",
+      "literacy",
+      "arithmetic",
+      "music",
+      "singing",
+      "poetry",
+      "games",
+      "navigation",
+      "housekeeping",
+      "childcare",
+      "plough_team",
+      "threshing",
+      "thatching",
+      "milling",
+      "shepherding",
+      "weights_measures",
+      "fletching"
+     ]
+    }
+   },
+   "pre": [
+    "skill:$skill>=0.4",
+    "t.skill:$skill<0.4",
+    "!t.age:child"
+   ],
+   "chance": {
+    "base": 0.4,
+    "skill": "$skill",
+    "per_skill": 0.5,
+    "min": 0.2,
+    "max": 0.9
+   },
+   "eff": [
+    "t.skill:$skill+0.05",
+    "t.moodlet:proud_of_work",
+    "rel_back:respect+0.05",
+    "need:purpose+0.04"
+   ],
+   "on_fail": [
+    "t.skill:$skill+0.01",
+    "rel_back:respect-0.01"
+   ],
+   "social": {
+    "meaning": "teaching"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "accept",
+    "refuse"
+   ],
+   "consent": "target",
+   "_part": "x"
+  },
+  {
+   "id": "calm_down",
+   "category": "social",
+   "target": "character",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "rel:affinity>=-0.2"
+   ],
+   "chance": {
+    "base": 0.5,
+    "skill": "persuasion",
+    "per_skill": 0.4,
+    "min": 0.15,
+    "max": 0.9
+   },
+   "eff": [
+    "t.moodlet:calmed",
+    "rel_back:trust+0.03",
+    "rel_back:enmity-0.03",
+    "skill:persuasion+0.004"
+   ],
+   "on_fail": [
+    "moodlet:irritated",
+    "rel_back:affinity-0.02"
+   ],
+   "social": {
+    "meaning": "support"
+   },
+   "speech": [
+    "persuade",
+    "offer"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "boast",
+   "category": "social",
+   "target": "character",
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "chance": {
+    "base": 0.4,
+    "skill": "persuasion",
+    "per_skill": 0.3,
+    "min": 0.1,
+    "max": 0.8
+   },
+   "eff": [
+    "reputation:valor+0.01",
+    "need:purpose+0.03",
+    "t.moodlet:amazed"
+   ],
+   "on_fail": [
+    "reputation:honesty-0.01",
+    "t.moodlet:irritated",
+    "rel_back:respect-0.02"
+   ],
+   "social": {
+    "meaning": "status"
+   },
+   "speech": [
+    "inform"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "serenade",
+   "category": "social",
+   "target": "character",
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "rel:attraction>=0.1",
+    "skill:singing>=0.1",
+    "time:night",
+    "!t.age:child"
+   ],
+   "chance": {
+    "base": 0.4,
+    "skill": "singing",
+    "per_skill": 0.5,
+    "min": 0.1,
+    "max": 0.9
+   },
+   "eff": [
+    "rel_back:attraction+0.07",
+    "skill:singing+0.01",
+    "t.moodlet:flattered",
+    "memory:sang_together"
+   ],
+   "on_fail": [
+    "moodlet:embarrassed",
+    "rel_back:respect-0.01"
+   ],
+   "social": {
+    "meaning": "courtship"
+   },
+   "speech": [
+    "offer"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "confide",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "private",
+   "goap": false,
+   "pre": [
+    "rel:trust>=0.3"
+   ],
+   "eff": [
+    "need:social+0.1",
+    "rel_back:trust+0.05",
+    "rel_back:affinity+0.04",
+    "moodlet:confided_in",
+    "t.moodlet:confided_in",
+    "memory:confided"
+   ],
+   "consent": "target",
+   "social": {
+    "meaning": "intimacy"
+   },
+   "speech": [
+    "inform",
+    "confess"
+   ],
+   "_part": "x"
+  },
+  {
+   "id": "eavesdrop",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Idle",
+   "legal": [
+    "trespass"
+   ],
+   "visibility": "secret",
+   "goap": false,
+   "pre": [
+    "skill:stealth>=0.05"
+   ],
+   "chance": {
+    "base": 0.5,
+    "skill": "stealth",
+    "per_skill": 0.45,
+    "min": 0.1,
+    "max": 0.9
+   },
+   "eff": [
+    "memory:overheard",
+    "skill:stealth+0.008"
+   ],
+   "on_fail": [
+    "rel_back:trust-0.1",
+    "rel_back:enmity+0.04",
+    "moodlet:embarrassed"
+   ],
+   "social": {
+    "meaning": "intrusion"
+   },
+   "_part": "x",
+   "speech": []
+  },
+  {
+   "id": "play_with_child",
+   "category": "family",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "t.age:child",
+    "!age:child"
+   ],
+   "eff": [
+    "need:fun+0.1",
+    "t.need:fun+0.2",
+    "rel_back:affinity+0.05",
+    "skill:childcare+0.008",
+    "moodlet:had_fun"
+   ],
+   "social": {
+    "meaning": "care"
+   },
+   "_part": "x",
+   "speech": []
+  },
+  {
+   "id": "sing_lullaby",
+   "category": "family",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "t.age:child",
+    "skill:singing>=0.03"
+   ],
+   "eff": [
+    "t.need:energy+0.1",
+    "t.moodlet:soothed",
+    "rel_back:trust+0.03",
+    "skill:singing+0.006",
+    "skill:childcare+0.006"
+   ],
+   "social": {
+    "meaning": "care"
+   },
+   "_part": "x",
+   "speech": []
+  },
+  {
+   "id": "scold_child",
+   "category": "family",
+   "target": "character",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "t.age:child",
+    "!age:child"
+   ],
+   "eff": [
+    "t.moodlet:scolded",
+    "rel_back:affinity-0.03",
+    "rel_back:respect+0.02",
+    "skill:childcare+0.004",
+    "memory:scolded_child"
+   ],
+   "social": {
+    "meaning": "discipline"
+   },
+   "_part": "x",
+   "speech": []
+  },
+  {
+   "id": "graze_flock_on_commons",
+   "category": "work",
+   "target": "object:wild_grass",
+   "duration": 12,
+   "cost": 12,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:animal_husbandry"
+   ],
+   "eff": [
+    "skill:shepherding+0.01",
+    "skill:animal_husbandry+0.004",
+    "need:purpose+0.03",
+    "body:fatigue+0.05"
+   ],
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "thresh_grain",
+   "category": "work",
+   "target": "self",
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:farming",
+    "has:sheaf>=3"
+   ],
+   "eff": [
+    "has:sheaf-3",
+    "has:grain+3",
+    "has:seeds+1",
+    "skill:threshing+0.014",
+    "body:fatigue+0.08"
+   ],
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "grind_grain_at_mill",
+   "category": "work",
+   "target": "object:mill",
+   "duration": 5,
+   "cost": 5,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "has:grain>=3"
+   ],
+   "eff": [
+    "has:grain-3",
+    "has:flour+2",
+    "skill:milling+0.01",
+    "need:social+0.02"
+   ],
+   "goap": true,
+   "_doc": "2 из 3: 1/3 — плата мельнику (помольный сбор)",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "bake_loaf_in_common_oven",
+   "category": "household",
+   "target": "object:common_oven",
+   "duration": 6,
+   "cost": 6,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:baking",
+    "has:flour>=2"
+   ],
+   "eff": [
+    "has:flour-2",
+    "has:loaf+2",
+    "skill:baking+0.01",
+    "need:social+0.02"
+   ],
+   "goap": true,
+   "_doc": "общая печь — место встречи; позже: плата за печь (оброк)",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "eat_loaf",
+   "category": "household",
+   "target": "self",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Eat",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "has:loaf>=1"
+   ],
+   "eff": [
+    "has:loaf-1",
+    "need:hunger+0.3",
+    "moodlet:ate_meal"
+   ],
+   "goap": true,
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "pay_tithe",
+   "category": "faith",
+   "target": "object:shrine",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Interact",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "has:sheaf>=1"
+   ],
+   "eff": [
+    "has:sheaf-1",
+    "reputation:piety+0.01",
+    "need:purpose+0.02",
+    "moodlet:prayed"
+   ],
+   "goap": true,
+   "_doc": "повинность: церковный сбор; нарушение даёт давление общины (calendar.json)",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "keep_watch",
+   "category": "politics",
+   "target": "self",
+   "duration": 12,
+   "cost": 12,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "!age:child",
+    "!age:elder"
+   ],
+   "eff": [
+    "reputation:valor+0.005",
+    "need:purpose+0.03",
+    "body:fatigue+0.08"
+   ],
+   "goap": false,
+   "_doc": "общинная повинность по очереди; назначает староста",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "go_on_pilgrimage",
+   "category": "faith",
+   "target": "self",
+   "duration": 72,
+   "cost": 72,
+   "fsm": "Move",
+   "legal": [],
+   "visibility": "public",
+   "pre": [
+    "knows:faith",
+    "!age:child",
+    "body:health>=0.5"
+   ],
+   "eff": [
+    "need:purpose+0.4",
+    "moodlet:blessed",
+    "reputation:piety+0.05",
+    "body:fatigue+0.25",
+    "memory:rite"
+   ],
+   "goap": false,
+   "risk": [
+    {
+     "id": "road_peril",
+     "p": 0.03,
+     "eff": [
+      "body:health-0.15"
+     ]
+    }
+   ],
+   "_doc": "дальняя дорога; ИИ выбирает через образ жизни pilgrim",
+   "_part": "x",
+   "social": null,
+   "speech": []
+  },
+  {
+   "id": "stand_surety",
+   "category": "politics",
+   "target": "character",
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "rel:trust>=0.3"
+   ],
+   "eff": [
+    "commitment:promise",
+    "rel_back:trust+0.05",
+    "reputation:generosity+0.01"
+   ],
+   "consent": "target",
+   "social": {
+    "meaning": "support"
+   },
+   "speech": [
+    "promise",
+    "offer"
+   ],
+   "_doc": "круговая порука: поручитель отвечает, если подопечный нарушил",
+   "_part": "x"
+  },
+  {
+   "id": "give_counsel",
+   "category": "social",
+   "target": "character",
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Talk",
+   "legal": [],
+   "visibility": "public",
+   "goap": false,
+   "pre": [
+    "skill:history_lore>=0.1"
+   ],
+   "eff": [
+    "rel_back:respect+0.03",
+    "t.need:purpose+0.04",
+    "skill:history_lore+0.003"
+   ],
+   "social": {
+    "meaning": "support"
+   },
+   "speech": [
+    "inform",
+    "persuade"
+   ],
+   "_part": "x"
+  }
+ ]
+}

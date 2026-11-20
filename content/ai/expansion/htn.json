@@ -1,0 +1,175 @@
+{
+ "_doc": "Методы HTN, которые нужно ДОБАВИТЬ к существующим задачам (task → methods). Новых задач нет.",
+ "add_methods": {
+  "have_fun_task": [
+   {
+    "id": "fun_sing",
+    "pre": [
+     "skill:singing>=0.03"
+    ],
+    "cost": 2,
+    "steps": [
+     {
+      "do": "sing_song"
+     }
+    ]
+   },
+   {
+    "id": "fun_whittle",
+    "pre": [
+     "knows:woodcutting",
+     "known:deadwood"
+    ],
+    "cost": 5,
+    "steps": [
+     {
+      "achieve": [
+       "has:branch>=1"
+      ],
+      "allow": [
+       "gather_branches"
+      ]
+     },
+     {
+      "do": "whittle_toy"
+     }
+    ]
+   },
+   {
+    "id": "fun_stargaze",
+    "pre": [
+     "time:night"
+    ],
+    "cost": 2,
+    "steps": [
+     {
+      "do": "stargaze"
+     }
+    ]
+   },
+   {
+    "id": "fun_dance_alone",
+    "pre": [
+     "!age:elder"
+    ],
+    "cost": 7,
+    "steps": [
+     {
+      "do": "dance_alone"
+     }
+    ]
+   },
+   {
+    "id": "fun_swim",
+    "pre": [
+     "known:water",
+     "!time:night"
+    ],
+    "cost": 7,
+    "steps": [
+     {
+      "do": "swim_for_fun"
+     }
+    ]
+   },
+   {
+    "id": "fun_sip_ale",
+    "pre": [
+     "known:ale_barrel",
+     "!age:child"
+    ],
+    "cost": 3,
+    "steps": [
+     {
+      "do": "sip_ale"
+     }
+    ]
+   }
+  ],
+  "obtain_food": [
+   {
+    "id": "fish_and_grill",
+    "pre": [
+     "knows:fishing",
+     "knows:cooking",
+     "knows:firemaking",
+     "known:fish_pool",
+     "known:riverbank",
+     "known:deadwood"
+    ],
+    "cost": 9,
+    "steps": [
+     {
+      "achieve": [
+       "has:fish>=1"
+      ],
+      "allow": [
+       "catch_fish"
+      ]
+     },
+     {
+      "achieve": [
+       "has:stone>=4",
+       "has:firewood>=3"
+      ]
+     },
+     {
+      "do": "build_campfire"
+     },
+     {
+      "do": "grill_and_eat_fish"
+     }
+    ]
+   }
+  ],
+  "obtain_water": [
+   {
+    "id": "drink_home_ale",
+    "pre": [
+     "known:ale_barrel"
+    ],
+    "cost": 3,
+    "steps": [
+     {
+      "do": "sip_ale"
+     }
+    ]
+   }
+  ],
+  "pray_task": [
+   {
+    "id": "pay_tithe_m",
+    "pre": [
+     "known:shrine"
+    ],
+    "cost": 3,
+    "steps": [
+     {
+      "achieve": [
+       "has:sheaf>=1"
+      ],
+      "allow": [
+       "harvest_field"
+      ]
+     },
+     {
+      "do": "pay_tithe"
+     }
+    ]
+   },
+   {
+    "id": "pray_read_omens",
+    "pre": [
+     "knows:faith",
+     "known:shrine"
+    ],
+    "cost": 2,
+    "steps": [
+     {
+      "do": "read_omens"
+     }
+    ]
+   }
+  ]
+ }
+}

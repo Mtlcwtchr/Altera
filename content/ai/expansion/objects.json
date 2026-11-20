@@ -1,0 +1,188 @@
+{
+ "objects": [
+  {
+   "id": "fish_pool",
+   "stock": {
+    "fish": 6
+   },
+   "regrow": {
+    "fish": 1
+   },
+   "regrow_every": 72,
+   "max_stock": {
+    "fish": 6
+   },
+   "biomes": [
+    "marsh",
+    "meadow"
+   ],
+   "per_km2": 3,
+   "owned": false,
+   "_doc": "заводь, омут, затон у реки; рыба возобновляется"
+  },
+  {
+   "id": "wild_grass",
+   "stock": {
+    "seeds": 6,
+    "hay": 8
+   },
+   "regrow": {
+    "seeds": 2,
+    "hay": 2
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "seeds": 6,
+    "hay": 8
+   },
+   "biomes": [
+    "meadow"
+   ],
+   "per_km2": 8,
+   "owned": false,
+   "season": [
+    "summer",
+    "autumn"
+   ],
+   "_doc": "луговое разнотравье: семена и сено"
+  },
+  {
+   "id": "field",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "stock": {
+    "grain": 0
+   },
+   "max_stock": {
+    "grain": 12
+   },
+   "_doc": "пашня семьи; сев кладёт зерно в target_stock. В коре: поле «зреет» grow_ticks (предложение), до этого собрать нельзя"
+  },
+  {
+   "id": "livestock_pen",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "stock": {
+    "milk": 2,
+    "wool": 2,
+    "egg": 3
+   },
+   "regrow": {
+    "milk": 1,
+    "egg": 1,
+    "wool": 1
+   },
+   "regrow_every": 72,
+   "max_stock": {
+    "milk": 4,
+    "wool": 4,
+    "egg": 6
+   },
+   "_doc": "загон со скотом; сами животные — заглушка (как объект), позже — персонажи по ecology.json"
+  },
+  {
+   "id": "bee_tree",
+   "stock": {
+    "honey": 4
+   },
+   "regrow": {
+    "honey": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "honey": 4
+   },
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 1,
+   "owned": false,
+   "season": [
+    "summer",
+    "autumn"
+   ],
+   "_doc": "бортное дерево с дикими пчёлами"
+  },
+  {
+   "id": "rock_outcrop",
+   "stock": {
+    "stone": 10
+   },
+   "regrow": {
+    "stone": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "stone": 10
+   },
+   "biomes": [
+    "meadow",
+    "forest"
+   ],
+   "per_km2": 1,
+   "owned": false,
+   "_doc": "каменный выход для добычи камня"
+  },
+  {
+   "id": "training_dummy",
+   "settlement": true,
+   "per_settlement": 1,
+   "owned": false,
+   "_doc": "чучело для боевых упражнений (заглушка)"
+  },
+  {
+   "id": "archery_butts",
+   "settlement": true,
+   "per_settlement": 1,
+   "owned": false,
+   "_doc": "мишени для стрельбы (заглушка)"
+  },
+  {
+   "id": "mill",
+   "settlement": true,
+   "per_settlement": 1,
+   "owned": false,
+   "_doc": "мельница (общая или господская; помольный сбор — повинность)"
+  },
+  {
+   "id": "common_oven",
+   "settlement": true,
+   "per_settlement": 1,
+   "owned": false,
+   "_doc": "общая печь: место встреч и печения хлеба"
+  },
+  {
+   "id": "ale_barrel",
+   "settlement": true,
+   "per_family": 1,
+   "owned": true,
+   "stock": {
+    "ale": 4
+   },
+   "regrow": {
+    "ale": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "ale": 6
+   },
+   "_doc": "бочонок пива в доме; позже пополняется варкой (этап крафта)"
+  },
+  {
+   "id": "game_trail",
+   "stock": {},
+   "regrow": {},
+   "regrow_every": 288,
+   "max_stock": {},
+   "biomes": [
+    "forest",
+    "meadow"
+   ],
+   "per_km2": 2,
+   "owned": false,
+   "_doc": "звериная тропа для силков (trap_small_game); заглушка, добыча идёт из шанса действия"
+  }
+ ]
+}
