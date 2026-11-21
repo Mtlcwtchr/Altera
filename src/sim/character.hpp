@@ -74,6 +74,11 @@ struct MemoryEntry {
     double salience = 0.0;
     std::string source = "seen"; // seen | heard | rumor | told
     double confidence = 1.0;
+    // AL-49 (doc/design/DIALOGUE_GEN.md §3.2, §6.4): who told it, nearest first
+    // (at most Epistemic::kMaxChain), and the World fact it is about (kNone =
+    // none known: a guess, a lie, or written before the fact registry).
+    std::vector<EntityId> chain;
+    EntityId fact = kNone;
 };
 
 // Directed: A->B is not B->A (AI_ARCHITECTURE §7).
