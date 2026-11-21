@@ -57,6 +57,24 @@
    "fsm": "Eat"
   },
   {
+   "id": "eat_vegetables",
+   "category": "household",
+   "target": "self",
+   "_doc": "AL-30: овощи из дома как есть, для тех, кто ещё не готовит (дети)",
+   "pre": [
+    "has:vegetables>=2"
+   ],
+   "eff": [
+    "has:vegetables-2",
+    "need:hunger+0.25",
+    "moodlet:ate_raw",
+    "memory:ate_raw"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Eat"
+  },
+  {
    "id": "drink_water",
    "category": "household",
    "target": "object:water",
@@ -2419,6 +2437,45 @@
    ],
    "mvp": false,
    "_part": "c"
+  },
+  {
+   "id": "vouch",
+   "category": "politics",
+   "target": "character",
+   "eff": [
+    "rel_back:trust+0.03"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "justice"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "AL-55: настоящий свидетель проступка рассказывает слушателю, как было; сверка с реестром правды (src/sim/facts.cpp), обвинённый зря обелён",
+   "_part": "justice"
+  },
+  {
+   "id": "prove_innocence",
+   "category": "politics",
+   "target": "character",
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "justice"
+   },
+   "speech": [],
+   "mvp": true,
+   "_doc": "AL-55: обвинённый доказывает невиновность ссылкой на свидетеля; виновный при живом свидетеле пойман на лжи (src/sim/facts.cpp)",
+   "_part": "justice"
   },
   {
    "id": "judge_case",

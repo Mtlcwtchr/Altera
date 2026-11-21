@@ -60,7 +60,10 @@ struct CaseRules {
     double guiltyAt = 0.5, wCertainty = 0.5, wWitness = 0.2, witnessCap = 0.6, wBadName = 0.4, wPrior = 0.1,
            priorCap = 0.3, wJudgeAffinity = -0.3, wJudgeEnmity = 0.3, courtNoise = 0.15;
     double wCleared = 1.0; // a true witness names another as the doer
-    std::string judgeTask = "judge_case", quarrelTask = "argue", fightTask = "brawl";
+    double wFound = 0.4;   // the thing found with the accused
+    int foundMinWorth = 3; // ...only what can be told apart (an axe, cloth), not a meal
+    std::string judgeTask = "judge_case", quarrelTask = "argue", fightTask = "brawl", vouchTask = "vouch",
+                proveTask = "prove_innocence";
     double taskPriority = 0.7;
     Tick taskTtl = 288;
     double fleeM = 400.0, exileM = 500.0;
@@ -76,7 +79,7 @@ const CaseRules& caseRules(const Content& c);
 
 // The truth of a misdeed goes into the world's record (afterDeed): doer,
 // victim, what it took, who really saw it.
-void keepTruth(World& w, Character& doer, const InteractionDef& d, EntityId victimFamily, EntityId victimPerson,
+EntityId keepTruth(World& w, Character& doer, const InteractionDef& d, EntityId victimFamily, EntityId victimPerson,
                EntityId object, const std::string& tag, const std::vector<EntityId>& witnesses);
 // The open record of a deed on `object` (by `doer` when given; object kNone:
 // any open wrong of `doer` to that household). nullptr when none.
@@ -85,6 +88,11 @@ const Fact* findDeed(const World& w, EntityId object, EntityId doer, EntityId vi
 std::vector<EntityId> trueWitnesses(const World& w, const Fact& d);
 // An act just done: an accusation opens a case, a judge_case holds the court.
 void caseAfterAct(World& w, Character& doer, const InteractionDef& d, Character* targetChar, bool success);
+// Ends an open case of `accuser` against `accused` (no-op when none): both
+// remember it, the chronicle says chronicle.case_<outcome>.
+void closeCase(World& w, Character& accuser, Character& accused, EntityId object, const std::string& outcome,
+               Json params = Json::object());
+bool casePending(Character& accused, EntityId accuser, EntityId object);
 // Installs the "case" event handler.
 void installJustice(World& w);
 

@@ -42,14 +42,14 @@
    {"id": "fight", "base": -0.5, "terms": [{"rel": "enmity", "mul": 0.8}, {"rel": "fear", "mul": -1.0}, {"trait": "hot_tempered", "add": 0.6}, {"trait": "unforgiving", "add": 0.2}, {"trait": "patient", "add": -0.4}, {"kin": true, "add": -0.6}]},
    {"id": "court", "base": 0.1, "terms": [{"has_judge": false, "add": -9}, {"evidence": 0, "mul": 0.7}, {"seen": true, "add": 0.3}, {"crimes": 0, "add": 0.1, "cap": 0.3}, {"trait": "dutiful", "add": 0.3}, {"trait": "pious", "add": 0.1}, {"trait": "hot_tempered", "add": -0.2}, {"kin": true, "add": -0.5}]}
   ],
-  "court": {"guilty_at": 0.5, "certainty": 0.5, "witness": 0.2, "witness_cap": 0.6, "bad_name": 0.4, "prior": 0.1, "prior_cap": 0.3, "judge_affinity": -0.3, "judge_enmity": 0.3, "noise": 0.15, "cleared": 1.0},
+  "court": {"guilty_at": 0.5, "certainty": 0.5, "witness": 0.2, "witness_cap": 0.6, "bad_name": 0.4, "prior": 0.1, "prior_cap": 0.3, "judge_affinity": -0.3, "judge_enmity": 0.3, "noise": 0.15, "cleared": 1.0, "found": 0.4, "found_min_worth": 3},
   "sentences": [
    {"id": "fine", "base": 0.4, "terms": [{"can_pay": false, "add": -9}, {"crimes": 0, "add": -0.15, "cap": -0.6}, {"trait": "generous", "add": -0.1}]},
    {"id": "shame", "base": 0.2, "terms": [{"crimes": 0, "add": 0.1, "cap": 0.3}, {"trait": "pious", "add": 0.15}, {"kin": true, "add": 0.2}]},
    {"id": "custody", "base": -0.5, "terms": [{"crimes": 0, "add": 0.25, "cap": 0.75}, {"rel": "enmity", "mul": 0.5}, {"kin": true, "add": -1.0}]},
    {"id": "exile", "base": -1.0, "terms": [{"crimes": 0, "add": 0.35, "cap": 1.4}, {"rel": "enmity", "mul": 0.6}, {"trait": "unforgiving", "add": 0.2}, {"kin": true, "add": -1.5}]}
   ],
-  "tasks": {"judge": "judge_case", "quarrel": "argue", "fight": "brawl", "priority": 0.7, "ttl": 288},
+  "tasks": {"judge": "judge_case", "quarrel": "argue", "fight": "brawl", "vouch": "vouch", "prove": "prove_innocence", "priority": 0.7, "ttl": 288},
   "flee_m": 400,
   "exile_m": 500,
   "reputation": {
@@ -69,5 +69,6 @@
    "accuser": {"returned": {"trust": 0.1, "enmity": -0.15}, "compensated": {"trust": 0.05, "enmity": -0.15}, "denied": {"enmity": 0.05}, "fled": {"enmity": 0.1}, "let_go": {"enmity": -0.05}, "quarrel": {"enmity": 0.05}, "fight": {"enmity": 0.1}, "acquitted": {"enmity": -0.05}, "convicted": {"enmity": -0.1}},
    "accused": {"returned": {"enmity": 0.02}, "compensated": {"enmity": 0.05}, "denied": {"enmity": 0.05}, "quarrel": {"enmity": 0.1}, "fight": {"enmity": 0.15}, "acquitted": {"trust": -0.3, "enmity": 0.3}, "convicted": {"enmity": 0.2}}
   }
- }
+ },
+ "truth": {"_doc": "AL-55 (src/sim/facts.cpp): реестр правды World::facts. vouch - настоящий свидетель рассказывает, как было; prove_innocence - обвинённый ссылается на свидетеля. Опровергнутое убеждение теряет уверенность (refute_mult) или забывается (drop_below); доверие к обелённому растёт, к распространителю падает; виновный, отпирающийся при живом свидетеле, пойман на лжи.", "refute_mult": 0.2, "drop_below": 0.15, "cleared_trust": 0.15, "cleared_enmity": -0.15, "spreader_trust": -0.2, "cleared_honesty": 0.04, "witness_confidence": 0.9, "lie_trust": -0.2, "unproven_mult": 0.9, "vouch_act": "vouch", "prove_act": "prove_innocence"}
 }

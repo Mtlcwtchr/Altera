@@ -130,6 +130,7 @@ struct SpeciesDef {
     std::vector<std::string> prey;
     double aggression = 0.0;      // chance a hungry group dares a lone person
     double attackChance = 0.0, attackLo = 0.0, attackHi = 0.0;
+    int attackSatedDays = 0;   // AL-30: after killing a person the pack is fed and leaves people alone this long
     double hungerPerDay = 0.0;
     int breedEveryDays = 0;
     double territoryM = 0.0;
@@ -466,6 +467,13 @@ struct AiConfig {
     // Neutral by default (config.json skill_gain sets the game's values).
     double skillGainMult = 1.0, skillGainCurve = 0.0;
     int skillMinAgeYears = 0;
+    // AL-30 (2): children up to child_until_years learn at child_mult; each
+    // person has a talent per skill (talent_min..talent_max, fixed by id and
+    // skill): above it practice gives exp(-(level - talent) x over_talent_falloff).
+    // Neutral by default: child_mult 1, no talent cap.
+    int skillChildUntilYears = 0;
+    double skillChildMult = 1.0;
+    double skillTalentMin = 1.0, skillTalentMax = 1.0, skillOverTalentFalloff = 0.0;
     std::map<std::string, double> memoryTypes;
     std::vector<std::string> reputationAxes = {"honesty", "valor", "piety", "generosity", "notoriety"};
     std::vector<std::string> statusPairs = {"betrothed", "married", "master_apprentice", "lord_vassal", "sworn_kin"};

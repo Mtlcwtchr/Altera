@@ -76,6 +76,8 @@ int peopleWithin(const AnimalTick& t, Vec2 p, double radius) {
     return n;
 }
 
+void fedOnKill(World& w, Character& pack);
+
 void bite(World& w, Character& wolf, Character& victim, const SpeciesDef& s) {
     Rng r = w.rng(wolf.id, "bite");
     if (r.uniform() >= s.attackChance) {
@@ -94,8 +96,18 @@ void bite(World& w, Character& wolf, Character& victim, const SpeciesDef& s) {
     if (victim.body.health <= 0.0 && victim.body.alive) {
         victim.body.alive = false;
         victim.body.causeOfDeath = "beast";
+        fedOnKill(w, wolf);
         w.chronicle("death", {victim.id}, "chronicle.death", {{"who", victim.id}, {"cause", "beast"}});
     }
+}
+
+// AL-30: a pack that has killed a person has eaten its fill: hunger full, and
+// no more going at people for the species' sated_days_after_kill (one death,
+// not a winter of them).
+void fedOnKill(World& w, Character& pack) {
+    pack.needs["hunger"] = 1.0;
+    const SpeciesDef* s = w.content().speciesOf(pack.species);
+    if (s && s->attackSatedDays > 0) pack.moodlets.push_back({"sated", 0.0, w.now() + s->attackSatedDays * kTicksPerDay});
 }
 
 // A pack that closes in on a person fights it through the combat core, all
@@ -112,7 +124,7 @@ bool packFight(World& w, Character& pack, Character& victim) {
     applyGroupResult(w, sides, *d, r, nullptr, wit);
     // Win or lose, the pack backs off for a while; a kill feeds it.
     pack.moodlets.push_back({"alarmed", 0.0, w.now() + 12});
-    if (!victim.body.alive) pack.needs["hunger"] = clamp01(pack.need("hunger") + 0.4);
+    if (!victim.body.alive) fedOnKill(w, pack);
     return true;
 }
 
@@ -457,6 +469,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
         const bool hungry = hunger < 0.3;
         const bool lone = peopleWithin(tick, person->pos, 60.0) <= 1;
         const bool attack = s.aggression > 0.0 && hungry && lone && a.group >= 3 && !alarmed &&
+                            !a.hasMoodlet("sated", now) &&
                             w.rng(a.id, "dare").uniform() < s.aggression;
         if (attack) {
             moveToward(a, person->pos, s.speedMPerTick);

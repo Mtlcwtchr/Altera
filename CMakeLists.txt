@@ -324,8 +324,10 @@ add_library(altera_sim STATIC
         src/sim/rumor_noise.cpp
         src/sim/dialogue_say.cpp
         src/sim/justice.cpp
+        src/sim/facts.cpp
         src/sim/village_life.cpp
         src/sim/dialogue_memory.cpp
+        src/sim/dialogue_corpus.cpp
         src/sim/gear.cpp
         src/sim/validate.cpp
         src/sim/character.cpp
@@ -801,11 +803,12 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
             tests/test_altera_sim_dialogue_rules.cpp
             tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp tests/test_altera_sim_dialogue_say.cpp
-            tests/test_altera_sim_justice.cpp
+            tests/test_altera_sim_justice.cpp tests/test_altera_sim_facts.cpp
             tests/test_altera_sim_village_life.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_cutaway.cpp)
+            tests/test_altera_cutaway.cpp
+            tests/test_altera_sim_dialogue_corpus.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

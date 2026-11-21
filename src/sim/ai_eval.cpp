@@ -30,6 +30,18 @@ std::string ownerRelation(const Character& c, const WorldObject* o, const Charac
 
 const WorldObject* homeStorage(const World& w, const Character& c) { return w.object(c.home); }
 
+// AL-30: how far a person can get at a skill by practice alone, the same on
+// every machine (FNV-1a of the id and the skill's name, not std::hash).
+double skillTalent(const AiConfig& cf, EntityId id, const std::string& skill) {
+    if (cf.skillTalentMax >= 1.0 && cf.skillTalentMin >= 1.0) return 1.0;
+    std::uint64_t h = 1469598103934665603ull;
+    auto mixByte = [&](std::uint8_t b) { h = (h ^ b) * 1099511628211ull; };
+    for (int i = 0; i < 8; ++i) mixByte(std::uint8_t(std::uint64_t(id) >> (8 * i)));
+    for (char ch : skill) mixByte(std::uint8_t(ch));
+    const double u = double(h >> 11) / double(1ull << 53);
+    return cf.skillTalentMin + (cf.skillTalentMax - cf.skillTalentMin) * u;
+}
+
 } // namespace
 
 bool goapFact(const Condition& k) { return (k.subject == "has" && !k.onTarget) || k.subject == "at"; }
@@ -640,6 +652,9 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
                 gain = c.body.ageDays < cf.skillMinAgeYears * kDaysPerYear
                            ? 0.0
                            : gain * cf.skillGainMult * std::pow(std::max(0.0, 1.0 - v), cf.skillGainCurve);
+                if (c.body.ageDays < cf.skillChildUntilYears * kDaysPerYear) gain *= cf.skillChildMult;
+                const double talent = skillTalent(cf, c.id, e.key);
+                if (v > talent) gain *= std::exp(-(v - talent) * cf.skillOverTalentFalloff);
             }
             v = clamp01(e.op == '=' ? e.value : v + gain);
         } else if (s == "body") {

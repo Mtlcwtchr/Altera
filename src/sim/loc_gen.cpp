@@ -497,7 +497,10 @@ std::string verbForm(Ctx& c, const std::string& lang, const Json& lex, const std
             c.note("verb '" + inf + "' has no " + tense + " form");
             f = inf;
         }
-        if (neg) f = str(*c.grammar(lang), "neg", "не") + " " + f;
+        if (neg) { // no _grammar.json (a test table) must not crash
+            const Json& ng = gram(c, lang, "neg");
+            f = (ng.is_string() ? ng.get<std::string>() : std::string("не")) + " " + f;
+        }
         return f;
     }
     // en-like: base, past, 3s; pres / past may be objects by person-number (be: am / is / are).
