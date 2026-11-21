@@ -380,13 +380,6 @@
    "_part": "village_life"
   },
   {
-   "id": "rejected",
-   "value": -0.2,
-   "ttl": 288,
-   "_doc": "AL-39: отказ на предложение",
-   "_part": "village_life"
-  },
-  {
    "id": "ill_fever",
    "value": -0.3,
    "ttl": 1440,
