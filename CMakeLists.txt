@@ -321,6 +321,7 @@ add_library(altera_sim STATIC
         src/sim/consequences.cpp
         src/sim/dialogue_gen.cpp
         src/sim/rumor_noise.cpp
+        src/sim/justice.cpp
         src/sim/gear.cpp
         src/sim/validate.cpp
         src/sim/character.cpp
@@ -794,6 +795,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
             tests/test_altera_sim_rumor_noise.cpp
+            tests/test_altera_sim_justice.cpp
             tests/test_altera_sim_social.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
