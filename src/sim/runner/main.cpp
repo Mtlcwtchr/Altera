@@ -2,6 +2,12 @@
 //   altera_sim_runner [--content DIR] [--world FILE] [--seed N] [--days N]
 //                     [--save FILE] [--report FILE] [--trace FILE] [--validate]
 //                     [--loc DIR] [--lang ru|en]
+//                     [--dialogue-corpus N [--corpus-out FILE(.txt|.json)] [--corpus-report FILE.json]
+//                      [--corpus-game]]
+//   --dialogue-corpus: N lines through rules + LOC v0.2 by --seed, quality checks
+//   (AL-54, sim/dialogue_corpus.hpp); exit 1 when the checks find errors.
+//   --corpus-game renders the lines as the game does now (utteranceText) instead of
+//   with every argument the content may use.
 // Trace and report carry codes + params; with a loc table their "text" fields
 // are assembled in --lang (doc/design/LOC_FORMAT.md).
 
@@ -13,6 +19,7 @@
 #include <set>
 #include <string>
 
+#include "sim/dialogue_corpus.hpp"
 #include "sim/dialogue_gen.hpp"
 #include "sim/dialogue_rules.hpp"
 #include "sim/ai.hpp"
@@ -32,6 +39,9 @@ int main(int argc, char** argv) {
     std::uint64_t seed = 0;
     int days = 3;
     bool validateOnly = false;
+    int corpusCount = 0;
+    std::string corpusOut, corpusReport;
+    bool corpusGame = false;
     for (int i = 1; i < argc; ++i) {
         auto next = [&]() -> std::string {
             if (i + 1 >= argc) {
@@ -50,6 +60,10 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--validate")) validateOnly = true;
         else if (!std::strcmp(argv[i], "--loc")) locDir = next();
         else if (!std::strcmp(argv[i], "--lang")) lang = next();
+        else if (!std::strcmp(argv[i], "--dialogue-corpus")) corpusCount = std::stoi(next());
+        else if (!std::strcmp(argv[i], "--corpus-out")) corpusOut = next();
+        else if (!std::strcmp(argv[i], "--corpus-report")) corpusReport = next();
+        else if (!std::strcmp(argv[i], "--corpus-game")) corpusGame = true;
         else {
             std::cerr << "unknown argument " << argv[i] << "\n";
             return 2;
@@ -87,6 +101,22 @@ int main(int argc, char** argv) {
         }
         if (!loc.hasLanguage(lang))
             std::cerr << "warning: no loc table for '" << lang << "', using " << loc.fallback() << "\n";
+        if (corpusCount > 0) { // AL-54: the corpus of lines and its quality checks
+            CorpusOptions co;
+            co.count = corpusCount;
+            co.seed = seed ? seed : 1;
+            co.lang = loc.hasLanguage(lang) ? lang : loc.fallback();
+            co.game = corpusGame;
+            const std::vector<CorpusLine> lines = generateDialogueCorpus(content, loc, co);
+            const CorpusReport rep = checkDialogueCorpus(lines, content, loc, co.lang, co.run);
+            if (!corpusOut.empty()) {
+                const bool json = corpusOut.size() > 5 && corpusOut.compare(corpusOut.size() - 5, 5, ".json") == 0;
+                std::ofstream(corpusOut, std::ios::binary) << (json ? corpusJson(lines).dump(1) : corpusText(lines));
+            }
+            if (!corpusReport.empty()) std::ofstream(corpusReport, std::ios::binary) << toJson(rep).dump(1);
+            std::cout << reportText(rep);
+            return rep.errors() ? 1 : 0;
+        }
         if (validateOnly) {
             std::cout << "content ok: " << content.goals.size() << " goals, " << content.tasks.size() << " tasks, "
                       << content.interactions.size() << " interactions, " << content.dialogue.size()
