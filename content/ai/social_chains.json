@@ -1,0 +1,62 @@
+{
+ "_doc": "AL-40. Социальные цепочки (как в Sims): действие одного персонажа над другим, на которое цель отвечает своим FSM-действием. Ключ цепочки = id действия каталога (interactions.json, target=character). Ход: ask (инициатор предлагает, цель слушает) -> ответ цели (шанс accept) -> refused (цель отказывает, эффекты on_refuse) или approach (пара идёт к месту, если задан place) -> stages (оба играют свою анимацию, eff стадии) -> в конце обычный eff действия каталога. follow=true: согласившийся идёт за позвавшим, пока приглашение не истечёт / его не отпустят / он не отстанет, и присоединяется к занятию ведущего. Шанс: base + сумма rel[ось] * отношение цели к инициатору + kin (одна семья) + spouse + mood * настроение цели + сумма needs[нужда] * (1 - нужда цели) + traits[черта] (у цели) + тон игрока; обрезка min..max. forbid: close_kin (родители/дети/братья-сёстры), child (ребёнок с любой стороны). min_familiarity: незнакомым отказ. busy: цель в непрерываемом состоянии, в бою, без сознания, в плену или уже в другой цепочке - отказ без обиды. anim - ключ клипа (people_anim.json, раздел interaction); без клипа клиент берёт клип по состоянию FSM. Тики по 10 минут.",
+ "config": {
+  "ask_ticks": 1,
+  "refuse_ticks": 1,
+  "answer_ticks": 6,
+  "approach_max_ticks": 12,
+  "place_radius_m": 1500,
+  "together_m": 2.0,
+  "follow_m": 2.5,
+  "follow_lost_m": 1500,
+  "follow_speed_mult": 1.2,
+  "join_radius_m": 40,
+  "refused_cooldown_ticks": 36,
+  "ask_anim": "social_ask",
+  "listen_anim": "social_listen",
+  "refuse_anim": "social_refuse",
+  "rejected_anim": "social_rejected"
+ },
+ "chains": {
+  "chat": {
+   "accept": {"base": 0.7, "rel": {"affinity": 0.4, "enmity": -0.6, "fear": -0.2}, "mood": 0.15, "needs": {"social": 0.3}, "min": 0.05, "max": 0.98},
+   "on_refuse": ["moodlet:rejected"],
+   "stages": [{"state": "Talk", "anim": "talk", "ticks": 0}]
+  },
+  "embrace": {
+   "accept": {"base": 0.3, "rel": {"affinity": 0.6, "trust": 0.25, "enmity": -0.7, "fear": -0.3}, "kin": 0.3, "spouse": 0.35, "mood": 0.2, "needs": {"social": 0.15}, "min": 0.02, "max": 0.97},
+   "min_familiarity": 0.05,
+   "on_refuse": ["moodlet:rejected", "rel:affinity-0.01"],
+   "stages": [{"state": "Interact", "anim": "embrace", "actor_anim": "embrace_give", "target_anim": "embrace_take", "ticks": 0}]
+  },
+  "kiss": {
+   "accept": {"base": 0.05, "rel": {"attraction": 0.9, "affinity": 0.35, "enmity": -0.9, "fear": -0.3}, "spouse": 0.45, "mood": 0.2, "min": 0.02, "max": 0.97},
+   "forbid": ["close_kin", "child"],
+   "min_familiarity": 0.1,
+   "on_refuse": ["moodlet:rejected", "rel_back:affinity-0.02", "rel:attraction-0.02"],
+   "stages": [{"state": "Interact", "anim": "kiss", "ticks": 0}]
+  },
+  "intimacy": {
+   "accept": {"base": -0.15, "rel": {"attraction": 0.8, "affinity": 0.5, "trust": 0.2, "enmity": -1.0, "fear": -0.5}, "spouse": 0.5, "mood": 0.3, "needs": {"fun": 0.1}, "min": 0.01, "max": 0.95},
+   "forbid": ["close_kin", "child"],
+   "min_familiarity": 0.2,
+   "place": "bed",
+   "on_refuse": ["moodlet:rejected", "rel_back:affinity-0.02"],
+   "stages": [
+    {"state": "Interact", "anim": "kiss", "ticks": 1},
+    {"state": "Rest", "anim": "intimacy", "ticks": 0},
+    {"state": "Rest", "anim": "cuddle", "ticks": 1, "eff": ["moodlet:at_peace", "t.moodlet:at_peace"]}
+   ]
+  },
+  "share_meal": {
+   "accept": {"base": 0.45, "rel": {"affinity": 0.4, "enmity": -0.6}, "kin": 0.2, "mood": 0.1, "needs": {"hunger": 0.5, "social": 0.15}, "min": 0.05, "max": 0.98},
+   "on_refuse": ["moodlet:rejected"],
+   "stages": [{"state": "Eat", "anim": "eat", "ticks": 0}]
+  },
+  "invite_follow": {
+   "accept": {"base": 0.3, "rel": {"affinity": 0.5, "trust": 0.3, "respect": 0.15, "enmity": -0.8, "fear": 0.1}, "kin": 0.3, "spouse": 0.35, "mood": 0.1, "needs": {"social": 0.25, "fun": 0.1}, "min": 0.03, "max": 0.97},
+   "on_refuse": ["moodlet:rejected"],
+   "follow": {"ticks": 36, "player_leader_ticks": 72, "join_moodlet": "good_company"}
+  }
+ }
+}

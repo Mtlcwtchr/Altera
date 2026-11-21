@@ -346,6 +346,7 @@ add_library(altera_sim STATIC
         src/sim/group_combat.cpp
         src/sim/captivity.cpp
         src/sim/tones.cpp
+        src/sim/social_chain.cpp
         src/sim/ai_report.cpp
         src/sim/craft/craft_expr.cpp
         src/sim/craft/craft_data.cpp
@@ -796,6 +797,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
             tests/test_altera_sim_rumor_noise.cpp
             tests/test_altera_sim_justice.cpp
+            tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
