@@ -11,6 +11,7 @@
 
 #include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
+#include "sim/facts.hpp"
 #include "sim/justice.hpp"
 #include "sim/dialogue_gen.hpp"
 #include "sim/dialogue_memory.hpp"
@@ -282,6 +283,7 @@ void passRumor(World& w, Character& from, Character& to, const ConsequenceRules&
     for (const auto& m : from.memory) {
         if (!kDeedMemories.count(m.type) || m.who.empty() || m.who[0] == to.id || m.who[0] == from.id) continue;
         if (m.confidence * R.rumorDecay < R.rumorMin) continue;
+        if (m.source == "refuted") continue; // shown false (AL-55): not passed on
         if (knowsOf(to, "", m.who[0], m.object)) continue;
         // the same deed, however it is told: known already, or this teller was caught on it
         if (const MemoryEntry* own = memoryOfFact(to, m.fact)) {
@@ -427,6 +429,15 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
         std::vector<Character*> household = membersOf(w, v.family);
         if (v.person != kNone && v.family == kNone)
             if (Character* p = w.character(v.person)) household.push_back(p);
+        // The truth of it goes into the world's registry first (DIALOGUE_GEN 6.4, AL-55):
+        // every memory of it below carries the fact's id.
+        const EntityId fact = keepTruth(w, doer, d, v.family, v.person, object, tags.front().tag, witnesses);
+        for (EntityId id : witnesses) // the witnesses' saw_crime was written just before (applyEffects)
+            if (Character* wc = w.character(id))
+                for (auto& m : wc->memory)
+                    if (m.type == "saw_crime" && m.fact == kNone && m.tick == w.now() && !m.who.empty() &&
+                        m.who[0] == doer.id && m.object == object)
+                        m.fact = fact;
         bool ownersSaw = false;
         int seen = 0;
         for (EntityId id : witnesses) {
@@ -452,7 +463,7 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
                 for (Character* m : household)
                     if (!knowsOf(*m, "", doer.id, object))
                         remember(w, *m, "told_crime", doer.id, teller, object, "told", R.tellConfidence, -0.4,
-                                 teller != kNone ? std::vector<EntityId>{teller} : std::vector<EntityId>{});
+                                 teller != kNone ? std::vector<EntityId>{teller} : std::vector<EntityId>{}, fact);
                 wronged(w, doer, household, R.tellConfidence, R, "told");
             } else if (ownersSaw) {
                 wronged(w, doer, household, 1.0, R, "seen");
@@ -460,8 +471,6 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
         }
         outcome["witnesses"] = seen;
         outcome["seen"] = seen > 0;
-        // The truth of it goes into the world's record (proofs and clearing a name, AL-37).
-        if (!household.empty() || v.family != kNone) keepTruth(w, doer, d, v.family, v.person, object, tags.front().tag, witnesses);
         // Nobody of the household saw it: a trail they may find (AL-34).
         if (wrongs && !ownersSaw && v.family != kNone) {
             Json nearby = Json::array();
@@ -470,7 +479,8 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
                 if (!o.isAnimal() && o.body.alive && o.status.family != v.family && dist(o.pos, at) <= R.nearbyM)
                     nearby.push_back(id);
             Json data = {{"family", v.family}, {"object", object}, {"doer", doer.id}, {"tag", tags.front().tag},
-                         {"nearby", nearby}, {"since", w.now()}, {"seen", seen}, {"x", at.x}, {"y", at.y}};
+                         {"nearby", nearby}, {"since", w.now()}, {"seen", seen}, {"x", at.x}, {"y", at.y},
+                         {"fact", fact}};
             w.schedule({w.now() + kTicksPerDay, 0, "deed_trail", doer.id, v.person, object, data});
         }
     }
@@ -484,6 +494,7 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
 
     // --- an accusation opens a case, a judge_case holds the court (AL-37) ---
     caseAfterAct(w, doer, d, targetChar, success);
+    factsAfterAct(w, doer, d, targetChar, success); // vouch / prove_innocence (AL-55)
 
     // --- a failed social act gets the other side's reaction aloud (AL-36) --
     if (!success && targetChar && !targetChar->isAnimal() && targetChar->body.alive && targetChar->id != doer.id &&
@@ -530,7 +541,8 @@ void installConsequences(World& w) {
         }
         // Found: remembered by the household, written down, a suspect sought.
         for (Character* m : household)
-            remember(world, *m, "noticed_missing", kNone, kNone, e.obj, m == finder ? "seen" : "told", 1.0, -0.3);
+            remember(world, *m, "noticed_missing", kNone, kNone, e.obj, m == finder ? "seen" : "told", 1.0, -0.3, {},
+                     e.data.value("fact", kNone));
         world.chronicle("loss_noticed", {finder->id}, "chronicle.loss_noticed",
                         {{"owner", finder->id}, {"object", e.obj}, {"tag", e.data.value("tag", "")}});
         trace(world, *finder, 'S', "deed.loss_noticed", {{"object", e.obj}, {"tag", e.data.value("tag", "")}});
@@ -566,7 +578,8 @@ void installConsequences(World& w) {
         const double conf = std::min(1.0, top);
         Character* sc = world.character(suspect);
         for (Character* m : household)
-            remember(world, *m, "suspects", suspect, kNone, e.obj, m == finder ? "seen" : "told", conf, -0.3);
+            remember(world, *m, "suspects", suspect, kNone, e.obj, m == finder ? "seen" : "told", conf, -0.3, {},
+                     e.data.value("fact", kNone)); // about that deed, whoever really did it
         world.chronicle("suspicion", {finder->id, suspect}, "chronicle.suspicion",
                         {{"owner", finder->id}, {"suspect", suspect}, {"object", e.obj}, {"confidence", conf}});
         trace(world, *finder, 'S', "deed.suspects", {{"suspect", suspect}, {"confidence", conf},
