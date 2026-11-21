@@ -1,0 +1,127 @@
+{
+ "_doc": "en predicate frames (AL-52, mirror of ru frames.json from AL-51, LOC v0.2 §3). One frame per predicate in content/ai/predicates.json. roles: government ('nom', 'acc' or 'preposition+acc'); a speaker/listener role turns into I/me, you by itself. en has no case endings: nom/acc only pick the pronoun form. Item names come bare ('flour'), so lines do not add articles to {object}; lexeme nouns get 'the' from the frame. Tense and negation come from the proposition (did not / does not / will not); time/place are optional strings ('at night', 'in the barn').",
+ "frame.take": {
+  "verb": ["take", "take_grab"],
+  "noun": "lex.noun.theft",
+  "roles": {"doer": "nom", "object": "acc", "victim": "from+acc", "victim_family": "from+acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {object?} {victim?} {victim_family?}",
+             "{doer} {verb:agree=doer} {object?} {victim?} {victim_family?} {time?}"],
+  "nominal": "what was taken {victim?} {victim_family?}",
+  "about": "about what was taken {victim?} {victim_family?}"
+ },
+ "frame.theft": {
+  "verb": ["steal", "steal_snatch", "steal_drag", "steal_lift"],
+  "noun": "lex.noun.theft",
+  "roles": {"doer": "nom", "object": "acc", "victim": "from+acc", "victim_family": "from+acc"},
+  "clause": ["{doer} {verb:agree=doer} {object?} {victim?} {victim_family?} {time?}",
+             "{time?} {doer} {verb:agree=doer} {object?} {victim?} {victim_family?}",
+             "{doer} {verb:agree=doer} {object?} {victim?} {victim_family?} {place?} {time?}"],
+  "nominal": "the {noun} {object?:prep|of} {victim?} {victim_family?}",
+  "about": "about the {noun} {victim?} {victim_family?}"
+ },
+ "frame.banditry": {
+  "verb": ["rob", "rob_fleece"],
+  "noun": "lex.noun.banditry",
+  "roles": {"doer": "nom", "victim": "acc", "victim_family": "acc", "object": "of+acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?} {victim_family?}",
+             "{doer} {verb:agree=doer} {victim?} {victim_family?} on the road {time?}",
+             "{doer} {verb:agree=doer} {victim?} {victim_family?} blind"],
+  "nominal": "the {noun} {victim?:prep|of} {victim_family?:prep|of}",
+  "about": "about the {noun} {victim?:prep|of} {victim_family?:prep|of}"
+ },
+ "frame.trespass": {
+  "verb": ["climb_in", "break_in"],
+  "noun": "lex.noun.trespass",
+  "roles": {"doer": "nom", "object": "into+acc", "victim": "at the home of+acc", "victim_family": "at the home of+acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {object?} {victim?} {victim_family?}",
+             "{time?} {doer} {verb:agree=doer} {object?} {victim?} {victim_family?}"],
+  "nominal": "the {noun} {object?} {victim?} {victim_family?}",
+  "about": "about the {noun} {victim?} {victim_family?}"
+ },
+ "frame.poaching": {
+  "verb": ["shoot_game", "fell_game"],
+  "noun": "lex.noun.poaching",
+  "roles": {"doer": "nom", "object": "acc", "victim_family": "on the land of+acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {object?} in another man's wood",
+             "{doer} {verb:agree=doer} {object?} {victim_family?} without leave",
+             "{time?} {doer} {verb:agree=doer} {object?} in the lord's wood"],
+  "nominal": "the {noun} {victim_family?}",
+  "about": "about the {noun} in another man's wood"
+ },
+ "frame.lose": {
+  "verb": ["go_missing", "vanish"],
+  "noun": "lex.noun.loss",
+  "roles": {"object": "nom", "victim": "from+acc", "victim_family": "from+acc"},
+  "clause": ["{object} {verb:agree=object} {victim?} {victim_family?} {time?}",
+             "{time?} {object} {verb:agree=object} {victim?} {victim_family?}",
+             "{object} {verb:agree=object} {victim?} {victim_family?}"],
+  "nominal": "the {noun} {object?:prep|of} {victim?} {victim_family?}",
+  "about": "about the {noun} {object?:prep|of} {victim?} {victim_family?}"
+ },
+ "frame.insult": {
+  "verb": ["insult", "scold", "name_call"],
+  "noun": "lex.noun.insult",
+  "roles": {"doer": "nom", "victim": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?}",
+             "{doer} {verb:agree=doer} {victim?} in front of everyone",
+             "{doer} {verb:agree=doer} {victim?} with the foulest words"],
+  "nominal": "the {noun} {victim?:prep|to}",
+  "about": "about the {noun} {victim?:prep|to}"
+ },
+ "frame.assault": {
+  "verb": ["beat", "hit", "thrash"],
+  "noun": "lex.noun.assault",
+  "roles": {"doer": "nom", "victim": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?}",
+             "{doer} {verb:agree=doer} {victim?} {place?}",
+             "{time?} {doer} {verb:agree=doer} {victim?} out of nowhere"],
+  "nominal": "the {noun} {victim?:prep|of}",
+  "about": "about the {noun} {victim?:prep|of}"
+ },
+ "frame.murder": {
+  "verb": ["kill", "kill_knife", "kill_finish"],
+  "noun": "lex.noun.murder",
+  "roles": {"doer": "nom", "victim": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim}",
+             "{doer} {verb:agree=doer} {victim} {place?}",
+             "{time?} {doer} {verb:agree=doer} {victim}, dead as a stone"],
+  "nominal": "the {noun} of {victim}",
+  "about": "about the {noun} of {victim}"
+ },
+ "frame.help": {
+  "verb": ["help", "help_out"],
+  "noun": "lex.noun.help",
+  "roles": {"doer": "nom", "beneficiary": "acc", "object": "with+acc"},
+  "clause": ["{doer} {verb:agree=doer} {beneficiary?} {object?}",
+             "{doer} {time?} {verb:agree=doer} {beneficiary?} {object?}"],
+  "nominal": "the {noun} {beneficiary?:prep|to} {object?}",
+  "about": "about the {noun} {beneficiary?:prep|to}"
+ },
+ "frame.give": {
+  "verb": ["give", "give_away"],
+  "noun": "lex.noun.gift",
+  "roles": {"doer": "nom", "beneficiary": "to+acc", "object": "acc"},
+  "clause": ["{doer} {verb:agree=doer} {object?} {beneficiary?}",
+             "{doer} {time?} {verb:agree=doer} {object?} {beneficiary?}"],
+  "nominal": "the {noun} {beneficiary?}",
+  "about": "about the {noun} {beneficiary?}"
+ },
+ "frame.say": {
+  "verb": ["say", "tell"],
+  "noun": "lex.noun.word",
+  "roles": {"speaker": "nom", "listener": "to+acc", "content": "clause"},
+  "clause": ["{speaker} {verb:agree=speaker} {listener?} that {>content:clause}",
+             "{speaker} {verb:agree=speaker} {listener?} that {>content:clause}, or so it goes"],
+  "nominal": "the words of {speaker}",
+  "about": "{>content:about}"
+ },
+ "frame.think": {
+  "verb": ["think", "reckon"],
+  "noun": "lex.noun.thought",
+  "roles": {"thinker": "nom", "content": "clause"},
+  "clause": ["{thinker} {verb:agree=thinker} that {>content:clause}",
+             "{thinker} {verb:agree=thinker} {>content:clause}"],
+  "nominal": "the {noun} of {thinker}",
+  "about": "{>content:about}"
+ }
+}
