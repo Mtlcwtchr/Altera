@@ -11,6 +11,7 @@
 #include <fstream>
 #include <stdexcept>
 
+#include "sim/loc_gen.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -21,19 +22,6 @@ const std::vector<std::string> kCases = {"nom", "gen", "dat", "acc", "ins", "pre
 const std::vector<std::string> kGenders = {"m", "f", "n", "pl"};
 
 bool isCase(const std::string& s) { return std::find(kCases.begin(), kCases.end(), s) != kCases.end(); }
-
-std::vector<std::string> split(const std::string& s, char sep) {
-    std::vector<std::string> out;
-    size_t a = 0;
-    for (size_t i = 0; i <= s.size(); ++i)
-        if (i == s.size() || s[i] == sep) {
-            out.push_back(s.substr(a, i - a));
-            a = i + 1;
-        }
-    return out;
-}
-
-int pluralForms(const std::string& lang) { return lang == "ru" ? 3 : 2; }
 
 std::string numberText(double v, const std::string& lang) {
     if (std::abs(v - std::round(v)) < 1e-9) return std::to_string(static_cast<long long>(std::llround(v)));
@@ -67,92 +55,23 @@ std::string valueText(const Json& v, const std::string& gcase, const std::string
     return "";
 }
 
-size_t genderIndex(const Json& v, size_t forms) {
-    std::string g;
-    if (v.is_object() && v.contains("g") && v["g"].is_string()) g = v["g"].get<std::string>();
-    size_t i = 0;
-    if (g == "f") i = 1;
-    else if (g == "n") i = 2;
-    else if (g == "pl") i = 3;
-    return i < forms ? i : 0;
-}
-
-// One placeholder body ("name", "name:dat", "name:g|a|b", "name:plural|a|b|c").
-struct Placeholder {
-    std::string name;
-    std::string mod; // "" | case | g | plural
-    std::vector<std::string> forms;
-};
-
-bool parsePlaceholder(const std::string& body, const std::string& lang, Placeholder& ph, std::string& err) {
-    const size_t colon = body.find(':');
-    ph.name = body.substr(0, colon);
-    if (ph.name.empty()) return err = "empty placeholder name", false;
-    for (char ch : ph.name)
-        if (!(std::isalnum(static_cast<unsigned char>(ch)) || ch == '_'))
-            return err = "bad placeholder name '" + ph.name + "'", false;
-    if (colon == std::string::npos) return true;
-    std::vector<std::string> parts = split(body.substr(colon + 1), '|');
-    ph.mod = parts.front();
-    ph.forms.assign(parts.begin() + 1, parts.end());
-    if (isCase(ph.mod)) {
-        if (!ph.forms.empty()) return err = "case '" + ph.mod + "' takes no forms", false;
-        return true;
-    }
-    if (ph.mod == "g") {
-        if (ph.forms.size() < 2 || ph.forms.size() > 4)
-            return err = "{" + ph.name + ":g|...} needs 2..4 forms (m|f[|n|pl])", false;
-        return true;
-    }
-    if (ph.mod == "plural") {
-        const size_t want = static_cast<size_t>(pluralForms(lang));
-        if (ph.forms.size() != want)
-            return err = "{" + ph.name + ":plural|...} needs " + std::to_string(want) + " forms for " + lang, false;
-        return true;
-    }
-    return err = "unknown modifier '" + ph.mod + "' in {" + body + "}", false;
-}
-
-// Walks a pattern; calls lit(text) and ph(placeholder). False + error on syntax.
-template <class Lit, class Ph>
-bool walk(const std::string& p, const std::string& lang, std::string& err, Lit lit, Ph ph) {
-    std::string buf;
-    for (size_t i = 0; i < p.size(); ++i) {
-        const char ch = p[i];
-        if (ch == '{' && i + 1 < p.size() && p[i + 1] == '{') {
-            buf += '{';
-            ++i;
-        } else if (ch == '}' && i + 1 < p.size() && p[i + 1] == '}') {
-            buf += '}';
-            ++i;
-        } else if (ch == '{') {
-            const size_t end = p.find('}', i + 1);
-            if (end == std::string::npos) return err = "unclosed '{'", false;
-            const std::string body = p.substr(i + 1, end - i - 1);
-            if (body.find('{') != std::string::npos) return err = "nested '{'", false;
-            Placeholder x;
-            if (!parsePlaceholder(body, lang, x, err)) return false;
-            lit(buf);
-            buf.clear();
-            ph(x);
-            i = end;
-        } else if (ch == '}') {
-            return err = "unmatched '}'", false;
-        } else {
-            buf += ch;
-        }
-    }
-    lit(buf);
-    return true;
+// One value of a table: a pattern, a noun ({nom, ...}), a list of variants, or
+// (LOC v0.2) everything under lex.<pos>.<id> and frame.<id>.
+bool isLeaf(const std::string& prefix, const Json& j) {
+    if (j.is_string() || j.is_array() || (j.is_object() && j.contains("nom"))) return true;
+    const size_t dots = static_cast<size_t>(std::count(prefix.begin(), prefix.end(), '.'));
+    return (prefix.rfind("lex.", 0) == 0 && dots == 2) || (prefix.rfind("frame.", 0) == 0 && dots == 1);
 }
 
 void flatten(const std::string& prefix, const Json& j, std::map<std::string, Json>& out, const std::string& file,
              std::vector<std::string>& warnings) {
-    if (j.is_string() || (j.is_object() && j.contains("nom"))) {
+    if (!prefix.empty() && isLeaf(prefix, j)) {
         if (prefix.empty()) return warnings.push_back(file + ": a bare value at the top level");
         if (!out.emplace(prefix, j).second) warnings.push_back(file + ": duplicate key '" + prefix + "'");
         return;
     }
+    if (j.is_string() || j.is_array() || (j.is_object() && j.contains("nom")))
+        return warnings.push_back(file + ": a bare value at the top level");
     if (!j.is_object()) return warnings.push_back(file + ": '" + prefix + "' must be a string, noun or object");
     for (auto it = j.begin(); it != j.end(); ++it) {
         if (it.key() == "_doc") continue;
@@ -323,8 +242,14 @@ Loc Loc::fromJson(const std::string& base, const std::string& fallback,
     l.fallback_ = fallback.empty() ? base : fallback;
     for (const auto& [lang, files] : langs) {
         auto& t = l.tables_[lang];
-        for (size_t i = 0; i < files.size(); ++i)
-            flatten("", files[i], t, lang + "#" + std::to_string(i), l.loadWarnings);
+        for (size_t i = 0; i < files.size(); ++i) {
+            Json f = files[i];
+            if (f.is_object() && f.contains("_grammar")) { // tests: the language's _grammar.json inline
+                l.grammar_[lang] = f["_grammar"];
+                f.erase("_grammar");
+            }
+            flatten("", f, t, lang + "#" + std::to_string(i), l.loadWarnings);
+        }
     }
     return l;
 }
@@ -385,8 +310,19 @@ std::string Loc::text(const std::string& lang, const std::string& key, const Jso
     std::string from;
     const Json* e = find(lang, key, &from);
     if (!e) return "[" + key + "]";
-    if (e->is_object()) return valueText(*e, "nom", from);
-    return formatLoc(e->get<std::string>(), args, from);
+    std::string pattern;
+    if (e->is_array()) {
+        if (e->empty() || !(*e)[0].is_string()) return "";
+        pattern = (*e)[0].get<std::string>(); // variants: the first one (sayLoc picks by seed)
+    } else if (e->is_object()) {
+        if (e->contains("inf") || e->contains("base")) return e->value("inf", e->value("base", std::string()));
+        return valueText(*e, "nom", from);
+    } else {
+        pattern = e->get<std::string>();
+    }
+    bool v2 = false;
+    const std::string out = renderLocPattern(this, from, pattern, args, 0, nullptr, &v2);
+    return v2 ? tidyLine(out, false) : out;
 }
 
 Json Loc::noun(const std::string& lang, const std::string& key, const std::string& fallbackText) const {
@@ -394,7 +330,7 @@ Json Loc::noun(const std::string& lang, const std::string& key, const std::strin
     const Json* e = find(lang, key, &from);
     if (!e) return Json{{"nom", fallbackText}};
     if (e->is_object()) return *e;
-    return Json{{"nom", formatLoc(e->get<std::string>(), Json::object(), from)}};
+    return Json{{"nom", text(lang, key)}};
 }
 
 std::set<std::string> Loc::keys(const std::string& lang) const {
@@ -421,49 +357,12 @@ std::string pluralCategory(const std::string& lang, double n) {
 
 std::string formatLoc(const std::string& pattern, const Json& args, const std::string& lang,
                       std::vector<std::string>* errors) {
-    std::string out, err;
-    auto note = [&](const std::string& s) {
-        if (errors) errors->push_back(s);
-    };
-    const bool ok = walk(
-        pattern, lang, err, [&](const std::string& s) { out += s; },
-        [&](const Placeholder& ph) {
-            const Json* v = args.is_object() && args.contains(ph.name) ? &args[ph.name] : nullptr;
-            if (!v) {
-                note("missing argument '" + ph.name + "'");
-                out += "{" + ph.name + "}";
-                return;
-            }
-            if (ph.mod.empty() || isCase(ph.mod)) {
-                out += valueText(*v, ph.mod, lang);
-            } else if (ph.mod == "g") {
-                out += ph.forms[genderIndex(*v, ph.forms.size())];
-            } else if (ph.mod == "plural") {
-                double n = 0.0;
-                if (v->is_number()) n = v->get<double>();
-                else if (v->is_object() && v->contains("n") && (*v)["n"].is_number()) n = (*v)["n"].get<double>();
-                else note("'" + ph.name + "' is not a number for plural");
-                const std::string cat = pluralCategory(lang, n);
-                size_t i = 0;
-                if (lang == "ru") i = cat == "one" ? 0 : (cat == "few" ? 1 : 2);
-                else i = cat == "one" ? 0 : 1;
-                out += ph.forms[std::min(i, ph.forms.size() - 1)];
-            }
-        });
-    if (!ok) {
-        note("pattern: " + err);
-        return pattern;
-    }
-    return out;
+    return renderLocPattern(nullptr, lang, pattern, args, 0, errors);
 }
 
 bool checkLocPattern(const std::string& pattern, const std::string& lang, std::string& error,
                      std::set<std::string>* names) {
-    return walk(
-        pattern, lang, error, [](const std::string&) {},
-        [&](const Placeholder& ph) {
-            if (names) names->insert(ph.name);
-        });
+    return locPatternNames(pattern, lang, error, names);
 }
 
 // --- required keys ------------------------------------------------------------
@@ -480,6 +379,8 @@ const std::vector<std::string>& traceCodes() {
         "dialog.accepted",     "dialog.refused",
         // AL-31 consequences
         "deed.accuse_queued",  "deed.rumor_heard",         "deed.loss_noticed", "deed.suspects",
+        // AL-37 cases
+        "deed.case_answer",    "deed.case_pursue",         "deed.case_to_judge", "deed.case_verdict",
         "act.outcome",         "control.steer_clamped"};
     return v;
 }
@@ -537,6 +438,13 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const auto& i : idleCodes()) k.insert("report.idle." + i);
     k.insert("chronicle.death");
     for (const char* ck : {"chronicle.deed_seen", "chronicle.loss_noticed", "chronicle.suspicion"}) k.insert(ck);
+    for (const char* ck : {"chronicle.case_opened", "chronicle.case_returned", "chronicle.case_compensated",
+                           "chronicle.case_denied", "chronicle.case_fled", "chronicle.case_let_go", "chronicle.case_quarrel",
+                           "chronicle.case_fight", "chronicle.case_to_court", "chronicle.case_acquitted",
+                           "chronicle.case_convicted", "chronicle.case_dropped", "chronicle.case_cleared",
+                           "memory.case_pending.text", "memory.case_closed.text", "case.sentence.fine.name",
+                           "case.sentence.shame.name", "case.sentence.custody.name", "case.sentence.exile.name"})
+        k.insert(ck);
     for (const char* mk : {"memory.saw_crime.text", "memory.told_crime.text", "memory.rumor_crime.text",
                            "memory.suspects.text", "memory.noticed_missing.text"})
         k.insert(mk);
@@ -565,9 +473,20 @@ ValidationReport validateLoc(const Content& c, const Loc& loc) {
             const Json& e = *loc.entry(l, key);
             const std::string where = "loc[" + l + "] " + key;
             if (l != base && !loc.entry(base, key)) r.warnings.push_back(where + ": not in the base language");
+            if (key.rfind("lex.", 0) == 0 || key.rfind("frame.", 0) == 0) continue; // validateLocGen
             if (e.is_object()) {
                 for (auto it = e.begin(); it != e.end(); ++it) {
-                    if (it.key() == "g") {
+                    if (it.key() == "anim") {
+                        if (!it->is_boolean()) r.errors.push_back(where + ": 'anim' must be true or false");
+                    } else if (it.key() == "pl") {
+                        if (it->is_object()) {
+                            for (auto f = it->begin(); f != it->end(); ++f)
+                                if (!isCase(f.key()) || !f->is_string())
+                                    r.errors.push_back(where + ": bad plural form '" + f.key() + "'");
+                        } else if (!it->is_string()) {
+                            r.errors.push_back(where + ": 'pl' must be a string or case forms");
+                        }
+                    } else if (it.key() == "g") {
                         const std::string g = it->is_string() ? it->get<std::string>() : "";
                         if (std::find(kGenders.begin(), kGenders.end(), g) == kGenders.end())
                             r.errors.push_back(where + ": bad gender '" + g + "' (m f n pl)");
@@ -579,6 +498,7 @@ ValidationReport validateLoc(const Content& c, const Loc& loc) {
                 }
                 continue;
             }
+            if (e.is_array()) continue; // variants: validateLocGen
             std::string err;
             std::set<std::string> names;
             if (!checkLocPattern(e.get<std::string>(), l, err, &names)) {
@@ -594,6 +514,9 @@ ValidationReport validateLoc(const Content& c, const Loc& loc) {
             for (const auto& n : names)
                 if (!baseNames.count(n)) r.warnings.push_back(where + ": placeholder {" + n + "} is not in the base text");
         }
+    const ValidationReport g = validateLocGen(loc);
+    r.errors.insert(r.errors.end(), g.errors.begin(), g.errors.end());
+    r.warnings.insert(r.warnings.end(), g.warnings.begin(), g.warnings.end());
     return r;
 }
 

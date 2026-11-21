@@ -77,7 +77,8 @@
    },
    "method_bias": {
     "ask_family_for_food": -1.0,
-    "warm_at_village_fire": -1.0
+    "warm_at_village_fire": -1.0,
+    "invite_company": -1.0
    },
    "inherit": 0.25,
    "weight_in_pool": 1.0

@@ -74,6 +74,11 @@ struct MemoryEntry {
     double salience = 0.0;
     std::string source = "seen"; // seen | heard | rumor | told
     double confidence = 1.0;
+    // AL-49 (doc/design/DIALOGUE_GEN.md §3.2, §6.4): who told it, nearest first
+    // (at most Epistemic::kMaxChain), and the World fact it is about (kNone =
+    // none known: a guess, a lie, or written before the fact registry).
+    std::vector<EntityId> chain;
+    EntityId fact = kNone;
 };
 
 // Directed: A->B is not B->A (AI_ARCHITECTURE §7).
@@ -172,6 +177,25 @@ struct FsmState {
     Vec2 dest;
     Tick timer = 0;
     Tick started = 0;
+    std::string anim; // social chains: the clip key of this side of a joint act (social_chains.json); "" = by interaction/state
+};
+
+// A social chain this character takes part in (sim/social_chain.hpp, AL-40):
+// an act that asks the other's answer and then is done by both together, or
+// an accepted invitation to follow someone. The actor's side drives the pair.
+struct SocialLink {
+    std::string chain;     // social_chains.json id (= the catalog act)
+    std::string role;      // actor | target | follower
+    EntityId partner = kNone; // the other side (for a follower: the leader)
+    std::string phase;     // ask | answer | refused | approach | stage | follow | join
+    int stage = 0;
+    Tick until = 0;        // end of the current phase / stage
+    Tick since = 0;
+    Tick expires = 0;      // follower: the invitation runs out
+    EntityId place = kNone; // where the pair does it (a bed), kNone = where they stand
+    std::string tone;      // the actor's tone when asked
+    std::string result;    // actor: why the other side broke the chain (phase "broken")
+    bool active() const { return !chain.empty(); }
 };
 
 struct WeightMod {
@@ -242,6 +266,8 @@ struct AiState {
     std::string lastFailReason;
     Tick nextThink = 0;
     AiStats stats;
+    SocialLink social;      // a joint act or a follow in progress (AL-40)
+    SocialLink followAfter; // a follow put aside while its leader does a joint act with this follower
 };
 
 struct Character {

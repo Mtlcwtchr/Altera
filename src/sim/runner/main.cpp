@@ -9,11 +9,15 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <map>
+#include <set>
 #include <string>
 
 #include "sim/dialogue_gen.hpp"
+#include "sim/dialogue_rules.hpp"
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
+#include "sim/loc_gen.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace altera::sim;
@@ -63,6 +67,24 @@ int main(int argc, char** argv) {
         for (const auto& w : dv.warnings) std::cerr << "warning: " << w << "\n";
         for (const auto& e : dv.errors) std::cerr << "error: " << e << "\n";
         if (!dv.ok()) return 1;
+        const ValidationReport rv = validateDialogueRules(dialogueGenData(content), &content);
+        for (const auto& w : rv.warnings) std::cerr << "warning: " << w << "\n";
+        for (const auto& e : rv.errors) std::cerr << "error: " << e << "\n";
+        if (!rv.ok()) return 1;
+        {   // LOC v0.2 (AL-47): a frame per predicate, frame roles known to the predicate
+            std::vector<std::string> preds;
+            std::map<std::string, std::vector<std::string>> roles;
+            for (const auto& [id, pd] : dialogueGenData(content).predicates) {
+                preds.push_back(id);
+                for (const auto& [rn, kinds] : pd.roles) roles[id].push_back(rn);
+            }
+            const ValidationReport fv = validateLocGen(loc, preds, roles);
+            const std::set<std::string> said(lv.warnings.begin(), lv.warnings.end()); // validateLoc ran the structure part
+            for (const auto& w : fv.warnings)
+                if (!said.count(w)) std::cerr << "warning: " << w << "\n";
+            for (const auto& e : fv.errors) std::cerr << "error: " << e << "\n";
+            if (!fv.ok()) return 1;
+        }
         if (!loc.hasLanguage(lang))
             std::cerr << "warning: no loc table for '" << lang << "', using " << loc.fallback() << "\n";
         if (validateOnly) {
