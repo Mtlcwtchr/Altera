@@ -47,7 +47,7 @@ LOOKS = [
     # name, outfit, hair, beard
     ('m_peasant_parted', 'Male_Peasant', 'Hair_SimpleParted', False),
     ('m_peasant_beard', 'Male_Peasant', 'Hair_Buzzed', True),
-    ('m_peasant_long', 'Male_Peasant', 'Hair_Long', True),
+    ('m_peasant_long', 'Male_Peasant', 'Hair_SimpleParted', True),   # AL-5: Hair_Long (female-rigged) left the crown bare on men
     ('m_ranger', 'Male_Ranger', 'Hair_SimpleParted', True),
     ('f_peasant_long', 'Female_Peasant', 'Hair_Long', False),
     ('f_peasant_buns', 'Female_Peasant', 'Hair_Buns', False),

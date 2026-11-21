@@ -1041,7 +1041,11 @@ void Hud::controlPill(float W, float H) {
     box(Skin::Leather, r, 26);
     float x = r.x + 6;
     for (int k = 0; k < 3; ++k) {
-        const std::string tip = host_->text(kModes[k][1]) + (hasPerson ? "" : " - " + host_->text("hud.control.nobody"));
+        std::string tip = host_->text(kModes[k][1]);
+        if (k == 2) tip = host_->text(hasPerson ? "hud.control.release" : "hud.control.free");
+        else if (!hasPerson)
+            tip += " - " + (leadName.empty() ? host_->text("hud.control.take_none")
+                                             : host_->text("hud.control.take", {{"who", leadName}}));
         if (roundButton({x, r.y + 4, 44, 44}, kModes[k][0], controlMode == k, tip)) host_->controlMode(k);
         x += 46;
     }

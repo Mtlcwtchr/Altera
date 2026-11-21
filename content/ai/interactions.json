@@ -6147,6 +6147,222 @@
    "visibility": "public",
    "_doc": "поставить деталь: материалы на месте, опора стоит; деталь встаёт после work актов (build.json)",
    "_part": "build"
+  },
+  {
+   "id": "pet_hens",
+   "category": "household",
+   "target": "creature:hens",
+   "pre": [],
+   "eff": [
+    "need:fun+0.05",
+    "moodlet:had_fun"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 3,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "погладить скотину: чью угодно, для души (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "shoo_hens",
+   "category": "household",
+   "target": "creature:hens",
+   "pre": [],
+   "eff": [
+    "need:fun+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 5,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "шугнуть скотину (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "pet_goats",
+   "category": "household",
+   "target": "creature:goats",
+   "pre": [],
+   "eff": [
+    "need:fun+0.05",
+    "moodlet:had_fun"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 3,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "погладить скотину: чью угодно, для души (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "shoo_goats",
+   "category": "household",
+   "target": "creature:goats",
+   "pre": [],
+   "eff": [
+    "need:fun+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 5,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "шугнуть скотину (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "pet_pig",
+   "category": "household",
+   "target": "creature:pig",
+   "pre": [],
+   "eff": [
+    "need:fun+0.05",
+    "moodlet:had_fun"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 3,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "погладить скотину: чью угодно, для души (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "shoo_pig",
+   "category": "household",
+   "target": "creature:pig",
+   "pre": [],
+   "eff": [
+    "need:fun+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 5,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "шугнуть скотину (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "feed_hens_by_hand",
+   "category": "household",
+   "target": "creature:hens",
+   "pre": [
+    "has:grain>=1"
+   ],
+   "eff": [
+    "has:grain-1",
+    "need:fun+0.04",
+    "skill:husbandry+0.002"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 3,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "покормить кур с руки зерном (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "watch_deer",
+   "category": "knowledge",
+   "target": "creature:deer",
+   "pre": [],
+   "eff": [
+    "skill:hunting+0.003",
+    "need:fun+0.02"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Idle",
+   "range_m": 30,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "понаблюдать за зверем: учит повадкам (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "watch_hare",
+   "category": "knowledge",
+   "target": "creature:hare",
+   "pre": [],
+   "eff": [
+    "skill:hunting+0.003",
+    "need:fun+0.02"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Idle",
+   "range_m": 30,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "понаблюдать за зверем: учит повадкам (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "watch_boar",
+   "category": "knowledge",
+   "target": "creature:boar",
+   "pre": [],
+   "eff": [
+    "skill:hunting+0.003",
+    "need:fun+0.02"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Idle",
+   "range_m": 30,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "понаблюдать за зверем: учит повадкам (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "watch_wolf",
+   "category": "knowledge",
+   "target": "creature:wolf",
+   "pre": [],
+   "eff": [
+    "skill:hunting+0.003",
+    "need:fun+0.02"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Idle",
+   "range_m": 30,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "понаблюдать за зверем: учит повадкам (AL-6)",
+   "_part": "AL-6"
+  },
+  {
+   "id": "watch_fish_shoal",
+   "category": "knowledge",
+   "target": "creature:fish_shoal",
+   "pre": [],
+   "eff": [
+    "skill:fishing+0.003",
+    "need:fun+0.02"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Idle",
+   "range_m": 30,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "понаблюдать за зверем: учит повадкам (AL-6)",
+   "_part": "AL-6"
   }
  ]
 }
