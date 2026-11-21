@@ -35,7 +35,8 @@
 //                       said_to.<rule> = times the speaker said it to this listener,
 //                       said.topic = times the speaker told this listener about this topic (any rule),
 //                       heard.topic = times anyone told this listener about this topic
-//   from the caller     slot (set by chooseRule from SayContext::slot), outcome, reason, place:
+//   from the caller     slot (set by chooseRule from SayContext::slot), outcome, reason, place,
+//                       mode (gesture), topic.kind (interaction|terms), commitment, reply_to (act answered):
 //                       the dialogue layer (T6) sets them on the facts before choosing.
 //   from providers      whatever a registered FactProvider adds (its declared key prefixes).
 //
