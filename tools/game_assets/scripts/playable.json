@@ -9,7 +9,8 @@
  {"at": 20, "shot": "play_03_hair_close.png"},
  {"at": 21, "zoom": 22, "pitch": 0.55, "aim_thing": "any"},
  {"at": 23, "shot": "play_04_thing_ring.png"},
- {"at": 24, "panel": "none", "aim_thing": "tree"},
+ {"at": 24, "panel": "none"},
+ {"at": 24.5, "aim_thing": "tree"},
  {"at": 26, "shot": "play_05_tree_ring.png"},
  {"at": 27, "panel": "inventory"},
  {"at": 29, "shot": "play_06_inventory.png"},
@@ -17,5 +18,12 @@
  {"at": 33, "shot": "play_07_build_open.png"},
  {"at": 34, "panel": "none", "zoom": 90, "pitch": 0.9},
  {"at": 37, "shot": "play_08_village_pads.png"},
- {"at": 38, "quit": true}
+ {"at": 38, "zoom": 18, "pitch": 0.5, "camera_follow": true, "aim_person": true},
+ {"at": 41, "shot": "play_09_wheel.png"},
+ {"at": 42, "panel": "none"},
+ {"at": 42.5, "aim_beast": "any"},
+ {"at": 45, "shot": "play_10_beast_menu.png"},
+ {"at": 46, "panel": "none", "zoom": 30, "pitch": 0.6},
+ {"at": 48, "shot": "play_11_names.png"},
+ {"at": 49, "quit": true}
 ]
