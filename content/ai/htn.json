@@ -854,6 +854,19 @@
    "id": "obtain_water",
    "methods": [
     {
+     "id": "drink_from_well",
+     "pre": [
+      "known:well"
+     ],
+     "cost": 1,
+     "steps": [
+      {
+       "do": "drink_from_well"
+      }
+     ],
+     "_part": "AL-7"
+    },
+    {
      "id": "drink_from_source",
      "pre": [
       "known:water"

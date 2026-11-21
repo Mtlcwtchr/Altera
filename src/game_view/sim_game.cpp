@@ -575,11 +575,16 @@ public:
                 if (slope > 0.12) continue;
                 double open = has(n, {"river_valley"}) ? 1.0 : has(n, {"plateau"}) ? 0.8 : has(n, {"edge", "glade"}) ? 0.6
                             : has(n, {"steppe"}) ? 0.4 : has(n, {"forest"}) ? -0.2 : 0.2;
+                // AL-7: water in sight of the houses (a lake, the sea, a river) counts most
                 double water = 0;
-                for (int k = 0; k < 8 && water == 0; ++k) {
-                    const double a = k * kPi * 0.25;
-                    const double qx = x + 700 * std::cos(a), qy = y + 700 * std::sin(a);
-                    if (wet(biomeName(qx, qy), ground_.at(qx, qy, 2.0)) || riverAt(qx, qy)) water = 0.5;
+                for (const double rr : {250.0, 450.0, 700.0}) {
+                    for (int k = 0; k < 12 && water == 0; ++k) {
+                        const double a = k * kPi / 6.0;
+                        const double qx = x + rr * std::cos(a), qy = y + rr * std::sin(a);
+                        if (wet(biomeName(qx, qy), ground_.at(qx, qy, 2.0)) || riverAt(qx, qy))
+                            water = rr < 300 ? 1.6 : rr < 500 ? 1.1 : 0.5;
+                    }
+                    if (water > 0) break;
                 }
                 const double score = open + water - slope * 6.0 - std::hypot(dx, dy) / 5000.0;
                 if (score > bestScore) bestScore = score, bx = x, by = y;
