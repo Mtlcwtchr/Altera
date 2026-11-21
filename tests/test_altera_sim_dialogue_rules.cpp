@@ -346,14 +346,14 @@ TEST(altera_dialogue_rules_choose_line_real_content) {
     SaidMemory said;
     Utterance u = theftTalk(ia, ib, ic);
     RuleChoice r = chooseLine(d, w, u, &said);
-    CHECK_EQ(r.rule->id, std::string("inform.theft.rumor"));
+    CHECK_EQ(r.rule->id, std::string("inform.rumor.mid")); // rumour, confidence 0.4..0.6 (AL-51 lines.json)
     CHECK_EQ(said.log.size(), size_t{1});
     // Second time to the same listener about the same theft: once_per listener+topic, the fallback.
     ContextFacts f;
     r = chooseLine(d, w, u, &said, false, &f);
-    CHECK_EQ(r.rule->id, std::string("inform.any"));
+    CHECK_EQ(r.rule->id.rfind("port.inform.", 0), size_t{0}); // an old dialogue.inform.* line (port.json)
     CHECK_EQ(f.num["said.topic"], 1.0);
-    CHECK(explainChoice(r, f).find("inform.theft.rumor (3) blocked") != std::string::npos);
+    CHECK(explainChoice(r, f).find("inform.rumor.mid (5) blocked") != std::string::npos);
     // The real rules pass the rule checks.
     const ValidationReport v = validateDialogueRules(d, &realContent());
     for (const auto& e : v.errors) ::testing::fail(__FILE__, __LINE__, e.c_str());

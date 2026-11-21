@@ -1,0 +1,127 @@
+{
+ "_doc": "Фреймы предикатов ru (AL-51, LOC v0.2 §3, gdd/dialogue_gen/LOC_V02_FORMAT.md). По фрейму на каждый предикат content/ai/predicates.json. roles — управление (падеж или предлог+падеж), роли — имена из predicates.json. clause — варианты клаузы (выбор от сида), nominal — именная группа (падеж головы задаёт шаблон снаружи), about — «о чём». Время и отрицание — из пропозиции; time/place — необязательные аргументы («ночью», «в амбаре»).",
+ "frame.take": {
+  "verb": ["take", "take_grab"],
+  "noun": "lex.noun.theft",
+  "roles": {"doer": "nom", "object": "acc", "victim": "у+gen", "victim_family": "у+gen"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {object?} {victim?} {victim_family?}",
+             "{doer} {verb:agree=doer} {victim?} {victim_family?} {object?} {time?}"],
+  "nominal": "взятое {victim?} {victim_family?}",
+  "about": "о взятом {victim?} {victim_family?}"
+ },
+ "frame.theft": {
+  "verb": ["steal", "steal_snatch", "steal_drag", "steal_lift"],
+  "noun": "lex.noun.theft",
+  "roles": {"doer": "nom", "object": "acc", "victim": "у+gen", "victim_family": "у+gen"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?} {victim_family?} {object?}",
+             "{doer} {verb:agree=doer} {object?} {victim?} {victim_family?} {time?}",
+             "{time?} {doer} {verb:agree=doer} {victim?} {victim_family?} {object?} {place?}"],
+  "nominal": "{noun} {object:gen?} {victim?} {victim_family?}",
+  "about": "{noun:pre:prep|о} {object:gen?} {victim?} {victim_family?}"
+ },
+ "frame.banditry": {
+  "verb": ["rob", "rob_fleece"],
+  "noun": "lex.noun.banditry",
+  "roles": {"doer": "nom", "victim": "acc", "victim_family": "acc", "object": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?} {victim_family?}",
+             "{doer} {time?} на дороге {verb:agree=doer} {victim?} {victim_family?}",
+             "{doer} {verb:agree=doer} {victim?} {victim_family?} до нитки"],
+  "nominal": "{noun} {victim:gen?} {victim_family:gen?}",
+  "about": "{noun:pre:prep|о} {victim:gen?} {victim_family:gen?}"
+ },
+ "frame.trespass": {
+  "verb": ["climb_in", "break_in"],
+  "noun": "lex.noun.trespass",
+  "roles": {"doer": "nom", "object": "в+acc", "victim": "к+dat", "victim_family": "к+dat"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {object?} {victim?} {victim_family?}",
+             "{time?} {doer} {verb:agree=doer} {victim?} {victim_family?} {object?}"],
+  "nominal": "{noun} {object?} {victim?} {victim_family?}",
+  "about": "{noun:pre:prep|о} {victim?} {victim_family?}"
+ },
+ "frame.poaching": {
+  "verb": ["shoot_game", "fell_game"],
+  "noun": "lex.noun.poaching",
+  "roles": {"doer": "nom", "object": "acc", "victim_family": "у+gen"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {object?} в чужом лесу",
+             "{doer} {verb:agree=doer} {object?} {victim_family?} без спросу",
+             "{time?} {doer} {verb:agree=doer} в господском лесу {object?}"],
+  "nominal": "{noun} {victim_family?}",
+  "about": "{noun:pre:prep|о} в чужом лесу"
+ },
+ "frame.lose": {
+  "verb": ["go_missing", "vanish"],
+  "noun": "lex.noun.loss",
+  "roles": {"object": "nom", "victim": "у+gen", "victim_family": "у+gen"},
+  "clause": ["{victim?} {victim_family?} {time?} {verb:agree=object} {object}",
+             "{time?} {victim?} {victim_family?} {verb:agree=object} {object}",
+             "{object} {victim?} {victim_family?} {verb:agree=object} {time?}"],
+  "nominal": "{noun} {object:gen?} {victim?} {victim_family?}",
+  "about": "{noun:pre:prep|о} {object:gen?} {victim?} {victim_family?}"
+ },
+ "frame.insult": {
+  "verb": ["insult", "scold", "name_call"],
+  "noun": "lex.noun.insult",
+  "roles": {"doer": "nom", "victim": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?}",
+             "{doer} {verb:agree=doer} {victim?} при всех",
+             "{doer} {verb:agree=doer} {victim?} последними словами"],
+  "nominal": "{noun} {victim:gen?}",
+  "about": "{noun:pre:prep|о} {victim:gen?}"
+ },
+ "frame.assault": {
+  "verb": ["beat", "hit", "thrash"],
+  "noun": "lex.noun.assault",
+  "roles": {"doer": "nom", "victim": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim?}",
+             "{doer} {verb:agree=doer} {victim?} {place?}",
+             "{time?} {doer} ни с того ни с сего {verb:agree=doer} {victim?}"],
+  "nominal": "{noun} {victim:gen?}",
+  "about": "{noun:pre:prep|о} {victim:gen?}"
+ },
+ "frame.murder": {
+  "verb": ["kill", "kill_knife", "kill_finish"],
+  "noun": "lex.noun.murder",
+  "roles": {"doer": "nom", "victim": "acc"},
+  "clause": ["{doer} {time?} {verb:agree=doer} {victim}",
+             "{doer} {verb:agree=doer} {victim} {place?}",
+             "{time?} {doer} {verb:agree=doer} {victim}, насмерть"],
+  "nominal": "{noun} {victim:gen}",
+  "about": "{noun:pre:prep|о} {victim:gen}"
+ },
+ "frame.help": {
+  "verb": ["help", "help_out"],
+  "noun": "lex.noun.help",
+  "roles": {"doer": "nom", "beneficiary": "dat", "object": "с+ins"},
+  "clause": ["{doer} {verb:agree=doer} {beneficiary?} {object?}",
+             "{doer} {time?} {verb:agree=doer} {beneficiary?} {object?}"],
+  "nominal": "{noun} {beneficiary:dat?} {object?}",
+  "about": "{noun:pre:prep|о} {beneficiary:dat?}"
+ },
+ "frame.give": {
+  "verb": ["give", "give_away"],
+  "noun": "lex.noun.gift",
+  "roles": {"doer": "nom", "beneficiary": "dat", "object": "acc"},
+  "clause": ["{doer} {verb:agree=doer} {beneficiary?} {object?}",
+             "{doer} {time?} {verb:agree=doer} {object?} {beneficiary?}"],
+  "nominal": "{noun} {beneficiary:dat?}",
+  "about": "{noun:pre:prep|о} {beneficiary:dat?}"
+ },
+ "frame.say": {
+  "verb": ["say", "tell"],
+  "noun": "lex.noun.word",
+  "roles": {"speaker": "nom", "listener": "dat", "content": "clause"},
+  "clause": ["{speaker} {verb:agree=speaker} {listener?}, что {>content:clause}",
+             "{speaker} {listener?} {verb:agree=speaker}, будто {>content:clause}"],
+  "nominal": "слова {speaker:gen}",
+  "about": "{>content:about}"
+ },
+ "frame.think": {
+  "verb": ["think", "reckon"],
+  "noun": "lex.noun.thought",
+  "roles": {"thinker": "nom", "content": "clause"},
+  "clause": ["{thinker} {verb:agree=thinker}, что {>content:clause}",
+             "{thinker} {verb:agree=thinker}, будто {>content:clause}"],
+  "nominal": "{noun} {thinker:gen}",
+  "about": "{>content:about}"
+ }
+}

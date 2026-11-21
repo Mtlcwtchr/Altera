@@ -1,0 +1,1336 @@
+{
+ "_doc": "СГЕНЕРИРОВАНО tools/port_dialogue_rules.py из content/ai/dialogue.json — руками не править. Перенос старых шаблонов dialogue.<template>.<variant> в правила (AL-51).",
+ "rules": [
+  {
+   "id": "port.accept.familiar_1",
+   "when": [
+    "act=accept",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.accept.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.accept.familiar_2",
+   "when": [
+    "act=accept",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.accept.familiar_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.accept.formal_1",
+   "when": [
+    "act=accept",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.accept.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.accept.neutral_1",
+   "when": [
+    "act=accept"
+   ],
+   "say": "dialogue.accept.neutral_1"
+  },
+  {
+   "id": "port.accept.neutral_2",
+   "when": [
+    "act=accept"
+   ],
+   "say": "dialogue.accept.neutral_2"
+  },
+  {
+   "id": "port.accept.neutral_3",
+   "when": [
+    "act=accept"
+   ],
+   "say": "dialogue.accept.neutral_3"
+  },
+  {
+   "id": "port.accuse.formal_1",
+   "when": [
+    "act=accuse",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.accuse.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.accuse.neutral_1",
+   "when": [
+    "act=accuse"
+   ],
+   "say": "dialogue.accuse.neutral_1"
+  },
+  {
+   "id": "port.accuse.neutral_2",
+   "when": [
+    "act=accuse"
+   ],
+   "say": "dialogue.accuse.neutral_2"
+  },
+  {
+   "id": "port.accuse.rude_1",
+   "when": [
+    "act=accuse",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.accuse.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.apologize.familiar_1",
+   "when": [
+    "act=apologize",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.apologize.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.apologize.formal_1",
+   "when": [
+    "act=apologize",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.apologize.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.apologize.neutral_1",
+   "when": [
+    "act=apologize"
+   ],
+   "say": "dialogue.apologize.neutral_1"
+  },
+  {
+   "id": "port.apologize.neutral_2",
+   "when": [
+    "act=apologize"
+   ],
+   "say": "dialogue.apologize.neutral_2"
+  },
+  {
+   "id": "port.ask.formal_1",
+   "when": [
+    "act=ask",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.ask.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.ask.neutral_1",
+   "when": [
+    "act=ask"
+   ],
+   "say": "dialogue.ask.neutral_1"
+  },
+  {
+   "id": "port.ask.neutral_2",
+   "when": [
+    "act=ask"
+   ],
+   "say": "dialogue.ask.neutral_2"
+  },
+  {
+   "id": "port.ask.neutral_3",
+   "when": [
+    "act=ask"
+   ],
+   "say": "dialogue.ask.neutral_3"
+  },
+  {
+   "id": "port.ask.rude_1",
+   "when": [
+    "act=ask",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.ask.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.bargain.neutral_1",
+   "when": [
+    "act=bargain"
+   ],
+   "say": "dialogue.bargain.neutral_1"
+  },
+  {
+   "id": "port.bargain.neutral_2",
+   "when": [
+    "act=bargain"
+   ],
+   "say": "dialogue.bargain.neutral_2"
+  },
+  {
+   "id": "port.bargain.neutral_3",
+   "when": [
+    "act=bargain"
+   ],
+   "say": "dialogue.bargain.neutral_3"
+  },
+  {
+   "id": "port.bargain.rude_1",
+   "when": [
+    "act=bargain",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.bargain.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.command.formal_1",
+   "when": [
+    "act=command",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.command.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.command.formal_2",
+   "when": [
+    "act=command",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.command.formal_2",
+   "weight": 1.5
+  },
+  {
+   "id": "port.command.neutral_1",
+   "when": [
+    "act=command"
+   ],
+   "say": "dialogue.command.neutral_1"
+  },
+  {
+   "id": "port.command.neutral_2",
+   "when": [
+    "act=command"
+   ],
+   "say": "dialogue.command.neutral_2"
+  },
+  {
+   "id": "port.command.rude_1",
+   "when": [
+    "act=command",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.command.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.confess.familiar_1",
+   "when": [
+    "act=confess",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.confess.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.confess.neutral_1",
+   "when": [
+    "act=confess"
+   ],
+   "say": "dialogue.confess.neutral_1"
+  },
+  {
+   "id": "port.confess.neutral_2",
+   "when": [
+    "act=confess"
+   ],
+   "say": "dialogue.confess.neutral_2"
+  },
+  {
+   "id": "port.farewell.familiar_1",
+   "when": [
+    "act=farewell",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.farewell.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.farewell.familiar_2",
+   "when": [
+    "act=farewell",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.farewell.familiar_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.farewell.formal_1",
+   "when": [
+    "act=farewell",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.farewell.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.farewell.formal_2",
+   "when": [
+    "act=farewell",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.farewell.formal_2",
+   "weight": 1.5
+  },
+  {
+   "id": "port.farewell.neutral_1",
+   "when": [
+    "act=farewell"
+   ],
+   "say": "dialogue.farewell.neutral_1"
+  },
+  {
+   "id": "port.farewell.neutral_2",
+   "when": [
+    "act=farewell"
+   ],
+   "say": "dialogue.farewell.neutral_2"
+  },
+  {
+   "id": "port.farewell.rude_1",
+   "when": [
+    "act=farewell",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.farewell.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.farewell.rude_2",
+   "when": [
+    "act=farewell",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.farewell.rude_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.greet.familiar_1",
+   "when": [
+    "act=greet",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.greet.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.greet.familiar_2",
+   "when": [
+    "act=greet",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.greet.familiar_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.greet.familiar_3",
+   "when": [
+    "act=greet",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.greet.familiar_3",
+   "weight": 2.0
+  },
+  {
+   "id": "port.greet.formal_1",
+   "when": [
+    "act=greet",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.greet.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.greet.formal_2",
+   "when": [
+    "act=greet",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.greet.formal_2",
+   "weight": 1.5
+  },
+  {
+   "id": "port.greet.formal_3",
+   "when": [
+    "act=greet",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.greet.formal_3",
+   "weight": 1.5
+  },
+  {
+   "id": "port.greet.neutral_1",
+   "when": [
+    "act=greet"
+   ],
+   "say": "dialogue.greet.neutral_1"
+  },
+  {
+   "id": "port.greet.neutral_2",
+   "when": [
+    "act=greet"
+   ],
+   "say": "dialogue.greet.neutral_2"
+  },
+  {
+   "id": "port.greet.rude_1",
+   "when": [
+    "act=greet",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.greet.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.greet.rude_2",
+   "when": [
+    "act=greet",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.greet.rude_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.ignore.neutral_1",
+   "when": [
+    "act=ignore"
+   ],
+   "say": "dialogue.ignore.neutral_1"
+  },
+  {
+   "id": "port.ignore.neutral_2",
+   "when": [
+    "act=ignore"
+   ],
+   "say": "dialogue.ignore.neutral_2"
+  },
+  {
+   "id": "port.ignore.rude_1",
+   "when": [
+    "act=ignore",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.ignore.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.inform.familiar_1",
+   "when": [
+    "act=inform",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.inform.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.inform.familiar_2",
+   "when": [
+    "act=inform",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.inform.familiar_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.inform.neutral_1",
+   "when": [
+    "act=inform"
+   ],
+   "say": "dialogue.inform.neutral_1"
+  },
+  {
+   "id": "port.inform.neutral_2",
+   "when": [
+    "act=inform"
+   ],
+   "say": "dialogue.inform.neutral_2"
+  },
+  {
+   "id": "port.inform.neutral_3",
+   "when": [
+    "act=inform"
+   ],
+   "say": "dialogue.inform.neutral_3"
+  },
+  {
+   "id": "port.inform_interaction.neutral_1",
+   "when": [
+    "act=inform",
+    "topic.kind=interaction"
+   ],
+   "say": "dialogue.inform_interaction.neutral_1"
+  },
+  {
+   "id": "port.inform_interaction.neutral_2",
+   "when": [
+    "act=inform",
+    "topic.kind=interaction"
+   ],
+   "say": "dialogue.inform_interaction.neutral_2"
+  },
+  {
+   "id": "port.inform_playful.neutral_1",
+   "when": [
+    "act=inform",
+    "tone=playful"
+   ],
+   "say": "dialogue.inform_playful.neutral_1"
+  },
+  {
+   "id": "port.inform_playful.neutral_2",
+   "when": [
+    "act=inform",
+    "tone=playful"
+   ],
+   "say": "dialogue.inform_playful.neutral_2"
+  },
+  {
+   "id": "port.inform_warm.neutral_1",
+   "when": [
+    "act=inform",
+    "tone=warm"
+   ],
+   "say": "dialogue.inform_warm.neutral_1"
+  },
+  {
+   "id": "port.inform_warm.neutral_2",
+   "when": [
+    "act=inform",
+    "tone=warm"
+   ],
+   "say": "dialogue.inform_warm.neutral_2"
+  },
+  {
+   "id": "port.insult.formal_1",
+   "when": [
+    "act=insult",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.insult.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.insult.neutral_1",
+   "when": [
+    "act=insult"
+   ],
+   "say": "dialogue.insult.neutral_1"
+  },
+  {
+   "id": "port.insult.neutral_2",
+   "when": [
+    "act=insult"
+   ],
+   "say": "dialogue.insult.neutral_2"
+  },
+  {
+   "id": "port.insult.rude_1",
+   "when": [
+    "act=insult",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.insult.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.insult.rude_2",
+   "when": [
+    "act=insult",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.insult.rude_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.insult.rude_3",
+   "when": [
+    "act=insult",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.insult.rude_3",
+   "weight": 2.0
+  },
+  {
+   "id": "port.insult_sacred.neutral_1",
+   "when": [
+    "act=insult",
+    "tone=sacred"
+   ],
+   "say": "dialogue.insult_sacred.neutral_1"
+  },
+  {
+   "id": "port.insult_sacred.neutral_2",
+   "when": [
+    "act=insult",
+    "tone=sacred"
+   ],
+   "say": "dialogue.insult_sacred.neutral_2"
+  },
+  {
+   "id": "port.offer.familiar_1",
+   "when": [
+    "act=offer",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.offer.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.offer.formal_1",
+   "when": [
+    "act=offer",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.offer.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.offer.neutral_1",
+   "when": [
+    "act=offer"
+   ],
+   "say": "dialogue.offer.neutral_1"
+  },
+  {
+   "id": "port.offer.neutral_2",
+   "when": [
+    "act=offer"
+   ],
+   "say": "dialogue.offer.neutral_2"
+  },
+  {
+   "id": "port.offer_terms.formal_1",
+   "when": [
+    "act=offer",
+    "topic.kind=terms",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.offer_terms.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.offer_terms.neutral_1",
+   "when": [
+    "act=offer",
+    "topic.kind=terms"
+   ],
+   "say": "dialogue.offer_terms.neutral_1"
+  },
+  {
+   "id": "port.offer_terms.neutral_2",
+   "when": [
+    "act=offer",
+    "topic.kind=terms"
+   ],
+   "say": "dialogue.offer_terms.neutral_2"
+  },
+  {
+   "id": "port.persuade.familiar_1",
+   "when": [
+    "act=persuade",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.persuade.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.persuade.neutral_1",
+   "when": [
+    "act=persuade"
+   ],
+   "say": "dialogue.persuade.neutral_1"
+  },
+  {
+   "id": "port.persuade.neutral_2",
+   "when": [
+    "act=persuade"
+   ],
+   "say": "dialogue.persuade.neutral_2"
+  },
+  {
+   "id": "port.praise.familiar_1",
+   "when": [
+    "act=praise",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.praise.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.praise.familiar_2",
+   "when": [
+    "act=praise",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.praise.familiar_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.praise.formal_1",
+   "when": [
+    "act=praise",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.praise.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.praise.neutral_1",
+   "when": [
+    "act=praise"
+   ],
+   "say": "dialogue.praise.neutral_1"
+  },
+  {
+   "id": "port.praise.neutral_2",
+   "when": [
+    "act=praise"
+   ],
+   "say": "dialogue.praise.neutral_2"
+  },
+  {
+   "id": "port.praise_flirtatious.familiar_1",
+   "when": [
+    "act=praise",
+    "tone=flirtatious",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.praise_flirtatious.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.praise_flirtatious.neutral_1",
+   "when": [
+    "act=praise",
+    "tone=flirtatious"
+   ],
+   "say": "dialogue.praise_flirtatious.neutral_1"
+  },
+  {
+   "id": "port.praise_flirtatious.neutral_2",
+   "when": [
+    "act=praise",
+    "tone=flirtatious"
+   ],
+   "say": "dialogue.praise_flirtatious.neutral_2"
+  },
+  {
+   "id": "port.praise_sacred.neutral_1",
+   "when": [
+    "act=praise",
+    "tone=sacred"
+   ],
+   "say": "dialogue.praise_sacred.neutral_1"
+  },
+  {
+   "id": "port.praise_sacred.neutral_2",
+   "when": [
+    "act=praise",
+    "tone=sacred"
+   ],
+   "say": "dialogue.praise_sacred.neutral_2"
+  },
+  {
+   "id": "port.promise.familiar_1",
+   "when": [
+    "act=promise",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.promise.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.promise.formal_1",
+   "when": [
+    "act=promise",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.promise.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.promise.neutral_1",
+   "when": [
+    "act=promise"
+   ],
+   "say": "dialogue.promise.neutral_1"
+  },
+  {
+   "id": "port.promise.neutral_2",
+   "when": [
+    "act=promise"
+   ],
+   "say": "dialogue.promise.neutral_2"
+  },
+  {
+   "id": "port.promise_fealty.formal_1",
+   "when": [
+    "act=promise",
+    "commitment=fealty",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.promise_fealty.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.promise_sworn_friendship.neutral_1",
+   "when": [
+    "act=promise",
+    "commitment=sworn_friendship"
+   ],
+   "say": "dialogue.promise_sworn_friendship.neutral_1"
+  },
+  {
+   "id": "port.refuse.familiar_1",
+   "when": [
+    "act=refuse",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.refuse.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.refuse.formal_1",
+   "when": [
+    "act=refuse",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.refuse.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.refuse.neutral_1",
+   "when": [
+    "act=refuse"
+   ],
+   "say": "dialogue.refuse.neutral_1"
+  },
+  {
+   "id": "port.refuse.neutral_2",
+   "when": [
+    "act=refuse"
+   ],
+   "say": "dialogue.refuse.neutral_2"
+  },
+  {
+   "id": "port.refuse.neutral_3",
+   "when": [
+    "act=refuse"
+   ],
+   "say": "dialogue.refuse.neutral_3"
+  },
+  {
+   "id": "port.refuse.rude_1",
+   "when": [
+    "act=refuse",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.refuse.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.refuse.rude_2",
+   "when": [
+    "act=refuse",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.refuse.rude_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.request.familiar_1",
+   "when": [
+    "act=request",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.request.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.request.familiar_2",
+   "when": [
+    "act=request",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.request.familiar_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.request.formal_1",
+   "when": [
+    "act=request",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.request.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.request.neutral_1",
+   "when": [
+    "act=request"
+   ],
+   "say": "dialogue.request.neutral_1"
+  },
+  {
+   "id": "port.request.neutral_2",
+   "when": [
+    "act=request"
+   ],
+   "say": "dialogue.request.neutral_2"
+  },
+  {
+   "id": "port.request_pleading.neutral_1",
+   "when": [
+    "act=request",
+    "tone=pleading"
+   ],
+   "say": "dialogue.request_pleading.neutral_1"
+  },
+  {
+   "id": "port.thank.familiar_1",
+   "when": [
+    "act=thank",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.thank.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.thank.formal_1",
+   "when": [
+    "act=thank",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.thank.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.thank.neutral_1",
+   "when": [
+    "act=thank"
+   ],
+   "say": "dialogue.thank.neutral_1"
+  },
+  {
+   "id": "port.thank.neutral_2",
+   "when": [
+    "act=thank"
+   ],
+   "say": "dialogue.thank.neutral_2"
+  },
+  {
+   "id": "port.threaten.formal_1",
+   "when": [
+    "act=threaten",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.threaten.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.threaten.neutral_1",
+   "when": [
+    "act=threaten"
+   ],
+   "say": "dialogue.threaten.neutral_1"
+  },
+  {
+   "id": "port.threaten.neutral_2",
+   "when": [
+    "act=threaten"
+   ],
+   "say": "dialogue.threaten.neutral_2"
+  },
+  {
+   "id": "port.threaten.rude_1",
+   "when": [
+    "act=threaten",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.threaten.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.threaten.rude_2",
+   "when": [
+    "act=threaten",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.threaten.rude_2",
+   "weight": 2.0
+  },
+  {
+   "id": "port.threaten_sacred.neutral_1",
+   "when": [
+    "act=threaten",
+    "tone=sacred"
+   ],
+   "say": "dialogue.threaten_sacred.neutral_1"
+  },
+  {
+   "id": "port.threaten_sacred.neutral_2",
+   "when": [
+    "act=threaten",
+    "tone=sacred"
+   ],
+   "say": "dialogue.threaten_sacred.neutral_2"
+  },
+  {
+   "id": "port.lie.as_inform",
+   "when": [
+    "act=lie"
+   ],
+   "say": "dialogue.lie.as_inform"
+  },
+  {
+   "id": "port.open_ask_favor.familiar_1",
+   "when": [
+    "act=request",
+    "intent=ask_favor",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.open_ask_favor.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.open_ask_favor.formal_1",
+   "when": [
+    "act=request",
+    "intent=ask_favor",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.open_ask_favor.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.open_ask_favor.neutral_1",
+   "when": [
+    "act=request",
+    "intent=ask_favor"
+   ],
+   "say": "dialogue.open_ask_favor.neutral_1"
+  },
+  {
+   "id": "port.open_ask_favor.neutral_2",
+   "when": [
+    "act=request",
+    "intent=ask_favor"
+   ],
+   "say": "dialogue.open_ask_favor.neutral_2"
+  },
+  {
+   "id": "port.open_call_out.familiar_1",
+   "when": [
+    "act=greet",
+    "intent=call_out",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.open_call_out.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.open_call_out.formal_1",
+   "when": [
+    "act=greet",
+    "intent=call_out",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.open_call_out.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.open_call_out.neutral_1",
+   "when": [
+    "act=greet",
+    "intent=call_out"
+   ],
+   "say": "dialogue.open_call_out.neutral_1"
+  },
+  {
+   "id": "port.open_call_out.neutral_2",
+   "when": [
+    "act=greet",
+    "intent=call_out"
+   ],
+   "say": "dialogue.open_call_out.neutral_2"
+  },
+  {
+   "id": "port.open_call_out.neutral_3",
+   "when": [
+    "act=greet",
+    "intent=call_out"
+   ],
+   "say": "dialogue.open_call_out.neutral_3"
+  },
+  {
+   "id": "port.open_call_out.rude_1",
+   "when": [
+    "act=greet",
+    "intent=call_out",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.open_call_out.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.open_confront.neutral_1",
+   "when": [
+    "act=accuse",
+    "intent=confront"
+   ],
+   "say": "dialogue.open_confront.neutral_1"
+  },
+  {
+   "id": "port.open_confront.neutral_2",
+   "when": [
+    "act=accuse",
+    "intent=confront"
+   ],
+   "say": "dialogue.open_confront.neutral_2"
+  },
+  {
+   "id": "port.open_confront.rude_1",
+   "when": [
+    "act=accuse",
+    "intent=confront",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.open_confront.rude_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.open_court.neutral_1",
+   "when": [
+    "act=praise",
+    "intent=court"
+   ],
+   "say": "dialogue.open_court.neutral_1"
+  },
+  {
+   "id": "port.open_court.neutral_2",
+   "when": [
+    "act=praise",
+    "intent=court"
+   ],
+   "say": "dialogue.open_court.neutral_2"
+  },
+  {
+   "id": "port.open_offer_teaching.neutral_1",
+   "when": [
+    "act=offer",
+    "intent=offer_teaching"
+   ],
+   "say": "dialogue.open_offer_teaching.neutral_1"
+  },
+  {
+   "id": "port.open_offer_teaching.neutral_2",
+   "when": [
+    "act=offer",
+    "intent=offer_teaching"
+   ],
+   "say": "dialogue.open_offer_teaching.neutral_2"
+  },
+  {
+   "id": "port.open_propose_trade.neutral_1",
+   "when": [
+    "act=offer",
+    "intent=propose_trade"
+   ],
+   "say": "dialogue.open_propose_trade.neutral_1"
+  },
+  {
+   "id": "port.open_propose_trade.neutral_2",
+   "when": [
+    "act=offer",
+    "intent=propose_trade"
+   ],
+   "say": "dialogue.open_propose_trade.neutral_2"
+  },
+  {
+   "id": "port.open_recruit.neutral_1",
+   "when": [
+    "act=persuade",
+    "intent=recruit"
+   ],
+   "say": "dialogue.open_recruit.neutral_1"
+  },
+  {
+   "id": "port.open_recruit.neutral_2",
+   "when": [
+    "act=persuade",
+    "intent=recruit"
+   ],
+   "say": "dialogue.open_recruit.neutral_2"
+  },
+  {
+   "id": "port.open_report.formal_1",
+   "when": [
+    "act=accuse",
+    "intent=report",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.open_report.formal_1",
+   "weight": 1.5
+  },
+  {
+   "id": "port.open_report.formal_2",
+   "when": [
+    "act=accuse",
+    "intent=report",
+    "rel.familiarity<0.2"
+   ],
+   "say": "dialogue.open_report.formal_2",
+   "weight": 1.5
+  },
+  {
+   "id": "port.open_share_news.familiar_1",
+   "when": [
+    "act=inform",
+    "intent=share_news",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.open_share_news.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.open_share_news.neutral_1",
+   "when": [
+    "act=inform",
+    "intent=share_news"
+   ],
+   "say": "dialogue.open_share_news.neutral_1"
+  },
+  {
+   "id": "port.open_share_news.neutral_2",
+   "when": [
+    "act=inform",
+    "intent=share_news"
+   ],
+   "say": "dialogue.open_share_news.neutral_2"
+  },
+  {
+   "id": "port.open_small_talk.familiar_1",
+   "when": [
+    "act=greet",
+    "intent=small_talk",
+    "rel.affinity>=0.4"
+   ],
+   "say": "dialogue.open_small_talk.familiar_1",
+   "weight": 2.0
+  },
+  {
+   "id": "port.open_small_talk.neutral_1",
+   "when": [
+    "act=greet",
+    "intent=small_talk"
+   ],
+   "say": "dialogue.open_small_talk.neutral_1"
+  },
+  {
+   "id": "port.open_small_talk.neutral_2",
+   "when": [
+    "act=greet",
+    "intent=small_talk"
+   ],
+   "say": "dialogue.open_small_talk.neutral_2"
+  },
+  {
+   "id": "port.open_warn.neutral_1",
+   "when": [
+    "act=inform",
+    "intent=warn"
+   ],
+   "say": "dialogue.open_warn.neutral_1"
+  },
+  {
+   "id": "port.open_warn.neutral_2",
+   "when": [
+    "act=inform",
+    "intent=warn"
+   ],
+   "say": "dialogue.open_warn.neutral_2"
+  },
+  {
+   "id": "port.gesture_accept.plain_1",
+   "when": [
+    "act=accept",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_accept.plain_1"
+  },
+  {
+   "id": "port.gesture_farewell.plain_1",
+   "when": [
+    "act=farewell",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_farewell.plain_1"
+  },
+  {
+   "id": "port.gesture_greet.plain_1",
+   "when": [
+    "act=greet",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_greet.plain_1"
+  },
+  {
+   "id": "port.gesture_ignore.plain_1",
+   "when": [
+    "act=ignore",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_ignore.plain_1"
+  },
+  {
+   "id": "port.gesture_insult.plain_1",
+   "when": [
+    "act=insult",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_insult.plain_1"
+  },
+  {
+   "id": "port.gesture_offer.plain_1",
+   "when": [
+    "act=offer",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_offer.plain_1"
+  },
+  {
+   "id": "port.gesture_praise.plain_1",
+   "when": [
+    "act=praise",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_praise.plain_1"
+  },
+  {
+   "id": "port.gesture_refuse.plain_1",
+   "when": [
+    "act=refuse",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_refuse.plain_1"
+  },
+  {
+   "id": "port.gesture_threaten.plain_1",
+   "when": [
+    "act=threaten",
+    "mode=gesture"
+   ],
+   "say": "dialogue.gesture_threaten.plain_1"
+  }
+ ]
+}
