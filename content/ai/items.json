@@ -562,6 +562,99 @@
    ],
    "stack": 999,
    "_doc": "money: the starting purse of a backstory (backstories.json coins)"
+  },
+  {
+   "id": "gambeson",
+   "tags": [
+    "clothing"
+   ],
+   "stack": 1,
+   "warmth": 0.5,
+   "_part": "gear"
+  },
+  {
+   "id": "leather_armour",
+   "tags": [
+    "armour"
+   ],
+   "stack": 1,
+   "warmth": 0.2,
+   "_part": "gear"
+  },
+  {
+   "id": "mail_shirt",
+   "tags": [
+    "armour"
+   ],
+   "stack": 1,
+   "_part": "gear"
+  },
+  {
+   "id": "felt_cap",
+   "tags": [
+    "clothing"
+   ],
+   "stack": 1,
+   "warmth": 0.2,
+   "_part": "gear"
+  },
+  {
+   "id": "helmet",
+   "tags": [
+    "armour"
+   ],
+   "stack": 1,
+   "_part": "gear"
+  },
+  {
+   "id": "trousers",
+   "tags": [
+    "clothing"
+   ],
+   "stack": 1,
+   "warmth": 0.3,
+   "_part": "gear"
+  },
+  {
+   "id": "boots",
+   "tags": [
+    "clothing"
+   ],
+   "stack": 1,
+   "warmth": 0.2,
+   "_part": "gear"
+  },
+  {
+   "id": "belt",
+   "tags": [
+    "container"
+   ],
+   "stack": 1,
+   "_part": "gear"
+  },
+  {
+   "id": "satchel",
+   "tags": [
+    "container"
+   ],
+   "stack": 1,
+   "_part": "gear"
+  },
+  {
+   "id": "backpack",
+   "tags": [
+    "container"
+   ],
+   "stack": 1,
+   "_part": "gear"
+  },
+  {
+   "id": "pack_basket",
+   "tags": [
+    "container"
+   ],
+   "stack": 1,
+   "_part": "gear"
   }
  ]
 }

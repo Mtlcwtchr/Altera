@@ -124,6 +124,12 @@ void to_json(Json& j, const Character& c) {
     if (!c.craft.empty()) j["craft"] = c.craft;
     if (!c.attrs.empty()) j["attrs"] = c.attrs;
     if (!c.backstory.empty()) j["backstory"] = c.backstory;
+    if (!c.worn.empty()) j["worn"] = c.worn;
+    if (!c.gearPins.empty()) {
+        Json p = Json::object();
+        for (const auto& [k, v] : c.gearPins) p[k] = {{"grid", v.grid}, {"x", v.x}, {"y", v.y}, {"turned", v.turned}};
+        j["gear_pins"] = p;
+    }
 }
 
 void from_json(const Json& j, Character& c) {
@@ -137,6 +143,10 @@ void from_json(const Json& j, Character& c) {
     c.skills = j.value("skills", std::map<std::string, double>{});
     c.attrs = j.value("attrs", std::map<std::string, double>{});
     c.backstory = j.value("backstory", std::string());
+    c.worn = j.value("worn", std::map<std::string, std::string>{});
+    if (j.contains("gear_pins"))
+        for (const auto& [k, v] : j["gear_pins"].items())
+            c.gearPins[k] = {v.value("grid", std::string()), v.value("x", 0), v.value("y", 0), v.value("turned", false)};
     c.knowledge = j.value("knowledge", std::set<std::string>{});
     c.knownObjects = j.value("known_objects", std::set<EntityId>{});
     c.memory = j.value("memory", std::vector<MemoryEntry>{});

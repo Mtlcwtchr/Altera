@@ -1,0 +1,21 @@
+[
+ {"at": 3, "backstory": "ex_soldier"},
+ {"at": 4, "backstory_begin": true},
+ {"at": 9, "zoom": 16, "pitch": 0.5, "control": 1, "camera_follow": true},
+ {"at": 11, "shot": "play_01_control_bar.png"},
+ {"at": 12, "walk_to": [9, 6]},
+ {"at": 13, "shot": "play_02_walk_marker.png"},
+ {"at": 18, "zoom": 3.2, "pitch": 0.15},
+ {"at": 20, "shot": "play_03_hair_close.png"},
+ {"at": 21, "zoom": 22, "pitch": 0.55, "aim_thing": "any"},
+ {"at": 23, "shot": "play_04_thing_ring.png"},
+ {"at": 24, "panel": "none", "aim_thing": "tree"},
+ {"at": 26, "shot": "play_05_tree_ring.png"},
+ {"at": 27, "panel": "inventory"},
+ {"at": 29, "shot": "play_06_inventory.png"},
+ {"at": 30, "panel": "build", "camera_follow": false, "zoom": 60, "pitch": 0.8},
+ {"at": 33, "shot": "play_07_build_open.png"},
+ {"at": 34, "panel": "none", "zoom": 90, "pitch": 0.9},
+ {"at": 37, "shot": "play_08_village_pads.png"},
+ {"at": 38, "quit": true}
+]

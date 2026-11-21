@@ -179,8 +179,24 @@ def bake_look(name, outfit, hair, beard):
             if o.name.lower().startswith('superhero'): keep_head(o)
             if o.name.lower().startswith('eyebrows') or o.type == 'MESH': meshes.append(o)
     parts = [hair] + (['Hair_Beard'] if beard else [])
+    # Each hairstyle comes rigged to one sex's head (Hair_Long, Hair_Buns and
+    # the female cuts to the female skeleton, its head bone 5 cm lower): laid
+    # on the other sex's head as it is, it sits low and the crown shows bare
+    # (the men's "monk's tonsure"). Such a style is moved by the difference of
+    # the two head bones; and every strand is lifted a few millimetres off the
+    # scalp, so a close crop does not sink into it.
+    head_out = arm.data.bones['Head'].head_local.copy() if 'Head' in arm.data.bones else None
+    lift = {}   # mesh object -> (delta, push along the normal)
     for hp in parts:
-        meshes += [o for o in imp(HAIR + hp + '.gltf') if o.type == 'MESH']
+        objs_h = imp(HAIR + hp + '.gltf')
+        arm_h = next((o for o in objs_h if o.type == 'ARMATURE'), None)
+        delta = Vector((0, 0, 0))
+        if head_out is not None and arm_h is not None and 'Head' in arm_h.data.bones:
+            delta = head_out - arm_h.data.bones['Head'].head_local
+        for o in objs_h:
+            if o.type == 'MESH':
+                meshes.append(o)
+                lift[o.name] = (delta, 0.004)
     first = len(idx_out)
     zmin, zmax = 1e9, -1e9
     for o in meshes:
@@ -209,12 +225,15 @@ def bake_look(name, outfit, hair, beard):
             while len(q) < 4: q.append(0); js.append(js[0] if js else 0)
             vw.append((js, q))
         cache = {}
+        shift, push = lift.get(o.name, (None, 0.0))
         for t in me.loop_triangles:
             cell, kl = mats[t.material_index] if t.material_index < len(mats) else (None, 0)
             tri = []
             for li, vi in zip(t.loops, t.vertices):
                 p = w2a @ me.vertices[vi].co
                 n = (nm3 @ Vector(cn[li].vector)).normalized()
+                if shift is not None:
+                    p = p + shift + (nm3 @ me.vertices[vi].normal).normalized() * push
                 u, v = (uvl.data[li].uv if uvl else (0.5, 0.5))
                 if cell:
                     x, y, s = cell

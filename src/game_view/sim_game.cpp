@@ -36,9 +36,12 @@
 #include "engine/ui/canvas.hpp"
 #include "engine/ui/font.hpp"
 #include "engine/ui/ui.hpp"
+#include "sim/act_info.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/collide.hpp"
 #include "sim/craft_sim.hpp"
+#include "sim/gear.hpp"
 #include "sim/loc.hpp"
 #include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
@@ -48,6 +51,7 @@
 #include "terrain_core/hydrology.hpp"
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
+#include "terrain_core/relief.hpp"
 
 namespace altera::game {
 namespace {
@@ -122,7 +126,10 @@ struct MeshBuilder {
     }
 };
 
-enum Mesh { kPerson, kBeast, kHouse, kBlock, kMeshes };
+// The things one works on (sim objects near the camera) are rough low-poly
+// shapes too: a tree (trunk, two cones), deadwood (logs), a stony bank, a
+// bush, a tuft (herbs, roots, mushrooms, reeds).
+enum Mesh { kPerson, kBeast, kHouse, kBlock, kTree, kLog, kRock, kBush, kTuft, kMeshes };
 struct MeshRange {
     std::uint32_t first = 0, count = 0;
 };
@@ -132,7 +139,7 @@ class SimGame final : public GameLayer, public HudHost {
 public:
     SimGame(engine::Device& device, SDL_Window* window, const terrain_core::MacroMap& macro,
             const terrain_core::Params& params)
-        : device_(device), window_(window), ground_(macro, params), worldSize_(params.worldSize) {}
+        : device_(device), window_(window), ground_(macro, params), worldSize_(params.worldSize), spacing_(params.spacing) {}
 
     ~SimGame() override {
         stop_ = true;
@@ -147,6 +154,7 @@ public:
 
     bool open(double centreX, double centreY, const GameOptions& o, std::string* why) {
         opts_ = o;
+        relief_ = o.relief;
         try {
             content_ = std::make_unique<Content>(Content::load(o.root + "/content/ai"));
             loc_ = std::make_unique<Loc>(Loc::load(o.root + "/content/loc"));
@@ -158,6 +166,8 @@ public:
             if (o.biomes && o.biomes->size()) mapFromWorld(*o.biomes, cfg, centreX, centreY);
             settings_ = loadSettings();
             if (!settings_.lang.empty() && loc_->hasLanguage(settings_.lang)) opts_.lang = settings_.lang;
+            control_ = settings_.control;
+            follow_ = settings_.cameraFollow;
             worldCfg_ = cfg;
             world_ = std::make_unique<World>(makeTestWorld(*content_, cfg, o.seed));
             installAi(*world_);
@@ -225,6 +235,11 @@ public:
         snapshotLocked();
         shown_ = snap_;
         clearedPieces_ = std::size_t(-1);   // the clearings follow the new buildings
+        obstacleSig_ = std::size_t(-1);     // and so does what blocks a walker
+        padSig_ = std::size_t(-1);          // and the ground under the buildings
+        walkPath_.clear();
+        idleS_ = 0;
+        idleSent_ = false;
         for (const auto& a : shown_.actors)
             if (!a.animal && a.alive) {
                 select(a.id);
@@ -627,9 +642,11 @@ public:
                 break;
             }
             if (e.key.repeat) break;
+            noteInput();
             if (e.key.key == SDLK_SPACE) post({"pause"});
-            if (e.key.key >= SDLK_1 && e.key.key <= SDLK_4) post({"speed", int(e.key.key - SDLK_1) + 1});
-            if (e.key.key == SDLK_TAB) follow_ = !follow_;
+            if (e.key.key >= SDLK_1 && e.key.key <= SDLK_4 && !speedLocked()) post({"speed", int(e.key.key - SDLK_1) + 1});
+            if (e.key.key == SDLK_TAB) cameraFollow(!follow_);
+            if (e.key.key == SDLK_V) controlMode((control_ + 1) % 3);
             if (e.key.key == SDLK_H) hud_.panel = hud_.panel == "annals" ? "none" : "annals";
             if (e.key.key == SDLK_C) hud_.panel = hud_.panel == "sheet" ? "none" : "sheet";
             if (e.key.key == SDLK_K) hud_.panel = hud_.panel == "kin" ? "none" : "kin";
@@ -637,13 +654,15 @@ public:
             if (e.key.key == SDLK_B) hud_.panel = hud_.panel == "build" ? "none" : "build";
             if (e.key.key == SDLK_O) hud_.panel = hud_.panel == "colony" ? "none" : "colony";
             if (e.key.key == SDLK_J) hud_.panel = hud_.panel == "workshop" ? "none" : "workshop";
+            if (e.key.key == SDLK_I) hud_.panel = hud_.panel == "inventory" ? "none" : "inventory";
+            if (e.key.key == SDLK_R && hud_.panel == "inventory") hud_.turnDrag();
             if (hud_.panel == "build") {
                 if (e.key.key == SDLK_R) buildRot_ = (buildRot_ + 1) % 4;
                 if (e.key.key == SDLK_PAGEUP) ++buildBump_;
                 if (e.key.key == SDLK_PAGEDOWN) buildBump_ = std::max(0, buildBump_ - 1);
                 if (e.key.key == SDLK_X || e.key.key == SDLK_DELETE) removeWanted_ = true;
             }
-            if (e.key.key == SDLK_F) follow_ = true;
+            if (e.key.key == SDLK_F) cameraFollow(true);
             if (e.key.key == SDLK_F9) {
                 char n[64];
                 std::snprintf(n, sizeof n, "game_%03d.png", ++shotCounter_);
@@ -659,6 +678,7 @@ public:
             }
             break;
         case SDL_EVENT_MOUSE_BUTTON_DOWN:
+            noteInput();
             if (e.button.button == SDL_BUTTON_LEFT) {
                 input_.down = input_.pressed = true;
                 input_.doubleClick = e.button.clicks >= 2;
@@ -711,6 +731,11 @@ public:
             startedAs_ = false;
             select(shown_.controlled);
         }
+        // a person newly in the player's hands puts on what they carry to wear
+        if (shown_.controlled != kNone && shown_.controlled != woreAllFor_) {
+            woreAllFor_ = shown_.controlled;
+            post({"cmd", 0, "wear_all", {{"id", shown_.controlled}}});
+        }
         if (wheelAt_.pending) {
             wheelAt_.pending = false;
             const EntityId hit = pick(wheelAt_.x, wheelAt_.y);
@@ -729,6 +754,12 @@ public:
                     if (hit != kNone) select(hit);
                 } else if (hit == kNone) {
                     hud_.aim = kNone;
+                    // a thing to work on: its act ring; else, in the mouse and
+                    // free modes, a click on the ground walks the person there
+                    const EntityId thing = pickThing(pickAt_.x, pickAt_.y);
+                    double gx, gy;
+                    if (thing != kNone) hud_.openThing(thing, pickAt_.x, pickAt_.y);
+                    else if (control_ != kKeys && groundUnder(pickAt_.x, pickAt_.y, gx, gy)) walkTo(gx, gy);
                 } else if (hit == shown_.controlled) {
                     hud_.aim = kNone;
                     select(hit);
@@ -743,11 +774,19 @@ public:
             clearedPieces_ = shown_.pieces.size();
             setClearings();
         }
+        layPads();
+        rebuildObstacles();
         static const bool kNoKeys[SDL_SCANCODE_COUNT] = {};
         const bool* keys = hud_.inMenu() ? kNoKeys : SDL_GetKeyboardState(nullptr);
+        holdSpeed();
         const bool walking = driveAvatar(dt, keys, alpha);
+        updateIdle(dt, walking);
         const ActorSnap* sel = actor(selected_);
-        if (walking) {
+        // The keys walk the person only in the keys mode (and only with a
+        // person of one's own); otherwise they move the camera, which lets go
+        // of the person it rode on.
+        const bool keysWalk = control_ == kKeys && avatarCanWalk() && hud_.panel == "none";
+        if (follow_ && walking && (selected_ == avatar_.id || !sel)) {
             // the camera stays on the walker, without the follow's lag
             target_[0] = avatar_.x;
             target_[1] = avatar_.y;
@@ -756,13 +795,38 @@ public:
             actorWorld(*sel, alpha, wx, wy);
             target_[0] += (wx - target_[0]) * std::min(1.0, dt * 6.0);
             target_[1] += (wy - target_[1]) * std::min(1.0, dt * 6.0);
-        } else {
+        }
+        if (!keysWalk) {
             const double v = zoom_ * dt * (keys[SDL_SCANCODE_LSHIFT] ? 3.0 : 1.0);
             const double c = std::cos(orbitYaw_), s = std::sin(orbitYaw_);
-            if (keys[SDL_SCANCODE_W]) { target_[0] += c * v; target_[1] += s * v; follow_ = false; }
-            if (keys[SDL_SCANCODE_S]) { target_[0] -= c * v; target_[1] -= s * v; follow_ = false; }
-            if (keys[SDL_SCANCODE_D]) { target_[0] += s * v; target_[1] -= c * v; follow_ = false; }
-            if (keys[SDL_SCANCODE_A]) { target_[0] -= s * v; target_[1] += c * v; follow_ = false; }
+            double mx = 0, my = 0;
+            if (keys[SDL_SCANCODE_W]) mx += c * v, my += s * v;
+            if (keys[SDL_SCANCODE_S]) mx -= c * v, my -= s * v;
+            if (keys[SDL_SCANCODE_D]) mx += s * v, my -= c * v;
+            if (keys[SDL_SCANCODE_A]) mx -= s * v, my += c * v;
+            if (mx != 0 || my != 0) {
+                target_[0] += mx;
+                target_[1] += my;
+                if (follow_) cameraFollow(false);
+            }
+        }
+        hud_.controlMode = control_;
+        hud_.cameraFollow = follow_;
+        hud_.speedLocked = speedLocked();
+        hud_.hasPerson = shown_.controlled != kNone;
+        viewX_ = target_[0] - originX_;
+        viewY_ = target_[1] - originY_;
+        actsWanted_ = hud_.actTarget();
+        // the hint: what the mouse is over in the world
+        hud_.hoverActor = hud_.hoverThing = kNone;
+        if (hud_.panel == "none" && !overUi_ && !rmb_) {
+            hud_.hoverActor = pick(input_.mouseX, input_.mouseY);
+            if (hud_.hoverActor == kNone) hud_.hoverThing = pickThing(input_.mouseX, input_.mouseY);
+        }
+        hud_.walkMark = !walkPath_.empty();
+        if (hud_.walkMark) {
+            hud_.walkMarkX = walkPath_.back().first - originX_;
+            hud_.walkMarkY = walkPath_.back().second - originY_;
         }
         if (keys[SDL_SCANCODE_Q]) orbitYaw_ += 1.5 * dt;
         // in the workshop E is "make" (held), not the camera
@@ -798,7 +862,7 @@ public:
             avatar_.id = me->id;
         }
         double fwd = 0, side = 0;
-        if (hud_.panel == "none" && !script_.is_array()) {
+        if (control_ == kKeys && hud_.panel == "none" && !script_.is_array()) {
             if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP]) fwd += 1;
             if (keys[SDL_SCANCODE_S] || keys[SDL_SCANCODE_DOWN]) fwd -= 1;
             if (keys[SDL_SCANCODE_D] || keys[SDL_SCANCODE_RIGHT]) side += 1;
@@ -809,32 +873,65 @@ public:
             side = scriptWalk_[1];
             scriptWalk_[2] -= dt;
         }
-        const bool input = fwd != 0 || side != 0;
+        double dx = 0, dy = 0;
+        const bool keyed = fwd != 0 || side != 0;
+        if (keyed) {
+            walkPath_.clear();   // the keys take over from a click's way
+            const double c = std::cos(orbitYaw_), s = std::sin(orbitYaw_);
+            dx = c * fwd + s * side;
+            dy = s * fwd - c * side;
+        } else if (!walkPath_.empty()) {
+            // a click's way: on to the next corner of it
+            if (!avatar_.driven) actorWorld(*me, alpha, avatar_.x, avatar_.y);
+            while (!walkPath_.empty() &&
+                   std::hypot(walkPath_.front().first - avatar_.x, walkPath_.front().second - avatar_.y) < 0.25)
+                walkPath_.erase(walkPath_.begin());
+            if (!walkPath_.empty()) {
+                dx = walkPath_.front().first - avatar_.x;
+                dy = walkPath_.front().second - avatar_.y;
+            }
+        }
+        const bool input = dx != 0 || dy != 0;
         if (input) {
             if (!avatar_.driven) {
                 actorWorld(*me, alpha, avatar_.x, avatar_.y);
+                obstacles_.pushOut(avatar_.x, avatar_.y, kWalkerRadius);   // the sim may have them indoors
                 avatar_.driven = true;
             }
             if (selected_ != me->id) select(me->id);
-            follow_ = true;
-            const double c = std::cos(orbitYaw_), s = std::sin(orbitYaw_);
-            double dx = c * fwd + s * side, dy = s * fwd - c * side;
             const double l = std::hypot(dx, dy);
             dx /= l;
             dy /= l;
-            const bool run = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT] || scriptRun_;
-            const double v = run ? 5.2 : 1.9;
-            const double nx = avatar_.x + dx * v * dt, ny = avatar_.y + dy * v * dt;
-            const bool inMap = nx > originX_ + 1 && ny > originY_ + 1 && nx < originX_ + simSize_ - 1 && ny < originY_ + simSize_ - 1;
-            const bool dry = ground_.at(nx, ny, 2.0) > 0.3;
-            if (inMap && dry) {
-                avatar_.x = nx;
-                avatar_.y = ny;
-                avatar_.speed = v;
-            } else {
-                avatar_.speed = 0;
+            const bool run = keys[SDL_SCANCODE_LSHIFT] || keys[SDL_SCANCODE_RSHIFT] || scriptRun_ ||
+                             (!keyed && walkRun_);
+            // a heavy load slows the walker; over the most one can carry, no running
+            double slow = 1.0;
+            const GearSnap& gs = shown_.detail.gear;
+            if (gs.on && shown_.detail.id == me->id && gs.kg > gs.comfortKg)
+                slow = gs.kg > gs.maxKg ? 0.55 : 1.0 - 0.25 * (gs.kg - gs.comfortKg) / std::max(1.0, gs.maxKg - gs.comfortKg);
+            const bool canRun = !(gs.on && shown_.detail.id == me->id && gs.kg > gs.maxKg);
+            avatarRuns_ = run && canRun;
+            const double v = (avatarRuns_ ? 5.2 : 1.9) * slow;
+            double step = v * dt;
+            if (!keyed && !walkPath_.empty())   // do not overshoot the corner
+                step = std::min(step, std::hypot(walkPath_.front().first - avatar_.x, walkPath_.front().second - avatar_.y));
+            // Houses, walls, posts, steep and wet ground and the sim map's edge
+            // block the walker; along them it slides.
+            const double ox = avatar_.x, oy = avatar_.y;
+            obstacles_.slide(avatar_.x, avatar_.y, dx * step, dy * step, kWalkerRadius);
+            const double went = std::hypot(avatar_.x - ox, avatar_.y - oy);
+            avatar_.speed = dt > 0 ? std::min(v, went / dt) : 0.0;
+            if (went > 1e-4) avatar_.yaw = std::atan2(avatar_.y - oy, avatar_.x - ox);
+            else avatar_.yaw = std::atan2(dy, dx);
+            if (!keyed) {
+                // a click's way that has stuck (something new in the way): give it up
+                if (went < step * 0.2) walkStuck_ += dt;
+                else walkStuck_ = 0;
+                if (walkStuck_ > 0.8) {
+                    walkPath_.clear();
+                    walkStuck_ = 0;
+                }
             }
-            avatar_.yaw = std::atan2(dy, dx);
             avatar_.lastInput = nowS;
         } else {
             avatar_.speed = 0;
@@ -843,7 +940,10 @@ public:
         // tell the sim, at most ten times a second and once more when the keys let go
         const bool moved = std::hypot(avatar_.x - avatar_.sentX, avatar_.y - avatar_.sentY) > 0.02;
         if (moved && (nowS - avatar_.lastSent > 0.1 || !input)) {
-            post({"steer", 0, "", {{"id", me->id}, {"x", avatar_.x - originX_}, {"y", avatar_.y - originY_}}});
+            const double z = groundAt(avatar_.x, avatar_.y);
+            post({"steer", 0, "", {{"id", me->id}, {"x", avatar_.x - originX_}, {"y", avatar_.y - originY_},
+                                   {"run", avatarRuns_}, {"climb", std::max(0.0, z - sentZ_)}}});
+            sentZ_ = z;
             avatar_.sentX = avatar_.x;
             avatar_.sentY = avatar_.y;
             avatar_.lastSent = nowS;
@@ -855,6 +955,210 @@ public:
             if (std::hypot(sx - avatar_.x, sy - avatar_.y) < 0.05 || nowS - avatar_.lastInput > 2.0) avatar_.driven = false;
         }
         return input;
+    }
+
+    // ---- control modes ---------------------------------------------------------
+    // keys: WASD walk the person (the clock held at 1, the walk is real time);
+    // mouse: a click on the ground walks them there round what is in the way,
+    // WASD move the camera; free (Sims-like): the same clicks, the wheel's acts
+    // queue up instead of replacing what goes on, and left alone for
+    // idleAutonomyS seconds the person goes back to their own life. The camera
+    // riding on the selected person is apart from all three (Tab, the bar).
+    bool avatarCanWalk() const {
+        const ActorSnap* me = actor(shown_.controlled);
+        return me && me->alive && !me->down && !me->captive && !me->fighting;
+    }
+    // (tour scripts keep their own clock)
+    bool speedLocked() const { return control_ == kKeys && shown_.controlled != kNone && !script_.is_array(); }
+    void holdSpeed() {
+        if (!speedLocked() || shown_.speed == 1) return;
+        const double nowS = std::chrono::duration<double>(Clock::now() - started_).count();
+        if (nowS - speedPostedS_ < 0.5) return;
+        speedPostedS_ = nowS;
+        post({"speed", 1});
+    }
+    void noteInput() {
+        idleS_ = 0;
+        idleSent_ = false;
+    }
+    void updateIdle(double dt, bool walking) {
+        if (control_ != kFree || shown_.controlled == kNone || hud_.inMenu() || shown_.paused) return;
+        if (walking) {
+            idleS_ = 0;
+            return;
+        }
+        idleS_ += dt;
+        if (!idleSent_ && idleS_ >= double(settings_.idleAutonomyS)) {
+            idleSent_ = true;
+            post({"cmd", 0, "set_free_will", {{"id", shown_.controlled}, {"on", true}, {"now", true}}});
+        }
+    }
+    void controlMode(int mode) override {
+        mode = std::clamp(mode, 0, 2);
+        noteInput();
+        if (mode == control_) return;
+        control_ = mode;
+        if (control_ == kKeys) walkPath_.clear();
+        settings_.control = control_;
+        storeSettings(settings_);
+    }
+    void cameraFollow(bool on) override {
+        follow_ = on;
+        if (on && selected_ == kNone && shown_.controlled != kNone) select(shown_.controlled);
+        if (settings_.cameraFollow != on) {
+            settings_.cameraFollow = on;
+            storeSettings(settings_);
+        }
+    }
+    // A click on the ground (mouse and free modes): the way there round the
+    // houses, walked by the avatar as the keys would; a double click runs.
+    void walkTo(double gx, double gy) {
+        const ActorSnap* me = actor(shown_.controlled);
+        if (!me || !avatarCanWalk()) return;
+        double sx, sy;
+        if (avatar_.driven && avatar_.id == me->id) sx = avatar_.x, sy = avatar_.y;
+        else actorWorld(*me, tickAlpha(), sx, sy);
+        obstacles_.pushOut(sx, sy, kWalkerRadius);
+        if (std::hypot(gx - sx, gy - sy) > 600.0) return;   // too far for a walk on foot
+        std::vector<collide::Point> way;
+        if (!obstacles_.path(sx, sy, gx, gy, kWalkerRadius, way)) return;
+        walkPath_ = std::move(way);
+        walkRun_ = input_.doubleClick;
+        walkStuck_ = 0;
+        noteInput();
+    }
+    // The ground under a screen point (world metres): the eye's ray marched to the terrain.
+    bool groundUnder(float mx, float my, double& gx, double& gy) const {
+        double inv[16];
+        if (!invert4(vp_, inv)) return false;
+        const double nx = double(mx) / double(viewW_) * 2.0 - 1.0, ny = 1.0 - double(my) / double(viewH_) * 2.0;
+        double p[4];
+        for (int r = 0; r < 4; ++r) p[r] = inv[r * 4 + 0] * nx + inv[r * 4 + 1] * ny + inv[r * 4 + 2] * 0.5 + inv[r * 4 + 3];
+        if (std::fabs(p[3]) < 1e-12) return false;
+        double d[3] = {p[0] / p[3], p[1] / p[3], p[2] / p[3]};
+        const double l = std::sqrt(d[0] * d[0] + d[1] * d[1] + d[2] * d[2]);
+        if (l < 1e-9) return false;
+        for (double& v : d) v /= l;
+        // the eye looks along its yaw and pitch: a ray behind it is turned round
+        const double f[3] = {std::cos(orbitPitch_) * std::cos(orbitYaw_), std::cos(orbitPitch_) * std::sin(orbitYaw_),
+                             -std::sin(orbitPitch_)};
+        if (d[0] * f[0] + d[1] * f[1] + d[2] * f[2] < 0)
+            for (double& v : d) v = -v;
+        auto above = [&](double t) {
+            const double x = eye_[0] + d[0] * t, y = eye_[1] + d[1] * t;
+            return eye_[2] + d[2] * t > groundAt(x, y);
+        };
+        double t0 = 0, t = 0.5;
+        while (t < 3000.0 && above(t)) {
+            t0 = t;
+            t += std::max(0.25, t * 0.02);
+        }
+        if (t >= 3000.0) return false;
+        for (int k = 0; k < 10; ++k) {
+            const double m = (t0 + t) * 0.5;
+            if (above(m)) t0 = m;
+            else t = m;
+        }
+        gx = eye_[0] + d[0] * t;
+        gy = eye_[1] + d[1] * t;
+        return true;
+    }
+    static bool invert4(const float* m, double* out) {
+        double a[16];
+        for (int k = 0; k < 16; ++k) a[k] = m[k];
+        double inv[16];
+        inv[0] = a[5] * a[10] * a[15] - a[5] * a[11] * a[14] - a[9] * a[6] * a[15] + a[9] * a[7] * a[14] + a[13] * a[6] * a[11] - a[13] * a[7] * a[10];
+        inv[4] = -a[4] * a[10] * a[15] + a[4] * a[11] * a[14] + a[8] * a[6] * a[15] - a[8] * a[7] * a[14] - a[12] * a[6] * a[11] + a[12] * a[7] * a[10];
+        inv[8] = a[4] * a[9] * a[15] - a[4] * a[11] * a[13] - a[8] * a[5] * a[15] + a[8] * a[7] * a[13] + a[12] * a[5] * a[11] - a[12] * a[7] * a[9];
+        inv[12] = -a[4] * a[9] * a[14] + a[4] * a[10] * a[13] + a[8] * a[5] * a[14] - a[8] * a[6] * a[13] - a[12] * a[5] * a[10] + a[12] * a[6] * a[9];
+        inv[1] = -a[1] * a[10] * a[15] + a[1] * a[11] * a[14] + a[9] * a[2] * a[15] - a[9] * a[3] * a[14] - a[13] * a[2] * a[11] + a[13] * a[3] * a[10];
+        inv[5] = a[0] * a[10] * a[15] - a[0] * a[11] * a[14] - a[8] * a[2] * a[15] + a[8] * a[3] * a[14] + a[12] * a[2] * a[11] - a[12] * a[3] * a[10];
+        inv[9] = -a[0] * a[9] * a[15] + a[0] * a[11] * a[13] + a[8] * a[1] * a[15] - a[8] * a[3] * a[13] - a[12] * a[1] * a[11] + a[12] * a[3] * a[9];
+        inv[13] = a[0] * a[9] * a[14] - a[0] * a[10] * a[13] - a[8] * a[1] * a[14] + a[8] * a[2] * a[13] + a[12] * a[1] * a[10] - a[12] * a[2] * a[9];
+        inv[2] = a[1] * a[6] * a[15] - a[1] * a[7] * a[14] - a[5] * a[2] * a[15] + a[5] * a[3] * a[14] + a[13] * a[2] * a[7] - a[13] * a[3] * a[6];
+        inv[6] = -a[0] * a[6] * a[15] + a[0] * a[7] * a[14] + a[4] * a[2] * a[15] - a[4] * a[3] * a[14] - a[12] * a[2] * a[7] + a[12] * a[3] * a[6];
+        inv[10] = a[0] * a[5] * a[15] - a[0] * a[7] * a[13] - a[4] * a[1] * a[15] + a[4] * a[3] * a[13] + a[12] * a[1] * a[7] - a[12] * a[3] * a[5];
+        inv[14] = -a[0] * a[5] * a[14] + a[0] * a[6] * a[13] + a[4] * a[1] * a[14] - a[4] * a[2] * a[13] - a[12] * a[1] * a[6] + a[12] * a[2] * a[5];
+        inv[3] = -a[1] * a[6] * a[11] + a[1] * a[7] * a[10] + a[5] * a[2] * a[11] - a[5] * a[3] * a[10] - a[9] * a[2] * a[7] + a[9] * a[3] * a[6];
+        inv[7] = a[0] * a[6] * a[11] - a[0] * a[7] * a[10] - a[4] * a[2] * a[11] + a[4] * a[3] * a[10] + a[8] * a[2] * a[7] - a[8] * a[3] * a[6];
+        inv[11] = -a[0] * a[5] * a[11] + a[0] * a[7] * a[9] + a[4] * a[1] * a[11] - a[4] * a[3] * a[9] - a[8] * a[1] * a[7] + a[8] * a[3] * a[5];
+        inv[15] = a[0] * a[5] * a[10] - a[0] * a[6] * a[9] - a[4] * a[1] * a[10] + a[4] * a[2] * a[9] + a[8] * a[1] * a[6] - a[8] * a[2] * a[5];
+        const double det = a[0] * inv[0] + a[1] * inv[4] + a[2] * inv[8] + a[3] * inv[12];
+        if (std::fabs(det) < 1e-30) return false;
+        for (int k = 0; k < 16; ++k) out[k] = inv[k] / det;
+        return true;
+    }
+
+    // What blocks a walker, built again when the village changes: the
+    // settlement's buildings as they are drawn (turned boxes), the built
+    // ground-floor walls and posts of the households' own building, the fires;
+    // the ground: dry, not steeper than ~42 degrees, inside the sim's map.
+    void rebuildObstacles() {
+        std::size_t sig = buildings_.size() * 7919 + shown_.pieces.size() * 131 + (village_.loaded() ? 1 : 0);
+        for (const auto& [id, p] : shown_.pieces) sig += p.built ? std::size_t(id) * 2654435761u : 0;
+        for (const auto& t : shown_.things) sig += std::size_t(t.id) * 40503u + 17;
+        if (sig == obstacleSig_) return;
+        obstacleSig_ = sig;
+        obstacles_.clear();
+        // trunks, piles of stone and logs (the bushes and patches one walks through)
+        for (const auto& t : shown_.things) {
+            const double wx = originX_ + t.x, wy = originY_ + t.y;
+            const std::uint64_t h = std::uint64_t(t.id) * 0x9E3779B97F4A7C15ull;
+            if (t.type == "tree" || t.type == "bee_tree") obstacles_.add(collide::Circle{wx, wy, 0.28});
+            else if (t.type == "oak_grove") obstacles_.add(collide::Circle{wx, wy, 0.4});
+            else if (t.type == "fruit_tree") obstacles_.add(collide::Circle{wx, wy, 0.2});
+            else if (t.type == "riverbank") obstacles_.add(collide::Circle{wx, wy, 0.9});
+            else if (t.type == "deadwood")
+                obstacles_.add(collide::Box{wx, wy, 1.15, 0.3, double((h >> 8) % 628) / 100.0});
+        }
+        for (const auto& b0 : buildings_) {
+            BuildingSnap b;
+            float yaw = 0;
+            int mesh = -1;
+            if (!buildingPose(b0, b, yaw, mesh)) continue;
+            const double wx = originX_ + b.x, wy = originY_ + b.y;
+            if (b.type == "field" || b.type == "garden") continue;
+            if (b.type == "hearth") {
+                obstacles_.add(collide::Circle{wx, wy, 0.6});
+                continue;
+            }
+            if (b.type == "village_fire") {
+                obstacles_.add(collide::Circle{wx, wy, 1.1});
+                continue;
+            }
+            float hx = 0, hy = 0;
+            if (mesh >= 0) village_.halfSize(mesh, hx, hy);
+            if (hx <= 0 || hy <= 0) {   // the placeholder blocks (no kit bake)
+                hx = b.type == "house" ? 4.0f : b.type == "storage" ? 2.25f : 0.8f;
+                hy = b.type == "house" ? 3.0f : b.type == "storage" ? 2.0f : 0.8f;
+            }
+            obstacles_.add(collide::Box{wx, wy, double(hx) * 0.95, double(hy) * 0.95, double(yaw)});
+        }
+        const BuildCatalog& cat = content_->build;
+        for (const auto& [id, p] : shown_.pieces) {
+            if (!p.built || p.z != 0) continue;
+            const BuildPieceDef* d = cat.find(p.kind);
+            if (!d) continue;
+            const Vec2 c = pieceCentre(cat, *d, p);
+            const double wx = originX_ + c.x, wy = originY_ + c.y;
+            if (d->slot == "edge" && !d->door && (d->category == "wall" || d->category == "gable")) {
+                const int r = ((p.rot % 4) + 4) % 4;
+                const double dx = r == 1 ? 1 : r == 3 ? -1 : 0, dy = r == 0 ? -1 : r == 2 ? 1 : 0;
+                const double ax = -dy * cat.cellM * 0.5, ay = dx * cat.cellM * 0.5;   // along the edge
+                obstacles_.add(collide::Wall{wx - ax, wy - ay, wx + ax, wy + ay, 0.18});
+            } else if (d->slot == "corner" || d->category == "pillar") {
+                obstacles_.add(collide::Circle{wx, wy, 0.22});
+            }
+        }
+        obstacles_.walkable = [this](double x, double y) {
+            if (x < originX_ + 1 || y < originY_ + 1 || x > originX_ + simSize_ - 1 || y > originY_ + simSize_ - 1)
+                return false;
+            if (landAt(x, y) <= 0.3) return false;   // water
+            const double e = 0.6;
+            const double gx = landAt(x + e, y) - landAt(x - e, y);
+            const double gy = landAt(x, y + e) - landAt(x, y - e);
+            return std::hypot(gx, gy) / (2 * e) < 0.9;   // tan 42 degrees
+        };
     }
 
     // A click on someone else: they become the target, and what can be done
@@ -1022,6 +1326,31 @@ private:
                 scriptWalk_[2] = st["walk"][2].get<double>();
             }
             if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
+            // the control bar: control 0 keys | 1 mouse | 2 free, camera_follow,
+            // walk_to [dx, dy] metres from the person (as a click on the ground)
+            if (st.contains("control")) controlMode(st["control"].get<int>());
+            if (st.contains("camera_follow")) cameraFollow(st["camera_follow"].get<bool>());
+            if (st.contains("walk_to"))
+                if (const ActorSnap* me = actor(shown_.controlled))
+                    walkTo(originX_ + me->x + st["walk_to"][0].get<double>(), originY_ + me->y + st["walk_to"][1].get<double>());
+            // aim_thing: the act ring on the nearest such thing (tree, deadwood, riverbank, any)
+            if (st.contains("aim_thing"))
+                if (const ActorSnap* me = actor(shown_.controlled)) {
+                    const std::string ty = st["aim_thing"].get<std::string>();
+                    const ThingSnap* best = nullptr;
+                    double bd = 1e18;
+                    for (const auto& t : shown_.things) {
+                        if (ty != "any" && t.type != ty) continue;
+                        const double d = std::hypot(t.x - me->x, t.y - me->y);
+                        if (d < bd) bd = d, best = &t;
+                    }
+                    if (best) {
+                        target_[0] = originX_ + best->x;
+                        target_[1] = originY_ + best->y;
+                        if (follow_) cameraFollow(false);
+                        hud_.openThing(best->id, float(viewW_) * 0.5f, float(viewH_) * 0.45f);
+                    }
+                }
             if (st.contains("aim_beast") || st.contains("aim_person")) {
                 const ActorSnap* me = actor(shown_.controlled);
                 const std::string sp = st.value("aim_beast", std::string());
@@ -1812,6 +2141,13 @@ private:
                 a.act = name("interaction", c.ai.plan.actions[c.ai.plan.actionIndex + 1].interaction);
             if (c.ai.goal.valid())
                 a.goal = c.ai.goal.id == "player_action" ? name("interaction", c.ai.goal.task) : name("goal", c.ai.goal.id);
+            if (c.ai.fsm.state != "Idle" && c.ai.fsm.state != "Move" && !c.ai.fsm.interaction.empty()) {
+                a.actTarget = c.ai.fsm.target;
+                if (const InteractionDef* d = w.content().interaction(c.ai.fsm.interaction); d && d->duration > 1) {
+                    a.actTicks = int(d->duration);
+                    a.progress = std::clamp(double(w.now() - c.ai.fsm.started) / double(d->duration), 0.0, 1.0);
+                }
+            }
             const auto pp = prevPos_.find(id);
             a.x = c.pos.x;
             a.y = c.pos.y;
@@ -1843,6 +2179,7 @@ private:
             d.freeWill = c->controller.freeWill;
             for (const auto& [k, v] : c->inventory)
                 if (v > 0) d.inventory.push_back({k, name("item", k), v});
+            gearSnap(w, *c, d.gear);
             for (const auto& t : c->traits) d.traits.push_back(name("trait", t));
             for (const auto& m : c->moodlets)
                 if (m.until > w.now()) d.moodlets.push_back({name("moodlet", m.id), m.value});
@@ -1891,6 +2228,9 @@ private:
             }
         }
         wheelChances(s.wheel);
+        thingsSnap(w, s);
+        actsSnap(w, s);
+        feedbackSnap(w, s);
         s.centre[0] = villageCentre_[0];
         s.centre[1] = villageCentre_[1];
         s.mapSize = w.map().sizeM;
@@ -1947,6 +2287,247 @@ private:
         }
         std::lock_guard<std::mutex> lock(snapMutex_);
         snap_ = std::move(s);
+    }
+
+    // What the selected person carries and wears, for the inventory (sim/gear.hpp).
+    void gearSnap(const World& w, const Character& c, GearSnap& g) {
+        const GearRules* R = gearRules(w.content());
+        if (!R || c.isAnimal()) return;
+        g.on = true;
+        g.kg = loadKg(*R, c);
+        g.maxKg = maxLoadKg(*R, c);
+        g.comfortKg = R->comfortKg;
+        g.tireMult = loadFatigueMult(*R, c);
+        const GearLayout L = arrange(*R, c);
+        for (const auto& gr : L.grids)
+            g.grids.push_back({gr.id, gr.id == "hands" ? text("hud.gear.hands") : name("item", gr.id), gr.w, gr.h});
+        for (const auto& s : L.spots) {
+            GearSnap::Spot o;
+            o.item = s.item;
+            o.name = name("item", s.item);
+            o.grid = s.grid;
+            o.count = s.count;
+            o.x = s.x, o.y = s.y, o.w = s.w, o.h = s.h;
+            o.turned = s.turned;
+            o.kg = R->item(s.item).kg * s.count;
+            o.wearable = !R->item(s.item).slot.empty();
+            g.spots.push_back(std::move(o));
+        }
+        for (const auto& s : R->slots) {
+            GearSnap::Slot o;
+            o.id = s.id;
+            o.name = text("hud.gear.slot." + s.id);
+            o.bulk = s.bulk;
+            for (const auto& l : s.layers) {
+                GearSnap::Layer y;
+                y.id = l;
+                y.name = text("hud.gear.layer." + l);
+                if (const auto it = c.worn.find(s.id + ":" + l); it != c.worn.end()) {
+                    y.item = it->second;
+                    y.itemName = name("item", it->second);
+                    y.bulk = R->item(it->second).bulk;
+                    o.used += y.bulk;
+                }
+                o.layers.push_back(std::move(y));
+            }
+            g.slots.push_back(std::move(o));
+        }
+        for (const auto& [k, n] : L.overflow) g.overflow.push_back({name("item", k), n});
+    }
+
+    // ---- things, acts, feedback (sim thread) ------------------------------------
+    // Things one can work on, near the camera and near the player's person.
+    void thingsSnap(const World& w, Snapshot& s) {
+        static const std::set<std::string> kSkip = {"house", "storage", "hearth", "field", "garden", "shrine",
+                                                    "village_fire", "bed", "build_site", "roof_piece", "water"};
+        const double vx = viewX_, vy = viewY_;
+        Vec2 me{1e18, 1e18};
+        for (const auto& [id, c] : w.characters())
+            if (c.controller.isPlayer()) me = c.pos;
+        const double R2 = 140.0 * 140.0;
+        for (const auto& [id, o] : w.objects()) {
+            if (kSkip.count(o.type)) continue;
+            const double d1 = (o.pos.x - vx) * (o.pos.x - vx) + (o.pos.y - vy) * (o.pos.y - vy);
+            const double d2 = (o.pos.x - me.x) * (o.pos.x - me.x) + (o.pos.y - me.y) * (o.pos.y - me.y);
+            if (d1 > R2 && d2 > R2) continue;
+            if (s.things.size() >= 700) break;
+            ThingSnap t;
+            t.id = id;
+            t.type = o.type;
+            t.name = name("object", o.type);
+            t.x = o.pos.x;
+            t.y = o.pos.y;
+            for (const auto& [k, v] : o.stock)
+                if (v > 0) t.stock.push_back({name("item", k), v});
+            t.busy = o.reservedFor(kNone, w.now()) && o.reservedBy != kNone;
+            s.things.push_back(std::move(t));
+        }
+    }
+
+    // A precondition and an effect in the player's words (content/loc hud.req.* / hud.gain.*).
+    std::string opText(Condition::Op op) const {
+        switch (op) {
+        case Condition::Op::Ge: return ">=";
+        case Condition::Op::Le: return "<=";
+        case Condition::Op::Gt: return ">";
+        case Condition::Op::Lt: return "<";
+        case Condition::Op::Eq: return "=";
+        case Condition::Op::Ne: return "!=";
+        default: return "";
+        }
+    }
+    static std::string num(double v) {
+        char b[32];
+        if (std::fabs(v - std::round(v)) < 1e-6) std::snprintf(b, sizeof b, "%d", int(std::round(v)));
+        else std::snprintf(b, sizeof b, "%.2g", v);
+        return b;
+    }
+    std::string describeCondition(const Condition& k) const {
+        const std::string who = k.onTarget ? text("hud.req.target") + " " : "";
+        const bool counted = k.op == Condition::Op::Ge || k.op == Condition::Op::Gt;
+        std::string out;
+        if (k.subject == "has") {
+            out = text("hud.req.has", {{"item", name("item", k.key)}});
+            if (counted && k.value > 1) out += " x" + num(k.value);
+        } else if (k.subject == "knows") {
+            out = text("hud.req.knows", {{"skill", name("skill", k.key)}});
+        } else if (k.subject == "skill") {
+            out = text("hud.req.skill", {{"skill", name("skill", k.key)}, {"op", opText(k.op)}, {"v", num(k.value * 100)}});
+        } else if (k.subject == "target_stock") {
+            out = text("hud.req.stock", {{"item", name("item", k.key)}, {"op", opText(k.op)}, {"v", num(k.value)}});
+        } else if (k.subject == "age") {
+            out = text("hud.req.age", {{"op", opText(k.op)}, {"v", num(k.value)}});
+        } else if (k.subject == "need") {
+            out = text("hud.req.need", {{"need", name("need", k.key)}, {"op", opText(k.op)}, {"v", num(k.value * 100)}});
+        } else if (k.subject == "home") {
+            out = text("hud.req.home", {{"what", name("item", k.key)}});
+        } else if (k.subject == "rel") {
+            out = text("hud.req.rel", {{"axis", text("hud.axis." + k.key)}, {"op", opText(k.op)}, {"v", num(k.value)}});
+        } else {
+            out = k.text;
+        }
+        if (k.negate) out = text("hud.req.not", {{"what", out}});
+        return who + out;
+    }
+    std::string describeEffect(const Effect& e) const {
+        const std::string sign = e.op == '-' ? "-" : "+";
+        if (e.subject == "has") return sign + num(e.value) + " " + name("item", e.key);
+        if (e.subject == "skill") return text(e.op == '-' ? "hud.gain.skill_down" : "hud.gain.skill", {{"skill", name("skill", e.key)}});
+        if (e.subject == "need") return text(e.op == '-' ? "hud.gain.need_down" : "hud.gain.need", {{"need", name("need", e.key)}});
+        if (e.subject == "body" && e.key == "fatigue") return text(e.op == '-' ? "hud.gain.rest" : "hud.gain.tired");
+        if (e.subject == "body" && e.key == "health") return text(e.op == '-' ? "hud.gain.hurt" : "hud.gain.heal");
+        if (e.subject == "moodlet") return text("hud.gain.moodlet", {{"what", name("moodlet", e.key)}});
+        if (e.subject == "rel" || e.subject == "rel_back")
+            return text(e.signedDelta() >= 0 ? "hud.gain.rel_up" : "hud.gain.rel_down", {{"axis", text("hud.axis." + e.key)}});
+        if (e.subject == "reputation") return text("hud.gain.reputation", {{"what", name("reputation", e.key)}, {"sign", sign}});
+        if (e.subject == "spawn") return text("hud.gain.spawn", {{"what", name("object", e.key)}});
+        return "";
+    }
+
+    // The acts of the target the act ring / the wheel is open on, checked for
+    // the player's person (sim/act_info.hpp).
+    void actsSnap(const World& w, Snapshot& s) {
+        const EntityId tid = actsWanted_;
+        s.actsFor = tid;
+        if (tid == kNone) return;
+        const Character* me = nullptr;
+        for (const auto& [id, c] : w.characters())
+            if (c.controller.isPlayer()) me = &c;
+        if (!me) return;
+        const WorldObject* obj = w.object(tid);
+        const Character* tc = obj ? nullptr : w.character(tid);
+        if (!obj && !tc) return;
+        const std::vector<std::string>* ids = nullptr;
+        static const std::vector<std::string> kNone_;
+        if (obj) {
+            auto it = objActs_.find(obj->type);
+            if (it == objActs_.end()) it = objActs_.emplace(obj->type, actsOnObject(w.content(), obj->type)).first;
+            ids = &it->second;
+        } else if (tc->isAnimal()) {
+            const auto it = hud_.beastActs.find(tc->species);
+            ids = it == hud_.beastActs.end() ? &kNone_ : &it->second;
+        } else {
+            ids = &wheelActs_;
+        }
+        for (const auto& id : *ids) {
+            const InteractionDef* d = w.content().interaction(id);
+            if (!d) continue;
+            const ActInfo a = actInfo(w, *me, *d, obj, tc);
+            ActInfoSnap o;
+            o.id = id;
+            o.name = name("interaction", id);
+            o.can = a.can;
+            for (const auto& r : a.pre) {
+                o.needs.push_back({describeCondition(r.cond), r.ok});
+                if (!r.ok && o.why.empty()) o.why = o.needs.back().first;
+            }
+            if (!a.can && o.why.empty()) o.why = text("hud.req.cannot");
+            for (const auto& e : a.gains)
+                if (std::string g = describeEffect(e); !g.empty()) o.gains.push_back(g);
+            for (const auto& e : a.onTarget)
+                if (std::string g = describeEffect(e); !g.empty()) o.toTarget.push_back(g);
+            o.minutes = int(a.duration) * int(24 * 60 / kTicksPerDay);
+            s.acts.push_back(std::move(o));
+        }
+    }
+
+    // What came of the player's person's doing since the last snapshot: things
+    // gained or spent, acts done or broken off, refusals.
+    void feedbackSnap(const World& w, Snapshot& s) {
+        const Character* me = nullptr;
+        for (const auto& [id, c] : w.characters())
+            if (c.controller.isPlayer()) me = &c;
+        if (!me) {
+            fbFor_ = kNone;
+            s.feedback = fbTail_;
+            return;
+        }
+        auto push = [&](std::string t, int kind) {
+            if (t.empty()) return;
+            fbTail_.push_back({++fbSeq_, me->id, std::move(t), kind});
+            if (fbTail_.size() > 12) fbTail_.erase(fbTail_.begin());
+        };
+        if (fbFor_ != me->id) {   // a new person: start from what they have now
+            fbFor_ = me->id;
+            fbInv_ = me->inventory;
+            fbTick_ = me->ai.trace.empty() ? w.now() : me->ai.trace.back().tick;
+            fbAtTick_ = 0;
+            for (const auto& e : me->ai.trace) fbAtTick_ += e.tick == fbTick_;
+        } else {
+            std::set<std::string> keys;
+            for (const auto& [k, v] : fbInv_) keys.insert(k);
+            for (const auto& [k, v] : me->inventory) keys.insert(k);
+            for (const auto& k : keys) {
+                const int was = fbInv_.count(k) ? fbInv_.at(k) : 0, now = me->inventory.count(k) ? me->inventory.at(k) : 0;
+                if (now > was) push("+" + std::to_string(now - was) + " " + name("item", k), 1);
+                else if (now < was) push("-" + std::to_string(was - now) + " " + name("item", k), 0);
+            }
+            fbInv_ = me->inventory;
+            int at = 0;
+            Tick last = fbTick_;
+            int lastN = 0;
+            for (const auto& e : me->ai.trace) {
+                if (e.tick < fbTick_) continue;
+                if (e.tick == fbTick_ && ++at <= fbAtTick_) continue;
+                const std::string act = e.params.value("action", std::string());
+                if (e.code == "fsm.done" && act != "goto" && act != "wait")
+                    push(text("hud.fb.done", {{"act", name("interaction", act)}}), 1);
+                else if (e.code == "fsm.abort" && act != "goto" && act != "wait" && !act.empty())
+                    push(text("hud.fb.abort", {{"act", name("interaction", act)}}), 2);
+                else if (e.code == "control.order_refused" || e.code == "goap.fail" || e.code == "htn.no_method" ||
+                         e.code == "dialog.refused")
+                    push(traceText(*loc_, opts_.lang, w, *me, e), 2);
+                else if (e.code == "dialog.accepted")
+                    push(traceText(*loc_, opts_.lang, w, *me, e), 1);
+            }
+            if (!me->ai.trace.empty()) {
+                last = me->ai.trace.back().tick;
+                for (const auto& e : me->ai.trace) lastN += e.tick == last;
+                fbTick_ = last;
+                fbAtTick_ = lastN;
+            }
+        }
+        s.feedback = fbTail_;
     }
 
     // The sim's chance of every act of the wheel, per tone (sim/tones.hpp):
@@ -2227,7 +2808,97 @@ private:
     }
 
     // ---- placement --------------------------------------------------------
-    double groundAt(double x, double y) const { return std::max(0.0, double(ground_.at(x, y, 2.0))); }
+    double groundAt(double x, double y) const { return std::max(0.0, landAt(x, y)); }
+    // The land as the player sees it: the terrain with the game's pads (building sites, fields) on it.
+    double landAt(double x, double y) const {
+        const float g = ground_.at(x, y, 2.0);
+        return relief_ && padsOn_ ? double(relief_->overPads(x, y, g)) : double(g);
+    }
+
+    // ---- the ground under the village ------------------------------------------
+    // Every settlement building stands on a level site cut or filled to the
+    // lowest ground under it, its approaches eased back into the land over a
+    // few metres; a field or a garden is levelled gently (the furrows are
+    // drawn on it). Laid as pads on the view's fine relief (terrain_core/relief.hpp),
+    // which the clipmap then stands on - the ground, the grass, the shore.
+    void layPads() {
+        if (!relief_ || !village_.loaded()) return;
+        const std::size_t sig = buildings_.size() * 2654435761u + 1;
+        if (sig == padSig_) return;
+        padSig_ = sig;
+        std::vector<terrain_core::Relief::Pad> pads;
+        auto rawAt = [&](double x, double y) { return double(ground_.at(x, y, 2.0)); };
+        for (const auto& b0 : buildings_) {
+            BuildingSnap b;
+            float yaw = 0;
+            int mesh = -1;
+            if (!buildingPose(b0, b, yaw, mesh)) continue;
+            const bool soil = b.type == "field" || b.type == "garden";
+            if (b.type == "hearth" || b.type == "village_fire") continue;
+            float hx = 0, hy = 0;
+            if (mesh >= 0) village_.halfSize(mesh, hx, hy);
+            if (hx <= 0 || hy <= 0) {
+                hx = b.type == "field" ? 20.0f : b.type == "garden" ? 6.0f : b.type == "house" ? 4.0f : 2.25f;
+                hy = b.type == "field" ? 15.0f : b.type == "garden" ? 5.0f : b.type == "house" ? 3.0f : 2.0f;
+            }
+            const double wx = originX_ + b.x, wy = originY_ + b.y;
+            const double c = std::cos(yaw), s = std::sin(yaw);
+            // the site's height: the lowest ground under a house (as it is
+            // placed), the mean under a field
+            double base = 1e30, sum = 0;
+            int n = 0;
+            for (int j = -2; j <= 2; ++j)
+                for (int i = -2; i <= 2; ++i) {
+                    const double lx = hx * i / 2.0, ly = hy * j / 2.0;
+                    const double g = rawAt(wx + c * lx - s * ly, wy + s * lx + c * ly);
+                    base = std::min(base, g);
+                    sum += g;
+                    ++n;
+                }
+            if (soil) base = sum / n;
+            if (base <= 0.4) continue;   // at the water: leave it be
+            const double pad = soil ? 1.0 : 1.2, ease = soil ? 3.0 : 5.0, full = soil ? 0.75 : 1.0;
+            const double reach = std::hypot(hx, hy) + pad + ease + 1.0;
+            terrain_core::Relief::Pad p;
+            p.texel = soil ? 1.0f : 0.5f;
+            p.base = float(base);
+            p.x0 = wx - reach;
+            p.y0 = wy - reach;
+            p.width = p.height = std::uint32_t(std::ceil(2 * reach / p.texel));
+            const std::size_t cells = std::size_t(p.width) * p.height;
+            p.rise.assign(cells, 0.0f);
+            p.weight.assign(cells, 0.0f);
+            for (std::uint32_t j = 0; j < p.height; ++j)
+                for (std::uint32_t i = 0; i < p.width; ++i) {
+                    const double x = p.x0 + (i + 0.5) * p.texel - wx, y = p.y0 + (j + 0.5) * p.texel - wy;
+                    const double lx = c * x + s * y, ly = -s * x + c * y;
+                    // outside the footprint grown by `pad`: how far
+                    const double ex = std::max(0.0, std::fabs(lx) - hx - pad), ey = std::max(0.0, std::fabs(ly) - hy - pad);
+                    const double d = std::hypot(ex, ey);
+                    const double t = std::clamp(1.0 - d / ease, 0.0, 1.0);
+                    p.weight[std::size_t(j) * p.width + i] = float(full * t * t * (3 - 2 * t));
+                }
+            pads.push_back(std::move(p));
+        }
+        if (!relief_->setPads(pads, spacing_)) {
+            SDL_Log("altera_game: pads: the world's relief is too big to lay pads beside it");
+            return;
+        }
+        std::string why;
+        if (!relief_->open(device_, &why)) {
+            SDL_Log("altera_game: pads: %s", why.c_str());
+            return;
+        }
+        padsOn_ = true;
+        terrainChanged_ = true;
+        obstacleSig_ = std::size_t(-1);   // the slopes changed
+        SDL_Log("altera_game: %zu building and field pads laid on the ground", pads.size());
+    }
+    bool terrainChanged() override {
+        const bool was = terrainChanged_;
+        terrainChanged_ = false;
+        return was;
+    }
 
     void actorWorld(const ActorSnap& a, double alpha, double& x, double& y) const {
         if (avatar_.driven && a.id == avatar_.id) {
@@ -2237,6 +2908,11 @@ private:
         }
         x = originX_ + a.px + (a.x - a.px) * alpha;
         y = originY_ + a.py + (a.y - a.py) * alpha;
+        // The sim walks straight between two ticks: a walker on the way is
+        // pushed out of the houses and walls it would cut through (one standing
+        // still where the sim put them, as indoors asleep, stays).
+        if (!a.animal && (a.x - a.px) * (a.x - a.px) + (a.y - a.py) * (a.y - a.py) > 1e-4)
+            obstacles_.pushOut(x, y, kWalkerRadius);
     }
 
     const ActorSnap* actor(EntityId id) const {
@@ -2257,24 +2933,68 @@ private:
         return true;
     }
 
+    // Distance on screen from a point to the segment between two projected points.
+    static float segDist(float px, float py, float ax, float ay, float bx, float by) {
+        const float vx = bx - ax, vy = by - ay, l2 = vx * vx + vy * vy;
+        const float t = l2 > 1e-6f ? std::clamp(((px - ax) * vx + (py - ay) * vy) / l2, 0.0f, 1.0f) : 0.0f;
+        return std::hypot(px - (ax + vx * t), py - (ay + vy * t));
+    }
+    // Who is under the mouse: the whole figure from feet to head counts, with
+    // a margin that grows as they come nearer; the nearest to the eye wins a tie.
     EntityId pick(float mx, float my) const {
         EntityId best = kNone;
-        float bd = 28.0f;
+        float bd = 1e9f;
         const double alpha = tickAlpha();
         for (const auto& a : shown_.actors) {
             if (a.species == "fish_shoal") continue;
             double wx, wy;
             actorWorld(a, alpha, wx, wy);
-            const double wz = groundAt(wx, wy) + (a.animal ? 0.5 : 1.0);
-            float sx, sy;
-            if (!project(wx - eye_[0], wy - eye_[1], wz - eye_[2], sx, sy)) continue;
-            const float d = std::hypot(sx - mx, sy - my);
-            if (d < bd) {
-                bd = d;
+            const double gz = groundAt(wx, wy), h = a.animal ? 1.0 : (a.age < 14 ? 1.1 : 1.75);
+            float fx, fy, hx, hy;
+            if (!project(wx - eye_[0], wy - eye_[1], gz + 0.1 - eye_[2], fx, fy)) continue;
+            if (!project(wx - eye_[0], wy - eye_[1], gz + h - eye_[2], hx, hy)) continue;
+            const float tall = std::hypot(hx - fx, hy - fy);
+            const float margin = std::clamp(tall * 0.35f, 14.0f, 60.0f);
+            const float d = segDist(mx, my, fx, fy, hx, hy);
+            const double far = std::hypot(wx - eye_[0], wy - eye_[1]);
+            const float score = d / margin + float(far) * 1e-4f;
+            if (d < margin && score < bd) {
+                bd = score;
                 best = a.id;
             }
         }
         return best;
+    }
+    // A thing to work on under the mouse (a tree's trunk and crown, a bush, a pile).
+    EntityId pickThing(float mx, float my) const {
+        EntityId best = kNone;
+        float bd = 1e9f;
+        for (const auto& t : shown_.things) {
+            const double wx = originX_ + t.x, wy = originY_ + t.y;
+            const double gz = groundAt(wx, wy), h = thingHeight(t.type);
+            float fx, fy, hx, hy;
+            if (!project(wx - eye_[0], wy - eye_[1], gz + 0.05 - eye_[2], fx, fy)) continue;
+            if (!project(wx - eye_[0], wy - eye_[1], gz + h - eye_[2], hx, hy)) continue;
+            const float tall = std::hypot(hx - fx, hy - fy);
+            const float margin = std::clamp(tall * 0.4f, 16.0f, 90.0f);
+            const float d = segDist(mx, my, fx, fy, hx, hy);
+            const float score = d / margin + float(std::hypot(wx - eye_[0], wy - eye_[1])) * 1e-4f;
+            if (d < margin && score < bd) {
+                bd = score;
+                best = t.id;
+            }
+        }
+        return best;
+    }
+    static double thingHeight(const std::string& type) {
+        if (type == "tree" || type == "bee_tree") return 6.0;
+        if (type == "oak_grove") return 7.5;
+        if (type == "fruit_tree") return 4.0;
+        if (type == "hazel_thicket") return 1.8;
+        if (type == "berry_bush") return 1.0;
+        if (type == "reed_bed") return 1.6;
+        if (type == "riverbank" || type == "deadwood") return 0.6;
+        return 0.6;
     }
 
     static void hsv(double h, double s, double v, float out[3]) {
@@ -2482,50 +3202,95 @@ private:
 
     // The settlement's buildings from the kit bake: houses vary by family,
     // doors turned to the village's centre, set on the lowest ground under them.
+    // Where a settlement building stands as drawn: works the sim set inside or
+    // against a house step out (a hearth inside is the house's own chimney:
+    // false), houses vary by family, doors turn to the village's centre.
+    // `mesh`: the kit bake's piece (-1 without one).
+    bool buildingPose(const BuildingSnap& b0, BuildingSnap& b, float& yaw, int& mesh) const {
+        b = b0;
+        if (b.type != "house" && b.type != "field" && b.type != "garden")
+            for (const auto& h : buildings_) {
+                if (h.type != "house") continue;
+                const double dx = b.x - h.x, dy = b.y - h.y, d = std::hypot(dx, dy);
+                const double need = b.type == "hearth" ? 6.0 : 8.5;
+                if (d >= need) continue;
+                if (b.type == "hearth" && d < 4.5) return false;
+                const double ux = d > 0.1 ? dx / d : 1.0, uy = d > 0.1 ? dy / d : 0.0;
+                b.x = h.x + ux * need;
+                b.y = h.y + uy * need;
+            }
+        std::string piece = b.type;
+        const std::uint64_t h = hashStr(b.type + std::to_string(int(b.x)) + "," + std::to_string(int(b.y)));
+        if (b.type == "house") {
+            static const char* kHouses[] = {"house_daub", "house_stone", "house_log"};
+            piece = kHouses[(h >> 9) % 3];
+        }
+        mesh = village_.loaded() ? village_.piece(piece) : -1;
+        // the centre as the sim had it when the world opened (the sim thread owns the world now)
+        const double dx = villageCentre_[0] - b.x, dy = villageCentre_[1] - b.y;
+        yaw = (dx * dx + dy * dy > 1.0) ? float(std::atan2(dx, -dy)) : float((h % 4) * kPi * 0.5);
+        if (b.type == "field" || b.type == "garden") yaw = float(std::round(yaw / (kPi * 0.5)) * kPi * 0.5);
+        return true;
+    }
+
+    // Fields and gardens dug into the ground: the levelled pad (layPads) laid
+    // with furrows of turned earth, two metres a tile along the field's rows,
+    // dark and light by turns, a garden's beds greener; each tile sits on the
+    // ground under it.
+    void soilTiles(std::vector<Instance>& out) {
+        for (const auto& b0 : buildings_) {
+            if (b0.type != "field" && b0.type != "garden") continue;
+            BuildingSnap b;
+            float yaw = 0;
+            int mesh = -1;
+            if (!buildingPose(b0, b, yaw, mesh)) continue;
+            const double wx = originX_ + b.x, wy = originY_ + b.y;
+            if (std::hypot(wx - eye_[0], wy - eye_[1]) > 900.0) continue;
+            float hx = 0, hy = 0;
+            if (mesh >= 0) village_.halfSize(mesh, hx, hy);
+            const bool garden = b.type == "garden";
+            if (hx <= 0 || hy <= 0) hx = garden ? 6.0f : 20.0f, hy = garden ? 5.0f : 15.0f;
+            const double t = 2.0, c = std::cos(yaw), s = std::sin(yaw);
+            const int nx = std::max(1, int(std::round(2 * hx / t))), ny = std::max(1, int(std::round(2 * hy / t)));
+            for (int j = 0; j < ny; ++j)
+                for (int i = 0; i < nx; ++i) {
+                    if (out.size() >= kMaxInstances / 2) return;
+                    const double lx = -hx + (i + 0.5) * t, ly = -hy + (j + 0.5) * t;
+                    const double x = wx + c * lx - s * ly, y = wy + s * lx + c * ly;
+                    Instance in{};
+                    in.placeYaw[0] = float(x - eye_[0]);
+                    in.placeYaw[1] = float(y - eye_[1]);
+                    in.placeYaw[2] = float(groundAt(x, y) - 0.04 - eye_[2]);
+                    in.placeYaw[3] = yaw;
+                    in.scale[0] = in.scale[1] = float(t) * 1.02f;
+                    in.scale[2] = 0.09f;
+                    const bool ridge = j % 2 == 0;
+                    const float n = 0.94f + 0.12f * float((std::uint64_t(i * 73856093) ^ std::uint64_t(j * 19349663)) % 100) / 100.0f;
+                    float r = ridge ? 0.42f : 0.29f, g = ridge ? 0.31f : 0.21f, bl = ridge ? 0.19f : 0.13f;
+                    if (garden && ridge) r = 0.30f, g = 0.38f, bl = 0.17f;
+                    in.colour[0] = in.colour2[0] = r * n;
+                    in.colour[1] = in.colour2[1] = g * n;
+                    in.colour[2] = in.colour2[2] = bl * n;
+                    out.push_back(in);
+                }
+        }
+    }
+
     void placeBuildings(double range) {
         placed_.clear();
-        double cx = 0, cy = 0;
-        if (!world_->settlements().empty()) {
-            // the centre as the sim had it when the world opened (the sim thread owns the world now)
-            cx = villageCentre_[0];
-            cy = villageCentre_[1];
-        }
         for (const auto& b0 : buildings_) {
-            BuildingSnap b = b0;
-            // Works the sim set inside or against a house: a hearth inside is
-            // the house's own chimney; a store or a shrine steps out of the walls.
-            bool hidden = false;
-            if (b.type != "house" && b.type != "field" && b.type != "garden")
-                for (const auto& h : buildings_) {
-                    if (h.type != "house") continue;
-                    const double dx = b.x - h.x, dy = b.y - h.y, d = std::hypot(dx, dy);
-                    const double need = b.type == "hearth" ? 6.0 : 8.5;
-                    if (d >= need) continue;
-                    if (b.type == "hearth" && d < 4.5) {
-                        hidden = true;
-                        break;
-                    }
-                    const double ux = d > 0.1 ? dx / d : 1.0, uy = d > 0.1 ? dy / d : 0.0;
-                    b.x = h.x + ux * need;
-                    b.y = h.y + uy * need;
-                }
-            if (hidden) continue;
+            BuildingSnap b;
+            float yaw = 0;
+            int id = -1;
+            if (!buildingPose(b0, b, yaw, id) || id < 0) continue;
+            if (b.type == "field" || b.type == "garden") continue;   // dug into the ground instead (soilTiles)
             const double wx = originX_ + b.x, wy = originY_ + b.y;
             const double rx = wx - eye_[0], ry = wy - eye_[1];
             if (rx * rx + ry * ry > range * range * 4) continue;
-            std::string piece = b.type;
             const std::uint64_t h = hashStr(b.type + std::to_string(int(b.x)) + "," + std::to_string(int(b.y)));
-            if (b.type == "house") {
-                static const char* kHouses[] = {"house_daub", "house_stone", "house_log"};
-                piece = kHouses[(h >> 9) % 3];
-            }
-            const int id = village_.piece(piece);
-            if (id < 0) continue;
             Placed pl;
             pl.piece = id;
-            const double dx = cx - b.x, dy = cy - b.y;
-            pl.yaw = (dx * dx + dy * dy > 1.0) ? float(std::atan2(dx, -dy)) : float((h % 4) * kPi * 0.5);
-            if (b.type == "field" || b.type == "garden") pl.yaw = float(std::round(pl.yaw / (kPi * 0.5)) * kPi * 0.5);
+            pl.yaw = yaw;
             float hx, hy;
             village_.halfSize(id, hx, hy);
             double z = groundAt(wx, wy);
@@ -2632,6 +3397,43 @@ private:
                 }
             }
         }
+        for (const auto& t : shown_.things) {
+            const double wx = originX_ + t.x, wy = originY_ + t.y;
+            const double rx = wx - eye_[0], ry = wy - eye_[1];
+            if (rx * rx + ry * ry > 260.0 * 260.0) continue;
+            Instance in{};
+            const std::uint64_t h = std::uint64_t(t.id) * 0x9E3779B97F4A7C15ull;
+            const float var = 0.85f + 0.3f * float((h >> 20) % 100) / 100.0f;
+            in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry);
+            in.placeYaw[2] = float(groundAt(wx, wy) - 0.05 - eye_[2]);
+            in.placeYaw[3] = float(double((h >> 8) % 628) / 100.0);
+            in.scale[0] = in.scale[1] = in.scale[2] = var;
+            in.scale[3] = (t.id == hud_.hoverThing || (hud_.panel == "thing" && t.id == hud_.actTarget())) ? 1.0f : 0.0f;
+            auto col = [&](float r, float g, float b, float r2, float g2, float b2) {
+                in.colour[0] = r, in.colour[1] = g, in.colour[2] = b;
+                in.colour2[0] = r2, in.colour2[1] = g2, in.colour2[2] = b2;
+            };
+            Mesh m = kTuft;
+            const std::string& ty = t.type;
+            if (ty == "tree") m = kTree, col(0.36f, 0.26f, 0.17f, 0.17f, 0.30f, 0.14f);
+            else if (ty == "bee_tree") m = kTree, col(0.33f, 0.24f, 0.16f, 0.24f, 0.31f, 0.13f);
+            else if (ty == "oak_grove") m = kTree, col(0.30f, 0.23f, 0.16f, 0.24f, 0.35f, 0.13f), in.scale[0] *= 1.35f, in.scale[1] *= 1.35f, in.scale[2] *= 1.2f;
+            else if (ty == "fruit_tree") m = kTree, col(0.38f, 0.28f, 0.19f, 0.30f, 0.42f, 0.17f), in.scale[0] *= 0.7f, in.scale[1] *= 0.7f, in.scale[2] *= 0.65f;
+            else if (ty == "deadwood") m = kLog, col(0.42f, 0.32f, 0.22f, 0.34f, 0.27f, 0.19f);
+            else if (ty == "riverbank") m = kRock, col(0.46f, 0.44f, 0.41f, 0.56f, 0.53f, 0.49f), in.scale[0] *= 1.3f, in.scale[1] *= 1.3f;
+            else if (ty == "berry_bush") m = kBush, col(0.20f, 0.33f, 0.15f, 0.48f, 0.12f, 0.17f);
+            else if (ty == "hazel_thicket") m = kBush, col(0.24f, 0.34f, 0.14f, 0.40f, 0.33f, 0.18f), in.scale[0] *= 1.6f, in.scale[1] *= 1.6f, in.scale[2] *= 1.7f;
+            else if (ty == "root_patch") col(0.33f, 0.28f, 0.17f, 0.30f, 0.42f, 0.19f);
+            else if (ty == "mushroom_glade") col(0.82f, 0.78f, 0.70f, 0.58f, 0.24f, 0.14f);
+            else if (ty == "reed_bed") col(0.42f, 0.46f, 0.24f, 0.58f, 0.54f, 0.32f), in.scale[2] *= 2.8f;
+            else if (ty == "nettle_patch") col(0.18f, 0.37f, 0.14f, 0.23f, 0.43f, 0.17f), in.scale[0] *= 1.4f, in.scale[1] *= 1.4f;
+            else if (ty == "herb_patch") col(0.27f, 0.42f, 0.19f, 0.62f, 0.52f, 0.72f);
+            else if (ty == "wild_greens_patch") col(0.28f, 0.47f, 0.19f, 0.38f, 0.53f, 0.24f);
+            else if (ty == "hay_meadow") col(0.58f, 0.53f, 0.29f, 0.68f, 0.60f, 0.34f), in.scale[0] *= 3.0f, in.scale[1] *= 3.0f;
+            else m = kBlock, col(0.40f, 0.34f, 0.28f, 0.40f, 0.34f, 0.28f), in.scale[0] *= 0.8f, in.scale[1] *= 0.8f, in.scale[2] *= 0.6f;
+            per[m].push_back(in);
+        }
+        soilTiles(per[kBlock]);
         if (village_.loaded()) {
             placeBuildings(range);
             placePieces(range);
@@ -2656,8 +3458,7 @@ private:
             else if (b.type == "hearth") set(1.4f, 1.4f, 0.8f, 0.30f, 0.29f, 0.27f, 0.30f, 0.29f, 0.27f);
             else if (b.type == "village_fire") set(2.2f, 2.2f, 0.9f, 0.85f, 0.42f, 0.12f, 0.85f, 0.42f, 0.12f);
             else if (b.type == "shrine") set(1.6f, 1.6f, 3.4f, 0.55f, 0.55f, 0.52f, 0.55f, 0.55f, 0.52f);
-            else if (b.type == "field") set(40, 30, 0.5f, 0.50f, 0.42f, 0.22f, 0.50f, 0.42f, 0.22f);
-            else if (b.type == "garden") set(12, 10, 0.5f, 0.28f, 0.40f, 0.18f, 0.28f, 0.40f, 0.18f);
+            else if (b.type == "field" || b.type == "garden") continue;   // soilTiles
             per[mesh].push_back(in);
         }
         for (int m = 0; m < kMeshes; ++m) {
@@ -2697,6 +3498,30 @@ private:
         s = mb.v.size();
         mb.box(-0.5f, -0.5f, 0.0f, 0.5f, 0.5f, 1.0f, 0.0f);
         range(kBlock, s);
+        s = mb.v.size();
+        mb.frustum(6, 0.24f, 0.0f, 0.15f, 2.4f, 0.0f);    // trunk
+        mb.frustum(7, 1.45f, 1.9f, 0.10f, 4.6f, 1.0f);    // crown, low
+        mb.frustum(7, 1.05f, 3.5f, 0.04f, 6.2f, 1.0f);    // crown, top
+        range(kTree, s);
+        s = mb.v.size();
+        mb.box(-1.25f, -0.32f, 0.0f, 1.15f, -0.02f, 0.3f, 0.0f);
+        mb.box(-0.95f, 0.02f, 0.0f, 1.05f, 0.30f, 0.27f, 1.0f);
+        mb.box(-0.55f, -0.18f, 0.28f, 0.75f, 0.12f, 0.52f, 0.0f);
+        range(kLog, s);
+        s = mb.v.size();
+        mb.box(-0.65f, -0.55f, 0.0f, 0.45f, 0.40f, 0.55f, 0.0f);
+        mb.box(0.25f, -0.25f, 0.0f, 0.95f, 0.45f, 0.38f, 1.0f);
+        mb.box(-0.95f, 0.15f, 0.0f, -0.35f, 0.75f, 0.30f, 1.0f);
+        mb.box(-0.2f, -0.95f, 0.0f, 0.3f, -0.45f, 0.22f, 0.0f);
+        range(kRock, s);
+        s = mb.v.size();
+        mb.frustum(7, 0.75f, 0.0f, 0.62f, 0.55f, 0.0f);
+        mb.frustum(7, 0.62f, 0.55f, 0.12f, 1.05f, 1.0f);
+        range(kBush, s);
+        s = mb.v.size();
+        mb.frustum(5, 0.45f, 0.0f, 0.28f, 0.28f, 0.0f);
+        mb.frustum(5, 0.28f, 0.28f, 0.03f, 0.6f, 1.0f);
+        range(kTuft, s);
         vertBuffer_ = device_.uploadBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, mb.v.data(), mb.v.size() * sizeof(Vertex));
         instBuffer_ = device_.makeBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, kMaxInstances * sizeof(Instance));
         SDL_GPUTransferBufferCreateInfo t{};
@@ -2798,13 +3623,36 @@ private:
 
     // ---- HudHost ------------------------------------------------------------
     std::string interactionName(const std::string& id) const override { return name("interaction", id); }
-    void command(const std::string& type, const Json& args) override { post({"cmd", 0, type, args}); }
+    void command(const std::string& type, const Json& args) override {
+        noteInput();
+        // Free mode: an act from the wheel joins the person's queue (done in
+        // turn, as in The Sims) instead of replacing what goes on.
+        if (control_ == kFree && type == "perform" && args.contains("interaction") && args.contains("id")) {
+            Json q{{"id", args["id"]}, {"task", args["interaction"]}, {"reason", "player_queue"}};
+            if (args.contains("target")) q["target"] = args["target"];
+            post({"cmd", 0, "queue_task", q});
+            return;
+        }
+        post({"cmd", 0, type, args});
+    }
     void pause() override { post({"pause"}); }
-    void speed(int n) override { post({"speed", n}); }
+    void speed(int n) override {
+        if (speedLocked() && n != 1) return;   // walking by the keys holds the clock at 1
+        post({"speed", n});
+    }
+    // Selecting a person shows them (the camera goes there); riding on them
+    // is the camera button's (Tab), apart from the choice.
     void select(EntityId id) override {
         selected_ = id;
         selectedWanted_ = id;
-        follow_ = true;
+        if (const ActorSnap* a = actor(id)) {
+            double wx, wy;
+            actorWorld(*a, tickAlpha(), wx, wy);
+            if (!follow_) {
+                target_[0] = wx;
+                target_[1] = wy;
+            }
+        }
     }
     void wheelTarget(EntityId id) override { wheelWanted_ = id; }
     void craftDraft(const Json& draft) override { post({"craft_draft", 0, "", draft}); }
@@ -2861,6 +3709,10 @@ private:
     int shotCounter_ = 0;
     terrain_core::GroundHeight ground_;
     double worldSize_;
+    double spacing_ = 1.0;                 // the clipmap's finest spacing (the pads' corners snap to it)
+    terrain_core::Relief* relief_ = nullptr;   // the view's fine relief, the game's pads on it
+    bool padsOn_ = false, terrainChanged_ = false;
+    std::size_t padSig_ = std::size_t(-1);
     GameOptions opts_;
     Json worldCfg_;                      // the sim world's config (New game makes the world again from it)
     GameSettings settings_;
@@ -2896,6 +3748,16 @@ private:
     Tick wheelCacheTick_ = 0;
     std::vector<std::string> wheelActs_;
     EntityId snapSelected_ = kNone;
+    // things, acts, feedback: the main thread says where it looks and what
+    // ring is open; the rest is the sim thread's
+    std::atomic<double> viewX_{0}, viewY_{0};
+    std::atomic<EntityId> actsWanted_{kNone};
+    std::map<std::string, std::vector<std::string>> objActs_;
+    EntityId fbFor_ = kNone;
+    std::map<std::string, int> fbInv_;
+    Tick fbTick_ = 0;
+    int fbAtTick_ = 0, fbSeq_ = 0;
+    std::vector<FeedbackSnap> fbTail_;
 
     std::mutex cmdMutex_;
     std::deque<Command> commands_;
@@ -2922,6 +3784,20 @@ private:
         double x = 0, y = 0, yaw = 0, speed = 0;
         double lastInput = -1, lastSent = -1, sentX = 0, sentY = 0;
     } avatar_;
+    // How the person is led (settings: control) and what blocks a walker.
+    static constexpr int kKeys = 0, kMouse = 1, kFree = 2;
+    static constexpr double kWalkerRadius = 0.3;
+    int control_ = kKeys;
+    EntityId woreAllFor_ = kNone;
+    bool avatarRuns_ = false;
+    double sentZ_ = 0;   // the ground's height where the sim last heard the walker was (climbing tires)
+    collide::Obstacles obstacles_;
+    std::size_t obstacleSig_ = std::size_t(-1);
+    std::vector<collide::Point> walkPath_;   // a click's way, world metres, the goal last
+    bool walkRun_ = false;
+    double walkStuck_ = 0;
+    double idleS_ = 0, speedPostedS_ = -1;   // free mode: real seconds without the player's hand
+    bool idleSent_ = false;
     double simSize_ = 0;   // the sim map's side, metres
     double scriptWalk_[3] = {0, 0, 0};
     bool scriptRun_ = false;

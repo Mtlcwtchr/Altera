@@ -10,6 +10,7 @@
 #include "sim/craft_sim.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
+#include "sim/gear.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -554,6 +555,7 @@ void installAi(World& w) {
     installControl(w);
     installBuilding(w);
     installCrafting(w);
+    installGear(w);
 }
 
 } // namespace altera::sim

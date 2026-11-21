@@ -27,6 +27,11 @@ struct ActorSnap {
     double hp = 1;
     double lowNeed = 1;                    // the lowest need, 0..1
     std::string lowNeedId;                 // and which
+    // the act going on: how far along (0..1 at the last tick, -1: none),
+    // its length in ticks, what it is done to
+    double progress = -1;
+    int actTicks = 0;
+    EntityId actTarget = sim::kNone;
     EntityId spouse = sim::kNone, mother = sim::kNone, father = sim::kNone;
 };
 
@@ -52,8 +57,41 @@ struct ItemSnap {
     int count = 0;
 };
 
+// What the person carries and wears (sim/gear.hpp): the load, the body's
+// slots by layers, the grids of the hands and the worn bags with every
+// thing's place in them.
+struct GearSnap {
+    bool on = false;                      // gear.json is there
+    double kg = 0, maxKg = 0, comfortKg = 0, tireMult = 1;
+    struct Grid {
+        std::string id, name;
+        int w = 0, h = 0;
+    };
+    struct Spot {
+        std::string item, name, grid;
+        int count = 1, x = 0, y = 0, w = 1, h = 1;
+        bool turned = false;
+        double kg = 0;
+        bool wearable = false;
+    };
+    struct Layer {
+        std::string id, name, item, itemName;   // item "" = nothing on it
+        int bulk = 0;
+    };
+    struct Slot {
+        std::string id, name;
+        int bulk = 0, used = 0;
+        std::vector<Layer> layers;
+    };
+    std::vector<Grid> grids;
+    std::vector<Spot> spots;
+    std::vector<Slot> slots;
+    std::vector<std::pair<std::string, int>> overflow;   // display name, count
+};
+
 struct Detail {
     EntityId id = sim::kNone;
+    GearSnap gear;
     std::vector<NeedSnap> needs;
     double mood = 0, fatigue = 0, blood = 100;
     bool freeWill = true;
@@ -173,6 +211,36 @@ struct CraftSnap {
     std::vector<CraftCandidate> candidates;
 };
 
+// A thing of the world near the camera or the player's person that one can
+// work on: a tree, deadwood, a stony bank, a bush, a patch of herbs.
+struct ThingSnap {
+    EntityId id = sim::kNone;
+    std::string type, name;
+    double x = 0, y = 0;                                  // sim metres
+    std::vector<std::pair<std::string, int>> stock;       // display name, count
+    bool busy = false;                                    // someone else works on it
+};
+
+// An act for the act ring and the wheel: what it needs (met or not), what it
+// gives, how long it takes, as the sim checks it for the player's person.
+struct ActInfoSnap {
+    std::string id, name;
+    bool can = false;
+    std::string why;                                      // display text of the first unmet need
+    std::vector<std::pair<std::string, bool>> needs;      // display text, met
+    std::vector<std::string> gains, toTarget;             // display texts: what the person gets, what the target
+    int minutes = 0;
+};
+
+// What just came of the player's person's doing: a thing gained or spent, an
+// act done or broken off. Shown once per seq, floating over them.
+struct FeedbackSnap {
+    int seq = 0;
+    EntityId who = sim::kNone;
+    std::string text;
+    int kind = 0;   // 0 info, 1 good, 2 bad
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -197,6 +265,12 @@ struct Snapshot {
     EntityId builder = sim::kNone, builderFamily = sim::kNone;
     ColonySnap colony;
     CraftSnap craft;
+    // things one can work on near the camera and the person; the acts of the
+    // target the act ring or the wheel is open on; what just came of it
+    std::vector<ThingSnap> things;
+    EntityId actsFor = sim::kNone;
+    std::vector<ActInfoSnap> acts;
+    std::vector<FeedbackSnap> feedback;   // a bounded tail, newest last
 };
 
 } // namespace altera::game

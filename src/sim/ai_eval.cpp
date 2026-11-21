@@ -8,6 +8,7 @@
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
+#include "sim/gear.hpp"
 #include "sim/group_combat.hpp"
 #include "sim/tones.hpp"
 
@@ -342,6 +343,17 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
     const EvalCtx x{w, c, target, targetChar};
     for (const auto& k : d.pre)
         if (!evalCondition(x, k)) return fail("pre:" + k.text);
+    // The player's person carries as a body can (gear.json): what an act
+    // gives must not be too heavy or find no room in the hands and bags.
+    if (c.controller.isPlayer())
+        if (const GearRules* R = gearRules(w.content())) {
+            std::map<std::string, int> gains;
+            for (const auto& e : d.eff)
+                if (!e.onTarget && !e.onWitnesses && e.subject == "has" && e.op == '+' && !e.isParam())
+                    gains[e.key] += static_cast<int>(e.value);
+            if (!gains.empty())
+                if (const std::string why = canTake(*R, c, gains); !why.empty()) return fail("gear:" + why);
+        }
     return true;
 }
 
@@ -519,6 +531,7 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             int& n = c.inventory[e.key];
             n = e.op == '=' ? static_cast<int>(e.value) : n + static_cast<int>(dv);
             if (n <= 0) c.inventory.erase(e.key);
+            if (!c.worn.empty() || !c.gearPins.empty()) pruneGear(c);
         } else if (s == "need" || (s == "target_need" && targetChar)) {
             Character& who = s == "target_need" ? *targetChar : c;
             double& v = who.needs[e.key];
@@ -537,7 +550,11 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             v = clamp01(e.op == '=' ? e.value : v + dv);
         } else if (s == "body") {
             double& v = e.key == "health" ? c.body.health : c.body.fatigue;
-            v = clamp01(e.op == '=' ? e.value : v + dv);
+            // a heavy load makes every tiring act tire more (gear.json)
+            double d = dv;
+            if (e.key == "fatigue" && e.op == '+')
+                if (const GearRules* R = gearRules(w.content())) d *= loadFatigueMult(*R, c);
+            v = clamp01(e.op == '=' ? e.value : v + d);
         } else if (s == "reputation") {
             double& v = c.reputation[e.key];
             v = std::clamp(e.op == '=' ? e.value : v + dv, -1.0, 1.0);

@@ -57,6 +57,12 @@ public:
     // settings, resume, main_menu, quit, load {slot}, save {slot}, back,
     // apply {lang, fullscreen, autosave}. The game sets the panel.
     virtual void menuAction(const std::string& action, const sim::Json& args) { (void)action, (void)args; }
+    // The control bar by the clock: how the player's person is led (0 keys,
+    // 1 mouse, 2 free: Sims-like, orders queue up and it lives by itself when
+    // left alone) and whether the camera rides on the selected person; the two
+    // are independent.
+    virtual void controlMode(int mode) { (void)mode; }
+    virtual void cameraFollow(bool on) { (void)on; }
 };
 
 class Hud {
@@ -101,7 +107,32 @@ public:
         beastY_ = y;
         beastFresh_ = true;
     }
+    // The act ring over a thing (a tree, deadwood, a bush): the acts the sim
+    // checks for it (Snapshot::acts), each with what it needs and gives.
+    void openThing(EntityId target, float x, float y) {
+        panel = "thing";
+        thingTarget_ = target;
+        beastX_ = x;
+        beastY_ = y;
+        beastFresh_ = true;
+    }
+    // The target whose acts the sim should check (the ring or the wheel open on it).
+    EntityId actTarget() const {
+        if (panel == "wheel") return wheelTarget_;
+        if (panel == "beast") return beastTarget_;
+        if (panel == "thing") return thingTarget_;
+        return sim::kNone;
+    }
+    // What the mouse is over in the world (the game fills it): the hint.
+    EntityId hoverActor = sim::kNone, hoverThing = sim::kNone;
+    void turnDrag() { dragTurned_ = !dragTurned_; }   // R in the inventory: the dragged thing turned
     EntityId aim = sim::kNone;   // the target the player clicked (marked, its name shown)
+    // Filled by the game every frame: the control bar's state, the speed held
+    // at 1 (walking by the keys), where a click sent the person (sim metres).
+    int controlMode = 0;
+    bool cameraFollow = false, speedLocked = false, hasPerson = false;
+    bool walkMark = false;
+    double walkMarkX = 0, walkMarkY = 0;
     void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
     void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
@@ -175,16 +206,31 @@ private:
     void selectedCorner(const Snapshot& s, const ActorSnap& a, float H);
     void quickBar(const Snapshot& s, float W, float H);
     void clockPill(const Snapshot& s, float W, float H);
+    void controlPill(float W, float H);
+    void walkMarker();
     void toasts(const Snapshot& s, float W);
     void thoughts(const Snapshot& s, float W);
     void sheet(const Snapshot& s, const ActorSnap& a, float W, float H);
     void wheel(const Snapshot& s, float W, float H);
     void beast(const Snapshot& s, float W, float H);
+    void thing(const Snapshot& s, float W, float H);
+    // What an act needs and gives (the sim's check), on a paper card at x, y.
+    void actCard(const ActInfoSnap& a, float x, float y, float W, float H);
+    const ActInfoSnap* actInfo(const Snapshot& s, EntityId target, const std::string& id) const;
+    void hoverHint(const Snapshot& s, float W);
+    void feedbackFloats(const Snapshot& s);
+    void workFx(const Snapshot& s);
     void kin(const Snapshot& s, const ActorSnap* a, float W, float H);
     void annals(const Snapshot& s, float W, float H);
     void buildBar(const Snapshot& s, float W, float H);
     void colony(const Snapshot& s, float W, float H);
     void workshop(const Snapshot& s, float W, float H);
+    void inventory(const Snapshot& s, const ActorSnap* sel, float W, float H);
+    std::string itemIcon(const std::string& id) const;
+    // the thing dragged in the inventory: what, its size, turned
+    std::string dragItem_, dragFrom_;
+    int dragW_ = 1, dragH_ = 1;
+    bool dragTurned_ = false;
     void backstory(float W, float H);
     // the menus (hud_menu.cpp)
     void mainMenu(float W, float H);
@@ -259,7 +305,15 @@ private:
     std::map<EntityId, SDL_Texture*> portraits_;
     SDL_Texture* minimap_ = nullptr;
     sim::Json wheelSpec_;
-    EntityId selected_ = sim::kNone, wheelTarget_ = sim::kNone, beastTarget_ = sim::kNone;
+    EntityId selected_ = sim::kNone, wheelTarget_ = sim::kNone, beastTarget_ = sim::kNone, thingTarget_ = sim::kNone;
+    struct Float {
+        EntityId who = sim::kNone;
+        std::string text;
+        int kind = 0;
+        double born = 0;
+    };
+    std::vector<Float> floats_;
+    int floatSeq_ = 0;
     float beastX_ = 0, beastY_ = 0;
     bool beastFresh_ = false;   // opened by this frame's click: that click does not close it
     int goalPick_ = -1;

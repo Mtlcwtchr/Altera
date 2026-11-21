@@ -115,6 +115,12 @@ ICONS = {
     'k_len': 'M10 1l1.6 11H8.4zM6 13h8M10 13v6',
     'k_hard': 'M7 3h6v7H7zM10 10v8',
     'k_finish': 'M10 2l2.4 5 5.6.7-4 4 1 5.6L10 14.5 5 17.3l1-5.6-4-4 5.6-.7z',
+    # the control bar: keys, mouse, free (Sims-like), the camera on the person or free
+    'ctl_keys': 'M8 3h4v4H8zM3 9h4v4H3zM8 9h4v4H8zM13 9h4v4h-4zM5 16h10',
+    'ctl_mouse': 'M6 7a4 4 0 0 1 8 0v6a4 4 0 0 1-8 0zM10 3v5M6 8h8',
+    'ctl_free': 'M8 4a2 2 0 1 0 4 0a2 2 0 1 0-4 0M10 6v6M6 18l4-6 4 6M5 9h10M16 2l.8 1.6 1.6.8-1.6.8-.8 1.6-.8-1.6-1.6-.8 1.6-.8z',
+    'cam_lock': 'M2 8h11v8H2zM13 10l5-2.5v9L13 14zM5 8V5.5a2.5 2.5 0 0 1 5 0V8',
+    'cam_free': 'M2 8h11v8H2zM13 10l5-2.5v9L13 14zM4 5h2M8 5h2M12 5h2',
 }
 FILLED = {
     'i_knife': ('M3 17l2-4 9-10 3 3-10 9z', '#d8dce8'),

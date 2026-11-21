@@ -583,7 +583,16 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         }
         quickBar(s, W, H);
         clockPill(s, W, H);
+        controlPill(W, H);
+        walkMarker();
+        workFx(s);
+        feedbackFloats(s);
+        hoverHint(s, W);
         if (showThoughts) thoughts(s, W);
+        // A button of the top menu opened a panel: its click is spent. (The
+        // build panel draws the top menu again, which took the same click as
+        // a second press and shut the panel the frame it opened.)
+        if (panel != "none") in_->pressed = false;
     }
     if (panel == "sheet" && sel && !sel->animal) sheet(s, *sel, W, H);
     else if (panel == "sheet") panel = "none";
@@ -592,7 +601,14 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         names(s);
         beast(s, W, H);
     }
+    if (panel == "thing") {
+        names(s);
+        workFx(s);
+        feedbackFloats(s);
+        thing(s, W, H);
+    }
     if (panel == "kin") kin(s, sel, W, H);
+    if (panel == "inventory") inventory(s, sel, W, H);
     if (panel == "annals") annals(s, W, H);
     if (panel == "build") {
         topMenu(W);
@@ -944,13 +960,28 @@ void Hud::clockPill(const Snapshot& s, float W, float H) {
     for (int k = 1; k <= 3; ++k) {
         const Rect b{x, r.y + 4, 44, 44};
         const bool on = !s.paused && s.speed == k;
+        // walking by the keys holds the clock at 1: the others are greyed out
+        const bool locked = speedLocked && k != 1;
         box(on ? Skin::ButtonOn : Skin::Button, b, 22);
         const float iw = 9.0f * k + 2;
         for (int t = 0; t < k; ++t) {
             const float ox = b.x + 22 - iw * 0.5f + t * 9.0f;
-            const SDL_FColor col = on ? SDL_FColor{0.11f, 0.13f, 0.17f, 1} : SDL_FColor{0.94f, 0.9f, 0.81f, 1};
+            const SDL_FColor col = on       ? SDL_FColor{0.11f, 0.13f, 0.17f, 1}
+                                   : locked ? SDL_FColor{0.94f, 0.9f, 0.81f, 0.28f}
+                                            : SDL_FColor{0.94f, 0.9f, 0.81f, 1};
             const SDL_Vertex v[3] = {{{ox, b.y + 15}, col, {0, 0}}, {{ox + 10, b.y + 22}, col, {0, 0}}, {{ox, b.y + 29}, col, {0, 0}}};
             SDL_RenderGeometry(sdl_, nullptr, v, 3, nullptr, 0);
+        }
+        if (locked) {
+            ui_->claim(b);
+            if (ui_->hovered(b)) {
+                const std::string tip = host_->text("hud.speed_locked");
+                const float w2 = textW(tip, 14) + 20;
+                box(Skin::Leather, {b.x + 22 - w2 / 2, b.y - 44, w2, 28}, 14);
+                label(b.x + 22 - w2 / 2 + 10, b.y - 39, tip, kText, 14);
+            }
+            x += 46;
+            continue;
         }
         if (ui_->hovered(b)) {
             const std::string tip = host_->text("hud.speed", {{"n", k}});
@@ -961,6 +992,37 @@ void Hud::clockPill(const Snapshot& s, float W, float H) {
         if (clicked(b)) host_->speed(k);
         x += 46;
     }
+}
+
+// The control bar over the clock: three ways to lead the person (keys, mouse,
+// free) and, apart from them, the camera riding on the selected person.
+void Hud::controlPill(float W, float H) {
+    static const char* kModes[3][2] = {{"ctl_keys", "hud.control.keys"}, {"ctl_mouse", "hud.control.mouse"},
+                                       {"ctl_free", "hud.control.free"}};
+    const float w = 6 + 3 * 46 + 14 + 46 + 4;
+    const Rect r{W - 36 - w, H - 30 - 52 - 62, w, 52};
+    box(Skin::Leather, r, 26);
+    float x = r.x + 6;
+    for (int k = 0; k < 3; ++k) {
+        const std::string tip = host_->text(kModes[k][1]) + (hasPerson ? "" : " - " + host_->text("hud.control.nobody"));
+        if (roundButton({x, r.y + 4, 44, 44}, kModes[k][0], controlMode == k, tip)) host_->controlMode(k);
+        x += 46;
+    }
+    ui_->roundRect({x + 5, r.y + 12, 2, 28}, kGold.withAlpha(0.45f), 1);
+    x += 14;
+    const std::string camTip = host_->text(cameraFollow ? "hud.control.camera_on" : "hud.control.camera_off");
+    if (roundButton({x, r.y + 4, 44, 44}, cameraFollow ? "cam_lock" : "cam_free", cameraFollow, camTip))
+        host_->cameraFollow(!cameraFollow);
+}
+
+// Where a click on the ground sent the person: a gold ring on the ground.
+void Hud::walkMarker() {
+    if (!walkMark) return;
+    float x, y;
+    if (!host_->groundToScreen(walkMarkX, walkMarkY, 0.05, x, y)) return;
+    const float pulse = 0.5f + 0.5f * float(std::sin(clock_ * 5.0));
+    arc(x, y, 10 + 3 * pulse, 2.0f, 0, 360, kGold.withAlpha(0.85f));
+    disc(x, y, 3, kGoldPale);
 }
 
 void Hud::thoughts(const Snapshot& s, float W) {
@@ -984,7 +1046,10 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
     static const char* kTabs[][2] = {{"values", "hud.values"}, {"wants", "hud.wants"}, {"people", "hud.people"},
                                      {"calling", "hud.skills"}, {"things", "hud.things"}};
     for (int k = 0; k < 5; ++k)
-        if (roundButton({ox - 80, oy + 90 + k * 70.0f, 56, 56}, kTabs[k][0], k == sheetTab_, host_->text(kTabs[k][1]))) sheetTab_ = k;
+        if (roundButton({ox - 80, oy + 90 + k * 70.0f, 56, 56}, kTabs[k][0], k == sheetTab_, host_->text(kTabs[k][1]))) {
+            if (k == 4) panel = "inventory";   // things: the inventory with its grids and the body
+            else sheetTab_ = k;
+        }
     if (roundButton({ox + 1274, oy - 20, 48, 48}, "close", false, host_->text("hud.close"))) panel = "none";
 
     // left page: who, traits, needs, feelings
@@ -1267,6 +1332,8 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
     const std::string cat = sp.value("id", std::string());
     const double base = wheelSpec_.value("base_chance", sim::Json::object()).value(cat, 0.5);
     const RelSnap& rel = s.wheel.toActor;
+    const ActInfoSnap* cardFor = nullptr;
+    float cardY = 0;
     if (m) {
         const sim::Json acts = subs[std::size_t(sub_)].value("interactions", sim::Json::array());
         for (const auto& av : acts) {
@@ -1286,7 +1353,11 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             const int pc = int(std::round(chance * 100));
             const std::string nm = host_->interactionName(id);
             label(row.x + 8, row.y + 6, ui_->fit(nm, row.w - 80, 1.0f), canAct ? kInk : kInkSoft, 15);
-            if (!kind.empty()) label(row.x + 8, row.y + 28, host_->text("hud.wheel.kind." + kind), kInkSoft, 12);
+            const ActInfoSnap* info = actInfo(s, t->id, id);
+            if (info && !info->can && !info->why.empty())
+                label(row.x + 8, row.y + 28, ui_->fit(host_->text("hud.act.missing", {{"what", info->why}}), row.w - 80, 12 / 15.f), kInkRed, 12);
+            else if (!kind.empty()) label(row.x + 8, row.y + 28, host_->text("hud.wheel.kind." + kind), kInkSoft, 12);
+            if (info && ui_->hovered(row)) cardFor = info, cardY = row.y;
             const float ccx = row.right() - 26, ccy = row.y + 25;
             arc(ccx, ccy, 18, 4, 0, 360, Colour::rgb(43, 38, 32, 0.16f));
             arc(ccx, ccy, 18, 4, -90, float(360 * chance), chance > 0.6 ? kGood : chance > 0.35 ? kMid : kBad);
@@ -1316,6 +1387,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         if (clicked(b)) tone_ = i;
         x += w + 8;
     }
+    if (cardFor) actCard(*cardFor, P.right() + 16, cardY, W, H);
     const std::string note = !canAct ? host_->text(s.controlled == t->id ? "hud.wheel.self" : "hud.wheel.need_control")
                                      : host_->text(s.wheel.chance.empty() ? "hud.wheel.estimate" : "hud.wheel.real");
     label(P.x + 24, P.bottom() + 14, ui_->fit(note, P.w, 13 / 15.f), canAct ? kText.withAlpha(0.8f) : kRingBad, 13, true);
@@ -1386,7 +1458,465 @@ void Hud::beast(const Snapshot& s, float W, float H) {
         label(r.x + 14, r.y + 5, why, kInk, 14);
     }
     ui_->claim({cx - R - widest, cy - R - 30, (R + widest) * 2, R * 2 + 120});
+    for (int i = 0; i < n; ++i) {   // what the hovered act needs and gives
+        const float a = -kPiF / 2 + i * 2 * kPiF / n;
+        const float w = textW(names[std::size_t(i)], 15) + 36;
+        const Rect b{cx + R * std::cos(a) - w / 2, cy + R * std::sin(a) - 20, w, 40};
+        if (ui_->hovered(b))
+            if (const ActInfoSnap* ai = actInfo(s, t->id, acts[std::size_t(i)])) actCard(*ai, b.right() + 12, b.y, W, H);
+    }
     if (!fresh && in_->pressed && !over) panel = "none";
+}
+
+// The act ring over a thing: its name and what it holds on a leather disc,
+// the acts the sim has for it on chips round it; an act one cannot do now is
+// dimmed with its first unmet need under it. Hovering a chip shows the card.
+void Hud::thing(const Snapshot& s, float W, float H) {
+    const ThingSnap* t = nullptr;
+    for (const auto& x : s.things)
+        if (x.id == thingTarget_) t = &x;
+    const bool fresh = beastFresh_;
+    beastFresh_ = false;
+    if (!t || in_->escape) {
+        panel = "none";
+        return;
+    }
+    std::vector<const ActInfoSnap*> acts;
+    if (s.actsFor == t->id)
+        for (const auto& a : s.acts) acts.push_back(&a);
+    const int n = int(acts.size());
+    const bool canAct = s.controlled != sim::kNone;
+    float widest = 0;
+    for (const ActInfoSnap* a : acts) widest = std::max(widest, textW(a->name, 15) + 36);
+    const float R = n ? std::max(96.0f, 26.0f * float(n) + 40.0f) : 0.0f, disc = 48;
+    const float cx = std::clamp(beastX_, R + widest * 0.5f + 16, std::max(R + widest * 0.5f + 16, W - R - widest * 0.5f - 16));
+    const float cy = std::clamp(beastY_, R + 40, std::max(R + 40, H - R - 80));
+    bool over = false;
+    for (int i = 0; i < n; ++i) {
+        const float a = -kPiF / 2 + i * 2 * kPiF / n;
+        ui_->line(cx + disc * std::cos(a), cy + disc * std::sin(a), cx + (R - 20) * std::cos(a), cy + (R - 20) * std::sin(a),
+                  Colour::rgb(243, 226, 168, 0.55f));
+    }
+    const Rect d{cx - disc, cy - disc, disc * 2, disc * 2};
+    box(Skin::Leather, d, disc);
+    ring(cx, cy, disc);
+    over |= ui_->hovered(d);
+    {
+        const float w = textW(t->name, 17, true) + 28;
+        const Rect r{cx - w / 2, cy + disc + 6, w, 30};
+        box(Skin::Leather, r, 15);
+        title(r.x + 14, r.y + 4, t->name, kGoldPale, 17);
+        over |= ui_->hovered(r);
+    }
+    {   // what it holds, in the disc
+        float y = cy - 9.0f * float(std::min<std::size_t>(t->stock.size(), 3));
+        for (std::size_t k = 0; k < t->stock.size() && k < 3; ++k) {
+            const std::string line = ui_->fit(t->stock[k].first + " " + std::to_string(t->stock[k].second), disc * 2 - 10, 12 / 15.f);
+            label(cx - textW(line, 12) / 2, y, line, kText, 12, true);
+            y += 18;
+        }
+    }
+    const ActInfoSnap* hovered = nullptr;
+    Rect hoveredAt{};
+    for (int i = 0; i < n; ++i) {
+        const ActInfoSnap& ai = *acts[std::size_t(i)];
+        const float a = -kPiF / 2 + i * 2 * kPiF / n;
+        const float w = textW(ai.name, 15) + 36;
+        const Rect b{cx + R * std::cos(a) - w / 2, cy + R * std::sin(a) - 20, w, 40};
+        over |= ui_->hovered(b);
+        const bool ok = canAct && ai.can;
+        if (ok) {
+            if (textButton(b, ai.name, true)) {
+                host_->command("perform", {{"id", s.controlled}, {"interaction", ai.id}, {"target", t->id}});
+                panel = "none";
+                return;
+            }
+        } else {
+            box(Skin::Chip, b, b.h * 0.5f);
+            ui_->claim(b);
+            label(b.x + 18, b.y + 11, ai.name, kInkSoft, 15);
+            if (!ai.why.empty()) {
+                const std::string why = ui_->fit(ai.why, std::max(w, 160.0f), 12 / 15.f);
+                label(b.x + w * 0.5f - textW(why, 12) * 0.5f, b.bottom() + 2, why, kRingBad, 12, true);
+            }
+        }
+        if (ui_->hovered(b)) {
+            hovered = &ai;
+            hoveredAt = b;
+        }
+    }
+    if (!n || !canAct) {
+        const std::string why = host_->text(!canAct ? "hud.wheel.need_control" : "hud.thing.nothing");
+        const float w = textW(why, 14) + 28;
+        const Rect r{cx - w / 2, cy + disc + 44, w, 28};
+        box(Skin::Paper, r, 14);
+        label(r.x + 14, r.y + 5, why, kInk, 14);
+    }
+    ui_->claim({cx - R - widest, cy - R - 30, (R + widest) * 2, R * 2 + 120});
+    if (hovered) actCard(*hovered, hoveredAt.right() + 12, hoveredAt.y, W, H);
+    if (!fresh && in_->pressed && !over) panel = "none";
+}
+
+const ActInfoSnap* Hud::actInfo(const Snapshot& s, EntityId target, const std::string& id) const {
+    if (s.actsFor != target) return nullptr;
+    for (const auto& a : s.acts)
+        if (a.id == id) return &a;
+    return nullptr;
+}
+
+// What an act needs (each met or not) and gives, and how long it takes.
+void Hud::actCard(const ActInfoSnap& a, float x, float y, float W, float H) {
+    const float w = 330;
+    float h = 58 + 22.0f * float(a.needs.size()) + 22.0f * float(a.gains.size() + a.toTarget.size()) +
+              (a.needs.empty() ? 0 : 26) + (a.gains.empty() && a.toTarget.empty() ? 0 : 26);
+    if (x + w > W - 12) x = W - 12 - w;
+    y = std::clamp(y, 12.0f, std::max(12.0f, H - h - 12));
+    const Rect r{x, y, w, h};
+    box(Skin::Paper, r, 14);
+    title(r.x + 16, r.y + 10, ui_->fit(a.name, w - 32, 18 / 15.f), kInk, 18);
+    std::string len;
+    if (a.minutes > 0)
+        len = a.minutes >= 60 ? host_->text("hud.act.hours", {{"n", (a.minutes + 30) / 60}})
+                              : host_->text("hud.act.minutes", {{"n", a.minutes}});
+    if (!len.empty()) label(r.right() - 16 - textW(len, 13), r.y + 14, len, kInkSoft, 13);
+    float yy = r.y + 40;
+    if (!a.needs.empty()) {
+        label(r.x + 16, yy, host_->text("hud.act.needs"), kInkSoft, 13);
+        yy += 24;
+        for (const auto& [t, ok] : a.needs) {
+            icon(ok ? "a_ok" : "close", {r.x + 16, yy, 16, 16}, ok ? Colour::rgb(70, 120, 60) : kInkRed);
+            label(r.x + 38, yy, ui_->fit(t, w - 54, 14 / 15.f), ok ? kInk : kInkRed, 14);
+            yy += 22;
+        }
+    }
+    if (!a.gains.empty() || !a.toTarget.empty()) {
+        label(r.x + 16, yy + 2, host_->text("hud.act.gives"), kInkSoft, 13);
+        yy += 26;
+        for (const auto& t : a.gains) {
+            label(r.x + 38, yy, ui_->fit(t, w - 54, 14 / 15.f), kInk, 14);
+            yy += 22;
+        }
+        for (const auto& t : a.toTarget) {
+            label(r.x + 38, yy, ui_->fit(host_->text("hud.act.to_target", {{"what", t}}), w - 54, 14 / 15.f), kInk, 14);
+            yy += 22;
+        }
+    }
+}
+
+// The hint over what the mouse is on: who it is and what they are busy
+// with, or what a thing is and holds.
+void Hud::hoverHint(const Snapshot& s, float W) {
+    std::vector<std::string> lines;
+    std::string head;
+    if (hoverActor != sim::kNone) {
+        const ActorSnap* a = actor(s, hoverActor);
+        if (!a) return;
+        head = a->name + (a->group > 1 ? "  x" + std::to_string(a->group) : "");
+        if (!a->alive) lines.push_back(host_->text("game.dead"));
+        else {
+            if (!a->act.empty()) lines.push_back(host_->text("hud.hint.doing", {{"what", a->act}}));
+            else lines.push_back(host_->text("game.fsm." + a->state));
+            if (!a->goal.empty() && a->goal != a->act) lines.push_back(host_->text("hud.hint.goal", {{"what", a->goal}}));
+            if (a->progress >= 0) lines.push_back(host_->text("hud.hint.progress", {{"n", int(std::round(a->progress * 100))}}));
+        }
+    } else if (hoverThing != sim::kNone) {
+        const ThingSnap* t = nullptr;
+        for (const auto& x : s.things)
+            if (x.id == hoverThing) t = &x;
+        if (!t) return;
+        head = t->name;
+        for (const auto& [k, v] : t->stock) lines.push_back(k + ": " + std::to_string(v));
+        if (t->busy) lines.push_back(host_->text("hud.hint.busy"));
+        lines.push_back(host_->text("hud.hint.click_thing"));
+    } else {
+        return;
+    }
+    float w = textW(head, 16, true) + 28;
+    for (const auto& l : lines) w = std::max(w, textW(l, 13) + 28);
+    const float h = 36 + 19.0f * float(lines.size());
+    const float x = std::min(in_->mouseX + 18, W - w - 8), y = std::max(8.0f, in_->mouseY - h - 10);
+    box(Skin::Leather, {x, y, w, h}, 12);
+    title(x + 14, y + 8, head, kGoldPale, 16);
+    float yy = y + 32;
+    for (const auto& l : lines) {
+        label(x + 14, yy, l, kText, 13);
+        yy += 19;
+    }
+}
+
+// What came of the person's doing, floating up over their head and fading;
+// a bar over them while an act goes on.
+void Hud::feedbackFloats(const Snapshot& s) {
+    for (const auto& f : s.feedback)
+        if (f.seq > floatSeq_) {
+            floatSeq_ = f.seq;
+            floats_.push_back({f.who, f.text, f.kind, clock_ + 0.35 * double(floats_.size() % 4)});
+        }
+    if (floats_.size() > 8) floats_.erase(floats_.begin(), floats_.end() - 8);
+    const ActorSnap* me = actor(s, s.controlled);
+    if (me && me->progress >= 0 && me->alive) {
+        float x, y;
+        if (host_->overHead(*me, x, y)) {
+            const double p = std::clamp(me->progress + host_->tickAlpha() / std::max(1, me->actTicks), 0.0, 1.0);
+            const Rect bar{x - 50, y - 46, 100, 10};
+            ui_->roundRect(bar, kRim.withAlpha(0.8f), 5);
+            ui_->roundRect({bar.x + 2, bar.y + 2, float((bar.w - 4) * p), bar.h - 4}, kGold, 3);
+            if (!me->act.empty()) {
+                const std::string t = ui_->fit(me->act, 220, 13 / 15.f);
+                label(x - textW(t, 13) / 2, bar.y - 20, t, kGoldPale, 13, true);
+            }
+        }
+    }
+    int stack = 0;
+    for (auto it = floats_.begin(); it != floats_.end();) {
+        const double age = clock_ - it->born;
+        if (age > 3.2) {
+            it = floats_.erase(it);
+            continue;
+        }
+        if (age < 0) {
+            ++it;
+            continue;
+        }
+        const ActorSnap* a = actor(s, it->who);
+        float x, y;
+        if (a && host_->overHead(*a, x, y)) {
+            const float rise = float(age) * 26.0f + float(stack) * 4.0f;
+            const float alpha = float(std::clamp(1.0 - (age - 2.2), 0.0, 1.0));
+            const Colour c = it->kind == 1 ? Colour::rgb(170, 225, 120, alpha) : it->kind == 2 ? Colour::rgb(240, 120, 100, alpha)
+                                                                                              : kText.withAlpha(alpha);
+            const float tw = textW(it->text, 16, true);
+            ui_->text(x - tw / 2, y - 80 - rise + 2, it->text, kRim.withAlpha(alpha * 0.85f), 16 / 15.f, true);
+            ui_->text(x - tw / 2, y - 80 - rise, it->text, c, 16 / 15.f, true);
+            ++stack;
+        }
+        ++it;
+    }
+}
+
+std::string Hud::itemIcon(const std::string& id) const {
+    static const std::pair<const char*, const char*> kIcons[] = {
+        {"knife", "i_knife"}, {"blade", "i_knife"}, {"axe", "i_tool"}, {"spear", "i_knife"}, {"bread", "i_bread"},
+        {"meal", "i_food"}, {"berries", "i_food"}, {"roots", "i_food"}, {"mushrooms", "i_food"}, {"meat", "i_food"},
+        {"fish", "i_food"}, {"apples", "i_food"}, {"cheese", "i_food"}, {"vegetables", "i_food"}, {"grain", "i_food"},
+        {"firewood", "i_wood"}, {"log", "i_wood"}, {"branch", "i_wood"}, {"wood", "i_wood"}, {"torch", "i_torch"},
+        {"herbs", "i_herb"}, {"remedy", "i_herb"}, {"stone", "i_stone"}, {"clay", "i_stone"}, {"cloth", "i_cloth"},
+        {"thread", "i_cloth"}, {"tunic", "i_cloth"}, {"cloak", "i_cloth"}, {"gambeson", "i_cloth"},
+        {"trousers", "i_cloth"}, {"cap", "i_cloth"}, {"armour", "safety"}, {"mail", "safety"}, {"helmet", "safety"},
+        {"belt", "things"}, {"satchel", "things"}, {"backpack", "things"}, {"basket", "things"}, {"boots", "things"},
+        {"coin", "w_economy"}};
+    for (const auto& [k, v] : kIcons)
+        if (id.find(k) != std::string::npos) return v;
+    return "i_tool";
+}
+
+// The inventory: the body on the left by its slots and layers (what is on,
+// what each layer costs of the slot), the grids on the right - the hands and
+// every worn bag - with each thing in its place, as many cells as it takes.
+// Drag a thing to another place (R turns it); right click, or a click on a
+// free layer of the body, puts it on; a click on a worn thing takes it off.
+// Under it the load: kilograms of what a body can bear, and what it costs.
+void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
+    if (!sel || sel->animal || s.detail.id != sel->id) {
+        panel = "none";
+        return;
+    }
+    const GearSnap& g = s.detail.gear;
+    dimmer(W, H, 0.62f);
+    const float PW = std::min(1360.0f, W - 40), PH = std::min(820.0f, H - 40);
+    const float ox = std::round((W - PW) * 0.5f), oy = std::round((H - PH) * 0.5f);
+    box(Skin::Leather, {ox, oy, PW, PH}, 30);
+    if (roundButton({ox + PW - 26, oy - 20, 48, 48}, "close", false, host_->text("hud.close")) || in_->escape) {
+        panel = "none";
+        dragItem_.clear();
+        return;
+    }
+    title(ox + 34, oy + 22, host_->text("hud.gear.title", {{"name", sel->name}}), kGoldPale, 26);
+    const bool mine = s.controlled == sel->id;
+    const EntityId who = sel->id;
+    if (!g.on) {
+        label(ox + 34, oy + 70, host_->text("hud.gear.none"), kText, 15);
+        return;
+    }
+    // ---- the body
+    const Rect B{ox + 24, oy + 70, 430, PH - 180};
+    box(Skin::Paper, B, 18);
+    title(B.x + 20, B.y + 14, host_->text("hud.gear.body"), kInk, 20);
+    float y = B.y + 52;
+    std::string hintTip;
+    for (const auto& slot : g.slots) {
+        const float rowH = 54;
+        if (y + rowH > B.bottom() - 8) break;
+        label(B.x + 18, y + 6, slot.name, kInk, 15);
+        const std::string cost = std::to_string(slot.used) + "/" + std::to_string(slot.bulk);
+        label(B.x + 18, y + 28, cost, slot.used > slot.bulk ? kInkRed : kInkSoft, 12);
+        float x = B.x + 120;
+        const float lw = std::min(96.0f, (B.right() - 14 - x) / std::max<std::size_t>(1, slot.layers.size()) - 6);
+        for (const auto& l : slot.layers) {
+            const Rect c{x, y, lw, rowH - 6};
+            const bool hot = ui_->hovered(c);
+            box(l.item.empty() ? Skin::Chip : Skin::ChipOn, c, 10);
+            if (l.item.empty()) {
+                label(c.x + 8, c.y + 15, ui_->fit(l.name, lw - 14, 12 / 15.f), kInkSoft, 12);
+                // a dragged thing dropped on a free layer: put it on
+                if (hot && !dragItem_.empty() && in_->released && mine) {
+                    host_->command("wear", {{"id", who}, {"item", dragItem_}});
+                    dragItem_.clear();
+                }
+            } else {
+                icon(itemIcon(l.item), {c.x + 6, c.y + 6, 20, 20}, Colour::rgb(239, 228, 200));
+                label(c.x + 28, c.y + 6, ui_->fit(l.itemName, lw - 32, 12 / 15.f), Colour::rgb(239, 228, 200), 12);
+                label(c.x + 8, c.y + 28, ui_->fit(l.name, lw - 14, 11 / 15.f), Colour::rgb(239, 228, 200, 0.7f), 11);
+                if (hot) hintTip = host_->text("hud.gear.take_off", {{"what", l.itemName}});
+                if (hot && in_->pressed && mine && dragItem_.empty()) host_->command("take_off", {{"id", who}, {"item", l.item}});
+            }
+            ui_->claim(c);
+            x += lw + 6;
+        }
+        y += rowH;
+    }
+    // ---- the grids
+    const float cell = 44;
+    const Rect G{B.right() + 20, oy + 70, ox + PW - 24 - (B.right() + 20), PH - 180};
+    box(Skin::Paper, G, 18);
+    float gx = G.x + 20, gy = G.y + 16, rowMax = 0;
+    struct Placed {
+        const GearSnap::Grid* grid;
+        float x, y;
+    };
+    std::vector<Placed> where;
+    for (const auto& gr : g.grids) {
+        const float w = gr.w * cell, h = gr.h * cell + 26;
+        if (gx + w > G.right() - 16) {
+            gx = G.x + 20;
+            gy += rowMax + 14;
+            rowMax = 0;
+        }
+        title(gx, gy, gr.name, kInk, 16);
+        where.push_back({&gr, gx, gy + 24});
+        for (int j = 0; j < gr.h; ++j)
+            for (int i = 0; i < gr.w; ++i)
+                ui_->roundRect({gx + i * cell + 1, gy + 24 + j * cell + 1, cell - 2, cell - 2}, Colour::rgb(43, 38, 32, 0.14f), 4);
+        gx += w + 22;
+        rowMax = std::max(rowMax, h);
+    }
+    // the things in their places
+    const GearSnap::Spot* hovered = nullptr;
+    for (const auto& sp : g.spots) {
+        const Placed* pl = nullptr;
+        for (const auto& p : where)
+            if (p.grid->id == sp.grid) pl = &p;
+        if (!pl) continue;
+        const Rect r{pl->x + sp.x * cell + 2, pl->y + sp.y * cell + 2, sp.w * cell - 4, sp.h * cell - 4};
+        const bool dragged = dragItem_ == sp.item && dragFrom_ == sp.grid;
+        ui_->roundRect(r, dragged ? Colour::rgb(122, 92, 40, 0.15f) : Colour::rgb(28, 34, 44, 0.88f), 6);
+        const float is = std::min(r.w, r.h) * 0.55f;
+        icon(itemIcon(sp.item), {r.x + (r.w - is) * 0.5f, r.y + (r.h - is) * 0.5f - (sp.h > 1 ? 6 : 0), is, is},
+             Colour::rgb(239, 228, 200, dragged ? 0.4f : 1.0f));
+        if (sp.w * sp.h > 1) label(r.x + 5, r.bottom() - 17, ui_->fit(sp.name, r.w - 8, 11 / 15.f), kText, 11);
+        if (sp.count > 1) {
+            const std::string n = std::to_string(sp.count);
+            label(r.right() - 5 - textW(n, 12), r.y + 3, n, kGoldPale, 12, true);
+        }
+        if (ui_->hovered(r)) {
+            hovered = &sp;
+            if (in_->pressed && mine && dragItem_.empty()) {
+                dragItem_ = sp.item;
+                dragFrom_ = sp.grid;
+                dragW_ = sp.turned ? sp.h : sp.w;
+                dragH_ = sp.turned ? sp.w : sp.h;
+                dragTurned_ = sp.turned;
+            }
+            if (in_->rightPressed && mine && sp.wearable) host_->command("wear", {{"id", who}, {"item", sp.item}});
+        }
+        ui_->claim(r);
+    }
+    if (hovered && dragItem_.empty()) {
+        char kg[32];
+        std::snprintf(kg, sizeof kg, "%.1f", hovered->kg);
+        hintTip = hovered->name + (hovered->count > 1 ? " x" + std::to_string(hovered->count) : "") + "  " +
+                  host_->text("hud.gear.kg", {{"kg", std::string(kg)}}) +
+                  (hovered->wearable ? "  " + host_->text("hud.gear.wear_hint") : "");
+    }
+    // the dragged thing follows the mouse; let go over a cell: there it goes
+    if (!dragItem_.empty()) {
+        const int w = dragTurned_ ? dragH_ : dragW_, h = dragTurned_ ? dragW_ : dragH_;
+        // the size as it was picked up is (dragW_, dragH_) in its old turn; R swaps
+        const Rect ghost{in_->mouseX - cell * 0.5f, in_->mouseY - cell * 0.5f, w * cell - 4, h * cell - 4};
+        ui_->roundRect(ghost, Colour::rgb(226, 197, 122, 0.35f), 6);
+        icon(itemIcon(dragItem_), {ghost.x + 6, ghost.y + 6, 26, 26}, kText);
+        if (in_->released) {
+            for (const auto& p : where) {
+                const int cx = int(std::floor((in_->mouseX - p.x) / cell)), cy = int(std::floor((in_->mouseY - p.y) / cell));
+                if (cx < 0 || cy < 0 || cx >= p.grid->w || cy >= p.grid->h) continue;
+                host_->command("gear_pin", {{"id", who}, {"item", dragItem_}, {"grid", p.grid->id}, {"x", cx}, {"y", cy},
+                                            {"turned", dragTurned_}});
+            }
+            dragItem_.clear();
+        }
+    }
+    // ---- the load
+    const Rect L{ox + 24, oy + PH - 96, PW - 48, 70};
+    box(Skin::Paper, L, 16);
+    char line[160];
+    std::snprintf(line, sizeof line, "%.1f / %.0f", g.kg, g.maxKg);
+    title(L.x + 18, L.y + 10, host_->text("hud.gear.load", {{"kg", std::string(line)}}), kInk, 18);
+    const Rect bar{L.x + 18, L.y + 40, L.w * 0.5f, 14};
+    ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.18f), 7);
+    const float f = float(std::clamp(g.kg / std::max(1.0, g.maxKg), 0.0, 1.0));
+    const Colour fill = g.kg > g.maxKg ? kInkRed : g.kg > g.comfortKg ? kMid : kGood;
+    ui_->roundRect({bar.x, bar.y, bar.w * f, bar.h}, fill, 7);
+    const float cm = float(std::clamp(g.comfortKg / std::max(1.0, g.maxKg), 0.0, 1.0));
+    ui_->line(bar.x + bar.w * cm, bar.y - 3, bar.x + bar.w * cm, bar.bottom() + 3, kInk);
+    std::string state = host_->text("hud.gear.light");
+    if (g.kg > g.maxKg) state = host_->text("hud.gear.over");
+    else if (g.tireMult > 1.001) {
+        char m[16];
+        std::snprintf(m, sizeof m, "%.2f", g.tireMult);
+        state = host_->text("hud.gear.heavy", {{"x", std::string(m)}});
+    }
+    label(bar.right() + 18, L.y + 38, ui_->fit(state, L.right() - bar.right() - 30, 14 / 15.f), g.kg > g.maxKg ? kInkRed : kInk, 14);
+    if (!g.overflow.empty()) {
+        std::string t;
+        for (const auto& [n, c] : g.overflow) t += (t.empty() ? "" : ", ") + n + (c > 1 ? " x" + std::to_string(c) : "");
+        label(G.x + 20, G.bottom() - 28, ui_->fit(host_->text("hud.gear.no_room", {{"what", t}}), G.w - 40, 13 / 15.f), kInkRed, 13);
+    }
+    if (!mine) label(ox + 34, oy + PH - 20, host_->text("hud.gear.not_yours"), kText.withAlpha(0.8f), 13, true);
+    else label(ox + 34, oy + PH - 20, host_->text("hud.gear.keys"), kText.withAlpha(0.7f), 13, true);
+    if (!hintTip.empty()) {
+        const float tw = textW(hintTip, 14) + 24;
+        const Rect t{std::min(in_->mouseX + 16, W - tw - 8), in_->mouseY + 18, tw, 28};
+        box(Skin::Leather, t, 14);
+        label(t.x + 12, t.y + 5, hintTip, kText, 14);
+    }
+    if (in_->released && !dragItem_.empty()) dragItem_.clear();
+}
+
+// Simple signs of work: chips and dust flying off what someone works on,
+// in the thing's colour (wood, stone, leaves).
+void Hud::workFx(const Snapshot& s) {
+    for (const auto& a : s.actors) {
+        if (!a.alive || a.progress < 0 || a.actTarget == sim::kNone) continue;
+        const ThingSnap* t = nullptr;
+        for (const auto& x : s.things)
+            if (x.id == a.actTarget) t = &x;
+        if (!t) continue;
+        float sx, sy;
+        if (!host_->groundToScreen(t->x, t->y, 0.8, sx, sy)) continue;
+        Colour c = Colour::rgb(150, 110, 70);
+        if (t->type == "riverbank") c = Colour::rgb(170, 165, 155);
+        else if (t->type.find("bush") != std::string::npos || t->type.find("patch") != std::string::npos ||
+                 t->type.find("glade") != std::string::npos || t->type == "reed_bed" || t->type == "hay_meadow")
+            c = Colour::rgb(120, 170, 80);
+        for (int k = 0; k < 7; ++k) {
+            const double ph = std::fmod(clock_ * 1.3 + k * 0.37 + double(a.id % 7) * 0.11, 1.0);
+            const double ang = double(k) * 2.4 + double(a.id);
+            const float px = sx + float(std::cos(ang) * 40.0 * ph);
+            const float py = sy - float(60.0 * ph - 80.0 * ph * ph);
+            const float r = 2.5f + 1.5f * float(k % 2);
+            ui_->roundRect({px - r, py - r, r * 2, r * 2}, c.withAlpha(float(1.0 - ph)), 1);
+        }
+    }
 }
 
 // ---------------------------------------------------------------- the house

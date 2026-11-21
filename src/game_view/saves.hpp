@@ -36,6 +36,9 @@ struct GameSettings {
     std::string lang;           // empty: the command line's
     bool fullscreen = false;
     int autosaveMin = 10;       // 0: off
+    int control = 0;            // how the person is led: 0 keys, 1 mouse, 2 free (Sims-like)
+    bool cameraFollow = true;   // the camera rides on the selected person
+    int idleAutonomyS = 20;     // free mode: idle seconds before the person lives by itself
 };
 
 std::filesystem::path saveDir();
