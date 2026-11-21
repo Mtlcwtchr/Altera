@@ -105,14 +105,17 @@
   "ctl_free": 101,
   "cam_lock": 102,
   "cam_free": 103,
-  "i_knife": 104,
-  "i_bread": 105,
-  "i_torch": 106,
-  "i_wood": 107,
-  "i_food": 108,
-  "i_herb": 109,
-  "i_stone": 110,
-  "i_cloth": 111,
-  "i_tool": 112
+  "walls_up": 104,
+  "walls_cut": 105,
+  "walls_down": 106,
+  "i_knife": 107,
+  "i_bread": 108,
+  "i_torch": 109,
+  "i_wood": 110,
+  "i_food": 111,
+  "i_herb": 112,
+  "i_stone": 113,
+  "i_cloth": 114,
+  "i_tool": 115
  }
 }

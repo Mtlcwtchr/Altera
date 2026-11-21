@@ -1054,7 +1054,7 @@ void Hud::clockPill(const Snapshot& s, float W, float H) {
 void Hud::controlPill(float W, float H) {
     static const char* kModes[3][2] = {{"ctl_keys", "hud.control.keys"}, {"ctl_mouse", "hud.control.mouse"},
                                        {"ctl_free", "hud.control.free"}};
-    const float w = 6 + 3 * 46 + 14 + 46 + 4;
+    const float w = 6 + 3 * 46 + 14 + 46 + 14 + 46 + 4;
     const Rect r{W - 36 - w, H - 30 - 52 - 62, w, 52};
     box(Skin::Leather, r, 26);
     float x = r.x + 6;
@@ -1072,6 +1072,15 @@ void Hud::controlPill(float W, float H) {
     const std::string camTip = host_->text(cameraFollow ? "hud.control.camera_on" : "hud.control.camera_off");
     if (roundButton({x, r.y + 4, 44, 44}, cameraFollow ? "cam_lock" : "cam_free", cameraFollow, camTip))
         host_->cameraFollow(!cameraFollow);
+    // AL-56: the walls (Home goes round the same way: cut away -> down -> up)
+    x += 46;
+    ui_->roundRect({x + 5, r.y + 12, 2, 28}, kGold.withAlpha(0.45f), 1);
+    x += 14;
+    static const char* kWalls[3][2] = {{"walls_up", "hud.walls.up"}, {"walls_cut", "hud.walls.cut"},
+                                       {"walls_down", "hud.walls.down"}};
+    const int wm = std::clamp(wallMode, 0, 2);
+    if (roundButton({x, r.y + 4, 44, 44}, kWalls[wm][0], wm != 0, host_->text(kWalls[wm][1])))
+        host_->wallMode(wm == 1 ? 2 : wm == 2 ? 0 : 1);
 }
 
 // Where a click on the ground sent the person: a gold ring on the ground.

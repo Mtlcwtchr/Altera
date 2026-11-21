@@ -1,6 +1,7 @@
 #include <set>
 #include <functional>
 #include "sim/worldgen.hpp"
+#include "sim/village_life.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
 #include "sim/village_plan.hpp"
@@ -635,7 +636,11 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     // --- animals: groups of every species over their habitat ------------
     spawnAnimals(w, seed);
     spawnLivestock(w, seed);
+    seedVillageLife(w, seed); // AL-39: some wives are already with child
     return w;
 }
+
+std::string randomPersonName(Rng& r, bool female) { return makeName(r, female); }
+std::string randomFamilyName(Rng& r) { return makeFamilyName(r); }
 
 } // namespace altera::sim

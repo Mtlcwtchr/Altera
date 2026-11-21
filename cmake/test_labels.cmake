@@ -10,7 +10,8 @@
 set(ALTERA_SIM_SLOW_TESTS
         altera_sim_farm_year_closes                   # ~320 s
         altera_sim_farm_harvests_differ_by_the_season # ~20 s
-        altera_sim_crafts_chores_run)                 # ~13 s
+        altera_sim_crafts_chores_run                  # ~13 s
+        altera_sim_village_lives_over_two_months)     # ~36 s (AL-39)
 
 # Tests in the fast layer; any other test is labelled full.
 set(ALTERA_FAST_TESTS altera_sim altera_combat altera_combat_golden)

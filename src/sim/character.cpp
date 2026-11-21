@@ -56,7 +56,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Wound, zone, severity, dmg, heal
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Injury, zone, kind, since)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Moodlet, id, value, until)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MemoryEntry, tick, type, who, object, valence, salience, source,
-                                                confidence, chain, fact)
+                                                confidence, chain, fact, prop)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Relation, familiarity, trust, affinity, fear, debt, enmity, respect,
                                                 attraction)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Status, family, dynasty, settlement, role, spouse, mother, father,

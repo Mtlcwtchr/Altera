@@ -13,6 +13,8 @@
 #include "sim/facts.hpp"
 #include "sim/justice.hpp"
 #include "sim/dialogue_gen.hpp"
+#include "sim/dialogue_memory.hpp"
+#include "sim/rumor_noise.hpp"
 
 namespace fs = std::filesystem;
 
@@ -231,6 +233,186 @@ void addForeignVariants(Content& c) {
     for (auto& f : made) c.interactions.emplace(f.id, std::move(f));
 }
 
+// --- rumour (AL-35, AL-50) ---------------------------------------------------
+
+namespace {
+
+const NoiseParams& noiseParams(const Content& c, double decay) {
+    static std::mutex mu;
+    static std::map<std::string, std::unique_ptr<NoiseParams>> cache;
+    std::lock_guard<std::mutex> lock(mu);
+    auto& slot = cache[c.dir];
+    if (!slot) slot = std::make_unique<NoiseParams>(NoiseParams::fromJson(dialogueGenData(c).noise, decay));
+    return *slot;
+}
+
+const MemoryEntry* memoryOfFact(const Character& c, EntityId fact, const std::string& type = "") {
+    if (fact == kNone) return nullptr;
+    for (const auto& m : c.memory)
+        if (m.fact == fact && (type.empty() ? kDeedMemories.count(m.type) > 0 : m.type == type)) return &m;
+    return nullptr;
+}
+
+bool caughtLying(const Character& c, EntityId teller, EntityId fact) {
+    for (const auto& m : c.memory)
+        if (m.type == "caught_lying" && m.fact == fact && !m.who.empty() && m.who[0] == teller) return true;
+    return false;
+}
+
+// Whom the teller would sooner believe guilty: those he hates or distrusts,
+// and those with a bad name.
+std::vector<std::pair<EntityId, double>> suspects(const World& w, const Character& teller, EntityId doer,
+                                                  EntityId listener) {
+    std::vector<std::pair<EntityId, double>> out;
+    for (const auto& [id, rel] : teller.relations) {
+        if (id == doer || id == teller.id || id == listener) continue;
+        const Character* c = w.character(id);
+        if (!c || !c->body.alive || c->isAnimal() || c->body.stage() == "child") continue;
+        double weight = std::max(0.0, rel.enmity) + std::max(0.0, -rel.affinity) + std::max(0.0, -rel.trust);
+        for (const auto& [axis, v] : c->reputation) weight += 0.5 * std::max(0.0, -v);
+        if (weight > 0.0) out.emplace_back(id, weight);
+    }
+    return out;
+}
+
+} // namespace
+
+void passRumor(World& w, Character& from, Character& to, const ConsequenceRules& R) {
+    const MemoryEntry* best = nullptr;
+    for (const auto& m : from.memory) {
+        if (!kDeedMemories.count(m.type) || m.who.empty() || m.who[0] == to.id || m.who[0] == from.id) continue;
+        if (m.confidence * R.rumorDecay < R.rumorMin) continue;
+        if (m.source == "refuted") continue; // shown false (AL-55): not passed on
+        if (knowsOf(to, "", m.who[0], m.object)) continue;
+        // the same deed, however it is told: known already, or this teller was caught on it
+        if (const MemoryEntry* own = memoryOfFact(to, m.fact)) {
+            if (own->source != "seen" || caughtLying(to, from.id, m.fact)) continue;
+        }
+        if (!best || m.salience * m.confidence > best->salience * best->confidence) best = &m;
+    }
+    if (!best) return;
+    const MemoryEntry heard = *best;
+    const Content& C = w.content();
+    const DialogueGenData& D = dialogueGenData(C);
+    const std::optional<Prop> told = propFromMemory(w, from, heard, D);
+
+    // The meaning as the listener gets it: decayed, maybe distorted (AL-50).
+    EntityId doerId = heard.who[0];
+    EntityId object = heard.object;
+    double conf = heard.confidence * R.rumorDecay;
+    std::vector<EntityId> chain = {from.id};
+    for (EntityId id : heard.chain)
+        if (chain.size() < Epistemic::kMaxChain && id != to.id) chain.push_back(id);
+    Json distorted;
+    Json applied = Json::array();
+    if (told) {
+        NoiseContext ctx;
+        ctx.teller = from.id;
+        ctx.listener = to.id;
+        ctx.tellerTraits = from.traits;
+        if (auto it = from.relations.find(doerId); it != from.relations.end())
+            ctx.tellerAffinityToDoer = it->second.affinity;
+        ctx.agentCandidates = suspects(w, from, doerId, to.id);
+        for (const auto& [id, item] : C.items)
+            if (!item.tags.empty()) ctx.itemCategory[id] = item.tags.front();
+        Rng rng = w.rng(to.id, "rumor_noise:" + std::to_string(from.id));
+        const Epistemic epi = epistemicFromMemory(heard, w.now(), D.forMemory(heard.type));
+        NoiseResult res = retell(D, noiseParams(C, R.rumorDecay), *told, epi, ctx, rng);
+        // Somebody who saw it himself is not fooled, and trusts the teller less.
+        if (const MemoryEntry* own = memoryOfFact(to, heard.fact); own && own->source == "seen") {
+            const auto ownProp = propFromMemory(w, to, *own, D);
+            const NoiseParams& P = noiseParams(C, R.rumorDecay);
+            bool contra = false;
+            if (ownProp && reconcile(P, res.prop, *ownProp, epistemicFromMemory(*own, w.now()), &contra)) {
+                relTo(to, from.id, P.trustPenalty, 0.0);
+                MemoryEntry m;
+                m.type = "caught_lying";
+                m.who = {from.id};
+                m.fact = heard.fact;
+                m.source = "seen";
+                m.valence = -0.3;
+                w.remember(to, std::move(m));
+                trace(w, to, 'S', "deed.rumor_rejected", {{"from", from.id}, {"doer", doerId}});
+            }
+            return;
+        }
+        for (const auto& a : res.applied) applied.push_back(a);
+        if (!res.applied.empty()) {
+            distorted = toJson(res.prop);
+            if (const Ref* d = res.prop.role("doer"); d && d->kind == "char") doerId = d->id;
+            const Ref* o = res.prop.role("object");
+            object = o && (o->kind == "object" || o->kind == "char") ? o->id : kNone;
+        }
+        conf = res.epi.confidence;
+        chain = res.epi.chain;
+        for (auto it = chain.begin(); it != chain.end();)
+            it = *it == to.id ? chain.erase(it) : it + 1;
+    }
+    remember(w, to, "rumor_crime", doerId, heard.who.size() > 1 ? heard.who[1] : kNone, object, "rumor", conf, -0.2,
+             std::move(chain), heard.fact);
+    if (!distorted.is_null()) {
+        // the entry just written (w.remember may have sorted or trimmed the memory)
+        for (auto& m : to.memory)
+            if (m.type == "rumor_crime" && m.fact == heard.fact && m.tick == w.now() && !m.who.empty() &&
+                m.who[0] == doerId && m.prop.is_null()) {
+                m.prop = distorted;
+                break;
+            }
+    }
+    relTo(to, doerId, R.rumorTrust * conf, 0.0);
+    Json tp = {{"doer", doerId}, {"from", from.id}, {"confidence", conf}};
+    if (!applied.empty()) tp["noise"] = applied;
+    trace(w, to, 'S', "deed.rumor_heard", tp);
+    // the wronged hear who did it (or who they are now told did it)
+    Character* dc = w.character(doerId);
+    if (!dc) return;
+    if (const WorldObject* o = w.object(heard.object); o && o->ownerFamily != kNone && o->ownerFamily == to.status.family)
+        wronged(w, *dc, membersOf(w, to.status.family), conf, R, "rumor");
+}
+
+Json rumorReport(const World& w) {
+    const DialogueGenData& D = dialogueGenData(w.content());
+    int memories = 0, falseDoer = 0, distorted = 0, facts = 0;
+    double driftSum = 0.0;
+    int maxHops = 0;
+    for (const Fact& f : w.facts()) {
+        if (!D.predicate(f.pred)) continue;
+        ++facts;
+        Prop truth;
+        truth.pred = f.pred;
+        for (const auto& [role, id] : f.roles) {
+            if (id == kNone) continue;
+            Ref r;
+            r.kind = role == "victim_family" ? "family" : role == "object" ? "object" : "char";
+            r.id = id;
+            truth.roles[role] = r;
+        }
+        for (const auto& [cid, c] : w.characters())
+            for (const auto& m : c.memory) {
+                if (m.fact != f.id || !kDeedMemories.count(m.type)) continue;
+                const auto p = propFromMemory(w, c, m, D);
+                if (!p) continue;
+                ++memories;
+                if (!m.prop.is_null()) ++distorted;
+                const Ref* d = p->role("doer");
+                if (d && f.role("doer") != kNone && d->id != f.role("doer")) ++falseDoer;
+                // compare only the roles the memory can know of
+                Prop t = truth;
+                for (auto it = t.roles.begin(); it != t.roles.end();)
+                    it = (it->first == "doer" || p->roles.count(it->first)) ? std::next(it) : t.roles.erase(it);
+                if (p->qty == 0.0) t.qty = 0.0;
+                driftSum += drift(t, *p);
+                maxHops = std::max(maxHops, static_cast<int>(m.chain.size()));
+            }
+    }
+    return {{"facts", facts},
+            {"memories", memories},
+            {"distorted", distorted},
+            {"false_doer", falseDoer},
+            {"mean_drift", memories ? driftSum / memories : 0.0},
+            {"max_hops", maxHops}};
+}
+
 void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* target, Character* targetChar,
                bool success, const std::vector<LegalTag>& tags, const std::vector<EntityId>& witnesses) {
     const ConsequenceRules& R = consequenceRules(w.content());
@@ -304,32 +486,7 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
 
     // --- talk carries word of misdeeds (AL-35) ------------------------------
     if (success && targetChar && !targetChar->isAnimal() && R.talkActs.count(d.baseId.empty() ? d.id : d.baseId)) {
-        auto pass = [&](Character& from, Character& to) {
-            const MemoryEntry* best = nullptr;
-            for (const auto& m : from.memory) {
-                if (!kDeedMemories.count(m.type) || m.who.empty() || m.who[0] == to.id || m.who[0] == from.id) continue;
-                if (m.source == "refuted") continue; // shown false (AL-55): not passed on
-                if (m.confidence * R.rumorDecay < R.rumorMin) continue;
-                if (knowsOf(to, "", m.who[0], m.object)) continue;
-                if (!best || m.salience * m.confidence > best->salience * best->confidence) best = &m;
-            }
-            if (!best) return;
-            const MemoryEntry heard = *best;
-            const double conf = heard.confidence * R.rumorDecay;
-            // AL-49: the teller goes first in the chain, the fact travels with the word
-            std::vector<EntityId> chain = {from.id};
-            for (EntityId id : heard.chain)
-                if (chain.size() < Epistemic::kMaxChain && id != to.id) chain.push_back(id);
-            remember(w, to, "rumor_crime", heard.who[0], heard.who.size() > 1 ? heard.who[1] : kNone, heard.object,
-                     "rumor", conf, -0.2, std::move(chain), heard.fact);
-            relTo(to, heard.who[0], R.rumorTrust * conf, 0.0);
-            trace(w, to, 'S', "deed.rumor_heard", {{"doer", heard.who[0]}, {"from", from.id}, {"confidence", conf}});
-            // the wronged hear who did it
-            Character* dc = w.character(heard.who[0]);
-            if (!dc) return;
-            if (const WorldObject* o = w.object(heard.object); o && o->ownerFamily != kNone && o->ownerFamily == to.status.family)
-                wronged(w, *dc, membersOf(w, to.status.family), conf, R, "rumor");
-        };
+        auto pass = [&](Character& from, Character& to) { passRumor(w, from, to, R); };
         pass(doer, *targetChar);
         pass(*targetChar, doer);
     }

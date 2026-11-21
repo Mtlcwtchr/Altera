@@ -64,6 +64,7 @@
  "trace.deed.case_pursue": "{self} decides what to do about {accused}: {choice}",
  "trace.deed.case_to_judge": "{self} is to judge between {accuser} and {accused}",
  "trace.deed.case_verdict": "{self} judges {accused} (evidence {evidence}, {witnesses} witnesses)",
+ "trace.deed.rumor_rejected": "{self} didn't believe {from}: saw it with their own eyes",
  "interaction.vouch.name": "Vouch",
  "interaction.prove_innocence.name": "Prove innocence",
  "chronicle.fact_vouched": "{witness} told {listener} it was {real_doer}, not {cleared}",
