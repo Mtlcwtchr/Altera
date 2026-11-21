@@ -10,6 +10,7 @@
 #include <mutex>
 
 #include "sim/ai.hpp"
+#include "sim/justice.hpp"
 
 namespace fs = std::filesystem;
 
@@ -272,6 +273,8 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
         }
         outcome["witnesses"] = seen;
         outcome["seen"] = seen > 0;
+        // The truth of it goes into the world's record (proofs and clearing a name, AL-37).
+        if (!household.empty() || v.family != kNone) keepTruth(w, doer, d, v.family, v.person, object, tags.front().tag, witnesses);
         // Nobody of the household saw it: a trail they may find (AL-34).
         if (wrongs && !ownersSaw && v.family != kNone) {
             Json nearby = Json::array();
@@ -312,6 +315,9 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
         pass(*targetChar, doer);
     }
 
+    // --- an accusation opens a case, a judge_case holds the court (AL-37) ---
+    caseAfterAct(w, doer, d, targetChar, success);
+
     // --- no silent "ok" for the player's person (AL-36) --------------------
     if (doer.controller.isPlayer()) {
         if (v.family != kNone) outcome["owner"] = v.family;
@@ -321,6 +327,7 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
 }
 
 void installConsequences(World& w) {
+    installJustice(w);
     w.addEventHandler([](World& world, const Event& e) {
         if (e.type != "deed_trail") return false;
         const ConsequenceRules& R = consequenceRules(world.content());

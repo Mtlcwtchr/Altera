@@ -21,5 +21,53 @@
  "victim": {"trust": -0.4, "enmity": 0.25, "accuse_at": 0.55, "accuse_task": "accuse_publicly", "accuse_priority": 0.75, "accuse_ttl": 288},
  "trail": {"notice_daily": 0.3, "notice_at_home": 0.6, "at_home_m": 30, "days": 20, "nearby_m": 90},
  "suspicion": {"nearby": 0.55, "bad_name": 0.5, "enmity": 0.3, "prior": 0.35, "min": 0.2},
- "rumor": {"talk_acts": ["chat", "gossip", "tell_story", "share_meal", "joke", "greet"], "decay": 0.7, "min": 0.25, "trust": -0.15}
+ "rumor": {"talk_acts": ["chat", "gossip", "tell_story", "share_meal", "joke", "greet"], "decay": 0.7, "min": 0.25, "trust": -0.15},
+ "case": {
+  "_doc": "AL-37 (src/sim/justice.cpp): обвинение открывает дело. Обвинённый отвечает (answers): вернуть, откупиться, отпереться, бежать. После отказа обвинитель выбирает (pursuits): отпустить, ссора (argue), драка (brawl), к вождю (judge_case). Суд взвешивает улики (court) и выносит приговор (sentences) поверх возврата. Оправдание = ложное обвинение. Истина о проступке хранится в ядре (World::deeds): суд её не читает, но настоящие свидетели из записи свидетельствуют против виновного или обеляют обвинённого и называют настоящего вора (court.cleared). Веса: base + terms (trait, rel=ось отношения выбирающего к другому, guilty/can_return/can_pay/has_judge/seen/kin - флаги, evidence - уверенность, crimes - прежние проступки, cap).",
+  "timing": {"answer_h": 2, "pursue_h": 4, "court_wait_days": 3},
+  "noise": 0.1,
+  "worth": {"meal": 1, "grain": 1, "meat": 1, "smoked_fish": 1, "dried_meat": 1, "berries": 1, "cheese": 2, "honey": 2, "remedy": 2, "cloth": 3, "stone_blade": 2, "spear": 3, "axe": 4},
+  "default_worth": {"theft": 2, "poaching": 2, "trespass": 1, "banditry": 4},
+  "compensate_mult": 1.5,
+  "fine_value": 3,
+  "answers": [
+   {"id": "return", "base": 0.3, "terms": [{"guilty": false, "add": -9}, {"can_return": false, "add": -9}, {"evidence": 0, "mul": 0.8}, {"seen": true, "add": 0.3}, {"trait": "honest", "add": 0.5}, {"trait": "dutiful", "add": 0.2}, {"trait": "unscrupulous", "add": -0.4}, {"trait": "proud", "add": -0.2}, {"rel": "fear", "mul": 0.6}, {"rel": "affinity", "mul": 0.4}, {"kin": true, "add": 0.3}]},
+   {"id": "compensate", "base": 0.1, "terms": [{"can_pay": false, "add": -9}, {"guilty": true, "add": 0.2}, {"guilty": false, "add": -0.5}, {"evidence": 0, "mul": 0.6}, {"trait": "generous", "add": 0.3}, {"trait": "thrifty", "add": -0.2}, {"trait": "hoarder", "add": -0.4}, {"rel": "fear", "mul": 0.8}]},
+   {"id": "deny", "base": 0.35, "terms": [{"guilty": false, "add": 1.2}, {"evidence": 0, "mul": -0.7}, {"seen": true, "add": -0.3}, {"trait": "unscrupulous", "add": 0.4}, {"trait": "proud", "add": 0.2}, {"trait": "stubborn", "add": 0.2}, {"trait": "honest", "add": -0.4}, {"rel": "enmity", "mul": 0.6}]},
+   {"id": "flee", "base": -0.7, "terms": [{"guilty": false, "add": -9}, {"evidence": 0, "mul": 0.4}, {"crimes": 0, "add": 0.15, "cap": 0.6}, {"trait": "unscrupulous", "add": 0.2}, {"trait": "family_minded", "add": -0.4}, {"rel": "fear", "mul": 0.8}]}
+  ],
+  "pursuits": [
+   {"id": "let_go", "base": 0.1, "terms": [{"evidence": 0, "mul": -0.6}, {"trait": "forgiving", "add": 0.5}, {"trait": "patient", "add": 0.2}, {"trait": "unforgiving", "add": -0.5}, {"rel": "affinity", "mul": 0.6}, {"rel": "fear", "mul": 0.8}, {"kin": true, "add": 0.4}]},
+   {"id": "quarrel", "base": 0.15, "terms": [{"rel": "enmity", "mul": 0.5}, {"trait": "hot_tempered", "add": 0.3}, {"trait": "stoic", "add": -0.3}, {"trait": "proud", "add": 0.15}]},
+   {"id": "fight", "base": -0.5, "terms": [{"rel": "enmity", "mul": 0.8}, {"rel": "fear", "mul": -1.0}, {"trait": "hot_tempered", "add": 0.6}, {"trait": "unforgiving", "add": 0.2}, {"trait": "patient", "add": -0.4}, {"kin": true, "add": -0.6}]},
+   {"id": "court", "base": 0.1, "terms": [{"has_judge": false, "add": -9}, {"evidence": 0, "mul": 0.7}, {"seen": true, "add": 0.3}, {"crimes": 0, "add": 0.1, "cap": 0.3}, {"trait": "dutiful", "add": 0.3}, {"trait": "pious", "add": 0.1}, {"trait": "hot_tempered", "add": -0.2}, {"kin": true, "add": -0.5}]}
+  ],
+  "court": {"guilty_at": 0.5, "certainty": 0.5, "witness": 0.2, "witness_cap": 0.6, "bad_name": 0.4, "prior": 0.1, "prior_cap": 0.3, "judge_affinity": -0.3, "judge_enmity": 0.3, "noise": 0.15, "cleared": 1.0},
+  "sentences": [
+   {"id": "fine", "base": 0.4, "terms": [{"can_pay": false, "add": -9}, {"crimes": 0, "add": -0.15, "cap": -0.6}, {"trait": "generous", "add": -0.1}]},
+   {"id": "shame", "base": 0.2, "terms": [{"crimes": 0, "add": 0.1, "cap": 0.3}, {"trait": "pious", "add": 0.15}, {"kin": true, "add": 0.2}]},
+   {"id": "custody", "base": -0.5, "terms": [{"crimes": 0, "add": 0.25, "cap": 0.75}, {"rel": "enmity", "mul": 0.5}, {"kin": true, "add": -1.0}]},
+   {"id": "exile", "base": -1.0, "terms": [{"crimes": 0, "add": 0.35, "cap": 1.4}, {"rel": "enmity", "mul": 0.6}, {"trait": "unforgiving", "add": 0.2}, {"kin": true, "add": -1.5}]}
+  ],
+  "tasks": {"judge": "judge_case", "quarrel": "argue", "fight": "brawl", "priority": 0.7, "ttl": 288},
+  "flee_m": 400,
+  "exile_m": 500,
+  "reputation": {
+   "_doc": "исход -> ось репутации -> сдвиг (обвинённому; false_accusation - обвинителю)",
+   "returned": {"honesty": 0.04},
+   "compensated": {"honesty": 0.03, "generosity": 0.02},
+   "fled": {"honesty": -0.08, "valor": -0.05, "notoriety": 0.06},
+   "acquitted": {"honesty": 0.04},
+   "false_accusation": {"honesty": -0.08, "notoriety": 0.03},
+   "convicted": {"honesty": -0.08, "notoriety": 0.04},
+   "shame": {"honesty": -0.06, "notoriety": 0.06},
+   "custody": {"notoriety": 0.05},
+   "exile": {"notoriety": 0.1}
+  },
+  "rel": {
+   "_doc": "исход -> сдвиг доверия/вражды (accuser: обвинитель к обвинённому, accused: обратно)",
+   "accuser": {"returned": {"trust": 0.1, "enmity": -0.15}, "compensated": {"trust": 0.05, "enmity": -0.15}, "denied": {"enmity": 0.05}, "fled": {"enmity": 0.1}, "let_go": {"enmity": -0.05}, "quarrel": {"enmity": 0.05}, "fight": {"enmity": 0.1}, "acquitted": {"enmity": -0.05}, "convicted": {"enmity": -0.1}},
+   "accused": {"returned": {"enmity": 0.02}, "compensated": {"enmity": 0.05}, "denied": {"enmity": 0.05}, "quarrel": {"enmity": 0.1}, "fight": {"enmity": 0.15}, "acquitted": {"trust": -0.3, "enmity": 0.3}, "convicted": {"enmity": 0.2}}
+  }
+ }
 }
