@@ -10,29 +10,6 @@
    "say": "dialogue.refuse.neutral_2"
   },
   {
-   "id": "refuse.familiar",
-   "when": [
-    "act=refuse",
-    "rel.affinity>=0.4"
-   ],
-   "say": "dialogue.refuse.familiar_1"
-  },
-  {
-   "id": "refuse.rude",
-   "when": [
-    "act=refuse",
-    "rel.enmity>=0.3"
-   ],
-   "say": "dialogue.refuse.rude_1"
-  },
-  {
-   "id": "ignore.any",
-   "when": [
-    "act=ignore"
-   ],
-   "say": "dialogue.ignore.neutral_1"
-  },
-  {
    "id": "ignore.fail",
    "when": [
     "act=ignore",
