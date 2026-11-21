@@ -1,0 +1,198 @@
+{
+ "_doc": "en, written by hand (AL-52, mirror of ru lex_keys.json from AL-51). thing.something and category.<item tag> for the rumour noise vague_theme (PR #19). en item names are bare words, so a category is a whole phrase with its determiner: 'stole some drink from the miller'.",
+ "thing.something": {
+  "nom": "something",
+  "acc": "something",
+  "g": "n"
+ },
+ "category.alcohol": {
+  "nom": "some drink",
+  "acc": "some drink",
+  "g": "n"
+ },
+ "category.animal": {
+  "nom": "a beast",
+  "acc": "a beast",
+  "g": "n"
+ },
+ "category.armour": {
+  "nom": "some armour",
+  "acc": "some armour",
+  "g": "n"
+ },
+ "category.binding": {
+  "nom": "some rope",
+  "acc": "some rope",
+  "g": "n"
+ },
+ "category.building": {
+  "nom": "building stuff",
+  "acc": "building stuff",
+  "g": "n"
+ },
+ "category.bulky": {
+  "nom": "some baggage",
+  "acc": "some baggage",
+  "g": "n"
+ },
+ "category.clothing": {
+  "nom": "some clothes",
+  "acc": "some clothes",
+  "g": "pl"
+ },
+ "category.container": {
+  "nom": "some crockery",
+  "acc": "some crockery",
+  "g": "n"
+ },
+ "category.cooked": {
+  "nom": "some cooking",
+  "acc": "some cooking",
+  "g": "n"
+ },
+ "category.crop": {
+  "nom": "part of the harvest",
+  "acc": "part of the harvest",
+  "g": "n"
+ },
+ "category.drink": {
+  "nom": "something to drink",
+  "acc": "something to drink",
+  "g": "n"
+ },
+ "category.faith": {
+  "nom": "a holy relic",
+  "acc": "a holy relic",
+  "g": "n"
+ },
+ "category.fiber": {
+  "nom": "some flax",
+  "acc": "some flax",
+  "g": "n"
+ },
+ "category.fodder": {
+  "nom": "some fodder",
+  "acc": "some fodder",
+  "g": "n"
+ },
+ "category.food": {
+  "nom": "some food",
+  "acc": "some food",
+  "g": "n"
+ },
+ "category.fuel": {
+  "nom": "some firewood",
+  "acc": "some firewood",
+  "g": "n"
+ },
+ "category.gift": {
+  "nom": "a gift",
+  "acc": "a gift",
+  "g": "n"
+ },
+ "category.grain": {
+  "nom": "some grain",
+  "acc": "some grain",
+  "g": "n"
+ },
+ "category.ground": {
+  "nom": "a strip of land",
+  "acc": "a strip of land",
+  "g": "n"
+ },
+ "category.heavy": {
+  "nom": "something heavy",
+  "acc": "something heavy",
+  "g": "n"
+ },
+ "category.light": {
+  "nom": "some trinket",
+  "acc": "some trinket",
+  "g": "n"
+ },
+ "category.magic": {
+  "nom": "a charm",
+  "acc": "a charm",
+  "g": "n"
+ },
+ "category.marker": {
+  "nom": "a marker",
+  "acc": "a marker",
+  "g": "n"
+ },
+ "category.medicine": {
+  "nom": "some potion",
+  "acc": "some potion",
+  "g": "n"
+ },
+ "category.money": {
+  "nom": "some coin",
+  "acc": "some coin",
+  "g": "n"
+ },
+ "category.plant": {
+  "nom": "some herbs",
+  "acc": "some herbs",
+  "g": "pl"
+ },
+ "category.preserve": {
+  "nom": "some stores",
+  "acc": "some stores",
+  "g": "pl"
+ },
+ "category.preserved": {
+  "nom": "some stores",
+  "acc": "some stores",
+  "g": "pl"
+ },
+ "category.raw": {
+  "nom": "some raw stuff",
+  "acc": "some raw stuff",
+  "g": "n"
+ },
+ "category.seed": {
+  "nom": "some seed",
+  "acc": "some seed",
+  "g": "n"
+ },
+ "category.staple": {
+  "nom": "some bread",
+  "acc": "some bread",
+  "g": "n"
+ },
+ "category.stone": {
+  "nom": "some stone",
+  "acc": "some stone",
+  "g": "n"
+ },
+ "category.sweet": {
+  "nom": "some sweets",
+  "acc": "some sweets",
+  "g": "pl"
+ },
+ "category.textile": {
+  "nom": "some cloth",
+  "acc": "some cloth",
+  "g": "n"
+ },
+ "category.tool": {
+  "nom": "a tool",
+  "acc": "a tool",
+  "g": "n"
+ },
+ "category.toy": {
+  "nom": "a toy",
+  "acc": "a toy",
+  "g": "n"
+ },
+ "category.weapon": {
+  "nom": "a weapon",
+  "acc": "a weapon",
+  "g": "n"
+ },
+ "category.wood": {
+  "nom": "some timber",
+  "acc": "some timber",
+  "g": "n"
+ }
+}

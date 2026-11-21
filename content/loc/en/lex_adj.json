@@ -1,0 +1,21 @@
+{
+ "_doc": "en, written by hand (AL-52, mirror of the ids in ru lex_*.json from AL-51, LOC v0.2 §1). Adjectives: en does not agree, so a plain string.",
+ "lex": {
+  "adj": {
+   "whole": "all",
+   "foreign": "another's",
+   "stolen": "stolen",
+   "last": "last",
+   "intact": "whole",
+   "big": "big",
+   "good": "good",
+   "bad": "wicked",
+   "old": "old",
+   "poor": "poor",
+   "honest": "honest",
+   "cursed": "cursed",
+   "own": "own",
+   "some": "some"
+  }
+ }
+}
