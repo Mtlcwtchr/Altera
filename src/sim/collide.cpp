@@ -206,6 +206,29 @@ bool Obstacles::clearLine(double fx, double fy, double tx, double ty, double r) 
     return true;
 }
 
+double Obstacles::sightHit(double fx, double fy, double fz, double tx, double ty, double tz, double r,
+                           double ground) const {
+    const double len = std::hypot(tx - fx, ty - fy);
+    const int n = std::max(1, int(std::ceil(len / std::max(0.05, r * 0.5))));
+    bool leaving = true;   // still inside what the line starts in
+    for (int k = 0; k <= n; ++k) {
+        const double t = double(k) / n;
+        const double x = fx + (tx - fx) * t, y = fy + (ty - fy) * t, z = fz + (tz - fz) * t;
+        bool hit = false;
+        near(x, y, r, [&](int kind, int i) {
+            if (hit) return;
+            double ox = 0, oy = 0, d = 0;
+            if (kind == 0) hit = z - r < ground + circles_[i].top && discOverlap(x, y, r, circles_[i].x, circles_[i].y, circles_[i].r, ox, oy, d);
+            else if (kind == 1) hit = z - r < ground + boxes_[i].top && boxOverlap(x, y, r, boxes_[i], ox, oy, d);
+            else hit = z - r < ground + walls_[i].top && wallOverlap(x, y, r, walls_[i], ox, oy, d);
+            hit = hit && d > 1e-7;
+        });
+        if (!hit) leaving = false;
+        else if (!leaving) return double(k - 1) / n;
+    }
+    return 1.0;
+}
+
 bool Obstacles::path(double fx, double fy, double tx, double ty, double r, std::vector<Point>& out, double cell,
                      double margin, int maxNodes) const {
     out.clear();
