@@ -214,6 +214,8 @@ private:
     void wheel(const Snapshot& s, float W, float H);
     void beast(const Snapshot& s, float W, float H);
     void thing(const Snapshot& s, float W, float H);
+    void actMenu(const Snapshot& s, EntityId target, const std::string& head, const std::vector<std::string>& sub,
+                 const std::vector<std::string>& acts, float W, float H);
     // What an act needs and gives (the sim's check), on a paper card at x, y.
     void actCard(const ActInfoSnap& a, float x, float y, float W, float H);
     const ActInfoSnap* actInfo(const Snapshot& s, EntityId target, const std::string& id) const;
