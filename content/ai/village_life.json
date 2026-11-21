@@ -1,0 +1,85 @@
+{
+ "_doc": "AL-39: жизнь деревни (src/sim/village_life.cpp). Раз в сутки: ухаживание -> помолвка -> свадьба, близость супругов, зачатие, беременность и роды, ссоры из вражды и слухов, болезни, смерть от старости, приход чужаков. Действия делает сам персонаж через очередь задач (обычные акты каталога: chat, compliment, flirt, propose_marriage, marry, intimacy, argue, insult), их итог ловит хук после акта. Каждое событие пишется в хронику (chronicle.village.*). Игрока ни к чему не принуждают: его персонажу задачи не ставятся, NPC не делают ему предложение и не ведут под венец.",
+ "courtship": {
+  "min_age_years": 16,
+  "max_age_gap_years": 15,
+  "same_sex": false,
+  "daily_chance": 0.6,
+  "acts": ["chat", "compliment", "flirt"],
+  "flirt_from_familiarity": 0.3,
+  "spark": [0.0, 0.35],
+  "interest_min": 0.25,
+  "propose_act": "propose_marriage",
+  "propose_interest": 0.45,
+  "accept_affinity": 0.3,
+  "accept_attraction": 0.12,
+  "refused_cooldown_days": 12,
+  "wed_act": "marry",
+  "wedding_after_days": 7,
+  "residence": "patrilocal",
+  "take_family_name": true,
+  "priority": 0.55,
+  "ttl_hours": 24
+ },
+ "marriage": {
+  "intimacy_act": "intimacy",
+  "intimacy_daily": 0.3,
+  "priority": 0.5,
+  "ttl_hours": 24
+ },
+ "conception": {
+  "acts": ["intimacy"],
+  "chance": 0.2,
+  "fertile_f_years": [16, 45],
+  "fertile_m_years": [16, 70],
+  "age_fade_from_years": 35,
+  "pregnancy_days": 270,
+  "birth_spacing_days": 60,
+  "start_pregnant_share": 0.35,
+  "twins": 0.015,
+  "stillbirth": 0.04,
+  "mother_death": 0.015,
+  "trait_inherit": 0.5,
+  "traits_max": 3,
+  "attr_noise": 0.08
+ },
+ "quarrels": {
+  "acts": [{"act": "argue", "from": 0.15}, {"act": "insult", "from": 0.6}],
+  "daily_chance": 0.1,
+  "enmity": 1.0,
+  "distrust": 0.5,
+  "dislike": 0.6,
+  "cooldown_days": 10,
+  "priority": 0.5,
+  "ttl_hours": 18
+ },
+ "illness": {
+  "daily_base": 0.0015,
+  "contagion_household": 0.02,
+  "mult": {"winter": 2.0, "autumn": 1.3, "child": 1.5, "elder": 2.0, "hungry": 1.6, "cold": 1.6},
+  "immune_days": 40,
+  "kinds": [
+   {"id": "fever", "moodlet": "ill_fever", "weight": 0.45, "days": [4, 10], "health_per_day": 0.05},
+   {"id": "flux", "moodlet": "ill_flux", "weight": 0.25, "days": [3, 8], "health_per_day": 0.08},
+   {"id": "cough", "moodlet": "ill_cough", "weight": 0.3, "days": [6, 16], "health_per_day": 0.025}
+  ]
+ },
+ "old_age": {
+  "from_years": 60,
+  "daily_at_from": 0.00005,
+  "double_every_years": 7
+ },
+ "strangers": {
+  "daily_chance": 0.02,
+  "daily_no_singles": 0.05,
+  "max_people": 60,
+  "couple": 0.3,
+  "child_with_couple": 0.4,
+  "age_years": [17, 40],
+  "lone_age_years": [17, 30],
+  "taken_in_role": "servant",
+  "household_kit": {"grain": 25, "firewood": 6},
+  "skill_range": [0.2, 0.55],
+  "arrive_m": 140
+ }
+}

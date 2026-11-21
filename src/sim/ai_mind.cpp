@@ -12,6 +12,7 @@
 #include "sim/captivity.hpp"
 #include "sim/consequences.hpp"
 #include "sim/gear.hpp"
+#include "sim/village_life.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -534,6 +535,7 @@ void thinkCharacter(World& w, Character& c) {
 
 void installAi(World& w) {
     installConsequences(w);
+    installVillageLife(w);
     w.setThinkHook([](World& world) {
         // Animals may be born while the loop runs (animalsDaily adds groups),
         // so the daily pass runs before the per-tick loop.
@@ -541,6 +543,7 @@ void installAi(World& w) {
             animalsDaily(world);
             spoilFood(world);
             cropsDaily(world);
+            villageDaily(world); // AL-39: courtship, births, illness, quarrels, strangers
         }
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on

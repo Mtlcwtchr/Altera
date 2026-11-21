@@ -13,6 +13,7 @@
 #include "sim/gear.hpp"
 #include "sim/group_combat.hpp"
 #include "sim/tones.hpp"
+#include "sim/village_life.hpp"
 
 namespace altera::sim {
 
@@ -803,6 +804,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
         }
     // ...and the world answers: repute, the owners told, a trail, rumour, the outcome (AL-31).
     afterDeed(w, c, d, target, targetChar, success, tags, wit);
+    villageAfterAct(w, c, d, targetChar, success); // AL-39: courtship, wedding, conception, quarrels
 }
 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,
