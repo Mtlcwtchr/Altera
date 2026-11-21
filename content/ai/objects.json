@@ -516,6 +516,7 @@
    "shelter": true,
    "_doc": "поставленный скат крыши: под ним кров (needs.sheltered_mult)",
    "_part": "build"
-  }
+  },
+  {"id": "well", "settlement": true, "per_settlement": 1, "owned": false, "own_seed": true, "_doc": "AL-7: the village well: drinking, washing, water for the pot"}
  ]
 }

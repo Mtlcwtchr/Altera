@@ -288,8 +288,10 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     // Shared settlement objects (per_settlement) around the centre.
     for (const auto& [type, def] : content.objects) {
         if (!def.settlement) continue;
+        Rng own(hashCombine(seed, hashStr("settlement:" + type)));
+        Rng& r = def.ownSeed ? own : rng;
         for (int k = 0; k < def.perSettlement; ++k) {
-            const Vec2 p{center.x + rng.range(-15.0, 15.0), center.y + rng.range(-15.0, 15.0)};
+            const Vec2 p{center.x + r.range(-15.0, 15.0), center.y + r.range(-15.0, 15.0)};
             spawnSettlementObject(type, p, kNone);
         }
     }

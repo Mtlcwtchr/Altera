@@ -6363,6 +6363,41 @@
    "visibility": "public",
    "_doc": "понаблюдать за зверем: учит повадкам (AL-6)",
    "_part": "AL-6"
+  },
+  {
+   "id": "drink_from_well",
+   "category": "household",
+   "target": "object:well",
+   "pre": [],
+   "eff": [
+    "need:thirst+0.7"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 3,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "AL-7: a drink from the village well",
+   "_part": "AL-7"
+  },
+  {
+   "id": "wash_at_well",
+   "category": "household",
+   "target": "object:well",
+   "pre": [],
+   "eff": [
+    "need:hygiene+0.5",
+    "moodlet:clean"
+   ],
+   "duration": 2,
+   "cost": 1,
+   "fsm": "Interact",
+   "range_m": 3,
+   "legal": [],
+   "visibility": "public",
+   "_doc": "AL-7: a wash with well water",
+   "_part": "AL-7"
   }
  ]
 }
