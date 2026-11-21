@@ -1,0 +1,289 @@
+{
+ "_doc": "en, written by hand (AL-52, mirror of the ids in ru lex_*.json from AL-51, LOC v0.2 §1). Verbs: base, past, 3s, ing, pp, syn (ids of other lex.verb sharing the frame's government). Phrasal verbs keep the particle in every form ('make off with'); negation is did not / does not / will not + base.",
+ "lex": {
+  "verb": {
+   "take": {
+    "base": "take",
+    "past": "took",
+    "3s": "takes",
+    "ing": "taking",
+    "pp": "taken",
+    "syn": [
+     "take_grab"
+    ]
+   },
+   "take_grab": {
+    "base": "grab",
+    "past": "grabbed",
+    "3s": "grabs",
+    "ing": "grabbing",
+    "pp": "grabbed"
+   },
+   "steal": {
+    "base": "steal",
+    "past": "stole",
+    "3s": "steals",
+    "ing": "stealing",
+    "pp": "stolen",
+    "syn": [
+     "steal_snatch",
+     "steal_drag",
+     "steal_lift"
+    ]
+   },
+   "steal_snatch": {
+    "base": "pinch",
+    "past": "pinched",
+    "3s": "pinches",
+    "ing": "pinching",
+    "pp": "pinched"
+   },
+   "steal_drag": {
+    "base": "make off with",
+    "past": "made off with",
+    "3s": "makes off with",
+    "ing": "making off with",
+    "pp": "made off with"
+   },
+   "steal_lift": {
+    "base": "filch",
+    "past": "filched",
+    "3s": "filches",
+    "ing": "filching",
+    "pp": "filched"
+   },
+   "x_steal": {
+    "base": "plunder",
+    "past": "plundered",
+    "3s": "plunders",
+    "ing": "plundering",
+    "pp": "plundered"
+   },
+   "rob": {
+    "base": "rob",
+    "past": "robbed",
+    "3s": "robs",
+    "ing": "robbing",
+    "pp": "robbed",
+    "syn": [
+     "rob_fleece"
+    ]
+   },
+   "rob_fleece": {
+    "base": "fleece",
+    "past": "fleeced",
+    "3s": "fleeces",
+    "ing": "fleecing",
+    "pp": "fleeced"
+   },
+   "climb_in": {
+    "base": "trespass",
+    "past": "trespassed",
+    "3s": "trespasses",
+    "ing": "trespassing",
+    "pp": "trespassed",
+    "syn": [
+     "break_in"
+    ]
+   },
+   "break_in": {
+    "base": "intrude",
+    "past": "intruded",
+    "3s": "intrudes",
+    "ing": "intruding",
+    "pp": "intruded"
+   },
+   "shoot_game": {
+    "base": "poach",
+    "past": "poached",
+    "3s": "poaches",
+    "ing": "poaching",
+    "pp": "poached",
+    "syn": [
+     "fell_game"
+    ]
+   },
+   "fell_game": {
+    "base": "bring down",
+    "past": "brought down",
+    "3s": "brings down",
+    "ing": "bringing down",
+    "pp": "brought down"
+   },
+   "go_missing": {
+    "base": "go missing",
+    "past": "went missing",
+    "3s": "goes missing",
+    "ing": "going missing",
+    "pp": "gone missing",
+    "syn": [
+     "vanish"
+    ]
+   },
+   "vanish": {
+    "base": "vanish",
+    "past": "vanished",
+    "3s": "vanishes",
+    "ing": "vanishing",
+    "pp": "vanished"
+   },
+   "insult": {
+    "base": "insult",
+    "past": "insulted",
+    "3s": "insults",
+    "ing": "insulting",
+    "pp": "insulted",
+    "syn": [
+     "scold",
+     "name_call"
+    ]
+   },
+   "scold": {
+    "base": "revile",
+    "past": "reviled",
+    "3s": "reviles",
+    "ing": "reviling",
+    "pp": "reviled"
+   },
+   "name_call": {
+    "base": "curse",
+    "past": "cursed",
+    "3s": "curses",
+    "ing": "cursing",
+    "pp": "cursed"
+   },
+   "beat": {
+    "base": "beat",
+    "past": "beat",
+    "3s": "beats",
+    "ing": "beating",
+    "pp": "beaten",
+    "syn": [
+     "hit",
+     "thrash"
+    ]
+   },
+   "hit": {
+    "base": "strike",
+    "past": "struck",
+    "3s": "strikes",
+    "ing": "striking",
+    "pp": "struck"
+   },
+   "thrash": {
+    "base": "thrash",
+    "past": "thrashed",
+    "3s": "thrashes",
+    "ing": "thrashing",
+    "pp": "thrashed"
+   },
+   "kill": {
+    "base": "kill",
+    "past": "killed",
+    "3s": "kills",
+    "ing": "killing",
+    "pp": "killed",
+    "syn": [
+     "kill_knife",
+     "kill_finish"
+    ]
+   },
+   "kill_knife": {
+    "base": "knife",
+    "past": "knifed",
+    "3s": "knifes",
+    "ing": "knifing",
+    "pp": "knifed"
+   },
+   "kill_finish": {
+    "base": "slay",
+    "past": "slew",
+    "3s": "slays",
+    "ing": "slaying",
+    "pp": "slain"
+   },
+   "help": {
+    "base": "help",
+    "past": "helped",
+    "3s": "helps",
+    "ing": "helping",
+    "pp": "helped",
+    "syn": [
+     "help_out"
+    ]
+   },
+   "help_out": {
+    "base": "aid",
+    "past": "aided",
+    "3s": "aids",
+    "ing": "aiding",
+    "pp": "aided"
+   },
+   "give": {
+    "base": "give",
+    "past": "gave",
+    "3s": "gives",
+    "ing": "giving",
+    "pp": "given",
+    "syn": [
+     "give_away"
+    ]
+   },
+   "give_away": {
+    "base": "hand",
+    "past": "handed",
+    "3s": "hands",
+    "ing": "handing",
+    "pp": "handed"
+   },
+   "say": {
+    "base": "say",
+    "past": "said",
+    "3s": "says",
+    "ing": "saying",
+    "pp": "said",
+    "syn": [
+     "tell"
+    ]
+   },
+   "tell": {
+    "base": "swear",
+    "past": "swore",
+    "3s": "swears",
+    "ing": "swearing",
+    "pp": "sworn"
+   },
+   "think": {
+    "base": "think",
+    "past": "thought",
+    "3s": "thinks",
+    "ing": "thinking",
+    "pp": "thought",
+    "syn": [
+     "reckon"
+    ]
+   },
+   "reckon": {
+    "base": "reckon",
+    "past": "reckoned",
+    "3s": "reckons",
+    "ing": "reckoning",
+    "pp": "reckoned"
+   },
+   "see": {
+    "base": "see",
+    "past": "saw",
+    "3s": "sees",
+    "ing": "seeing",
+    "pp": "seen"
+   },
+   "hear": {
+    "base": "hear",
+    "past": "heard",
+    "3s": "hears",
+    "ing": "hearing",
+    "pp": "heard"
+   }
+  }
+ }
+}

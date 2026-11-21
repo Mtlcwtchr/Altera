@@ -10,6 +10,7 @@
 #include <mutex>
 #include <stdexcept>
 
+#include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/character.hpp"
 #include "sim/content.hpp"
@@ -189,6 +190,7 @@ void decide(World& w, Character& a, Character& t, const SocialRules& R, const So
         show(t, "Talk", sc.id, a.id, R.refuseAnim, R.refuseTicks, w.now());
         trace(w, a, 'C', "social.refused", {{"action", sc.id}, {"who", t.id}});
         trace(w, t, 'C', "social.said_no", {{"action", sc.id}, {"who", a.id}});
+        sayRefusal(w, t, a, "consent"); // AL-36: aloud, with the reason
         return;
     }
     applyEffectList(w, a, sc.onAccept, nullptr, &t, nullptr);

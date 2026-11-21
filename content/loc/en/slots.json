@@ -1,0 +1,38 @@
+{
+ "_doc": "Line parts chosen by rules with slot=<name>, en (AL-52, mirror of ru slots.json from AL-51, DIALOGUE_GEN §5.4, §6.3). Slots: noise.open (slips by state and doubt), voice.open / voice.tail (voice of a trait and age), tone.open / tone.tail (tone). A line is noise.open + tone.open|voice.open + the main line + voice.tail|tone.tail; an empty slot writes nothing. Same arguments as the main line. An .open ends with a space or ': ', a .tail starts with a space.",
+
+ "slot.noise.drunk":    ["Hic… listen, ", "I'll tell you what… hic… ", "Wait… what was I… ah, right: "],
+ "slot.noise.scared":   ["Sh-shh… ", "Oh… just don't shout. ", "My knees are shaking as I say it: "],
+ "slot.noise.tired":    ["Ugh… ", "Oh, my legs won't hold me… ", "Let me catch my breath… "],
+ "slot.noise.angry":    ["Damn it all! ", "Pah! ", "Right, now you listen! "],
+ "slot.noise.hungover": ["My head's splitting… ", "Oh, don't shout so… ", "I need a drop of ale… fine: "],
+ "slot.noise.unsure":   ["That… what's-his-name… ", "Well, that… ", "Wait, let me remember… "],
+
+ "slot.voice.sociable.open":       ["Oh, have I got news! ", "Listen, listen! ", "Have you heard the news? "],
+ "slot.voice.sociable.tail":       [" Not a word to anyone, mind!", " That's how things are!", " Can you imagine?"],
+ "slot.voice.loner.open":          ["What's it to me… ", "Not my business, but ", "I'll keep it short: "],
+ "slot.voice.proud.open":          ["I'll tell you this: ", "Mark my words: ", "I'd know, wouldn't I: "],
+ "slot.voice.pious.tail":          [" Lord forgive us.", " God save us.", " All is in God's hands."],
+ "slot.voice.honest.open":         ["I'll say it straight: ", "I won't lie: ", "Truth be told, "],
+ "slot.voice.unscrupulous.open":   ["Between us: ", "I'll tell you alone: ", "Listen, there's a deal in it: "],
+ "slot.voice.curious.tail":        [" And what have you heard?", " Makes you wonder, eh?", " I'd love to know how it really went."],
+ "slot.voice.gluttonous.tail":     [" Ah, I could eat.", " Nearly put me off my supper. Nearly.", " I'll go have a bite."],
+ "slot.voice.lazy.open":           ["Ugh… ", "Can't be bothered wagging my tongue, but ", "Fine, I'll say it: "],
+ "slot.voice.diligent.open":       ["No time for this, but I'll say it: ", "Quickly, I've work to do: "],
+ "slot.voice.family_minded.tail":  [" I just want my own kept safe.", " I've children, you understand.", " Look after your family, that's what."],
+ "slot.voice.stubborn.tail":       [" And don't argue.", " I've said my piece.", " Cut me if you like, that's how it was."],
+ "slot.voice.fickle.tail":         [" Though who knows…", " Or not. I don't remember now.", " Or maybe it wasn't so."],
+ "slot.voice.generous.tail":       [" Ah well, these things happen.", " God be his judge."],
+ "slot.voice.fastidious.tail":     [" Disgusting.", " Ugh, makes me sick to think of it."],
+ "slot.voice.slob.open":           ["Eh, whatever… ", "Oi, "],
+ "slot.voice.old.open":            ["Ah, at my age… ", "Listen to an old {speaker:g|man|woman}: ", "I remember the old days… ah, never mind: "],
+ "slot.voice.child.open":          ["I know! I know! ", "Mum says not to tell, but ", "Want me to tell you? "],
+
+ "slot.tone.polite.open":   ["Don't think me bold, but ", "If I may: ", "With your leave, "],
+ "slot.tone.warm.open":     ["Listen, {listener}, ", "You're no stranger to me, ", "Ah, {listener}, "],
+ "slot.tone.cold.open":     ["Briefly: ", "Without many words: "],
+ "slot.tone.hostile.tail":  [" Got it?", " Mark that well.", " Now clear off."],
+ "slot.tone.pleading.open": ["I beg you, ", "Please, hear me out: ", "For the love of all that's holy, "],
+ "slot.tone.playful.tail":  [" Ha!", " What a laugh!", " Funny, isn't it."],
+ "slot.tone.noble.open":    ["Don't be angry, {listener:g|my lord|my lady}, ", "If I may report, {listener:g|my lord|my lady}: "]
+}

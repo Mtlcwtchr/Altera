@@ -1,6 +1,7 @@
 // Localization tables, the placeholder formatter, the loc validator and the
 // output-time assembly of trace / report text (doc/design/LOC_FORMAT.md).
 
+#include "sim/dialogue_say.hpp"
 #include "sim/loc.hpp"
 
 #include "sim/village_life.hpp"
@@ -380,7 +381,7 @@ const std::vector<std::string>& traceCodes() {
         "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt",
         "dialog.accepted",     "dialog.refused",
         // AL-31 consequences
-        "deed.accuse_queued",  "deed.rumor_heard",  "deed.rumor_rejected",         "deed.loss_noticed", "deed.suspects",
+        "deed.accuse_queued",  "deed.rumor_heard",  "deed.rumor_rejected", "say.line",         "deed.loss_noticed", "deed.suspects",
         // AL-37 cases
         "deed.case_answer",    "deed.case_pursue",         "deed.case_to_judge", "deed.case_verdict",
         // AL-55 truth
@@ -600,6 +601,7 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
 
 std::string traceText(const Loc& loc, const std::string& lang, const World& w, const Character& c,
                       const TraceEntry& e) {
+    if (e.code == "say.line") return lineText(loc, lang, w, e.params); // AL-53: the line from its meaning
     return loc.text(lang, "trace." + e.code, locArgs(loc, lang, w, e.params, &c));
 }
 

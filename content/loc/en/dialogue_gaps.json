@@ -1,0 +1,10 @@
+{
+ "_doc": "en for the last dialogue.json keys that had no translation (AL-52): the 'need' slots of ask_favor and the dialogue menu.",
+ "dialogue_slot.need_item": "I need {item:nom}.",
+ "dialogue_slot.need_task": "I can't manage alone: someone has to {action}.",
+ "ui.dialogue_menu.deal": "Deal",
+ "ui.dialogue_menu.do_together": "Actions",
+ "ui.dialogue_menu.feelings": "Feelings",
+ "ui.dialogue_menu.reply": "Reply",
+ "ui.dialogue_menu.talk_about": "Talk about…"
+}
