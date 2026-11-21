@@ -238,7 +238,7 @@ TEST(altera_sim_loc_gen_rules) {
              std::string("[frame.nope]"));
     CHECK(mentions(errs, "no frame"));
     // capitals at the start and after a sentence end
-    CHECK_EQ(tidyLine("слушай.  олег  , ну!  да ? ...", true), std::string("Слушай. Олег, ну! Да? ..."));
+    CHECK_EQ(tidyLine("слушай.  олег  , ну!  да ? ...", true), std::string("Слушай. Олег, ну! Да?..."));
     // text() understands v0.2 too
     CHECK_EQ(L().text("ru", "line.accuse", {{"p", p}}), std::string("Это Олег украл у мельника муку!"));
     // v0.1 syntax is unchanged
