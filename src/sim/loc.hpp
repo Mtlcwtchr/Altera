@@ -28,7 +28,8 @@ public:
     // directory per language with any number of *.json files (nested objects
     // are flattened into dotted keys; an object with "nom" is a noun entry).
     static Loc load(const std::string& dir);
-    // lang -> list of file trees (already parsed), for tests.
+    // lang -> list of file trees (already parsed), for tests. A tree with a
+    // "_grammar" member gives the language's _grammar.json.
     static Loc fromJson(const std::string& base, const std::string& fallback,
                         const std::map<std::string, std::vector<Json>>& langs);
 
