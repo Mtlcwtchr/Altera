@@ -1,0 +1,15 @@
+[
+ {"at": 3, "backstory": "peasant"},
+ {"at": 4, "backstory_begin": true},
+ {"at": 8, "pause": true},
+ {"at": 9, "take_sex": "m", "look_only": true, "camera_follow": true},
+ {"at": 10, "zoom": 2.4, "pitch": 1.25},
+ {"at": 12, "shot": "probe_hair_m_top.png"},
+ {"at": 12.5, "zoom": 2.0, "pitch": 0.15, "yawDeg": 0},
+ {"at": 14, "shot": "probe_hair_m_a.png"},
+ {"at": 14.5, "yawDeg": 120},
+ {"at": 16, "shot": "probe_hair_m_b.png"},
+ {"at": 16.5, "yawDeg": 240},
+ {"at": 18, "shot": "probe_hair_m_c.png"},
+ {"at": 19, "quit": true}
+]

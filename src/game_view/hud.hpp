@@ -131,6 +131,7 @@ public:
     // at 1 (walking by the keys), where a click sent the person (sim metres).
     int controlMode = 0;
     bool cameraFollow = false, speedLocked = false, hasPerson = false;
+    std::string leadName;   // whom keys / mouse would take under control (nobody led)
     bool walkMark = false;
     double walkMarkX = 0, walkMarkY = 0;
     void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)

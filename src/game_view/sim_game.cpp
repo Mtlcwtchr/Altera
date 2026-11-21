@@ -167,6 +167,7 @@ public:
             settings_ = loadSettings();
             if (!settings_.lang.empty() && loc_->hasLanguage(settings_.lang)) opts_.lang = settings_.lang;
             control_ = settings_.control;
+            leadMode_ = control_ == kFree ? kKeys : control_;
             follow_ = settings_.cameraFollow;
             worldCfg_ = cfg;
             world_ = std::make_unique<World>(makeTestWorld(*content_, cfg, o.seed));
@@ -781,6 +782,7 @@ public:
         holdSpeed();
         const bool walking = driveAvatar(dt, keys, alpha);
         updateIdle(dt, walking);
+        pendingActStep();
         const ActorSnap* sel = actor(selected_);
         // The keys walk the person only in the keys mode (and only with a
         // person of one's own); otherwise they move the camera, which lets go
@@ -810,8 +812,13 @@ public:
                 if (follow_) cameraFollow(false);
             }
         }
+        syncControl();
         hud_.controlMode = control_;
         hud_.cameraFollow = follow_;
+        {
+            const ActorSnap* c = actor(leadCandidate());
+            hud_.leadName = c ? c->name : "";
+        }
         hud_.speedLocked = speedLocked();
         hud_.hasPerson = shown_.controlled != kNone;
         viewX_ = target_[0] - originX_;
@@ -861,6 +868,11 @@ public:
             avatar_ = Avatar{};
             avatar_.id = me->id;
         }
+        if (shown_.paused) {   // the clock stands: so does the person (a click's way waits)
+            avatar_.speed = 0;
+            if (scriptWalk_[2] > 0) scriptWalk_[2] -= dt;
+            return false;
+        }
         double fwd = 0, side = 0;
         if (control_ == kKeys && hud_.panel == "none" && !script_.is_array()) {
             if (keys[SDL_SCANCODE_W] || keys[SDL_SCANCODE_UP]) fwd += 1;
@@ -877,6 +889,7 @@ public:
         const bool keyed = fwd != 0 || side != 0;
         if (keyed) {
             walkPath_.clear();   // the keys take over from a click's way
+            pendingAct_ = false;
             const double c = std::cos(orbitYaw_), s = std::sin(orbitYaw_);
             dx = c * fwd + s * side;
             dy = s * fwd - c * side;
@@ -911,7 +924,9 @@ public:
                 slow = gs.kg > gs.maxKg ? 0.55 : 1.0 - 0.25 * (gs.kg - gs.comfortKg) / std::max(1.0, gs.maxKg - gs.comfortKg);
             const bool canRun = !(gs.on && shown_.detail.id == me->id && gs.kg > gs.maxKg);
             avatarRuns_ = run && canRun;
-            const double v = (avatarRuns_ ? 5.2 : 1.9) * slow;
+            // the clock's speed hurries the walker too (1x is a real walk)
+            static constexpr double kWalkScale[] = {0.0, 1.0, 1.6, 2.6, 4.0};
+            const double v = (avatarRuns_ ? 5.2 : 1.9) * slow * kWalkScale[std::clamp(shown_.speed, 1, 4)];
             double step = v * dt;
             if (!keyed && !walkPath_.empty())   // do not overshoot the corner
                 step = std::min(step, std::hypot(walkPath_.front().first - avatar_.x, walkPath_.front().second - avatar_.y));
@@ -919,6 +934,7 @@ public:
             // block the walker; along them it slides.
             const double ox = avatar_.x, oy = avatar_.y;
             obstacles_.slide(avatar_.x, avatar_.y, dx * step, dy * step, kWalkerRadius);
+            bumpActors(me->id, ox, oy);
             const double went = std::hypot(avatar_.x - ox, avatar_.y - oy);
             avatar_.speed = dt > 0 ? std::min(v, went / dt) : 0.0;
             if (went > 1e-4) avatar_.yaw = std::atan2(avatar_.y - oy, avatar_.x - ox);
@@ -957,6 +973,27 @@ public:
         return input;
     }
 
+    // People and beasts are in the way too: the walker is pushed off them
+    // (never into a house: then it stays where it was).
+    void bumpActors(EntityId self, double ox, double oy) {
+        const double alpha = tickAlpha();
+        for (const auto& a : shown_.actors) {
+            if (a.id == self || !a.alive || a.species == "fish_shoal") continue;
+            double ax, ay;
+            actorWorld(a, alpha, ax, ay);
+            const double r = kWalkerRadius + (a.animal ? (a.species == "hens" || a.species == "hare" ? 0.15 : 0.45) : kWalkerRadius);
+            const double dx = avatar_.x - ax, dy = avatar_.y - ay, d = std::hypot(dx, dy);
+            if (d >= r) continue;
+            if (d < 1e-4) {
+                avatar_.x = ox, avatar_.y = oy;
+                continue;
+            }
+            const double nx = ax + dx / d * r, ny = ay + dy / d * r;
+            if (!obstacles_.blocked(nx, ny, kWalkerRadius)) avatar_.x = nx, avatar_.y = ny;
+            else avatar_.x = ox, avatar_.y = oy;
+        }
+    }
+
     // ---- control modes ---------------------------------------------------------
     // keys: WASD walk the person (the clock held at 1, the walk is real time);
     // mouse: a click on the ground walks them there round what is in the way,
@@ -969,7 +1006,8 @@ public:
         return me && me->alive && !me->down && !me->captive && !me->fighting;
     }
     // (tour scripts keep their own clock)
-    bool speedLocked() const { return control_ == kKeys && shown_.controlled != kNone && !script_.is_array(); }
+    // (the clock is never held now: pause and speed act on the walker as on everyone)
+    bool speedLocked() const { return false; }
     void holdSpeed() {
         if (!speedLocked() || shown_.speed == 1) return;
         const double nowS = std::chrono::duration<double>(Clock::now() - started_).count();
@@ -982,7 +1020,7 @@ public:
         idleSent_ = false;
     }
     void updateIdle(double dt, bool walking) {
-        if (control_ != kFree || shown_.controlled == kNone || hud_.inMenu() || shown_.paused) return;
+        if (control_ != kMouse || shown_.controlled == kNone || hud_.inMenu() || shown_.paused) return;
         if (walking) {
             idleS_ = 0;
             return;
@@ -993,14 +1031,53 @@ public:
             post({"cmd", 0, "set_free_will", {{"id", shown_.controlled}, {"on", true}, {"now", true}}});
         }
     }
+    // free: nobody is led (the person goes back to their own life, the camera
+    // lets go); keys / mouse with nobody led take the selected person (or the
+    // one led last) under control.
     void controlMode(int mode) override {
         mode = std::clamp(mode, 0, 2);
         noteInput();
+        if (mode == kFree) {
+            if (shown_.controlled != kNone) {
+                lastLed_ = shown_.controlled;
+                post({"cmd", 0, "release_control", Json::object()});
+            }
+            walkPath_.clear();
+            avatar_.driven = false;
+            if (follow_) cameraFollow(false);
+        } else {
+            leadMode_ = mode;
+            if (shown_.controlled == kNone && !worldFresh()) {
+                const EntityId who = leadCandidate();
+                if (who != kNone) post({"cmd", 0, "take_control", {{"id", who}}});
+            }
+        }
         if (mode == control_) return;
         control_ = mode;
         if (control_ == kKeys) walkPath_.clear();
         settings_.control = control_;
         storeSettings(settings_);
+    }
+    // whom keys / mouse take under control: the selected person, else the one led last
+    EntityId leadCandidate() const {
+        for (EntityId id : {selected_, lastLed_}) {
+            const ActorSnap* a = actor(id);
+            if (a && !a->animal && a->alive) return id;
+        }
+        return kNone;
+    }
+    // The control bar's state follows the sim: nobody led is the free mode,
+    // someone taken (the Dynasty panel's Lead, the backstory) the mode led with last.
+    void syncControl() {
+        if (shown_.controlled != prevControlled_) {
+            if (shown_.controlled == kNone && prevControlled_ != kNone) {
+                lastLed_ = prevControlled_;
+                if (control_ != kFree) control_ = kFree;
+            } else if (shown_.controlled != kNone && control_ == kFree) {
+                control_ = leadMode_;
+            }
+            prevControlled_ = shown_.controlled;
+        }
     }
     void cameraFollow(bool on) override {
         follow_ = on;
@@ -1012,6 +1089,49 @@ public:
     }
     // A click on the ground (mouse and free modes): the way there round the
     // houses, walked by the avatar as the keys would; a double click runs.
+    // Where a target stands (world metres): a thing or a person / beast.
+    bool targetWorld(EntityId id, double& x, double& y) const {
+        for (const auto& t : shown_.things)
+            if (t.id == id) {
+                x = originX_ + t.x;
+                y = originY_ + t.y;
+                return true;
+            }
+        if (const ActorSnap* a = actor(id)) {
+            actorWorld(*a, tickAlpha(), x, y);
+            return true;
+        }
+        return false;
+    }
+    // A way to stand next to the target (not into it); false when near enough or no way.
+    bool approach(EntityId target) {
+        const ActorSnap* me = actor(shown_.controlled);
+        if (!me || !avatarCanWalk() || shown_.paused) return false;
+        double tx, ty, sx, sy;
+        if (!targetWorld(target, tx, ty)) return false;
+        if (avatar_.driven && avatar_.id == me->id) sx = avatar_.x, sy = avatar_.y;
+        else actorWorld(*me, tickAlpha(), sx, sy);
+        const double d = std::hypot(tx - sx, ty - sy);
+        if (d < 2.5 || d > 300.0) return false;
+        // the free spot nearest the target, from the person's side
+        double gx = tx + (sx - tx) / d * 1.3, gy = ty + (sy - ty) / d * 1.3;
+        obstacles_.pushOut(gx, gy, kWalkerRadius);
+        obstacles_.pushOut(sx, sy, kWalkerRadius);
+        std::vector<collide::Point> way;
+        if (!obstacles_.path(sx, sy, gx, gy, kWalkerRadius, way) || way.empty()) return false;
+        walkPath_ = std::move(way);
+        walkRun_ = false;
+        walkStuck_ = 0;
+        return true;
+    }
+    // The act waiting for the walk to end: sent on arrival, dropped when the keys take over.
+    void pendingActStep() {
+        if (!pendingAct_) return;
+        if (walkPath_.empty() && !shown_.paused) {
+            pendingAct_ = false;
+            sendCommand(pendingType_, pendingArgs_);
+        }
+    }
     void walkTo(double gx, double gy) {
         const ActorSnap* me = actor(shown_.controlled);
         if (!me || !avatarCanWalk()) return;
@@ -1326,6 +1446,33 @@ private:
                 scriptWalk_[2] = st["walk"][2].get<double>();
             }
             if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
+            // checks: face_house turns the camera (and so WASD) to the nearest
+            // house as drawn; probe writes where the person is and what stops
+            // them to terrain_lab_out/probe.jsonl
+            if (st.value("face_house", false)) faceNearestHouse();
+            if (st.contains("probe")) probe(st["probe"].get<std::string>());
+            if (st.contains("pause")) post({st["pause"].get<bool>() ? "hold" : "unhold"});
+            // take_sex "m" | "f": the nearest grown person of that sex under control
+            if (st.contains("take_sex")) {
+                const char want = st["take_sex"].get<std::string>()[0];
+                double px, py;
+                personAt(px, py);
+                const ActorSnap* best = nullptr;
+                double bd = 1e18;
+                for (const auto& a : shown_.actors) {
+                    if (a.animal || !a.alive || a.age < 16 || a.sex != want || a.id == shown_.controlled) continue;
+                    double ax, ay;
+                    actorWorld(a, tickAlpha(), ax, ay);
+                    const double d = std::hypot(ax - px, ay - py);
+                    if (d < bd) bd = d, best = &a;
+                }
+                if (best) {
+                    if (!st.value("look_only", false)) post({"cmd", 0, "take_control", {{"id", best->id}}});
+                    select(best->id);
+                }
+            }
+            // any sim command as the player: {"sim": "release_control", "args": {...}}
+            if (st.contains("sim")) post({"cmd", 0, st["sim"].get<std::string>(), st.value("args", Json::object())});
             // the control bar: control 0 keys | 1 mouse | 2 free, camera_follow,
             // walk_to [dx, dy] metres from the person (as a click on the ground)
             if (st.contains("control")) controlMode(st["control"].get<int>());
@@ -1603,7 +1750,7 @@ private:
                 std::lock_guard<std::mutex> lock(cmdMutex_);
                 todo.swap(commands_);
             }
-            for (auto& c : todo) {
+            for (auto& c : todo) try {
                 changed = true;
                 if (c.op == "pause") paused_ = !paused_;
                 else if (c.op == "hold") paused_ = true;     // the menus
@@ -1644,6 +1791,10 @@ private:
                         startedAs_ = true;
                     }
                 }
+            } catch (const std::exception& e) {
+                // a bad command is reported, not fatal
+                SDL_Log("altera_game: command %s/%s failed: %s", c.op.c_str(), c.type.c_str(), e.what());
+                result_ = std::string("rejected:") + e.what();
             }
             const auto now = Clock::now();
             const double dt = std::chrono::duration<double>(now - last).count();
@@ -1654,7 +1805,16 @@ private:
             int steps = 0;
             while (owed >= 1.0 && steps < 8) {
                 for (const auto& [id, c] : world_->characters()) prevPos_[id] = c.pos;
-                world_->step();
+                try {
+                    world_->step();
+                } catch (const std::exception& e) {
+                    // a broken tick must not take the game down: say what and stop the clock
+                    SDL_Log("altera_game: sim tick %lld failed: %s", (long long)world_->now(), e.what());
+                    result_ = std::string("sim_error:") + e.what();
+                    paused_ = true;
+                    owed = 0;
+                    break;
+                }
                 owed -= 1.0;
                 ++steps;
                 changed = true;
@@ -1662,7 +1822,11 @@ private:
             }
             if (changed || selectedWanted_ != snapSelected_ ||
                 std::chrono::duration<double>(Clock::now() - lastSnap).count() > 0.25) {
-                snapshotLocked();
+                try {
+                    snapshotLocked();
+                } catch (const std::exception& e) {
+                    SDL_Log("altera_game: snapshot failed: %s", e.what());
+                }
                 lastSnap = Clock::now();
             }
             if (!steps) std::this_thread::sleep_for(std::chrono::milliseconds(4));
@@ -2409,6 +2573,46 @@ private:
         if (k.negate) out = text("hud.req.not", {{"what", out}});
         return who + out;
     }
+    // canPerform's reason code (ai_eval.cpp) in the player's words.
+    std::string whyText(const std::string& why, const InteractionDef& d, const WorldObject* obj,
+                        const Character* tc) const {
+        if (why.empty()) return "";
+        const std::size_t colon = why.find(':');
+        const std::string head = why.substr(0, colon), rest = colon == std::string::npos ? "" : why.substr(colon + 1);
+        const std::string what = obj ? name("object", obj->type) : tc ? tc->name : name("object", rest);
+        if (head == "pre") {
+            for (const Condition& k : d.pre)
+                if (k.text == rest) return conditionWhy(k, obj);
+            return "";
+        }
+        if (head == "reserved") return text("hud.why.reserved", {{"what", what}});
+        if (head == "season") return text("hud.why.season", {{"what", what}});
+        if (head == "depleted") return text("hud.why.depleted", {{"what", what}});
+        if (head == "out_of_range") return text("hud.why.far", {{"what", what}});
+        if (head == "gear") return text(rest == "too_heavy" ? "hud.why.too_heavy" : "hud.why.no_room");
+        if (head == "dead") return text("hud.why.dead");
+        if (head == "no_person") return text("hud.why.no_person");
+        if (head == "no_target" || head == "wrong_target") return text("hud.why.no_target", {{"what", name("object", rest)}});
+        return "";
+    }
+    // A failed precondition, the hidden ones (owner, time, herd) included.
+    std::string conditionWhy(const Condition& k, const WorldObject* obj) const {
+        if (k.subject == "target_owner") {
+            if (k.key == "family" || k.key == "self") return text("hud.why.not_ours");
+            if (k.key == "other") return text("hud.why.ours");
+            return text("hud.why.owner");
+        }
+        if (k.subject == "time") return text(k.negate ? "hud.why.not_at_night" : k.key == "night" ? "hud.why.night_only" : "hud.why.time");
+        if (k.subject == "herd") return text("hud.why.herd");
+        if (k.subject == "charity") return text("hud.why.charity");
+        if (k.subject == "target_stock") {
+            const std::string what = obj ? name("object", obj->type) : "";
+            if (k.op == Condition::Op::Ge || k.op == Condition::Op::Gt)
+                return text("hud.why.stock_low", {{"what", what}, {"item", name("item", k.key)}, {"v", num(k.value)}});
+            return text("hud.why.stock_full", {{"what", what}, {"item", name("item", k.key)}});
+        }
+        return describeCondition(k);
+    }
     std::string describeEffect(const Effect& e) const {
         const std::string sign = e.op == '-' ? "-" : "+";
         if (e.subject == "has") return sign + num(e.value) + " " + name("item", e.key);
@@ -2461,7 +2665,12 @@ private:
                 o.needs.push_back({describeCondition(r.cond), r.ok});
                 if (!r.ok && o.why.empty()) o.why = o.needs.back().first;
             }
-            if (!a.can && o.why.empty()) o.why = text("hud.req.cannot");
+            // the reason the sim gives first (canPerform), in words; the shown
+            // need that fails otherwise; never a bare "cannot now"
+            if (!a.can) {
+                if (std::string t = whyText(a.why, *d, obj, tc); !t.empty()) o.why = t;
+                if (o.why.empty()) o.why = text("hud.why.unknown", {{"code", a.why}});
+            }
             for (const auto& e : a.gains)
                 if (std::string g = describeEffect(e); !g.empty()) o.gains.push_back(g);
             for (const auto& e : a.onTarget)
@@ -2509,7 +2718,9 @@ private:
             for (const auto& e : me->ai.trace) {
                 if (e.tick < fbTick_) continue;
                 if (e.tick == fbTick_ && ++at <= fbAtTick_) continue;
-                const std::string act = e.params.value("action", std::string());
+                // (some traces carry the plan's step number as "action", not an act)
+                const auto ai = e.params.find("action");
+                const std::string act = ai != e.params.end() && ai->is_string() ? ai->get<std::string>() : std::string();
                 if (e.code == "fsm.done" && act != "goto" && act != "wait")
                     push(text("hud.fb.done", {{"act", name("interaction", act)}}), 1);
                 else if (e.code == "fsm.abort" && act != "goto" && act != "wait" && !act.empty())
@@ -3206,6 +3417,61 @@ private:
     // against a house step out (a hearth inside is the house's own chimney:
     // false), houses vary by family, doors turn to the village's centre.
     // `mesh`: the kit bake's piece (-1 without one).
+    // The person's place (as drawn) and the nearest house as drawn: its box.
+    bool nearestHouse(double px, double py, double& hx0, double& hy0, double& hx, double& hy, float& yaw) const {
+        double bd = 1e18;
+        for (const auto& b0 : buildings_) {
+            if (b0.type != "house") continue;
+            BuildingSnap b;
+            float yw = 0;
+            int mesh = -1;
+            if (!buildingPose(b0, b, yw, mesh)) continue;
+            const double wx = originX_ + b.x, wy = originY_ + b.y, d = std::hypot(wx - px, wy - py);
+            if (d >= bd) continue;
+            bd = d;
+            hx0 = wx, hy0 = wy, yaw = yw;
+            float a = 0, c = 0;
+            if (mesh >= 0) village_.halfSize(mesh, a, c);
+            if (a <= 0 || c <= 0) a = 4.0f, c = 3.0f;
+            hx = a, hy = c;
+        }
+        return bd < 1e17;
+    }
+    void personAt(double& x, double& y) const {
+        x = y = 0;
+        if (const ActorSnap* me = actor(shown_.controlled)) actorWorld(*me, tickAlpha(), x, y);
+    }
+    void faceNearestHouse() {
+        double px, py, cx, cy, hx, hy;
+        float yaw;
+        personAt(px, py);
+        if (nearestHouse(px, py, cx, cy, hx, hy, yaw)) orbitYaw_ = std::atan2(cy - py, cx - px);
+    }
+    void probe(const std::string& label) {
+        double px, py, cx = 0, cy = 0, hx = 0, hy = 0;
+        float yaw = 0;
+        personAt(px, py);
+        const bool any = nearestHouse(px, py, cx, cy, hx, hy, yaw);
+        // inside the house's drawn footprint (its local frame)
+        const double c = std::cos(yaw), s = std::sin(yaw), lx = (px - cx) * c + (py - cy) * s,
+                     ly = -(px - cx) * s + (py - cy) * c;
+        const bool inside = any && std::fabs(lx) < hx * 0.9 && std::fabs(ly) < hy * 0.9;
+        const ActorSnap* me = actor(shown_.controlled);
+        Json j = {{"label", label},      {"clock", scriptClock_},      {"tick", shown_.tick},
+                  {"paused", shown_.paused}, {"speed", shown_.speed},   {"control", control_},
+                  {"controlled", shown_.controlled}, {"driven", avatar_.driven}, {"x", px - originX_},
+                  {"y", py - originY_}, {"sim_x", me ? me->x : 0.0}, {"sim_y", me ? me->y : 0.0},
+                  {"obstacles", obstacles_.size()}, {"house_d", std::hypot(cx - px, cy - py)},
+                  {"house_half", {hx, hy}}, {"inside_house", inside},
+                  {"blocked_here", obstacles_.blocked(px, py, 0.05)}};
+        const fs::path out = fs::path(opts_.root) / "terrain_lab_out/probe.jsonl";
+        if (FILE* f = std::fopen(out.string().c_str(), "ab")) {
+            const std::string line = j.dump() + "\n";
+            std::fwrite(line.data(), 1, line.size(), f);
+            std::fclose(f);
+        }
+    }
+
     bool buildingPose(const BuildingSnap& b0, BuildingSnap& b, float& yaw, int& mesh) const {
         b = b0;
         if (b.type != "house" && b.type != "field" && b.type != "garden")
@@ -3625,9 +3891,22 @@ private:
     std::string interactionName(const std::string& id) const override { return name("interaction", id); }
     void command(const std::string& type, const Json& args) override {
         noteInput();
+        // An act on something away from the person: they first walk there
+        // themselves, round the houses (the sim would cut straight through),
+        // and the act is sent when they stand by it.
+        if (type == "perform" && !pendingAct_ && args.contains("target") && args["target"].is_number_integer() &&
+            approach(args["target"].get<EntityId>())) {
+            pendingAct_ = true;
+            pendingType_ = type;
+            pendingArgs_ = args;
+            return;
+        }
+        sendCommand(type, args);
+    }
+    void sendCommand(const std::string& type, const Json& args) {
         // Free mode: an act from the wheel joins the person's queue (done in
         // turn, as in The Sims) instead of replacing what goes on.
-        if (control_ == kFree && type == "perform" && args.contains("interaction") && args.contains("id")) {
+        if (control_ == kMouse && type == "perform" && args.contains("interaction") && args.contains("id")) {
             Json q{{"id", args["id"]}, {"task", args["interaction"]}, {"reason", "player_queue"}};
             if (args.contains("target")) q["target"] = args["target"];
             post({"cmd", 0, "queue_task", q});
@@ -3786,6 +4065,11 @@ private:
     } avatar_;
     // How the person is led (settings: control) and what blocks a walker.
     static constexpr int kKeys = 0, kMouse = 1, kFree = 2;
+    EntityId lastLed_ = kNone, prevControlled_ = kNone;
+    bool pendingAct_ = false;
+    std::string pendingType_;
+    Json pendingArgs_;
+    int leadMode_ = kKeys;
     static constexpr double kWalkerRadius = 0.3;
     int control_ = kKeys;
     EntityId woreAllFor_ = kNone;
