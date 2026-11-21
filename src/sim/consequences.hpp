@@ -74,6 +74,15 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
 // Installs the "deed_trail" event handler.
 void installConsequences(World& w);
 
+// One retelling of the teller's strongest word of a misdeed to `to` (AL-35):
+// decayed and maybe distorted by the rumour noise (AL-50, sim/rumor_noise.hpp);
+// a listener who saw it himself rejects a differing version and remembers the
+// teller lied. Called by afterDeed for talk acts.
+void passRumor(World& w, Character& from, Character& to, const ConsequenceRules& R);
+// How far word of the world's facts has drifted from the truth: facts,
+// memories of them, distorted ones, ones naming the wrong doer, mean drift, max chain.
+Json rumorReport(const World& w);
+
 // Memory types about somebody's misdeed (who[0] = the doer).
 bool isDeedMemory(const std::string& type);
 

@@ -79,6 +79,10 @@ struct MemoryEntry {
     // none known: a guess, a lie, or written before the fact registry).
     std::vector<EntityId> chain;
     EntityId fact = kNone;
+    // AL-50: what the rememberer believes when a retelling distorted it (a
+    // Prop in its JSON form, sim/dialogue_gen.hpp); null = as the type says
+    // (who/object). who/object still hold the believed doer and object.
+    Json prop;
 };
 
 // Directed: A->B is not B->A (AI_ARCHITECTURE §7).

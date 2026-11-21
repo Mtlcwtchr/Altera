@@ -114,6 +114,14 @@ const RecallRules& recallRules(const Content& c) {
 
 std::optional<Prop> propFromMemory(const World& w, const Character& self, const MemoryEntry& m,
                                    const DialogueGenData& d) {
+    // AL-50: a distorted rumour carries its own meaning
+    if (m.prop.is_object()) {
+        Prop p;
+        if (fromJson(m.prop, p) && checkProp(d, p)) {
+            p.fact = m.fact;
+            return p;
+        }
+    }
     const MemoryPropMap* map = d.forMemory(m.type);
     if (!map) return std::nullopt;
     Prop p;
