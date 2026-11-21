@@ -1,0 +1,19 @@
+{
+ "_doc": "Меню диалога без агента и бабблы (AL-53).",
+ "dialogue.menu.inform": "Рассказать {>prop:about}",
+ "dialogue.menu.accuse": "Обвинить в {>prop:nominal:pre}",
+ "dialogue.menu.thank": "Поблагодарить за {>prop:nominal:acc}",
+ "bark.any_1": "Хм.",
+ "bark.any_2": "Ну-ну…",
+ "bark.night": "Темень-то какая.",
+ "bark.winter": "Зима, будь она неладна.",
+ "bark.hungry_1": "Живот сводит…",
+ "bark.hungry_2": "Поесть бы.",
+ "bark.starving": "Хоть корку бы хлеба…",
+ "bark.thirst": "Горло пересохло.",
+ "bark.tired": "Ноги не держат.",
+ "bark.cold": "Ну и холодина.",
+ "bark.lonely": "И словом перекинуться не с кем.",
+ "bark.bored": "Тоска смертная.",
+ "bark.work": "Работа сама себя не сделает."
+}
