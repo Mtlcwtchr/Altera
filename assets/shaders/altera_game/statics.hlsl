@@ -19,6 +19,7 @@ struct VsIn {
     float4 placeYaw : TEXCOORD4;   // eye-relative origin, yaw
     float4 scale : TEXCOORD5;      // xyz scale, w highlight
     float4 tint : TEXCOORD6;       // rgb multiplier
+    float4 fade : TEXCOORD7;       // AL-56 cutaway: vis, keep (m over the bottom), the piece's bottom
 };
 
 struct VsOut {
@@ -28,6 +29,7 @@ struct VsOut {
     float3 uvl : TEXCOORD2;
     float3 tint : TEXCOORD3;
     float highlight : TEXCOORD4;
+    float3 fade : TEXCOORD5;       // vis, keep, height over the piece's bottom
 };
 
 VsOut staticsVs(VsIn v) {
@@ -41,10 +43,20 @@ VsOut staticsVs(VsIn v) {
     o.uvl = float3(v.uv, v.layer);
     o.tint = v.tint.rgb;
     o.highlight = v.scale.w;
+    o.fade = float3(v.fade.x, v.fade.y, p.z - v.fade.z * v.scale.z);
     return o;
 }
 
+// The cutaway (src/game_view/cutaway.hpp): no alpha, a 4 x 4 ordered dither
+// over the screen drops a share 1 - vis of the pixels above the kept stub.
+float bayer4(float2 pixel) {
+    const uint2 q = uint2(pixel) & 3u;
+    static const float kBayer[16] = {0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5};
+    return (kBayer[q.y * 4u + q.x] + 0.5) / 16.0;
+}
+
 float4 staticsPs(VsOut i) : SV_Target0 {
+    if (i.fade.x < 1 && i.fade.z > i.fade.y && i.fade.x < bayer4(i.position.xy)) discard;
     const float4 texel = materials.Sample(materialSampler, i.uvl);
     clip(texel.a - 0.5);   // leaves and grass cards cut out (opaque layers keep alpha 1)
     const float3 albedo = texel.rgb * i.tint;

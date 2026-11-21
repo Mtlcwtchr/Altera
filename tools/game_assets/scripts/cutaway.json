@@ -1,0 +1,17 @@
+[
+ {"at": 1, "speed": 1, "take_chief": true, "walls": 1},
+ {"at": 3, "give": true, "plan": "house", "dx": 10, "dy": 4, "zoom": 16, "pitch": 0.38, "yawDeg": 35},
+ {"at": 6, "speed": 4},
+ {"at": 40, "speed": 1, "look_at_build": true, "zoom": 16, "pitch": 0.85, "yawDeg": 35, "mouse": [60, 60], "walls": 0},
+ {"at": 43, "shot": "cut_01_walls_up.png"},
+ {"at": 44, "walls": 1},
+ {"at": 46, "shot": "cut_02_cutaway.png"},
+ {"at": 47, "walls": 2},
+ {"at": 49, "shot": "cut_03_walls_down.png"},
+ {"at": 50, "walls": 0, "mouse": [960, 540]},
+ {"at": 52, "shot": "cut_04_up_mouse_on_house.png"},
+ {"at": 53, "walls": 1, "mouse": [60, 60], "pitch": 0.45, "yawDeg": 215},
+ {"at": 55, "shot": "cut_05_cutaway_other_side.png"},
+ {"at": 56, "walls": 1},
+ {"at": 57, "quit": true}
+]

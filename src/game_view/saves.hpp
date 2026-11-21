@@ -38,6 +38,7 @@ struct GameSettings {
     int autosaveMin = 10;       // 0: off
     int control = 0;            // how the person is led: 0 keys, 1 mouse, 2 free (Sims-like)
     bool cameraFollow = true;   // the camera rides on the selected person
+    int wallMode = 1;           // AL-56: the walls in the top view, 0 up, 1 cut away, 2 down
     int idleAutonomyS = 20;     // free mode: idle seconds before the person lives by itself
 };
 
