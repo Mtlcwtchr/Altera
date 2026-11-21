@@ -73,12 +73,25 @@ bool knowsOf(const Character& c, const std::string& type, EntityId doer, EntityI
     return false;
 }
 
+} // namespace
+
+std::map<std::string, int> deedGoods(const InteractionDef& d) {
+    std::map<std::string, int> g;
+    for (const auto& e : d.eff)
+        if (e.subject == "target_stock" && e.signedDelta() < 0.0 && !e.isParam())
+            g[e.key] += std::max(1, static_cast<int>(std::lround(-e.signedDelta())));
+    return g;
+}
+
+namespace {
+
 void remember(World& w, Character& c, const std::string& type, EntityId doer, EntityId victim, EntityId object,
               const std::string& source, double confidence, double valence, std::vector<EntityId> chain = {},
-              EntityId fact = kNone) {
+              EntityId fact = kNone, std::map<std::string, int> goods = {}) {
     MemoryEntry m;
     m.chain = std::move(chain);
     m.fact = fact;
+    m.goods = std::move(goods);
     m.type = type;
     m.who = {doer};
     if (victim != kNone) m.who.push_back(victim);
@@ -342,7 +355,8 @@ void passRumor(World& w, Character& from, Character& to, const ConsequenceRules&
             distorted = toJson(res.prop);
             if (const Ref* d = res.prop.role("doer"); d && d->kind == "char") doerId = d->id;
             const Ref* o = res.prop.role("object");
-            object = o && (o->kind == "object" || o->kind == "char") ? o->id : kNone;
+            // an item or "something" taken still leaves the storage it came from (AL-58)
+            if (o && (o->kind == "object" || o->kind == "char")) object = o->id;
         }
         conf = res.epi.confidence;
         chain = res.epi.chain;
@@ -350,7 +364,7 @@ void passRumor(World& w, Character& from, Character& to, const ConsequenceRules&
             it = *it == to.id ? chain.erase(it) : it + 1;
     }
     remember(w, to, "rumor_crime", doerId, heard.who.size() > 1 ? heard.who[1] : kNone, object, "rumor", conf, -0.2,
-             std::move(chain), heard.fact);
+             std::move(chain), heard.fact, heard.goods);
     if (!distorted.is_null()) {
         // the entry just written (w.remember may have sorted or trimmed the memory)
         for (auto& m : to.memory)
@@ -463,7 +477,8 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
                 for (Character* m : household)
                     if (!knowsOf(*m, "", doer.id, object))
                         remember(w, *m, "told_crime", doer.id, teller, object, "told", R.tellConfidence, -0.4,
-                                 teller != kNone ? std::vector<EntityId>{teller} : std::vector<EntityId>{}, fact);
+                                 teller != kNone ? std::vector<EntityId>{teller} : std::vector<EntityId>{}, fact,
+                                 deedGoods(d));
                 wronged(w, doer, household, R.tellConfidence, R, "told");
             } else if (ownersSaw) {
                 wronged(w, doer, household, 1.0, R, "seen");
@@ -480,7 +495,7 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
                     nearby.push_back(id);
             Json data = {{"family", v.family}, {"object", object}, {"doer", doer.id}, {"tag", tags.front().tag},
                          {"nearby", nearby}, {"since", w.now()}, {"seen", seen}, {"x", at.x}, {"y", at.y},
-                         {"fact", fact}};
+                         {"fact", fact}, {"goods", deedGoods(d)}};
             w.schedule({w.now() + kTicksPerDay, 0, "deed_trail", doer.id, v.person, object, data});
         }
     }
@@ -540,9 +555,10 @@ void installConsequences(World& w) {
             return true;
         }
         // Found: remembered by the household, written down, a suspect sought.
+        const auto lost = e.data.value("goods", std::map<std::string, int>{});
         for (Character* m : household)
             remember(world, *m, "noticed_missing", kNone, kNone, e.obj, m == finder ? "seen" : "told", 1.0, -0.3, {},
-                     e.data.value("fact", kNone));
+                     e.data.value("fact", kNone), lost);
         world.chronicle("loss_noticed", {finder->id}, "chronicle.loss_noticed",
                         {{"owner", finder->id}, {"object", e.obj}, {"tag", e.data.value("tag", "")}});
         trace(world, *finder, 'S', "deed.loss_noticed", {{"object", e.obj}, {"tag", e.data.value("tag", "")}});
@@ -579,7 +595,7 @@ void installConsequences(World& w) {
         Character* sc = world.character(suspect);
         for (Character* m : household)
             remember(world, *m, "suspects", suspect, kNone, e.obj, m == finder ? "seen" : "told", conf, -0.3, {},
-                     e.data.value("fact", kNone)); // about that deed, whoever really did it
+                     e.data.value("fact", kNone), lost); // about that deed, whoever really did it
         world.chronicle("suspicion", {finder->id, suspect}, "chronicle.suspicion",
                         {{"owner", finder->id}, {"suspect", suspect}, {"object", e.obj}, {"confidence", conf}});
         trace(world, *finder, 'S', "deed.suspects", {{"suspect", suspect}, {"confidence", conf},

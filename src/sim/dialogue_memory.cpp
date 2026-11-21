@@ -30,7 +30,21 @@ std::optional<Ref> sourceRef(const World& w, const Character& self, const Memory
         r.id = id;
         return r;
     };
+    if (const size_t bar = src.find('|'); bar != std::string::npos) { // "goods|object": the first known
+        if (auto r = sourceRef(w, self, m, src.substr(0, bar))) return r;
+        return sourceRef(w, self, m, src.substr(bar + 1));
+    }
     if (src == "self") return charRef(self.id);
+    if (src == "goods") { // AL-58: what was taken, the most of it first (ties by name)
+        const std::pair<const std::string, int>* best = nullptr;
+        for (const auto& g : m.goods)
+            if (g.second > 0 && (!best || g.second > best->second)) best = &g;
+        if (!best) return std::nullopt;
+        Ref r;
+        r.kind = "item";
+        r.key = best->first;
+        return r;
+    }
     if (src == "who0" || src == "who1") {
         const size_t i = src == "who0" ? 0 : 1;
         if (m.who.size() <= i || m.who[i] == kNone) return std::nullopt;
@@ -151,7 +165,8 @@ std::string topicOf(const Prop& p) {
     if (p.fact != kNone) return "fact:" + std::to_string(p.fact);
     const Ref* doer = p.role("doer");
     const Ref* obj = p.role("object");
-    return p.pred + ":" + std::to_string(doer ? doer->id : kNone) + ":" + std::to_string(obj ? obj->id : kNone);
+    const std::string what = !obj ? "0" : obj->id != kNone ? std::to_string(obj->id) : obj->key;
+    return p.pred + ":" + std::to_string(doer ? doer->id : kNone) + ":" + what;
 }
 
 std::vector<Recollection> recall(const World& w, const Character& self, EntityId about, const DialogueGenData& d,

@@ -83,6 +83,10 @@ void passRumor(World& w, Character& from, Character& to, const ConsequenceRules&
 // memories of them, distorted ones, ones naming the wrong doer, mean drift, max chain.
 Json rumorReport(const World& w);
 
+// What a deed takes from the target's stock (item -> count), as the witnesses
+// and the owners know it (AL-58: "the flour", not "the storage").
+std::map<std::string, int> deedGoods(const InteractionDef& d);
+
 // Memory types about somebody's misdeed (who[0] = the doer).
 bool isDeedMemory(const std::string& type);
 

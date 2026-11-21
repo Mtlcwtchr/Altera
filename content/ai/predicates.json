@@ -1,5 +1,5 @@
 {
- "_doc": "Предикаты смысла реплик (AL-46, doc/design/DIALOGUE_GEN.md §3). Без слов: роли и их виды (char item object family place text num prop). Слова — во фреймах frame.<pred> в content/loc/<lang>/ (LOC v0.2, AL-47). id совпадает с pred факта мира (World facts, AL-37): легальный тег для проступков. scale — от слабого к сильному (шум слухов exaggerate/minimize, AL-50). memory — как MemoryEntry становится пропозицией: источники who0, who1, object, object_owner, self.",
+ "_doc": "Предикаты смысла реплик (AL-46, doc/design/DIALOGUE_GEN.md §3). Без слов: роли и их виды (char item object family place text num prop). Слова — во фреймах frame.<pred> в content/loc/<lang>/ (LOC v0.2, AL-47). id совпадает с pred факта мира (World facts, AL-37): легальный тег для проступков. scale — от слабого к сильному (шум слухов exaggerate/minimize, AL-50). memory — как MemoryEntry становится пропозицией: источники who0, who1, object, object_owner, self, goods (украденное, MemoryEntry.goods); a|b — первый известный (goods|object: мука, а если неизвестно что — само хранилище).",
  "predicates": [
   {"id": "take", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "scale": ["take", "theft", "banditry"]},
   {"id": "theft", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["theft"], "scale": ["take", "theft", "banditry"]},
@@ -16,11 +16,11 @@
   {"id": "think", "roles": {"thinker": "char", "content": "prop"}, "required": ["thinker", "content"]}
  ],
  "memory": [
-  {"type": "saw_crime", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}},
-  {"type": "told_crime", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}},
-  {"type": "rumor_crime", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}},
-  {"type": "suspects", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}, "modality": "guess"},
-  {"type": "noticed_missing", "pred": "lose", "roles": {"object": "object", "victim_family": "object_owner"}},
+  {"type": "saw_crime", "pred": "theft", "roles": {"doer": "who0", "object": "goods|object", "victim_family": "object_owner"}},
+  {"type": "told_crime", "pred": "theft", "roles": {"doer": "who0", "object": "goods|object", "victim_family": "object_owner"}},
+  {"type": "rumor_crime", "pred": "theft", "roles": {"doer": "who0", "object": "goods|object", "victim_family": "object_owner"}},
+  {"type": "suspects", "pred": "theft", "roles": {"doer": "who0", "object": "goods|object", "victim_family": "object_owner"}, "modality": "guess"},
+  {"type": "noticed_missing", "pred": "lose", "roles": {"object": "goods|object", "victim_family": "object_owner"}},
   {"type": "was_robbed", "pred": "theft", "roles": {"doer": "who0", "victim": "self"}},
   {"type": "saw_attack", "pred": "assault", "roles": {"doer": "who0", "victim": "who1"}},
   {"type": "saw_brawl", "pred": "assault", "roles": {"doer": "who0", "victim": "who1"}},
