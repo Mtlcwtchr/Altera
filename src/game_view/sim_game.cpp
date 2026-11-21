@@ -1572,8 +1572,13 @@ private:
                         if (d < bd) bd = d, best = &t;
                     }
                     if (best) {
-                        target_[0] = originX_ + best->x;
-                        target_[1] = originY_ + best->y;
+                        // AL-29: look at the thing from the person's side, back
+                        // and from above, not from inside its trunk or crown
+                        target_[0] = originX_ + (best->x + me->x) * 0.5;
+                        target_[1] = originY_ + (best->y + me->y) * 0.5;
+                        zoom_ = std::max(zoom_, 14.0 + 0.5 * bd);
+                        orbitPitch_ = std::max(orbitPitch_, 0.6);
+                        orbitYaw_ = std::atan2(best->y - me->y, best->x - me->x);
                         if (follow_) cameraFollow(false);
                         hud_.openThing(best->id, float(viewW_) * 0.5f, float(viewH_) * 0.45f);
                     }
