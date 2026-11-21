@@ -341,6 +341,8 @@ void from_json(const Json& j, Settlement& s) {
     s.squareR = j.value("square_r", d.squareR);
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, code, params)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Fact, id, tick, pred, roles, place, witnesses, evidence, tags, goods,
+                                                outcome)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MapGrid, sizeM, cellM, w, h, biomeNames, biome, water)
 
 void to_json(Json& j, const WorldObject& o) {
@@ -433,7 +435,8 @@ Json World::toJson() const {
                 {"events", ev},
                 {"pending", pending_},
                 {"command_log", commandLog_},
-                {"chronicle", chronicle_}};
+                {"chronicle", chronicle_},
+                {"facts", facts_}};
 }
 
 void World::loadJson(const Json& j) {
@@ -486,6 +489,15 @@ void World::loadJson(const Json& j) {
     pending_ = j.at("pending").get<std::vector<Command>>();
     commandLog_ = j.at("command_log").get<std::vector<Command>>();
     chronicle_ = j.at("chronicle").get<std::vector<ChronicleEntry>>();
+    facts_ = j.value("facts", std::vector<Fact>{});
+}
+
+Fact& World::addFact(Fact f) {
+    // own numbering, monotonic from 1 (0 = no fact): facts are never removed, an id is never reused
+    f.id = static_cast<EntityId>(facts_.size() + 1);
+    f.tick = tick_;
+    facts_.push_back(std::move(f));
+    return facts_.back();
 }
 
 std::uint64_t World::stateHash() const { return hashStr(toJson().dump()); }
