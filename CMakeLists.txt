@@ -341,6 +341,7 @@ add_library(altera_sim STATIC
         src/sim/ai_mind.cpp
         src/sim/ai_control.cpp
         src/sim/loc.cpp
+        src/sim/loc_gen.cpp
         src/sim/combat_bridge.cpp
         src/sim/wounds.cpp
         src/sim/aftermath.cpp
@@ -788,7 +789,7 @@ endif() # NOT ALTERA_SIM_ONLY
 if(ASR_BUILD_TESTS)
     enable_testing()
     add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp
-            tests/test_altera_sim_loc.cpp tests/test_altera_sim_content.cpp
+            tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
             tests/test_altera_sim_craft.cpp
