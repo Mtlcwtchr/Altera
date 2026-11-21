@@ -378,7 +378,7 @@ const std::vector<std::string>& traceCodes() {
         "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt",
         "dialog.accepted",     "dialog.refused",
         // AL-31 consequences
-        "deed.accuse_queued",  "deed.rumor_heard",         "deed.loss_noticed", "deed.suspects",
+        "deed.accuse_queued",  "deed.rumor_heard",  "deed.rumor_rejected",         "deed.loss_noticed", "deed.suspects",
         // AL-37 cases
         "deed.case_answer",    "deed.case_pursue",         "deed.case_to_judge", "deed.case_verdict",
         "act.outcome",         "control.steer_clamped"};
