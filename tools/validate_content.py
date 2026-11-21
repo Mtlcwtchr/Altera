@@ -101,6 +101,7 @@ def load_lang(d: Path, r):
     keys = {}
     if not d.is_dir(): return keys
     for p in sorted(d.glob("*.json")):
+        if p.name.startswith("_"): continue   # _grammar.json: grammar, not keys (LOC_FORMAT §7)
         try:
             for k, v in flatten(jload(p)).items():
                 if k in keys: r.warn(f"{d}: ключ {k} повторён (файл {p.name})")
