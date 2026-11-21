@@ -14,6 +14,7 @@
 #include <string>
 
 #include "sim/dialogue_gen.hpp"
+#include "sim/dialogue_rules.hpp"
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
 #include "sim/loc_gen.hpp"
@@ -66,6 +67,10 @@ int main(int argc, char** argv) {
         for (const auto& w : dv.warnings) std::cerr << "warning: " << w << "\n";
         for (const auto& e : dv.errors) std::cerr << "error: " << e << "\n";
         if (!dv.ok()) return 1;
+        const ValidationReport rv = validateDialogueRules(dialogueGenData(content), &content);
+        for (const auto& w : rv.warnings) std::cerr << "warning: " << w << "\n";
+        for (const auto& e : rv.errors) std::cerr << "error: " << e << "\n";
+        if (!rv.ok()) return 1;
         {   // LOC v0.2 (AL-47): a frame per predicate, frame roles known to the predicate
             std::vector<std::string> preds;
             std::map<std::string, std::vector<std::string>> roles;

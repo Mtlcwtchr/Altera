@@ -82,7 +82,9 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanStep, kind, ref, achieve, al
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(PlanAction, interaction, target, targetType, cost)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Plan, methods, steps, stepIndex, actions, actionIndex, stepReplans,
                                                 htnReplans, waits)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FsmState, state, interaction, target, dest, timer, started)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FsmState, state, interaction, target, dest, timer, started, anim)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SocialLink, chain, role, partner, phase, stage, until, since, expires,
+                                                place, tone, result)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(WeightMod, target, delta, created, ttl, decay, reason, source)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(QueuedTask, task, target, priority, created, ttl, reason, source)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TraceEntry, tick, layer, code, params)
@@ -91,7 +93,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(AiStats, goalTicks, failReasons,
                                                 goalSwitches, planFailures, idleReasons, lastGoalFail, methodUse)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(AiState, goal, plan, fsm, suspended, suspendedGoal, suspendedPlan, mods,
                                                 queue, methodFails, goalCooldown, trace, lastFailReason, nextThink,
-                                                stats)
+                                                stats, social, followAfter)
 
 void to_json(Json& j, const Character& c) {
     j = Json{{"id", c.id},
