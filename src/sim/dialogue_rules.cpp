@@ -48,7 +48,8 @@ const std::vector<std::string>& builtinFactKeys() {
         "act", "tone", "intent", "has_content", "pred", "pred.tag", "neg", "modality", "tense", "qty", "unit", "fact",
         "role.", "epi.source", "epi.conf", "epi.hops", "epi.age_days", "topic.age_days", "stance.valence",
         "stance.emphasis", "stance.politeness", "speaker.", "listener.", "rel.", "rel_back.", "memory.", "reputation.",
-        "time", "season", "said.", "said_to.", "heard.topic", "slot", "outcome", "reason", "place"};
+        "time", "season", "said.", "said_to.", "heard.topic", "slot", "outcome", "reason", "place",
+        "mode", "topic.kind", "commitment", "reply_to"};
     return k;
 }
 

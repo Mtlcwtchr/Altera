@@ -319,6 +319,10 @@ TEST(altera_dialogue_rules_providers) {
     CHECK(knownDialogueFact("listener.is_victim"));
     CHECK(!knownDialogueFact("speaker.favourite_colour"));
     CHECK(knownDialogueFact("said.greet.any"));
+    CHECK(knownDialogueFact("topic.kind"));
+    CHECK(knownDialogueFact("reply_to"));
+    CHECK(knownDialogueFact("commitment"));
+    CHECK(knownDialogueFact("mode"));
     registerFactProvider("test_weather", [](ContextFacts& f, const World&, const Utterance&) { f.set("weather.rain", "heavy"); },
                          {"weather."});
     CHECK(knownDialogueFact("weather.rain"));
