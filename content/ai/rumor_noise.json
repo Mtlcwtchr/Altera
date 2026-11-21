@@ -1,16 +1,67 @@
 {
- "_doc": "Шум слухов (doc/design/DIALOGUE_GEN.md §6). Операторы над пропозицией при пересказе; шанс = base * множители. Читает AL-50; до него файл только описывает параметры. swap_agent включён по умолчанию (решение пользователя 21.11), но редкий и только при низкой уверенности; правда всегда в фактах мира.",
+ "_doc": "Шум слухов (doc/design/DIALOGUE_GEN.md §6). Операторы над пропозицией при пересказе; шанс = base * множители. Читает src/sim/rumor_noise.cpp (AL-50). merge и prefer (кого подставить вместо виновника) применяет пересказ в consequences.cpp, ядро получает их готовыми в NoiseContext. swap_agent включён по умолчанию (решение пользователя 21.11), но редкий и только при низкой уверенности; правда всегда в фактах мира. Черты (trait) — множители шанса по чертам рассказчика (traits.json). Операторы идут в порядке attribute_shift, drop_detail, vague_theme, exaggerate, minimize, swap_agent, swap_victim, invert; на каждый всегда тратится один бросок.",
  "operators": {
-  "drop_detail":     {"base": 0.25, "per_hop": 0.1, "roles": ["tick", "qty"]},
-  "vague_theme":     {"base": 0.15, "below_conf": 0.6},
-  "exaggerate":      {"base": 0.08, "trait": {"gossip": 2.5}, "conf_delta": 0.05},
-  "minimize":        {"base": 0.08, "rel_affinity_doer_over": 0.4},
-  "swap_agent":      {"base": 0.04, "below_conf": 0.45, "prefer": ["enmity", "bad_name"]},
-  "swap_victim":     {"base": 0.03, "below_conf": 0.45},
-  "merge":           {"base": 0.1},
-  "invert":          {"base": 0.01, "below_conf": 0.3},
-  "attribute_shift": {"base": 0.2, "min_hops": 2}
+  "drop_detail": {
+   "base": 0.25,
+   "per_hop": 0.1,
+   "roles": [
+    "tick",
+    "qty",
+    "victim",
+    "victim_family"
+   ]
+  },
+  "vague_theme": {
+   "base": 0.15,
+   "below_conf": 0.6,
+   "trait": {
+    "gossipy": 0.7
+   }
+  },
+  "exaggerate": {
+   "base": 0.08,
+   "trait": {
+    "gossipy": 2.5,
+    "honest": 0.3
+   },
+   "conf_delta": 0.05
+  },
+  "minimize": {
+   "base": 0.08,
+   "rel_affinity_doer_over": 0.4
+  },
+  "swap_agent": {
+   "base": 0.04,
+   "below_conf": 0.45,
+   "prefer": [
+    "enmity",
+    "bad_name"
+   ],
+   "trait": {
+    "honest": 0.3
+   }
+  },
+  "swap_victim": {
+   "base": 0.03,
+   "below_conf": 0.45
+  },
+  "merge": {
+   "base": 0.1
+  },
+  "invert": {
+   "base": 0.01,
+   "below_conf": 0.3
+  },
+  "attribute_shift": {
+   "base": 0.2,
+   "min_hops": 2
+  }
  },
- "check_own_memory": {"discard_if_seen": true, "trust_penalty": -0.1},
- "surface": {"enabled": true}
+ "check_own_memory": {
+  "discard_if_seen": true,
+  "trust_penalty": -0.1
+ },
+ "surface": {
+  "enabled": true
+ }
 }
