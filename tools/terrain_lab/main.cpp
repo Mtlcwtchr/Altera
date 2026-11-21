@@ -1518,9 +1518,9 @@ int main(int argc, char** argv) {
     if (!SDL_Init(SDL_INIT_VIDEO)) { std::fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 1; }
     if (!options.headless) {
         // AL-29: the game's window is called by the game's name
-        // AL-29: the window can be dragged to any size; the targets follow it every frame
+        // the targets follow the window's pixel size every frame, so the game's window may be resized
         window = SDL_CreateWindow(options.game ? "Altera" : "terrain_lab", int(options.width), int(options.height),
-                                  SDL_WINDOW_RESIZABLE);
+                                  options.game ? SDL_WINDOW_RESIZABLE : 0);
         if (!window) { std::fprintf(stderr, "window: %s\n", SDL_GetError()); return 1; }
     }
     int code = 0;

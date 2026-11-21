@@ -29,20 +29,6 @@ TEST(altera_sim_collide_blocks) {
     CHECK(!o.blocked(20, 5.6, 0.3));   // past the wall's end
 }
 
-// AL-29: the camera's line of sight stops before a trunk, passes over what is
-// lower than it, and leaves the thing it starts inside.
-TEST(altera_sim_collide_sight_hit) {
-    Obstacles o;
-    o.add(Circle{5, 0, 0.3, 14.0});           // a tree halfway
-    o.add(Box{0, 20, 2, 2, 0, 1.0});           // a low pile
-    CHECK(std::fabs(o.sightHit(0, 0, 1.2, 10, 0, 6, 0.5, 0) - 1.0) > 0.4);
-    const double t = o.sightHit(0, 0, 1.2, 10, 0, 6, 0.5, 0);
-    CHECK(t > 0.3 && t < 0.45);                // just before the trunk (4.2 m of 10)
-    CHECK(o.sightHit(0, 10, 1.2, 10, 10, 6, 0.5, 0) == 1.0);   // nothing on that line
-    CHECK(o.sightHit(0, 16, 3.0, 0, 26, 8, 0.5, 0) == 1.0);    // over the pile
-    CHECK(o.sightHit(5.2, 0, 1.2, 15, 0, 6, 0.5, 0) == 1.0);   // starts at the trunk, looks away
-}
-
 TEST(altera_sim_collide_slides_along_wall) {
     Obstacles o;
     o.add(Wall{0, -10, 0, 10, 0.15});

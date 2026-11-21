@@ -15,18 +15,16 @@
 
 namespace altera::sim::collide {
 
-// `top`: how high the thing stands above the ground, metres (only lines of
-// sight look at it, see Obstacles::sightHit).
 struct Circle {
-    double x = 0, y = 0, r = 0, top = 2.0;
+    double x = 0, y = 0, r = 0;
 };
 // A box turned by yaw (radians, its local x axis at yaw from the world's x).
 struct Box {
-    double x = 0, y = 0, hx = 0, hy = 0, yaw = 0, top = 2.0;
+    double x = 0, y = 0, hx = 0, hy = 0, yaw = 0;
 };
 // A wall: the segment a-b, `half` thick to each side.
 struct Wall {
-    double ax = 0, ay = 0, bx = 0, by = 0, half = 0.15, top = 2.0;
+    double ax = 0, ay = 0, bx = 0, by = 0, half = 0.15;
 };
 
 using Point = std::pair<double, double>;
@@ -60,13 +58,6 @@ public:
               double margin = 12.0, int maxNodes = 60000) const;
     // True when a disc can go straight from one point to the other (sampled every r/2).
     bool clearLine(double fx, double fy, double tx, double ty, double r) const;
-    // A line of sight from (fx, fy, fz) to (tx, ty, tz), a ball of radius r
-    // along it (a camera from what it looks at to where it would stand): the
-    // fraction of the way, 0..1, it gets before a thing standing higher than the
-    // line there (its `top` over `ground`) is in the way. Things the line starts
-    // inside are passed until it is out of them; the ground is not looked at.
-    // 1 when nothing is in the way.
-    double sightHit(double fx, double fy, double fz, double tx, double ty, double tz, double r, double ground) const;
 
 private:
     // The deepest overlap of a disc with one thing: the way out (unit) and how far.

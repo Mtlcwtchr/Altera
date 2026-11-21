@@ -900,19 +900,9 @@ public:
         cam.pitch = -orbitPitch_;
         const double f[3] = {std::cos(cam.pitch) * std::cos(cam.yaw), std::cos(cam.pitch) * std::sin(cam.yaw),
                              std::sin(cam.pitch)};
-        // AL-29: a trunk, a house or a wall between the person and the camera
-        // pulls the camera in front of it (at once), and lets it back out slowly.
-        double dist = zoom_;
-        if (zoom_ < 120.0 && obstacles_.size() > 0) {
-            const double far[3] = {target_[0] - f[0] * zoom_, target_[1] - f[1] * zoom_, tz - f[2] * zoom_};
-            const double t = obstacles_.sightHit(target_[0], target_[1], tz, far[0], far[1], far[2], kCameraRadius,
-                                                 tz - 1.2);
-            dist = std::max(1.2, zoom_ * t);
-        }
-        camDist_ = dist < camDist_ || camDist_ <= 0 ? dist : std::min(dist, camDist_ + (2.0 + camDist_) * dt);
-        cam.eye[0] = target_[0] - f[0] * camDist_;
-        cam.eye[1] = target_[1] - f[1] * camDist_;
-        cam.eye[2] = std::max(tz - f[2] * camDist_, groundAt(cam.eye[0], cam.eye[1]) + 1.5);
+        cam.eye[0] = target_[0] - f[0] * zoom_;
+        cam.eye[1] = target_[1] - f[1] * zoom_;
+        cam.eye[2] = std::max(tz - f[2] * zoom_, groundAt(cam.eye[0], cam.eye[1]) + 1.5);
     }
 
     // ---- direct control ------------------------------------------------------
@@ -1304,19 +1294,19 @@ public:
         for (const auto& t : shown_.things) {
             const double wx = originX_ + t.x, wy = originY_ + t.y;
             const std::uint64_t h = std::uint64_t(t.id) * 0x9E3779B97F4A7C15ull;
-            if (t.type == "tree" || t.type == "bee_tree") obstacles_.add(collide::Circle{wx, wy, 0.28, 14.0});
-            else if (t.type == "oak_grove") obstacles_.add(collide::Circle{wx, wy, 0.4, 16.0});
-            else if (t.type == "fruit_tree") obstacles_.add(collide::Circle{wx, wy, 0.2, 5.0});
-            else if (t.type == "riverbank") obstacles_.add(collide::Circle{wx, wy, 0.9, 0.0});
+            if (t.type == "tree" || t.type == "bee_tree") obstacles_.add(collide::Circle{wx, wy, 0.28});
+            else if (t.type == "oak_grove") obstacles_.add(collide::Circle{wx, wy, 0.4});
+            else if (t.type == "fruit_tree") obstacles_.add(collide::Circle{wx, wy, 0.2});
+            else if (t.type == "riverbank") obstacles_.add(collide::Circle{wx, wy, 0.9});
             else if (t.type == "deadwood")
-                obstacles_.add(collide::Box{wx, wy, 1.15, 0.3, double((h >> 8) % 628) / 100.0, 0.8});
+                obstacles_.add(collide::Box{wx, wy, 1.15, 0.3, double((h >> 8) % 628) / 100.0});
             else if (const int pp = propPiece(t.type); pp >= 0 && !walkThrough(t.type)) {
                 // a stand-in model (AL-11): its footprint as drawn (yaw and size as buildInstances has them)
                 float hx = 0, hy = 0;
                 props_.halfSize(pp, hx, hy);
                 const double var = 0.85 + 0.3 * double((h >> 20) % 100) / 100.0;
                 if (hx > 0.15 && hy > 0.15)
-                    obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, double((h >> 8) % 628) / 100.0, 1.5});
+                    obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, double((h >> 8) % 628) / 100.0});
             }
         }
         for (const auto& b0 : buildings_) {
@@ -1327,11 +1317,11 @@ public:
             const double wx = originX_ + b.x, wy = originY_ + b.y;
             if (b.type == "field" || b.type == "garden") continue;
             if (b.type == "hearth") {
-                obstacles_.add(collide::Circle{wx, wy, 0.6, 0.5});
+                obstacles_.add(collide::Circle{wx, wy, 0.6});
                 continue;
             }
             if (b.type == "village_fire") {
-                obstacles_.add(collide::Circle{wx, wy, 1.1, 1.0});
+                obstacles_.add(collide::Circle{wx, wy, 1.1});
                 continue;
             }
             float hx = 0, hy = 0;
@@ -1340,8 +1330,7 @@ public:
                 hx = b.type == "house" ? 4.0f : b.type == "storage" ? 2.25f : 0.8f;
                 hy = b.type == "house" ? 3.0f : b.type == "storage" ? 2.0f : 0.8f;
             }
-            obstacles_.add(collide::Box{wx, wy, double(hx) * 0.95, double(hy) * 0.95, double(yaw),
-                                         b.type == "house" ? 6.5 : b.type == "storage" ? 4.5 : 2.5});
+            obstacles_.add(collide::Box{wx, wy, double(hx) * 0.95, double(hy) * 0.95, double(yaw)});
         }
         const BuildCatalog& cat = content_->build;
         for (const auto& [id, p] : shown_.pieces) {
@@ -1354,9 +1343,9 @@ public:
                 const int r = ((p.rot % 4) + 4) % 4;
                 const double dx = r == 1 ? 1 : r == 3 ? -1 : 0, dy = r == 0 ? -1 : r == 2 ? 1 : 0;
                 const double ax = -dy * cat.cellM * 0.5, ay = dx * cat.cellM * 0.5;   // along the edge
-                obstacles_.add(collide::Wall{wx - ax, wy - ay, wx + ax, wy + ay, 0.18, 3.2});
+                obstacles_.add(collide::Wall{wx - ax, wy - ay, wx + ax, wy + ay, 0.18});
             } else if (d->slot == "corner" || d->category == "pillar") {
-                obstacles_.add(collide::Circle{wx, wy, 0.22, 3.2});
+                obstacles_.add(collide::Circle{wx, wy, 0.22});
             }
         }
         obstacles_.walkable = [this](double x, double y) {
@@ -1583,8 +1572,13 @@ private:
                         if (d < bd) bd = d, best = &t;
                     }
                     if (best) {
-                        target_[0] = originX_ + best->x;
-                        target_[1] = originY_ + best->y;
+                        // AL-29: look at the thing from the person's side, back
+                        // and from above, not from inside its trunk or crown
+                        target_[0] = originX_ + (best->x + me->x) * 0.5;
+                        target_[1] = originY_ + (best->y + me->y) * 0.5;
+                        zoom_ = std::max(zoom_, 14.0 + 0.5 * bd);
+                        orbitPitch_ = std::max(orbitPitch_, 0.6);
+                        orbitYaw_ = std::atan2(best->y - me->y, best->x - me->x);
                         if (follow_) cameraFollow(false);
                         hud_.openThing(best->id, float(viewW_) * 0.5f, float(viewH_) * 0.45f);
                     }
@@ -4585,8 +4579,6 @@ private:
     double scriptWalk_[3] = {0, 0, 0};
     bool scriptRun_ = false;
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
-    double camDist_ = 0;   // the camera's distance as drawn: zoom_, or less when something stands in the way
-    static constexpr double kCameraRadius = 0.6;
     float vp_[16] = {};
     double eye_[3] = {};
     std::uint32_t viewW_ = 1, viewH_ = 1;
