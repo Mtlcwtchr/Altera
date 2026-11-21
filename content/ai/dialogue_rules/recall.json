@@ -1,0 +1,18 @@
+{
+ "_doc": "AL-38 (через AL-49): NPC вспоминают проступки и добро собеседника в приветствии, отказе, торге и согласии. Факты memory.* и listener.reputation.* даёт addMemoryFacts (src/sim/dialogue_memory.hpp). Строки recall.* — content/loc/<lang>/dialogue_recall.json; полный набор вариантов — AL-51.",
+ "rules": [
+  {"id": "greet.recall.theft_mine", "when": ["act=greet", "memory.deed.tag=theft|banditry", "memory.deed.mine", "memory.deed.conf>=0.5", "memory.wariness>=0.15"], "say": "recall.greet.theft_mine", "cooldown": "pair:2d"},
+  {"id": "greet.recall.seen", "when": ["act=greet", "memory.deed", "memory.deed.source=seen", "memory.wariness>=0.15"], "say": "recall.greet.seen", "cooldown": "pair:2d"},
+  {"id": "greet.recall.rumor", "when": ["act=greet", "memory.deed", "memory.deed.source=rumor|told|heard", "memory.wariness>=0.15"], "say": "recall.greet.rumor", "cooldown": "pair:2d"},
+  {"id": "greet.recall.violence", "when": ["act=greet", "memory.deed.tag=assault|murder", "memory.deed.conf>=0.5", "memory.wariness>=0.15"], "say": "recall.greet.violence", "cooldown": "pair:1d"},
+  {"id": "greet.recall.bad_name", "when": ["act=greet", "!memory.deed", "listener.reputation.honesty<=-0.3"], "say": "recall.greet.bad_name", "cooldown": "pair:3d"},
+  {"id": "greet.recall.kindness", "when": ["act=greet", "!memory.deed", "memory.kind", "memory.kind.mine"], "say": "recall.greet.kindness", "cooldown": "pair:3d"},
+  {"id": "refuse.recall.deed", "when": ["act=refuse", "memory.deed", "memory.wariness>=0.15"], "say": "recall.refuse.deed"},
+  {"id": "refuse.recall.rumor", "when": ["act=refuse", "memory.deed", "memory.deed.source=rumor", "memory.wariness>=0.15"], "say": "recall.refuse.rumor"},
+  {"id": "refuse.recall.theft_mine", "when": ["act=refuse", "memory.deed.tag=theft|banditry", "memory.deed.mine", "memory.wariness>=0.15"], "say": "recall.refuse.theft_mine"},
+  {"id": "bargain.recall.deed", "when": ["act=bargain", "memory.deed", "memory.wariness>=0.15"], "say": "recall.bargain.deed"},
+  {"id": "bargain.recall.mine", "when": ["act=bargain", "memory.deed", "memory.deed.mine", "memory.wariness>=0.15"], "say": "recall.bargain.mine"},
+  {"id": "accept.recall.deed", "when": ["act=accept", "memory.deed", "memory.wariness>=0.15"], "say": "recall.accept.deed"},
+  {"id": "accept.recall.kindness", "when": ["act=accept", "!memory.deed", "memory.kind", "memory.kind.mine"], "say": "recall.accept.kindness"}
+ ]
+}

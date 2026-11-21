@@ -11,6 +11,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/justice.hpp"
+#include "sim/dialogue_gen.hpp"
 
 namespace fs = std::filesystem;
 
@@ -69,8 +70,11 @@ bool knowsOf(const Character& c, const std::string& type, EntityId doer, EntityI
 }
 
 void remember(World& w, Character& c, const std::string& type, EntityId doer, EntityId victim, EntityId object,
-              const std::string& source, double confidence, double valence) {
+              const std::string& source, double confidence, double valence, std::vector<EntityId> chain = {},
+              EntityId fact = kNone) {
     MemoryEntry m;
+    m.chain = std::move(chain);
+    m.fact = fact;
     m.type = type;
     m.who = {doer};
     if (victim != kNone) m.who.push_back(victim);
@@ -265,7 +269,8 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
                     }
                 for (Character* m : household)
                     if (!knowsOf(*m, "", doer.id, object))
-                        remember(w, *m, "told_crime", doer.id, teller, object, "told", R.tellConfidence, -0.4);
+                        remember(w, *m, "told_crime", doer.id, teller, object, "told", R.tellConfidence, -0.4,
+                                 teller != kNone ? std::vector<EntityId>{teller} : std::vector<EntityId>{});
                 wronged(w, doer, household, R.tellConfidence, R, "told");
             } else if (ownersSaw) {
                 wronged(w, doer, household, 1.0, R, "seen");
@@ -301,8 +306,12 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
             if (!best) return;
             const MemoryEntry heard = *best;
             const double conf = heard.confidence * R.rumorDecay;
+            // AL-49: the teller goes first in the chain, the fact travels with the word
+            std::vector<EntityId> chain = {from.id};
+            for (EntityId id : heard.chain)
+                if (chain.size() < Epistemic::kMaxChain && id != to.id) chain.push_back(id);
             remember(w, to, "rumor_crime", heard.who[0], heard.who.size() > 1 ? heard.who[1] : kNone, heard.object,
-                     "rumor", conf, -0.2);
+                     "rumor", conf, -0.2, std::move(chain), heard.fact);
             relTo(to, heard.who[0], R.rumorTrust * conf, 0.0);
             trace(w, to, 'S', "deed.rumor_heard", {{"doer", heard.who[0]}, {"from", from.id}, {"confidence", conf}});
             // the wronged hear who did it
