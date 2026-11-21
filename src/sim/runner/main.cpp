@@ -11,6 +11,7 @@
 #include <iostream>
 #include <string>
 
+#include "sim/dialogue_gen.hpp"
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
 #include "sim/worldgen.hpp"
@@ -58,6 +59,10 @@ int main(int argc, char** argv) {
         for (const auto& w : lv.warnings) std::cerr << "warning: " << w << "\n";
         for (const auto& e : lv.errors) std::cerr << "error: " << e << "\n";
         if (!lv.ok()) return 1;
+        const ValidationReport dv = validateDialogueGen(dialogueGenData(content), &content, &loc);
+        for (const auto& w : dv.warnings) std::cerr << "warning: " << w << "\n";
+        for (const auto& e : dv.errors) std::cerr << "error: " << e << "\n";
+        if (!dv.ok()) return 1;
         if (!loc.hasLanguage(lang))
             std::cerr << "warning: no loc table for '" << lang << "', using " << loc.fallback() << "\n";
         if (validateOnly) {
