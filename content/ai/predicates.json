@@ -1,11 +1,11 @@
 {
  "_doc": "Предикаты смысла реплик (AL-46, doc/design/DIALOGUE_GEN.md §3). Без слов: роли и их виды (char item object family place text num prop). Слова — во фреймах frame.<pred> в content/loc/<lang>/ (LOC v0.2, AL-47). id совпадает с pred факта мира (World facts, AL-37): легальный тег для проступков. scale — от слабого к сильному (шум слухов exaggerate/minimize, AL-50). memory — как MemoryEntry становится пропозицией: источники who0, who1, object, object_owner, self.",
  "predicates": [
-  {"id": "take", "roles": {"doer": "char", "object": ["object", "item"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "scale": ["take", "theft", "banditry"]},
-  {"id": "theft", "roles": {"doer": "char", "object": ["object", "item"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["theft"], "scale": ["take", "theft", "banditry"]},
-  {"id": "banditry", "roles": {"doer": "char", "object": ["object", "item"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["banditry"], "scale": ["take", "theft", "banditry"]},
-  {"id": "trespass", "roles": {"doer": "char", "object": ["object", "item"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["trespass"]},
-  {"id": "poaching", "roles": {"doer": "char", "object": ["char", "item"], "victim_family": "family"}, "required": ["doer"], "tags": ["poaching"]},
+  {"id": "take", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "scale": ["take", "theft", "banditry"]},
+  {"id": "theft", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["theft"], "scale": ["take", "theft", "banditry"]},
+  {"id": "banditry", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["banditry"], "scale": ["take", "theft", "banditry"]},
+  {"id": "trespass", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["trespass"]},
+  {"id": "poaching", "roles": {"doer": "char", "object": ["char", "item", "text"], "victim_family": "family"}, "required": ["doer"], "tags": ["poaching"]},
   {"id": "lose", "roles": {"object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["object"]},
   {"id": "insult", "roles": {"doer": "char", "victim": "char"}, "required": ["doer"], "tags": ["insult"], "scale": ["insult", "assault"]},
   {"id": "assault", "roles": {"doer": "char", "victim": "char"}, "required": ["doer"], "tags": ["assault"], "scale": ["insult", "assault", "murder"]},
