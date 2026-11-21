@@ -1,5 +1,6 @@
 #include "game_view/saves.hpp"
 
+#include <algorithm>
 #include <cstdlib>
 #include <fstream>
 #include <stdexcept>
@@ -119,13 +120,17 @@ GameSettings loadSettings() {
         s.lang = j.value("lang", "");
         s.fullscreen = j.value("fullscreen", false);
         s.autosaveMin = j.value("autosave_min", 10);
+        s.control = std::clamp(j.value("control", 0), 0, 2);
+        s.cameraFollow = j.value("camera_follow", true);
+        s.idleAutonomyS = std::clamp(j.value("idle_autonomy_s", 20), 3, 600);
     } catch (const std::exception&) {
     }
     return s;
 }
 
 void storeSettings(const GameSettings& s) {
-    const sim::Json j{{"lang", s.lang}, {"fullscreen", s.fullscreen}, {"autosave_min", s.autosaveMin}};
+    const sim::Json j{{"lang", s.lang}, {"fullscreen", s.fullscreen}, {"autosave_min", s.autosaveMin},
+                      {"control", s.control}, {"camera_follow", s.cameraFollow}, {"idle_autonomy_s", s.idleAutonomyS}};
     std::string why;
     if (!writeFile(baseDir() / "settings.json", j.dump(1), &why)) SDL_Log("altera_game: settings: %s", why.c_str());
 }

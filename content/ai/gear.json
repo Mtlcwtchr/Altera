@@ -1,0 +1,662 @@
+{
+ "_doc": "What things weigh and how much room they take (cells of a grid, as in Diablo); what is worn where and in what layer (one thing a layer, the bulk of the layers against the slot's), the grids the worn bags add, what a body can carry. sim/gear.hpp reads it.",
+ "carry": {
+  "comfort_kg": 18,
+  "max_kg": 40,
+  "strength_attr": "strength",
+  "per_attr_kg": 10
+ },
+ "fatigue": {
+  "load_mult": 0.9,
+  "walk_per_km": 0.02,
+  "run_per_km": 0.07,
+  "climb_per_100m": 0.05
+ },
+ "hands": [
+  4,
+  3
+ ],
+ "slots": [
+  {
+   "id": "head",
+   "layers": [
+    "cap",
+    "helm"
+   ],
+   "bulk": 2
+  },
+  {
+   "id": "torso",
+   "layers": [
+    "under",
+    "padding",
+    "armour",
+    "over"
+   ],
+   "bulk": 5
+  },
+  {
+   "id": "legs",
+   "layers": [
+    "under",
+    "armour"
+   ],
+   "bulk": 3
+  },
+  {
+   "id": "feet",
+   "layers": [
+    "shoes"
+   ],
+   "bulk": 1
+  },
+  {
+   "id": "hands",
+   "layers": [
+    "gloves"
+   ],
+   "bulk": 1
+  },
+  {
+   "id": "waist",
+   "layers": [
+    "belt"
+   ],
+   "bulk": 1
+  },
+  {
+   "id": "shoulder",
+   "layers": [
+    "bag"
+   ],
+   "bulk": 1
+  },
+  {
+   "id": "back",
+   "layers": [
+    "pack"
+   ],
+   "bulk": 1
+  }
+ ],
+ "default": {
+  "kg": 0.5,
+  "size": [
+   1,
+   1
+  ]
+ },
+ "items": {
+  "berries": {
+   "kg": 0.03,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "roots": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "mushrooms": {
+   "kg": 0.05,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "meal": {
+   "kg": 0.4,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "firewood": {
+   "kg": 1.5,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "branch": {
+   "kg": 0.4,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "log": {
+   "kg": 15,
+   "size": [
+    2,
+    3
+   ]
+  },
+  "stone": {
+   "kg": 1.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "clay": {
+   "kg": 1.0,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "reeds": {
+   "kg": 0.2,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "thatch": {
+   "kg": 2.0,
+   "size": [
+    2,
+    2
+   ]
+  },
+  "fiber_raw": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "bast_fiber": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "cord": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "thread": {
+   "kg": 0.02,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "cloth": {
+   "kg": 0.4,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "stone_blade": {
+   "kg": 0.3,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "digging_stick": {
+   "kg": 0.6,
+   "size": [
+    1,
+    3
+   ]
+  },
+  "axe": {
+   "kg": 1.6,
+   "size": [
+    1,
+    3
+   ]
+  },
+  "spindle": {
+   "kg": 0.2,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "loom": {
+   "kg": 2.0,
+   "size": [
+    2,
+    3
+   ]
+  },
+  "needle": {
+   "kg": 0.01,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "tunic": {
+   "kg": 0.6,
+   "size": [
+    2,
+    2
+   ],
+   "wear": {
+    "slot": "torso",
+    "layer": "under",
+    "bulk": 1
+   }
+  },
+  "cloak": {
+   "kg": 1.5,
+   "size": [
+    2,
+    3
+   ],
+   "wear": {
+    "slot": "torso",
+    "layer": "over",
+    "bulk": 1
+   }
+  },
+  "household_idol": {
+   "kg": 1.0,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "herbs": {
+   "kg": 0.05,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "bandage": {
+   "kg": 0.05,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "remedy": {
+   "kg": 0.2,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "hide": {
+   "kg": 4.0,
+   "size": [
+    2,
+    3
+   ]
+  },
+  "artifact": {
+   "kg": 1.0,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "spear": {
+   "kg": 2.2,
+   "size": [
+    1,
+    4
+   ]
+  },
+  "carcass": {
+   "kg": 30.0,
+   "size": [
+    3,
+    4
+   ]
+  },
+  "meat": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "fish": {
+   "kg": 0.6,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "smoked_fish": {
+   "kg": 0.4,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "dried_meat": {
+   "kg": 0.3,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "dried_berries": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "grain": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "fishing_line": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "snare": {
+   "kg": 0.2,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "seed_grain": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "sheaf": {
+   "kg": 4.0,
+   "size": [
+    2,
+    3
+   ]
+  },
+  "vegetables": {
+   "kg": 3.0,
+   "size": [
+    2,
+    2
+   ]
+  },
+  "seed_veg": {
+   "kg": 0.2,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "eggs": {
+   "kg": 0.06,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "milk": {
+   "kg": 1.0,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "cheese": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "hay": {
+   "kg": 5.0,
+   "size": [
+    2,
+    3
+   ]
+  },
+  "acorns": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "hazelnuts": {
+   "kg": 0.05,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "wild_greens": {
+   "kg": 0.05,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "honey": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "apples": {
+   "kg": 0.15,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "bread": {
+   "kg": 0.4,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "ale": {
+   "kg": 1.0,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "cider": {
+   "kg": 1.0,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "mead": {
+   "kg": 1.0,
+   "size": [
+    1,
+    2
+   ]
+  },
+  "dried_herbs": {
+   "kg": 0.05,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "coin": {
+   "kg": 0.005,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "gambeson": {
+   "kg": 3.5,
+   "size": [
+    2,
+    3
+   ],
+   "wear": {
+    "slot": "torso",
+    "layer": "padding",
+    "bulk": 1
+   }
+  },
+  "leather_armour": {
+   "kg": 6.0,
+   "size": [
+    2,
+    3
+   ],
+   "wear": {
+    "slot": "torso",
+    "layer": "armour",
+    "bulk": 2
+   }
+  },
+  "mail_shirt": {
+   "kg": 10.0,
+   "size": [
+    2,
+    3
+   ],
+   "wear": {
+    "slot": "torso",
+    "layer": "armour",
+    "bulk": 2
+   }
+  },
+  "felt_cap": {
+   "kg": 0.2,
+   "size": [
+    1,
+    1
+   ],
+   "wear": {
+    "slot": "head",
+    "layer": "cap",
+    "bulk": 1
+   }
+  },
+  "helmet": {
+   "kg": 2.0,
+   "size": [
+    2,
+    2
+   ],
+   "wear": {
+    "slot": "head",
+    "layer": "helm",
+    "bulk": 1
+   }
+  },
+  "trousers": {
+   "kg": 0.5,
+   "size": [
+    2,
+    2
+   ],
+   "wear": {
+    "slot": "legs",
+    "layer": "under",
+    "bulk": 1
+   }
+  },
+  "boots": {
+   "kg": 1.2,
+   "size": [
+    2,
+    2
+   ],
+   "wear": {
+    "slot": "feet",
+    "layer": "shoes",
+    "bulk": 1
+   }
+  },
+  "belt": {
+   "kg": 0.3,
+   "size": [
+    2,
+    1
+   ],
+   "wear": {
+    "slot": "waist",
+    "layer": "belt",
+    "bulk": 1
+   },
+   "grid": [
+    4,
+    1
+   ]
+  },
+  "satchel": {
+   "kg": 0.6,
+   "size": [
+    2,
+    2
+   ],
+   "wear": {
+    "slot": "shoulder",
+    "layer": "bag",
+    "bulk": 1
+   },
+   "grid": [
+    3,
+    3
+   ]
+  },
+  "backpack": {
+   "kg": 1.4,
+   "size": [
+    3,
+    3
+   ],
+   "wear": {
+    "slot": "back",
+    "layer": "pack",
+    "bulk": 1
+   },
+   "grid": [
+    5,
+    5
+   ]
+  },
+  "pack_basket": {
+   "kg": 0.8,
+   "size": [
+    2,
+    2
+   ],
+   "wear": {
+    "slot": "back",
+    "layer": "pack",
+    "bulk": 1
+   },
+   "grid": [
+    4,
+    4
+   ]
+  }
+ }
+}

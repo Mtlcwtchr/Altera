@@ -46,6 +46,25 @@ public:
     std::size_t count() const { return patches_.size(); }
     std::uint64_t gpuBytes() const { return gpuBytes_; }
 
+    // Pads the game lays over the ground at run time: a building's level
+    // site with its approaches eased into the land, a field levelled and
+    // dug. Dense, row 0 south; each texel a height over `base` and a weight
+    // (1: the pad's own height, 0: the land as it was). Replaces the last
+    // set, after the file's patches; then open() again to upload them (the
+    // clipmap must be made again where they lie). False when the file's
+    // relief was too big to keep beside them.
+    struct Pad {
+        double x0 = 0, y0 = 0;   // south-west corner, metres
+        float texel = 0.5f, base = 0;
+        std::uint32_t width = 0, height = 0;
+        std::vector<float> rise, weight;   // width * height each: over base (m), 0..1
+    };
+    bool setPads(const std::vector<Pad>& pads, double spacing);
+    // The ground at (x, y) metres with the pads laid on (as the generator
+    // lays them at the finest level), `ground` the land without them.
+    float overPads(double x, double y, float ground) const;
+    std::uint64_t padVersion() const { return padVersion_; }
+
 private:
     struct Patch {
         std::int32_t originX, originY;   // corner, in the finest spacing's texels
@@ -57,6 +76,11 @@ private:
     };
     std::vector<Patch> patches_;
     std::vector<std::uint32_t> texels_;
+    // the file's own patches and texels, kept for setPads (unless too big)
+    std::size_t filePatches_ = 0, fileTexels_ = 0;
+    bool fileKept_ = true;
+    std::vector<Pad> pads_;   // as set, for overPads on the CPU
+    std::uint64_t padVersion_ = 0;
     engine::Buffer patchBuffer_, texelBuffer_;
     std::uint64_t gpuBytes_ = 0;
 };

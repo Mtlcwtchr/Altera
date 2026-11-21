@@ -14,6 +14,7 @@
 
 #include "sim/backstory.hpp"
 #include "sim/ai.hpp"
+#include "sim/gear.hpp"
 
 namespace altera::sim {
 
@@ -254,14 +255,30 @@ bool handle(World& w, Command& cmd) {
         if (c->ai.fsm.state == "Fight") return cmd.result = "rejected:fighting", true;
         if (c->ai.goal.valid()) dropGoal(w, *c, "steered_by_player", false);
         const double s = w.map().sizeM;
+        const Vec2 was = c->pos;
         c->pos = {std::clamp(cmd.args.at("x").get<double>(), 0.0, s), std::clamp(cmd.args.at("y").get<double>(), 0.0, s)};
         c->controller.idleSince = w.now();
+        // Walking tires, running more, uphill and under a load more still (gear.json).
+        if (const GearRules* R = gearRules(w.content())) {
+            const double km = std::min(dist(was, c->pos), 60.0) / 1000.0;
+            const double climb = std::max(0.0, cmd.args.value("climb", 0.0));
+            const double tire = (km * (cmd.args.value("run", false) ? R->runPerKm : R->walkPerKm) +
+                                 std::min(climb, 30.0) / 100.0 * R->climbPer100m) *
+                                loadFatigueMult(*R, *c);
+            c->body.fatigue = std::clamp(c->body.fatigue + tire, 0.0, 1.0);
+        }
         return true;
     }
     if (t == "set_free_will") {
         Character* c = w.character(cmd.args.at("id").get<EntityId>());
         if (!c) throw std::runtime_error("no such character");
         c->controller.freeWill = cmd.args.at("on").get<bool>();
+        // `now`: the player has been idle long enough already (the game counts
+        // its own seconds): free will takes over at the next think.
+        if (c->controller.freeWill && cmd.args.value("now", false)) {
+            c->controller.idleSince = w.now() - cfg.playerIdleResumeTicks;
+            c->ai.nextThink = w.now();
+        }
         return true;
     }
     return false;

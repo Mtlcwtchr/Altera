@@ -1,5 +1,6 @@
 #include "terrain_core/relief.hpp"
 
+#include <algorithm>
 #include <cmath>
 #include <cstring>
 #include <fstream>
@@ -77,7 +78,84 @@ bool Relief::load(const std::filesystem::path& file, double spacing, std::string
         }
         patches_.push_back(p);
     }
+    filePatches_ = patches_.size();
+    fileTexels_ = texels_.size();
     return true;
+}
+
+namespace {
+
+std::uint16_t toHalf(float f) {
+    std::uint32_t x;
+    std::memcpy(&x, &f, 4);
+    const std::uint32_t sign = (x >> 16) & 0x8000u;
+    const int e = int((x >> 23) & 0xff) - 127 + 15;
+    std::uint32_t m = x & 0x7fffffu;
+    if (e <= 0) return std::uint16_t(sign);   // too small: zero
+    if (e >= 31) return std::uint16_t(sign | 0x7c00u);
+    m += 0x1000u;   // round to nearest
+    if (m & 0x800000u) {
+        m = 0;
+        if (e + 1 >= 31) return std::uint16_t(sign | 0x7c00u);
+        return std::uint16_t(sign | (std::uint32_t(e + 1) << 10));
+    }
+    return std::uint16_t(sign | (std::uint32_t(e) << 10) | (m >> 13));
+}
+
+} // namespace
+
+bool Relief::setPads(const std::vector<Pad>& pads, double spacing) {
+    if (!fileKept_) return false;
+    patches_.resize(filePatches_);
+    texels_.resize(fileTexels_);
+    pads_.clear();
+    for (const Pad& d : pads) {
+        if (d.width == 0 || d.height == 0 || !(d.texel > 0)) continue;
+        const std::size_t n = std::size_t(d.width) * d.height;
+        if (d.rise.size() != n || d.weight.size() != n) continue;
+        Patch p{};
+        p.originX = std::int32_t(std::lround(d.x0 / spacing));
+        p.originY = std::int32_t(std::lround(d.y0 / spacing));
+        p.width = d.width;
+        p.height = d.height;
+        p.texel = d.texel;
+        p.base = d.base;
+        p.offset = std::uint32_t(texels_.size());
+        p.tile = 0;
+        for (std::size_t k = 0; k < n; ++k)
+            texels_.push_back(std::uint32_t(toHalf(d.rise[k])) |
+                              (std::uint32_t(toHalf(std::clamp(d.weight[k], 0.0f, 1.0f))) << 16));
+        patches_.push_back(p);
+        Pad kept = d;
+        kept.x0 = double(p.originX) * spacing;   // where the GPU has it
+        kept.y0 = double(p.originY) * spacing;
+        pads_.push_back(std::move(kept));
+    }
+    ++padVersion_;
+    return true;
+}
+
+float Relief::overPads(double x, double y, float ground) const {
+    float h = ground;
+    for (const Pad& d : pads_) {
+        const double qx = (x - d.x0) / d.texel - 0.5, qy = (y - d.y0) / d.texel - 0.5;
+        if (qx < -0.5 || qy < -0.5 || qx >= double(d.width) - 0.5 || qy >= double(d.height) - 0.5) continue;
+        const int cx = int(std::floor(qx)), cy = int(std::floor(qy));
+        const float fx = float(qx - cx), fy = float(qy - cy);
+        auto at = [&](const std::vector<float>& v, int i, int j) {
+            i = std::clamp(i, 0, int(d.width) - 1);
+            j = std::clamp(j, 0, int(d.height) - 1);
+            return v[std::size_t(j) * d.width + std::size_t(i)];
+        };
+        auto bil = [&](const std::vector<float>& v) {
+            const float a = at(v, cx, cy), b = at(v, cx + 1, cy), c = at(v, cx, cy + 1), e = at(v, cx + 1, cy + 1);
+            return (a + (b - a) * fx) + ((c + (e - c) * fx) - (a + (b - a) * fx)) * fy;
+        };
+        const float w = std::clamp(bil(d.weight), 0.0f, 1.0f);
+        if (w <= 0) continue;
+        h = h + (d.base + bil(d.rise) - h) * w;
+    }
+    return h;
 }
 
 bool Relief::open(engine::Device& device, std::string* why) {
@@ -93,8 +171,13 @@ bool Relief::open(engine::Device& device, std::string* why) {
         return false;
     }
     gpuBytes_ = std::max<std::size_t>(patches_.size(), 1) * sizeof(Patch) + std::max<std::size_t>(texels_.size(), 1) * 4;
-    texels_.clear();
-    texels_.shrink_to_fit();
+    // The texels stay for setPads (the game's pads go after them), unless the
+    // file's relief is big (a canyon's windows): then they go, and no pads.
+    if (fileTexels_ * 4 > (std::size_t(256) << 20)) {
+        texels_.clear();
+        texels_.shrink_to_fit();
+        fileKept_ = false;
+    }
     return true;
 }
 

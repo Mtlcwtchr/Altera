@@ -1,0 +1,123 @@
+{
+ "item.gambeson.name": {
+  "nom": "стёганка",
+  "gen": "стёганки",
+  "dat": "стёганке",
+  "acc": "стёганку",
+  "ins": "стёганкой",
+  "pre": "стёганке"
+ },
+ "item.leather_armour.name": {
+  "nom": "кожаный доспех",
+  "gen": "кожаного доспеха",
+  "dat": "кожаному доспеху",
+  "acc": "кожаный доспех",
+  "ins": "кожаным доспехом",
+  "pre": "кожаном доспехе"
+ },
+ "item.mail_shirt.name": {
+  "nom": "кольчуга",
+  "gen": "кольчуги",
+  "dat": "кольчуге",
+  "acc": "кольчугу",
+  "ins": "кольчугой",
+  "pre": "кольчуге"
+ },
+ "item.felt_cap.name": {
+  "nom": "войлочная шапка",
+  "gen": "войлочной шапки",
+  "dat": "войлочной шапке",
+  "acc": "войлочную шапку",
+  "ins": "войлочной шапкой",
+  "pre": "войлочной шапке"
+ },
+ "item.helmet.name": {
+  "nom": "шлем",
+  "gen": "шлема",
+  "dat": "шлему",
+  "acc": "шлем",
+  "ins": "шлемом",
+  "pre": "шлеме"
+ },
+ "item.trousers.name": {
+  "nom": "штаны",
+  "gen": "штанов",
+  "dat": "штанам",
+  "acc": "штаны",
+  "ins": "штанами",
+  "pre": "штанах"
+ },
+ "item.boots.name": {
+  "nom": "сапоги",
+  "gen": "сапог",
+  "dat": "сапогам",
+  "acc": "сапоги",
+  "ins": "сапогами",
+  "pre": "сапогах"
+ },
+ "item.belt.name": {
+  "nom": "пояс с подсумками",
+  "gen": "пояса с подсумками",
+  "dat": "поясу с подсумками",
+  "acc": "пояс с подсумками",
+  "ins": "поясом с подсумками",
+  "pre": "поясе с подсумками"
+ },
+ "item.satchel.name": {
+  "nom": "сума",
+  "gen": "сумы",
+  "dat": "суме",
+  "acc": "суму",
+  "ins": "сумой",
+  "pre": "суме"
+ },
+ "item.backpack.name": {
+  "nom": "заплечный мешок",
+  "gen": "заплечного мешка",
+  "dat": "заплечному мешку",
+  "acc": "заплечный мешок",
+  "ins": "заплечным мешком",
+  "pre": "заплечном мешке"
+ },
+ "item.pack_basket.name": {
+  "nom": "заплечный короб",
+  "gen": "заплечного короба",
+  "dat": "заплечному коробу",
+  "acc": "заплечный короб",
+  "ins": "заплечным коробом",
+  "pre": "заплечном коробе"
+ },
+ "hud.gear.title": "Вещи: {name}",
+ "hud.gear.none": "Вес и место вещей не заданы (content/ai/gear.json)",
+ "hud.gear.body": "На теле",
+ "hud.gear.hands": "В руках",
+ "hud.gear.take_off": "снять: {what}",
+ "hud.gear.kg": "{kg} кг",
+ "hud.gear.wear_hint": "ПКМ: надеть",
+ "hud.gear.load": "Груз: {kg} кг",
+ "hud.gear.light": "Легко: силы уходят как обычно",
+ "hud.gear.heavy": "Тяжело: работа и дорога утомляют x{x}, шаг медленнее",
+ "hud.gear.over": "Перегруз: бегать нельзя, больше не поднять",
+ "hud.gear.no_room": "Не помещается: {what}",
+ "hud.gear.not_yours": "Это не ваш персонаж: вещами распоряжается он сам",
+ "hud.gear.keys": "Перетащить: другое место · R: повернуть · ПКМ: надеть · клик по надетому: снять · I: закрыть",
+ "hud.gear.slot.head": "Голова",
+ "hud.gear.slot.torso": "Тело",
+ "hud.gear.slot.legs": "Ноги",
+ "hud.gear.slot.feet": "Ступни",
+ "hud.gear.slot.hands": "Кисти",
+ "hud.gear.slot.waist": "Пояс",
+ "hud.gear.slot.shoulder": "Плечо",
+ "hud.gear.slot.back": "Спина",
+ "hud.gear.layer.cap": "шапка",
+ "hud.gear.layer.helm": "шлем",
+ "hud.gear.layer.under": "исподнее",
+ "hud.gear.layer.padding": "поддоспешник",
+ "hud.gear.layer.armour": "доспех",
+ "hud.gear.layer.over": "верх",
+ "hud.gear.layer.shoes": "обувь",
+ "hud.gear.layer.gloves": "перчатки",
+ "hud.gear.layer.belt": "пояс",
+ "hud.gear.layer.bag": "сума",
+ "hud.gear.layer.pack": "мешок"
+}

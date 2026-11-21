@@ -268,6 +268,15 @@ struct Character {
     std::map<std::string, double> reputation; // reputation:<axis>, -1..1 (config.reputation_axes)
     Status status;
     std::map<std::string, int> inventory;
+    // What of the inventory is worn ("slot:layer" -> item) and where the
+    // player put things in the grids (sim/gear.hpp); saved only when set.
+    std::map<std::string, std::string> worn;
+    struct GearPin {
+        std::string grid;
+        int x = 0, y = 0;
+        bool turned = false;
+    };
+    std::map<std::string, GearPin> gearPins;
     std::vector<Wound> wounds;
     std::vector<Injury> injuries;
     Vec2 pos;

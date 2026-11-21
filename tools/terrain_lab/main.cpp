@@ -853,6 +853,12 @@ struct Lab {
         float unjittered[16];
         std::memcpy(unjittered, view.viewProjection, sizeof unjittered);
         const auto selectStart = Clock::now();
+        // The game laid pads on the ground (a building's site, a field): the
+        // relief has them now, and the clipmap is made again over them.
+        if (game && game->terrainChanged()) {
+            renderer.setRelief(&relief);
+            clipmap.invalidate();
+        }
         const auto rects = clipmap.follow(camera.eye);
         const Selection selection = select(p, macro, clipmap, camera.eye, frustumFrom(view.viewProjection));
         if (useDlss) dlss.jitter(view.viewProjection);
@@ -1537,6 +1543,7 @@ int main(int argc, char** argv) {
             go.season = options.gameSeason;
             go.biomes = &lab.biomes;
             go.rivers = &lab.riverSegments;
+            go.relief = &lab.relief;
 #ifdef ALTERA_SOURCE_DIR
             go.root = ALTERA_SOURCE_DIR;
 #else

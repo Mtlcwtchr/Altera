@@ -15,7 +15,7 @@
 #include "terrain_core/lighting.hpp"
 
 namespace engine { class Device; }
-namespace terrain_core { class MacroMap; class BiomeMap; struct Params; struct RiverSegment; }
+namespace terrain_core { class MacroMap; class BiomeMap; struct Params; struct RiverSegment; class Relief; }
 
 namespace altera::game {
 
@@ -42,6 +42,9 @@ public:
     // Over the finished frame (after post and PSX), before it goes to the screen.
     virtual void drawOverlay(SDL_GPUCommandBuffer* commands, SDL_GPUTexture* target, std::uint32_t width,
                              std::uint32_t height) = 0;
+    // True once after the game laid new pads on the ground (GameOptions::relief,
+    // opened again): the view binds the relief and makes its clipmap again.
+    virtual bool terrainChanged() { return false; }
 };
 
 struct GameOptions {
@@ -54,6 +57,9 @@ struct GameOptions {
     const terrain_core::BiomeMap* biomes = nullptr;
     // The river graph (terrain_core/hydrology.hpp): rivers are water on the sim's map (fish, drinking).
     const std::vector<terrain_core::RiverSegment>* rivers = nullptr;
+    // The view's fine relief (terrain_core/relief.hpp): the game lays its
+    // pads on it (building sites, fields). None: the ground stays as it is.
+    terrain_core::Relief* relief = nullptr;
 };
 
 // The life-sim (altera_sim) on a region of the world centred on (x, y) metres.

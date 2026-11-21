@@ -100,14 +100,19 @@
   "k_len": 96,
   "k_hard": 97,
   "k_finish": 98,
-  "i_knife": 99,
-  "i_bread": 100,
-  "i_torch": 101,
-  "i_wood": 102,
-  "i_food": 103,
-  "i_herb": 104,
-  "i_stone": 105,
-  "i_cloth": 106,
-  "i_tool": 107
+  "ctl_keys": 99,
+  "ctl_mouse": 100,
+  "ctl_free": 101,
+  "cam_lock": 102,
+  "cam_free": 103,
+  "i_knife": 104,
+  "i_bread": 105,
+  "i_torch": 106,
+  "i_wood": 107,
+  "i_food": 108,
+  "i_herb": 109,
+  "i_stone": 110,
+  "i_cloth": 111,
+  "i_tool": 112
  }
 }
