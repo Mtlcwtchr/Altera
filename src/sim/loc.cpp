@@ -3,6 +3,8 @@
 
 #include "sim/loc.hpp"
 
+#include "sim/village_life.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -378,7 +380,7 @@ const std::vector<std::string>& traceCodes() {
         "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt",
         "dialog.accepted",     "dialog.refused",
         // AL-31 consequences
-        "deed.accuse_queued",  "deed.rumor_heard",         "deed.loss_noticed", "deed.suspects",
+        "deed.accuse_queued",  "deed.rumor_heard",  "deed.rumor_rejected",         "deed.loss_noticed", "deed.suspects",
         // AL-37 cases
         "deed.case_answer",    "deed.case_pursue",         "deed.case_to_judge", "deed.case_verdict",
         "act.outcome",         "control.steer_clamped"};
@@ -448,6 +450,7 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const char* mk : {"memory.saw_crime.text", "memory.told_crime.text", "memory.rumor_crime.text",
                            "memory.suspects.text", "memory.noticed_missing.text"})
         k.insert(mk);
+    for (const auto& vk : villageLifeLocKeys()) k.insert(vk); // AL-39
     if (c.craft.loaded)
         for (const auto& ck : craft::craftLocKeys(c.craft)) k.insert(ck);
     return {k.begin(), k.end()};
