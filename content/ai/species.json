@@ -46,7 +46,8 @@
      0.1,
      0.35
     ],
-    "chance": 0.5
+    "chance": 0.5,
+    "sated_days_after_kill": 20
    },
    "hunger_per_day": 0.5,
    "breed_every_days": 50,
@@ -98,13 +99,14 @@
     "hare",
     "boar"
    ],
-   "aggression": 0.6,
+   "aggression": 0.3,
    "attack": {
     "damage": [
      0.15,
      0.45
     ],
-    "chance": 0.45
+    "chance": 0.45,
+    "sated_days_after_kill": 20
    },
    "hunger_per_day": 0.45,
    "breed_every_days": 240,

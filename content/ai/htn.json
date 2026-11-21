@@ -50,6 +50,29 @@
      ]
     },
     {
+     "id": "eat_stored_vegetables_raw",
+     "_doc": "AL-30: ребёнок ест овощи из домашних запасов, а не уходит далеко за зеленью",
+     "pre": [
+      "age:child",
+      "home:vegetables>=2",
+      "known:storage"
+     ],
+     "cost": 2,
+     "steps": [
+      {
+       "achieve": [
+        "has:vegetables>=2"
+       ],
+       "allow": [
+        "take_vegetables"
+       ]
+      },
+      {
+       "do": "eat_vegetables"
+      }
+     ]
+    },
+    {
      "id": "ask_family_for_food",
      "pre": [],
      "cost": 4,

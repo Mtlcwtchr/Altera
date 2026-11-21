@@ -249,4 +249,13 @@ TEST(altera_sim_consequences_skill_gain_curve) {
     small->skills["cooking"] = 0.0;
     applyEffectList(w, *small, {e}, nullptr);
     CHECK_EQ(small->skills["cooking"], 0.0);
+    // a child (6..14) learns, but slower than a grown-up from the same start
+    kid.body.ageDays = 10 * kDaysPerYear;
+    kid.skills["cooking"] = 0.0;
+    applyEffectList(w, kid, {e}, nullptr);
+    CHECK(kid.skills["cooking"] > 0.0 && kid.skills["cooking"] < low * 0.5);
+    // above one's talent (at most 0.95) practice gives next to nothing
+    adult->skills["cooking"] = 0.97;
+    applyEffectList(w, *adult, {e}, nullptr);
+    CHECK(adult->skills["cooking"] - 0.97 < 0.1 * 0.3 * 0.03 * 0.03 * 0.7);
 }

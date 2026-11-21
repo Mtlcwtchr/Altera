@@ -72,6 +72,7 @@
  "interaction.eat_berries.name": "Eat berries",
  "interaction.eat_meal.name": "Eat a meal",
  "interaction.eat_roots.name": "Eat raw roots",
+ "interaction.eat_vegetables.name": "Eat stored vegetables raw",
  "interaction.gather_berries.name": "Pick berries",
  "interaction.gather_branches.name": "Gather branches",
  "interaction.gather_fiber.name": "Gather nettles",
