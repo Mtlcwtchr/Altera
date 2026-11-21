@@ -101,3 +101,7 @@ __pycache__/
 content/animations/humanoid_ual/clips/
 # --- baked clips for the game (tools/game_assets/bake_people.py): same licences as the clips ---
 content/animations/humanoid_ual/baked/*.aanim
+
+# AL-11: dev-only Skyrim stand-ins baked from the local game (never commit Bethesda content)
+assets/altera_game/props/props.astm
+assets/altera_game/props/preview*.png

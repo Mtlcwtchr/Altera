@@ -1,0 +1,697 @@
+{
+ "_doc": "AL-11: dev-only models from the user's Skyrim SE (vanilla archives) standing in for every sim object and building, so play tests show what is where. EVERY entry is a placeholder: replace with our own art before release (replace_before_prod). piece = the sim object type (or the village building piece); nif = path inside Data/meshes; fit = largest horizontal size in metres, fit_h = height in metres (else scale); ground: min = lowest point on the ground, origin = the file's origin on the ground; note = why this stand-in.",
+ "source": "Skyrim Special Edition (Bethesda), Data/*.bsa",
+ "replace_before_prod": true,
+ "pieces": [
+  {
+   "piece": "house_daub",
+   "nif": "architecture/farmhouse/farmhouse01.nif",
+   "fit": 13.0,
+   "ground": "origin",
+   "ok": true,
+   "size_m": [
+    13.0,
+    6.51,
+    6.86
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "house_stone",
+   "nif": "architecture/farmhouse/farmhouse03.nif",
+   "fit": 13.0,
+   "ground": "origin",
+   "ok": true,
+   "size_m": [
+    13.0,
+    10.36,
+    8.38
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "house_log",
+   "nif": "architecture/farmhouse/farmhouse05.nif",
+   "fit": 12.0,
+   "ground": "origin",
+   "ok": true,
+   "size_m": [
+    12.0,
+    11.36,
+    12.42
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "storage",
+   "nif": "architecture/farmhouse/farmhouse06.nif",
+   "fit": 8.0,
+   "ground": "origin",
+   "ok": true,
+   "size_m": [
+    8.0,
+    5.91,
+    6.67
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "hearth",
+   "nif": "clutter/woodfires/campfire01landoff.nif",
+   "fit": 1.6,
+   "ok": true,
+   "size_m": [
+    1.57,
+    1.6,
+    0.34
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "village_fire",
+   "nif": "clutter/woodfires/campfire01landburning.nif",
+   "fit": 2.6,
+   "ok": true,
+   "size_m": [
+    2.55,
+    2.6,
+    2.06
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "shrine",
+   "nif": "architecture/windhelm/whstatuetalos02.nif",
+   "fit": 2.5,
+   "note": "a statue for a village shrine",
+   "ok": true,
+   "size_m": [
+    2.07,
+    2.5,
+    2.89
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "tree",
+   "nif": "landscape/trees/treeaspen01.nif",
+   "fit_h": 11.0,
+   "ok": true,
+   "size_m": [
+    3.24,
+    3.16,
+    11.0
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "bee_tree",
+   "nif": "landscape/trees/treeaspen03.nif",
+   "fit": 6.0,
+   "ok": true,
+   "size_m": [
+    4.94,
+    6.0,
+    7.1
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "oak_grove",
+   "nif": "landscape/trees/treeaspen05.nif",
+   "fit_h": 13.0,
+   "ok": true,
+   "size_m": [
+    6.19,
+    6.84,
+    13.0
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "fruit_tree",
+   "nif": "landscape/trees/reachtree01.nif",
+   "fit": 4.5,
+   "ok": true,
+   "size_m": [
+    4.5,
+    4.19,
+    5.26
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "deadwood",
+   "nif": "landscape/trees/treeaspenlog01.nif",
+   "fit": 3.0,
+   "ok": true,
+   "size_m": [
+    1.3,
+    3.0,
+    1.01
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "riverbank",
+   "nif": "landscape/rocks/rockpilel01.nif",
+   "fit": 2.4,
+   "ok": true,
+   "size_m": [
+    1.44,
+    2.4,
+    1.02
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "rock_outcrop",
+   "nif": "landscape/rocks/rockpilel02.nif",
+   "fit": 4.0,
+   "ok": true,
+   "size_m": [
+    4.0,
+    3.98,
+    0.76
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "berry_bush",
+   "nif": "plants/florajuniper01.nif",
+   "fit": 1.4,
+   "ok": true,
+   "size_m": [
+    1.4,
+    1.39,
+    0.82
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "hazel_thicket",
+   "nif": "landscape/plants/reachbush01.nif",
+   "fit": 3.0,
+   "ok": true,
+   "size_m": [
+    3.0,
+    2.89,
+    2.21
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "root_patch",
+   "nif": "plants/floracanisroot01.nif",
+   "fit": 0.9,
+   "ok": true,
+   "size_m": [
+    0.62,
+    0.9,
+    0.52
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "mushroom_glade",
+   "nif": "plants/floraleek01.nif",
+   "fit": 0.8,
+   "note": "no field mushroom in vanilla: a leek clump",
+   "ok": true,
+   "size_m": [
+    0.59,
+    0.8,
+    0.4
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "reed_bed",
+   "nif": "landscape/grass/fieldgrass01.nif",
+   "fit": 2.0,
+   "note": "tall grass for reeds",
+   "ok": true,
+   "size_m": [
+    2.0,
+    1.51,
+    1.64
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "nettle_patch",
+   "nif": "plants/florathistle01.nif",
+   "fit": 1.0,
+   "ok": true,
+   "size_m": [
+    1.0,
+    0.93,
+    0.88
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "herb_patch",
+   "nif": "plants/floralavender01.nif",
+   "fit": 0.9,
+   "ok": true,
+   "size_m": [
+    0.89,
+    0.9,
+    0.65
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "wild_greens_patch",
+   "nif": "plants/floracabbage01.nif",
+   "fit": 0.8,
+   "ok": true,
+   "size_m": [
+    0.59,
+    0.8,
+    0.26
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "wild_grass",
+   "nif": "landscape/grass/forestgrass01.nif",
+   "fit": 1.6,
+   "ok": true,
+   "size_m": [
+    1.47,
+    1.6,
+    0.5
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "hay_meadow",
+   "nif": "clutter/hay/hayscatter01.nif",
+   "fit": 4.0,
+   "ok": true,
+   "size_m": [
+    4.0,
+    3.72,
+    0.0
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "campfire",
+   "nif": "clutter/woodfires/campfire01landoff.nif",
+   "fit": 1.6,
+   "ok": true,
+   "size_m": [
+    1.57,
+    1.6,
+    0.34
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "grave",
+   "nif": "architecture/riften/clutter/rtgravestone01.nif",
+   "fit": 1.0,
+   "ok": true,
+   "size_m": [
+    0.43,
+    1.0,
+    1.55
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "forge",
+   "nif": "clutter/smelter/smelter01.nif",
+   "fit": 2.2,
+   "note": "smelter as the forge",
+   "ok": true,
+   "size_m": [
+    1.63,
+    2.2,
+    1.43
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "furnace",
+   "nif": "clutter/smelter/smelter01.nif",
+   "fit": 2.0,
+   "ok": true,
+   "size_m": [
+    1.48,
+    2.0,
+    1.3
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "anvil",
+   "nif": "clutter/blacksmith/blacksmithanvil01.nif",
+   "fit": 0.9,
+   "ok": true,
+   "size_m": [
+    0.9,
+    0.77,
+    0.86
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "quench_tub",
+   "nif": "clutter/largerainbarrel01.nif",
+   "fit": 1.0,
+   "ok": true,
+   "size_m": [
+    0.92,
+    1.0,
+    1.24
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "grindstone",
+   "nif": "clutter/blacksmith/blacksmithsharpeningwheelstatic.nif",
+   "fit": 1.3,
+   "ok": true,
+   "size_m": [
+    0.45,
+    1.3,
+    0.77
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "workbench",
+   "nif": "furniture/blacksmithworkbench01.nif",
+   "fit": 2.0,
+   "ok": true,
+   "size_m": [
+    0.93,
+    2.0,
+    0.95
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "loom_frame",
+   "nif": "clutter/common/tanningrack01.nif",
+   "fit": 1.8,
+   "note": "no loom in vanilla: a frame",
+   "ok": true,
+   "size_m": [
+    1.8,
+    1.01,
+    1.92
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "weaving_frame",
+   "nif": "clutter/common/tanningrack01.nif",
+   "fit": 1.6,
+   "note": "no loom in vanilla: a frame",
+   "ok": true,
+   "size_m": [
+    1.6,
+    0.9,
+    1.71
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "potter_wheel",
+   "nif": "clutter/glazed02potterybase01.nif",
+   "fit": 0.6,
+   "note": "a pot for the potter's place",
+   "ok": true,
+   "size_m": [
+    0.6,
+    0.6,
+    0.52
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "wash_tub",
+   "nif": "clutter/bucket02a.nif",
+   "fit": 0.6,
+   "ok": true,
+   "size_m": [
+    0.59,
+    0.6,
+    0.75
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "cook_pot",
+   "nif": "clutter/common/cauldronstand.nif",
+   "fit": 1.2,
+   "ok": true,
+   "size_m": [
+    1.2,
+    0.94,
+    1.54
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "brewing_vat",
+   "nif": "clutter/brewerycasklargeopen01.nif",
+   "fit": 1.8,
+   "ok": true,
+   "size_m": [
+    1.8,
+    1.8,
+    1.35
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "storage_jar",
+   "nif": "clutter/glazed02potteryurn01.nif",
+   "fit": 0.5,
+   "ok": true,
+   "size_m": [
+    0.5,
+    0.5,
+    0.52
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "barrel_stand",
+   "nif": "clutter/barrel01.nif",
+   "fit": 0.8,
+   "ok": true,
+   "size_m": [
+    0.8,
+    0.8,
+    1.15
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "ale_barrel",
+   "nif": "clutter/meadery/meadbarrel01.nif",
+   "fit": 1.0,
+   "ok": true,
+   "size_m": [
+    0.78,
+    1.0,
+    0.87
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "drying_rack",
+   "nif": "architecture/whiterun/wrclutter/wrherbdryingrack01.nif",
+   "fit": 2.0,
+   "ok": true,
+   "size_m": [
+    1.14,
+    2.0,
+    0.83
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "mortar",
+   "nif": "animobjects/animobjectmortar.nif",
+   "fit": 0.4,
+   "ok": true,
+   "size_m": [
+    0.4,
+    0.31,
+    0.4
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "quern",
+   "nif": "_byoh/clutter/butterchurn/butterchurn01.nif",
+   "fit": 0.6,
+   "note": "no quern in vanilla: a churn",
+   "ok": true,
+   "size_m": [
+    0.6,
+    0.6,
+    1.81
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "tanning_pit",
+   "nif": "clutter/common/tanningrack01.nif",
+   "fit": 2.0,
+   "ok": true,
+   "size_m": [
+    2.0,
+    1.12,
+    2.13
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "oven",
+   "nif": "clutter/cookingspitfarmhouse01.nif",
+   "fit": 1.8,
+   "note": "no bread oven in vanilla: a cooking spit",
+   "ok": true,
+   "size_m": [
+    1.8,
+    0.6,
+    1.71
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "common_oven",
+   "nif": "clutter/cookingspitfarmhouse01.nif",
+   "fit": 2.2,
+   "ok": true,
+   "size_m": [
+    2.2,
+    0.73,
+    2.09
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "livestock_pen",
+   "nif": "architecture/farmhouse/fencewoven01.nif",
+   "fit": 4.0,
+   "ok": true,
+   "size_m": [
+    4.0,
+    0.18,
+    1.49
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "training_dummy",
+   "nif": "clutter/practicedummy/practicedummy01.nif",
+   "fit": 1.0,
+   "ok": true,
+   "size_m": [
+    1.0,
+    0.4,
+    2.26
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "archery_butts",
+   "nif": "clutter/common/archerytarget01.nif",
+   "fit": 1.4,
+   "ok": true,
+   "size_m": [
+    1.36,
+    1.4,
+    1.94
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "mill",
+   "nif": "architecture/solitude/swindmill.nif",
+   "fit_h": 14.0,
+   "ground": "origin",
+   "ok": true,
+   "size_m": [
+    13.62,
+    13.63,
+    14.0
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "build_site",
+   "nif": "clutter/common/sawhorse01.nif",
+   "fit": 1.6,
+   "ok": true,
+   "size_m": [
+    0.97,
+    1.6,
+    1.49
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "game_trail",
+   "nif": "clutter/bones/deerskullhornsstatic.nif",
+   "fit": 0.6,
+   "note": "an antlered skull marks the trail",
+   "ok": true,
+   "size_m": [
+    0.6,
+    0.54,
+    0.58
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "fish_pool",
+   "nif": "clutter/largerainbarrelwater01.nif",
+   "hide": true,
+   "note": "nothing drawn: the water shows it",
+   "ok": true,
+   "size_m": [
+    0.0,
+    0.0,
+    0.0
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "corpse",
+   "nif": "clutter/bones/deerskullstatic.nif",
+   "fit": 0.4,
+   "ok": true,
+   "size_m": [
+    0.4,
+    0.18,
+    0.15
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "well",
+   "nif": "architecture/farmhouse/farmwell01.nif",
+   "fit": 3.5,
+   "ground": "origin",
+   "note": "AL-7",
+   "ok": true,
+   "size_m": [
+    3.5,
+    3.5,
+    2.32
+   ],
+   "replace_before_prod": true
+  }
+ ]
+}
