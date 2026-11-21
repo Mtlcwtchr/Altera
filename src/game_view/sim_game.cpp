@@ -1213,6 +1213,13 @@ public:
     // settlement's buildings as they are drawn (turned boxes), the built
     // ground-floor walls and posts of the households' own building, the fires;
     // the ground: dry, not steeper than ~42 degrees, inside the sim's map.
+    // Low growth and ground cover one walks through.
+    static bool walkThrough(const std::string& ty) {
+        static const std::set<std::string> k = {"berry_bush", "root_patch", "mushroom_glade", "reed_bed", "nettle_patch",
+                                                "herb_patch", "wild_greens_patch", "wild_grass", "hay_meadow", "game_trail",
+                                                "fish_pool", "corpse", "hazel_thicket", "campfire"};
+        return k.count(ty) > 0;
+    }
     void rebuildObstacles() {
         std::size_t sig = buildings_.size() * 7919 + shown_.pieces.size() * 131 + (village_.loaded() ? 1 : 0);
         for (const auto& [id, p] : shown_.pieces) sig += p.built ? std::size_t(id) * 2654435761u : 0;
@@ -1230,6 +1237,14 @@ public:
             else if (t.type == "riverbank") obstacles_.add(collide::Circle{wx, wy, 0.9});
             else if (t.type == "deadwood")
                 obstacles_.add(collide::Box{wx, wy, 1.15, 0.3, double((h >> 8) % 628) / 100.0});
+            else if (const int pp = propPiece(t.type); pp >= 0 && !walkThrough(t.type)) {
+                // a stand-in model (AL-11): its footprint as drawn (yaw and size as buildInstances has them)
+                float hx = 0, hy = 0;
+                props_.halfSize(pp, hx, hy);
+                const double var = 0.85 + 0.3 * double((h >> 20) % 100) / 100.0;
+                if (hx > 0.15 && hy > 0.15)
+                    obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, double((h >> 8) % 628) / 100.0});
+            }
         }
         for (const auto& b0 : buildings_) {
             BuildingSnap b;
@@ -1247,7 +1262,7 @@ public:
                 continue;
             }
             float hx = 0, hy = 0;
-            if (mesh >= 0) village_.halfSize(mesh, hx, hy);
+            if (mesh >= 0) houseSet().halfSize(mesh, hx, hy);
             if (hx <= 0 || hy <= 0) {   // the placeholder blocks (no kit bake)
                 hx = b.type == "house" ? 4.0f : b.type == "storage" ? 2.25f : 0.8f;
                 hy = b.type == "house" ? 3.0f : b.type == "storage" ? 2.0f : 0.8f;
@@ -1305,6 +1320,7 @@ public:
         buildInstances();
         people_.prepare(commands, figures_);
         village_.prepare(commands, placed_);
+        props_.prepare(commands, propsPlaced_);
         for (auto& [k, set] : beasts_) set->prepare(commands, beastFigures_[k]);
         if (instances_.empty() || !instBuffer_) return;
         const std::uint32_t bytes = std::uint32_t(instances_.size() * sizeof(Instance));
@@ -1322,6 +1338,7 @@ public:
     void drawOpaque(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass,
                     const terrain_core::LightUniforms& light) override {
         village_.draw(commands, pass, vp_, light);
+        props_.draw(commands, pass, vp_, light);
         people_.draw(commands, pass, vp_, light);
         for (auto& [k, set] : beasts_) set->draw(commands, pass, vp_, light);
         if (instances_.empty() || !actorsPipe_) return;
@@ -3033,7 +3050,7 @@ private:
     // drawn on it). Laid as pads on the view's fine relief (terrain_core/relief.hpp),
     // which the clipmap then stands on - the ground, the grass, the shore.
     void layPads() {
-        if (!relief_ || !village_.loaded()) return;
+        if (!relief_ || !houseSet().loaded()) return;
         const std::size_t sig = buildings_.size() * 2654435761u + 1;
         if (sig == padSig_) return;
         padSig_ = sig;
@@ -3047,7 +3064,7 @@ private:
             const bool soil = b.type == "field" || b.type == "garden";
             if (b.type == "hearth" || b.type == "village_fire") continue;
             float hx = 0, hy = 0;
-            if (mesh >= 0) village_.halfSize(mesh, hx, hy);
+            if (mesh >= 0) houseSet().halfSize(mesh, hx, hy);
             if (hx <= 0 || hy <= 0) {
                 hx = b.type == "field" ? 20.0f : b.type == "garden" ? 6.0f : b.type == "house" ? 4.0f : 2.25f;
                 hy = b.type == "field" ? 15.0f : b.type == "garden" ? 5.0f : b.type == "house" ? 3.0f : 2.0f;
@@ -3431,7 +3448,7 @@ private:
             bd = d;
             hx0 = wx, hy0 = wy, yaw = yw;
             float a = 0, c = 0;
-            if (mesh >= 0) village_.halfSize(mesh, a, c);
+            if (mesh >= 0) houseSet().halfSize(mesh, a, c);
             if (a <= 0 || c <= 0) a = 4.0f, c = 3.0f;
             hx = a, hy = c;
         }
@@ -3491,7 +3508,7 @@ private:
             static const char* kHouses[] = {"house_daub", "house_stone", "house_log"};
             piece = kHouses[(h >> 9) % 3];
         }
-        mesh = village_.loaded() ? village_.piece(piece) : -1;
+        mesh = houseSet().loaded() ? houseSet().piece(piece) : -1;
         // the centre as the sim had it when the world opened (the sim thread owns the world now)
         const double dx = villageCentre_[0] - b.x, dy = villageCentre_[1] - b.y;
         yaw = (dx * dx + dy * dy > 1.0) ? float(std::atan2(dx, -dy)) : float((h % 4) * kPi * 0.5);
@@ -3513,7 +3530,7 @@ private:
             const double wx = originX_ + b.x, wy = originY_ + b.y;
             if (std::hypot(wx - eye_[0], wy - eye_[1]) > 900.0) continue;
             float hx = 0, hy = 0;
-            if (mesh >= 0) village_.halfSize(mesh, hx, hy);
+            if (mesh >= 0) houseSet().halfSize(mesh, hx, hy);
             const bool garden = b.type == "garden";
             if (hx <= 0 || hy <= 0) hx = garden ? 6.0f : 20.0f, hy = garden ? 5.0f : 15.0f;
             const double t = 2.0, c = std::cos(yaw), s = std::sin(yaw);
@@ -3543,7 +3560,6 @@ private:
     }
 
     void placeBuildings(double range) {
-        placed_.clear();
         for (const auto& b0 : buildings_) {
             BuildingSnap b;
             float yaw = 0;
@@ -3558,7 +3574,7 @@ private:
             pl.piece = id;
             pl.yaw = yaw;
             float hx, hy;
-            village_.halfSize(id, hx, hy);
+            houseSet().halfSize(id, hx, hy);
             double z = groundAt(wx, wy);
             const double r = std::min<double>(std::max(hx, hy), 6.0) * 0.8;
             for (int k = 0; k < 4; ++k) z = std::min(z, groundAt(wx + r * std::cos(k * kPi * 0.5 + 0.7), wy + r * std::sin(k * kPi * 0.5 + 0.7)));
@@ -3567,12 +3583,14 @@ private:
             pl.rel[2] = z - eye_[2];
             const float t = 0.92f + 0.16f * float((h >> 21) % 100) / 100.0f;
             pl.tint[0] = pl.tint[1] = pl.tint[2] = t;
-            placed_.push_back(pl);
+            housePlaced().push_back(pl);
         }
     }
 
     void buildInstances() {
         instances_.clear();
+        placed_.clear();
+        propsPlaced_.clear();
         figures_.clear();
         for (auto& [k, v] : beastFigures_) v.clear();
         const double nowS = std::chrono::duration<double>(Clock::now() - started_).count();
@@ -3679,8 +3697,20 @@ private:
                 in.colour[0] = r, in.colour[1] = g, in.colour[2] = b;
                 in.colour2[0] = r2, in.colour2[1] = g2, in.colour2[2] = b2;
             };
-            Mesh m = kTuft;
             const std::string& ty = t.type;
+            if (const int pp = propPiece(ty); pp >= 0) {
+                Placed pl;
+                pl.piece = pp;
+                pl.rel[0] = rx;
+                pl.rel[1] = ry;
+                pl.rel[2] = groundAt(wx, wy) - 0.03 - eye_[2];
+                pl.yaw = in.placeYaw[3];
+                pl.scale = var;
+                pl.highlight = in.scale[3];
+                propsPlaced_.push_back(pl);
+                continue;
+            }
+            Mesh m = kTuft;
             if (ty == "tree") m = kTree, col(0.36f, 0.26f, 0.17f, 0.17f, 0.30f, 0.14f);
             else if (ty == "bee_tree") m = kTree, col(0.33f, 0.24f, 0.16f, 0.24f, 0.31f, 0.13f);
             else if (ty == "oak_grove") m = kTree, col(0.30f, 0.23f, 0.16f, 0.24f, 0.35f, 0.13f), in.scale[0] *= 1.35f, in.scale[1] *= 1.35f, in.scale[2] *= 1.2f;
@@ -3700,12 +3730,10 @@ private:
             per[m].push_back(in);
         }
         soilTiles(per[kBlock]);
-        if (village_.loaded()) {
-            placeBuildings(range);
-            placePieces(range);
-        }
+        if (houseSet().loaded()) placeBuildings(range);
+        if (village_.loaded()) placePieces(range);
         for (const auto& b : buildings_) {
-            if (village_.loaded()) break;
+            if (houseSet().loaded()) break;
             const double wx = originX_ + b.x, wy = originY_ + b.y;
             const double rx = wx - eye_[0], ry = wy - eye_[1];
             if (rx * rx + ry * ry > range * range * 4) continue;
@@ -3840,6 +3868,13 @@ private:
             std::string whyVillage;
             if (!village_.load(device_, root / "assets/altera_game/buildings/buildings.astm", &whyVillage))
                 SDL_Log("altera_game: buildings stay placeholders: %s", whyVillage.c_str());
+            // AL-11: dev-only stand-ins from the local Skyrim (tools/game_assets/skyrim/convert.py):
+            // buildings and every sim object get a real model; absent, the kit and the blocks stay.
+            const fs::path propsFile = root / "assets/altera_game/props/props.astm";
+            if (fs::exists(propsFile)) {
+                std::string whyProps;
+                if (!props_.load(device_, propsFile, &whyProps)) SDL_Log("altera_game: no props: %s", whyProps.c_str());
+            }
             // Beasts with a bake of their own (hens and fish: tools/game_assets/proc_beasts.py).
             for (const char* sp : {"deer", "wolf", "hare", "boar", "pig", "goats", "hens", "fish_shoal"}) {
                 const fs::path base = root / "assets/altera_game/beasts" / sp;
@@ -4103,6 +4138,18 @@ private:
     std::map<EntityId, Anim> anims_;
     std::map<std::string, std::unique_ptr<SkinnedSet>> beasts_;
     StaticSet village_;
+    StaticSet props_;                 // AL-11 stand-ins (buildings + objects), when baked
+    std::vector<Placed> propsPlaced_;
+    // The set the settlement's buildings come from: the stand-ins when baked, else the kit.
+    const StaticSet& houseSet() const { return props_.loaded() && props_.piece("house_daub") >= 0 ? props_ : village_; }
+    std::vector<Placed>& housePlaced() { return &houseSet() == &props_ ? propsPlaced_ : placed_; }
+    int propPiece(const std::string& type) const {
+        if (!props_.loaded()) return -1;
+        auto it = propPiece_.find(type);
+        if (it == propPiece_.end()) it = propPiece_.emplace(type, props_.piece(type)).first;
+        return it->second;
+    }
+    mutable std::map<std::string, int> propPiece_;
     std::vector<Placed> placed_;
     std::map<std::string, int> pieceMesh_;
     int buildPick_ = 0, buildRot_ = 0, buildBump_ = 0;

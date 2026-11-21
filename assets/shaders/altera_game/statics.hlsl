@@ -45,6 +45,8 @@ VsOut staticsVs(VsIn v) {
 }
 
 float4 staticsPs(VsOut i) : SV_Target0 {
-    const float3 albedo = materials.Sample(materialSampler, i.uvl).rgb * i.tint;
+    const float4 texel = materials.Sample(materialSampler, i.uvl);
+    clip(texel.a - 0.5);   // leaves and grass cards cut out (opaque layers keep alpha 1)
+    const float3 albedo = texel.rgb * i.tint;
     return float4(gameShade(albedo, normalize(i.normal), i.rel, i.highlight), 1);
 }

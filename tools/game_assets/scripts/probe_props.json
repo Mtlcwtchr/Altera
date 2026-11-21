@@ -1,0 +1,13 @@
+[
+ {"at": 3, "backstory": "peasant"},
+ {"at": 4, "backstory_begin": true},
+ {"at": 8, "pause": true, "camera_follow": true, "zoom": 30, "pitch": 0.45, "yawDeg": 30},
+ {"at": 11, "shot": "props_01_village.png"},
+ {"at": 11.5, "zoom": 60, "pitch": 0.7, "yawDeg": 150},
+ {"at": 14, "shot": "props_02_village_far.png"},
+ {"at": 14.5, "zoom": 14, "pitch": 0.35, "yawDeg": 260},
+ {"at": 17, "shot": "props_03_close.png"},
+ {"at": 17.5, "aim_thing": "any"},
+ {"at": 20, "shot": "props_04_thing_ring.png"},
+ {"at": 21, "quit": true}
+]
