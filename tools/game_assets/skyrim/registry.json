@@ -329,8 +329,8 @@
     },
     {
      "species": "pig",
-     "nif": "actors/dlc02/boarriekling/character assets/boar.nif",
-     "note": "the Bristleback boar: the pig of Farm Animals and Co. (FarmBirds.bsa) is an Oldrim NIF the reader does not take"
+     "nif": "actors/cow/character assets/pig.nif",
+     "note": "Farm Animals and Co. (FarmBirds.bsa, an Oldrim NIF read by nif.py old_shape)"
     },
     {
      "species": "fish_shoal",

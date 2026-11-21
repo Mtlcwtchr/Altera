@@ -63,6 +63,7 @@ class Bsa:
         magic, ver, off, flags, nfold, nfile, foldlen, filelen, ftype = struct.unpack('<4sIIIIIIII', hdr)
         assert magic == b'BSA\0' and ver in (104, 105), (magic, ver)
         self.compressed = bool(flags & 0x4)
+        self.ver = ver   # 104: Oldrim and its mods (zlib), 105: SSE (LZ4 frames)
         self.embed = bool(flags & 0x100)
         folders = []
         for _ in range(nfold):
@@ -95,6 +96,9 @@ class Bsa:
             size -= n + 1
         if comp:
             orig = struct.unpack('<I', self.f.read(4))[0]
+            if self.ver == 104:
+                import zlib
+                return zlib.decompress(self.f.read(size - 4))
             return lz4_frame(self.f.read(size - 4))
         return self.f.read(size)
 

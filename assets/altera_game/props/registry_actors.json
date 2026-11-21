@@ -280,8 +280,9 @@
    {
     "species": "pig",
     "nif": "actors/cow/character assets/pig.nif",
-    "note": "Farm Animals and Co. (mod archive in Downloads)",
-    "ok": false
+    "note": "Farm Animals and Co. (FarmBirds.bsa, an Oldrim NIF read by nif.py old_shape)",
+    "ok": true,
+    "replace_before_prod": true
    },
    {
     "species": "fish_shoal",
