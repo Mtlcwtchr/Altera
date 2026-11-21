@@ -320,6 +320,7 @@ add_library(altera_sim STATIC
         src/sim/act_info.cpp
         src/sim/consequences.cpp
         src/sim/dialogue_gen.cpp
+        src/sim/dialogue_rules.cpp
         src/sim/rumor_noise.cpp
         src/sim/justice.cpp
         src/sim/gear.cpp
@@ -794,6 +795,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp
             tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
+            tests/test_altera_sim_dialogue_rules.cpp
             tests/test_altera_sim_rumor_noise.cpp
             tests/test_altera_sim_justice.cpp
             tests/test_altera_sim_social.cpp)
