@@ -1,0 +1,108 @@
+{
+ "_doc": "Бабблы (AL-53): что персонаж бормочет сам себе. Только для показа (chooseBark), в мир не пишется. Факты: speaker.need.<id> (1 = сыт/доволен), speaker.fsm, time, season, speaker.state.",
+ "rules": [
+  {
+   "id": "bark.any",
+   "when": [
+    "act=bark"
+   ],
+   "say": "bark.any_1"
+  },
+  {
+   "id": "bark.any2",
+   "when": [
+    "act=bark"
+   ],
+   "say": "bark.any_2"
+  },
+  {
+   "id": "bark.night",
+   "when": [
+    "act=bark",
+    "time=night"
+   ],
+   "say": "bark.night"
+  },
+  {
+   "id": "bark.winter",
+   "when": [
+    "act=bark",
+    "season=winter"
+   ],
+   "say": "bark.winter"
+  },
+  {
+   "id": "bark.hungry",
+   "when": [
+    "act=bark",
+    "speaker.need.hunger<0.3"
+   ],
+   "say": "bark.hungry_1"
+  },
+  {
+   "id": "bark.hungry2",
+   "when": [
+    "act=bark",
+    "speaker.need.hunger<0.3"
+   ],
+   "say": "bark.hungry_2"
+  },
+  {
+   "id": "bark.thirst",
+   "when": [
+    "act=bark",
+    "speaker.need.thirst<0.3"
+   ],
+   "say": "bark.thirst"
+  },
+  {
+   "id": "bark.tired",
+   "when": [
+    "act=bark",
+    "speaker.need.energy<0.25"
+   ],
+   "say": "bark.tired"
+  },
+  {
+   "id": "bark.cold",
+   "when": [
+    "act=bark",
+    "speaker.need.warmth<0.3"
+   ],
+   "say": "bark.cold"
+  },
+  {
+   "id": "bark.lonely",
+   "when": [
+    "act=bark",
+    "speaker.need.social<0.25"
+   ],
+   "say": "bark.lonely"
+  },
+  {
+   "id": "bark.bored",
+   "when": [
+    "act=bark",
+    "speaker.need.fun<0.2"
+   ],
+   "say": "bark.bored"
+  },
+  {
+   "id": "bark.starving",
+   "when": [
+    "act=bark",
+    "speaker.need.hunger<0.3",
+    "speaker.need.hunger<0.1"
+   ],
+   "say": "bark.starving"
+  },
+  {
+   "id": "bark.work",
+   "when": [
+    "act=bark",
+    "speaker.fsm=Work"
+   ],
+   "say": "bark.work"
+  }
+ ]
+}

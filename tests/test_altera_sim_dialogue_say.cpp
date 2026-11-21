@@ -140,3 +140,74 @@ TEST(altera_dialogue_say_fail_reaction_and_said_memory) {
     back.loadJson(j);
     CHECK(back.said() == w.said());
 }
+
+TEST(altera_dialogue_say_menu_topics_and_labels) {
+    World w = realWorld();
+    auto people = adults(w);
+    if (people.size() < 3) return;
+    Character& speaker = *people[0];
+    Character* listener = nullptr;
+    Character* thief = nullptr;
+    for (Character* c : people)
+        if (c != &speaker) (listener ? thief : listener) = (listener ? (thief ? thief : c) : c);
+    CHECK(listener && thief && listener != thief);
+    if (!listener || !thief) return;
+    WorldObject* store = nullptr;
+    for (auto& [id, o] : w.objects())
+        if (o.type == "storage" && o.ownerFamily != kNone && o.ownerFamily != thief->status.family) store = &o;
+    if (!store) return;
+    MemoryEntry m;
+    m.type = "saw_crime";
+    m.who = {thief->id};
+    m.object = store->id;
+    m.source = "seen";
+    m.confidence = 1.0;
+    m.valence = -0.6;
+    w.remember(speaker, m);
+    // to a third person: news; to the thief himself: an accusation
+    auto news = dialogueTopics(w, speaker, *listener);
+    CHECK(!news.empty());
+    if (!news.empty()) CHECK_EQ(news.front().act, std::string("inform"));
+    auto acc = dialogueTopics(w, speaker, *thief);
+    CHECK(!acc.empty());
+    if (acc.empty() || news.empty()) return;
+    CHECK_EQ(acc.front().act, std::string("accuse"));
+    for (const std::string lang : {"ru", "en"}) {
+        const std::string a = menuLabel(realLoc(), lang, w, speaker, *listener, news.front());
+        const std::string b = menuLabel(realLoc(), lang, w, speaker, *thief, acc.front());
+        CHECK(clean(a));
+        CHECK(clean(b));
+        CHECK(a != b);
+    }
+    // the agent gets the meaning, not words
+    Utterance u;
+    u.speaker = speaker.id;
+    u.listener = listener->id;
+    u.act = "inform";
+    u.content = news.front().prop;
+    const Json c = agentContent(u);
+    CHECK_EQ(c["kind"].get<std::string>(), std::string("fact"));
+    CHECK_EQ(c["params"]["pred"].get<std::string>(), std::string("theft"));
+    CHECK(c.contains("ref") && c.contains("epi"));
+    u.content.reset();
+    CHECK_EQ(agentContent(u)["kind"].get<std::string>(), std::string("none"));
+}
+
+TEST(altera_dialogue_say_barks_are_presentation_only) {
+    World w = realWorld();
+    auto people = adults(w);
+    if (people.empty()) return;
+    Character& c = *people[0];
+    c.needs["hunger"] = 0.05;
+    const std::uint64_t before = w.stateHash();
+    const SaidLine a = chooseBark(w, c);
+    const SaidLine b = chooseBark(w, c);
+    CHECK(a.ok());
+    CHECK_EQ(a.key, b.key); // the same tick, the same line
+    CHECK(a.rule.rfind("bark.", 0) == 0);
+    CHECK(a.rule == "bark.starving"); // the most specific: hunger < 0.1 beats < 0.3
+    CHECK_EQ(w.stateHash(), before);  // nothing written into the world
+    CHECK(clean(utteranceText(realLoc(), "ru", w, a.utterance, a.key)));
+    c.ai.fsm.state = "Sleep";
+    CHECK(!chooseBark(w, c).ok());
+}
