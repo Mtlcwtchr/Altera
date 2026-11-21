@@ -31,7 +31,6 @@
  "moodlet.in_love.name": "Влюблён{self:g||а}",
  "moodlet.new_parent.name": "Родился ребёнок",
  "moodlet.grieving.name": "В трауре",
- "moodlet.rejected.name": "Отвергнут{self:g||а}",
  "moodlet.ill_fever.name": "Лихорадка",
  "moodlet.ill_flux.name": "Понос",
  "moodlet.ill_cough.name": "Кашель"
