@@ -804,7 +804,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_justice.cpp
             tests/test_altera_sim_village_life.cpp
             tests/test_altera_sim_social.cpp
-            tests/test_altera_sim_dialogue_memory.cpp
+            tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
             tests/test_altera_cutaway.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)

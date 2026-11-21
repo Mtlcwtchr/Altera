@@ -1,0 +1,274 @@
+{
+ "_doc": "Generator lines, en (AL-52, mirror of ru say.json from AL-51, DIALOGUE_GEN §5, LOC v0.2). Key say.<act>.<situation>, value: an array of variants (picked by seed). Which key is said is decided by the rules in content/ai/dialogue_rules/*.json. Arguments: speaker, listener (with reg and addr), prop (the proposition said), src (whom the speaker heard it from, the nearest link of the chain), reason (refusal reason: a misdeed proposition or a string), item, price. part.epi.* are shared epistemic openers for own lines and mods. Register: plain rustic English with a light archaic touch; nobles get 'my lord / my lady'.",
+
+ "part.epi.seen":      ["I saw it myself", "I saw it with my own eyes", "As God is my witness, I saw it"],
+ "part.epi.told":      ["{src} told me", "I had it from {src}", "{src} said so, and {src:g|he|she} should know"],
+ "part.epi.rumor_hi":  ["They say", "Folk are saying", "The whole village is talking:"],
+ "part.epi.rumor_mid": ["I heard tell", "Word is", "Some say"],
+ "part.epi.rumor_lo":  ["There's idle talk that", "The wives at the well whisper that", "Folk babble, likely lies, that"],
+ "part.epi.guess":     ["Seems to me", "I've a feeling", "If you ask me"],
+
+ "say.inform.seen": [
+  "{>part.epi.seen}: {>prop}.",
+  "With my own eyes I saw it: {>prop}.",
+  "I was there and saw it all: {>prop}.",
+  "Not some tale from others, this: {>prop}."
+ ],
+ "say.inform.seen_victim": [
+  "{listener}, listen. {>part.epi.seen}: {>prop}.",
+  "You ought to know, {listener}: {>prop}. I saw it myself.",
+  "I'd rather not say it, but I must: {>prop}."
+ ],
+ "say.inform.told": [
+  "{>part.epi.told}: {>prop}.",
+  "{src} swears that {>prop}.",
+  "I trust {src}, and {src:g|he|she} says {>prop}."
+ ],
+ "say.inform.heard": [
+  "I heard that {>prop}.",
+  "I was told that {>prop}.",
+  "Someone told me {>prop}."
+ ],
+ "say.inform.rumor_hi": [
+  "{>part.epi.rumor_hi} {>prop}.",
+  "The whole village knows it: {>prop}.",
+  "Haven't you heard? {>prop}."
+ ],
+ "say.inform.rumor_mid": [
+  "{>part.epi.rumor_mid} {>prop}.",
+  "Word is {>prop}. Might even be true.",
+  "There's a rumour that {>prop}. I didn't see it myself."
+ ],
+ "say.inform.rumor_lo": [
+  "{>part.epi.rumor_lo} {>prop}, but who knows.",
+  "Can't say if it's true, but they babble that {>prop}.",
+  "Folk claim {>prop}. I wouldn't believe it."
+ ],
+ "say.inform.guess": [
+  "{>part.epi.guess}, {>prop}.",
+  "I can't prove it, but I think {>prop}.",
+  "I've a hunch {>prop}. Don't ask me how."
+ ],
+ "say.inform.guess_theft": [
+  "No thief till he's caught, but seems to me {>prop}.",
+  "Hand on heart, I didn't see it. But I think {>prop}.",
+  "Things don't walk off on their own. Seems to me {>prop}."
+ ],
+ "say.inform.inferred": [
+  "I didn't see it, but it all points one way: {>prop}.",
+  "Tracks don't lie: {>prop}.",
+  "Put two and two together and you get it: {>prop}."
+ ],
+ "say.inform.grave_rumor": [
+  "Have you heard? {>prop}. A dreadful business.",
+  "Evil times: {>prop}. Or so they say.",
+  "They whisper that {>prop}. Lord have mercy."
+ ],
+ "say.inform.loss": [
+  "{>prop}. I can't think where.",
+  "Have you heard? {>prop}. Someone had a hand in it, mark me.",
+  "{>prop}, and nobody saw a thing."
+ ],
+
+ "say.ask.about": [
+  "What do you know {>prop:about}?",
+  "Have you heard anything {>prop:about}?",
+  "Tell me, do you know aught {>prop:about}?"
+ ],
+ "say.ask.about_rude": [
+  "Out with it, what do you know {>prop:about}.",
+  "Don't wriggle. What do you know {>prop:about}?"
+ ],
+ "say.ask.about_noble": [
+  "Begging your pardon, {listener:g|my lord|my lady}, what do you know {>prop:about}?",
+  "May I ask {>prop:about}, {listener:g|my lord|my lady}?"
+ ],
+
+ "say.accuse.direct": [
+  "It was you, I know it: {>prop}.",
+  "Don't deny it: {>prop}.",
+  "Everyone knows {>prop}. And so do I."
+ ],
+ "say.accuse.victim": [
+  "{>prop}! Thought I wouldn't find out?",
+  "{>prop}, and you dare look me in the eye?"
+ ],
+ "say.accuse.seen": [
+  "I saw it, {listener}: {>prop}.",
+  "Don't deny it, I saw it myself: {>prop}."
+ ],
+ "say.accuse.unsure": [
+  "Folk say {>prop}. What do you say to that?",
+  "There's talk that {>prop}. Is it true?",
+  "Tell me honestly: {>prop}?"
+ ],
+ "say.accuse.hostile": [
+  "{>prop}, you snake! Thought nobody saw?",
+  "{>prop}, and you won't get away with it!",
+  "Why, you… {>prop}! I'll have your hide!"
+ ],
+ "say.accuse.public": [
+  "I say it before all: {>prop}.",
+  "Let everyone hear: {>prop}. I demand judgement.",
+  "Good people, bear witness: {>prop}."
+ ],
+
+ "say.confess.prop": [
+  "It was me, {listener}: {>prop}. I repent.",
+  "I can't keep quiet any longer: {>prop}.",
+  "You're right: {>prop}, and I'm ashamed."
+ ],
+ "say.confess.familiar": [
+  "{listener}, I'll tell only you… {>prop}.",
+  "You're like kin to me, so hear it: {>prop}. Don't give me away."
+ ],
+ "say.apologize.prop": [
+  "Forgive me for {>prop:nominal:acc}.",
+  "I've wronged you: {>prop}. Forgive me.",
+  "I know, {>prop}. How can I make it right?"
+ ],
+ "say.apologize.noble": [
+  "I humbly beg forgiveness, {listener:g|my lord|my lady}: {>prop}.",
+  "Bear me no grudge, {listener:g|my lord|my lady}: {>prop}, and I repent."
+ ],
+ "say.thank.prop": [
+  "Thank you, truly: {>prop}.",
+  "I won't forget it as long as I live: {>prop}.",
+  "I remember a kindness: {>prop}. Thank you."
+ ],
+ "say.praise.prop": [
+  "I heard it: {>prop}. A good deed.",
+  "Well done, {listener}: {>prop}, not everyone would.",
+  "Folk speak well of you: {>prop}."
+ ],
+ "say.threaten.secret": [
+  "Keep being stubborn and the whole village will learn that {>prop}.",
+  "I know that {>prop}. Think it over.",
+  "One word from me to the reeve and everyone will know: {>prop}."
+ ],
+ "say.lie.assert": [
+  "It's the plain truth: {>prop}.",
+  "I won't lie to you: {>prop}.",
+  "I swear it, {>prop}. On anything you like."
+ ],
+ "say.lie.deny": [
+  "That's slander! Never happened.",
+  "Who's been spinning you tales? I had nothing to do with it.",
+  "You've got me mixed up with someone, {listener}."
+ ],
+
+ "say.greet.knows_thief": [
+  "Oh, it's you… I keep my things under lock now.",
+  "Look who's come. Keep your hands where I can see them.",
+  "{listener}. I've heard things about you."
+ ],
+ "say.greet.remind_crime": [
+  "{>prop}, and now you greet me?",
+  "Good day, if you mean it. Only I remember: {>prop}.",
+  "Well, look who turned up. And yet {>prop}."
+ ],
+ "say.greet.robbed_me": [
+  "You! Give back what you stole!",
+  "You dare come near me, thief?",
+  "Pay back what you owe first, then say good day."
+ ],
+ "say.greet.saw_violence": [
+  "Stay back. I saw you swinging your fists.",
+  "Keep away from me, {listener}.",
+  "You… What do you want? And keep your hands to yourself."
+ ],
+ "say.greet.bad_name": [
+  "Ah, {listener}. Folk say all sorts about you.",
+  "Well, good day. You've an ill name going round.",
+  "What do you want? I'd rather not be seen with you."
+ ],
+ "say.greet.liar": [
+  "Ah, {listener}. Just don't lie to me today.",
+  "Come to spin more yarns, have you?"
+ ],
+ "say.greet.good_name": [
+  "{listener}! Glad to see you, good soul.",
+  "Good day, {listener}. I hear nothing but good of you.",
+  "Ah, {listener}! Come in, you're always welcome."
+ ],
+ "say.greet.pious_name": [
+  "Peace be with you, {listener}. God keep you.",
+  "Good day, {listener}. Saw you at the altar, a good sign."
+ ],
+ "say.greet.helped_me": [
+  "{listener}! I haven't forgotten your help.",
+  "Ah, my saviour! Good day to you."
+ ],
+ "say.greet.noble": [
+  "Good health to you, {listener:g|my lord|my lady}.",
+  "Good day, {listener:g|my lord|my lady}. How may I serve?",
+  "My respects, {listener:g|my lord|my lady}."
+ ],
+ "say.greet.clergy": [
+  "Your blessing, Father.",
+  "Good day, holy Father."
+ ],
+ "say.greet.elder": [
+  "Good day, {listener:g|grandfather|grandmother}.",
+  "Good health, {listener}. How's the back, not aching?"
+ ],
+ "say.greet.child": [
+  "Hello, {listener:g|lad|lass}. Does your mother know where you're running about?",
+  "Ah, you little {listener:g|scamp|minx}. No mischief here."
+ ],
+ "say.farewell.noble": [
+  "I won't keep you, {listener:g|my lord|my lady}.",
+  "Go with God, {listener:g|my lord|my lady}."
+ ],
+ "say.farewell.thief": [
+  "Off you go. And don't fill your pockets on the way.",
+  "Go on. I'll be keeping an eye on you."
+ ],
+
+ "say.refuse.misdeed": [
+  "No. Not after {>reason:nominal:acc}.",
+  "After {>reason:nominal:acc}? I think not.",
+  "Think I've forgotten that {>reason}? No.",
+  "Not with you, never. Everyone remembers that {>reason}."
+ ],
+ "say.refuse.busy":          ["No time, I've work enough of my own.", "Not now, I'm up to my neck in work.", "Later, later. Can't you see I'm busy?"],
+ "say.refuse.enmity":        ["After everything? No.", "I won't trade a single word with you.", "For you? Sooner snow in summer."],
+ "say.refuse.fear_of_law":   ["No. That's a spell in the stocks.", "If the reeve finds out, I'm done for. I won't.", "No, I'm fond of my own skin."],
+ "say.refuse.honest":        ["That's against my conscience. I won't.", "No. I live honestly, and I'd advise you the same.", "It's a sin. Don't ask."],
+ "say.refuse.hungry":        ["Let me eat first, then we'll see.", "Can't think of that on an empty belly.", "My belly's growling, no time for errands."],
+ "say.refuse.low_affinity":  ["Not for you.", "You're no friend of mine, why should I bother?", "Go ask someone else."],
+ "say.refuse.low_trust":     ["I don't trust you.", "You'd cheat me. I won't.", "Earn my trust first."],
+ "say.refuse.loyalty_other": ["I've already promised another.", "I gave my word, I can't break it.", "I can't. Someone else is waiting on me."],
+ "say.refuse.no_authority":  ["You're not my master.", "Why should I listen to you?", "Order your own folk about, not me."],
+ "say.refuse.no_item":       ["I've no {item}.", "If I had {item}, I'd give it. I don't.", "Where would I find you {item}?"],
+ "say.refuse.taboo":         ["That's not how it's done here.", "Our grandfathers never did that, and nor will I.", "It's against custom."],
+ "say.refuse.tired":         ["I've no strength left, I'm dead on my feet.", "Tomorrow. Today I'm no use to anyone.", "I'm worn out, leave me be."],
+ "say.refuse.too_costly":    ["That comes too dear.", "I can't afford it.", "I won't do it at a loss."],
+ "say.refuse.unfair_terms":  ["That's no fair price.", "For that, and so much? Are you mocking me?", "No, we won't strike a deal like that."],
+ "say.refuse.unknown_topic": ["I don't know what you mean.", "First I've heard of it.", "What are you even on about?"],
+ "say.refuse.noble":         ["Forgive me, {listener:g|my lord|my lady}, I cannot.", "Don't be angry, {listener:g|my lord|my lady}, but it won't do."],
+
+ "say.outcome.fail.persuade": ["Smooth talk, but still no.", "You sing sweetly, but you haven't swayed me.", "Go sweet-talk someone else."],
+ "say.outcome.fail.bargain":  ["No, we won't strike a deal.", "At that price, go find a fool.", "Haggle all you like, my word stands."],
+ "say.outcome.fail.court":    ["Off with you, sweetheart. You're not for me.", "Getting bold, aren't you? No.", "Your fine words don't please me."],
+ "say.outcome.fail.threaten": ["Go frighten someone else.", "I'm not scared, try as you might.", "Ha! You, scaring me?"],
+ "say.outcome.fail.request":  ["I won't give it. Don't even ask.", "No, {listener}. Not this time.", "Ask someone else."],
+ "say.outcome.fail.recruit":  ["I'm not going with you.", "I'm well enough here.", "Go find other fools."],
+ "say.outcome.fail.any":      ["No.", "It won't work.", "You won't talk me round."],
+
+ "say.request.return_stolen": [
+  "Give back what you took, and we'll part in peace.",
+  "Return what you stole and we'll forget it. For now.",
+  "I'm asking nicely: give me back what's mine."
+ ],
+ "say.bargain.thief_price": [
+  "For you, double. For what you did.",
+  "For you, coin only, and up front.",
+  "A special price for you. You know why."
+ ],
+ "say.command.lead_child_away": [
+  "Come on home, child. Nothing for you here.",
+  "Here, to me! Don't stand about with that one.",
+  "Home, now. And don't let me see you near strangers."
+ ]
+}
