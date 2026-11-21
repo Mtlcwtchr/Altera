@@ -3,6 +3,8 @@
 
 #include "sim/loc.hpp"
 
+#include "sim/village_life.hpp"
+
 #include <algorithm>
 #include <cctype>
 #include <cmath>
@@ -448,6 +450,7 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const char* mk : {"memory.saw_crime.text", "memory.told_crime.text", "memory.rumor_crime.text",
                            "memory.suspects.text", "memory.noticed_missing.text"})
         k.insert(mk);
+    for (const auto& vk : villageLifeLocKeys()) k.insert(vk); // AL-39
     if (c.craft.loaded)
         for (const auto& ck : craft::craftLocKeys(c.craft)) k.insert(ck);
     return {k.begin(), k.end()};
