@@ -64,5 +64,6 @@
  "trace.deed.case_pursue": "{self} решает, что делать с {accused}: {choice}",
  "trace.deed.case_to_judge": "{self} должен рассудить {accuser} и {accused}",
  "trace.deed.case_verdict": "{self} судит {accused} (улики {evidence}, свидетелей {witnesses})",
- "trace.deed.rumor_rejected": "{self} не поверил{self:g||а} {from:dat}: {self:g|сам|сама} видел{self:g||а}, как было"
+ "trace.deed.rumor_rejected": "{self} не поверил{self:g||а} {from:dat}: {self:g|сам|сама} видел{self:g||а}, как было",
+ "trace.say.line": "{speaker}: «{line}»"
 }

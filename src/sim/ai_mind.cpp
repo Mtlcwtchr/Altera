@@ -6,6 +6,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/craft_sim.hpp"
 #include "sim/building.hpp"
@@ -354,6 +355,15 @@ Start startAction(World& w, Character& c, std::string& why) {
         if (creature && !consents(w, c, *creature, *d)) {
             w.remember(c, MemoryEntry{0, "was_refused", {creature->id}, kNone, -0.2, 0.0, "seen", 1.0});
             why = "refused:" + d->id;
+            // AL-36: the "no" is said aloud, with the reason the other holds
+            if (!creature->isAnimal()) {
+                const SaidLine line = sayRefusal(w, *creature, c, "consent");
+                if (c.controller.isPlayer()) {
+                    Json o = {{"action", d->id}, {"success", false}, {"refused", true}, {"by", creature->id}};
+                    if (line.ok()) o["said"] = line.key;
+                    trace(w, c, 'S', "act.outcome", o);
+                }
+            }
             return Start::Failed;
         }
     } else if (d->targetsObject() || d->targetsCreature()) {

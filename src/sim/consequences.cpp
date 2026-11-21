@@ -9,6 +9,7 @@
 #include <memory>
 #include <mutex>
 
+#include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/justice.hpp"
 #include "sim/dialogue_gen.hpp"
@@ -483,6 +484,13 @@ void afterDeed(World& w, Character& doer, const InteractionDef& d, WorldObject* 
 
     // --- an accusation opens a case, a judge_case holds the court (AL-37) ---
     caseAfterAct(w, doer, d, targetChar, success);
+
+    // --- a failed social act gets the other side's reaction aloud (AL-36) --
+    if (!success && targetChar && !targetChar->isAnimal() && targetChar->body.alive && targetChar->id != doer.id &&
+        (d.category == "social" || !d.speech.empty())) {
+        const SaidLine line = sayFailReaction(w, *targetChar, doer, d);
+        if (line.ok()) outcome["said"] = line.key;
+    }
 
     // --- no silent "ok" for the player's person (AL-36) --------------------
     if (doer.controller.isPlayer()) {

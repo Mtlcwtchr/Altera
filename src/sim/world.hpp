@@ -10,6 +10,7 @@
 
 #include "sim/character.hpp"
 #include "sim/content.hpp"
+#include "sim/dialogue_rules.hpp"
 
 namespace altera::sim {
 
@@ -200,6 +201,9 @@ public:
     Fact& addFact(Fact f); // id and tick assigned here
     std::vector<Fact>& facts() { return facts_; }
     const std::vector<Fact>& facts() const { return facts_; }
+    // What was said, for cooldown / once_per of dialogue rules (AL-53); saved.
+    SaidMemory& said() { return said_; }
+    const SaidMemory& said() const { return said_; }
 
     // --- commands -------------------------------------------------------
     // Queued for the start of the next step (or `cmd.tick` if later). Returns
@@ -269,6 +273,7 @@ private:
     std::vector<Command> commandLog_;
     std::vector<ChronicleEntry> chronicle_;
     std::vector<Fact> facts_;
+    SaidMemory said_;
     std::vector<CommandHandler> handlers_;
     std::vector<EventHandler> eventHandlers_;
     TickHook think_;
