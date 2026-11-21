@@ -56,7 +56,10 @@ bool BiomeTable::load(const std::filesystem::path& json, const Params& params, s
         if (files_.size() < kMaxMaterials)
             uniforms_.materialGrass[files_.size()] = spec.value("grass", name.rfind("grass", 0) == 0 ? 1.0f : 0.0f);
         layer[name] = float(files_.size());
-        files_.push_back(root / "assets" / "terrain_core" / "materials" / (name + ".png"));
+        // AL-11: a dev stand-in from Skyrim (tools/game_assets/skyrim/world_tex.py, git-ignored) wins when baked.
+        const auto dir = root / "assets" / "terrain_core" / "materials";
+        const auto standIn = dir / "skyrim" / (name + ".png");
+        files_.push_back(std::filesystem::exists(standIn) ? standIn : dir / (name + ".png"));
     }
     auto material = [&](const nlohmann::json& name) -> float {
         if (!name.is_string()) return -1.0f;

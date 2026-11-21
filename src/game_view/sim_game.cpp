@@ -3864,14 +3864,19 @@ private:
         {   // The people on the UAL rig; without the bake they stay placeholder shapes.
             const fs::path root(opts_.root);
             std::string whyPeople;
-            if (!people_.load(device_, root / "assets/altera_game/people/people.askin",
+            // AL-11: the Skyrim stand-ins on the same rig (tools/game_assets/skyrim/actors.py), when baked.
+            const fs::path peopleSky = root / "assets/altera_game/people/people_sky.askin";
+            if (!people_.load(device_, fs::exists(peopleSky) ? peopleSky : root / "assets/altera_game/people/people.askin",
                               root / "content/animations/humanoid_ual/baked/people.aanim",
                               root / "content/animations/humanoid_ual/baked/people_anim.json", &whyPeople))
                 SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
             for (int i = 0; i < people_.lookCount(); ++i)
                 (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
             std::string whyVillage;
-            if (!village_.load(device_, root / "assets/altera_game/buildings/buildings.astm", &whyVillage))
+            // AL-11: the kit with Skyrim textures (tools/game_assets/skyrim/world_tex.py), when baked.
+            const fs::path villageSky = root / "assets/altera_game/buildings/buildings_sky.astm";
+            if (!village_.load(device_, fs::exists(villageSky) ? villageSky : root / "assets/altera_game/buildings/buildings.astm",
+                               &whyVillage))
                 SDL_Log("altera_game: buildings stay placeholders: %s", whyVillage.c_str());
             // AL-11: dev-only stand-ins from the local Skyrim (tools/game_assets/skyrim/convert.py):
             // buildings and every sim object get a real model; absent, the kit and the blocks stay.
@@ -3885,7 +3890,9 @@ private:
                 const fs::path base = root / "assets/altera_game/beasts" / sp;
                 auto set = std::make_unique<SkinnedSet>();
                 std::string whyBeast;
-                if (set->load(device_, fs::path(base.string() + ".askin"), fs::path(base.string() + ".aanim"),
+                const fs::path sky(base.string() + "_sky.askin");
+                if (set->load(device_, fs::exists(sky) ? sky : fs::path(base.string() + ".askin"),
+                              fs::path(base.string() + ".aanim"),
                               fs::path(base.string() + "_anim.json"), &whyBeast))
                     beasts_[sp] = std::move(set);
                 else

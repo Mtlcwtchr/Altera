@@ -68,6 +68,10 @@ class Shape:
         self.texture = ''    # diffuse, a textures\... path
         self.alpha_test = False
         self.alpha_blend = False
+        self.weights = None  # (n, 4) float32, skinned shapes only
+        self.bidx = None     # (n, 4) uint8 into .bones
+        self.bones = []      # bone node names of the skin instance
+        self.bind = []       # 4x4 bone -> shape space (the bind pose), per bone
 
 
 class Nif:
@@ -209,7 +213,20 @@ class Nif:
             nrm = np.tile(np.array([0, 0, 1], np.float32), (nv, 1))
         if tris is None:
             tris = np.frombuffer(self.data, np.uint16, ntri * 3, r.p).reshape(ntri, 3).astype(np.uint32)
+            r.p += ntri * 6
+        if self.types[i] == 'BSDynamicTriShape':
+            # heads: the morphed positions follow as full floats, the packed ones are stale
+            if self.bsver == 100:
+                r.u32()   # particle data size (0 on actors)
+            dn = r.u32() // 16
+            if dn == nv:
+                pos = np.frombuffer(self.data, np.float32, nv * 4, r.p).reshape(nv, 4)[:, :3].copy()
         sh.pos, sh.uv, sh.nrm, sh.tris = pos, uv, nrm, tris
+        if flags & 0x40 and skin >= 0:
+            so = ((desc >> 28) & 0xF) * 4
+            sh.weights = raw[:, so:so + 8].copy().view(np.float16).reshape(nv, 4).astype(np.float32)
+            sh.bidx = raw[:, so + 8:so + 12].copy()
+            sh.bones, sh.bind = self.skin_bones(skin)
         sh.texture, sh.alpha_blend = self.texture_of(shader)
         test, blend = self.alpha_of(alpha)
         sh.alpha_test = test
@@ -259,6 +276,53 @@ class Nif:
             r.p += 6 * pnt
             tris.append(tc)
         return raw, desc, np.concatenate(tris) if tris else np.zeros((0, 3), np.uint32)
+
+    def _transform(self, r):
+        rot = np.array(r.f(9), np.float64).reshape(3, 3)
+        t = np.array(r.f(3), np.float64)
+        s = r.f()
+        M = np.eye(4)
+        M[:3, :3] = rot * s
+        M[:3, 3] = t
+        return M
+
+    def skin_bones(self, skin):
+        """Bone names and bone -> shape matrices (the inverse of NiSkinData's shape -> bone)."""
+        r = _R(self.data, self.offsets[skin])
+        data = r.i32()
+        r.i32()           # partition
+        r.i32()           # skeleton root
+        n = r.u32()
+        refs = [r.i32() for _ in range(n)]
+        names = []
+        for b in refs:
+            q = _R(self.data, self.offsets[b])
+            names.append(self._netobj(q) if b >= 0 else '')
+        binds = [np.eye(4)] * n
+        if data >= 0 and self.types[data] == 'NiSkinData':
+            q = _R(self.data, self.offsets[data])
+            self._transform(q)
+            nb = q.u32()
+            has_w = q.u8()
+            binds = []
+            for _ in range(nb):
+                M = self._transform(q)
+                q.f(4)
+                if has_w:
+                    nv = q.u16()
+                    q.p += 6 * nv
+                binds.append(np.linalg.inv(M))
+        return names, binds
+
+    def skinned(self):
+        """Every skinned shape of the file, vertices in shape space (no node transforms)."""
+        out = []
+        for i, ty in enumerate(self.types):
+            if ty in ('BSTriShape', 'BSSubIndexTriShape', 'BSDynamicTriShape'):
+                sh, _ = self.tri_shape(i)
+                if sh is not None and sh.weights is not None:
+                    out.append(sh)
+        return out
 
     def shapes(self):
         """Every static shape in root space."""

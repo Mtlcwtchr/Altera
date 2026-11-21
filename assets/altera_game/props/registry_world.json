@@ -1,0 +1,312 @@
+{
+ "source": "Skyrim Special Edition (Bethesda), Data/*.bsa",
+ "replace_before_prod": true,
+ "world": {
+  "kit": [
+   {
+    "kit_layer": 0,
+    "texture": "architecture/farmhouse/stonewall01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 1,
+    "texture": "architecture/farmhouse/woodwalkway01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 2,
+    "texture": "landscape/dirt02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 3,
+    "texture": "architecture/farmhouse/farmwindowinterior01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 5,
+    "texture": "architecture/farmhouse/woodwall01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 6,
+    "texture": "architecture/farmhouse/thatch02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 7,
+    "texture": "architecture/farmhouse/woodpost02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 8,
+    "texture": "architecture/farmhouse/woodwall01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 9,
+    "texture": "architecture/farmhouse/woodwalkway01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 10,
+    "texture": "landscape/dirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "kit_layer": 11,
+    "texture": "architecture/farmhouse/roof01.dds",
+    "replace_before_prod": true
+   }
+  ],
+  "ground": [
+   {
+    "material": "ash_black",
+    "texture": "landscape/volcanictundradirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "crust_ochre",
+    "texture": "landscape/volcanictundraminerals01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "dirt_brown",
+    "texture": "landscape/dirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "dirt_dark",
+    "texture": "landscape/dirt02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "dirt_mud",
+    "texture": "landscape/rivermud.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "dirt_pebbles",
+    "texture": "landscape/dirtpath01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "dirt_red",
+    "texture": "landscape/reachdirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "earth_ochre",
+    "texture": "landscape/fallforestdirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "earth_orange",
+    "texture": "landscape/fallforestdirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "earth_yellow",
+    "texture": "landscape/fallforestdirt01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_burnt",
+    "texture": "landscape/tundra02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_dark",
+    "texture": "landscape/forestgrass02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_dry",
+    "texture": "landscape/tundra01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_flowers",
+    "texture": "landscape/fieldgrass02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_gold",
+    "texture": "landscape/fieldgrass01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_leaves",
+    "texture": "landscape/fallforestleaves01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_lush",
+    "texture": "landscape/forestgrass01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_meadow",
+    "texture": "landscape/fielddirtgrass01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_olive",
+    "texture": "landscape/reachgrass01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "grass_stony",
+    "texture": "landscape/rocksgrass01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "gravel_black",
+    "texture": "landscape/volcanictundragravel01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "gravel_grey",
+    "texture": "landscape/riverbottom.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "gravel_pale",
+    "texture": "landscape/coastbeach02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_dark",
+    "texture": "landscape/rocks01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_grey",
+    "texture": "landscape/mountainslab01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_mossy",
+    "texture": "landscape/reachmossyrocks01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_ochre",
+    "texture": "landscape/fallforestrocks01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_orange",
+    "texture": "landscape/tundrarocks01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_pale",
+    "texture": "landscape/mountainslab02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_red_hatch",
+    "texture": "landscape/volcanictundrarocks01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rock_red_terrace",
+    "texture": "landscape/mineralpoolterrace.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rocky_dark",
+    "texture": "landscape/rocks01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rocky_grey",
+    "texture": "landscape/mountainslab02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rocky_meadow",
+    "texture": "landscape/rocksgrass01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "rocky_slabs",
+    "texture": "landscape/mountainslab01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "sand_beach",
+    "texture": "landscape/coastbeach01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "sand_dune",
+    "texture": "landscape/coastbeach02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "sand_gold",
+    "texture": "landscape/coastbeach01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "sand_grey",
+    "texture": "landscape/riverbededge.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "scree_gravel",
+    "texture": "landscape/volcanictundragravel01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "scree_slabs",
+    "texture": "landscape/mountainslab02.dds",
+    "replace_before_prod": true
+   },
+   {
+    "material": "snow",
+    "texture": "landscape/snow01landscape.dds",
+    "replace_before_prod": true
+   }
+  ],
+  "sky": [
+   {
+    "sky": "day",
+    "texture": "sky/skyrimcloudsupper01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "sky": "day",
+    "texture": "sky/skyrimcloudslower01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "sky": "day",
+    "texture": "sky/skyrimcloudshorizon01.dds",
+    "replace_before_prod": true
+   },
+   {
+    "sky": "night",
+    "texture": "sky/skystars.dds",
+    "replace_before_prod": true
+   },
+   {
+    "sky": "night",
+    "texture": "sky/skyrimgalaxy.dds",
+    "replace_before_prod": true
+   },
+   {
+    "sky": "night",
+    "texture": "sky/masser_full.dds",
+    "replace_before_prod": true
+   },
+   {
+    "sky": "night",
+    "texture": "sky/secunda_full.dds",
+    "replace_before_prod": true
+   }
+  ]
+ }
+}
