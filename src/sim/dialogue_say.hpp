@@ -11,6 +11,7 @@
 
 #include <optional>
 #include <string>
+#include <vector>
 
 #include "sim/dialogue_gen.hpp"
 
@@ -44,6 +45,33 @@ SaidLine sayRefusal(World& w, Character& refuser, Character& asker, const std::s
 
 // `target` answers a social act of `actor` that failed (act ignore, intent fail).
 SaidLine sayFailReaction(World& w, Character& target, Character& actor, const InteractionDef& d);
+
+// --- the menu without an agent (dialogue.json menu, topic_kinds) -------------
+// What `speaker` could bring up with `listener`: word of somebody else's deed
+// (inform), the listener's own deed (accuse) or kindness (thank); strongest
+// first, one per topic, at most `max`.
+struct MenuTopic {
+    std::string act;
+    Prop prop;
+    Epistemic epi;
+    std::string topic;
+    double weight = 0.0;
+};
+std::vector<MenuTopic> dialogueTopics(const World& w, const Character& speaker, const Character& listener,
+                                      size_t max = 6);
+// The menu caption: dialogue.menu.<act> ("Рассказать о краже муки у мельника").
+std::string menuLabel(const Loc& loc, const std::string& lang, const World& w, const Character& speaker,
+                      const Character& listener, const MenuTopic& t);
+
+// --- barks: what a person mutters to himself ---------------------------------
+// Presentation only: chosen from the moment (needs, state, time, season) and
+// deterministic for the tick, but not recorded - the client asks for it when
+// it shows a person, so it never changes the world. "" = nothing to say.
+SaidLine chooseBark(const World& w, const Character& c);
+
+// --- Agent API (AGENT_API §4.3 acts[].content) --------------------------------
+// {kind: fact|none, ref: fact:<id> | <topic>, params: <Prop JSON>, epi: <Epistemic JSON>}
+Json agentContent(const Utterance& u);
 
 // The text of a "say.line" trace entry: "<speaker>: «line»" by trace.say.line.
 std::string lineText(const Loc& loc, const std::string& lang, const World& w, const Json& params);

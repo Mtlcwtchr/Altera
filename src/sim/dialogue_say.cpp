@@ -31,12 +31,25 @@ void installDialogueFacts() {
                 if (mine(k)) f.list[k] = v;
         },
         {"memory."});
+    // the speaker's own state: speaker.need.<id> (1 = satisfied), speaker.fsm (barks)
+    registerFactProvider(
+        "self",
+        [](ContextFacts& f, const World& w, const Utterance& u) {
+            const Character* s = w.character(u.speaker);
+            if (!s) return;
+            for (const auto& [id, v] : s->needs) f.set("speaker.need." + id, v);
+            f.set("speaker.fsm", s->ai.fsm.state);
+        },
+        {"speaker.need.", "speaker.fsm"});
 }
+
+namespace {
+// Registered before any rule is checked or chosen (validation asks the providers' prefixes).
+[[maybe_unused]] const bool kFactsInstalled = (installDialogueFacts(), true);
+} // namespace
 
 SaidLine say(World& w, Character& speaker, Character& listener, const std::string& act, std::optional<Prop> content,
              Epistemic epi, const std::string& tone, const std::string& intent) {
-    static const bool installed = (installDialogueFacts(), true);
-    (void)installed;
     SaidLine out;
     Utterance& u = out.utterance;
     u.speaker = speaker.id;
@@ -74,6 +87,67 @@ SaidLine sayRefusal(World& w, Character& refuser, Character& asker, const std::s
 SaidLine sayFailReaction(World& w, Character& target, Character& actor, const InteractionDef& d) {
     (void)d;
     return say(w, target, actor, "ignore", std::nullopt, Epistemic{}, "", "fail");
+}
+
+std::vector<MenuTopic> dialogueTopics(const World& w, const Character& speaker, const Character& listener,
+                                      size_t max) {
+    std::vector<MenuTopic> out;
+    for (const auto& rc : recall(w, speaker, kNone)) {
+        const Ref* doer = rc.prop.role("doer");
+        if (!doer || doer->kind != "char") continue;
+        MenuTopic t;
+        if (doer->id == listener.id) t.act = rc.kind == "deed" ? "accuse" : "thank";
+        else if (rc.kind == "deed") t.act = "inform";
+        else continue; // somebody else's kindness is not news worth a menu line
+        t.prop = rc.prop;
+        t.epi = rc.epi;
+        t.topic = rc.topic;
+        t.weight = rc.weight;
+        out.push_back(std::move(t));
+        if (out.size() >= max) break;
+    }
+    return out;
+}
+
+std::string menuLabel(const Loc& loc, const std::string& lang, const World& w, const Character& speaker,
+                      const Character& listener, const MenuTopic& t) {
+    Utterance u;
+    u.speaker = speaker.id;
+    u.listener = listener.id;
+    u.act = t.act;
+    u.content = t.prop;
+    u.epi = t.epi;
+    return utteranceText(loc, lang, w, u, "dialogue.menu." + t.act);
+}
+
+SaidLine chooseBark(const World& w, const Character& c) {
+    SaidLine out;
+    if (!c.body.alive || c.isAnimal() || c.ai.fsm.state == "Sleep" || c.ai.fsm.state == "Incapacitated") return out;
+    Utterance& u = out.utterance;
+    u.speaker = c.id;
+    u.listener = c.id;
+    u.act = "bark";
+    u.seed = w.rng(c.id, "bark").next();
+    const DialogueGenData& D = dialogueGenData(w.content());
+    const ContextFacts f = dialogueFacts(D, &w, nullptr, u);
+    SayContext ctx;
+    ctx.speaker = c.id;
+    ctx.listener = c.id;
+    ctx.now = w.now();
+    ctx.seed = u.seed;
+    const RuleChoice choice = chooseRule(D, f, nullptr, ctx);
+    if (!choice.rule) return out;
+    out.key = choice.say();
+    out.rule = choice.rule->id;
+    return out;
+}
+
+Json agentContent(const Utterance& u) {
+    if (!u.content) return {{"kind", "none"}};
+    const Prop& p = *u.content;
+    Json j = {{"kind", "fact"}, {"params", toJson(p)}, {"epi", toJson(u.epi)}};
+    j["ref"] = p.fact != kNone ? "fact:" + std::to_string(p.fact) : topicOf(p);
+    return j;
 }
 
 std::string utteranceText(const Loc& loc, const std::string& lang, const World& w, const Utterance& u,
