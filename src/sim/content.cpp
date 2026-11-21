@@ -734,7 +734,8 @@ ClimateDef parseClimate(const Json& j, std::vector<std::string>& W) {
     }
     d.biomeRainMult = opt(j, "biome_rain_mult", std::map<std::string, double>{});
     d.biomeTempAdd = opt(j, "biome_temp_add", std::map<std::string, double>{});
-    for (const auto& [biome, s] : j.value("soils", Json::object()).items()) {
+    const Json soils = j.value("soils", Json::object()); // a named copy: items() of a temporary dangles
+    for (const auto& [biome, s] : soils.items()) {
         if (biome.rfind('_', 0) == 0) continue;
         warnUnknown(s, {"fertility", "depth", "drainage", "capacity_mm", "_doc"}, "climate.soils", W);
         SoilDef sd;

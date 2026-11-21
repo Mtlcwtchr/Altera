@@ -1,0 +1,19 @@
+{
+ "_doc": "Правила выбора реплики (doc/design/DIALOGUE_GEN.md §4). Подходят правила, у которых все when истинны; побеждает с наибольшим числом критериев, среди равных — вес от сида. say — ключ loc. Здесь заглушки на каждый акт (старые dialogue.<act>.*) и память о проступках (AL-38); полный набор — AL-51.",
+ "rules": [
+  {"id": "greet.any", "when": ["act=greet"], "say": "dialogue.greet.neutral_1"},
+  {"id": "greet.familiar", "when": ["act=greet", "rel.affinity>=0.4"], "say": "dialogue.greet.familiar_1"},
+  {"id": "greet.rude", "when": ["act=greet", "tone=rude"], "say": "dialogue.greet.rude_1"},
+  {"id": "accept.any", "when": ["act=accept"], "say": "dialogue.accept.neutral_1"},
+  {"id": "bargain.any", "when": ["act=bargain"], "say": "dialogue.bargain.neutral_1"},
+  {"id": "farewell.any", "when": ["act=farewell"], "say": "dialogue.farewell.neutral_1"},
+  {"id": "inform.any", "when": ["act=inform"], "say": "dialogue.inform.neutral_1"},
+  {"id": "ask.any", "when": ["act=ask"], "say": "dialogue.ask.neutral_1"},
+  {"id": "refuse.any", "when": ["act=refuse"], "say": "dialogue.refuse.neutral_1"},
+  {"id": "accuse.any", "when": ["act=accuse"], "say": "dialogue.accuse.neutral_1"},
+  {"id": "inform.theft.seen", "when": ["act=inform", "pred=theft", "epi.source=seen"], "say": "memory.saw_crime.text", "once_per": "listener+topic"},
+  {"id": "inform.theft.told", "when": ["act=inform", "pred=theft", "epi.source=told|heard"], "say": "memory.told_crime.text", "once_per": "listener+topic"},
+  {"id": "inform.theft.rumor", "when": ["act=inform", "pred=theft", "epi.source=rumor"], "say": "memory.rumor_crime.text", "once_per": "listener+topic", "cooldown": "speaker:1d"},
+  {"id": "inform.theft.guess", "when": ["act=inform", "pred=theft", "modality=guess"], "say": "memory.suspects.text", "once_per": "listener+topic"}
+ ]
+}

@@ -319,6 +319,12 @@ add_library(altera_sim STATIC
         src/sim/collide.cpp
         src/sim/act_info.cpp
         src/sim/consequences.cpp
+        src/sim/dialogue_gen.cpp
+        src/sim/dialogue_rules.cpp
+        src/sim/rumor_noise.cpp
+        src/sim/justice.cpp
+        src/sim/village_life.cpp
+        src/sim/dialogue_memory.cpp
         src/sim/gear.cpp
         src/sim/validate.cpp
         src/sim/character.cpp
@@ -336,12 +342,14 @@ add_library(altera_sim STATIC
         src/sim/ai_mind.cpp
         src/sim/ai_control.cpp
         src/sim/loc.cpp
+        src/sim/loc_gen.cpp
         src/sim/combat_bridge.cpp
         src/sim/wounds.cpp
         src/sim/aftermath.cpp
         src/sim/group_combat.cpp
         src/sim/captivity.cpp
         src/sim/tones.cpp
+        src/sim/social_chain.cpp
         src/sim/ai_report.cpp
         src/sim/craft/craft_expr.cpp
         src/sim/craft/craft_data.cpp
@@ -782,14 +790,20 @@ endif() # NOT ALTERA_SIM_ONLY
 if(ASR_BUILD_TESTS)
     enable_testing()
     add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp
-            tests/test_altera_sim_loc.cpp tests/test_altera_sim_content.cpp
+            tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
             tests/test_altera_sim_craft.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp
             tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp
-            tests/test_altera_sim_consequences.cpp
+            tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
+            tests/test_altera_sim_dialogue_rules.cpp
+            tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp
+            tests/test_altera_sim_justice.cpp
+            tests/test_altera_sim_village_life.cpp
+            tests/test_altera_sim_social.cpp
+            tests/test_altera_sim_dialogue_memory.cpp
             tests/test_altera_cutaway.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)

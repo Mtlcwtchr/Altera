@@ -20,6 +20,7 @@ using SnapClock = std::chrono::steady_clock;
 struct ActorSnap {
     EntityId id = sim::kNone;
     std::string name, species, family, state, act, goal, interaction, role;
+    std::string anim; // AL-40: the clip key of this side of a joint social act (sim FsmState::anim)
     bool animal = false, alive = true, player = false, down = false, fighting = false, captive = false;
     char sex = 'f';
     int age = 0, group = 1, wounds = 0;

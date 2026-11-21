@@ -1,0 +1,16 @@
+{
+ "_doc": "AL-38: lines where an NPC brings up the listener's misdeed or kindness (content/ai/dialogue_rules/recall.json).",
+ "recall.greet.theft_mine": "Oh, it's you. You stole from us - thought we'd forget?",
+ "recall.greet.seen": "{listener}. I saw you take what wasn't yours. I haven't forgotten.",
+ "recall.greet.rumor": "Ah, {listener}... I've heard things about you.",
+ "recall.greet.violence": "Keep away from me, {listener}.",
+ "recall.greet.bad_name": "People speak ill of you, {listener}.",
+ "recall.greet.kindness": "{listener}! I remember your kindness.",
+ "recall.refuse.deed": "No. I know what sort you are.",
+ "recall.refuse.rumor": "No. The things they say about you - better not.",
+ "recall.refuse.theft_mine": "No. Not after you robbed us.",
+ "recall.bargain.deed": "For you it costs more. You know why.",
+ "recall.bargain.mine": "After what you took from us? Pay double.",
+ "recall.accept.deed": "Fine. But I'm watching you.",
+ "recall.accept.kindness": "For you, of course. You helped me back then."
+}

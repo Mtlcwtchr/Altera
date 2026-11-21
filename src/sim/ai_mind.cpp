@@ -12,6 +12,8 @@
 #include "sim/captivity.hpp"
 #include "sim/consequences.hpp"
 #include "sim/gear.hpp"
+#include "sim/social_chain.hpp"
+#include "sim/village_life.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -343,6 +345,12 @@ Start startAction(World& w, Character& c, std::string& why) {
             a.target = findPerson(w, c, *d, c.ai.goal.target, &fw, c.ai.goal.source == "player");
         }
         creature = w.character(a.target); // the other person (same slot as a creature target)
+        // AL-40: an act with a social chain asks the other, who answers with
+        // an act of their own; the pair plays it out (social_chain.cpp).
+        if (creature && !creature->isAnimal() && socialChain(w.content(), d->id)) {
+            if (!canPerform(w, c, *d, nullptr, &why, true, creature)) return Start::Failed;
+            return beginSocial(w, c, *creature, *d, why) ? Start::Started : Start::Failed;
+        }
         if (creature && !consents(w, c, *creature, *d)) {
             w.remember(c, MemoryEntry{0, "was_refused", {creature->id}, kNone, -0.2, 0.0, "seen", 1.0});
             why = "refused:" + d->id;
@@ -519,6 +527,20 @@ void thinkCharacter(World& w, Character& c) {
     ai.queue.erase(std::remove_if(ai.queue.begin(), ai.queue.end(),
                                   [&](const QueuedTask& q) { return q.ttl > 0 && w.now() >= q.created + q.ttl; }),
                    ai.queue.end());
+    // AL-40: a social chain holds the body (the actor drives the pair, the
+    // target and a follower wait on it); its end hands the act back to the plan.
+    if (c.ai.social.active()) {
+        std::string why;
+        const bool actor = c.ai.social.role == "actor";
+        const SocialStep st = tickSocial(w, c, why);
+        if (st == SocialStep::Running) return;
+        if (actor && st == SocialStep::Done && ai.goal.valid()) finishAction(w, c);
+        if (actor && st == SocialStep::Failed && ai.goal.valid()) {
+            if (why.rfind("refused:", 0) == 0 && ai.goal.source == "player") dropGoal(w, c, why, true); // asked once
+            else replanStep(w, c, why);
+        }
+        if (actor) return; // the next act starts at the next tick
+    }
     if (c.controller.isPlayer()) playerThink(w, c);
     else aiThink(w, c);
     // Statistics for the report (what this tick was spent on).
@@ -534,6 +556,7 @@ void thinkCharacter(World& w, Character& c) {
 
 void installAi(World& w) {
     installConsequences(w);
+    installVillageLife(w);
     w.setThinkHook([](World& world) {
         // Animals may be born while the loop runs (animalsDaily adds groups),
         // so the daily pass runs before the per-tick loop.
@@ -541,6 +564,7 @@ void installAi(World& w) {
             animalsDaily(world);
             spoilFood(world);
             cropsDaily(world);
+            villageDaily(world); // AL-39: courtship, births, illness, quarrels, strangers
         }
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
@@ -558,6 +582,7 @@ void installAi(World& w) {
         }
     });
     installControl(w);
+    installSocial(w);
     installBuilding(w);
     installCrafting(w);
     installGear(w);

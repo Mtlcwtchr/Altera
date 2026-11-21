@@ -1,0 +1,116 @@
+{
+ "_doc": "en grammar for LOC v0.2 (AL-47, doc/design/LOC_V02.md): no case endings on nouns (frames still name a case: nom for the subject, acc otherwise, it picks pronoun forms); verb_model en: base / past / 3s, 'will', 'did not'; prepositions: a -> an before a vowel.",
+ "cases": [
+  "nom",
+  "acc"
+ ],
+ "plural_forms": [
+  "one",
+  "other"
+ ],
+ "verb_model": "en",
+ "about": {
+  "prep": "about",
+  "case": "acc"
+ },
+ "pronouns": {
+  "1s": {
+   "nom": "I",
+   "gen": "my",
+   "dat": "me",
+   "acc": "me",
+   "ins": "me",
+   "pre": "me"
+  },
+  "2s": {
+   "nom": "you",
+   "gen": "your",
+   "dat": "you",
+   "acc": "you",
+   "ins": "you",
+   "pre": "you"
+  },
+  "2p": {
+   "nom": "you",
+   "gen": "your",
+   "dat": "you",
+   "acc": "you",
+   "ins": "you",
+   "pre": "you",
+   "num": "pl"
+  },
+  "1p": {
+   "nom": "we",
+   "gen": "our",
+   "dat": "us",
+   "acc": "us",
+   "ins": "us",
+   "pre": "us",
+   "num": "pl"
+  },
+  "3m": {
+   "nom": "he",
+   "gen": "his",
+   "dat": "him",
+   "acc": "him",
+   "ins": "him",
+   "pre": "him",
+   "g": "m"
+  },
+  "3f": {
+   "nom": "she",
+   "gen": "her",
+   "dat": "her",
+   "acc": "her",
+   "ins": "her",
+   "pre": "her",
+   "g": "f"
+  },
+  "3n": {
+   "nom": "it",
+   "gen": "its",
+   "dat": "it",
+   "acc": "it",
+   "ins": "it",
+   "pre": "it",
+   "g": "n"
+  },
+  "3p": {
+   "nom": "they",
+   "gen": "their",
+   "dat": "them",
+   "acc": "them",
+   "ins": "them",
+   "pre": "them",
+   "g": "pl"
+  }
+ },
+ "prepositions": {
+  "a": [
+   {
+    "form": "a",
+    "prefixes": [
+     "uni",
+     "use",
+     "usu",
+     "eu",
+     "one",
+     "once"
+    ]
+   },
+   {
+    "form": "an",
+    "starts": "aeiou"
+   },
+   {
+    "form": "an",
+    "words": [
+     "hour",
+     "honest",
+     "honour",
+     "heir"
+    ]
+   }
+  ]
+ }
+}
