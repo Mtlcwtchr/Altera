@@ -1,0 +1,7 @@
+[
+ {"at": 1, "zoom": 10, "pitch": 0.35, "yawDeg": 30, "take": 2, "speed": 3},
+ {"at": 25, "shot": "al57_01_speech.png"},
+ {"at": 50, "shot": "al57_02_speech.png"},
+ {"at": 75, "shot": "al57_03_journal.png"},
+ {"at": 77, "quit": true}
+]

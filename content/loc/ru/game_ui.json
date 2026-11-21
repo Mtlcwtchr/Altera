@@ -194,6 +194,8 @@
  "hud.hint.click_thing": "клик: что можно сделать",
  "hud.fb.done": "Готово: {act}",
  "hud.fb.abort": "Прервано: {act}",
+ "hud.journal.title": "Журнал",
+ "hud.journal.empty": "Пока тихо",
  "hud.rel.spouse": "супруг",
  "hud.rel.mother": "мать",
  "hud.rel.father": "отец",

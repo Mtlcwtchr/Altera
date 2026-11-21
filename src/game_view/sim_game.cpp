@@ -44,6 +44,7 @@
 #include "sim/craft_sim.hpp"
 #include "sim/gear.hpp"
 #include "sim/loc.hpp"
+#include "sim/speech_feed.hpp"
 #include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
@@ -216,6 +217,9 @@ public:
     // again from world_. The sim thread must not be running.
     void adoptWorld() {
         prevPos_.clear();
+        speechFeed_.reset(); // AL-57: the new world's old talk stays unshown
+        speechTail_.clear();
+        jrTail_.clear();
         for (const auto& [id, c] : world_->characters()) prevPos_[id] = c.pos;
         buildings_.clear();
         roads_.clear();
@@ -2519,6 +2523,7 @@ private:
         thingsSnap(w, s);
         actsSnap(w, s);
         feedbackSnap(w, s);
+        speechSnap(w, s);
         s.centre[0] = villageCentre_[0];
         s.centre[1] = villageCentre_[1];
         s.mapSize = w.map().sizeM;
@@ -2819,6 +2824,7 @@ private:
         }
         auto push = [&](std::string t, int kind) {
             if (t.empty()) return;
+            journal(t, kind);
             fbTail_.push_back({++fbSeq_, me->id, std::move(t), kind});
             if (fbTail_.size() > 12) fbTail_.erase(fbTail_.begin());
         };
@@ -2873,6 +2879,35 @@ private:
             }
         }
         s.feedback = fbTail_;
+    }
+
+    // AL-57: a row of the player's journal, stamped with the sim's clock.
+    void journal(const std::string& t, int kind) {
+        if (t.empty()) return;
+        jrTail_.push_back({++jrSeq_, clockText(world_->now()), t, kind});
+        if (jrTail_.size() > 40) jrTail_.erase(jrTail_.begin());
+    }
+
+    // AL-57 (the client side of AL-36 / AL-53): what people said since the
+    // last snapshot (say.line of the sim, sim/speech_feed.hpp) - a bubble over
+    // each speaker near the camera, and in the journal what the player's
+    // person said and heard.
+    void speechSnap(const World& w, Snapshot& s) {
+        EntityId me = kNone;
+        for (const auto& [id, c] : w.characters())
+            if (c.controller.isPlayer()) me = id;
+        const double vx = viewX_, vy = viewY_;
+        for (auto& e : speechFeed_.poll(w, *loc_, opts_.lang)) {
+            const bool mine = me != kNone && (e.speaker == me || e.listener == me);
+            if (mine) journal(e.full, 3);
+            const Character* c = w.character(e.speaker);
+            const double dx = c ? c->pos.x - vx : 1e9, dy = c ? c->pos.y - vy : 1e9;
+            if (!mine && dx * dx + dy * dy > 120.0 * 120.0) continue;
+            speechTail_.push_back({++speechSeq_, e.speaker, e.listener, std::move(e.line)});
+            if (speechTail_.size() > 16) speechTail_.erase(speechTail_.begin());
+        }
+        s.speech = speechTail_;
+        s.journal = jrTail_;
     }
 
     // The sim's chance of every act of the wheel, per tone (sim/tones.hpp):
@@ -4626,6 +4661,10 @@ private:
     Tick fbTick_ = 0;
     int fbAtTick_ = 0, fbSeq_ = 0;
     std::vector<FeedbackSnap> fbTail_;
+    SpeechFeed speechFeed_;   // AL-57
+    int speechSeq_ = 0, jrSeq_ = 0;
+    std::vector<SpeechSnap> speechTail_;
+    std::vector<JournalSnap> jrTail_;
 
     std::mutex cmdMutex_;
     std::deque<Command> commands_;
