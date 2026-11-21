@@ -12,6 +12,7 @@
 #include "sim/ai.hpp"
 #include "sim/captivity.hpp"
 #include "sim/consequences.hpp"
+#include "sim/facts.hpp"
 #include "sim/world.hpp"
 
 namespace fs = std::filesystem;
@@ -329,6 +330,15 @@ void answer(World& w, Character& accuser, Character& accused, EntityId object, c
         close(w, accuser, accused, object, "fled");
         leave(w, accused, R.fleeM);
     } else {
+        // innocent, and someone really saw who did it: he speaks up, the accused points to him (AL-55)
+        if (!f.guilty) {
+            const TruthCheck t = checkDoer(w, object, accused.id, accuser.status.family);
+            if (t.contradicted && t.witness != kNone) {
+                if (Character* wi = w.character(t.witness); wi && !wi->controller.isPlayer())
+                    queueTask(w, *wi, R.vouchTask, accuser.id, R, "case");
+                if (!accused.controller.isPlayer()) queueTask(w, accused, R.proveTask, accuser.id, R, "case");
+            }
+        }
         relOutcome(accuser, accused, R, "denied");
         w.chronicle("case_denied", {accused.id, accuser.id}, "chronicle.case_denied",
                     {{"accuser", accuser.id}, {"accused", accused.id}, {"object", object}});
@@ -406,6 +416,12 @@ void court(World& w, Character& judge, Character& accuser, Character& accused, E
     double e = R.wCertainty * certainty + std::min(R.witnessCap, R.wWitness * witnesses) + R.wBadName * badName(accused) +
                std::min(R.priorCap, R.wPrior * crimes);
     if (clearedBy != kNone) e -= R.wCleared;
+    // the thing itself found with him (searching him and his house): only what can be told apart
+    bool found = false;
+    if (f.guilty && goodsWorth(R, f.goods) >= R.foundMinWorth && holds(w, accused, f.goods)) {
+        e += R.wFound;
+        found = true;
+    }
     if (auto it = judge.relations.find(accused.id); it != judge.relations.end())
         e += R.wJudgeAffinity * it->second.affinity + R.wJudgeEnmity * std::max(0.0, it->second.enmity);
     if (judge.id == accused.id) e = 0.0;
@@ -413,7 +429,7 @@ void court(World& w, Character& judge, Character& accuser, Character& accused, E
     e += R.courtNoise * (r.uniform() - 0.5);
     note(w, judge, "judged", {accused.id, accuser.id}, object, "court", 1.0, 0.0);
     trace(w, judge, 'S', "deed.case_verdict",
-          {{"accused", accused.id}, {"evidence", e}, {"witnesses", witnesses}, {"right", (e >= R.guiltyAt) == f.guilty}});
+          {{"accused", accused.id}, {"evidence", e}, {"witnesses", witnesses}, {"found", found}, {"right", (e >= R.guiltyAt) == f.guilty}});
     if (e < R.guiltyAt) {
         repute(w, accused, R, "acquitted");
         repute(w, accuser, R, "false_accusation");
@@ -584,10 +600,14 @@ const CaseRules& caseRules(const Content& c) {
         r->wJudgeEnmity = num(co, "judge_enmity", r->wJudgeEnmity);
         r->courtNoise = num(co, "noise", r->courtNoise);
         r->wCleared = num(co, "cleared", r->wCleared);
+        r->wFound = num(co, "found", r->wFound);
+        r->foundMinWorth = static_cast<int>(num(co, "found_min_worth", r->foundMinWorth));
         const Json ta = j.value("tasks", Json::object());
         r->judgeTask = ta.value("judge", r->judgeTask);
         r->quarrelTask = ta.value("quarrel", r->quarrelTask);
         r->fightTask = ta.value("fight", r->fightTask);
+        r->vouchTask = ta.value("vouch", r->vouchTask);
+        r->proveTask = ta.value("prove", r->proveTask);
         r->taskPriority = num(ta, "priority", r->taskPriority);
         r->taskTtl = static_cast<Tick>(num(ta, "ttl", static_cast<double>(r->taskTtl)));
         r->fleeM = num(j, "flee_m", r->fleeM);
@@ -605,7 +625,7 @@ const CaseRules& caseRules(const Content& c) {
     return *out;
 }
 
-void keepTruth(World& w, Character& doer, const InteractionDef& d, EntityId victimFamily, EntityId victimPerson,
+EntityId keepTruth(World& w, Character& doer, const InteractionDef& d, EntityId victimFamily, EntityId victimPerson,
                EntityId object, const std::string& tag, const std::vector<EntityId>& witnesses) {
     Fact f;
     f.pred = tag;
@@ -620,8 +640,13 @@ void keepTruth(World& w, Character& doer, const InteractionDef& d, EntityId vict
         if (e.subject == "target_stock" && e.signedDelta() < 0.0 && !e.isParam())
             f.goods[e.key] += std::max(1, static_cast<int>(std::lround(-e.signedDelta())));
     for (EntityId id : witnesses)
-        if (id != doer.id) f.witnesses.push_back(id);
-    w.addFact(std::move(f));
+        if (id != doer.id) {
+            f.witnesses.push_back(id);
+            f.evidence.push_back({{"kind", "seen"}, {"who", id}});
+        }
+    // where the thing went: with the doer (found by searching him or his house)
+    for (const auto& [item, n] : f.goods) f.evidence.push_back({{"kind", "goods"}, {"item", item}, {"n", n}, {"holder", doer.id}});
+    return w.addFact(std::move(f)).id;
 }
 
 const Fact* findDeed(const World& w, EntityId object, EntityId doer, EntityId victimFamily) {
@@ -667,10 +692,12 @@ void caseAfterAct(World& w, Character& doer, const InteractionDef& d, Character*
         const EntityId object = best ? best->object : kNone;
         const double conf = best ? best->confidence : 0.5;
         const bool seen = best && best->type == "saw_crime";
+        const EntityId fact = best ? best->fact : kNone;
         if (pendingOf(accused, doer.id, object)) return;
         for (const auto& m : accused.memory) // settled already
             if (m.type == kClosed && !m.who.empty() && m.who[0] == doer.id && m.object == object && object != kNone) return;
         note(w, accused, kPending, {doer.id}, object, "answer", conf, -0.4);
+        if (MemoryEntry* p = pendingOf(accused, doer.id, object)) p->fact = fact;
         w.chronicle("case_opened", {doer.id, accused.id}, "chronicle.case_opened",
                     {{"accuser", doer.id}, {"accused", accused.id}, {"object", object}, {"confidence", conf}});
         schedule(w, "answer", doer.id, accused.id, object, {{"confidence", conf}, {"seen", seen}}, R.answerHours);
@@ -683,6 +710,16 @@ void caseAfterAct(World& w, Character& doer, const InteractionDef& d, Character*
                 if (Character* accuser = w.character(m.who[0]); accuser && accuser->body.alive)
                     court(w, doer, *accuser, accused, m.object, m.confidence, false);
     }
+}
+
+void closeCase(World& w, Character& accuser, Character& accused, EntityId object, const std::string& outcome,
+               Json params) {
+    if (!pendingOf(accused, accuser.id, object)) return;
+    close(w, accuser, accused, object, outcome, std::move(params));
+}
+
+bool casePending(Character& accused, EntityId accuser, EntityId object) {
+    return pendingOf(accused, accuser, object) != nullptr;
 }
 
 void installJustice(World& w) {

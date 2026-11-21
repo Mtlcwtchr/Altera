@@ -482,6 +482,8 @@ const std::vector<std::string>& traceCodes() {
         "deed.accuse_queued",  "deed.rumor_heard",         "deed.loss_noticed", "deed.suspects",
         // AL-37 cases
         "deed.case_answer",    "deed.case_pursue",         "deed.case_to_judge", "deed.case_verdict",
+        // AL-55 truth
+        "deed.vouched",        "deed.proved",
         "act.outcome",         "control.steer_clamped"};
     return v;
 }
@@ -542,7 +544,8 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const char* ck : {"chronicle.case_opened", "chronicle.case_returned", "chronicle.case_compensated",
                            "chronicle.case_denied", "chronicle.case_fled", "chronicle.case_let_go", "chronicle.case_quarrel",
                            "chronicle.case_fight", "chronicle.case_to_court", "chronicle.case_acquitted",
-                           "chronicle.case_convicted", "chronicle.case_dropped", "chronicle.case_cleared",
+                           "chronicle.case_convicted", "chronicle.case_dropped", "chronicle.case_cleared", "chronicle.fact_vouched", "chronicle.fact_proved",
+                           "chronicle.lie_exposed",
                            "memory.case_pending.text", "memory.case_closed.text", "case.sentence.fine.name",
                            "case.sentence.shame.name", "case.sentence.custody.name", "case.sentence.exile.name"})
         k.insert(ck);
