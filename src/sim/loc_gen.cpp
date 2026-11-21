@@ -569,7 +569,11 @@ void renderValue(Ctx& c, const std::string& lang, const Ph& ph, const Val& val, 
         c.out += ph.tyForms[regOf(v) == "vy" ? 1 : 0];
         return;
     }
-    if (isPropArg(v)) return realize(c, v, ph.form.empty() ? "clause" : ph.form, gcase, args);
+    if (isPropArg(v)) { // a prop role may be governed by a form: "content": "clause"
+        const bool govForm = val.govCase == "clause" || val.govCase == "nominal" || val.govCase == "about";
+        const std::string form = !ph.form.empty() ? ph.form : govForm ? val.govCase : "clause";
+        return realize(c, v, form, isCase(gcase) ? gcase : "", args);
+    }
     if (val.lexeme && isLexVerb(v)) {
         Json agree = Json::object();
         if (!ph.agree.empty()) {
@@ -860,13 +864,20 @@ std::string tidyLine(const std::string& s, bool capitalize) {
         r += ch;
     }
     while (!r.empty() && r.back() == ' ') r.pop_back();
-    if (capitalize) {
+    if (capitalize) { // the first letter of the line and of every sentence after . ! ?
         std::u32string w = u32(r);
-        for (auto& cp : w)
-            if (isLetter(cp)) {
+        bool start = true;
+        for (size_t i = 0; i < w.size(); ++i) {
+            char32_t& cp = w[i];
+            if (start && isLetter(cp)) {
                 cp = upperCp(cp);
-                break;
+                start = false;
+            } else if ((cp == U'.' || cp == U'!' || cp == U'?') && i + 1 < w.size() && w[i + 1] == U' ') {
+                start = true;
+            } else if (isLetter(cp) || (cp >= U'0' && cp <= U'9')) {
+                start = false;
             }
+        }
         r = u8(w);
     }
     return r;
@@ -1020,7 +1031,8 @@ ValidationReport validateLocGen(const Loc& loc, const std::vector<std::string>& 
                     for (auto it = rl.begin(); it != rl.end(); ++it) {
                         std::string cs, pr;
                         if (it->is_string()) parseGov(it->get<std::string>(), cs, pr);
-                        if (!isCase(cs)) r.errors.push_back(where + ": role '" + it.key() + "' has no case");
+                        if (!isCase(cs) && cs != "clause" && cs != "nominal" && cs != "about")
+                            r.errors.push_back(where + ": role '" + it.key() + "' has no case");
                         allowedNames.insert(it.key());
                     }
                 const std::string pred = key.substr(6);

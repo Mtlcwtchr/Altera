@@ -56,6 +56,7 @@
 }
 ```
 
+- Роль-пропозиция (`content` у say/think) управляется формой: `"content": "clause"` (или `nominal`, `about`).
 - Имена ролей — как в `content/ai/predicates.json` (doer, victim, victim_family, object, beneficiary, content…).
 - Во фрейме `{role}` выводится **по управлению** (`"у+gen"` → «у мельника», `"acc"` → вин.); явный падеж
   `{role:gen}` — без предлога. `{role?}` — роль необязательна.

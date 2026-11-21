@@ -58,7 +58,7 @@ Json propLocArg(const Prop& p, const std::function<Json(const Ref&)>& refNoun,
 bool isPropArg(const Json& v);
 
 // Spaces collapsed, no space before , . ! ? : ; and after an opening quote, trimmed;
-// optionally the first letter capitalized (ru and Latin).
+// optionally the first letter of the line and of each sentence after . ! ? capitalized (ru and Latin).
 std::string tidyLine(const std::string& s, bool capitalize);
 
 // Structure of lexemes (lex.verb.*, lex.adj.*, lex.noun.*), frames (frame.*), variant
