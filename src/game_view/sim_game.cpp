@@ -260,11 +260,11 @@ public:
     }
     // Names the interface keeps (they follow the language).
     void refreshTexts() {
-        hud_.buildPalette.clear();
+        hud_.buildCatalog.clear();
         for (const auto& d : content_->build.pieces) {
             std::string cost;
             for (const auto& [item, n] : d.cost) cost += (cost.empty() ? "" : ", ") + name("item", item) + " " + std::to_string(n);
-            hud_.buildPalette.push_back({text("hud.build.piece." + d.id), cost});
+            hud_.buildCatalog.push_back({d.id, text("hud.build.piece." + d.id), cost, d.category});
         }
         goalIds_.clear();
         goalNames_.clear();
@@ -789,7 +789,7 @@ public:
         }
         if (pickAt_.pending) {
             pickAt_.pending = false;
-            if (hud_.panel == "build") placeWanted_ = true;
+            if (hud_.panel == "build") dragStart_ = true;   // AL-9: a press starts a drag, the release lays it
             else {
                 // A click picks a target and opens what can be done to it; it
                 // never moves the control (that is the Dynasty panel's "Lead").
@@ -1633,6 +1633,21 @@ private:
                 input_.mouseY = st["mouse"][1].get<float>();
             }
             if (st.contains("pick")) hud_.buildPick = st["pick"].get<int>();
+            if (st.contains("build_mode")) hud_.buildMode = st["build_mode"].get<std::string>();
+            if (st.contains("build_storey")) buildBump_ = st["build_storey"].get<int>();
+            // AL-9: a drag of the build tool between two points beside the builder, laid at once
+            if (st.contains("drag") && shown_.builder != kNone && content_ && !content_->build.pieces.empty())
+                if (const ActorSnap* b = actor(shown_.builder)) {
+                    const Json g = st["drag"];
+                    buildPick_ = std::clamp(hud_.buildPick, 0, int(content_->build.pieces.size()) - 1);
+                    buildBatch(b->x + g.at(0).get<double>(), b->y + g.at(1).get<double>(), b->x + g.at(2).get<double>(),
+                               b->y + g.at(3).get<double>());
+                    int bad = 0;
+                    for (const auto& w : batchWhy_) bad += !w.empty();
+                    SDL_Log("altera_game: script drag %s: %zu pieces, %d refused, %zu removed", hud_.buildMode.c_str(),
+                            laid_.size(), bad, batchRemove_.size());
+                    commitBatch();
+                }
             // the workshop: craft_kit gives the person materials, tools and the
             // starter recipes; craft_draft fills the attempt; craft_try runs it;
             // craft_same runs the first mastered recipe
@@ -2952,21 +2967,234 @@ private:
         return p;
     }
 
+    // ---- AL-9: building as in the Sims ------------------------------------
+    // A tool lays a batch of pieces for a drag from a to b (sim points): a
+    // room (footings, walls round it, corner posts), a run of walls along a
+    // grid line, a floor or footings over a rectangle, a roof with its gables
+    // over one, a door or a window put in place of a wall, removal over a
+    // rectangle; a click is a drag of one cell. Each piece is checked against
+    // the plan with the batch's earlier pieces in it, so a room's walls stand
+    // on its own new footings; on release the sim gets them in that order.
+    void addToBatch(PieceMap& plan, EntityId& fake, const std::string& kind, int x, int y, int rot, int z, bool exactZ) {
+        const BuildCatalog& cat = content_->build;
+        const BuildPieceDef* d = cat.find(kind);
+        if (!d) return;
+        BuildPiece p;
+        p.kind = kind;
+        p.x = x;
+        p.y = y;
+        p.rot = rot;
+        p.family = shown_.builderFamily;
+        if (d->category == "foundation") p.z = 0;
+        else if (exactZ) p.z = std::max(d->category == "floor" ? 1 : 0, z);
+        else {
+            const int az = autoStorey(cat, plan, p, std::max(d->category == "floor" ? 1 : 0, z));
+            p.z = az < 0 ? z : az;
+        }
+        std::string why = checkPlacement(cat, plan, p);
+        const double c = cat.cellM;
+        const double wx = originX_ + (p.x + 0.5) * c, wy = originY_ + (p.y + 0.5) * c;
+        double gmin = 1e9, gmax = -1e9;
+        for (int k = 0; k < 5; ++k) {
+            const double ox = k == 4 ? 0 : (k & 1 ? 0.95 : -0.95), oy = k == 4 ? 0 : (k & 2 ? 0.95 : -0.95);
+            const double g = groundAt(wx + ox, wy + oy);
+            gmin = std::min(gmin, g), gmax = std::max(gmax, g);
+        }
+        double h = 0;
+        if (joinHeight(cat, plan, p, h)) p.h = h;
+        else p.h = gmax + 0.05;
+        // the ground is levelled under footings (layPads), so only a real cliff stops one
+        if (d->category == "foundation" && why.empty() && (p.h - gmin > 3.0 || gmax > p.h + 0.6)) why = "ground_steep";
+        if (why.empty()) {
+            p.id = ++fake;
+            plan[p.id] = p;
+        }
+        laid_.push_back(p);
+        batchWhy_.push_back(why);
+    }
+
+    // The way a gable leans at an end of a roof (see planHouse): its mirrored
+    // twin on one half of the end.
+    static int gableRot(int endRot, bool lowerHalf) {
+        switch (endRot) {
+        case 3: return lowerHalf ? 3 + 4 : 3;   // west end, ridge along x
+        case 1: return lowerHalf ? 1 : 1 + 4;   // east end
+        case 0: return lowerHalf ? 0 + 4 : 0;   // south end, ridge along y (lower half = +x)
+        default: return lowerHalf ? 2 : 2 + 4;  // north end
+        }
+    }
+
+    void buildBatch(double ax, double ay, double bx, double by) {
+        const BuildCatalog& cat = content_->build;
+        laid_.clear();
+        batchWhy_.clear();
+        batchRemove_.clear();
+        const std::string mode = hud_.buildMode;
+        const BuildPieceDef& d = cat.pieces[std::size_t(buildPick_)];
+        const double c = cat.cellM;
+        PieceMap plan = shown_.pieces;
+        EntityId fake = 0xF0000000u;
+        const int cx0 = int(std::floor(std::min(ax, bx) / c)), cx1 = int(std::floor(std::max(ax, bx) / c));
+        const int cy0 = int(std::floor(std::min(ay, by) / c)), cy1 = int(std::floor(std::max(ay, by) / c));
+        const bool drag = cx0 != cx1 || cy0 != cy1;
+        auto single = [&](const BuildPieceDef& def) {
+            std::string why;
+            BuildPiece p = pieceAt(def, bx, by, buildRot_, buildBump_, why);
+            addToBatch(plan, fake, def.id, p.x, p.y, p.rot, p.z, true);
+        };
+        if (mode == "remove") {
+            for (const auto& [id, p] : shown_.pieces) {
+                const BuildPieceDef* pd = cat.find(p.kind);
+                if (!pd || p.family != shown_.builderFamily) continue;
+                const Vec2 pc = pieceCentre(cat, *pd, p);
+                if (pc.x >= cx0 * c - 0.3 && pc.x <= (cx1 + 1) * c + 0.3 && pc.y >= cy0 * c - 0.3 && pc.y <= (cy1 + 1) * c + 0.3)
+                    batchRemove_.push_back(id);
+            }
+            return;
+        }
+        if (mode == "door" || mode == "window") {
+            // in place of the wall on that edge (any wall of the household)
+            std::string why;
+            const BuildPiece p = pieceAt(d, bx, by, buildRot_, buildBump_, why);
+            BuildPiece probe = p;
+            for (int z = 0; z <= 4; ++z) {
+                probe.z = z;
+                for (const auto& [id, o] : shown_.pieces) {
+                    const BuildPieceDef* od = cat.find(o.kind);
+                    if (!od || od->category != "wall" || o.family != shown_.builderFamily || o.z != z) continue;
+                    if (checkPlacement(cat, PieceMap{{id, o}}, probe) == "occupied") {
+                        batchRemove_.push_back(id);
+                        plan.erase(id);
+                        addToBatch(plan, fake, d.id, o.x, o.y, o.rot, o.z, true);
+                        laid_.back().h = o.h;
+                        return;
+                    }
+                }
+            }
+            addToBatch(plan, fake, d.id, p.x, p.y, p.rot, p.z, true);
+            return;
+        }
+        if (mode == "gable" || mode == "pillar" || (mode == "wall" && !drag)) {
+            single(d);
+            return;
+        }
+        if (mode == "wall") {
+            // a run along the grid line the drag follows most
+            const int ia = int(std::lround(ax / c)), ja = int(std::lround(ay / c));
+            const int ib = int(std::lround(bx / c)), jb = int(std::lround(by / c));
+            const bool flip = buildRot_ & 1;
+            if (std::abs(ib - ia) >= std::abs(jb - ja)) {
+                for (int i = std::min(ia, ib); i < std::max(ia, ib); ++i)
+                    addToBatch(plan, fake, d.id, i, flip ? ja - 1 : ja, flip ? 2 : 0, buildBump_, false);
+            } else {
+                for (int j = std::min(ja, jb); j < std::max(ja, jb); ++j)
+                    addToBatch(plan, fake, d.id, flip ? ia - 1 : ia, j, flip ? 1 : 3, buildBump_, false);
+            }
+            if (laid_.empty()) single(d);
+            return;
+        }
+        if (mode == "floor" || mode == "foundation") {
+            for (int y = cy0; y <= cy1; ++y)
+                for (int x = cx0; x <= cx1; ++x) addToBatch(plan, fake, d.id, x, y, 0, std::max(1, buildBump_), false);
+            return;
+        }
+        if (mode == "room") {
+            // footings under it all, walls round it facing out, posts at the corners
+            if (buildBump_ == 0)
+                for (int y = cy0; y <= cy1; ++y)
+                    for (int x = cx0; x <= cx1; ++x) addToBatch(plan, fake, "foundation_stone", x, y, 0, 0, true);
+            else
+                for (int y = cy0; y <= cy1; ++y)
+                    for (int x = cx0; x <= cx1; ++x) addToBatch(plan, fake, "floor_plank", x, y, 0, buildBump_, true);
+            const int z = buildBump_;
+            for (int x = cx0; x <= cx1; ++x) {
+                addToBatch(plan, fake, d.id, x, cy0, 0, z, true);
+                addToBatch(plan, fake, d.id, x, cy1, 2, z, true);
+            }
+            for (int y = cy0; y <= cy1; ++y) {
+                addToBatch(plan, fake, d.id, cx0, y, 3, z, true);
+                addToBatch(plan, fake, d.id, cx1, y, 1, z, true);
+            }
+            addToBatch(plan, fake, "pillar_log", cx0, cy0, 0, z, true);
+            addToBatch(plan, fake, "pillar_log", cx1, cy0, 1, z, true);
+            addToBatch(plan, fake, "pillar_log", cx1, cy1, 2, z, true);
+            addToBatch(plan, fake, "pillar_log", cx0, cy1, 3, z, true);
+            return;
+        }
+        if (mode == "roof") {
+            // the ridge along the longer side; each row a storey higher toward
+            // it; at the ends gables under the slope and walls below them
+            const int zb = std::max(1, buildBump_ + 1);
+            const int W = cx1 - cx0 + 1, D = cy1 - cy0 + 1;
+            const std::string gable = lastGable_.empty() ? "gable_daub" : lastGable_;
+            const std::string wall = lastWall_.empty() ? "wall_daub" : lastWall_;
+            const bool alongX = W >= D;
+            const int rows = alongX ? D : W, len = alongX ? W : D;
+            for (int r = 0; r < rows; ++r) {
+                const int k = std::min(r, rows - 1 - r);
+                const bool lower = r < rows / 2 || (rows % 2 && r == rows / 2);
+                const int rot = alongX ? (lower ? 0 : 2) : (lower ? 3 : 1);
+                for (int t = 0; t < len; ++t) {
+                    const int x = alongX ? cx0 + t : cx0 + r, y = alongX ? cy0 + r : cy0 + t;
+                    addToBatch(plan, fake, d.id, x, y, rot, zb + k, true);
+                }
+                for (int end = 0; end < 2; ++end) {
+                    const int x = alongX ? (end ? cx1 : cx0) : cx0 + r, y = alongX ? cy0 + r : (end ? cy1 : cy0);
+                    const int endRot = alongX ? (end ? 1 : 3) : (end ? 2 : 0);
+                    const bool half = alongX ? lower : !lower;   // ridge along y: the +x half is the "lower" one
+                    for (int s = 0; s < k; ++s) addToBatch(plan, fake, wall, x, y, endRot, zb + s, true);
+                    addToBatch(plan, fake, gable, x, y, gableRot(endRot, half), zb + k, true);
+                }
+            }
+            return;
+        }
+        single(d);
+    }
+
     void updateBuild() {
         const BuildCatalog& cat = content_->build;
         hasPreview_ = false;
         if (cat.pieces.empty()) return;
+        // the buttons of the bar do what the keys do
+        buildRot_ = (buildRot_ + hud_.buildTurns) % 4;
+        buildBump_ = std::max(0, buildBump_ + hud_.buildStoreyUp - hud_.buildStoreyDown);
+        hud_.buildTurns = hud_.buildStoreyUp = hud_.buildStoreyDown = 0;
         buildPick_ = std::clamp(hud_.buildPick, 0, int(cat.pieces.size()) - 1);
         const BuildPieceDef& d = cat.pieces[std::size_t(buildPick_)];
+        if (d.category == "gable") lastGable_ = d.id;
+        if (d.category == "wall" && d.id.rfind("wall_door", 0) != 0 && d.id.rfind("wall_window", 0) != 0) lastWall_ = d.id;
         double hx = 0, hy = 0;
         const bool hit = !overUi_ && groundRay(input_.mouseX, input_.mouseY, hx, hy);
-        if (hit) {
-            buildPreview_ = pieceAt(d, hx - originX_, hy - originY_, buildRot_, buildBump_, buildWhy_);
-            hasPreview_ = true;
+        if (dragStart_ && hit) {
+            dragOn_ = true;
+            dragA_[0] = hx - originX_;
+            dragA_[1] = hy - originY_;
         }
-        if (shown_.builder == kNone) buildWhy_ = "no_builder";
-        hud_.buildStatus = !hit ? "" : buildWhy_.empty() ? text("hud.build.ok", {{"storey", buildPreview_.z + 1}})
-                                                           : text("hud.build.why." + buildWhy_);
+        dragStart_ = false;
+        if (hit) {
+            const double bx = hx - originX_, by = hy - originY_;
+            buildBatch(dragOn_ ? dragA_[0] : bx, dragOn_ ? dragA_[1] : by, bx, by);
+            hasPreview_ = true;
+        } else if (!dragOn_) {
+            laid_.clear();
+            batchWhy_.clear();
+            batchRemove_.clear();
+        }
+        int ok = 0, bad = 0, z = 0;
+        std::string firstWhy;
+        for (std::size_t i = 0; i < laid_.size(); ++i) {
+            if (batchWhy_[i].empty()) ++ok, z = std::max(z, laid_[i].z);
+            else if (++bad == 1) firstWhy = batchWhy_[i];
+        }
+        if (shown_.builder == kNone) firstWhy = "no_builder", bad = std::max(bad, 1), ok = 0;
+        hud_.buildOk = bad == 0;
+        if (!hit && !dragOn_) hud_.buildStatus = "";
+        else if (hud_.buildMode == "remove")
+            hud_.buildStatus = text("hud.build.remove_n", {{"n", int(batchRemove_.size())}});
+        else if (bad == 0 && ok == 1) hud_.buildStatus = text("hud.build.ok", {{"storey", z + 1}});
+        else if (bad == 0) hud_.buildStatus = text("hud.build.batch_ok", {{"n", ok}});
+        else
+            hud_.buildStatus = text("hud.build.batch_bad", {{"n", ok}, {"bad", bad}}) + ": " + text("hud.build.why." + firstWhy);
         // what the family's plan still lacks
         std::map<std::string, int> lack;
         int planned = 0, built = 0;
@@ -2985,12 +3213,12 @@ private:
         for (const auto& [k, v] : lack) need += (need.empty() ? "" : ", ") + name("item", k) + " " + std::to_string(v);
         hud_.buildPlan = text("hud.build.plan", {{"planned", planned}, {"built", built}}) +
                          (need.empty() ? "" : "  \xC2\xB7  " + text("hud.build.lack", {{"list", need}}));
-        if (placeWanted_) {
+        // the release lays the batch (the whole of it that can go: what cannot is left out)
+        const bool release = dragOn_ && (!input_.down || input_.released);
+        if (release || placeWanted_) {
+            dragOn_ = false;
             placeWanted_ = false;
-            if (hasPreview_ && buildWhy_.empty())
-                post({"cmd", 0, "place_piece",
-                      {{"id", shown_.builder}, {"kind", buildPreview_.kind}, {"x", buildPreview_.x}, {"y", buildPreview_.y},
-                       {"z", buildPreview_.z}, {"rot", buildPreview_.rot}, {"h", buildPreview_.h}}});
+            commitBatch();
         }
         if (removeWanted_) {
             removeWanted_ = false;
@@ -3007,6 +3235,20 @@ private:
             }
             if (best != kNone) post({"cmd", 0, "remove_piece", {{"id", shown_.builder}, {"piece", best}}});
         }
+    }
+
+    void commitBatch() {
+        if (shown_.builder == kNone) return;
+        for (EntityId id : batchRemove_) post({"cmd", 0, "remove_piece", {{"id", shown_.builder}, {"piece", id}}});
+        for (std::size_t i = 0; i < laid_.size(); ++i) {
+            if (!batchWhy_[i].empty()) continue;
+            const BuildPiece& p = laid_[i];
+            post({"cmd", 0, "place_piece",
+                  {{"id", shown_.builder}, {"kind", p.kind}, {"x", p.x}, {"y", p.y}, {"z", p.z}, {"rot", p.rot}, {"h", p.h}}});
+        }
+        laid_.clear();
+        batchWhy_.clear();
+        batchRemove_.clear();
     }
 
     // A ready-made little house for the tour scripts: 2 x 2 cells at a sim
@@ -3076,8 +3318,13 @@ private:
         };
         static const float kBuilt[3] = {1, 1, 1}, kPlanned[3] = {0.55f, 0.62f, 0.78f}, kOk[3] = {0.7f, 1.35f, 0.7f},
                            kBad[3] = {1.5f, 0.45f, 0.4f};
-        for (const auto& [id, p] : shown_.pieces) add(p, p.built ? kBuilt : kPlanned, p.built ? 0.0f : 0.25f);
-        if (hasPreview_) add(buildPreview_, buildWhy_.empty() ? kOk : kBad, 0.9f);
+        for (const auto& [id, p] : shown_.pieces) {
+            const bool going = hud_.panel == "build" &&
+                               std::find(batchRemove_.begin(), batchRemove_.end(), id) != batchRemove_.end();
+            add(p, going ? kBad : p.built ? kBuilt : kPlanned, going ? 0.9f : p.built ? 0.0f : 0.25f);
+        }
+        if (hud_.panel == "build" && (hasPreview_ || dragOn_))
+            for (std::size_t i = 0; i < laid_.size(); ++i) add(laid_[i], batchWhy_[i].empty() ? kOk : kBad, 0.9f);
     }
 
     // ---- placement --------------------------------------------------------
@@ -3096,7 +3343,11 @@ private:
     // which the clipmap then stands on - the ground, the grass, the shore.
     void layPads() {
         if (!relief_ || !houseSet().loaded()) return;
-        const std::size_t sig = buildings_.size() * 2654435761u + 1;
+        // AL-9: the household's footings count too (the ground is levelled under them)
+        std::size_t footings = 0;
+        for (const auto& [id, pc] : shown_.pieces)
+            if (pc.z == 0 && pc.kind.rfind("foundation", 0) == 0) footings = footings * 31 + std::size_t(pc.x * 7919 + pc.y) + 1;
+        const std::size_t sig = buildings_.size() * 2654435761u + 1 + footings * 40503u;
         if (sig == padSig_) return;
         padSig_ = sig;
         std::vector<terrain_core::Relief::Pad> pads;
@@ -3152,6 +3403,57 @@ private:
                     p.weight[std::size_t(j) * p.width + i] = float(full * t * t * (3 - 2 * t));
                 }
             pads.push_back(std::move(p));
+        }
+        // AL-9: a level site under every structure the household builds: its
+        // footings grouped by touching cells, the ground brought to just under
+        // the floor across them and eased back into the land round them
+        {
+            const double cm = content_->build.cellM;
+            std::map<std::pair<int, int>, double> cells;
+            for (const auto& [id, pc] : shown_.pieces)
+                if (pc.z == 0 && pc.kind.rfind("foundation", 0) == 0) cells[{pc.x, pc.y}] = pc.h;
+            std::set<std::pair<int, int>> seen;
+            for (const auto& [start, h0] : cells) {
+                if (seen.count(start)) continue;
+                std::vector<std::pair<int, int>> stack{start}, group;
+                seen.insert(start);
+                while (!stack.empty()) {
+                    const auto q = stack.back();
+                    stack.pop_back();
+                    group.push_back(q);
+                    for (const auto& n : {std::pair{q.first + 1, q.second}, std::pair{q.first - 1, q.second},
+                                          std::pair{q.first, q.second + 1}, std::pair{q.first, q.second - 1}})
+                        if (cells.count(n) && seen.insert(n).second) stack.push_back(n);
+                }
+                int x0 = 1 << 30, x1 = -(1 << 30), y0 = 1 << 30, y1 = -(1 << 30);
+                double floorH = 1e30;
+                for (const auto& q : group) {
+                    x0 = std::min(x0, q.first), x1 = std::max(x1, q.first);
+                    y0 = std::min(y0, q.second), y1 = std::max(y1, q.second);
+                    floorH = std::min(floorH, cells[q]);
+                }
+                const double hx = (x1 - x0 + 1) * cm * 0.5, hy = (y1 - y0 + 1) * cm * 0.5;
+                const double wx = originX_ + (x0 * cm + hx), wy = originY_ + (y0 * cm + hy);
+                const double pad = 0.5, ease = 4.0;
+                const double reach = std::hypot(hx, hy) + pad + ease + 1.0;
+                terrain_core::Relief::Pad pd;
+                pd.texel = 0.5f;
+                pd.base = float(floorH - 0.06);
+                pd.x0 = wx - reach;
+                pd.y0 = wy - reach;
+                pd.width = pd.height = std::uint32_t(std::ceil(2 * reach / pd.texel));
+                const std::size_t n = std::size_t(pd.width) * pd.height;
+                pd.rise.assign(n, 0.0f);
+                pd.weight.assign(n, 0.0f);
+                for (std::uint32_t j = 0; j < pd.height; ++j)
+                    for (std::uint32_t i = 0; i < pd.width; ++i) {
+                        const double lx = pd.x0 + (i + 0.5) * pd.texel - wx, ly = pd.y0 + (j + 0.5) * pd.texel - wy;
+                        const double ex = std::max(0.0, std::fabs(lx) - hx - pad), ey = std::max(0.0, std::fabs(ly) - hy - pad);
+                        const double t = std::clamp(1.0 - std::hypot(ex, ey) / ease, 0.0, 1.0);
+                        pd.weight[std::size_t(j) * pd.width + i] = float(t * t * (3 - 2 * t));
+                    }
+                pads.push_back(std::move(pd));
+            }
         }
         if (!relief_->setPads(pads, spacing_)) {
             SDL_Log("altera_game: pads: the world's relief is too big to lay pads beside it");
@@ -4254,6 +4556,13 @@ private:
     int buildPick_ = 0, buildRot_ = 0, buildBump_ = 0;
     bool hasPreview_ = false, placeWanted_ = false, removeWanted_ = false;
     BuildPiece buildPreview_;
+    // AL-9: the drag of a build tool and what it lays
+    bool dragStart_ = false, dragOn_ = false;
+    double dragA_[2] = {0, 0};
+    std::vector<BuildPiece> laid_;
+    std::vector<std::string> batchWhy_;
+    std::vector<EntityId> batchRemove_;
+    std::string lastGable_, lastWall_;
     std::string buildWhy_;
     std::size_t clearedPieces_ = 0;
     std::map<std::string, std::vector<Figure>> beastFigures_;

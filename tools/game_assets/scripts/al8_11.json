@@ -1,0 +1,20 @@
+[
+ {"at": 1, "speed": 1, "take_chief": true, "zoom": 70, "pitch": 0.95, "yawDeg": 30},
+ {"at": 6, "shot": "al8_village_top.png"},
+ {"at": 7, "zoom": 28, "pitch": 0.45, "yawDeg": 60},
+ {"at": 11, "shot": "al8_village_mid.png"},
+ {"at": 12, "select": 0, "zoom": 5, "pitch": 0.2, "yawDeg": 200},
+ {"at": 16, "shot": "al11_people.png"},
+ {"at": 17, "beast": "hens", "zoom": 3, "pitch": 0.3},
+ {"at": 21, "shot": "al11_hens.png", "beast": "goats", "zoom": 6},
+ {"at": 25, "shot": "al11_goats.png"},
+ {"at": 26, "give": true, "panel": "build", "build_mode": "room", "pick": 5, "build_storey": 0, "drag": [8, 2, 13.9, 7.9]},
+ {"at": 28, "build_mode": "roof", "pick": 15, "drag": [8, 2, 13.9, 7.9]},
+ {"at": 29, "build_mode": "foundation", "pick": 0, "drag": [-16, 2, -9.1, 5.9]},
+ {"at": 30, "build_mode": "room", "pick": 5, "look_at_build": true, "zoom": 18, "pitch": 0.42, "yawDeg": 35, "mouse": [960, 520]},
+ {"at": 34, "shot": "al9_10_build_ui.png"},
+ {"at": 35, "panel": "none", "speed": 4},
+ {"at": 75, "speed": 1, "look_at_build": true, "zoom": 16, "pitch": 0.3, "yawDeg": 215},
+ {"at": 79, "shot": "al9_built.png"},
+ {"at": 80, "quit": true}
+]

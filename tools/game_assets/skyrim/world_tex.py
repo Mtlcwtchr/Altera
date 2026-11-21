@@ -109,6 +109,10 @@ def ground(lib, repo, report):
         a = a * (mean / np.maximum(a.reshape(-1, 3).mean(0), 1e-3))
         Image.fromarray((np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)).save(os.path.join(out, name))
         report.append({'material': key, 'texture': 'landscape/' + sky + '.dds', 'replace_before_prod': True})
+    # the renderer reads the surface maps beside the colour (materials/pbr): ours stay
+    import shutil
+    if os.path.isdir(os.path.join(src, 'pbr')):
+        shutil.copytree(os.path.join(src, 'pbr'), os.path.join(out, 'pbr'), dirs_exist_ok=True)
     print('wrote', out)
 
 
