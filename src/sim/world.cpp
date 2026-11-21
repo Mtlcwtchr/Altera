@@ -314,7 +314,29 @@ void World::run(Tick ticks) {
 
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Family, id, name, dynasty, settlement, members, storage, hearth)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Dynasty, id, name, founder)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Settlement, id, name, center, families, institution, chief)
+void to_json(Json& j, const Settlement& s) {
+    j = Json{{"id", s.id}, {"name", s.name}, {"center", s.center}, {"families", s.families},
+             {"institution", s.institution}, {"chief", s.chief}};
+    if (!s.roads.empty()) {   // AL-8: only planned villages carry these
+        j["roads"] = s.roads;
+        j["road_width"] = s.roadWidth;
+        j["square"] = s.square;
+        j["square_r"] = s.squareR;
+    }
+}
+void from_json(const Json& j, Settlement& s) {
+    const Settlement d;
+    s.id = j.value("id", d.id);
+    s.name = j.value("name", d.name);
+    s.center = j.value("center", d.center);
+    s.families = j.value("families", d.families);
+    s.institution = j.value("institution", d.institution);
+    s.chief = j.value("chief", d.chief);
+    s.roads = j.value("roads", d.roads);
+    s.roadWidth = j.value("road_width", d.roadWidth);
+    s.square = j.value("square", d.square);
+    s.squareR = j.value("square_r", d.squareR);
+}
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, code, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MapGrid, sizeM, cellM, w, h, biomeNames, biome, water)
 
@@ -322,6 +344,7 @@ void to_json(Json& j, const WorldObject& o) {
     j = Json{{"id", o.id},       {"type", o.type},   {"pos", o.pos},
              {"owner", o.ownerFamily}, {"stock", o.stock}, {"reserved_by", o.reservedBy},
              {"reserved_until", o.reservedUntil}};
+    if (o.faced) j["yaw"] = o.yaw;
 }
 void from_json(const Json& j, WorldObject& o) {
     o.id = j.at("id").get<EntityId>();
@@ -331,6 +354,8 @@ void from_json(const Json& j, WorldObject& o) {
     o.stock = j.value("stock", std::map<std::string, int>{});
     o.reservedBy = j.value("reserved_by", kNone);
     o.reservedUntil = j.value("reserved_until", Tick{0});
+    o.faced = j.contains("yaw");
+    o.yaw = j.value("yaw", 0.0);
 }
 void to_json(Json& j, const Command& c) {
     j = Json{{"tick", c.tick}, {"seq", c.seq}, {"source", c.source}, {"type", c.type}, {"args", c.args},

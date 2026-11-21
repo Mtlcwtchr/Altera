@@ -323,6 +323,7 @@ add_library(altera_sim STATIC
         src/sim/character.cpp
         src/sim/world.cpp
         src/sim/worldgen.cpp
+        src/sim/village_plan.cpp
         src/sim/ai_eval.cpp
         src/sim/animals.cpp
         src/sim/farming.cpp
@@ -786,7 +787,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_craft.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp
-            tests/test_altera_sim_gear.cpp)
+            tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

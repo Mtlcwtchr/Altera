@@ -65,6 +65,8 @@ struct BuildingSnap {
     std::string type;
     double x = 0, y = 0;
     EntityId family = kNone;
+    float yaw = 0;          // AL-8: as the village plan faced it
+    bool faced = false;
 };
 
 std::string clockText(Tick t) {
@@ -214,8 +216,12 @@ public:
         prevPos_.clear();
         for (const auto& [id, c] : world_->characters()) prevPos_[id] = c.pos;
         buildings_.clear();
+        roads_.clear();
+        roadWidth_.clear();
         if (!world_->settlements().empty()) {
             const Settlement& s = world_->settlements().begin()->second;
+            roads_ = s.roads;
+            roadWidth_ = s.roadWidth;
             target_[0] = originX_ + s.center.x;
             target_[1] = originY_ + s.center.y;
             villageCentre_[0] = s.center.x;
@@ -224,7 +230,7 @@ public:
         for (const auto& [id, ob] : world_->objects()) {
             static const char* kShown[] = {"house", "storage", "hearth", "field", "garden", "shrine", "village_fire"};
             for (const char* t : kShown)
-                if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily});
+                if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced});
         }
         anims_.clear();
         beastAnims_.clear();
@@ -616,6 +622,40 @@ public:
         cfg["map_biome"] = std::move(mb);
         cfg["map_water"] = std::move(mw);
         cfg["river"] = false;   // the water is the world's
+        // AL-8: the ground round the village as the sim's planner reads it (sim/village_plan):
+        // 1 km square at 5 m, heights in decimetres, water from the sea, lakes and the rivers' own widths.
+        {
+            const int sn = 201;
+            const double sc = 5.0, sx0 = centreX - sc * (sn - 1) * 0.5, sy0 = centreY - sc * (sn - 1) * 0.5;
+            Json hs = Json::array(), ws = Json::array();
+            std::vector<std::uint8_t> wetCell(std::size_t(sn) * sn, 0);
+            if (opts_.rivers)
+                for (const auto& seg : *opts_.rivers) {
+                    const double half = std::max(seg.width0, seg.width1) * 0.5 + 3.0;
+                    const double vx = seg.x1 - seg.x0, vy = seg.y1 - seg.y0, l2 = vx * vx + vy * vy;
+                    const int ax = int((std::min(seg.x0, seg.x1) - half - sx0) / sc) - 1,
+                              bx = int((std::max(seg.x0, seg.x1) + half - sx0) / sc) + 1;
+                    const int ay = int((std::min(seg.y0, seg.y1) - half - sy0) / sc) - 1,
+                              by = int((std::max(seg.y0, seg.y1) + half - sy0) / sc) + 1;
+                    for (int y = std::max(ay, 0); y <= std::min(by, sn - 1); ++y)
+                        for (int x = std::max(ax, 0); x <= std::min(bx, sn - 1); ++x) {
+                            const double px = sx0 + x * sc - seg.x0, py = sy0 + y * sc - seg.y0;
+                            const double t = l2 > 0 ? std::clamp((px * vx + py * vy) / l2, 0.0, 1.0) : 0.0;
+                            if (std::hypot(px - vx * t, py - vy * t) < half) wetCell[std::size_t(y) * sn + std::size_t(x)] = 1;
+                        }
+                }
+            for (int y = 0; y < sn; ++y)
+                for (int x = 0; x < sn; ++x) {
+                    const double wx = sx0 + x * sc, wy = sy0 + y * sc;
+                    const double h = ground_.at(wx, wy, 2.0);
+                    hs.push_back(int(std::lround(h * 10.0)));
+                    const bool w = wetCell[std::size_t(y) * sn + std::size_t(x)] || wet(biomeName(wx, wy), h);
+                    ws.push_back(w ? 1 : 0);
+                }
+            cfg["village_site"] = Json{{"x0", sx0 - ox}, {"y0", sy0 - oy}, {"cell", sc}, {"n", sn},
+                                       {"h_dm", std::move(hs)}, {"wet", std::move(ws)}};
+            cfg["village_centre"] = Json::array({centreX - ox, centreY - oy});
+        }
         SDL_Log("altera_game: village site %.0f, %.0f (%s), score %.2f, %d wet cells of %d", centreX, centreY,
                 biomeName(centreX, centreY).c_str(), bestScore, wetCells, n * n);
     }
@@ -3496,7 +3536,11 @@ private:
 
     bool buildingPose(const BuildingSnap& b0, BuildingSnap& b, float& yaw, int& mesh) const {
         b = b0;
-        if (b.type != "house" && b.type != "field" && b.type != "garden")
+        if (b0.faced) {   // AL-8: placed by the village plan; only a hearth inside a house stays unseen
+            if (b.type == "hearth")
+                for (const auto& h : buildings_)
+                    if (h.type == "house" && std::hypot(b.x - h.x, b.y - h.y) < 4.5) return false;
+        } else if (b.type != "house" && b.type != "field" && b.type != "garden")
             for (const auto& h : buildings_) {
                 if (h.type != "house") continue;
                 const double dx = b.x - h.x, dy = b.y - h.y, d = std::hypot(dx, dy);
@@ -3518,6 +3562,7 @@ private:
         const double dx = villageCentre_[0] - b.x, dy = villageCentre_[1] - b.y;
         yaw = (dx * dx + dy * dy > 1.0) ? float(std::atan2(dx, -dy)) : float((h % 4) * kPi * 0.5);
         if (b.type == "field" || b.type == "garden") yaw = float(std::round(yaw / (kPi * 0.5)) * kPi * 0.5);
+        if (b0.faced) yaw = b0.yaw;
         return true;
     }
 
@@ -3561,6 +3606,45 @@ private:
                     in.colour[2] = in.colour2[2] = bl * n;
                     out.push_back(in);
                 }
+        }
+    }
+
+    // AL-8: the village's roads as beaten earth, tiles of 2 m along each
+    // polyline laid on the ground, a little paler at the edges.
+    void roadTiles(std::vector<Instance>& out) {
+        for (std::size_t r = 0; r < roads_.size(); ++r) {
+            const auto& line = roads_[r];
+            const double width = r < roadWidth_.size() ? roadWidth_[r] : 3.0;
+            const int across = std::max(1, int(std::round(width / 2.0)));
+            for (std::size_t i = 0; i + 1 < line.size(); ++i) {
+                const double ax = originX_ + line[i].x, ay = originY_ + line[i].y;
+                const double bx = originX_ + line[i + 1].x, by = originY_ + line[i + 1].y;
+                const double len = std::hypot(bx - ax, by - ay);
+                if (len < 0.1 || std::hypot(ax - eye_[0], ay - eye_[1]) > 900.0) continue;
+                const double ux = (bx - ax) / len, uy = (by - ay) / len;
+                const float yaw = float(std::atan2(ux, -uy));
+                const int steps = std::max(1, int(std::round(len / 2.0)));
+                for (int s = 0; s < steps; ++s)
+                    for (int k = 0; k < across; ++k) {
+                        if (out.size() >= kMaxInstances / 2) return;
+                        const double t = (s + 0.5) * len / steps, off = (k - (across - 1) * 0.5) * width / across;
+                        const double x = ax + ux * t - uy * off, y = ay + uy * t + ux * off;
+                        Instance in{};
+                        in.placeYaw[0] = float(x - eye_[0]);
+                        in.placeYaw[1] = float(y - eye_[1]);
+                        in.placeYaw[2] = float(groundAt(x, y) - 0.05 - eye_[2]);
+                        in.placeYaw[3] = yaw;
+                        in.scale[0] = float(width / across) * 1.04f;
+                        in.scale[1] = float(len / steps) * 1.04f;
+                        in.scale[2] = 0.09f;
+                        const bool edge = across > 1 && (k == 0 || k == across - 1);
+                        const float n = 0.93f + 0.14f * float((std::uint64_t(i * 2654435761u) ^ std::uint64_t(s * 40503u + k)) % 100) / 100.0f;
+                        in.colour[0] = in.colour2[0] = (edge ? 0.47f : 0.40f) * n;
+                        in.colour[1] = in.colour2[1] = (edge ? 0.40f : 0.33f) * n;
+                        in.colour[2] = in.colour2[2] = (edge ? 0.30f : 0.24f) * n;
+                        out.push_back(in);
+                    }
+            }
         }
     }
 
@@ -3735,6 +3819,7 @@ private:
             per[m].push_back(in);
         }
         soilTiles(per[kBlock]);
+        roadTiles(per[kBlock]);
         if (houseSet().loaded()) placeBuildings(range);
         if (village_.loaded()) placePieces(range);
         for (const auto& b : buildings_) {
@@ -4052,6 +4137,8 @@ private:
     std::unique_ptr<World> world_;
     double originX_ = 0, originY_ = 0;
     double villageCentre_[2] = {0, 0};
+    std::vector<std::vector<Vec2>> roads_;   // AL-8: the village plan's roads (sim coordinates)
+    std::vector<double> roadWidth_;
     std::vector<BuildingSnap> buildings_;
     std::vector<std::string> goalIds_, goalNames_;
     int goalChoice_ = 0;

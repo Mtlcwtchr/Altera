@@ -19,6 +19,10 @@ struct WorldObject {
     Vec2 pos;
     EntityId ownerFamily = kNone;
     std::map<std::string, int> stock;
+    // AL-8: the way a planned building faces (radians, 0 = its front to -y, as
+    // the game turns buildings); unplaced objects leave it to the view.
+    double yaw = 0.0;
+    bool faced = false;
     EntityId reservedBy = kNone;
     Tick reservedUntil = 0;
     bool reservedFor(EntityId who, Tick now) const { return reservedBy != kNone && reservedBy != who && now < reservedUntil; }
@@ -50,6 +54,12 @@ struct Settlement {
     // hands on (appoint) are offices of others. kNone: nobody rules.
     std::string institution = "chief";
     EntityId chief = kNone;
+    // AL-8: the planned village (village_plan.hpp): roads as polylines with
+    // their widths, the square; empty for a world laid out the old way.
+    std::vector<std::vector<Vec2>> roads;
+    std::vector<double> roadWidth;
+    Vec2 square;
+    double squareR = 0.0;
 };
 
 // One module of a building on the household's plan or standing (build.json,

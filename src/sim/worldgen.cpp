@@ -3,6 +3,7 @@
 #include "sim/worldgen.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/village_plan.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -178,10 +179,30 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 }
             }
     }
+    // AL-8: the world may name the village's place (the game picks it on the terrain).
+    if (cfg.contains("village_centre")) center = cfg["village_centre"].get<Vec2>();
     Settlement& st = w.settlements()[w.newId()];
     st.id = w.settlements().rbegin()->first;
     st.name = cfg.value("settlement_name", std::string("Emberford"));
     st.center = center;
+
+    // AL-8: a planned village (roads, a square, lots facing the roads, fields
+    // beyond the yards) when the world brings its ground (the game passes
+    // village_site from the terrain) or asks for one; else the old ring.
+    const bool planned = cfg.contains("village_site") || cfg.value("village_plan", false);
+    VillagePlan vplan;
+    if (planned) {
+        const VillageSite site = VillageSite::fromJson(cfg.value("village_site", Json::object()));
+        VillageWanted want;
+        want.houses = want.fields = std::max(1, cfg.value("families", 3));
+        vplan = planVillage(site, m, center, want, seed);
+        center = vplan.square;
+        st.center = center;
+        st.roads = vplan.roads;
+        st.roadWidth = vplan.roadWidth;
+        st.square = vplan.square;
+        st.squareR = vplan.squareR;
+    }
 
     // --- natural resources --------------------------------------------------
     const double cellKm2 = (m.cellM / 1000.0) * (m.cellM / 1000.0);
@@ -275,23 +296,30 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     const int traitsPer = cfg.value("traits_per_person", 2);
     const double knowRadius = cfg.value("know_radius_m", 1500.0);
 
-    auto spawnSettlementObject = [&](const std::string& type, Vec2 pos, EntityId fam) -> EntityId {
+    auto spawnSettlementObject = [&](const std::string& type, Vec2 pos, EntityId fam, const double* yaw = nullptr) -> EntityId {
         WorldObject o;
         o.type = type;
         o.pos = pos;
         o.ownerFamily = fam;
+        if (yaw) {
+            o.yaw = *yaw;
+            o.faced = true;
+        }
         auto d = content.objects.find(type);
         if (d != content.objects.end()) o.stock = d->second.stock;
         return w.addObject(o).id;
     };
 
-    // Shared settlement objects (per_settlement) around the centre.
+    // Shared settlement objects (per_settlement) around the centre; in a
+    // planned village round the square.
+    std::size_t squareSpot = 0;
     for (const auto& [type, def] : content.objects) {
         if (!def.settlement) continue;
         Rng own(hashCombine(seed, hashStr("settlement:" + type)));
         Rng& r = def.ownSeed ? own : rng;
         for (int k = 0; k < def.perSettlement; ++k) {
-            const Vec2 p{center.x + r.range(-15.0, 15.0), center.y + r.range(-15.0, 15.0)};
+            Vec2 p{center.x + r.range(-15.0, 15.0), center.y + r.range(-15.0, 15.0)};
+            if (planned && squareSpot < vplan.squareSpots.size()) p = vplan.squareSpots[squareSpot++];
             spawnSettlementObject(type, p, kNone);
         }
     }
@@ -308,7 +336,10 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         fam.settlement = st.id;
         const double ang = 2.0 * kPi * (f + 0.25 * rng.uniform()) / std::max(1, families);
         const double rad = rng.range(60.0, 120.0);
-        const Vec2 house{center.x + std::cos(ang) * rad, center.y + std::sin(ang) * rad};
+        Vec2 house{center.x + std::cos(ang) * rad, center.y + std::sin(ang) * rad};
+        const VillageLot* lot = planned && f < int(vplan.lots.size()) ? &vplan.lots[std::size_t(f)] : nullptr;
+        const PlanRect* field = planned && f < int(vplan.fields.size()) ? &vplan.fields[std::size_t(f)] : nullptr;
+        if (lot) house = lot->house.c;
         const int people = rng.irange(ppfLo, ppfHi);
         for (const auto& [type, def] : content.objects) {
             if (!def.settlement) continue;
@@ -319,7 +350,22 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                     const double far = rad + rng.range(90.0, 160.0) + 40.0 * k;
                     p = {center.x + std::cos(ang) * far, center.y + std::sin(ang) * far};
                 }
-                const EntityId oid = spawnSettlementObject(type, p, fam.id);
+                // AL-8: on the household's lot - the house facing the road, the
+                // hearth and beds inside, the store beside, the garden and the
+                // rest in the yard, the field beyond it.
+                const double* yaw = nullptr;
+                if (lot) {
+                    const PlanRect& H = lot->house;
+                    const double ox = std::clamp(p.x - house.x, -6.0, 6.0) / 6.0, oy = std::clamp(p.y - house.y, -6.0, 6.0) / 6.0;
+                    if (type == "house") p = H.c, yaw = &H.yaw;
+                    else if (type == "hearth") p = H.at(0.0, -1.0);
+                    else if (type == "bed") p = H.at(ox * H.hw * 0.6, oy * H.hd * 0.6);
+                    else if (type == "storage") p = H.at(H.hw + 3.0, -H.hd * 0.4), yaw = &H.yaw;
+                    else if (type == "garden") p = lot->yard.c, yaw = &H.yaw;
+                    else if (def.hasCrop && field && k == 0) p = field->c, yaw = &field->yaw;
+                    else if (!def.hasCrop) p = lot->yard.at(ox * lot->yard.hw * 0.8, oy * lot->yard.hd * 0.8);
+                }
+                const EntityId oid = spawnSettlementObject(type, p, fam.id, yaw);
                 if (type == "storage" && fam.storage == kNone) fam.storage = oid;
                 if (type == "hearth" && fam.hearth == kNone) fam.hearth = oid;
             }
@@ -342,6 +388,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             c.status.settlement = st.id;
             c.status.role = role;
             c.pos = {house.x + rng.range(-4.0, 4.0), house.y + rng.range(-4.0, 4.0)};
+            if (lot) c.pos = lot->house.at(c.pos.x - house.x, lot->house.hd + 2.0 + std::fabs(c.pos.y - house.y) * 0.5);
             c.home = fam.storage;
             Character& placed = w.addCharacter(std::move(c));
             members.push_back(placed.id);
