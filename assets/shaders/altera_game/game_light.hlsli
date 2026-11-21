@@ -39,7 +39,7 @@ float3 gameShade(float3 albedo, float3 n, float3 rel, float highlight) {
     float3 light = lightSunColour * saturate(facing * 0.8 + 0.2) * 0.95;
     light += lerp(lightGround, lightZenith, n.z * 0.5 + 0.5) * 0.75;
     light += lightSunColour * float3(1.0, 0.86, 0.70) * 0.10;
-    // AL-29: by night a cold moon from above, so a house or a person still
+    // AL-45: by night a cold moon from above, so a house or a person still
     // stands out against the dark ground instead of sinking into it.
     const float night = 1.0 - lightSunAbove;
     light += float3(0.20, 0.23, 0.32) * night * saturate(n.z * 0.45 + 0.65);
