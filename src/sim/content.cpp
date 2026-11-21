@@ -577,6 +577,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         s.aggression = opt(j, "aggression", 0.0);
         if (j.contains("attack") && j["attack"].is_object()) {
             s.attackChance = opt(j["attack"], "chance", 0.0);
+            s.attackSatedDays = opt(j["attack"], "sated_days_after_kill", 0);
             if (j["attack"].contains("damage")) {
                 s.attackLo = j["attack"]["damage"].at(0).get<double>();
                 s.attackHi = j["attack"]["damage"].at(1).get<double>();
@@ -678,6 +679,11 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         a.skillGainMult = opt(config["skill_gain"], "mult", a.skillGainMult);
         a.skillGainCurve = opt(config["skill_gain"], "curve", a.skillGainCurve);
         a.skillMinAgeYears = opt(config["skill_gain"], "min_age_years", a.skillMinAgeYears);
+        a.skillChildUntilYears = opt(config["skill_gain"], "child_until_years", a.skillChildUntilYears);
+        a.skillChildMult = opt(config["skill_gain"], "child_mult", a.skillChildMult);
+        a.skillTalentMin = opt(config["skill_gain"], "talent_min", a.skillTalentMin);
+        a.skillTalentMax = opt(config["skill_gain"], "talent_max", a.skillTalentMax);
+        a.skillOverTalentFalloff = opt(config["skill_gain"], "over_talent_falloff", a.skillOverTalentFalloff);
     }
     if (config.contains("modifier_bounds")) {
         a.modMaxAbsDelta = opt(config["modifier_bounds"], "max_abs_delta", a.modMaxAbsDelta);
@@ -734,7 +740,8 @@ ClimateDef parseClimate(const Json& j, std::vector<std::string>& W) {
     }
     d.biomeRainMult = opt(j, "biome_rain_mult", std::map<std::string, double>{});
     d.biomeTempAdd = opt(j, "biome_temp_add", std::map<std::string, double>{});
-    for (const auto& [biome, s] : j.value("soils", Json::object()).items()) {
+    const Json soils = j.value("soils", Json::object());   // items() of a temporary would dangle
+    for (const auto& [biome, s] : soils.items()) {
         if (biome.rfind('_', 0) == 0) continue;
         warnUnknown(s, {"fertility", "depth", "drainage", "capacity_mm", "_doc"}, "climate.soils", W);
         SoilDef sd;

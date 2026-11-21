@@ -19,10 +19,15 @@
   "max_ttl": 288
  },
  "skill_gain": {
-  "_doc": "AL-30: прирост навыка от практики = эффект x mult x (1 - уровень)^curve; дети младше min_age_years от работы не учатся",
+  "_doc": "AL-30: прирост навыка от практики = эффект x mult x (1 - уровень)^curve; дети младше min_age_years от работы не учатся, до child_until_years учатся в child_mult раз медленнее; у каждого свой талант к навыку (talent_min..talent_max, по id), выше таланта прирост x exp(-(уровень - талант) x over_talent_falloff)",
   "mult": 0.3,
   "curve": 2.0,
-  "min_age_years": 6
+  "min_age_years": 6,
+  "child_until_years": 14,
+  "child_mult": 0.3,
+  "talent_min": 0.35,
+  "talent_max": 0.95,
+  "over_talent_falloff": 25.0
  },
  "memory_types": {
   "saw_crime": 0.5,

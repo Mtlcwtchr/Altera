@@ -57,6 +57,24 @@
    "fsm": "Eat"
   },
   {
+   "id": "eat_vegetables",
+   "category": "household",
+   "target": "self",
+   "_doc": "AL-30: овощи из дома как есть, для тех, кто ещё не готовит (дети)",
+   "pre": [
+    "has:vegetables>=2"
+   ],
+   "eff": [
+    "has:vegetables-2",
+    "need:hunger+0.25",
+    "moodlet:ate_raw",
+    "memory:ate_raw"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Eat"
+  },
+  {
    "id": "drink_water",
    "category": "household",
    "target": "object:water",
