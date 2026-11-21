@@ -20,6 +20,11 @@ struct Placed {
     float scale = 1;
     float highlight = 0;
     float tint[3] = {1, 1, 1};
+    // AL-56, the top view's cutaway (game_view/cutaway.hpp): below vis the
+    // pixels are dithered away, except the first `keep` metres over the
+    // piece's own bottom (a wall's stub).
+    float vis = 1;
+    float keep = 0;
 };
 
 class StaticSet {
@@ -29,6 +34,8 @@ public:
     int piece(const std::string& name) const;
     // Footprint half extents of a piece (metres, before scale).
     void halfSize(int piece, float& hx, float& hy) const;
+    // A piece's box (metres, before scale and turn). False: no such piece.
+    bool bounds(int piece, float min[3], float max[3]) const;
 
     void prepare(SDL_GPUCommandBuffer* commands, const std::vector<Placed>& placed);
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],

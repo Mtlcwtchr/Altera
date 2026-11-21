@@ -12,8 +12,9 @@ namespace fs = std::filesystem;
 
 struct Row {
     float placeYaw[4], scale[4], tint[4];
+    float fade[4];   // vis, keep (metres over the piece's bottom), the piece's bottom, -
 };
-static_assert(sizeof(Row) == 48);
+static_assert(sizeof(Row) == 64);
 
 } // namespace
 
@@ -136,7 +137,7 @@ bool StaticSet::load(engine::Device& device, const fs::path& file, std::string* 
     w.attributes = {{0, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 0},  {1, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3, 12},
                     {2, 0, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2, 24},  {3, 0, SDL_GPU_VERTEXELEMENTFORMAT_UINT, 32},
                     {4, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 0},   {5, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 16},
-                    {6, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32}};
+                    {6, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 32},  {7, 1, SDL_GPU_VERTEXELEMENTFORMAT_FLOAT4, 48}};
     pipeline_ = device.makePipeline(w);
     if (!vertices_ || !indices_ || !layers_ || !instances_ || !transfer_ || !sampler_ || !pipeline_)
         return fail("static GPU objects (" + file.filename().string() + "): " + device.error());
@@ -157,6 +158,14 @@ void StaticSet::halfSize(int p, float& hx, float& hy) const {
     hy = std::max(std::fabs(q.min[1]), std::fabs(q.max[1]));
 }
 
+bool StaticSet::bounds(int p, float mn[3], float mx[3]) const {
+    if (p < 0 || p >= int(pieces_.size())) return false;
+    const Piece& q = pieces_[std::size_t(p)];
+    std::memcpy(mn, q.min, sizeof q.min);
+    std::memcpy(mx, q.max, sizeof q.max);
+    return true;
+}
+
 void StaticSet::prepare(SDL_GPUCommandBuffer* commands, const std::vector<Placed>& placed) {
     batches_.clear();
     if (!pipeline_ || placed.empty()) return;
@@ -174,6 +183,11 @@ void StaticSet::prepare(SDL_GPUCommandBuffer* commands, const std::vector<Placed
         r.scale[0] = r.scale[1] = r.scale[2] = p.scale;
         r.scale[3] = p.highlight;
         r.tint[0] = p.tint[0], r.tint[1] = p.tint[1], r.tint[2] = p.tint[2], r.tint[3] = 1;
+        const Piece* q = p.piece >= 0 && p.piece < int(pieces_.size()) ? &pieces_[std::size_t(p.piece)] : nullptr;
+        r.fade[0] = p.vis;
+        r.fade[1] = p.keep;
+        r.fade[2] = q ? q->min[2] : 0.0f;
+        r.fade[3] = 0;
         if (batches_.empty() || batches_.back().piece != p.piece) batches_.push_back({p.piece, std::uint32_t(i), 0});
         ++batches_.back().count;
     }

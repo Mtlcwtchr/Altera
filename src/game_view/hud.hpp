@@ -63,6 +63,8 @@ public:
     // are independent.
     virtual void controlMode(int mode) { (void)mode; }
     virtual void cameraFollow(bool on) { (void)on; }
+    // AL-56: the walls in the top view, as The Sims has them: 0 up, 1 cut away, 2 down.
+    virtual void wallMode(int mode) { (void)mode; }
 };
 
 class Hud {
@@ -139,6 +141,7 @@ public:
     // Filled by the game every frame: the control bar's state, the speed held
     // at 1 (walking by the keys), where a click sent the person (sim metres).
     int controlMode = 0;
+    int wallMode = 1;   // AL-56: 0 up, 1 cut away, 2 down
     bool cameraFollow = false, speedLocked = false, hasPerson = false;
     std::string leadName;   // whom keys / mouse would take under control (nobody led)
     bool walkMark = false;
