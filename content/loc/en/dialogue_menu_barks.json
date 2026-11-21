@@ -1,0 +1,19 @@
+{
+ "_doc": "The menu without an agent and barks (AL-53).",
+ "dialogue.menu.inform": "Tell {>prop:about}",
+ "dialogue.menu.accuse": "Accuse of {>prop:nominal}",
+ "dialogue.menu.thank": "Thank for {>prop:nominal}",
+ "bark.any_1": "Hm.",
+ "bark.any_2": "Well, well…",
+ "bark.night": "Dark as pitch.",
+ "bark.winter": "Curse this winter.",
+ "bark.hungry_1": "My belly aches…",
+ "bark.hungry_2": "I could eat.",
+ "bark.starving": "A crust of bread, anything…",
+ "bark.thirst": "My throat is parched.",
+ "bark.tired": "My legs won't hold me.",
+ "bark.cold": "Freezing, it is.",
+ "bark.lonely": "Not a soul to talk to.",
+ "bark.bored": "Dull as ditchwater.",
+ "bark.work": "Work won't do itself."
+}

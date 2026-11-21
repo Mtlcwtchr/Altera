@@ -515,7 +515,8 @@ ValidationReport validateDialogueGen(const DialogueGenData& d, const Content* c,
             for (const auto& k : r.when)
                 if (k.key == "act" && k.op == Criterion::Op::Eq)
                     for (const auto& val : k.values)
-                        if (std::find(c->speechActs.begin(), c->speechActs.end(), val) == c->speechActs.end()) v.warnings.push_back(where + ": unknown speech act " + val);
+                        if (val != "bark" && // AL-53: a person to himself, not a speech act of dialogue.json
+                            std::find(c->speechActs.begin(), c->speechActs.end(), val) == c->speechActs.end()) v.warnings.push_back(where + ": unknown speech act " + val);
         if (loc && !r.say.empty() && !loc->entry(loc->base(), r.say))
             v.errors.push_back(where + ": loc key " + r.say + " missing in " + loc->base());
         if (r.when.size() == 1 && r.when[0].key == "act" && r.when[0].op == Criterion::Op::Eq) fallback = true;
