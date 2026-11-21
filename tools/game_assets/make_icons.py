@@ -121,6 +121,10 @@ ICONS = {
     'ctl_free': 'M8 4a2 2 0 1 0 4 0a2 2 0 1 0-4 0M10 6v6M6 18l4-6 4 6M5 9h10M16 2l.8 1.6 1.6.8-1.6.8-.8 1.6-.8-1.6-1.6-.8 1.6-.8z',
     'cam_lock': 'M2 8h11v8H2zM13 10l5-2.5v9L13 14zM5 8V5.5a2.5 2.5 0 0 1 5 0V8',
     'cam_free': 'M2 8h11v8H2zM13 10l5-2.5v9L13 14zM4 5h2M8 5h2M12 5h2',
+    # AL-56, the walls in the top view: up, cut away (the front ones low), down
+    'walls_up': 'M3 18V8l7-5 7 5v10zM3 18h14M8 18v-5h4v5',
+    'walls_cut': 'M3 18V9l5-3M17 18V9l-5-3M3 18h14M3 14h14M6 14v4M10 14v4M14 14v4',
+    'walls_down': 'M2 18h16M2 15h16M2 15v3M18 15v3M7 15v3M13 15v3M10 3v8M7 8l3 3 3-3',
 }
 FILLED = {
     'i_knife': ('M3 17l2-4 9-10 3 3-10 9z', '#d8dce8'),

@@ -10,6 +10,7 @@
 
 #include "sim/character.hpp"
 #include "sim/content.hpp"
+#include "sim/dialogue_rules.hpp"
 
 namespace altera::sim {
 
@@ -123,6 +124,27 @@ struct ChronicleEntry {
     Json params = Json::object();
 };
 
+// The registry of truth (DIALOGUE_GEN §6.4, AL-37): what really happened,
+// kept by the world whatever anyone remembers, believes or forgets; saved and
+// replayed. Characters never read it: proofs, courts and clearing a name go
+// through what it points at (those who really saw it, the evidence).
+struct Fact {
+    EntityId id = kNone;
+    Tick tick = 0;
+    std::string pred;                       // what happened: a legal tag (theft, trespass, ...) for a misdeed
+    std::map<std::string, EntityId> roles;  // true roles: doer, victim, victim_family, object
+    Vec2 place;
+    std::vector<EntityId> witnesses;        // who really saw it
+    std::vector<Json> evidence;             // traces, things, confessions (filled by later work)
+    std::vector<std::string> tags;
+    std::map<std::string, int> goods;       // what changed hands
+    std::string outcome;                    // how it was settled; empty = open
+    EntityId role(const std::string& r) const {
+        auto it = roles.find(r);
+        return it == roles.end() ? kNone : it->second;
+    }
+};
+
 class World {
 public:
     explicit World(const Content& content, std::uint64_t seed = 1);
@@ -175,6 +197,13 @@ public:
     size_t pendingEvents() const { return events_.size(); }
     void chronicle(const std::string& type, std::vector<EntityId> who, std::string code, Json params = Json::object());
     const std::vector<ChronicleEntry>& chronicleLog() const { return chronicle_; }
+    // --- the registry of truth (Fact) ----------------------------------
+    Fact& addFact(Fact f); // id and tick assigned here
+    std::vector<Fact>& facts() { return facts_; }
+    const std::vector<Fact>& facts() const { return facts_; }
+    // What was said, for cooldown / once_per of dialogue rules (AL-53); saved.
+    SaidMemory& said() { return said_; }
+    const SaidMemory& said() const { return said_; }
 
     // --- commands -------------------------------------------------------
     // Queued for the start of the next step (or `cmd.tick` if later). Returns
@@ -243,6 +272,8 @@ private:
     size_t replayNext_ = 0;
     std::vector<Command> commandLog_;
     std::vector<ChronicleEntry> chronicle_;
+    std::vector<Fact> facts_;
+    SaidMemory said_;
     std::vector<CommandHandler> handlers_;
     std::vector<EventHandler> eventHandlers_;
     TickHook think_;

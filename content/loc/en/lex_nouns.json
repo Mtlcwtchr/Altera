@@ -1,0 +1,304 @@
+{
+ "_doc": "en, written by hand (AL-52, mirror of the ids in ru lex_*.json from AL-51, LOC v0.2 §1). Nouns: nom = acc (en has no case endings), g for he/she/it/they, anim, pl{nom,acc}. No articles: the frame or line puts 'the'/'a' itself.",
+ "lex": {
+  "noun": {
+   "theft": {
+    "nom": "theft",
+    "acc": "theft",
+    "g": "n",
+    "pl": {
+     "nom": "thefts",
+     "acc": "thefts"
+    }
+   },
+   "banditry": {
+    "nom": "robbery",
+    "acc": "robbery",
+    "g": "n",
+    "pl": {
+     "nom": "robberies",
+     "acc": "robberies"
+    }
+   },
+   "trespass": {
+    "nom": "trespass",
+    "acc": "trespass",
+    "g": "n",
+    "pl": {
+     "nom": "trespasses",
+     "acc": "trespasses"
+    }
+   },
+   "poaching": {
+    "nom": "poaching",
+    "acc": "poaching",
+    "g": "n"
+   },
+   "loss": {
+    "nom": "loss",
+    "acc": "loss",
+    "g": "n",
+    "pl": {
+     "nom": "losses",
+     "acc": "losses"
+    }
+   },
+   "insult": {
+    "nom": "insult",
+    "acc": "insult",
+    "g": "n",
+    "pl": {
+     "nom": "insults",
+     "acc": "insults"
+    }
+   },
+   "assault": {
+    "nom": "beating",
+    "acc": "beating",
+    "g": "n",
+    "pl": {
+     "nom": "beatings",
+     "acc": "beatings"
+    }
+   },
+   "murder": {
+    "nom": "murder",
+    "acc": "murder",
+    "g": "n",
+    "pl": {
+     "nom": "murders",
+     "acc": "murders"
+    }
+   },
+   "help": {
+    "nom": "help",
+    "acc": "help",
+    "g": "n"
+   },
+   "gift": {
+    "nom": "gift",
+    "acc": "gift",
+    "g": "n",
+    "pl": {
+     "nom": "gifts",
+     "acc": "gifts"
+    }
+   },
+   "talk": {
+    "nom": "talk",
+    "acc": "talk",
+    "g": "n",
+    "pl": {
+     "nom": "talks",
+     "acc": "talks"
+    }
+   },
+   "thought": {
+    "nom": "thought",
+    "acc": "thought",
+    "g": "n",
+    "pl": {
+     "nom": "thoughts",
+     "acc": "thoughts"
+    }
+   },
+   "thief": {
+    "nom": "thief",
+    "acc": "thief",
+    "g": "m",
+    "anim": true,
+    "pl": {
+     "nom": "thieves",
+     "acc": "thieves"
+    }
+   },
+   "bandit": {
+    "nom": "bandit",
+    "acc": "bandit",
+    "g": "m",
+    "anim": true,
+    "pl": {
+     "nom": "bandits",
+     "acc": "bandits"
+    }
+   },
+   "killer": {
+    "nom": "killer",
+    "acc": "killer",
+    "g": "m",
+    "anim": true,
+    "pl": {
+     "nom": "killers",
+     "acc": "killers"
+    }
+   },
+   "liar": {
+    "nom": "liar",
+    "acc": "liar",
+    "g": "m",
+    "anim": true,
+    "pl": {
+     "nom": "liars",
+     "acc": "liars"
+    }
+   },
+   "poacher": {
+    "nom": "poacher",
+    "acc": "poacher",
+    "g": "m",
+    "anim": true,
+    "pl": {
+     "nom": "poachers",
+     "acc": "poachers"
+    }
+   },
+   "someone": {
+    "nom": "someone",
+    "acc": "someone",
+    "g": "m",
+    "anim": true
+   },
+   "something": {
+    "nom": "something",
+    "acc": "something",
+    "g": "n"
+   },
+   "goods": {
+    "nom": "goods",
+    "acc": "goods",
+    "g": "pl"
+   },
+   "thing": {
+    "nom": "thing",
+    "acc": "thing",
+    "g": "n",
+    "pl": {
+     "nom": "things",
+     "acc": "things"
+    }
+   },
+   "sack": {
+    "nom": "sack",
+    "acc": "sack",
+    "g": "n",
+    "pl": {
+     "nom": "sacks",
+     "acc": "sacks"
+    }
+   },
+   "basket": {
+    "nom": "basket",
+    "acc": "basket",
+    "g": "n",
+    "pl": {
+     "nom": "baskets",
+     "acc": "baskets"
+    }
+   },
+   "bundle": {
+    "nom": "bundle",
+    "acc": "bundle",
+    "g": "n",
+    "pl": {
+     "nom": "bundles",
+     "acc": "bundles"
+    }
+   },
+   "jug": {
+    "nom": "jug",
+    "acc": "jug",
+    "g": "n",
+    "pl": {
+     "nom": "jugs",
+     "acc": "jugs"
+    }
+   },
+   "barrel": {
+    "nom": "barrel",
+    "acc": "barrel",
+    "g": "n",
+    "pl": {
+     "nom": "barrels",
+     "acc": "barrels"
+    }
+   },
+   "handful": {
+    "nom": "handful",
+    "acc": "handful",
+    "g": "n",
+    "pl": {
+     "nom": "handfuls",
+     "acc": "handfuls"
+    }
+   },
+   "barn": {
+    "nom": "barn",
+    "acc": "barn",
+    "g": "n",
+    "pl": {
+     "nom": "barns",
+     "acc": "barns"
+    }
+   },
+   "yard": {
+    "nom": "yard",
+    "acc": "yard",
+    "g": "n",
+    "pl": {
+     "nom": "yards",
+     "acc": "yards"
+    }
+   },
+   "house": {
+    "nom": "house",
+    "acc": "house",
+    "g": "n",
+    "pl": {
+     "nom": "houses",
+     "acc": "houses"
+    }
+   },
+   "village": {
+    "nom": "village",
+    "acc": "village",
+    "g": "n",
+    "pl": {
+     "nom": "villages",
+     "acc": "villages"
+    }
+   },
+   "night": {
+    "nom": "night",
+    "acc": "night",
+    "g": "n",
+    "pl": {
+     "nom": "nights",
+     "acc": "nights"
+    }
+   },
+   "rumor": {
+    "nom": "rumour",
+    "acc": "rumour",
+    "g": "n",
+    "pl": {
+     "nom": "rumours",
+     "acc": "rumours"
+    }
+   },
+   "word": {
+    "nom": "word",
+    "acc": "word",
+    "g": "n",
+    "pl": {
+     "nom": "words",
+     "acc": "words"
+    }
+   },
+   "shame": {
+    "nom": "shame",
+    "acc": "shame",
+    "g": "n"
+   }
+  }
+ }
+}

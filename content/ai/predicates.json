@@ -1,0 +1,31 @@
+{
+ "_doc": "Предикаты смысла реплик (AL-46, doc/design/DIALOGUE_GEN.md §3). Без слов: роли и их виды (char item object family place text num prop). Слова — во фреймах frame.<pred> в content/loc/<lang>/ (LOC v0.2, AL-47). id совпадает с pred факта мира (World facts, AL-37): легальный тег для проступков. scale — от слабого к сильному (шум слухов exaggerate/minimize, AL-50). memory — как MemoryEntry становится пропозицией: источники who0, who1, object, object_owner, self.",
+ "predicates": [
+  {"id": "take", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "scale": ["take", "theft", "banditry"]},
+  {"id": "theft", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["theft"], "scale": ["take", "theft", "banditry"]},
+  {"id": "banditry", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["banditry"], "scale": ["take", "theft", "banditry"]},
+  {"id": "trespass", "roles": {"doer": "char", "object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["doer"], "tags": ["trespass"]},
+  {"id": "poaching", "roles": {"doer": "char", "object": ["char", "item", "text"], "victim_family": "family"}, "required": ["doer"], "tags": ["poaching"]},
+  {"id": "lose", "roles": {"object": ["object", "item", "text"], "victim": "char", "victim_family": "family"}, "required": ["object"]},
+  {"id": "insult", "roles": {"doer": "char", "victim": "char"}, "required": ["doer"], "tags": ["insult"], "scale": ["insult", "assault"]},
+  {"id": "assault", "roles": {"doer": "char", "victim": "char"}, "required": ["doer"], "tags": ["assault"], "scale": ["insult", "assault", "murder"]},
+  {"id": "murder", "roles": {"doer": "char", "victim": "char"}, "required": ["doer", "victim"], "tags": ["murder"], "scale": ["insult", "assault", "murder"]},
+  {"id": "help", "roles": {"doer": "char", "beneficiary": "char", "object": ["item", "text"]}, "required": ["doer"]},
+  {"id": "give", "roles": {"doer": "char", "beneficiary": "char", "object": ["item", "object"]}, "required": ["doer"]},
+  {"id": "say", "roles": {"speaker": "char", "listener": "char", "content": "prop"}, "required": ["speaker", "content"]},
+  {"id": "think", "roles": {"thinker": "char", "content": "prop"}, "required": ["thinker", "content"]}
+ ],
+ "memory": [
+  {"type": "saw_crime", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}},
+  {"type": "told_crime", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}},
+  {"type": "rumor_crime", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}},
+  {"type": "suspects", "pred": "theft", "roles": {"doer": "who0", "object": "object", "victim_family": "object_owner"}, "modality": "guess"},
+  {"type": "noticed_missing", "pred": "lose", "roles": {"object": "object", "victim_family": "object_owner"}},
+  {"type": "was_robbed", "pred": "theft", "roles": {"doer": "who0", "victim": "self"}},
+  {"type": "saw_attack", "pred": "assault", "roles": {"doer": "who0", "victim": "who1"}},
+  {"type": "saw_brawl", "pred": "assault", "roles": {"doer": "who0", "victim": "who1"}},
+  {"type": "saw_insult", "pred": "insult", "roles": {"doer": "who0", "victim": "who1"}},
+  {"type": "was_given_food", "pred": "give", "roles": {"doer": "who0", "beneficiary": "self"}},
+  {"type": "was_comforted", "pred": "help", "roles": {"doer": "who0", "beneficiary": "self"}}
+ ]
+}

@@ -6,6 +6,7 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/consequences.hpp"
 
 namespace altera::sim {
 
@@ -95,7 +96,8 @@ Json aiReport(const World& w) {
                   {"plan_failures", top(failAll, 15)},
                   {"methods", top(methodAll, 30)},
                   {"goal_time", top(goalAll, 20)},
-                  {"deaths", deaths}}},
+                  {"deaths", deaths},
+                  {"rumors", rumorReport(w)}}},
                 {"characters", chars}};
 }
 

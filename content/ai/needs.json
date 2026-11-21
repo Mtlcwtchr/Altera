@@ -253,6 +253,16 @@
    "ttl": 144
   },
   {
+   "id": "kissed",
+   "value": 0.12,
+   "ttl": 36
+  },
+  {
+   "id": "rejected",
+   "value": -0.08,
+   "ttl": 36
+  },
+  {
    "id": "good_company",
    "value": 0.06,
    "ttl": 24
@@ -340,6 +350,55 @@
    "value": 0.08,
    "ttl": 24,
    "_part": "H2"
+  },
+  {
+   "id": "pregnant",
+   "value": 0.05,
+   "ttl": 6480,
+   "_doc": "AL-39: ждёт ребёнка; срок ставит village_life (до родов)",
+   "_part": "village_life"
+  },
+  {
+   "id": "in_love",
+   "value": 0.25,
+   "ttl": 432,
+   "_doc": "AL-39: помолвка, свадьба",
+   "_part": "village_life"
+  },
+  {
+   "id": "new_parent",
+   "value": 0.3,
+   "ttl": 720,
+   "_doc": "AL-39: родился ребёнок",
+   "_part": "village_life"
+  },
+  {
+   "id": "grieving",
+   "value": -0.35,
+   "ttl": 1440,
+   "_doc": "AL-39: вдовство, мёртворождённый",
+   "_part": "village_life"
+  },
+  {
+   "id": "ill_fever",
+   "value": -0.3,
+   "ttl": 1440,
+   "_doc": "AL-39: лихорадка; срок ставит village_life",
+   "_part": "village_life"
+  },
+  {
+   "id": "ill_flux",
+   "value": -0.35,
+   "ttl": 1152,
+   "_doc": "AL-39: понос (кровавый понос); срок ставит village_life",
+   "_part": "village_life"
+  },
+  {
+   "id": "ill_cough",
+   "value": -0.2,
+   "ttl": 2304,
+   "_doc": "AL-39: кашель, грудная болезнь; срок ставит village_life",
+   "_part": "village_life"
   }
  ]
 }

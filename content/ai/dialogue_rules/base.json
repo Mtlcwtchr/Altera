@@ -1,0 +1,6 @@
+{
+ "_doc": "Правила выбора реплики (doc/design/DIALOGUE_GEN.md §4). Подходят правила, у которых все when истинны; побеждает с наибольшим числом критериев, среди равных — вес от сида. say — ключ loc. Набор (AL-51): port.json — старые шаблоны dialogue.<template>.<variant> (заглушка на каждый акт, генерируется tools/port_dialogue_rules.py), lines.json — реплики с пропозицией по эпистемике и ролям, misdeeds.json — память о проступках и репутация (AL-38), refuse.json — отказы с причиной и неудачи шанса (AL-36), slots.json — части реплики (slot=…: оговорки, голос черты, тон). Здесь — правила, не привязанные к одному из этих наборов.",
+ "rules": [
+  {"id": "inform.memory.lose", "when": ["act=inform", "pred=lose", "epi.source=seen"], "say": "memory.noticed_missing.text", "weight": 0.3}
+ ]
+}

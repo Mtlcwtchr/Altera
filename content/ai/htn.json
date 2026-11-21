@@ -1047,6 +1047,28 @@
      ]
     },
     {
+     "id": "show_affection",
+     "pre": [],
+     "cost": 1.4,
+     "steps": [
+      {
+       "do": "kiss"
+      }
+     ],
+     "_doc": "AL-40: поцеловать того, к кому тянет (rel:attraction); цель отвечает по social_chains.json"
+    },
+    {
+     "id": "invite_company",
+     "pre": [],
+     "cost": 1.6,
+     "steps": [
+      {
+       "do": "invite_follow"
+      }
+     ],
+     "_doc": "AL-43: позвать с собой; согласившийся идёт следом и присоединяется к занятию"
+    },
+    {
      "id": "gather_at_village_fire",
      "pre": [
       "known:village_fire"

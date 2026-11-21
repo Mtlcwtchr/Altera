@@ -5,14 +5,17 @@
 #include <algorithm>
 #include <cmath>
 
+#include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/consequences.hpp"
+#include "sim/dialogue_memory.hpp"
 #include "sim/gear.hpp"
 #include "sim/group_combat.hpp"
 #include "sim/tones.hpp"
+#include "sim/village_life.hpp"
 
 namespace altera::sim {
 
@@ -234,6 +237,9 @@ double consentChance(const World& w, const Character& actor, const Character& ta
     const double trust = rel == target.relations.end() ? 0.0 : rel->second.trust;
     double p = 0.45 + 0.5 * aff + 0.3 * trust;
     if (target.status.family == actor.status.family) p += 0.35;
+    // AL-38: what the target knows the actor did (theft from her household above all)
+    if (const double wary = deedWariness(w, target, actor.id); wary > 0.0)
+        p -= recallRules(w.content()).consentWariness * wary;
     // Asked to give away food while hungry yourself: unlikely.
     for (const auto& e : d.eff)
         if (e.onTarget && e.subject == "has" && e.signedDelta() < 0.0) {
@@ -299,7 +305,17 @@ void runConversation(World& w, Character& c, Character& other, const Json& param
             trace(w, c, 'C', "dialog.accepted", {{"intent", intent}, {"listener", other.id}});
         } else {
             w.remember(c, MemoryEntry{0, "was_refused", {other.id}, kNone, -0.2, 0.0, "seen", 1.0});
-            trace(w, c, 'C', "dialog.refused", {{"intent", intent}, {"listener", other.id}});
+            Json why = {{"intent", intent}, {"listener", other.id}};
+            // AL-38: the deed the listener holds against the asker, for the line
+            // "Нет. Не после того, как ты обокрал мельника" (T6 renders it)
+            for (const auto& rc : recall(w, other, c.id))
+                if (rc.kind == "deed") {
+                    why["deed"] = rc.prop.pred;
+                    why["topic"] = rc.topic;
+                    break;
+                }
+            trace(w, c, 'C', "dialog.refused", why);
+            sayRefusal(w, other, c, "consent"); // AL-36: the line itself (AL-53)
         }
     }
 }
@@ -818,6 +834,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
         }
     // ...and the world answers: repute, the owners told, a trail, rumour, the outcome (AL-31).
     afterDeed(w, c, d, target, targetChar, success, tags, wit);
+    villageAfterAct(w, c, d, targetChar, success); // AL-39: courtship, wedding, conception, quarrels
 }
 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,

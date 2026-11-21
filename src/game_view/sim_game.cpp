@@ -7,6 +7,7 @@
 // Every text on screen comes from content/loc (game.* keys in game_ui.json and
 // the sim's own names), so this file holds no display strings.
 
+#include "game_view/cutaway.hpp"
 #include "game_view/game_layer.hpp"
 #include "game_view/hud.hpp"
 #include "game_view/saves.hpp"
@@ -171,6 +172,7 @@ public:
             control_ = settings_.control;
             leadMode_ = control_ == kFree ? kKeys : control_;
             follow_ = settings_.cameraFollow;
+            wallMode_ = cutaway::Mode(settings_.wallMode);
             worldCfg_ = cfg;
             world_ = std::make_unique<World>(makeTestWorld(*content_, cfg, o.seed));
             installAi(*world_);
@@ -720,6 +722,7 @@ public:
                 if (e.key.key == SDLK_X || e.key.key == SDLK_DELETE) removeWanted_ = true;
             }
             if (e.key.key == SDLK_F) cameraFollow(true);
+            if (e.key.key == SDLK_HOME) wallMode(int(cutaway::nextMode(wallMode_)));
             if (e.key.key == SDLK_F9) {
                 char n[64];
                 std::snprintf(n, sizeof n, "game_%03d.png", ++shotCounter_);
@@ -871,6 +874,7 @@ public:
         syncControl();
         hud_.controlMode = control_;
         hud_.cameraFollow = follow_;
+        hud_.wallMode = int(wallMode_);
         {
             const ActorSnap* c = actor(leadCandidate());
             hud_.leadName = c ? c->name : "";
@@ -1140,6 +1144,13 @@ public:
         if (on && selected_ == kNone && shown_.controlled != kNone) select(shown_.controlled);
         if (settings_.cameraFollow != on) {
             settings_.cameraFollow = on;
+            storeSettings(settings_);
+        }
+    }
+    void wallMode(int mode) override {
+        wallMode_ = cutaway::Mode(std::clamp(mode, 0, 2));
+        if (settings_.wallMode != int(wallMode_)) {
+            settings_.wallMode = int(wallMode_);
             storeSettings(settings_);
         }
     }
@@ -1557,6 +1568,8 @@ private:
             // walk_to [dx, dy] metres from the person (as a click on the ground)
             if (st.contains("control")) controlMode(st["control"].get<int>());
             if (st.contains("camera_follow")) cameraFollow(st["camera_follow"].get<bool>());
+            // AL-56: walls 0 up | 1 cut away | 2 down
+            if (st.contains("walls")) wallMode(st["walls"].get<int>());
             if (st.contains("walk_to"))
                 if (const ActorSnap* me = actor(shown_.controlled))
                     walkTo(originX_ + me->x + st["walk_to"][0].get<double>(), originY_ + me->y + st["walk_to"][1].get<double>());
@@ -2398,6 +2411,7 @@ private:
             a.captive = c.captivity.held();
             if (a.captive) a.down = false; // led along on foot, not lying
             a.interaction = c.ai.fsm.interaction;
+            a.anim = c.ai.fsm.anim;
             a.role = c.status.role;
             a.spouse = c.status.spouse;
             a.mother = c.status.mother;
@@ -3348,11 +3362,73 @@ private:
         }
     }
 
+    // ---- AL-56: the top view's cutaway (game_view/cutaway.hpp) -----------------
+    // A kit piece as the cutaway sees it: its kind, its box in the world, a wall's normal.
+    void cutPiece(const BuildPieceDef& d, const BuildPiece& p, int mesh, double wx, double wy, bool props,
+                  std::size_t index) {
+        const BuildCatalog& cat = content_->build;
+        float mn[3] = {0, 0, 0}, mx[3] = {0, 0, cat.storeyM > 0 ? float(cat.storeyM) : 3.0f};
+        village_.bounds(mesh, mn, mx);
+        cutaway::Piece c;
+        c.key = std::uint64_t(p.id);
+        c.family = std::uint64_t(p.family) + 1;
+        c.x = wx, c.y = wy;
+        const double base = p.h + p.z * cat.storeyM;
+        c.z0 = base + mn[2], c.z1 = base + mx[2];
+        const double half = cat.cellM * 0.5;
+        if (d.category == "wall" || d.category == "gable") {
+            const int r = ((p.rot % 4) + 4) % 4;
+            c.kind = cutaway::Kind::Wall;
+            c.nx = r == 1 ? 1 : r == 3 ? -1 : 0, c.ny = r == 0 ? -1 : r == 2 ? 1 : 0;
+            c.hx = half, c.hy = 0.15;
+        } else if (d.category == "pillar" || d.slot == "corner") {
+            c.kind = cutaway::Kind::Pillar;
+            c.hx = c.hy = 0.15;
+        } else {
+            c.kind = d.category == "roof" ? cutaway::Kind::Roof : cutaway::Kind::Floor;
+            c.hx = c.hy = half;
+        }
+        cutPieces_.push_back(c);
+        cutRefs_.push_back({props, index});
+    }
+    // What the view is about: the person led, the one selected, the mouse on
+    // the ground (the first sets the storey looked at); none: where the camera looks.
+    std::vector<cutaway::Focus> cutFoci() const {
+        std::vector<cutaway::Focus> foci;
+        auto person = [&](EntityId id) {
+            const ActorSnap* a = actor(id);
+            if (!a || !a->alive) return;
+            double x, y;
+            actorWorld(*a, tickAlpha(), x, y);
+            if (avatar_.driven && a->id == avatar_.id) x = avatar_.x, y = avatar_.y;
+            foci.push_back({x, y, groundAt(x, y), true});
+        };
+        person(shown_.controlled);
+        if (selected_ != shown_.controlled) person(selected_);
+        double gx, gy;
+        if (!overUi_ && !hud_.inMenu() && viewW_ > 0 && groundUnder(input_.mouseX, input_.mouseY, gx, gy))
+            foci.push_back({gx, gy, groundAt(gx, gy), false});
+        if (foci.empty()) foci.push_back({target_[0], target_[1], groundAt(target_[0], target_[1]), false});
+        return foci;
+    }
+    void applyCutaway() {
+        if (cutPieces_.empty()) return;
+        cutaway_.update(wallMode_, cutPieces_, eye_, cutFoci(), frameDt_);
+        const auto& looks = cutaway_.looks();
+        for (std::size_t i = 0; i < cutRefs_.size() && i < looks.size(); ++i) {
+            std::vector<Placed>& v = cutRefs_[i].props ? propsPlaced_ : placed_;
+            if (cutRefs_[i].index >= v.size()) continue;
+            v[cutRefs_[i].index].vis = looks[i].vis;
+            v[cutRefs_[i].index].keep = looks[i].keep;
+        }
+    }
+
     // The pieces as the kit bake has them: planned ones pale, the preview
     // green (or red where it cannot go).
     void placePieces(double range) {
         const BuildCatalog& cat = content_->build;
-        auto add = [&](const BuildPiece& p, const float tint[3], float hl) {
+        // cut: the cutaway may take it (the build preview always shows)
+        auto add = [&](const BuildPiece& p, const float tint[3], float hl, bool cut) {
             const BuildPieceDef* d = cat.find(p.kind);
             if (!d) return;
             const std::string mesh = d->mirror && p.rot >= 4 ? d->mesh + "_m" : d->mesh;
@@ -3372,16 +3448,17 @@ private:
             pl.highlight = hl;
             for (int k = 0; k < 3; ++k) pl.tint[k] = tint[k];
             placed_.push_back(pl);
+            if (cut) cutPiece(*d, p, it->second, wx, wy, false, placed_.size() - 1);
         };
         static const float kBuilt[3] = {1, 1, 1}, kPlanned[3] = {0.55f, 0.62f, 0.78f}, kOk[3] = {0.7f, 1.35f, 0.7f},
                            kBad[3] = {1.5f, 0.45f, 0.4f};
         for (const auto& [id, p] : shown_.pieces) {
             const bool going = hud_.panel == "build" &&
                                std::find(batchRemove_.begin(), batchRemove_.end(), id) != batchRemove_.end();
-            add(p, going ? kBad : p.built ? kBuilt : kPlanned, going ? 0.9f : p.built ? 0.0f : 0.25f);
+            add(p, going ? kBad : p.built ? kBuilt : kPlanned, going ? 0.9f : p.built ? 0.0f : 0.25f, true);
         }
         if (hud_.panel == "build" && (hasPreview_ || dragOn_))
-            for (std::size_t i = 0; i < laid_.size(); ++i) add(laid_[i], batchWhy_[i].empty() ? kOk : kBad, 0.9f);
+            for (std::size_t i = 0; i < laid_.size(); ++i) add(laid_[i], batchWhy_[i].empty() ? kOk : kBad, 0.9f, false);
     }
 
     // ---- placement --------------------------------------------------------
@@ -3664,6 +3741,11 @@ private:
             }
             rate = std::clamp(speed / 1.3, 0.6, 1.8);
             return st("walk");
+        }
+        // AL-40: a joint social act names the clip of each side (kiss, embrace, refuse...).
+        if (!a.anim.empty()) {
+            const int c = people_.interactionClip(a.anim);
+            if (c >= 0) return c;
         }
         if (!a.interaction.empty() && a.interaction != "goto" && a.interaction != "wait") {
             const int c = people_.interactionClip(a.interaction);
@@ -4032,6 +4114,17 @@ private:
             const float t = 0.92f + 0.16f * float((h >> 21) % 100) / 100.0f;
             pl.tint[0] = pl.tint[1] = pl.tint[2] = t;
             housePlaced().push_back(pl);
+            // AL-56: a baked building is cut as one (to the sill)
+            float mn[3], mx[3];
+            if (b.type != "hearth" && b.type != "village_fire" && houseSet().bounds(id, mn, mx)) {
+                cutaway::Piece c;
+                c.key = h | (1ull << 63);
+                c.kind = cutaway::Kind::Whole;
+                c.x = wx, c.y = wy, c.z0 = z + mn[2], c.z1 = z + mx[2];
+                c.hx = std::max(0.5f, hx), c.hy = std::max(0.5f, hy), c.yaw = yaw;
+                cutPieces_.push_back(c);
+                cutRefs_.push_back({&housePlaced() == &propsPlaced_, housePlaced().size() - 1});
+            }
         }
     }
 
@@ -4179,8 +4272,11 @@ private:
         }
         soilTiles(per[kBlock]);
         roadTiles(per[kBlock]);
+        cutPieces_.clear();
+        cutRefs_.clear();
         if (houseSet().loaded()) placeBuildings(range);
         if (village_.loaded()) placePieces(range);
+        applyCutaway();
         for (const auto& b : buildings_) {
             if (houseSet().loaded()) break;
             const double wx = originX_ + b.x, wy = originY_ + b.y;
@@ -4609,6 +4705,15 @@ private:
     }
     mutable std::map<std::string, int> propPiece_;
     std::vector<Placed> placed_;
+    // AL-56: the cutaway's pieces this frame and where each one's Placed is
+    struct CutRef {
+        bool props = false;
+        std::size_t index = 0;
+    };
+    cutaway::Cutaway cutaway_;
+    cutaway::Mode wallMode_ = cutaway::Mode::Cut;
+    std::vector<cutaway::Piece> cutPieces_;
+    std::vector<CutRef> cutRefs_;
     std::map<std::string, int> pieceMesh_;
     int buildPick_ = 0, buildRot_ = 0, buildBump_ = 0;
     bool hasPreview_ = false, placeWanted_ = false, removeWanted_ = false;

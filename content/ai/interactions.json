@@ -6416,6 +6416,77 @@
    "visibility": "public",
    "_doc": "AL-7: a wash with well water",
    "_part": "AL-7"
+  },
+  {
+   "id": "kiss",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "age:adult",
+    "t.age:adult",
+    "rel:attraction>0.2"
+   ],
+   "eff": [
+    "need:social+0.1",
+    "need:fun+0.05",
+    "t.need:social+0.1",
+    "t.need:fun+0.05",
+    "rel:attraction+0.04",
+    "rel_back:attraction+0.05",
+    "rel_back:affinity+0.03",
+    "moodlet:kissed",
+    "t.moodlet:kissed",
+    "memory:kissed"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "private",
+   "social": {
+    "meaning": "intimacy"
+   },
+   "speech": [],
+   "legal_if": [
+    {
+     "tag": "adultery_suspicion",
+     "if": [
+      "status_pair_any:married|t.status_pair_any:married",
+      "!status_pair:married"
+     ]
+    }
+   ],
+   "_doc": "AL-40: социальная цепочка (social_chains.json): цель отвечает, при согласии оба целуются",
+   "_part": "AL-40"
+  },
+  {
+   "id": "invite_follow",
+   "category": "social",
+   "target": "character",
+   "pre": [
+    "!age:child",
+    "rel:affinity>=0"
+   ],
+   "eff": [
+    "rel:familiarity+0.02",
+    "rel_back:familiarity+0.02"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Talk",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "care"
+   },
+   "speech": [
+    "offer",
+    "request"
+   ],
+   "_doc": "AL-40: «пойдём со мной» - согласившийся идёт за позвавшим (и за игроком при WASD) и присоединяется к его занятию",
+   "_part": "AL-40"
   }
  ]
 }
