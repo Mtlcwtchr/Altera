@@ -1,4 +1,5 @@
 #include "sim/content.hpp"
+#include "sim/consequences.hpp"
 #include "sim/craft_sim.hpp"
 
 #include <algorithm>
@@ -673,6 +674,11 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.playerGoalHoldBonus = opt(config, "player_goal_hold_bonus", a.playerGoalHoldBonus);
     a.hintDecayTicks = opt(config, "hint_decay_ticks", a.hintDecayTicks);
     a.memoryCap = opt(config, "memory_cap", a.memoryCap);
+    if (config.contains("skill_gain")) {
+        a.skillGainMult = opt(config["skill_gain"], "mult", a.skillGainMult);
+        a.skillGainCurve = opt(config["skill_gain"], "curve", a.skillGainCurve);
+        a.skillMinAgeYears = opt(config["skill_gain"], "min_age_years", a.skillMinAgeYears);
+    }
     if (config.contains("modifier_bounds")) {
         a.modMaxAbsDelta = opt(config["modifier_bounds"], "max_abs_delta", a.modMaxAbsDelta);
         a.modMaxTtl = opt<Tick>(config["modifier_bounds"], "max_ttl", a.modMaxTtl);
@@ -819,6 +825,7 @@ Content Content::load(const std::string& dir) {
         for (const auto& e : v.errors) os << "\n  " << e;
         throw std::runtime_error(os.str());
     }
+    addForeignVariants(c); // AL-32: acts on another household's things, built from the validated ones
     return c;
 }
 

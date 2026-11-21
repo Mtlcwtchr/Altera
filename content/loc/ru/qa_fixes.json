@@ -1,0 +1,18 @@
+{
+ "_doc": "QA 21.11 (AL-26, AL-27, AL-29): тексты, которые раньше показывались сырыми ключами.",
+ "hud.build.why.too_many": "слишком большой план: у семьи не больше {max} деталей",
+ "hud.build.why.foundation_ground": "фундамент только на земле",
+ "hud.build.why.floor_upper": "пол только на ярусе выше, на земле нужен фундамент",
+ "reason.foundation_ground": "фундамент только на земле",
+ "reason.floor_upper": "пол только выше земли, на земле нужен фундамент",
+ "reason.occupied": "место занято",
+ "reason.unsupported": "не на что опереться",
+ "reason.bad_storey": "не на этом ярусе",
+ "reason.no_family": "нет семьи",
+ "reason.too_far": "слишком далеко: {detail}",
+ "craft.stop.wrong_input": "остановился: не тот материал ({what})",
+ "craft.stop.too_many": "остановился: слишком много всего ({what})",
+ "craft.stop.other": "остановился: {why}",
+ "reason.walk_too_far": "не дойти: слишком далеко",
+ "reason.no_path": "нет пути туда"
+}

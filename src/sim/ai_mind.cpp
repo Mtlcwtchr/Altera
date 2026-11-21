@@ -10,6 +10,7 @@
 #include "sim/craft_sim.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
+#include "sim/consequences.hpp"
 #include "sim/gear.hpp"
 #include "sim/wounds.hpp"
 
@@ -287,9 +288,11 @@ Start startAction(World& w, Character& c, std::string& why) {
         EntityId t = kNone;
         if (d->targetsCharacter()) {
             const Character* pc = w.character(next.target);
-            t = pc && pc->body.alive ? next.target : findPerson(w, c, *d, c.ai.goal.target, &fw);
+            t = pc && pc->body.alive ? next.target : findPerson(w, c, *d, c.ai.goal.target, &fw, c.ai.goal.source == "player");
         } else {
-            t = findTarget(w, c, *d, c.pos, &fw);
+            // the player picked this very thing or herd (AL-23): no nearer stand-in
+            t = pickedTarget(w, c, *d);
+            if (t == kNone) t = findTarget(w, c, *d, c.pos, &fw);
         }
         if (t == kNone) {
             why = "goto.no_target:" + fw;
@@ -337,7 +340,7 @@ Start startAction(World& w, Character& c, std::string& why) {
     if (d->targetsCharacter()) {
         if (!w.character(a.target)) {
             std::string fw;
-            a.target = findPerson(w, c, *d, c.ai.goal.target, &fw);
+            a.target = findPerson(w, c, *d, c.ai.goal.target, &fw, c.ai.goal.source == "player");
         }
         creature = w.character(a.target); // the other person (same slot as a creature target)
         if (creature && !consents(w, c, *creature, *d)) {
@@ -348,7 +351,8 @@ Start startAction(World& w, Character& c, std::string& why) {
     } else if (d->targetsObject() || d->targetsCreature()) {
         if (a.target == kNone || (d->targetsCreature() && !w.character(a.target))) {
             std::string fw;
-            a.target = findTarget(w, c, *d, c.pos, &fw);
+            a.target = pickedTarget(w, c, *d);
+            if (a.target == kNone) a.target = findTarget(w, c, *d, c.pos, &fw);
         }
         if (d->targetsObject()) target = w.object(a.target);
         else creature = w.character(a.target);
@@ -529,6 +533,7 @@ void thinkCharacter(World& w, Character& c) {
 }
 
 void installAi(World& w) {
+    installConsequences(w);
     w.setThinkHook([](World& world) {
         // Animals may be born while the loop runs (animalsDaily adds groups),
         // so the daily pass runs before the per-tick loop.

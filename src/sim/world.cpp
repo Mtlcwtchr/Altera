@@ -203,6 +203,9 @@ void World::handleEvent(const Event& e) {
     } else if (e.type == "release_reservation") {
         WorldObject* o = object(e.obj);
         if (o && o->reservedBy == e.a && o->reservedUntil <= tick_) o->reservedBy = kNone;
+    } else {
+        for (const auto& h : eventHandlers_)
+            if (h(*this, e)) break;
     }
 }
 

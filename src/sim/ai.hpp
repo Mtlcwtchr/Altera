@@ -30,7 +30,9 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
 // The person a character-targeted act is done with: `prefer` when valid
 // (the goal's target), else the best known person who passes the act's
 // preconditions (family first, the needy for gifts, then the nearest).
-EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why);
+// strict (a player's order on a named person): only `prefer`, never somebody else (AL-23).
+EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why,
+                    bool strict = false);
 // consent: "target" - the other's mind decides (relation, kinship, own need).
 bool consents(const World& w, const Character& actor, const Character& target, const InteractionDef& d);
 // The chance consents() rolls against (1 for acts without consent); `tone`
@@ -141,6 +143,21 @@ std::vector<LegalTag> legalTags(const World& w, const Character& c, const Intera
 // What breaking `tag` costs this character (traits, desperation). The law
 // only changes the price, never removes the option.
 double legalPrice(const World& w, const Character& c, const std::string& tag, double mult = 1.0);
+// The goal's own target when the player's order named it and it is of the
+// act's target type (object type or creature species); kNone otherwise.
+EntityId pickedTarget(const World& w, const Character& c, const InteractionDef& d);
+// Why a player's order cannot be done to `target` at all ("" = it can):
+// wrong kind of target (a hen for a fight, a person for a well), dead,
+// oneself, or a person failing the act's conditions (AL-23).
+std::string orderTargetProblem(const World& w, const Character& c, const InteractionDef& d, EntityId target,
+                               std::string& why);
+// AL-32: the act done to another household's thing or beast. For an act that
+// asks target_owner:family the content keeps "<id>@foreign" (built at load):
+// the same act without that condition, taking from the target's stock, with a
+// theft or trespass tag. nullptr when the target is ours, nobody's, or the
+// act has no such variant.
+const InteractionDef* foreignVariant(const World& w, const Character& c, const InteractionDef& d, EntityId target);
+
 // Known, free (or ours), condition-satisfying instance of the interaction's
 // target type nearest `from`; kNone if there is none.
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,

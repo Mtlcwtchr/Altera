@@ -245,6 +245,12 @@ bool applyBackstory(World& w, Character& c, const BackstoryDef& b, std::string& 
         const MapGrid& m = w.map();
         c.pos.x = std::clamp(c.pos.x, 5.0, m.sizeM - 5.0);
         c.pos.y = std::clamp(c.pos.y, 5.0, m.sizeM - 5.0);
+    } else if (const WorldObject* h = w.object(c.home)) {
+        // AL-28: "at home" is by the household's store, wherever the hours
+        // before the start took the person (newGame runs the world first).
+        const double a = rng.range(0.0, 6.28318530718);
+        c.pos = {h->pos.x + std::cos(a) * 3.0, h->pos.y + std::sin(a) * 3.0};
+        if (c.ai.fsm.state != "Idle") abortAction(w, c, "start.placed_home"); // no walk-back to the old errand
     }
 
     // rights, repute and how the others see them (both ways)

@@ -18,7 +18,18 @@
   "max_abs_delta": 0.5,
   "max_ttl": 288
  },
+ "skill_gain": {
+  "_doc": "AL-30: прирост навыка от практики = эффект x mult x (1 - уровень)^curve; дети младше min_age_years от работы не учатся",
+  "mult": 0.3,
+  "curve": 2.0,
+  "min_age_years": 6
+ },
  "memory_types": {
+  "saw_crime": 0.5,
+  "told_crime": 0.5,
+  "rumor_crime": 0.35,
+  "suspects": 0.55,
+  "noticed_missing": 0.5,
   "ate_meal": 0.05,
   "ate_raw": 0.03,
   "starved": 0.6,

@@ -31,6 +31,9 @@ struct ActInfo {
     std::vector<Effect> gains; // effects on the person (not t./w., not target_stock)
     std::vector<Effect> onTarget; // effects on the target person (t.)
     Tick duration = 1;         // ticks
+    // AL-32: on another household's thing or beast the act is not refused but
+    // is what it is: the legal tags it carries there (theft, trespass...).
+    std::vector<std::string> legal;
 };
 
 ActInfo actInfo(const World& w, const Character& c, const InteractionDef& d, const WorldObject* obj,

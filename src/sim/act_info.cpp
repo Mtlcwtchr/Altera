@@ -9,10 +9,14 @@ bool shownCondition(const Condition& k) {
     return k.subject != "target_owner" && k.subject != "charity" && k.subject != "time" && k.subject != "herd";
 }
 
-ActInfo actInfo(const World& w, const Character& c, const InteractionDef& d, const WorldObject* obj,
+ActInfo actInfo(const World& w, const Character& c, const InteractionDef& base, const WorldObject* obj,
                 const Character* targetChar) {
     ActInfo a;
-    a.id = d.id;
+    a.id = base.id; // the order names the act; the sim does it as the foreign variant
+    const InteractionDef* f =
+        foreignVariant(w, c, base, obj ? obj->id : (targetChar && targetChar->isAnimal() ? targetChar->id : kNone));
+    const InteractionDef& d = f ? *f : base;
+    if (f) a.legal = f->legal;
     a.duration = d.duration;
     a.can = canPerform(w, c, d, obj, &a.why, false, targetChar);
     const EvalCtx x{w, c, obj, targetChar};
@@ -35,7 +39,7 @@ ActInfo actInfo(const World& w, const Character& c, const InteractionDef& d, con
 std::vector<std::string> actsOnObject(const Content& content, const std::string& objectType) {
     std::vector<std::string> out;
     for (const auto& [id, d] : content.interactions)
-        if (d.targetsObject() && d.targetType == objectType && !d.parametric()) out.push_back(id);
+        if (d.targetsObject() && d.targetType == objectType && !d.parametric() && d.baseId.empty()) out.push_back(id);
     return out;
 }
 

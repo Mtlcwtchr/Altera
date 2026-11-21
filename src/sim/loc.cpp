@@ -477,7 +477,10 @@ const std::vector<std::string>& traceCodes() {
         "goal.done",           "goal.dropped",             "goal.failed",       "goap.fail",
         "goap.plan",           "goap.replan",              "htn.method_failed", "htn.no_method",
         "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt",
-        "dialog.accepted",     "dialog.refused"};
+        "dialog.accepted",     "dialog.refused",
+        // AL-31 consequences
+        "deed.accuse_queued",  "deed.rumor_heard",         "deed.loss_noticed", "deed.suspects",
+        "act.outcome",         "control.steer_clamped"};
     return v;
 }
 
@@ -513,6 +516,7 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     k.insert("goal.player_action.name"); // a direct player order
     for (const auto& [id, t] : c.tasks) k.insert("task." + id + ".name");
     for (const auto& [id, d] : c.interactions) {
+        if (!d.baseId.empty()) continue; // <id>@foreign: named as the act it is made from
         k.insert("interaction." + id + ".name");
         for (const auto& r : d.risk) k.insert("risk." + r.id + ".name");
         for (const auto& s : d.speech) k.insert("speech." + s + ".name");
@@ -532,6 +536,10 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const auto& r : reasonCodes()) k.insert("reason." + r);
     for (const auto& i : idleCodes()) k.insert("report.idle." + i);
     k.insert("chronicle.death");
+    for (const char* ck : {"chronicle.deed_seen", "chronicle.loss_noticed", "chronicle.suspicion"}) k.insert(ck);
+    for (const char* mk : {"memory.saw_crime.text", "memory.told_crime.text", "memory.rumor_crime.text",
+                           "memory.suspects.text", "memory.noticed_missing.text"})
+        k.insert(mk);
     if (c.craft.loaded)
         for (const auto& ck : craft::craftLocKeys(c.craft)) k.insert(ck);
     return {k.begin(), k.end()};
@@ -613,7 +621,10 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
     Json a = Json::object();
     if (self) a["self"] = characterNoun(loc, lang, *self);
     if (!params.is_object()) return a;
-    auto ref = [&](const char* kind, const std::string& id) { return loc.noun(lang, std::string(kind) + "." + id + ".name", id); };
+    auto ref = [&](const char* kind, const std::string& raw) {
+        const std::string id = raw.substr(0, raw.find('@')); // <id>@foreign reads as the act itself
+        return loc.noun(lang, std::string(kind) + "." + id + ".name", id);
+    };
     for (auto it = params.begin(); it != params.end(); ++it) {
         const std::string& k = it.key();
         const Json& v = *it;
@@ -636,6 +647,8 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref(k.c_str(), s);
             } else if (k == "to" || k == "object" || k == "target_type") {
                 a[k] = ref("object", s);
+            } else if (k == "tag") {
+                a[k] = ref("legal", s);
             } else if (k == "why" || k == "for") {
                 a[k] = reasonText(loc, lang, s);
             } else {
@@ -643,7 +656,8 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
             }
         } else if (v.is_number_integer() &&
                    (k == "who" || k == "speaker" || k == "listener" || k == "actor" || k == "target" || k == "a" ||
-                    k == "b")) {
+                    k == "b" || k == "doer" || k == "suspect" || k == "owner" || k == "victim" || k == "from" ||
+                    k == "object")) {
             const EntityId id = v.get<EntityId>();
             if (const Character* c = w.character(id)) a[k] = characterNoun(loc, lang, *c);
             else if (const WorldObject* o = w.object(id)) a[k] = ref("object", o->type);

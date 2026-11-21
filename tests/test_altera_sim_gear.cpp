@@ -159,6 +159,7 @@ TEST(altera_sim_gear_player_refuses_heavy_act) {
     c->worn.clear();
     c->inventory = {{"log", 2}};
     std::string why;
+    c->ai.goal.source = "player"; // AL-24: the check is for the player's own orders
     CHECK(!canPerform(w, *c, *d, bank, &why, false, nullptr));
     CHECK(why.rfind("gear:", 0) == 0);
     c->inventory.clear();

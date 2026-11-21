@@ -45,8 +45,12 @@ bool staticOk(const World& w, const Character& c, const InteractionDef& d, std::
     // A creature act is judged against the herd it would go to (t.has:eggs,
     // herd:cull of that herd).
     const Character* beast = nullptr;
-    if (!person && d.targetsCreature())
-        beast = w.character(findCreature(w, d.targetType, c.pos, w.content().config.trackRadiusM, c.status.family));
+    if (!person && d.targetsCreature()) {
+        // the herd the player named (another household's too), else the nearest of ours
+        EntityId b = pickedTarget(w, c, d);
+        if (b == kNone) b = findCreature(w, d.targetType, c.pos, w.content().config.trackRadiusM, c.status.family);
+        beast = w.character(b);
+    }
     const EvalCtx x{w, c, nullptr, person ? person : beast};
     for (const auto& k : d.pre) {
         if (goapFact(k) || k.subject == "target_stock" || k.subject == "target_owner" || k.subject == "site") continue;
@@ -78,7 +82,7 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
         std::string why;
         if (finalAction->targetsCharacter()) {
             std::string pw;
-            personId = findPerson(w, c, *finalAction, c.ai.goal.target, &pw);
+            personId = findPerson(w, c, *finalAction, c.ai.goal.target, &pw, c.ai.goal.source == "player");
             if (personId == kNone) {
                 res.why = "goap.no_person:" + finalAction->id + ":" + pw;
                 return res;
