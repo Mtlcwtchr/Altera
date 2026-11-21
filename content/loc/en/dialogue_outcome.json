@@ -1,0 +1,6 @@
+{
+ "_doc": "Outcome lines (AL-36, AL-53): the reaction to a failed social act.",
+ "dialogue.outcome.fail_1": "Hm. No.",
+ "dialogue.outcome.fail_2": "That won't work on me, {listener}.",
+ "dialogue.outcome.fail_rude": "Leave me alone, {listener}!"
+}

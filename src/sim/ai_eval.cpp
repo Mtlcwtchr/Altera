@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
+#include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
@@ -302,6 +303,7 @@ void runConversation(World& w, Character& c, Character& other, const Json& param
                     break;
                 }
             trace(w, c, 'C', "dialog.refused", why);
+            sayRefusal(w, other, c, "consent"); // AL-36: the line itself (AL-53)
         }
     }
 }

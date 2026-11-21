@@ -1,0 +1,42 @@
+{
+ "_doc": "Реплики исхода действия (AL-36, AL-53): отказ вслух с причиной, реакция на неудачу. intent: consent (не согласился), order (отказ на приказ), fail (действие не удалось). Причина-проступок — в recall.json (refuse.recall.*).",
+ "rules": [
+  {
+   "id": "refuse.order",
+   "when": [
+    "act=refuse",
+    "intent=order"
+   ],
+   "say": "dialogue.refuse.neutral_2"
+  },
+  {
+   "id": "ignore.fail",
+   "when": [
+    "act=ignore",
+    "intent=fail"
+   ],
+   "say": "dialogue.outcome.fail_1",
+   "cooldown": "pair:2h"
+  },
+  {
+   "id": "ignore.fail.rude",
+   "when": [
+    "act=ignore",
+    "intent=fail",
+    "rel.enmity>=0.3"
+   ],
+   "say": "dialogue.outcome.fail_rude",
+   "cooldown": "pair:2h"
+  },
+  {
+   "id": "ignore.fail.familiar",
+   "when": [
+    "act=ignore",
+    "intent=fail",
+    "rel.familiarity>=0.3"
+   ],
+   "say": "dialogue.outcome.fail_2",
+   "cooldown": "pair:2h"
+  }
+ ]
+}

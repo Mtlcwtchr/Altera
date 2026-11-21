@@ -436,7 +436,8 @@ Json World::toJson() const {
                 {"pending", pending_},
                 {"command_log", commandLog_},
                 {"chronicle", chronicle_},
-                {"facts", facts_}};
+                {"facts", facts_},
+                {"said", altera::sim::toJson(said_)}};
 }
 
 void World::loadJson(const Json& j) {
@@ -490,6 +491,8 @@ void World::loadJson(const Json& j) {
     commandLog_ = j.at("command_log").get<std::vector<Command>>();
     chronicle_ = j.at("chronicle").get<std::vector<ChronicleEntry>>();
     facts_ = j.value("facts", std::vector<Fact>{});
+    said_ = SaidMemory{};
+    if (j.contains("said")) altera::sim::fromJson(j["said"], said_);
 }
 
 Fact& World::addFact(Fact f) {
