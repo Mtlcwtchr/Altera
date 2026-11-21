@@ -362,8 +362,8 @@ std::string checkPlacement(const BuildCatalog& cat, const PieceMap& pieces, cons
     const BuildPieceDef* d = cat.find(p.kind);
     if (!d) return "unknown_kind";
     if (p.z < 0 || p.z > kMaxStorey) return "bad_storey";
-    if (d->category == "foundation" && p.z != 0) return "bad_storey";
-    if (d->category == "floor" && p.z < 1) return "bad_storey";
+    if (d->category == "foundation" && p.z != 0) return "foundation_ground"; // AL-26: say which rule
+    if (d->category == "floor" && p.z < 1) return "floor_upper";
     const SlotKey key = slotOf(*d, p.x, p.y, p.z, p.rot);
     for (const auto& [id, o] : pieces) {
         const BuildPieceDef* od = cat.find(o.kind);

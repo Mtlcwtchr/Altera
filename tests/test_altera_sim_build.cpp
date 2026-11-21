@@ -65,7 +65,7 @@ TEST(altera_sim_build_support_rules) {
     PieceMap m;
     // nothing holds a wall in the air; a foundation stands on the ground only
     CHECK(checkPlacement(b, m, piece("wall_log", 0, 0, 0, 0, 1)) == "unsupported");
-    CHECK(checkPlacement(b, m, piece("foundation_stone", 0, 0, 1, 0, 1)) == "bad_storey");
+    CHECK(checkPlacement(b, m, piece("foundation_stone", 0, 0, 1, 0, 1)) == "foundation_ground");
     CHECK(checkPlacement(b, m, piece("foundation_stone", 0, 0, 0, 0, 1)).empty());
     m[1] = piece("foundation_stone", 0, 0, 0, 0, 1);
     m[2] = piece("foundation_stone", 1, 0, 0, 0, 2);

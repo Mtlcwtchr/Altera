@@ -361,6 +361,7 @@ struct TermsDef {
 
 struct InteractionDef {
     std::string id;
+    std::string baseId; // "<base>@foreign" variants (consequences.hpp): the act they are made from
     std::string category;
     std::string target = "self"; // self | object:<type> | character
     std::string targetType;      // object type when target is object:<type>
@@ -460,6 +461,11 @@ struct AiConfig {
     double playerGoalHoldBonus = 0.3;
     double hintDecayTicks = 72;      // player hints become decaying weights after a switch
     int memoryCap = 200;
+    // AL-30: practice gains shrink as one gets better: gain x mult x (1 - level)^curve;
+    // the small learn nothing from work yet.
+    // Neutral by default (config.json skill_gain sets the game's values).
+    double skillGainMult = 1.0, skillGainCurve = 0.0;
+    int skillMinAgeYears = 0;
     std::map<std::string, double> memoryTypes;
     std::vector<std::string> reputationAxes = {"honesty", "valor", "piety", "generosity", "notoriety"};
     std::vector<std::string> statusPairs = {"betrothed", "married", "master_apprentice", "lord_vassal", "sworn_kin"};

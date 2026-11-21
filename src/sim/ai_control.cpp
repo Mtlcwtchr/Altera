@@ -20,6 +20,8 @@ namespace altera::sim {
 
 namespace {
 
+constexpr double kSteerMaxStepM = 25.0; // a hard sprint for a few seconds of real time
+
 int playerOf(const Command& cmd) {
     if (cmd.args.contains("player")) return cmd.args["player"].get<int>();
     if (cmd.source.rfind("player:", 0) == 0) return std::stoi(cmd.source.substr(7));
@@ -118,6 +120,7 @@ bool switchControl(World& w, int player, EntityId to, std::string& why) {
     Character* next = w.character(to);
     if (!next) return why = "no_such_character", false;
     if (!next->body.alive) return why = "dead", false;
+    if (next->isAnimal()) return why = "animal", false; // AL-25: people only
     if (next->controller.isPlayer() && next->controller.playerId != player) return why = "controlled_by_other", false;
     Character* prev = controlledBy(w, player);
     if (prev == next) return true;
@@ -200,8 +203,21 @@ bool handle(World& w, Command& cmd) {
             if (!d) throw std::runtime_error("unknown interaction");
             // The tone the act is done in (tones.json); stays until another order names one.
             if (cmd.args.contains("tone")) c->controller.tone = cmd.args["tone"].get<std::string>();
+            // AL-23: the named target must be one the act can be done to - a
+            // refusal with the reason now, never a silent stand-in later.
+            if (gs.target != kNone) {
+                std::string tw;
+                if (const std::string bad = orderTargetProblem(w, *c, *d, gs.target, tw); !bad.empty()) {
+                    cmd.result = "rejected:" + bad;
+                    trace(w, *c, 'C', "control.order_refused", {{"task", x}, {"why", bad}});
+                    return true;
+                }
+                // AL-32: another household's thing or beast - the act is not
+                // forbidden, it is done as what it is (theft, trespass).
+                if (const InteractionDef* f = foreignVariant(w, *c, *d, gs.target)) d = f;
+            }
             gs.goal = "player_action";
-            gs.task = x;
+            gs.task = d->id;
         } else {
             QueuedTask q{cmd.args.at("task").get<std::string>(), gs.target, gs.score, w.now(),
                          std::min<Tick>(cmd.args.value("ttl", cfg.modMaxTtl), cfg.modMaxTtl),
@@ -256,7 +272,15 @@ bool handle(World& w, Command& cmd) {
         if (c->ai.goal.valid()) dropGoal(w, *c, "steered_by_player", false);
         const double s = w.map().sizeM;
         const Vec2 was = c->pos;
-        c->pos = {std::clamp(cmd.args.at("x").get<double>(), 0.0, s), std::clamp(cmd.args.at("y").get<double>(), 0.0, s)};
+        Vec2 to{std::clamp(cmd.args.at("x").get<double>(), 0.0, s), std::clamp(cmd.args.at("y").get<double>(), 0.0, s)};
+        // AL-25: a step, not a teleport. The client sends steer every few
+        // frames; anything farther than a run in that time is cut to it.
+        const double step = dist(was, to);
+        if (step > kSteerMaxStepM) {
+            to = {was.x + (to.x - was.x) * kSteerMaxStepM / step, was.y + (to.y - was.y) * kSteerMaxStepM / step};
+            trace(w, *c, 'C', "control.steer_clamped", {{"asked_m", step}});
+        }
+        c->pos = to;
         c->controller.idleSince = w.now();
         // Walking tires, running more, uphill and under a load more still (gear.json).
         if (const GearRules* R = gearRules(w.content())) {

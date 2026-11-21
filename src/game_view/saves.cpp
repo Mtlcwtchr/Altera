@@ -120,6 +120,8 @@ GameSettings loadSettings() {
         s.lang = j.value("lang", "");
         s.fullscreen = j.value("fullscreen", false);
         s.autosaveMin = j.value("autosave_min", 10);
+        // AL-29: the settings offer off / 5 / 10 / 15 min: an odd value snaps to the nearest
+        if (s.autosaveMin > 0) s.autosaveMin = s.autosaveMin <= 7 ? 5 : (s.autosaveMin <= 12 ? 10 : 15);
         s.control = std::clamp(j.value("control", 0), 0, 2);
         s.cameraFollow = j.value("camera_follow", true);
         s.idleAutonomyS = std::clamp(j.value("idle_autonomy_s", 20), 3, 600);

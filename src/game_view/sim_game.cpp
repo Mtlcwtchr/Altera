@@ -185,7 +185,7 @@ public:
         simSize_ = m.sizeM;
         // the act ring over beasts: every act whose target is a species
         for (const auto& [id, d] : content_->interactions)
-            if (d.targetsCreature()) hud_.beastActs[d.target.substr(9)].push_back(id);
+            if (d.targetsCreature() && d.baseId.empty()) hud_.beastActs[d.target.substr(9)].push_back(id);
         originX_ = std::clamp(centreX - m.sizeM * 0.5, 0.0, std::max(0.0, worldSize_ - m.sizeM));
         originY_ = std::clamp(centreY - m.sizeM * 0.5, 0.0, std::max(0.0, worldSize_ - m.sizeM));
         refreshTexts();
@@ -306,7 +306,9 @@ public:
         pauseHeld_ = false;
     }
     void openSlots(bool save) {
-        if (hud_.panel == "menu" || hud_.panel == "pause") menuBack_ = hud_.panel;
+        // AL-29: from the game (pause or any in-game panel) back goes to the game's pause
+        if (hud_.panel == "menu") menuBack_ = "menu";
+        else if (hud_.panel != "slots" && hud_.panel != "settings") menuBack_ = "pause";
         hud_.slotsSave = save;
         hud_.menuSlots.clear();
         for (const SaveMeta& m : listSaves()) {
@@ -334,7 +336,9 @@ public:
         hud_.panel = "slots";
     }
     void openSettings() {
-        if (hud_.panel == "menu" || hud_.panel == "pause") menuBack_ = hud_.panel;
+        // AL-29: from the game (pause or any in-game panel) back goes to the game's pause
+        if (hud_.panel == "menu") menuBack_ = "menu";
+        else if (hud_.panel != "slots" && hud_.panel != "settings") menuBack_ = "pause";
         hud_.settingsLang = opts_.lang;
         hud_.settingsFullscreen = settings_.fullscreen;
         hud_.settingsAutosave = settings_.autosaveMin;
@@ -665,6 +669,13 @@ public:
         switch (e.type) {
         case SDL_EVENT_QUIT: return false;
         case SDL_EVENT_KEY_DOWN:
+            // AL-29: F11 / Alt+Enter toggle the full screen anywhere
+            if (!e.key.repeat && (e.key.key == SDLK_F11 || (e.key.key == SDLK_RETURN && (e.key.mod & SDL_KMOD_ALT)))) {
+                settings_.fullscreen = !settings_.fullscreen;
+                if (window_) SDL_SetWindowFullscreen(window_, settings_.fullscreen);
+                hud_.settingsFullscreen = settings_.fullscreen;
+                break;
+            }
             if (hud_.inMenu()) {   // the menus: only Esc, one step back
                 if (e.key.key == SDLK_ESCAPE && !e.key.repeat) menuEscape();
                 break;
@@ -1184,9 +1195,16 @@ public:
         if (avatar_.driven && avatar_.id == me->id) sx = avatar_.x, sy = avatar_.y;
         else actorWorld(*me, tickAlpha(), sx, sy);
         obstacles_.pushOut(sx, sy, kWalkerRadius);
-        if (std::hypot(gx - sx, gy - sy) > 600.0) return;   // too far for a walk on foot
+        // AL-29: too far or no way there - said, not silently ignored
+        if (std::hypot(gx - sx, gy - sy) > 600.0) {
+            result_ = "rejected:walk_too_far";
+            return;
+        }
         std::vector<collide::Point> way;
-        if (!obstacles_.path(sx, sy, gx, gy, kWalkerRadius, way)) return;
+        if (!obstacles_.path(sx, sy, gx, gy, kWalkerRadius, way)) {
+            result_ = "rejected:no_path";
+            return;
+        }
         walkPath_ = std::move(way);
         walkRun_ = input_.doubleClick;
         walkStuck_ = 0;
@@ -2136,8 +2154,10 @@ private:
                 what = craftItemName(*loc_, L, d, c.craft.items[size_t(c.craft.lastMade)]);
             const std::string head = loc_->has(L, "craft.outcome." + c.craft.lastOutcome)
                                          ? text("craft.outcome." + c.craft.lastOutcome)
-                                         : text("craft.stop." + c.craft.lastOutcome, {{"what", c.craft.lastArg}, {"why", c.craft.lastArg},
-                                                                                      {"stages", c.craft.lastArg}});
+                                         : loc_->has(L, "craft.stop." + c.craft.lastOutcome)
+                                         ? text("craft.stop." + c.craft.lastOutcome, {{"what", c.craft.lastArg}, {"why", c.craft.lastArg},
+                                                                                      {"stages", c.craft.lastArg}})
+                                         : text("craft.stop.other", {{"why", c.craft.lastOutcome}}); // AL-27: never a raw key
             cs.last = what.empty() ? head : text("hud.craft.last", {{"outcome", head}, {"what", what}});
             if (c.craft.lastBreakthrough_) cs.last += "  " + text("hud.craft.breakthrough");
             // the result card (board 11) and the insight (board 13)
@@ -2320,8 +2340,9 @@ private:
 
     std::string name(const std::string& kind, const std::string& id) const {
         if (id.empty()) return "";
-        const std::string k = kind + "." + id + ".name";
-        return loc_->has(opts_.lang, k) ? loc_->text(opts_.lang, k) : id;
+        const std::string base = id.substr(0, id.find('@')); // <id>@foreign (AL-32) reads as the act
+        const std::string k = kind + "." + base + ".name";
+        return loc_->has(opts_.lang, k) ? loc_->text(opts_.lang, k) : base;
     }
     std::string text(const std::string& key, const Json& args = Json::object()) const override {
         return loc_->has(opts_.lang, key) ? loc_->text(opts_.lang, key, args) : key;
@@ -2337,7 +2358,13 @@ private:
         s.season = w.season();
         s.paused = paused_;
         s.speed = speed_;
+        // AL-27: the sim's answer in words, never a bare "rejected:<code>"
         s.result = result_;
+        if (result_.rfind("rejected:", 0) == 0) {
+            const std::string code = result_.substr(9);
+            const std::string t = reasonText(*loc_, opts_.lang, code);
+            s.result = t != code ? text("hud.result.rejected", {{"why", t}}) : text("hud.result.unknown", {{"code", code}});
+        }
         if (!w.settlements().empty()) {
             s.settlement = w.settlements().begin()->second.name;
             const DayWeather dw = weatherToday(w, w.settlements().begin()->first);
@@ -2426,7 +2453,8 @@ private:
                 if (m.until > w.now()) d.moodlets.push_back({name("moodlet", m.id), m.value});
             for (const auto& [k, v] : c->skills) d.skills.push_back({name("skill", k), v});
             std::sort(d.skills.begin(), d.skills.end(), [](auto& x, auto& y) { return x.second > y.second; });
-            for (const auto& [k, v] : c->reputation) d.reputation.push_back({name("reputation", k), v});
+            for (const auto& [k, v] : c->reputation) // keys are "reputation:<axis>" (AL-27)
+                d.reputation.push_back({name("reputation", k.rfind("reputation:", 0) == 0 ? k.substr(11) : k), v});
             for (const auto& [oid, r] : c->relations) {
                 const Character* o = w.character(oid);
                 if (!o || o->isAnimal()) continue;
@@ -2752,6 +2780,8 @@ private:
                 if (std::string g = describeEffect(e); !g.empty()) o.gains.push_back(g);
             for (const auto& e : a.onTarget)
                 if (std::string g = describeEffect(e); !g.empty()) o.toTarget.push_back(g);
+            // AL-32: another household's: allowed, but named for what it is
+            for (const auto& t : a.legal) o.needs.push_back({text("act.outcome.crime", {{"tag", name("legal", t)}}), false});
             o.minutes = int(a.duration) * int(24 * 60 / kTicksPerDay);
             s.acts.push_back(std::move(o));
         }
@@ -2807,6 +2837,14 @@ private:
                     push(traceText(*loc_, opts_.lang, w, *me, e), 2);
                 else if (e.code == "dialog.accepted")
                     push(traceText(*loc_, opts_.lang, w, *me, e), 1);
+                else if (e.code == "act.outcome") { // AL-36: what came of it, never a bare "ok"
+                    if (!e.params.value("success", true)) push(text("act.outcome.failed"), 2);
+                    if (e.params.contains("tag")) {
+                        push(text("act.outcome.crime", {{"tag", name("legal", e.params["tag"].get<std::string>())}}), 2);
+                        const int n = e.params.value("witnesses", 0);
+                        push(n > 0 ? text("act.outcome.seen", {{"n", n}}) : text("act.outcome.unseen"), n > 0 ? 2 : 0);
+                    }
+                }
             }
             if (!me->ai.trace.empty()) {
                 last = me->ai.trace.back().tick;
@@ -3186,6 +3224,19 @@ private:
             if (batchWhy_[i].empty()) ++ok, z = std::max(z, laid_[i].z);
             else if (++bad == 1) firstWhy = batchWhy_[i];
         }
+        // AL-26: a plan past the household's piece limit is not laid in part:
+        // the whole drag is refused, and the preview says so before release.
+        {
+            int own = 0;
+            for (const auto& [id, p] : shown_.pieces) own += p.family == shown_.builderFamily;
+            if (ok > 0 && own + ok > content_->build.maxPerFamily) {
+                for (auto& wy : batchWhy_)
+                    if (wy.empty()) wy = "too_many";
+                bad = int(laid_.size());
+                ok = 0;
+                firstWhy = "too_many";
+            }
+        }
         if (shown_.builder == kNone) firstWhy = "no_builder", bad = std::max(bad, 1), ok = 0;
         hud_.buildOk = bad == 0;
         if (!hit && !dragOn_) hud_.buildStatus = "";
@@ -3194,7 +3245,8 @@ private:
         else if (bad == 0 && ok == 1) hud_.buildStatus = text("hud.build.ok", {{"storey", z + 1}});
         else if (bad == 0) hud_.buildStatus = text("hud.build.batch_ok", {{"n", ok}});
         else
-            hud_.buildStatus = text("hud.build.batch_bad", {{"n", ok}, {"bad", bad}}) + ": " + text("hud.build.why." + firstWhy);
+            hud_.buildStatus = text("hud.build.batch_bad", {{"n", ok}, {"bad", bad}}) + ": " +
+                               text("hud.build.why." + firstWhy, {{"max", content_->build.maxPerFamily}});
         // what the family's plan still lacks
         std::map<std::string, int> lack;
         int planned = 0, built = 0;

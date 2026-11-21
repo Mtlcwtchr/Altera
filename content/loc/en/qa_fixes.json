@@ -1,0 +1,18 @@
+{
+ "_doc": "QA 21.11 (AL-26, AL-27, AL-29): texts that used to show as raw keys.",
+ "hud.build.why.too_many": "plan too big: a household has at most {max} pieces",
+ "hud.build.why.foundation_ground": "a footing only on the ground",
+ "hud.build.why.floor_upper": "a floor only on an upper storey; on the ground lay a footing",
+ "reason.foundation_ground": "a footing only on the ground",
+ "reason.floor_upper": "a floor only above the ground; on the ground lay a footing",
+ "reason.occupied": "the place is taken",
+ "reason.unsupported": "nothing to rest on",
+ "reason.bad_storey": "not on this storey",
+ "reason.no_family": "no household",
+ "reason.too_far": "too far: {detail}",
+ "craft.stop.wrong_input": "stopped: wrong material ({what})",
+ "craft.stop.too_many": "stopped: too much at once ({what})",
+ "craft.stop.other": "stopped: {why}",
+ "reason.walk_too_far": "can't walk that far",
+ "reason.no_path": "no way there"
+}

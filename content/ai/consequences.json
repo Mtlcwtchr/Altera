@@ -1,0 +1,25 @@
+{
+ "_doc": "AL-31: последствия проступков (src/sim/consequences.cpp). Действия с чужим не запрещены: свидетели помнят и рассказывают хозяевам, репутация меняется, без свидетелей хозяин рано или поздно замечает пропажу и подозревает, слухи расходятся в разговорах. Тексты только ключами (memory.*, chronicle.*, act.outcome.*).",
+ "reputation": {
+  "_doc": "тег проступка -> ось репутации -> сдвиг; один раз на известный проступок",
+  "theft": {"honesty": -0.12, "notoriety": 0.06},
+  "poaching": {"honesty": -0.06, "notoriety": 0.03},
+  "trespass": {"honesty": -0.03},
+  "banditry": {"honesty": -0.2, "valor": 0.02, "notoriety": 0.15},
+  "extortion": {"honesty": -0.12, "notoriety": 0.1},
+  "insult": {"generosity": -0.03},
+  "assault_minor": {"notoriety": 0.03},
+  "assault": {"notoriety": 0.06},
+  "assault_armed": {"notoriety": 0.12},
+  "murder": {"honesty": -0.2, "notoriety": 0.3},
+  "betrayal_of_secret": {"honesty": -0.15},
+  "witchcraft": {"piety": -0.2, "notoriety": 0.1},
+  "adultery_suspicion": {"honesty": -0.04}
+ },
+ "wrongs_owner": ["theft", "trespass", "poaching", "banditry"],
+ "witness": {"trust": -0.2, "enmity": 0.05, "tell_confidence": 0.9},
+ "victim": {"trust": -0.4, "enmity": 0.25, "accuse_at": 0.55, "accuse_task": "accuse_publicly", "accuse_priority": 0.75, "accuse_ttl": 288},
+ "trail": {"notice_daily": 0.3, "notice_at_home": 0.6, "at_home_m": 30, "days": 20, "nearby_m": 90},
+ "suspicion": {"nearby": 0.55, "bad_name": 0.5, "enmity": 0.3, "prior": 0.35, "min": 0.2},
+ "rumor": {"talk_acts": ["chat", "gossip", "tell_story", "share_meal", "joke", "greet"], "decay": 0.7, "min": 0.25, "trust": -0.15}
+}

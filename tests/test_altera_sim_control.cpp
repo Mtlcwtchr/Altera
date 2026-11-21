@@ -237,9 +237,11 @@ TEST(altera_sim_steer_moves_the_player_person) {
     CHECK(dist(w.character(A)->pos, to) < 1e-9);
     // Only the person you control; never off the map.
     CHECK(w.applyNow(cmdOf("steer", {{"id", B}, {"x", 1.0}, {"y", 1.0}}, 1)).result.rfind("rejected:", 0) == 0);
+    // AL-25: a far point is a step towards it, not a teleport
+    const Vec2 before = w.character(A)->pos;
     w.applyNow(cmdOf("steer", {{"id", A}, {"x", -50.0}, {"y", 1e9}}, 1));
-    CHECK(w.character(A)->pos.x == 0.0);
-    CHECK(w.character(A)->pos.y == w.map().sizeM);
+    CHECK(dist(before, w.character(A)->pos) <= 25.0 + 1e-6);
+    CHECK(w.character(A)->pos.x >= 0.0 && w.character(A)->pos.y <= w.map().sizeM);
 }
 
 TEST(altera_sim_player_and_npc_share_the_catalog) {

@@ -1517,7 +1517,8 @@ int main(int argc, char** argv) {
     // The GPU device wants the video subsystem even with no window to draw in.
     if (!SDL_Init(SDL_INIT_VIDEO)) { std::fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 1; }
     if (!options.headless) {
-        window = SDL_CreateWindow("terrain_lab", int(options.width), int(options.height), 0);
+        // AL-29: the game's window is called by the game's name
+        window = SDL_CreateWindow(options.game ? "Altera" : "terrain_lab", int(options.width), int(options.height), 0);
         if (!window) { std::fprintf(stderr, "window: %s\n", SDL_GetError()); return 1; }
     }
     int code = 0;

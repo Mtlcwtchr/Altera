@@ -192,6 +192,9 @@ public:
     // their contract. Commands unknown to every handler are rejected.
     using CommandHandler = std::function<bool(World&, Command&)>;
     void addCommandHandler(CommandHandler h) { handlers_.push_back(std::move(h)); }
+    // Event types the core does not know go to these (true = handled).
+    using EventHandler = std::function<bool(World&, const Event&)>;
+    void addEventHandler(EventHandler h) { eventHandlers_.push_back(std::move(h)); }
     using TickHook = std::function<void(World&)>;
     void setThinkHook(TickHook h) { think_ = std::move(h); }
 
@@ -241,6 +244,7 @@ private:
     std::vector<Command> commandLog_;
     std::vector<ChronicleEntry> chronicle_;
     std::vector<CommandHandler> handlers_;
+    std::vector<EventHandler> eventHandlers_;
     TickHook think_;
 };
 

@@ -38,7 +38,7 @@ Vec2 pieceCentre(const BuildCatalog& cat, const BuildPieceDef& d, const BuildPie
 // Stability of every piece (planned and built) and of the built ones alone.
 void computeStability(const BuildCatalog& cat, PieceMap& pieces);
 // "" when the piece may go on the plan, else the reason: unknown_kind,
-// bad_storey, occupied, unsupported. `stability` receives what it would have.
+// bad_storey, foundation_ground (a footing off the ground), floor_upper (a floor on the ground), occupied, unsupported. `stability` receives what it would have.
 std::string checkPlacement(const BuildCatalog& cat, const PieceMap& pieces, const BuildPiece& p,
                            double* stability = nullptr);
 // The lowest storey from `from` up where the piece fits (-1: none).

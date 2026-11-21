@@ -3,11 +3,13 @@
 // one applies it (CORE_SPEC §2.2 - the player gets nothing an NPC lacks).
 
 #include <algorithm>
+#include <cmath>
 
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
+#include "sim/consequences.hpp"
 #include "sim/gear.hpp"
 #include "sim/group_combat.hpp"
 #include "sim/tones.hpp"
@@ -119,7 +121,8 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
 
 bool evalCondition(const EvalCtx& x, const Condition& k) { return k.test(evalSubject(x, k)); }
 
-EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why) {
+EntityId findPerson(const World& w, const Character& c, const InteractionDef& d, EntityId prefer, std::string* why,
+                    bool strict) {
     auto passes = [&](const Character& o) {
         const EvalCtx x{w, c, nullptr, &o};
         for (const auto& k : d.pre)
@@ -132,6 +135,14 @@ EntityId findPerson(const World& w, const Character& c, const InteractionDef& d,
     if (prefer != kNone)
         if (const Character* o = w.character(prefer); o && o->body.alive && !o->isAnimal() && o->id != c.id && passes(*o))
             return prefer;
+    // The player named this person: a refusal with the reason, never a stand-in (AL-23).
+    if (strict && prefer != kNone) {
+        const Character* o = w.character(prefer);
+        if (why && (why->empty() || why->rfind("person:", 0) != 0))
+            *why = !o ? "no_person" : !o->body.alive ? "person:dead" : o->isAnimal() ? "person:animal"
+                 : o->id == c.id ? "person:self" : *why;
+        return kNone;
+    }
     // Gifts go to the needy: eff gives the target something.
     bool gift = false;
     for (const auto& e : d.eff)
@@ -156,6 +167,50 @@ EntityId findPerson(const World& w, const Character& c, const InteractionDef& d,
     }
     if (best == kNone && why && why->empty()) *why = "no_person";
     return best;
+}
+
+EntityId pickedTarget(const World& w, const Character& c, const InteractionDef& d) {
+    if (c.ai.goal.source != "player" || c.ai.goal.target == kNone) return kNone;
+    const EntityId t = c.ai.goal.target;
+    if (d.targetsObject()) {
+        const WorldObject* o = w.object(t);
+        return o && o->type == d.targetType ? t : kNone;
+    }
+    if (d.targetsCreature()) {
+        const Character* b = w.character(t);
+        return b && b->body.alive && b->species == d.targetType ? t : kNone;
+    }
+    return kNone;
+}
+
+std::string orderTargetProblem(const World& w, const Character& c, const InteractionDef& d, EntityId target,
+                               std::string& why) {
+    if (d.targetsCharacter()) {
+        if (findPerson(w, c, d, target, &why, true) != kNone) return "";
+        return "target:" + (why.empty() ? std::string("no_person") : why);
+    }
+    if (d.targetsObject()) {
+        const WorldObject* o = w.object(target);
+        if (!o) return "target:no_target";
+        if (o->type != d.targetType) return "target:wrong_target:" + d.targetType;
+        return "";
+    }
+    if (d.targetsCreature()) {
+        const Character* b = w.character(target);
+        if (!b || !b->body.alive) return "target:no_target";
+        if (b->species != d.targetType) return "target:wrong_target:" + d.targetType;
+        return "";
+    }
+    return ""; // self acts: the target is a hint the act does not use
+}
+
+const InteractionDef* foreignVariant(const World& w, const Character& c, const InteractionDef& d, EntityId target) {
+    if (!d.baseId.empty() || target == kNone) return nullptr;
+    const WorldObject* o = d.targetsObject() ? w.object(target) : nullptr;
+    const Character* b = d.targetsCreature() ? w.character(target) : nullptr;
+    if (!o && !b) return nullptr;
+    if (ownerRelation(c, o, b) != "other") return nullptr;
+    return w.content().interaction(d.id + "@foreign");
 }
 
 double consentChance(const World& w, const Character& actor, const Character& target, const InteractionDef& d,
@@ -305,8 +360,14 @@ void spoilFood(World& w) {
             else ++it;
         }
     };
-    for (auto& [id, o] : w.objects())
-        if (!o.stock.empty() && o.ownerFamily != kNone) rot(o.stock, id, "s:");
+    // AL-30: every store rots, the village's own too; only what still grows
+    // (bushes, patches: their stock is the plant's) is left to regrow.
+    for (auto& [id, o] : w.objects()) {
+        if (o.stock.empty()) continue;
+        const auto def = ct.objects.find(o.type);
+        const bool growing = def != ct.objects.end() && (!def->second.maxStock.empty() || !def->second.regrow.empty());
+        if (o.ownerFamily != kNone || !growing) rot(o.stock, id, "s:");
+    }
     for (auto& [id, c] : w.characters())
         if (c.body.alive && !c.isAnimal()) rot(c.inventory, id, "p:");
 }
@@ -345,14 +406,24 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
         if (!evalCondition(x, k)) return fail("pre:" + k.text);
     // The player's person carries as a body can (gear.json): what an act
     // gives must not be too heavy or find no room in the hands and bags.
-    if (c.controller.isPlayer())
+    // Only for the player's own orders (AL-24): the person's own life under
+    // free will lives by the same rules as a neighbour's, and food goes to
+    // the mouth, not the bag - only its weight counts.
+    if (c.controller.isPlayer() && c.ai.goal.source == "player")
         if (const GearRules* R = gearRules(w.content())) {
-            std::map<std::string, int> gains;
+            std::map<std::string, int> gains, bagged;
             for (const auto& e : d.eff)
-                if (!e.onTarget && !e.onWitnesses && e.subject == "has" && e.op == '+' && !e.isParam())
+                if (!e.onTarget && !e.onWitnesses && e.subject == "has" && e.op == '+' && !e.isParam()) {
                     gains[e.key] += static_cast<int>(e.value);
-            if (!gains.empty())
-                if (const std::string why = canTake(*R, c, gains); !why.empty()) return fail("gear:" + why);
+                    const auto it = w.content().items.find(e.key);
+                    if (it == w.content().items.end() || it->second.nutrition <= 0.0) bagged[e.key] += static_cast<int>(e.value);
+                }
+            if (!gains.empty()) {
+                const std::string heavy = canTake(*R, c, gains);
+                if (heavy == "too_heavy") return fail("gear:too_heavy");
+                if (!bagged.empty())
+                    if (const std::string why = canTake(*R, c, bagged); !why.empty()) return fail("gear:" + why);
+            }
         }
     return true;
 }
@@ -547,7 +618,14 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             n = std::max(0, e.op == '=' ? static_cast<int>(e.value) : n + static_cast<int>(dv));
         } else if (s == "skill") {
             double& v = c.skills[e.key];
-            v = clamp01(e.op == '=' ? e.value : v + dv);
+            double gain = dv;
+            if (e.op != '=' && gain > 0.0) { // AL-30: diminishing practice, none for the small
+                const AiConfig& cf = w.content().config;
+                gain = c.body.ageDays < cf.skillMinAgeYears * kDaysPerYear
+                           ? 0.0
+                           : gain * cf.skillGainMult * std::pow(std::max(0.0, 1.0 - v), cf.skillGainCurve);
+            }
+            v = clamp01(e.op == '=' ? e.value : v + gain);
         } else if (s == "body") {
             double& v = e.key == "health" ? c.body.health : c.body.fatigue;
             // a heavy load makes every tiring act tire more (gear.json)
@@ -718,10 +796,13 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
             MemoryEntry m;
             m.type = "saw_crime";
             m.who = {c.id};
-            if (targetChar) m.who.push_back(targetChar->id);
+            if (targetChar && !targetChar->isAnimal()) m.who.push_back(targetChar->id);
+            m.object = target ? target->id : (targetChar && targetChar->isAnimal() ? targetChar->id : kNone);
             m.valence = -0.3 * tags.front().mult;
             w.remember(*wc, std::move(m));
         }
+    // ...and the world answers: repute, the owners told, a trail, rumour, the outcome (AL-31).
+    afterDeed(w, c, d, target, targetChar, success, tags, wit);
 }
 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,
