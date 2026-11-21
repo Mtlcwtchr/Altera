@@ -62,7 +62,9 @@ def flatten(d, pre=""):
     for k, v in d.items():
         if k == "_doc": continue
         key = f"{pre}.{k}" if pre else k
-        if isinstance(v, dict) and "nom" not in v:
+        # LOC v0.2: lex.<pos>.<id> and frame.<id> are one leaf each (not opened up)
+        leaf = (key.startswith("lex.") and key.count(".") == 2) or (key.startswith("frame.") and key.count(".") == 1)
+        if isinstance(v, dict) and "nom" not in v and not leaf:
             out.update(flatten(v, key))
         else:
             out[key] = v
@@ -109,7 +111,7 @@ def load_lang(d: Path, r):
 
 
 def phs(v):
-    s = v["nom"] if isinstance(v, dict) else v
+    s = v.get("nom") if isinstance(v, dict) else v
     return set(PH.findall(s)) if isinstance(s, str) else set()
 
 
@@ -131,7 +133,7 @@ def check_loc(L):
         # скобки: непарные { }
         for lang, d in (("ru", ru), ("en", en)):
             for k, v in d.items():
-                s = v["nom"] if isinstance(v, dict) else v
+                s = v.get("nom") if isinstance(v, dict) else v
                 if isinstance(s, str) and s.replace("{{", "").replace("}}", "").count("{") != s.replace("{{", "").replace("}}", "").count("}"):
                     r.err(f"{loc}/{lang}: непарные скобки в {k}")
     r.info = f"{total} ключей ru"

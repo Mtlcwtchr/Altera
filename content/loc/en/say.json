@@ -105,7 +105,7 @@
  "say.accuse.hostile": [
   "{>prop}, you snake! Thought nobody saw?",
   "{>prop}, and you won't get away with it!",
-  "Why, you... {>prop}! I'll have your hide!"
+  "Why, you… {>prop}! I'll have your hide!"
  ],
  "say.accuse.public": [
   "I say it before all: {>prop}.",
@@ -119,7 +119,7 @@
   "You're right: {>prop}, and I'm ashamed."
  ],
  "say.confess.familiar": [
-  "{listener}, I'll tell only you... {>prop}.",
+  "{listener}, I'll tell only you… {>prop}.",
   "You're like kin to me, so hear it: {>prop}. Don't give me away."
  ],
  "say.apologize.prop": [
@@ -158,7 +158,7 @@
  ],
 
  "say.greet.knows_thief": [
-  "Oh, it's you... I keep my things under lock now.",
+  "Oh, it's you… I keep my things under lock now.",
   "Look who's come. Keep your hands where I can see them.",
   "{listener}. I've heard things about you."
  ],
@@ -175,7 +175,7 @@
  "say.greet.saw_violence": [
   "Stay back. I saw you swinging your fists.",
   "Keep away from me, {listener}.",
-  "You... What do you want? And keep your hands to yourself."
+  "You… What do you want? And keep your hands to yourself."
  ],
  "say.greet.bad_name": [
   "Ah, {listener}. Folk say all sorts about you.",

@@ -17,7 +17,7 @@
              "{time?} {doer} {verb:agree=doer} {object?} {victim?} {victim_family?}",
              "{doer} {verb:agree=doer} {object?} {victim?} {victim_family?} {place?} {time?}"],
   "nominal": "the {noun} {object?:prep|of} {victim?} {victim_family?}",
-  "about": "about the {noun} {victim?} {victim_family?}"
+  "about": "about the {noun} {object?:prep|of} {victim?} {victim_family?}"
  },
  "frame.banditry": {
   "verb": ["rob", "rob_fleece"],
@@ -84,7 +84,7 @@
   "roles": {"doer": "nom", "victim": "acc"},
   "clause": ["{doer} {time?} {verb:agree=doer} {victim}",
              "{doer} {verb:agree=doer} {victim} {place?}",
-             "{time?} {doer} {verb:agree=doer} {victim}, dead as a stone"],
+             "{time?} {doer} {verb:agree=doer} {victim} in cold blood"],
   "nominal": "the {noun} of {victim}",
   "about": "about the {noun} of {victim}"
  },
@@ -94,8 +94,8 @@
   "roles": {"doer": "nom", "beneficiary": "acc", "object": "with+acc"},
   "clause": ["{doer} {verb:agree=doer} {beneficiary?} {object?}",
              "{doer} {time?} {verb:agree=doer} {beneficiary?} {object?}"],
-  "nominal": "the {noun} {beneficiary?:prep|to} {object?}",
-  "about": "about the {noun} {beneficiary?:prep|to}"
+  "nominal": "the {noun} given {beneficiary?:prep|to} {object?}",
+  "about": "about the {noun} given {beneficiary?:prep|to}"
  },
  "frame.give": {
   "verb": ["give", "give_away"],
@@ -112,7 +112,7 @@
   "roles": {"speaker": "nom", "listener": "to+acc", "content": "clause"},
   "clause": ["{speaker} {verb:agree=speaker} {listener?} that {>content:clause}",
              "{speaker} {verb:agree=speaker} {listener?} that {>content:clause}, or so it goes"],
-  "nominal": "the words of {speaker}",
+  "nominal": "the words of {speaker:acc}",
   "about": "{>content:about}"
  },
  "frame.think": {
@@ -121,7 +121,7 @@
   "roles": {"thinker": "nom", "content": "clause"},
   "clause": ["{thinker} {verb:agree=thinker} that {>content:clause}",
              "{thinker} {verb:agree=thinker} {>content:clause}"],
-  "nominal": "the {noun} of {thinker}",
+  "nominal": "the {noun} of {thinker:acc}",
   "about": "{>content:about}"
  }
 }
