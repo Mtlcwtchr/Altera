@@ -68,6 +68,10 @@ class Shape:
         self.texture = ''    # diffuse, a textures\... path
         self.alpha_test = False
         self.alpha_blend = False
+        self.weights = None  # (n, 4) float32, skinned shapes only
+        self.bidx = None     # (n, 4) uint8 into .bones
+        self.bones = []      # bone node names of the skin instance
+        self.bind = []       # 4x4 bone -> shape space (the bind pose), per bone
 
 
 class Nif:
@@ -209,7 +213,20 @@ class Nif:
             nrm = np.tile(np.array([0, 0, 1], np.float32), (nv, 1))
         if tris is None:
             tris = np.frombuffer(self.data, np.uint16, ntri * 3, r.p).reshape(ntri, 3).astype(np.uint32)
+            r.p += ntri * 6
+        if self.types[i] == 'BSDynamicTriShape':
+            # heads: the morphed positions follow as full floats, the packed ones are stale
+            if self.bsver == 100:
+                r.u32()   # particle data size (0 on actors)
+            dn = r.u32() // 16
+            if dn == nv:
+                pos = np.frombuffer(self.data, np.float32, nv * 4, r.p).reshape(nv, 4)[:, :3].copy()
         sh.pos, sh.uv, sh.nrm, sh.tris = pos, uv, nrm, tris
+        if flags & 0x40 and skin >= 0:
+            so = ((desc >> 28) & 0xF) * 4
+            sh.weights = raw[:, so:so + 8].copy().view(np.float16).reshape(nv, 4).astype(np.float32)
+            sh.bidx = raw[:, so + 8:so + 12].copy()
+            sh.bones, sh.bind = self.skin_bones(skin)
         sh.texture, sh.alpha_blend = self.texture_of(shader)
         test, blend = self.alpha_of(alpha)
         sh.alpha_test = test
@@ -260,6 +277,124 @@ class Nif:
             tris.append(tc)
         return raw, desc, np.concatenate(tris) if tris else np.zeros((0, 3), np.uint32)
 
+    def _transform(self, r):
+        rot = np.array(r.f(9), np.float64).reshape(3, 3)
+        t = np.array(r.f(3), np.float64)
+        s = r.f()
+        M = np.eye(4)
+        M[:3, :3] = rot * s
+        M[:3, 3] = t
+        return M
+
+    def skin_bones(self, skin):
+        """Bone names and bone -> shape matrices (the inverse of NiSkinData's shape -> bone)."""
+        r = _R(self.data, self.offsets[skin])
+        data = r.i32()
+        r.i32()           # partition
+        r.i32()           # skeleton root
+        n = r.u32()
+        refs = [r.i32() for _ in range(n)]
+        names = []
+        for b in refs:
+            q = _R(self.data, self.offsets[b])
+            names.append(self._netobj(q) if b >= 0 else '')
+        binds = [np.eye(4)] * n
+        if data >= 0 and self.types[data] == 'NiSkinData':
+            q = _R(self.data, self.offsets[data])
+            self._transform(q)
+            nb = q.u32()
+            has_w = q.u8()
+            binds = []
+            for _ in range(nb):
+                M = self._transform(q)
+                q.f(4)
+                if has_w:
+                    nv = q.u16()
+                    q.p += 6 * nv
+                binds.append(np.linalg.inv(M))
+        return names, binds
+
+    def skinned(self):
+        """Every skinned shape of the file, vertices in shape space (no node transforms)."""
+        out = []
+        for i, ty in enumerate(self.types):
+            if ty in ('BSTriShape', 'BSSubIndexTriShape', 'BSDynamicTriShape'):
+                sh, _ = self.tri_shape(i)
+                if sh is not None and sh.weights is not None:
+                    out.append(sh)
+        return out
+
+    def old_shape(self, i):
+        """Stream 83 (Oldrim, LE mods) NiTriShape / NiTriStrips: full floats in a NiTriShapeData,
+        after CampfireLite's core/src/content/nif.cpp (read_geometry, read_geometry_data)."""
+        r = _R(self.data, self.offsets[i])
+        name, t, rot, s = self._avobj(r)
+        data = r.i32()
+        r.i32()                    # skin
+        nm = r.u32()
+        r.p += 8 * nm              # material names and extra data
+        r.i32()                    # active material
+        r.u8()                     # material needs update
+        shader = r.i32()
+        alpha = r.i32()
+        if data < 0 or self.types[data] not in ('NiTriShapeData', 'NiTriStripsData'):
+            return None, (t, rot, s)
+        strips = self.types[data] == 'NiTriStripsData'
+        q = _R(self.data, self.offsets[data])
+        q.i32()                    # group id
+        n = q.u16()
+        q.u8(); q.u8()             # keep, compress flags
+        if not q.u8() or n == 0:
+            return None, (t, rot, s)
+        pos = np.frombuffer(self.data, np.float32, n * 3, q.p).reshape(n, 3).copy()
+        q.p += n * 12
+        vflags = q.u16()
+        q.u32()                    # material crc
+        nrm = np.tile(np.array([0, 0, 1], np.float32), (n, 1))
+        if q.u8():
+            nrm = np.frombuffer(self.data, np.float32, n * 3, q.p).reshape(n, 3).copy()
+            q.p += n * 12
+            if vflags & 0x1000:
+                q.p += n * 24
+        q.p += 16                  # centre, radius
+        if q.u8():
+            q.p += n * 16          # colours
+        uvsets = vflags & 0x3F
+        uv = np.zeros((n, 2), np.float32)
+        if uvsets > 0:
+            uv = np.frombuffer(self.data, np.float32, n * 2, q.p).reshape(n, 2).copy()
+            q.p += n * 8 * uvsets
+        q.u16()                    # consistency
+        q.i32()                    # additional data
+        if not strips:
+            nt = q.u16()
+            q.u32()
+            tris = np.zeros((0, 3), np.uint32)
+            if q.u8():
+                tris = np.frombuffer(self.data, np.uint16, nt * 3, q.p).reshape(nt, 3).astype(np.uint32)
+        else:
+            q.u16()
+            ns = q.u16()
+            lens = [q.u16() for _ in range(ns)]
+            out = []
+            if q.u8():
+                for L in lens:
+                    st = [q.u16() for _ in range(L)]
+                    for k in range(2, L):
+                        a, b, c = st[k - 2], st[k - 1], st[k]
+                        if a == b or b == c or a == c:
+                            continue
+                        out.append((a, b, c) if k % 2 == 0 else (a, c, b))
+            tris = np.array(out, np.uint32).reshape(-1, 3)
+        sh = Shape()
+        sh.name = name
+        sh.pos, sh.uv, sh.nrm, sh.tris = pos, uv, nrm, tris
+        sh.texture, sh.alpha_blend = self.texture_of(shader)
+        test, blend = self.alpha_of(alpha)
+        sh.alpha_test = test
+        sh.alpha_blend = sh.alpha_blend or (blend and not test)
+        return sh, (t, rot, s)
+
     def shapes(self):
         """Every static shape in root space."""
         out = []
@@ -274,8 +409,8 @@ class Nif:
                 return
             seen.add(i)
             ty = self.types[i]
-            if ty in ('BSTriShape', 'BSMeshLODTriShape', 'BSSubIndexTriShape'):
-                sh, (t, rot, s) = self.tri_shape(i)
+            if ty in ('BSTriShape', 'BSMeshLODTriShape', 'BSSubIndexTriShape', 'NiTriShape', 'NiTriStrips'):
+                sh, (t, rot, s) = self.old_shape(i) if ty.startswith('Ni') else self.tri_shape(i)
                 if sh is None:
                     return
                 if 'editormarker' in sh.name.lower() or sh.alpha_blend and not sh.texture:

@@ -85,11 +85,20 @@ public:
     std::string craftWish;
     bool craftHelper = false, keyE = false;
     void closeCraftResult() { resultOpen_ = false; }   // tour scripts
-    // The build mode's bar, filled by the game: palette (name, cost), the
-    // piece picked, the state of the piece under the mouse, the plan.
-    std::vector<std::pair<std::string, std::string>> buildPalette;
+    // The build mode (AL-9/10), filled by the game: the catalog of pieces
+    // (index = the build.json piece), the tool, the piece picked, the state of
+    // what is under the mouse, the household's plan. Buttons the bar presses
+    // for the mouse alone (turn, storey up and down) count up here.
+    struct BuildEntry {
+        std::string id, name, cost, category;
+    };
+    std::vector<BuildEntry> buildCatalog;
+    std::string buildMode = "room";   // room wall door window floor foundation roof gable pillar remove
     int buildPick = 0;
     std::string buildStatus, buildPlan;
+    bool buildOk = true;
+    int buildTurns = 0, buildStoreyUp = 0, buildStoreyDown = 0;
+    static bool buildFits(const std::string& mode, const BuildEntry& e);
     void openWheel(EntityId target) {
         panel = "wheel";
         wheelTarget_ = target;
@@ -298,6 +307,9 @@ private:
     std::filesystem::path root_;
     Image leather_, paper_;
     SDL_Texture* icons_ = nullptr;
+    SDL_Texture* previews_ = nullptr;   // AL-10: build_previews.png (tools/game_assets/make_build_previews.py)
+    int previewCell_ = 112;
+    std::map<std::string, int> previewIndex_;
     int iconCell_ = 48;
     std::map<std::string, int> iconIndex_;
     std::map<std::string, SDL_Texture*> skins_;

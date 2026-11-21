@@ -121,6 +121,22 @@ bool Hud::init(SDL_Renderer* renderer, const fs::path& root, std::string* why) {
             SDL_SetTextureScaleMode(icons_, SDL_SCALEMODE_LINEAR);
         }
     }
+    Image pv;
+    if (loadImage(ui / "build_previews.png", pv.w, pv.h, pv.rgba)) {
+        previews_ = SDL_CreateTexture(sdl_, SDL_PIXELFORMAT_RGBA32, SDL_TEXTUREACCESS_STATIC, pv.w, pv.h);
+        if (previews_) {
+            SDL_UpdateTexture(previews_, nullptr, pv.rgba.data(), pv.w * 4);
+            SDL_SetTextureBlendMode(previews_, SDL_BLENDMODE_BLEND);
+            SDL_SetTextureScaleMode(previews_, SDL_SCALEMODE_LINEAR);
+        }
+        try {
+            const sim::Json j = sim::loadJsonFile((ui / "build_previews.json").string());
+            previewCell_ = j.value("cell", 112);
+            const sim::Json pieces = j.value("pieces", sim::Json::object());
+            for (const auto& [k, v] : pieces.items()) previewIndex_[k] = v.get<int>();
+        } catch (const std::exception&) {
+        }
+    }
     try {
         const sim::Json j = sim::loadJsonFile((ui / "icons.json").string());
         iconCell_ = j.value("cell", 48);
@@ -142,6 +158,8 @@ void Hud::shutdown() {
     portraits_.clear();
     if (icons_) SDL_DestroyTexture(icons_);
     icons_ = nullptr;
+    if (previews_) SDL_DestroyTexture(previews_);
+    previews_ = nullptr;
     if (minimap_) SDL_DestroyTexture(minimap_);
     minimap_ = nullptr;
 }
@@ -2164,40 +2182,104 @@ void Hud::annals(const Snapshot& s, float W, float H) {
 // The build mode (sim/building.hpp): the palette of modules on a leather bar,
 // the state of the piece under the mouse and of the household's plan. The
 // world takes the clicks; the game draws the preview.
+bool Hud::buildFits(const std::string& mode, const BuildEntry& e) {
+    const bool door = e.id.rfind("wall_door", 0) == 0, window = e.id.rfind("wall_window", 0) == 0;
+    if (mode == "room" || mode == "wall") return e.category == "wall" && !door && !window;
+    if (mode == "door") return door;
+    if (mode == "window") return window;
+    if (mode == "remove") return false;
+    return e.category == mode;
+}
+
+// AL-10: the build catalog, Sims-like: a row of tools on top, the pieces of
+// the tool as cards with their picture, name and cost, and on the right the
+// piece picked, what the mouse is over, the plan and the buttons for turning
+// and storeys. Ink on paper, so it reads in any light.
 void Hud::buildBar(const Snapshot& s, float W, float H) {
     (void)s;
-    const int n = int(buildPalette.size());
-    if (n == 0) return;
-    const int perRow = (n + 1) / 2;
-    const float bw = std::clamp((W - 160) / float(perRow) - 6, 96.0f, 150.0f), bh = 34;
-    const float w = perRow * (bw + 6) + 18;
-    const Rect r{(W - w) * 0.5f, H - 30 - (2 * (bh + 6) + 22), w, 2 * (bh + 6) + 22};
-    box(Skin::Leather, r, 24);
-    for (int i = 0; i < n; ++i) {
-        const Rect b{r.x + 12 + (i % perRow) * (bw + 6), r.y + 11 + (i / perRow) * (bh + 6), bw, bh};
-        const std::string t = ui_->fit(buildPalette[std::size_t(i)].first, bw - 14, 14 / 15.f);
-        if (textButton(b, t, i == buildPick)) buildPick = i;
-        if (ui_->hovered(b)) {
-            const std::string& cost = buildPalette[std::size_t(i)].second;
-            const float tw = textW(cost, 14) + 20;
-            box(Skin::Leather, {b.x + bw / 2 - tw / 2, r.y - 40, tw, 28}, 14);
-            label(b.x + bw / 2 - tw / 2 + 10, r.y - 35, cost, kText, 14);
+    if (buildCatalog.empty()) return;
+    static const char* kModes[] = {"room", "wall", "door", "window", "floor", "foundation", "roof", "gable", "pillar", "remove"};
+    const float pw = std::min(W - 60, 1320.0f), ph = 232;
+    const Rect P{(W - pw) * 0.5f, H - 24 - ph, pw, ph};
+    box(Skin::Paper, P, 18);
+    ui_->claim(P);
+    // the tools
+    const int nm = int(sizeof kModes / sizeof *kModes);
+    const float infoW = std::min(330.0f, pw * 0.3f);
+    const float tabsW = pw - infoW - 36;
+    const float tw = std::min(118.0f, (tabsW - (nm - 1) * 5) / nm);
+    for (int i = 0; i < nm; ++i) {
+        const Rect t{P.x + 14 + i * (tw + 5), P.y + 12, tw, 32};
+        const bool on = buildMode == kModes[i];
+        if (textButton(t, ui_->fit(host_->text(std::string("hud.build.mode.") + kModes[i]), tw - 12, 1.0f), on)) {
+            buildMode = kModes[i];
+            if (buildPick < 0 || buildPick >= int(buildCatalog.size()) ||
+                !buildFits(buildMode, buildCatalog[std::size_t(buildPick)]))
+                for (std::size_t k = 0; k < buildCatalog.size(); ++k)
+                    if (buildFits(buildMode, buildCatalog[k])) {
+                        buildPick = int(k);
+                        break;
+                    }
         }
     }
-    // the piece under the mouse, the plan, the keys
-    float y = r.y - 76;
-    const std::string pick = buildPick >= 0 && buildPick < n ? buildPalette[std::size_t(buildPick)].first : "";
-    const std::string lines[3] = {pick + (buildStatus.empty() ? "" : "  \xC2\xB7  " + buildStatus), buildPlan,
-                                  host_->text("hud.build.keys")};
-    for (const auto& l : lines) {
-        if (l.empty()) continue;
-        const std::string t = ui_->fit(l, W - 120, 14 / 15.f);
-        const float tw = textW(t, 14) + 28;
-        const Rect p{(W - tw) * 0.5f, y, tw, 26};
-        box(Skin::Paper, p, 13);
-        label(p.x + 14, p.y + 4, t, kInk, 14);
-        y -= 30;
+    // the cards of the tool
+    const float cw = 118, chh = 160, top = P.y + 54;
+    float x = P.x + 14;
+    int shown = 0;
+    for (std::size_t k = 0; k < buildCatalog.size(); ++k) {
+        const BuildEntry& e = buildCatalog[k];
+        if (!buildFits(buildMode, e)) continue;
+        if (x + cw > P.x + 14 + tabsW) break;
+        const Rect card{x, top, cw, chh};
+        const bool on = int(k) == buildPick;
+        ui_->roundRect(card, on ? Colour::rgb(226, 197, 122, 0.55f) : Colour::rgb(122, 92, 40, ui_->hovered(card) ? 0.16f : 0.08f), 12);
+        if (on) ui_->roundRect({card.x + 3, card.y + 3, card.w - 6, card.h - 6}, Colour::rgb(250, 242, 222, 0.55f), 10);
+        const auto it = previewIndex_.find(e.id);
+        if (previews_ && it != previewIndex_.end()) {
+            const SDL_FRect src{float(it->second * previewCell_), 0, float(previewCell_), float(previewCell_)};
+            const SDL_FRect dst{std::round(card.x + 9), std::round(card.y + 6), 100, 100};
+            SDL_SetTextureColorModFloat(previews_, 1, 1, 1);
+            SDL_SetTextureAlphaModFloat(previews_, 1);
+            SDL_RenderTexture(sdl_, previews_, &src, &dst);
+        }
+        const std::string nameFit = ui_->fit(e.name, cw - 12, 14 / 15.f);
+        label(card.x + (cw - textW(nameFit, 14)) * 0.5f, card.y + 110, nameFit, kInk, 14);
+        const std::string costFit = ui_->fit(e.cost, cw - 12, 12 / 15.f);
+        label(card.x + (cw - textW(costFit, 12)) * 0.5f, card.y + 132, costFit, kInkSoft, 12);
+        if (clicked(card)) buildPick = int(k);
+        x += cw + 8;
+        ++shown;
     }
+    if (shown == 0) label(P.x + 20, top + 10, host_->text("hud.build.tip." + buildMode), kInkSoft, 15);
+    // the piece, the cursor, the plan, the buttons
+    const Rect I{P.right() - infoW - 14, P.y + 12, infoW, ph - 24};
+    ui_->roundRect(I, Colour::rgb(122, 92, 40, 0.10f), 12);
+    float y = I.y + 10;
+    const BuildEntry* pick =
+        buildPick >= 0 && buildPick < int(buildCatalog.size()) ? &buildCatalog[std::size_t(buildPick)] : nullptr;
+    std::string head = pick ? pick->name : "";
+    if (buildMode == "remove") head = host_->text("hud.build.mode.remove");
+    else if (buildMode == "room" && pick) head = host_->text("hud.build.mode.room") + ": " + pick->name;
+    title(I.x + 14, y, ui_->fit(head, I.w - 28, 20 / 15.f, true), kInk, 20);
+    y += 30;
+    if (pick && buildMode != "remove") {
+        label(I.x + 14, y, ui_->fit(pick->cost, I.w - 28, 14 / 15.f), kInkSoft, 14);
+        y += 22;
+    }
+    label(I.x + 14, y, ui_->fit(host_->text("hud.build.tip." + buildMode), I.w - 28, 13 / 15.f), kInkSoft, 13);
+    y += 22;
+    if (!buildStatus.empty()) {
+        label(I.x + 14, y, ui_->fit(buildStatus, I.w - 28, 14 / 15.f), buildOk ? Colour::rgb(52, 104, 46) : kInkRed, 14);
+        y += 22;
+    }
+    if (!buildPlan.empty()) label(I.x + 14, y, ui_->fit(buildPlan, I.w - 28, 13 / 15.f), kInk, 13);
+    const float bw = (I.w - 28 - 12) / 3;
+    const float by = I.bottom() - 40;
+    if (textButton({I.x + 14, by, bw, 30}, ui_->fit(host_->text("hud.build.turn"), bw - 10, 1.0f), false)) ++buildTurns;
+    if (textButton({I.x + 20 + bw, by, bw, 30}, ui_->fit(host_->text("hud.build.storey_up"), bw - 10, 1.0f), false))
+        ++buildStoreyUp;
+    if (textButton({I.x + 26 + 2 * bw, by, bw, 30}, ui_->fit(host_->text("hud.build.storey_down"), bw - 10, 1.0f), false))
+        ++buildStoreyDown;
     if (roundButton({W - 84, 30, 48, 48}, "close", false, host_->text("hud.close")) || in_->escape) panel = "none";
 }
 

@@ -1,0 +1,295 @@
+{
+ "source": "Skyrim Special Edition (Bethesda), Data/*.bsa",
+ "replace_before_prod": true,
+ "actors": {
+  "people": [
+   {
+    "look": "m_peasant_parted",
+    "parts": [
+     {
+      "nif": "clothes/farmclothes01/torsom_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/farmclothes01/bootsm_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/malehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/malehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesmale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/male/hair03.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "m_peasant_beard",
+    "parts": [
+     {
+      "nif": "clothes/farmclothes02/m/torso_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/farmclothes02/m/shoes_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/malehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/malehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesmale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/male/hair07.nif",
+      "kind": "hair"
+     },
+     {
+      "nif": "actors/character/character assets/beards/humanbeardmedium01.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "m_peasant_long",
+    "parts": [
+     {
+      "nif": "clothes/farmclothes03/farmerrobe_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/farmclothes03/farmerbootsm_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/malehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/malehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesmale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/hairlonghumanm.nif",
+      "kind": "hair"
+     },
+     {
+      "nif": "actors/character/character assets/beards/humanbeardlong03.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "m_ranger",
+    "parts": [
+     {
+      "nif": "clothes/blacksmith/m/torso_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/blacksmith/m/shoes_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/malehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/malehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesmale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/male/hair12.nif",
+      "kind": "hair"
+     },
+     {
+      "nif": "actors/character/character assets/beards/humanbeardshort02.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "f_peasant_long",
+    "parts": [
+     {
+      "nif": "clothes/farmclothes01/torsof_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/farmclothes01/shoesf_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/femalehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/femalehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesfemale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/female/hair05.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "f_peasant_buns",
+    "parts": [
+     {
+      "nif": "clothes/farmclothes02/f/dress_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/farmclothes02/f/shoes_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/femalehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/femalehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesfemale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/female/hair11.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "f_peasant_parted",
+    "parts": [
+     {
+      "nif": "clothes/farmclothes03/farmerrobef_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/farmclothes03/farmershoesf_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/femalehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/femalehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesfemale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/female/hair02.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   },
+   {
+    "look": "f_ranger",
+    "parts": [
+     {
+      "nif": "clothes/barkeeper/f/torso_1.nif",
+      "kind": "cloth"
+     },
+     {
+      "nif": "clothes/barkeeper/f/shoes_1.nif"
+     },
+     {
+      "nif": "actors/character/character assets/femalehands_1.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/femalehead.nif",
+      "kind": "skin"
+     },
+     {
+      "nif": "actors/character/character assets/eyesfemale.nif"
+     },
+     {
+      "nif": "actors/character/character assets/hair/hairshorthumanf.nif",
+      "kind": "hair"
+     }
+    ],
+    "replace_before_prod": true
+   }
+  ],
+  "beasts": [
+   {
+    "species": "hens",
+    "nif": "actors/ambient/chicken/character assets/chicken.nif",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "hare",
+    "nif": "actors/ambient/hare/character assets/rabbit.nif",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "wolf",
+    "nif": "actors/canine/character assets wolf/wolf.nif",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "deer",
+    "nif": "actors/deer/character assets/elk_femaleskin.nif",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "goats",
+    "nif": "actors/goat/character assets/goat.nif",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "boar",
+    "nif": "actors/dlc02/boarriekling/character assets/boar.nif",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "pig",
+    "nif": "actors/cow/character assets/pig.nif",
+    "note": "Farm Animals and Co. (FarmBirds.bsa, an Oldrim NIF read by nif.py old_shape)",
+    "ok": true,
+    "replace_before_prod": true
+   },
+   {
+    "species": "fish_shoal",
+    "nif": "critters/fish/salmon/salmon01.nif",
+    "ok": true,
+    "replace_before_prod": true
+   }
+  ]
+ }
+}

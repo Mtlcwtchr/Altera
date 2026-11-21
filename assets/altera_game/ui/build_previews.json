@@ -1,0 +1,22 @@
+{
+ "cell": 112,
+ "pieces": {
+  "foundation_stone": 0,
+  "floor_plank": 1,
+  "wall_log": 2,
+  "wall_door_log": 3,
+  "wall_window_log": 4,
+  "wall_daub": 5,
+  "wall_door_daub": 6,
+  "wall_window_daub": 7,
+  "wall_stone": 8,
+  "wall_door_stone": 9,
+  "wall_window_stone": 10,
+  "gable_log": 11,
+  "gable_daub": 12,
+  "gable_stone": 13,
+  "pillar_log": 14,
+  "roof_thatch": 15,
+  "roof_shingle": 16
+ }
+}
