@@ -81,3 +81,44 @@ TEST(altera_speech_feed_new_lines_once) {
     CHECK(!got.empty());
     for (const auto& e : got) CHECK(cleanText(e.line));
 }
+
+TEST(altera_speech_feed_barks_paced) {
+    static const Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    World w = makeTestWorld(feedContent(), cfg, 5);
+    installAi(w);
+    w.run(kTicksPerDay / 2); // midday: people awake and about
+    std::vector<Character*> people;
+    for (auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.alive && c.body.stage() == "adult") people.push_back(&c);
+    CHECK(people.size() >= 2);
+    if (people.size() < 2) return;
+    const Vec2 at = people[0]->pos;
+    const EntityId skip = people[1]->id;
+    SpeechFeed feed;
+    feed.poll(w, feedLoc(), "ru");
+    const std::size_t traceBefore = people[0]->ai.trace.size();
+    int n = 0;
+    double last = -1e9;
+    for (int sec = 0; sec < 300; ++sec)
+        for (const auto& e : feed.barks(w, feedLoc(), "ru", at.x, at.y, 1e6, double(sec), skip)) {
+            ++n;
+            CHECK(double(sec) - last >= 4.0);
+            last = double(sec);
+            CHECK(e.speaker != skip);
+            CHECK_EQ(e.act, std::string("bark"));
+            CHECK(cleanText(e.line));
+        }
+    CHECK(n > 0);
+    CHECK(n <= 300 / 4 + 1);
+    CHECK_EQ(people[0]->ai.trace.size(), traceBefore); // presentation only
+
+    // one who just said a line does not mutter over it
+    SpeechFeed f2;
+    f2.poll(w, feedLoc(), "ru");
+    Character& b = *people[0];
+    CHECK(sayRefusal(w, b, *people[1]).ok());
+    f2.barks(w, feedLoc(), "ru", 0, 0, 0.0, 100.0); // the viewer's clock reaches 100
+    CHECK(!f2.poll(w, feedLoc(), "ru").empty());
+    for (int sec = 100; sec < 109; ++sec)
+        for (const auto& e : f2.barks(w, feedLoc(), "ru", b.pos.x, b.pos.y, 0.5, double(sec))) CHECK(e.speaker != b.id);
+}

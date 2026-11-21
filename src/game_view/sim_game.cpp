@@ -2906,6 +2906,15 @@ private:
             speechTail_.push_back({++speechSeq_, e.speaker, e.listener, std::move(e.line)});
             if (speechTail_.size() > 16) speechTail_.erase(speechTail_.begin());
         }
+        // and what the people near the camera mutter to themselves (barks:
+        // shown, never written to the world), paced by the clock on the wall
+        if (!paused_) {
+            const double now = std::chrono::duration<double>(Clock::now() - barkEpoch_).count();
+            for (auto& e : speechFeed_.barks(w, *loc_, opts_.lang, vx, vy, 45.0, now, me)) {
+                speechTail_.push_back({++speechSeq_, e.speaker, e.listener, std::move(e.line)});
+                if (speechTail_.size() > 16) speechTail_.erase(speechTail_.begin());
+            }
+        }
         s.speech = speechTail_;
         s.journal = jrTail_;
     }
@@ -4662,6 +4671,7 @@ private:
     int fbAtTick_ = 0, fbSeq_ = 0;
     std::vector<FeedbackSnap> fbTail_;
     SpeechFeed speechFeed_;   // AL-57
+    Clock::time_point barkEpoch_ = Clock::now();
     int speechSeq_ = 0, jrSeq_ = 0;
     std::vector<SpeechSnap> speechTail_;
     std::vector<JournalSnap> jrTail_;
