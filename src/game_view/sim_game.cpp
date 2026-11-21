@@ -2393,6 +2393,7 @@ private:
             a.captive = c.captivity.held();
             if (a.captive) a.down = false; // led along on foot, not lying
             a.interaction = c.ai.fsm.interaction;
+            a.anim = c.ai.fsm.anim;
             a.role = c.status.role;
             a.spouse = c.status.spouse;
             a.mother = c.status.mother;
@@ -3659,6 +3660,11 @@ private:
             }
             rate = std::clamp(speed / 1.3, 0.6, 1.8);
             return st("walk");
+        }
+        // AL-40: a joint social act names the clip of each side (kiss, embrace, refuse...).
+        if (!a.anim.empty()) {
+            const int c = people_.interactionClip(a.anim);
+            if (c >= 0) return c;
         }
         if (!a.interaction.empty() && a.interaction != "goto" && a.interaction != "wait") {
             const int c = people_.interactionClip(a.interaction);

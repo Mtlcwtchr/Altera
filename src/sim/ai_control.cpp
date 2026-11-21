@@ -15,6 +15,7 @@
 #include "sim/backstory.hpp"
 #include "sim/ai.hpp"
 #include "sim/gear.hpp"
+#include "sim/social_chain.hpp"
 
 namespace altera::sim {
 
@@ -183,6 +184,9 @@ bool handle(World& w, Command& cmd) {
     if (t == "set_goal" || t == "perform" || t == "queue_task") {
         Character* c = nullptr;
         requireControl(w, cmd, c);
+        // AL-40: a new order breaks the joint act the player's person is in (a follow stays).
+        if (t != "queue_task" && c->ai.social.active() && c->ai.social.role != "follower")
+            endSocial(w, *c, "player_order");
         GoalScore gs;
         gs.score = cmd.args.value("priority", 0.7);
         gs.target = cmd.args.value("target", kNone);
@@ -254,6 +258,7 @@ bool handle(World& w, Command& cmd) {
     if (t == "cancel_goal") {
         Character* c = nullptr;
         requireControl(w, cmd, c);
+        if (c->ai.social.active()) endSocial(w, *c, "cancelled_by_player");
         dropGoal(w, *c, "cancelled_by_player", false);
         c->controller.idleSince = w.now();
         return true;
@@ -270,6 +275,8 @@ bool handle(World& w, Command& cmd) {
         if (c->captivity.held()) return cmd.result = "rejected:captive", true;
         if (c->ai.fsm.state == "Fight") return cmd.result = "rejected:fighting", true;
         if (c->ai.goal.valid()) dropGoal(w, *c, "steered_by_player", false);
+        // AL-40: walking off breaks a joint act; following someone the player may walk freely.
+        if (c->ai.social.active() && c->ai.social.role != "follower") endSocial(w, *c, "steered_by_player");
         const double s = w.map().sizeM;
         const Vec2 was = c->pos;
         Vec2 to{std::clamp(cmd.args.at("x").get<double>(), 0.0, s), std::clamp(cmd.args.at("y").get<double>(), 0.0, s)};
@@ -282,6 +289,7 @@ bool handle(World& w, Command& cmd) {
         }
         c->pos = to;
         c->controller.idleSince = w.now();
+        pullFollowers(w, *c); // AL-43: whoever was invited along keeps a step behind
         // Walking tires, running more, uphill and under a load more still (gear.json).
         if (const GearRules* R = gearRules(w.content())) {
             const double km = std::min(dist(was, c->pos), 60.0) / 1000.0;
