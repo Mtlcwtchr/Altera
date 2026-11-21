@@ -10,6 +10,7 @@
 #include "sim/ai.hpp"
 #include "sim/consequences.hpp"
 #include "sim/dialogue_memory.hpp"
+#include "sim/dialogue_say.hpp"
 #include "sim/loc.hpp"
 #include "sim/worldgen.hpp"
 
@@ -112,7 +113,8 @@ TEST(altera_dialogue_memory_seen_theft_to_prop) {
     if (!p) return;
     CHECK_EQ(p->pred, std::string("theft"));
     CHECK(p->role("doer") && p->role("doer")->id == s.doer->id);
-    CHECK(p->role("object") && p->role("object")->kind == "object" && p->role("object")->id == s.store->id);
+    // AL-58: the object is what was taken (meal), the storage only names the owners
+    CHECK(p->role("object") && p->role("object")->kind == "item" && p->role("object")->key == "meal");
     CHECK(p->role("victim_family") && p->role("victim_family")->id == s.store->ownerFamily);
     CHECK(checkProp(d, *p));
     const Epistemic e = epistemicFromMemory(*saw, w.now(), d.forMemory("saw_crime"));
@@ -253,4 +255,55 @@ TEST(altera_dialogue_memory_wronged_say_no_more) {
     owner.memory.clear();
     const double without = consentChance(w, *s.doer, owner, ask, "");
     CHECK(with < without - 0.1);
+}
+
+// AL-58: the menu says "о краже еды", not "о краже кладовой"; without goods
+// (an old save) the storage stays the object.
+TEST(altera_dialogue_memory_theft_names_the_goods) {
+    World w = realWorld();
+    Scene s;
+    CHECK(seenTheft(w, s));
+    if (!s.doer) return;
+    const DialogueGenData& d = dialogueGenData(w.content());
+    // every memory of the deed knows what was taken, the rumour too
+    Character* listener = nullptr;
+    for (auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.alive && c.id != s.doer->id && c.id != s.bystander->id &&
+            c.status.family != s.store->ownerFamily && c.status.family != s.doer->status.family) {
+            listener = &c;
+            break;
+        }
+    CHECK(listener != nullptr);
+    if (!listener) return;
+    listener->pos = s.bystander->pos;
+    applyEffects(w, *s.bystander, *w.content().interaction("chat"), nullptr, listener);
+    int checked = 0;
+    for (Character* c : {s.bystander, s.owner, listener})
+        for (const auto& m : c->memory) {
+            if (m.type != "saw_crime" && m.type != "told_crime" && m.type != "rumor_crime") continue;
+            if (!m.prop.is_null()) continue; // a distorted rumour may have blurred the thing on purpose
+            CHECK(m.goods.count("meal"));
+            CHECK_EQ(m.object, s.store->id);
+            auto p = propFromMemory(w, *c, m, d);
+            CHECK(p && p->role("object") && p->role("object")->key == "meal");
+            CHECK(p && p->role("victim_family") && p->role("victim_family")->id == s.store->ownerFamily);
+            ++checked;
+        }
+    CHECK(checked >= 2);
+    auto topics = dialogueTopics(w, *s.bystander, *s.owner);
+    CHECK(!topics.empty());
+    if (topics.empty()) return;
+    const std::string ru = menuLabel(realLoc(), "ru", w, *s.bystander, *s.owner, topics.front());
+    CHECK(ru.find("еды") != std::string::npos);
+    CHECK(ru.find("кладов") == std::string::npos);
+    if (ru.find("еды") == std::string::npos) ::testing::fail(__FILE__, __LINE__, ru.c_str());
+    const std::string en = menuLabel(realLoc(), "en", w, *s.bystander, *s.owner, topics.front());
+    CHECK(en.find("storage") == std::string::npos);
+    // an old memory without goods: the storage it was
+    MemoryEntry old;
+    old.type = "saw_crime";
+    old.who = {s.doer->id};
+    old.object = s.store->id;
+    auto p = propFromMemory(w, *s.bystander, old, d);
+    CHECK(p && p->role("object") && p->role("object")->kind == "object" && p->role("object")->id == s.store->id);
 }
