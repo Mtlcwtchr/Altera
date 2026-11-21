@@ -1,0 +1,14 @@
+{
+ "_doc": "Состояния говорящего/слушающего для критериев speaker.state / listener.state (src/sim/dialogue_rules.hpp). Состояние включено, если активен любой из moodlets, или fatigue >= fatigue_ge, или настроение <= mood_le. Моды добавляют свои состояния своими файлами с секцией states.",
+ "states": {
+  "drunk": {"moodlets": ["merry"]},
+  "hungover": {"moodlets": ["hungover"]},
+  "scared": {"moodlets": ["frightened", "alarmed"]},
+  "tired": {"moodlets": ["exhausted", "slept_rough"], "fatigue_ge": 0.8},
+  "angry": {"moodlets": ["insulted", "stung"]},
+  "hurt": {"moodlets": ["injured", "mauled"]},
+  "sick": {"moodlets": ["sick", "ate_spoiled"]},
+  "hungry": {"moodlets": ["hungry", "starving"]},
+  "gloomy": {"mood_le": -0.4}
+ }
+}

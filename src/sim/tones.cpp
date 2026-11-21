@@ -11,6 +11,7 @@
 #include "sim/character.hpp"
 #include "sim/content.hpp"
 #include "sim/group_combat.hpp"
+#include "sim/social_chain.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -117,6 +118,13 @@ ActChance actChance(World& w, Character& actor, const InteractionDef& d, Charact
         a.p = winChance(w, actor, d, *target);
         return a;
     }
+    // AL-40: an act with a social chain - the other's answer.
+    if (target && !target->isAnimal())
+        if (const SocialChainDef* sc = socialChain(w.content(), d.id)) {
+            a.kind = "consent";
+            a.p = socialBlock(w, actor, *target, *sc).empty() ? socialAcceptChance(w, actor, *target, d, *sc, tone) : 0.0;
+            return a;
+        }
     if (d.chance.set) {
         a.kind = "chance";
         a.p = chanceOf(w, actor, d, target);

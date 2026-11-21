@@ -1,0 +1,11 @@
+{
+ "_doc": "AL-49/AL-38: как память о проступках и добре становится темой реплики и поведением (src/sim/dialogue_memory.*). Вес воспоминания = severity(тег) × уверенность × 2^(-дни/half_life_days) × mine_mult (пострадал сам или его семья) × guess_mult (только подозрение). Ниже min_weight не вспоминается. Настороженность = 1 − Π(1 − вес) по проступкам; consent_wariness — насколько она снижает согласие на просьбы (помощь, еда), price_wariness — наценка торговца (priceFactor).",
+ "severity": {"theft": 0.6, "trespass": 0.3, "poaching": 0.4, "banditry": 0.9, "insult": 0.3, "assault": 0.7, "murder": 1.0},
+ "severity_default": 0.4,
+ "mine_mult": 1.6,
+ "half_life_days": 60,
+ "min_weight": 0.04,
+ "guess_mult": 0.7,
+ "consent_wariness": 0.35,
+ "price_wariness": 0.5
+}

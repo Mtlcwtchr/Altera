@@ -1,0 +1,16 @@
+{
+ "_doc": "AL-38: реплики, в которых NPC вспоминает проступок или добро собеседника (content/ai/dialogue_rules/recall.json). {self} — говорящий, {listener} — собеседник, {owner} — пострадавший.",
+ "recall.greet.theft_mine": "А, явил{listener:g|ся|ась}. Ты ж у нас добро утащил{listener:g||а}, думал{listener:g||а}, забудем?",
+ "recall.greet.seen": "{listener}. Видел{self:g||а} я, как ты чужое брал{listener:g||а}. Не забыл{self:g||а}.",
+ "recall.greet.rumor": "А, {listener}... Слыхал{self:g||а} я про тебя всякое.",
+ "recall.greet.violence": "Держись от меня подальше, {listener}.",
+ "recall.greet.bad_name": "О тебе дурное говорят, {listener}.",
+ "recall.greet.kindness": "{listener}! Добро твоё помню.",
+ "recall.refuse.deed": "Нет. Знаю я, что ты за человек.",
+ "recall.refuse.rumor": "Нет. Про тебя такое говорят, что лучше не связываться.",
+ "recall.refuse.theft_mine": "Нет. Не после того, как ты нас обокрал{listener:g||а}.",
+ "recall.bargain.deed": "Тебе — дороже. Сам{listener:g||а} знаешь почему.",
+ "recall.bargain.mine": "После того, что ты у нас взял{listener:g||а}? Плати вдвое.",
+ "recall.accept.deed": "Ладно. Но гляжу я за тобой.",
+ "recall.accept.kindness": "Для тебя — конечно. Ты мне тогда помог{listener:g||ла}."
+}

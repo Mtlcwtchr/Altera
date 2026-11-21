@@ -253,6 +253,16 @@
    "ttl": 144
   },
   {
+   "id": "kissed",
+   "value": 0.12,
+   "ttl": 36
+  },
+  {
+   "id": "rejected",
+   "value": -0.08,
+   "ttl": 36
+  },
+  {
    "id": "good_company",
    "value": 0.06,
    "ttl": 24
