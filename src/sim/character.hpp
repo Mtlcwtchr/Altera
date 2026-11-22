@@ -79,6 +79,9 @@ struct MemoryEntry {
     // none known: a guess, a lie, or written before the fact registry).
     std::vector<EntityId> chain;
     EntityId fact = kNone;
+    // AL-58: what the rememberer believes changed hands (item -> count): the
+    // flour, not the storage it was taken from (that stays in `object`).
+    std::map<std::string, int> goods;
     // AL-50: what the rememberer believes when a retelling distorted it (a
     // Prop in its JSON form, sim/dialogue_gen.hpp); null = as the type says
     // (who/object). who/object still hold the believed doer and object.

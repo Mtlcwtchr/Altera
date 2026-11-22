@@ -829,6 +829,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
             m.who = {c.id};
             if (targetChar && !targetChar->isAnimal()) m.who.push_back(targetChar->id);
             m.object = target ? target->id : (targetChar && targetChar->isAnimal() ? targetChar->id : kNone);
+            m.goods = deedGoods(d);
             m.valence = -0.3 * tags.front().mult;
             w.remember(*wc, std::move(m));
         }

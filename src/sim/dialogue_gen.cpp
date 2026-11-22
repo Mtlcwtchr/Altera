@@ -20,7 +20,7 @@ const std::set<std::string> kRefKinds = {"char", "item", "object", "family", "pl
 const std::set<std::string> kSources = {"seen", "heard", "rumor", "told", "inferred", "invented"};
 const std::set<std::string> kModalities = {"fact", "plan", "wish", "must", "can", "guess"};
 const std::set<std::string> kTenses = {"past", "present", "future"};
-const std::set<std::string> kMemorySources = {"who0", "who1", "object", "object_owner", "self"};
+const std::set<std::string> kMemorySources = {"who0", "who1", "object", "object_owner", "self", "goods"};
 
 bool fail(std::string* e, const std::string& m) {
     if (e) *e = m;
@@ -507,7 +507,8 @@ ValidationReport validateDialogueGen(const DialogueGenData& d, const Content* c,
         if (!kModalities.count(m.modality)) v.errors.push_back(where + ": unknown modality " + m.modality);
         for (const auto& [role, src] : m.roles) {
             if (!p->roles.count(role)) v.errors.push_back(where + ": predicate " + m.pred + " has no role " + role);
-            if (!kMemorySources.count(src)) v.errors.push_back(where + "." + role + ": unknown source " + src);
+            for (const auto& alt : splitBar(src)) // "goods|object": the first one known
+                if (!kMemorySources.count(alt)) v.errors.push_back(where + "." + role + ": unknown source " + alt);
         }
         for (const auto& r : p->required)
             if (!m.roles.count(r)) v.errors.push_back(where + ": required role " + r + " is not mapped");
