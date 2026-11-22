@@ -4,6 +4,7 @@
 // saves and loads.
 
 #include "game_view/hud.hpp"
+#include "game_view/hud_style.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -14,14 +15,7 @@ namespace {
 using ui::Colour;
 using ui::Rect;
 
-const Colour kGold = Colour::rgb(226, 197, 122);
-const Colour kGoldPale = Colour::rgb(243, 226, 168);
-const Colour kRim = Colour::rgb(16, 22, 30);
-const Colour kText = Colour::rgb(239, 230, 207);
-const Colour kInk = Colour::rgb(43, 38, 32);
-const Colour kInkSoft = Colour::rgb(94, 85, 70);
-const Colour kInkRed = Colour::rgb(150, 40, 31);
-const Colour kDark = Colour::rgb(28, 34, 44);
+using namespace hudroles;   // the palette's roles (hud_style.hpp, AL-62)
 
 } // namespace
 
@@ -40,7 +34,7 @@ void Hud::resetWorld() {
 // A row of a menu column: a medallion with its icon and the line in Kurale.
 bool Hud::menuButton(const Rect& r, const std::string& iconName, const std::string& s, bool enabled) {
     const bool hot = enabled && ui_->hovered(r);
-    if (hot) ui_->roundRect(r, Colour::rgb(226, 197, 122, 0.16f), r.h * 0.5f);
+    if (hot) ui_->roundRect(r, kGold.withAlpha(0.16f), r.h * 0.5f);
     const float d = r.h - 12, cx = r.x + 6 + d * 0.5f, cy = r.y + r.h * 0.5f;
     box(hot ? Skin::ButtonOn : Skin::Button, {cx - d * 0.5f, cy - d * 0.5f, d, d}, d * 0.5f);
     const float is = std::round(d * 0.52f);
@@ -54,10 +48,10 @@ bool Hud::menuButton(const Rect& r, const std::string& iconName, const std::stri
 
 void Hud::mainMenu(float W, float H) {
     // the village stays in sight; the left side darkens under the column
-    ui_->rect({0, 0, W, H}, Colour::rgb(10, 14, 20, 0.28f));
+    ui_->rect({0, 0, W, H}, kRim.withAlpha(0.28f));
     for (int i = 0; i < 12; ++i) {
         const float x = W * 0.42f * float(i) / 12.f;
-        ui_->rect({x, 0, W * 0.42f / 12.f + 1, H}, Colour::rgb(10, 14, 20, 0.55f * (1.0f - float(i) / 12.f)));
+        ui_->rect({x, 0, W * 0.42f / 12.f + 1, H}, kRim.withAlpha(0.55f * (1.0f - float(i) / 12.f)));
     }
     ui_->claim({0, 0, W, H});
     const float x = std::max(48.0f, W * 0.07f), top = std::max(60.0f, H * 0.14f);
@@ -138,8 +132,8 @@ void Hud::slotsPanel(float W, float H) {
         const bool usable = slotsSave || m->used;
         const bool hot = usable && ui_->hovered(r);
         const bool armed = slotsSave && pendingSlot_ == m->slot;
-        if (armed) ui_->roundRect(r, Colour::rgb(168, 50, 42, 0.12f), 14);
-        else if (hot) ui_->roundRect(r, Colour::rgb(122, 92, 40, 0.12f), 14);
+        if (armed) ui_->roundRect(r, kSeal.withAlpha(0.12f), 14);
+        else if (hot) ui_->roundRect(r, kLine.withAlpha(0.12f), 14);
         const float d = std::min(52.0f, r.h - 10), cx = r.x + 12 + d * 0.5f, cy = r.y + r.h * 0.5f;
         box(m->used ? Skin::ButtonOn : Skin::Button, {cx - d * 0.5f, cy - d * 0.5f, d, d}, d * 0.5f);
         const std::string num = m->slot == 0 ? host_->text("menu.slot.auto_mark") : std::to_string(m->slot);
@@ -178,7 +172,7 @@ void Hud::slotsPanel(float W, float H) {
 
 void Hud::settingsPanel(float W, float H) {
     dimmer(W, H, 0.66f);
-    const float w = std::min(700.0f, W - 80), h = 360;
+    const float w = std::min(760.0f, W - 80), h = 470;
     const Rect P{(W - w) * 0.5f, (H - h) * 0.5f, w, h};
     box(Skin::Paper, P, 22);
     seal(P.right() - 44, P.y + 40);
@@ -223,8 +217,26 @@ void Hud::settingsPanel(float W, float H) {
         settingsAutosave = kAuto[a];
         changed = true;
     }
+    // AL-62: the interface style (one theme for now) and its size
+    std::vector<std::pair<std::string, bool>> sc;
+    for (const auto& [id, nameKey] : themeList) sc.push_back({host_->text(nameKey), settingsStyle == id});
+    if (sc.empty()) sc.push_back({host_->text("menu.settings.style.edge"), true});
+    const int st = row(host_->text("menu.settings.style"), sc);
+    if (st >= 0 && st < int(themeList.size()) && themeList[std::size_t(st)].first != settingsStyle) {
+        settingsStyle = themeList[std::size_t(st)].first;
+        changed = true;
+    }
+    static const int kScale[] = {80, 90, 100, 110, 120, 130};
+    std::vector<std::pair<std::string, bool>> zc;
+    for (int z : kScale) zc.push_back({host_->text("menu.settings.percent", {{"n", z}}), settingsScale == z});
+    const int z = row(host_->text("menu.settings.ui_scale"), zc);
+    if (z >= 0 && kScale[z] != settingsScale) {
+        settingsScale = kScale[z];
+        changed = true;
+    }
     if (changed)
-        host_->menuAction("apply", {{"lang", settingsLang}, {"fullscreen", settingsFullscreen}, {"autosave", settingsAutosave}});
+        host_->menuAction("apply", {{"lang", settingsLang}, {"fullscreen", settingsFullscreen}, {"autosave", settingsAutosave},
+                                    {"style", settingsStyle}, {"ui_scale", settingsScale}});
     const std::string back = host_->text("menu.back");
     const float bw = textW(back, 15) + 48;
     if (textButton({P.x + (P.w - bw) * 0.5f, P.bottom() - 56, bw, 34}, back, true))

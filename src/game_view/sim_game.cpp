@@ -10,6 +10,8 @@
 #include "game_view/cutaway.hpp"
 #include "game_view/game_layer.hpp"
 #include "game_view/hud.hpp"
+#include "game_view/hud_style.hpp"
+#include "game_view/ui_theme.hpp"
 #include "game_view/saves.hpp"
 #include "game_view/skinned.hpp"
 #include "game_view/snapshot.hpp"
@@ -173,6 +175,7 @@ public:
             leadMode_ = control_ == kFree ? kKeys : control_;
             follow_ = settings_.cameraFollow;
             wallMode_ = cutaway::Mode(settings_.wallMode);
+            hud_.themeId = settings_.uiStyle;   // AL-62
             worldCfg_ = cfg;
             world_ = std::make_unique<World>(makeTestWorld(*content_, cfg, o.seed));
             installAi(*world_);
@@ -344,6 +347,8 @@ public:
         hud_.settingsLang = opts_.lang;
         hud_.settingsFullscreen = settings_.fullscreen;
         hud_.settingsAutosave = settings_.autosaveMin;
+        hud_.settingsStyle = settings_.uiStyle;
+        hud_.settingsScale = settings_.uiScale;
         hud_.menuNote.clear();
         hud_.panel = "settings";
     }
@@ -475,6 +480,17 @@ public:
         settings_.lang = opts_.lang;
         settings_.fullscreen = fs;
         settings_.autosaveMin = std::clamp(a.value("autosave", settings_.autosaveMin), 0, 120);
+        settings_.uiScale = std::clamp(a.value("ui_scale", settings_.uiScale), 80, 130);
+        const std::string style = a.value("style", settings_.uiStyle);
+        if (style != settings_.uiStyle) {   // AL-62: another theme: the HUD and the faces again
+            settings_.uiStyle = style;
+            hud_.themeId = style;
+            hud_.shutdown();
+            std::string whyHud;
+            if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("altera_game: %s", whyHud.c_str());
+            loadFonts();
+            styleTheme();
+        }
         storeSettings(settings_);
     }
 
@@ -1434,9 +1450,10 @@ public:
             canvas_.size(int(width), int(height));
             hud_.shutdown();
             ui_.init(canvas_.renderer());
-            if (font_) ui_.setFont(font_, fontBold_, 15, 1.0f);
+            uiScale_ = 0;   // the fonts are set again below, at the scale
             std::string whyHud;
             if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("altera_game: %s", whyHud.c_str());
+            loadFonts();   // the theme init() read names them
             styleTheme();
             uiTexture_ = {};
         }
@@ -1446,9 +1463,24 @@ public:
         SDL_SetRenderDrawColor(sw, 0, 0, 0, 0);
         SDL_RenderClear(sw);
         SDL_SetRenderDrawBlendMode(sw, SDL_BLENDMODE_BLEND);
-        ui_.begin(input_, int(width), int(height));
-        buildHud(float(width), float(height));
+        // AL-62: the interface is laid out in points, uiScale_ pixels each (the
+        // player's size times what the screen's height asks for); the writing
+        // is baked at the pixels it lands on, so it stays sharp.
+        const float s = uiScaleFor(settings_.uiScale, float(height));
+        if (s != uiScale_ && font_) ui_.setFont(font_, fontBold_, 15, s);
+        uiScale_ = s;
+        hud_.scale = s;
+        SDL_SetRenderScale(sw, s, s);
+        ui::Input in = input_;
+        in.mouseX /= s;
+        in.mouseY /= s;
+        ui_.begin(in, int(float(width) / s), int(float(height) / s));
+        buildHud(float(width) / s, float(height) / s);
         ui_.end();
+        SDL_SetRenderScale(sw, 1, 1);
+        in.mouseX = input_.mouseX;
+        in.mouseY = input_.mouseY;
+        input_ = in;   // what the interface took (the click, the keys) goes back
         overUi_ = input_.overUi;
         SDL_RenderPresent(sw);
         input_.pressed = input_.released = input_.rightPressed = input_.doubleClick = false;
@@ -4439,32 +4471,49 @@ private:
                     SDL_Log("altera_game: %s stays a placeholder: %s", sp, whyBeast.c_str());
             }
         }
+        loadFonts();
+        return true;
+    }
+
+    // AL-62: the faces the theme names (content/ui/themes/<id>.json fonts: text
+    // and title, the "bold" face of ui::Ui), then its fallbacks, then Noto Sans.
+    void loadFonts() {
         const fs::path fonts = fs::path(opts_.root) / "assets" / "fonts";
-        // Nunito for the text, Kurale for names and titles (the "bold" face of ui::Ui).
-        font_ = ui::FontFace::load(fonts / "Nunito-SemiBold.ttf");
-        fontBold_ = ui::FontFace::load(fonts / "Kurale-Regular.ttf");
+        const UiTheme& th = hudPalette().theme;
+        const auto face = [&](const std::string& file) {
+            return file.empty() ? std::shared_ptr<ui::FontFace>() : ui::FontFace::load(fonts / file);
+        };
+        font_ = face(th.font("text"));
+        fontBold_ = face(th.font("title"));
+        if (!font_ || !fontBold_) {
+            font_ = face(th.font("text_fallback"));
+            fontBold_ = face(th.font("title_fallback"));
+        }
         if (!font_ || !fontBold_) {
             font_ = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
             fontBold_ = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
         }
-        return true;
+        uiScale_ = 0;
     }
 
     // ---- the HUD (style G) ------------------------------------------------
+    // The engine widgets (text fields, sliders) in the HUD's theme (AL-62).
     void styleTheme() {
+        const HudPalette& p = hudPalette();
         ui::Theme& t = ui_.theme();
-        t.slot = ui::Colour::rgb(22, 29, 40, 0.94f);
-        t.slotHot = ui::Colour::rgb(40, 50, 66, 0.96f);
-        t.slotDown = ui::Colour::rgb(226, 197, 122);
-        t.slotEdge = ui::Colour::rgb(168, 135, 62);
-        t.label = ui::Colour::rgb(239, 230, 207);
-        t.labelSoft = ui::Colour::rgb(176, 166, 140);
-        t.accent = ui::Colour::rgb(226, 197, 122);
-        t.paper = ui::Colour::rgb(239, 228, 200);
-        t.paperEdge = ui::Colour::rgb(138, 111, 52);
-        t.ink = ui::Colour::rgb(43, 38, 32);
-        t.inkSoft = ui::Colour::rgb(94, 85, 70);
-        t.gauge = ui::Colour::rgb(16, 22, 30, 0.85f);
+        t.slot = p.panel;
+        t.slotHot = p.panel.lerp(p.gold, 0.15f);
+        t.slotDown = p.gold;
+        t.slotEdge = p.frame;
+        t.label = p.text;
+        t.labelSoft = p.mute;
+        t.accent = p.gold;
+        t.paper = p.card;
+        t.paperEdge = p.frame;
+        t.ink = p.cardInk;
+        t.inkSoft = p.cardInkSoft;
+        t.gauge = p.rim.withAlpha(0.85f);
+        t.radius = p.theme.size("radius", 2.0f);
     }
 
     void buildHud(float W, float H) {
@@ -4544,15 +4593,25 @@ private:
         const double rx = wx - eye_[0], ry = wy - eye_[1];
         if (rx * rx + ry * ry > 90.0 * 90.0 && a.id != selected_ && a.id != hud_.aim) return false;
         const double h = a.animal ? 1.4 : (a.age < 16 ? 0.55 + 0.028 * a.age : 1.0) * 2.05;
-        return project(rx, ry, groundAt(wx, wy) + h - eye_[2], x, y) && x > -50 && y > -50 && x < viewW_ + 50 &&
-               y < viewH_ + 50;
+        const bool on = project(rx, ry, groundAt(wx, wy) + h - eye_[2], x, y) && x > -50 && y > -50 &&
+                        x < viewW_ + 50 && y < viewH_ + 50;
+        toUi(x, y);   // AL-62: the HUD is in points
+        return on;
+    }
+    void toUi(float& x, float& y) const {
+        const float s = uiScale_ > 0 ? uiScale_ : 1.0f;
+        x /= s;
+        y /= s;
     }
     double groundHeight(double x, double y) const override { return groundAt(originX_ + x, originY_ + y); }
     bool groundToScreen(double simX, double simY, double up, float& x, float& y) const override {
         const double wx = originX_ + simX, wy = originY_ + simY;
         const double rx = wx - eye_[0], ry = wy - eye_[1];
         if (rx * rx + ry * ry > 120.0 * 120.0) return false;
-        return project(rx, ry, groundAt(wx, wy) + up - eye_[2], x, y) && x > 0 && y > 0 && x < viewW_ && y < viewH_;
+        const bool on = project(rx, ry, groundAt(wx, wy) + up - eye_[2], x, y) && x > 0 && y > 0 && x < viewW_ &&
+                        y < viewH_;
+        toUi(x, y);
+        return on;
     }
     double tickAlpha() const override {
         if (shown_.paused) return 1.0;
@@ -4743,6 +4802,7 @@ private:
     ui::Ui ui_;
     ui::Input input_;
     std::shared_ptr<ui::FontFace> font_, fontBold_;
+    float uiScale_ = 0;   // AL-62: pixels per point of the interface, as set last (0: set it again)
 };
 
 } // namespace

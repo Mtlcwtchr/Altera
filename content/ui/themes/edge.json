@@ -1,0 +1,54 @@
+{
+  "id": "edge",
+  "name": "menu.settings.style.edge",
+  "about": "Style 3 'Edge' (gdd/ui/four_styles/STYLE_3_SKYRIM_MOD.md): frosted slate glass, old-gold hairlines, diamonds, light spaced caps. Colours: #RRGGBB, #RRGGBBAA or [r, g, b, a]; a key left out keeps the code's default.",
+  "colours": {
+    "frost": "#16181AC2",
+    "frost_solid": "#16181AF0",
+    "card": "#16181ACC",
+    "tip": "#121416E6",
+    "ink": "#E6E1D6",
+    "mute": "#9C978C",
+    "acc": "#C9B07A",
+    "gold2": "#E3CF9A",
+    "gold_dark": "#8C7748",
+    "hot": "#F1E6C8",
+    "rim": "#0E1012",
+    "red": "#A8463A",
+    "grn": "#6F8F4E",
+    "blu": "#4F6F9A",
+    "good": "#9BB27A",
+    "warn": "#D9A648",
+    "bad": "#C8553F",
+    "unk": "#6F6C66",
+    "line": "#E6E1D629",
+    "frame": "#C9B07A66",
+    "key": "#141414BF",
+    "key_edge": "#E6E1D680",
+    "dim": "#0A0C0E8C",
+    "sel": "#C9B07A38"
+  },
+  "sizes": {
+    "line": 1,
+    "frame_alpha": 0.4,
+    "radius": 2,
+    "button_radius": 2,
+    "key_radius": 6,
+    "diamond_min": 40,
+    "bar": 6,
+    "title_spacing": 0.14,
+    "button_spacing": 0.12,
+    "text_px": 15
+  },
+  "fonts": {
+    "text": "Jost-Regular.ttf",
+    "title": "Jost-Light.ttf",
+    "text_fallback": "Nunito-SemiBold.ttf",
+    "title_fallback": "Kurale-Regular.ttf"
+  },
+  "flags": {
+    "blur": false,
+    "textured": false,
+    "caps": true
+  }
+}
