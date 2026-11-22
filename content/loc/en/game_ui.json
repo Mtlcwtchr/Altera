@@ -408,5 +408,6 @@
  "hud.status.purpose.why": "no work of their own",
  "hud.status.purpose.help": "take up a craft, fulfil a wish",
  "hud.status.fun.why": "bored",
- "hud.status.fun.help": "a song, a game, a feast at the ring"
+ "hud.status.fun.help": "a song, a game, a feast at the ring",
+ "loading.world": "A new world"
 }

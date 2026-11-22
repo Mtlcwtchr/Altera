@@ -1,0 +1,11 @@
+[
+ {"at": 3, "backstory_begin": true},
+ {"at": 7, "zoom": 4200, "pitch": 0.75},
+ {"at": 11, "shot": "al69_06_w8_overview.png"},
+ {"at": 12, "zoom": 1200, "pitch": 0.32},
+ {"at": 16, "shot": "al69_07_w8_mid.png"},
+ {"at": 17, "zoom": 70, "pitch": 0.45},
+ {"at": 21, "shot": "al69_08_w8_village.png"},
+ {"at": 22, "next_script": "tools/game_assets/scripts/al69_c.json"},
+ {"at": 23, "load": 2}
+]

@@ -49,10 +49,13 @@
 #include "terrain_core/macro_map.hpp"
 #include "terrain_core/params.hpp"
 #include "terrain_core/renderer.hpp"
+#include "terrain_core/world_gen.hpp"
 #include "game_view/game_layer.hpp"
 #include "game_view/loading_screen.hpp"
+#include "game_view/saves.hpp"
 
 #include <SDL3/SDL.h>
+#include <nlohmann/json.hpp>
 
 #include <algorithm>
 #include <chrono>
@@ -162,6 +165,13 @@ struct Options {
     std::string gameSeason;             // spring | summer | autumn | winter
     bool levelsGiven = false;
     bool seaGiven = false;
+    // AL-69: a procedural world from its spec (terrain_core/world_gen.hpp),
+    // made into `worldCache`/<key>/ the first time and opened from there
+    WorldSpec worldSpec;
+    bool worldSpecGiven = false;
+    bool lore = false;              // --lore: the game on the imported world of Altera
+    fs::path worldCache;            // --world-cache; empty: <out>/worlds
+    std::string begin;              // --begin new | load:N: what the game does once open
 };
 
 bool parse(int argc, char** argv, Options& o) {
@@ -181,6 +191,14 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--sea") { o.params.macroSeaLevel = std::atof(next()); o.seaGiven = true; }
         else if (a == "--detail") o.params.detailAmplitude = std::atof(next());
         else if (a == "--heightmap") o.heightmap = next();
+        else if (a == "--world-spec") {
+            std::string why;
+            if (!readWorldSpec(next(), o.worldSpec, &why)) { std::fprintf(stderr, "%s\n", why.c_str()); return false; }
+            o.worldSpecGiven = !o.worldSpec.lore();
+        }
+        else if (a == "--world-cache") o.worldCache = next();
+        else if (a == "--lore") o.lore = true;
+        else if (a == "--begin") o.begin = next();
         else if (a == "--dlss") o.dlss = true;
         else if (a == "--no-dlss") o.dlss = false;
         else if (a == "--dlss-quality") {
@@ -258,6 +276,16 @@ bool parse(int argc, char** argv, Options& o) {
         else { std::fprintf(stderr, "unknown option %s\n", a.c_str()); return false; }
     }
     Params& p = o.params;
+    if (o.worldSpecGiven) {
+        // the spec's world: its size, its heights' range and sea, its seed,
+        // and rivers sized for it
+        p.worldSize = o.worldSpec.worldMetres();
+        p.macroHeightRange = o.worldSpec.heightRange();
+        p.macroSeaLevel = WorldSpec::kSeaLevel;
+        p.seed = o.worldSpec.seed;
+        o.seaGiven = true;
+        tuneHydrology(o.worldSpec, o.hydrology);
+    }
     // The generator's coast sits at about 0.11 of its range (MacroMap::generate);
     // an imported map is taken to have its sea at 0 unless told.
     if (!o.seaGiven && o.heightmap.empty()) p.macroSeaLevel = 0.11;
@@ -445,6 +473,36 @@ struct Lab {
 
         const auto loadStart = Clock::now();
         std::string why;
+        if (options.worldSpecGiven) {
+            // AL-69: the procedural world, made once into its folder
+            step("world", 0.01f);
+            const fs::path cache = options.worldCache.empty() ? options.out / "worlds" : options.worldCache;
+            fs::path heightFile, biomeFile;
+            const auto made = [&] {
+                std::string w;
+                const bool ok = cachedWorld(options.worldSpec, cache, heightFile, biomeFile,
+                                            [last = std::string()](const char* stage, float) mutable {
+                                                if (last != stage) std::printf("world: %s\n", stage);
+                                                last = stage;
+                                            }, &w);
+                return ok ? std::string() : (w.empty() ? std::string("failed") : w);
+            };
+            const std::string failed = loading ? loading->run(made) : made();
+            if (!failed.empty()) { std::fprintf(stderr, "world: %s\n", failed.c_str()); return false; }
+            options.heightmap = heightFile;
+            options.biomes = biomeFile;
+            // the place the checks found for the village: the view starts there
+            if (options.startX < 0 || options.startY < 0) {
+                std::ifstream in(heightFile.parent_path() / "report.json");
+                const nlohmann::json report = nlohmann::json::parse(in, nullptr, false);
+                if (report.is_object() && report.contains("site") && report["site"].is_array() && report["site"].size() == 2) {
+                    options.startX = report["site"][0].get<double>();
+                    options.startY = report["site"][1].get<double>();
+                }
+            }
+            std::printf("world %s (%d km), %s\n", options.worldSpec.key().c_str(), options.worldSpec.sizeKm,
+                        heightFile.string().c_str());
+        }
         if (!options.heightmap.empty()) {
             if (!macro.load(options.heightmap, &why)) { std::fprintf(stderr, "heightmap: %s\n", why.c_str()); return false; }
         } else {
@@ -1497,14 +1555,36 @@ int main(int argc, char** argv) {
     // from the repository whatever the working folder.
     options.game = true;
     std::vector<char*> args(argv, argv + argc);
-    bool worldGiven = false;
-    for (int i = 1; i < argc; ++i) worldGiven = worldGiven || !std::strcmp(argv[i], "--heightmap");
+    bool worldGiven = false, lore = false;
+    for (int i = 1; i < argc; ++i) {
+        worldGiven = worldGiven || !std::strcmp(argv[i], "--heightmap") || !std::strcmp(argv[i], "--world-spec") ||
+                     !std::strcmp(argv[i], "--generate");
+        lore = lore || !std::strcmp(argv[i], "--lore");
+    }
     static const char* kWorld[] = {"--heightmap", "terrain_lab_out/world_final.r16", "--world-km", "131.072",
                                    "--main-river-area", "80", "--main-lake-area", "2", "--height-range", "6000",
                                    "--sea", "0.13", "--biomes", "terrain_lab_out/world_biomes.png",
                                    "--water-rules", "terrain_lab_out/world_water.png",
                                    "--water-skeleton", "terrain_lab_out/world_water_skeleton.png"};
-    if (!worldGiven)
+    // AL-69: the worlds live beside the saves; with none given the game opens
+    // the one played last (worlds/current.json), the very first time a
+    // procedural one. The imported world of Altera only when asked (--lore).
+    static std::string worldsDir = (altera::game::saveDir().parent_path() / "worlds").string();
+    static std::string currentSpec = (fs::path(worldsDir) / "current.json").string();
+    static const char* kCache[] = {"--world-cache", worldsDir.c_str()};
+    for (std::size_t i = 0; i < std::size(kCache); ++i)
+        args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kCache[i]));
+    if (!worldGiven && !lore) {
+        WorldSpec current;
+        if (!readWorldSpec(currentSpec, current)) writeWorldSpec(currentSpec, current);
+        if (current.lore()) lore = true;
+        else {
+            static const char* kSpec[] = {"--world-spec", currentSpec.c_str()};
+            for (std::size_t i = 0; i < std::size(kSpec); ++i)
+                args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kSpec[i]));
+        }
+    }
+    if (lore && !worldGiven)
         for (std::size_t i = 0; i < std::size(kWorld); ++i)
             args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kWorld[i]));
     std::error_code cwdError;
@@ -1547,6 +1627,18 @@ int main(int argc, char** argv) {
             go.biomes = &lab.biomes;
             go.rivers = &lab.riverSegments;
             go.relief = &lab.relief;
+            // AL-69: the world the game is on, where worlds are kept, what to do first
+            go.world = options.worldSpecGiven ? options.worldSpec : WorldSpec{};
+            if (!options.worldSpecGiven) go.world.kind = "lore";
+            go.worldsDir = options.worldCache.empty() ? (options.out / "worlds").string() : options.worldCache.string();
+            go.begin = options.begin;
+            {
+                fs::path exe = fs::path(SDL_GetBasePath()) / fs::path(argv[0]).filename();
+#ifdef _WIN32
+                if (exe.extension().empty()) exe += ".exe";
+#endif
+                go.exe = exe.string();
+            }
 #ifdef ALTERA_SOURCE_DIR
             go.root = ALTERA_SOURCE_DIR;
 #else
