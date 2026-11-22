@@ -81,7 +81,7 @@ TEST(altera_dialogue_corpus_frame_table_catches_agreement) {
         const Loc l = fixtureLoc("{doer} украл {object?} {victim?}");
         const auto issues = checkFrameAgreement(realContent(), l, "ru");
         CHECK(hasIssue(issues, "verb of the other gender украл (m)"));
-        CHECK(hasIssue(issues, "Брана"));
+        CHECK(hasIssue(issues, "Brana"));
     }
     // the object in the wrong case
     {

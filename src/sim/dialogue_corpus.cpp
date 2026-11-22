@@ -163,16 +163,25 @@ std::vector<std::string> wrongForms(const std::map<std::string, std::set<std::st
 
 struct Person {
     const char* name;
+    const char* latin; // for a language without name declension rules (en)
     char sex;
     int years;
     const char* status; // "" | noble | clergy
 };
 // Names of both sexes with the hard ones of the declension (Добрыня: m, -я; Игорь: soft m; Любовь-like f).
 const Person kPeople[] = {
-    {"Олег", 'm', 34, ""},      {"Брана", 'f', 27, ""},   {"Ждан", 'm', 52, ""},     {"Лада", 'f', 19, ""},
-    {"Мирон", 'm', 67, ""},     {"Вера", 'f', 41, ""},    {"Добрыня", 'm', 45, "noble"}, {"Любава", 'f', 63, ""},
-    {"Игорь", 'm', 23, "clergy"}, {"Марья", 'f', 38, "noble"}, {"Илья", 'm', 11, ""},  {"Агафья", 'f', 72, ""},
+    {"Олег", "Oleg", 'm', 34, ""},        {"Брана", "Brana", 'f', 27, ""},   {"Ждан", "Zhdan", 'm', 52, ""},
+    {"Лада", "Lada", 'f', 19, ""},        {"Мирон", "Miron", 'm', 67, ""},   {"Вера", "Vera", 'f', 41, ""},
+    {"Добрыня", "Dobrynya", 'm', 45, "noble"}, {"Любава", "Lyubava", 'f', 63, ""}, {"Игорь", "Igor", 'm', 23, "clergy"},
+    {"Марья", "Marya", 'f', 38, "noble"},  {"Илья", "Ilya", 'm', 11, ""},     {"Агафья", "Agafya", 'f', 72, ""},
 };
+
+// The language declines names (ru: _grammar.json name_rules) -> Cyrillic names, else their Latin forms.
+bool cyrillicNames(const Loc& loc, const std::string& lang) {
+    const Json* g = loc.grammar(lang);
+    return g && g->contains("name_rules") && !(*g)["name_rules"].empty();
+}
+const char* nameOf(const Person& p, bool cyr) { return cyr ? p.name : p.latin; }
 
 struct CorpusWorld {
     World w;
@@ -453,18 +462,19 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
         if (std::find(traitIds.begin(), traitIds.end(), id) == traitIds.end()) otherTraits.push_back(id);
     EntityId fam = kNone;
     int famLeft = 0;
+    const bool cyr = cyrillicNames(loc, lang);
     for (const Person& p : kPeople) {
         if (famLeft == 0) {
             Family f;
             f.id = cw.w.newId();
-            f.name = p.name;
+            f.name = nameOf(p, cyr);
             cw.w.families()[f.id] = f;
             cw.families.push_back(f.id);
             fam = f.id;
             famLeft = r.irange(2, 3);
         }
         Character ch;
-        ch.name = p.name;
+        ch.name = nameOf(p, cyr);
         ch.body.sex = p.sex;
         ch.body.ageDays = p.years * kDaysPerYear;
         ch.status.family = fam;
@@ -505,7 +515,7 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
             rel.enmity = r.chance(0.25) ? r.range(0.2, 0.9) : 0.0;
             rel.trust = r.range(-0.5, 0.9);
             rel.respect = r.range(-0.5, 0.9);
-            if (!memTypes.empty() && r.chance(0.2)) {
+            if (!memTypes.empty() && r.chance(0.1)) {
                 static const std::vector<std::string> src = {"seen", "told", "rumor"};
                 MemoryEntry m;
                 m.tick = 0;
@@ -604,6 +614,11 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
                                             ? lineRules[static_cast<size_t>(i / 2) % lineRules.size()]
                                             : nullptr;
         L.aim = target ? target->id : std::string();
+        // what the aim changes in the world is undone after the line, so aimed moments do not
+        // pile memories and relations up for the rest of the corpus
+        const Relation relSaved = cw.w.character(sp)->relations[li];
+        const auto repSaved = cw.w.character(li)->reputation;
+        const size_t memSaved = cw.w.character(sp)->memory.size();
         std::string wantPred, wantTag, wantSource, wantModality;
         bool needContent = false;
         if (target) {
@@ -622,20 +637,55 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
                     if (double* ax = relAxis(spc->relations[li], cr.key.substr(4))) *ax = satisfying(cr, -1.0, 1.0);
                 if (cr.key.rfind("reputation.", 0) == 0 || cr.key.rfind("listener.reputation.", 0) == 0)
                     lic->reputation[cr.key.substr(cr.key.rfind('.') + 1)] = satisfying(cr, -1.0, 1.0);
-                if (cr.key.rfind("memory.", 0) == 0 && cr.op != Criterion::Op::Not &&
-                    cr.op != Criterion::Op::Lt && cr.op != Criterion::Op::Le) {
-                    std::string type = cr.key.substr(7);
-                    if (type.find('.') != std::string::npos || type == "deeds" || type == "wariness" || type == "kind")
-                        type = type.rfind("kind", 0) == 0 ? "was_treated" : "saw_crime";
+            }
+            // one memory of the listener that makes the rule's memory.* criteria true
+            {
+                std::string type, source = "seen";
+                bool wants = false, kind = false, mine = false, violent = false;
+                for (const auto& cr : target->when) {
+                    if (cr.key.rfind("memory.", 0) != 0 || cr.op == Criterion::Op::Not || cr.op == Criterion::Op::Lt ||
+                        cr.op == Criterion::Op::Le)
+                        continue;
+                    wants = true;
+                    const std::string k = cr.key.substr(7);
+                    if (k.rfind("kind", 0) == 0) kind = true;
+                    else if (k == "deed.mine") mine = true;
+                    else if (k == "deed.source" && !cr.values.empty()) source = cr.values.front();
+                    else if (k == "deed.tag")
+                        for (const auto& v : cr.values) violent = violent || v == "assault" || v == "murder";
+                    else if (k.find('.') == std::string::npos && k != "deeds" && k != "wariness" && k != "deed") type = k;
+                }
+                if (wants) {
+                    if (type.empty())
+                        type = kind ? "was_given_food" : mine ? "was_robbed" : violent ? "saw_attack"
+                                     : source == "rumor" ? "rumor_crime" : (source == "told" || source == "heard") ? "told_crime"
+                                                                                                                   : "saw_crime";
                     MemoryEntry m;
                     m.tick = now;
                     m.type = type;
                     m.who = {li};
-                    m.valence = type == "was_treated" ? 0.4 : -0.4;
+                    if (type == "saw_attack" || type == "saw_brawl" || type == "saw_insult")
+                        for (EntityId id : cw.people)
+                            if (id != sp && id != li) {
+                                m.who.push_back(id);
+                                break;
+                            }
+                    m.valence = kind ? 0.4 : -0.4;
                     m.salience = 0.6;
-                    m.source = "seen";
-                    spc->memory.push_back(m);
+                    m.source = source;
+                    m.confidence = source == "seen" ? 1.0 : 0.7;
+                    cw.w.character(sp)->memory.push_back(m);
                 }
+            }
+            // a rule about a role of the listener / speaker needs a predicate that has the role
+            for (const auto& cr : target->when) {
+                const size_t is = cr.key.find(".is_");
+                if (!wantPred.empty() || is == std::string::npos || cr.op != Criterion::Op::Has) continue;
+                const std::string role = cr.key.substr(is + 4);
+                std::vector<std::string> with;
+                for (const auto& q : pools.preds)
+                    if (const PredicateDef* pd = d.predicate(q); pd && pd->roles.count(role)) with.push_back(q);
+                if (!with.empty()) wantPred = pick(r, with);
             }
             if (!wantTag.empty() && wantPred.empty())
                 for (const auto& [id, pd] : d.predicates)
@@ -661,7 +711,16 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
                         const std::string role = cr.key.substr(cr.key.rfind("is_") + 3);
                         const PredicateDef* pd = d.predicate(u.content->pred);
                         if (!pd || !pd->roles.count(role)) continue;
-                        u.content->roles[role] = charRef(cr.key.rfind("listener", 0) == 0 ? li : sp);
+                        const EntityId who = cr.key.rfind("listener", 0) == 0 ? li : sp;
+                        if (role == "victim_family") {
+                            Ref fam;
+                            fam.kind = "family";
+                            fam.id = cw.w.character(who)->status.family;
+                            u.content->roles[role] = fam;
+                            u.content->roles.erase("victim");
+                            continue;
+                        }
+                        u.content->roles[role] = charRef(who);
                         if (role == "victim") u.content->roles.erase("victim_family");
                     }
                 }
@@ -720,8 +779,13 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
             args["give"] = loc.noun(lang, "item." + pick(r, pools.items) + ".name", "");
             args["get"] = loc.noun(lang, "item." + pick(r, pools.items) + ".name", "");
         }
-        if (!pools.interactions.empty())
-            args["action"] = loc.noun(lang, "interaction." + pick(r, pools.interactions) + ".name", "");
+        if (!pools.interactions.empty()) { // as the game passes it: the act's phrase over its menu caption
+            const std::string ia = pick(r, pools.interactions);
+            const std::string phrase = "interaction." + ia + ".phrase";
+            args["action"] = loc.has(lang, phrase) && loc.text(lang, phrase).find('{') == std::string::npos
+                                 ? loc.noun(lang, phrase, "")
+                                 : loc.noun(lang, "interaction." + ia + ".name", "");
+        }
         {
             std::string topicKey = "thing.something";
             if (u.content)
@@ -792,6 +856,11 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
                     if (it->is_string())
                         for (const auto& w : words(it->get<std::string>())) keep.insert(w);
         L.text = L.rule.empty() ? std::string() : joinDialogueParts(pieces, keep);
+        if (target) {
+            cw.w.character(sp)->relations[li] = relSaved;
+            cw.w.character(li)->reputation = repSaved;
+            cw.w.character(sp)->memory.resize(memSaved);
+        }
         out.push_back(std::move(L));
     }
     return out;
@@ -955,7 +1024,9 @@ std::vector<CorpusIssue> checkFrameAgreement(const Content& c, const Loc& loc, c
         const char* name;
         char sex;
     };
-    const Name names[] = {{"Олег", 'm'}, {"Добрыня", 'm'}, {"Игорь", 'm'}, {"Брана", 'f'}, {"Любава", 'f'}, {"Марья", 'f'}};
+    const bool cyr = cyrillicNames(loc, lang);
+    const Name names[] = {{cyr ? "Олег" : "Oleg", 'm'},   {cyr ? "Добрыня" : "Dobrynya", 'm'}, {cyr ? "Игорь" : "Igor", 'm'},
+                          {cyr ? "Брана" : "Brana", 'f'}, {cyr ? "Любава" : "Lyubava", 'f'}, {cyr ? "Марья" : "Marya", 'f'}};
 
     for (const auto& [pred, def] : d.predicates) {
         const Json* fr = loc.find(lang, "frame." + pred);
@@ -1101,7 +1172,7 @@ CorpusReport checkDialogueCorpus(const std::vector<CorpusLine>& lines, const Con
     // the names of the corpus people in every case, for the capital check
     std::set<std::string> names;
     for (const Person& p : kPeople) {
-        const Json n = loc.personNoun(lang, p.name, p.sex);
+        const Json n = loc.personNoun(lang, nameOf(p, cyrillicNames(loc, lang)), p.sex);
         for (auto it = n.begin(); it != n.end(); ++it)
             if (it->is_string())
                 for (const auto& w : words(it->get<std::string>())) names.insert(w);
@@ -1239,6 +1310,8 @@ Json corpusJson(const std::vector<CorpusLine>& lines) {
                   {"repeat", L.repeat}, {"parts", L.parts}, {"text", L.text}};
         if (!L.caller.empty()) j["caller"] = L.caller;
         if (!L.states.empty()) j["states"] = L.states;
+        if (!L.fitting.empty()) j["fitting"] = L.fitting;
+        if (!L.aim.empty()) j["aim"] = L.aim;
         if (!L.errors.empty()) j["errors"] = L.errors;
         a.push_back(std::move(j));
     }
