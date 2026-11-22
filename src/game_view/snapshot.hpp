@@ -242,6 +242,16 @@ struct FeedbackSnap {
     int kind = 0;   // 0 info, 1 good, 2 bad
 };
 
+// AL-65: social chains around the player's person (sim/social_chain.hpp): an
+// NPC's ask waiting for the player's answer (answer_social), and who follows
+// the person (dismiss_follower).
+struct SocialSnap {
+    EntityId askFrom = sim::kNone;
+    std::string askName, askAct, askActName, askTone;
+    int askTicksLeft = 0, askTicks = 1;
+    std::vector<std::pair<EntityId, std::string>> followers;   // id, name
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -272,6 +282,7 @@ struct Snapshot {
     EntityId actsFor = sim::kNone;
     std::vector<ActInfoSnap> acts;
     std::vector<FeedbackSnap> feedback;   // a bounded tail, newest last
+    SocialSnap social;                    // AL-65
 };
 
 } // namespace altera::game

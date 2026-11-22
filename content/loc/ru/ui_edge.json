@@ -34,5 +34,9 @@
  "hud.edge.compass.S": "Ю",
  "hud.edge.compass.SW": "ЮЗ",
  "hud.edge.compass.W": "З",
- "hud.edge.compass.NW": "СЗ"
+ "hud.edge.compass.NW": "СЗ",
+ "hud.social.asks": "предлагает: {act}",
+ "hud.social.yes": "Да",
+ "hud.social.no": "Нет",
+ "hud.social.dismiss": "Отпустить: {who}"
 }

@@ -154,6 +154,7 @@ public:
     void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
     void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
+    int socialKey = 0;   // AL-65, set by the game's keys: 1 Y (yes), -1 N (no), 2 X (let the followers go)
     // The new game's backstory screen (panel "backstory"), filled by the game
     // from content/ai/backstories.json, its loc and content/ui/backstory.json.
     struct BackstoryThing {
@@ -259,6 +260,9 @@ private:
     void edgeTarget(const Snapshot& s, const ActorSnap* sel, float ox, float band, float H);
     void edgeClock(const Snapshot& s, float ox, float band, float H);
     void edgeSkillToast(const Snapshot& s, const ActorSnap* sel, float ox, float band);
+    // AL-65: an NPC's ask (yes / no, its time running out) and the followers' chip
+    void socialAsk(const Snapshot& s, float W, float H);
+    void followerChip(const Snapshot& s, float x, float y);
     bool compact_ = false;       // a small screen: fewer lines, tighter rows
     float familyBottom_ = 40;    // where the family list ended (the follower chip goes under it)
     struct SkillToast {

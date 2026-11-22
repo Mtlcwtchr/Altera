@@ -46,6 +46,7 @@
 #include "sim/craft_sim.hpp"
 #include "sim/gear.hpp"
 #include "sim/loc.hpp"
+#include "sim/social_chain.hpp"
 #include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
@@ -738,6 +739,12 @@ public:
                 if (e.key.key == SDLK_X || e.key.key == SDLK_DELETE) removeWanted_ = true;
             }
             if (e.key.key == SDLK_F) cameraFollow(true);
+            // AL-65: Y / N answer an NPC's ask, X lets the followers go (outside the build mode)
+            if (!ui_.typing() && hud_.panel == "none") {
+                if (e.key.key == SDLK_Y) hud_.socialKey = 1;
+                if (e.key.key == SDLK_N) hud_.socialKey = -1;
+                if (e.key.key == SDLK_X) hud_.socialKey = 2;
+            }
             if (e.key.key == SDLK_HOME) wallMode(int(cutaway::nextMode(wallMode_)));
             if (e.key.key == SDLK_F9) {
                 char n[64];
@@ -2548,6 +2555,7 @@ private:
             }
         }
         wheelChances(s.wheel);
+        socialSnap(w, s);
         thingsSnap(w, s);
         actsSnap(w, s);
         feedbackSnap(w, s);
@@ -4539,6 +4547,24 @@ private:
         }
         sendCommand(type, args);
     }
+    // AL-65: an NPC's ask the player's person has to answer, and its followers.
+    void socialSnap(const World& w, Snapshot& s) const {
+        const Character* me = w.character(s.controlled);
+        if (!me) return;
+        const SocialLink& l = me->ai.social;
+        if (l.active() && l.role == "target" && l.phase == "answer") {
+            s.social.askFrom = l.partner;
+            if (const Character* a = w.character(l.partner)) s.social.askName = a->name;
+            s.social.askAct = l.chain;
+            s.social.askActName = name("interaction", l.chain);
+            s.social.askTone = l.tone;
+            s.social.askTicksLeft = int(std::max<Tick>(0, l.until - w.now()));
+            s.social.askTicks = int(std::max<Tick>(1, l.until - l.since));
+        }
+        for (EntityId id : followersOf(w, me->id))
+            if (const Character* f = w.character(id)) s.social.followers.push_back({id, f->name});
+    }
+
     void sendCommand(const std::string& type, const Json& args) {
         // Free mode: an act from the wheel joins the person's queue (done in
         // turn, as in The Sims) instead of replacing what goes on.

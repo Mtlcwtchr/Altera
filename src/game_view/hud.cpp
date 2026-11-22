@@ -704,6 +704,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         workFx(s);
         feedbackFloats(s);
         hoverHint(s, W);
+        socialAsk(s, W, H);   // AL-65
         if (showThoughts) thoughts(s, W);
         // A button of the top menu opened a panel: its click is spent. (The
         // build panel draws the top menu again, which took the same click as
@@ -1406,6 +1407,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         return;
     }
     host_->wheelTarget(t->id);
+    const bool edge = !hudPalette().theme.flag("textured");   // AL-65: diamonds, glass, capitals
     dimmer(W, H, 0.5f);
     const sim::Json spheres = wheelSpec_.value("spheres", sim::Json::array());
     const int n = int(spheres.size());
@@ -1459,9 +1461,15 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         }
     }
     // the target in the middle
-    portrait(*t, cx, cy, 62 * k);
-    ring(cx, cy, 62 * k);
-    {
+    if (edge) {
+        diamond(cx, cy, 88 * k, false, true);
+        portrait(*t, cx, cy, 55 * k);
+        const float w = capsW(t->name, 17, 0.14f) + 36;
+        glass({cx - w / 2, cy + 72 * k, w, 32}, true);
+        caps(cx - w / 2 + 18, cy + 72 * k + 6, t->name, kText, 17, 0.14f);
+    } else {
+        portrait(*t, cx, cy, 62 * k);
+        ring(cx, cy, 62 * k);
         const float w = textW(t->name, 19, true) + 32;
         box(Skin::Leather, {cx - w / 2, cy + 72 * k, w, 32}, 16);
         title(cx - w / 2 + 16, cy + 72 * k + 5, t->name, kText, 19);
@@ -1473,14 +1481,24 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         const std::string nm = host_->text("hud.wheel.sphere." + id);
         const Rect b{px - 36 * k, py - 36 * k, 72 * k, 72 * k};
         const bool on = i == sphere_;
-        box(Skin::Leather, b, b.w * 0.5f);
-        if (on) box(Skin::ButtonOn, b.inset(4), b.w * 0.5f - 4);
-        icon(spheres[std::size_t(i)].value("icon", std::string()), {px - 15 * k, py - 15 * k, 30 * k, 30 * k}, on ? kDark : kText);
+        if (edge) {
+            diamond(px, py, 52 * k, on, true);
+        } else {
+            box(Skin::Leather, b, b.w * 0.5f);
+            if (on) box(Skin::ButtonOn, b.inset(4), b.w * 0.5f - 4);
+        }
+        icon(spheres[std::size_t(i)].value("icon", std::string()), {px - 15 * k, py - 15 * k, 30 * k, 30 * k},
+             on ? (edge ? kGoldPale : kDark) : kText);
         // the name under the sphere (out to the side it ran into the column of sub-directions)
         const float lx = px, ly = py + 36 * k + 22;
-        const float w = textW(nm, 17, true);
-        ui_->text(lx - w / 2, ly - 10 + 2, nm, kRim, 17 / 15.f, true);
-        ui_->text(lx - w / 2, ly - 10, nm, on ? kGoldPale : kText, 17 / 15.f, true);
+        if (edge) {
+            const float w = capsW(nm, 15, 0.12f);
+            caps(lx - w / 2, ly - 8, nm, on ? kGold : kText, 15, 0.12f, true, true);
+        } else {
+            const float w = textW(nm, 17, true);
+            ui_->text(lx - w / 2, ly - 10 + 2, nm, kRim, 17 / 15.f, true);
+            ui_->text(lx - w / 2, ly - 10, nm, on ? kGoldPale : kText, 17 / 15.f, true);
+        }
         if (clicked(b)) {
             sphere_ = i;
             sub_ = 0;
@@ -1491,10 +1509,18 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         const std::string id = subs[std::size_t(i)].value("id", std::string());
         const Rect b{X(700), y0 + i * 72 * k, 230 * k, 56 * k};
         const bool on = i == sub_;
-        box(on ? Skin::ButtonOn : Skin::Leather, b, b.h * 0.5f);
-        if (on) ui_->border(b, kRim, 1.5f, b.h * 0.5f);
-        title(b.x + 22, b.y + 7 * k, host_->text("hud.wheel.sub." + id), on ? kDark : kText, 18);
-        label(b.x + 22, b.y + 31 * k, host_->text("hud.wheel.sub." + id + ".d"), on ? kDark.withAlpha(0.8f) : kText.withAlpha(0.8f), 13);
+        if (edge) {
+            glass(b, false);
+            if (on) selRow(b);
+            caps(b.x + 22, b.y + 8 * k, host_->text("hud.wheel.sub." + id), on ? kGold : kText, 15, 0.1f);
+            label(b.x + 22, b.y + 31 * k, ui_->fit(host_->text("hud.wheel.sub." + id + ".d"), b.w - 30, 13 / 15.f),
+                  kMute, 13);
+        } else {
+            box(on ? Skin::ButtonOn : Skin::Leather, b, b.h * 0.5f);
+            if (on) ui_->border(b, kRim, 1.5f, b.h * 0.5f);
+            title(b.x + 22, b.y + 7 * k, host_->text("hud.wheel.sub." + id), on ? kDark : kText, 18);
+            label(b.x + 22, b.y + 31 * k, host_->text("hud.wheel.sub." + id + ".d"), on ? kDark.withAlpha(0.8f) : kText.withAlpha(0.8f), 13);
+        }
         if (clicked(b)) sub_ = i;
     }
     // the acts on paper
@@ -1502,7 +1528,8 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
     box(Skin::Paper, P, 18);
     seal(P.right() - 37, P.y + 5);
     const std::string subId = m ? subs[std::size_t(sub_)].value("id", std::string()) : std::string();
-    title(P.x + 24, P.y + 22, host_->text("hud.wheel.sub." + subId), kInk, 24);
+    if (edge) caps(P.x + 24, P.y + 24, host_->text("hud.wheel.sub." + subId), kGold, 20, 0.14f);
+    else title(P.x + 24, P.y + 22, host_->text("hud.wheel.sub." + subId), kInk, 24);
     ui_->line(P.x + 24, P.y + 58, P.right() - 24, P.y + 58, kLine.withAlpha(0.45f));
     float y = P.y + 66;
     const bool canAct = s.controlled != sim::kNone && s.controlled != t->id;
@@ -1518,7 +1545,8 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             if (y > P.bottom() - 120) break;
             const Rect row{P.x + 20, y, P.w - 40, 50};
             const bool hot = ui_->hovered(row) && canAct;
-            if (hot) ui_->roundRect(row, kLine.withAlpha(0.12f), 10);
+            if (hot && edge) selRow(row);
+            else if (hot) ui_->roundRect(row, kLine.withAlpha(0.12f), 10);
             // The sim's own chance (sim/tones.hpp actChance) for this tone; the
             // old estimate from the relation only while the sim has not sent it yet.
             double chance = std::clamp(base + 0.3 * rel.affinity + 0.2 * rel.trust - 0.15 * rel.enmity, 0.02, 0.97);
@@ -1559,9 +1587,13 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         const float w = textW(tn, 14) + 28;
         if (x + w > P.right() - 20) x = P.x + 24, y += 40;
         const Rect b{x, y, w, 34};
-        box(i == tone_ ? Skin::ChipOn : Skin::Chip, b, 17);
-        label(b.x + 14, b.y + 8, tn, i == tone_ ? kText : kInk, 14);
-        if (clicked(b)) tone_ = i;
+        if (edge) {
+            if (textButton(b, tn, i == tone_)) tone_ = i;
+        } else {
+            box(i == tone_ ? Skin::ChipOn : Skin::Chip, b, 17);
+            label(b.x + 14, b.y + 8, tn, i == tone_ ? kText : kInk, 14);
+            if (clicked(b)) tone_ = i;
+        }
         x += w + 8;
     }
     if (cardFor) actCard(*cardFor, P.right() + 16 + 330 <= W - 12 ? P.right() + 16 : P.x - 346, cardY, W, H);
@@ -1622,7 +1654,8 @@ void Hud::actMenu(const Snapshot& s, EntityId target, const std::string& head, c
               kGoldPale.withAlpha(0.55f));
     box(Skin::Leather, P, 18);
     bool over = ui_->hovered(P);
-    title(P.x + 18, P.y + 12, ui_->fit(head, w - 36, 19 / 15.f, true), kGoldPale, 19);
+    if (!hudPalette().theme.flag("textured")) caps(P.x + 18, P.y + 14, ui_->fit(head, w - 60, 19 / 15.f, true), kGold, 17, 0.12f);
+    else title(P.x + 18, P.y + 12, ui_->fit(head, w - 36, 19 / 15.f, true), kGoldPale, 19);
     float yy = P.y + 46;
     for (const auto& l : sub) {
         label(P.x + 18, yy, ui_->fit(l, w - 36, 13 / 15.f), kText, 13);
@@ -1714,7 +1747,8 @@ void Hud::actCard(const ActInfoSnap& a, float x, float y, float W, float H) {
     y = std::clamp(y, 12.0f, std::max(12.0f, H - h - 12));
     const Rect r{x, y, w, h};
     box(Skin::Paper, r, 14);
-    title(r.x + 16, r.y + 10, ui_->fit(a.name, w - 32, 18 / 15.f), kInk, 18);
+    if (!hudPalette().theme.flag("textured")) caps(r.x + 16, r.y + 12, ui_->fit(a.name, w - 100, 18 / 15.f), kGold, 15, 0.12f);
+    else title(r.x + 16, r.y + 10, ui_->fit(a.name, w - 32, 18 / 15.f), kInk, 18);
     std::string len;
     if (a.minutes > 0)
         len = a.minutes >= 60 ? host_->text("hud.act.hours", {{"n", (a.minutes + 30) / 60}})

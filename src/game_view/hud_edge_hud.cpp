@@ -38,6 +38,7 @@ void Hud::edgeHud(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     edgeCompass(s, sel, ox, band);
     edgeMenu(ox, band);
     edgeFamily(s, sel, ox);
+    followerChip(s, ox + 60 + 300, familyBottom_ + 4);   // AL-65
     edgeTracker(s, ox, band);
     if (sel && !sel->animal) {
         edgeVitals(s, *sel, ox, H);
