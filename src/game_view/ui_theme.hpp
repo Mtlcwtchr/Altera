@@ -58,6 +58,7 @@ struct UiTheme {
             {"gold2", ThemeColour::hex(0xE3CF9A)},              // highlight, the active icon
             {"gold_dark", ThemeColour::hex(0x8C7748)},          // gold in shadow
             {"hot", ThemeColour::hex(0xF1E6C8)},                // text on a lit gold button
+            {"on_gold", ThemeColour::hex(0xF1E6C8)},            // icons and writing on a chosen (gold) element
             {"rim", ThemeColour::hex(0x0E1012)},                // shadows under text and shapes
             {"red", ThemeColour::hex(0xA8463A)},                // health, the target bar
             {"grn", ThemeColour::hex(0x6F8F4E)},                // strength

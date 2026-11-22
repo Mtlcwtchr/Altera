@@ -187,7 +187,7 @@ void fillPalette(HudPalette& p, const UiTheme& t) {
     p.ringGood = c("good");
     p.ringMid = c("warn");
     p.ringBad = c("bad");
-    p.dark = c("rim");
+    p.dark = c("on_gold");   // style G: dark ink on solid gold; Edge: light on a gold glaze
     p.seal = c("red");
     p.red = c("red");
     p.grn = c("grn");
@@ -231,7 +231,10 @@ SDL_Texture* Hud::skin(Skin kind, int w, int h, float radius, std::uint32_t colo
     const float cx = kMargin + w * 0.5f, cy = kMargin + h * 0.5f, hx = w * 0.5f, hy = h * 0.5f;
     const bool plate = kind == Skin::Leather || kind == Skin::Paper;
     // Glass panels and cards keep the theme's small corner; round buttons stay round.
-    const float rr = plate && !textured ? std::min(radius, P.theme.size("radius", 2.0f)) : radius;
+    const bool chip = kind == Skin::Chip || kind == Skin::ChipOn;   // Edge: chips are square-cornered too (AL-66)
+    const float rr = plate && !textured ? std::min(radius, P.theme.size("radius", 2.0f))
+                   : chip && !textured  ? std::min(radius, P.theme.size("button_radius", 2.0f))
+                                        : radius;
     const float r = std::min(rr, std::min(hx, hy));
     const bool paperLike = kind == Skin::Paper;
     const bool ringOnly = kind == Skin::Ring;
@@ -400,9 +403,25 @@ void Hud::icon(const std::string& name, const Rect& r, const Colour& c) {
     SDL_RenderTexture(sdl_, icons_, &src, &dst);
 }
 
-float Hud::textW(const std::string& s, float px, bool titleFace) const { return ui_->textWidth(s, px / 15.f, titleFace); }
+// AL-66: in the Edge style a heading (the title face, 20 px and up) is set in
+// light spaced capitals; its width is measured the same way, so what is
+// centred or right-aligned by textW stays so.
+namespace {
+float headingSpacing(float px) { return px >= 28 ? hudPalette().theme.size("title_spacing", 0.14f) : 0.1f; }
+bool spacedHeading(bool titleFace, float px) {
+    return titleFace && px >= 20 && hudPalette().theme.flag("caps") && !hudPalette().theme.flag("textured");
+}
+} // namespace
 
-void Hud::title(float x, float y, const std::string& s, const Colour& c, float px) { ui_->text(x, y, s, c, px / 15.f, true); }
+float Hud::textW(const std::string& s, float px, bool titleFace) const {
+    if (spacedHeading(titleFace, px)) return capsW(s, px, headingSpacing(px), true);
+    return ui_->textWidth(s, px / 15.f, titleFace);
+}
+
+void Hud::title(float x, float y, const std::string& s, const Colour& c, float px) {
+    if (spacedHeading(true, px)) return caps(x, y, s, c, px, headingSpacing(px), true);
+    ui_->text(x, y, s, c, px / 15.f, true);
+}
 
 void Hud::label(float x, float y, const std::string& s, const Colour& c, float px, bool shadow) {
     if (shadow) ui_->text(x, y + 2, s, kRim.withAlpha(0.85f), px / 15.f);
@@ -812,8 +831,14 @@ void Hud::names(const Snapshot& s) {
                            : a.lowNeedId == "social" ? "belonging" : "calling";
             const float bob = std::sin(float(clock_) * 2.5f + float(a.id)) * 2.0f;
             const Rect b{sx - 16, sy - 50 + bob, 32, 32};
-            box(Skin::Leather, b, 16);
-            arc(b.x + 16, b.y + 16, 13, 2.5f, -90, float(360 * std::max(0.05, a.lowNeed)), kRingBad);
+            if (!hudPalette().theme.flag("textured")) {   // AL-66: a diamond with the need's level under it
+                diamond(sx, b.y + 16, 24, false, false);
+                ui_->rect({sx - 12, b.bottom() + 2, 24, 2}, kText.withAlpha(0.25f));
+                ui_->rect({sx - 12, b.bottom() + 2, 24 * float(std::max(0.05, a.lowNeed)), 2}, kRingBad);
+            } else {
+                box(Skin::Leather, b, 16);
+                arc(b.x + 16, b.y + 16, 13, 2.5f, -90, float(360 * std::max(0.05, a.lowNeed)), kRingBad);
+            }
             icon(ic, {b.x + 7, b.y + 7, 18, 18}, kRingBad);
         }
     }
@@ -1984,7 +2009,7 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
         if (!pl) continue;
         const Rect r{pl->x + sp.x * cell + 2, pl->y + sp.y * cell + 2, sp.w * cell - 4, sp.h * cell - 4};
         const bool dragged = dragItem_ == sp.item && dragFrom_ == sp.grid;
-        ui_->roundRect(r, dragged ? kLine.withAlpha(0.15f) : kDark.withAlpha(0.88f), 6);
+        ui_->roundRect(r, dragged ? kLine.withAlpha(0.15f) : kRim.withAlpha(0.88f), 6);
         const float is = std::min(r.w, r.h) * 0.55f;
         icon(itemIcon(sp.item), {r.x + (r.w - is) * 0.5f, r.y + (r.h - is) * 0.5f - (sp.h > 1 ? 6 : 0), is, is},
              kText.withAlpha(dragged ? 0.4f : 1.0f));
@@ -2546,6 +2571,8 @@ void Hud::tipAt(float cx, float y, const std::string& tip) {
 }
 
 bool Hud::iconButton(const Rect& r, const std::string& iconName, bool on, const std::string& tip, bool dim) {
+    if (!hudPalette().theme.flag("textured"))   // AL-66: a diamond in the same box
+        return diamondButton(r.x + r.w * 0.5f, r.y + r.h * 0.5f, r.w * 0.74f, iconName, on, tip, dim);
     const bool hot = ui_->hovered(r);
     const float cx = r.x + r.w * 0.5f, cy = r.y + r.h * 0.5f;
     box(on ? Skin::ButtonOn : Skin::Button, r, r.h * 0.5f);

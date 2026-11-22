@@ -129,7 +129,7 @@ bool Hud::diamondButton(float cx, float cy, float size, const std::string& iconN
                         bool dim) {
     const float h = size * 0.7071f;
     const Rect box{cx - h, cy - h, h * 2, h * 2};
-    const bool hot = ui_->hovered(box) && !dim;
+    const bool over = ui_->hovered(box), hot = over && !dim;
     if (on) {
         const Colour f = kGold.withAlpha(0.25f);
         diamond(cx, cy, size, true, false, &f);
@@ -139,8 +139,8 @@ bool Hud::diamondButton(float cx, float cy, float size, const std::string& iconN
     const float s = std::round(size * 0.52f);
     icon(iconName, {cx - s * 0.5f, cy - s * 0.5f, s, s},
          (on ? kHot : hot ? kGoldPale : kText).withAlpha(dim ? 0.35f : 1.0f));
-    if (hot && !tip.empty()) tipAt(cx, box.bottom() + 8, tip);
-    return clicked(box) && !dim;
+    if (over && !tip.empty()) tipAt(cx, box.bottom() + 8, tip);
+    return clicked(box);   // a dimmed one still answers (it says why it cannot)
 }
 
 // A meter: `fill` over the dark track, a gold hairline round it.
@@ -218,7 +218,7 @@ float Hud::capsW(const std::string& s, float px, float spacing, bool titleFace) 
     const std::string u = hudPalette().theme.flag("caps") ? upperUtf8(s) : s;
     const auto g = glyphs(u);
     float w = 0;
-    for (const auto& c : g) w += textW(c, px, titleFace) + em * px;
+    for (const auto& c : g) w += ui_->textWidth(c, px / 15.f, titleFace) + em * px;
     return g.empty() ? 0 : w - em * px;
 }
 
@@ -229,7 +229,7 @@ void Hud::caps(float x, float y, const std::string& s, const Colour& c, float px
     for (const auto& g : glyphs(u)) {
         if (shadow) ui_->text(x, y + 1.5f, g, kRim.withAlpha(0.85f), px / 15.f, titleFace);
         ui_->text(x, y, g, c, px / 15.f, titleFace);
-        x += textW(g, px, titleFace) + em * px;
+        x += ui_->textWidth(g, px / 15.f, titleFace) + em * px;
     }
 }
 
