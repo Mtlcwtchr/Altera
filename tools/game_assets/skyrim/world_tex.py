@@ -30,22 +30,31 @@ KIT = {0: 'architecture/farmhouse/stonewall01.dds', 1: 'architecture/farmhouse/w
        9: 'architecture/farmhouse/woodwalkway01.dds', 10: 'landscape/dirt01.dds',
        11: 'architecture/farmhouse/roof01.dds'}
 
+# AL-72: every ground material -> a Skyrim landscape texture that is itself a ground
+# (AL-11 took grass_lush/grass_dark from forestgrass01, a clover sprite on black, and the
+# earth_* ones from a leaf decal), kept in Skyrim's own colours: only the brightness is
+# brought to ours. The AL-11 bake recoloured each one to our palette's mean, which made
+# the mountains' rock (scree_slabs, rock_orange) orange.
 GROUND = {
-    'ash_black': 'volcanictundradirt01', 'crust_ochre': 'volcanictundraminerals01', 'dirt_brown': 'dirt01',
-    'dirt_dark': 'dirt02', 'dirt_mud': 'rivermud', 'dirt_pebbles': 'dirtpath01', 'dirt_red': 'reachdirt01',
-    'earth_ochre': 'fallforestdirt01', 'earth_orange': 'fallforestdirt01', 'earth_yellow': 'fallforestdirt01',
-    'grass_burnt': 'tundra02', 'grass_dark': 'forestgrass02', 'grass_dry': 'tundra01', 'grass_flowers': 'fieldgrass02',
-    'grass_gold': 'fieldgrass01', 'grass_leaves': 'fallforestleaves01', 'grass_lush': 'forestgrass01',
-    'grass_meadow': 'fielddirtgrass01', 'grass_olive': 'reachgrass01', 'grass_stony': 'rocksgrass01',
+    'ash_black': 'volcanictundradirt02', 'crust_ochre': 'volcanictundraminerals01', 'dirt_brown': 'dirt01',
+    'dirt_dark': 'reachdirt01', 'dirt_mud': 'rivermud', 'dirt_pebbles': 'dirtpath01', 'dirt_red': 'fallforestdirt01',
+    'earth_ochre': 'tundramoss01', 'earth_orange': 'fallforestdirt01', 'earth_yellow': 'tundra02',
+    'grass_burnt': 'tundra01', 'grass_dark': 'pineforest01', 'grass_dry': 'tundra01', 'grass_flowers': 'fieldgrass02',
+    'grass_gold': 'tundra02', 'grass_leaves': 'fallforestleaves01', 'grass_lush': 'pineforest03',
+    'grass_meadow': 'fielddirtgrass01', 'grass_olive': 'reachgrass01', 'grass_stony': 'pineforest02',
     'gravel_black': 'volcanictundragravel01', 'gravel_grey': 'riverbottom', 'gravel_pale': 'coastbeach02',
-    'rock_dark': 'rocks01', 'rock_grey': 'mountainslab01', 'rock_mossy': 'reachmossyrocks01',
-    'rock_ochre': 'fallforestrocks01', 'rock_orange': 'tundrarocks01', 'rock_pale': 'mountainslab02',
+    'rock_dark': 'rocks01', 'rock_grey': 'mountains/mountainslab01', 'rock_mossy': 'reachmossyrocks01',
+    'rock_ochre': 'fallforestrocks01', 'rock_orange': 'tundrarocks01', 'rock_pale': 'mountains/mountainslab02',
     'rock_red_hatch': 'volcanictundrarocks01', 'rock_red_terrace': 'mineralpoolterrace', 'rocky_dark': 'rocks01',
-    'rocky_grey': 'mountainslab02', 'rocky_meadow': 'rocksgrass01', 'rocky_slabs': 'mountainslab01',
+    'rocky_grey': 'mountains/mountainslab02', 'rocky_meadow': 'fallforestrocks01',
+    'rocky_slabs': 'mountains/mountainslab01',
     'sand_beach': 'coastbeach01', 'sand_dune': 'coastbeach02', 'sand_gold': 'coastbeach01',
-    'sand_grey': 'riverbededge', 'scree_gravel': 'volcanictundragravel01', 'scree_slabs': 'mountainslab02',
+    'sand_grey': 'riverbededge', 'scree_gravel': 'riverbottom', 'scree_slabs': 'mountains/mountainslab02',
     'snow': 'snow01landscape',
 }
+# Skyrim's landscape is dark (lit by its own bright sun and tone map); ours is drawn
+# brighter. The brightness each comes to: ours, within these bounds.
+GROUND_LUMA = (0.24, 0.62)
 
 
 def load(lib, path):
@@ -89,6 +98,10 @@ def kit(lib, repo, report):
     print('wrote', out)
 
 
+def luma(rgb):
+    return rgb @ np.array([0.2126, 0.7152, 0.0722])
+
+
 def ground(lib, repo, report):
     src = os.path.join(repo, 'assets/terrain_core/materials')
     out = os.path.join(src, 'skyrim')
@@ -100,16 +113,17 @@ def ground(lib, repo, report):
         sky = GROUND.get(key, 'dirt01')
         ours = Image.open(os.path.join(src, name)).convert('RGB')
         size = ours.size[0]
-        mean = np.asarray(ours, np.float32).reshape(-1, 3).mean(0) / 255.0
+        want = float(np.clip(luma(np.asarray(ours, np.float32).reshape(-1, 3) / 255.0).mean(), *GROUND_LUMA))
         img = load(lib, 'landscape/' + sky + '.dds')
         if img is None:
             continue
+        # the alpha of a landscape texture is its gloss, not a cut: opaque before the resize
+        # (PIL resizes RGBA premultiplied, which blacked out the low-gloss texels)
+        img[:, :, 3] = 1.0
         a = fit(img, size)[:, :, :3]
-        # keep our palette: scale the Skyrim detail to our material's mean colour
-        a = a * (mean / np.maximum(a.reshape(-1, 3).mean(0), 1e-3))
+        a = a * (want / max(float(luma(a.reshape(-1, 3)).mean()), 1e-3))
         Image.fromarray((np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8)).save(os.path.join(out, name))
         report.append({'material': key, 'texture': 'landscape/' + sky + '.dds', 'replace_before_prod': True})
-    # the renderer reads the surface maps beside the colour (materials/pbr): ours stay
     import shutil
     if os.path.isdir(os.path.join(src, 'pbr')):
         shutil.copytree(os.path.join(src, 'pbr'), os.path.join(out, 'pbr'), dirs_exist_ok=True)
@@ -210,16 +224,20 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--data', default='D:/Steam/steamapps/common/Skyrim Special Edition/Data')
     ap.add_argument('--repo', default='D:/AlteraGame/altera')
+    ap.add_argument('--only', default='kit,ground,sky', help='comma list of kit, ground, sky')
     a = ap.parse_args()
     lib = Library(a.data)
-    report = {'kit': [], 'ground': [], 'sky': []}
-    kit(lib, a.repo, report['kit'])
-    ground(lib, a.repo, report['ground'])
-    sky(lib, a.repo, report['sky'])
+    reg = os.path.join(a.repo, 'assets/altera_game/props/registry_world.json')
+    try:
+        report = json.load(open(reg, encoding='utf-8'))['world']
+    except Exception:
+        report = {}
+    for part, fn in (('kit', kit), ('ground', ground), ('sky', sky)):
+        if part in a.only.split(','):
+            report[part] = []
+            fn(lib, a.repo, report[part])
     json.dump({'source': 'Skyrim Special Edition (Bethesda), Data/*.bsa', 'replace_before_prod': True,
-               'world': report},
-              open(os.path.join(a.repo, 'assets/altera_game/props/registry_world.json'), 'w', encoding='utf-8'),
-              ensure_ascii=False, indent=1)
+               'world': report}, open(reg, 'w', encoding='utf-8'), ensure_ascii=False, indent=1)
 
 
 if __name__ == '__main__':
