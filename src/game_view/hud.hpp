@@ -65,6 +65,8 @@ public:
     virtual void cameraFollow(bool on) { (void)on; }
     // AL-56: the walls in the top view, as The Sims has them: 0 up, 1 cut away, 2 down.
     virtual void wallMode(int mode) { (void)mode; }
+    // AL-64: where the camera looks, radians in the sim's plane (x east, y north), for the compass.
+    virtual double cameraYaw() const { return 1.5707963; }
 };
 
 class Hud {
@@ -245,6 +247,28 @@ private:
     void minimap(const Snapshot& s, float W);
     void party(const Snapshot& s, const ActorSnap* sel);
     void selectedCorner(const Snapshot& s, const ActorSnap& a, float H);
+    void slotCard(const Snapshot& s, const ActorSnap& a, int shown, float x, float bottom, float caret, float width);
+    // the Edge HUD (hud_edge_hud.cpp, AL-64)
+    void edgeHud(const Snapshot& s, const ActorSnap* sel, float W, float H);
+    void edgeCompass(const Snapshot& s, const ActorSnap* sel, float ox, float band);
+    void edgeMenu(float ox, float band);
+    void edgeFamily(const Snapshot& s, const ActorSnap* sel, float ox);
+    void edgeTracker(const Snapshot& s, float ox, float band);
+    void edgeVitals(const Snapshot& s, const ActorSnap& a, float ox, float H);
+    void edgeQueue(const Snapshot& s, float ox, float H);
+    void edgeTarget(const Snapshot& s, const ActorSnap* sel, float ox, float band, float H);
+    void edgeClock(const Snapshot& s, float ox, float band, float H);
+    void edgeSkillToast(const Snapshot& s, const ActorSnap* sel, float ox, float band);
+    bool compact_ = false;       // a small screen: fewer lines, tighter rows
+    float familyBottom_ = 40;    // where the family list ended (the follower chip goes under it)
+    struct SkillToast {
+        std::string skill;
+        int step = 0;
+        double born = 0;
+    };
+    std::vector<SkillToast> skillToasts_;
+    std::map<std::string, int> skillStep_;
+    EntityId skillWho_ = sim::kNone;
     void quickBar(const Snapshot& s, float W, float H);
     void clockPill(const Snapshot& s, float W, float H);
     void controlPill(float W, float H);
