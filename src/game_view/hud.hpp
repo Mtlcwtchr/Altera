@@ -12,6 +12,7 @@
 #include <cstdint>
 #include <filesystem>
 #include <functional>
+#include <future>
 #include <map>
 #include <memory>
 #include <string>
@@ -22,6 +23,7 @@
 #include "engine/ui/ui.hpp"
 #include "game_view/snapshot.hpp"
 #include "sim/core.hpp"
+#include "terrain_core/world_gen.hpp"
 
 namespace altera::game {
 
@@ -216,7 +218,12 @@ public:
     std::vector<std::pair<std::string, std::string>> themeList;   // (id, loc key of its name)
     std::string settingsStyle = "edge";
     int settingsScale = 100;
-    bool inMenu() const { return panel == "menu" || panel == "pause" || panel == "slots" || panel == "settings"; }
+    bool inMenu() const {
+        return panel == "menu" || panel == "pause" || panel == "slots" || panel == "settings" || panel == "world";
+    }
+    // AL-69: the world being made (panel "world", hud_world.cpp); the seed as typed
+    terrain_core::WorldSpec worldDraft;
+    std::string worldSeedText;
     // A new world (a load or a new game): drop what belonged to the old one's people.
     void resetWorld();
 
@@ -337,6 +344,19 @@ private:
     void pauseMenu(float W, float H);
     void slotsPanel(float W, float H);
     void settingsPanel(float W, float H);
+    // AL-69: the making of a new world, with its map drawn on a worker thread
+    void worldPanel(float W, float H);
+    struct WorldPreview {
+        std::string key;
+        std::vector<std::uint8_t> rgba;
+        int size = 0;
+        double land = 0, peak = 0;
+        bool passed = false;
+    };
+    std::future<WorldPreview> worldJob_;
+    std::string worldJobKey_;
+    WorldPreview worldShown_;
+    SDL_Texture* worldTex_ = nullptr;
     bool menuButton(const ui::Rect& r, const std::string& iconName, const std::string& s, bool enabled = true);
     int pendingSlot_ = -1;           // a used slot clicked once in the save panel: the next click overwrites
     sim::Json craftDraftJson(const Snapshot& s) const;

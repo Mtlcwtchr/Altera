@@ -1,0 +1,18 @@
+[
+ {"at": 1, "menu": "main_menu"},
+ {"at": 3, "shot": "al69_01_menu_world12.png"},
+ {"at": 4, "world_panel": {"seed": 3, "size_km": 8, "water": 0, "mountains": 2, "climate": 1, "rivers": 1}},
+ {"at": 14, "shot": "al69_02_world_panel.png"},
+ {"at": 15, "menu": "back"},
+ {"at": 16, "menu": "new_here"},
+ {"at": 18, "backstory_begin": true},
+ {"at": 22, "zoom": 5200, "pitch": 0.75},
+ {"at": 26, "shot": "al69_03_w12_overview.png"},
+ {"at": 27, "zoom": 1400, "pitch": 0.32},
+ {"at": 31, "shot": "al69_04_w12_mid.png"},
+ {"at": 32, "zoom": 70, "pitch": 0.45},
+ {"at": 36, "shot": "al69_05_w12_village.png"},
+ {"at": 37, "save": 2},
+ {"at": 38, "next_script": "tools/game_assets/scripts/al69_b.json"},
+ {"at": 39, "world": {"seed": 3, "size_km": 8, "water": 0, "mountains": 2, "climate": 1, "rivers": 1}}
+]

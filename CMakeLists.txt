@@ -629,6 +629,8 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/biomes.cpp
             src/terrain_core/erosion.cpp
             src/terrain_core/drainage.cpp
+            src/terrain_core/terrain_gen.cpp
+            src/terrain_core/world_gen.cpp
             src/terrain_core/foliage.cpp
             src/terrain_core/far_detail.cpp
             src/terrain_core/props.cpp
@@ -656,7 +658,7 @@ if(ASR_BUILD_CLIENT)
                                        src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
                                        src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
                                        src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_social.cpp
-                                       src/game_view/hud_edge_screens.cpp
+                                       src/game_view/hud_edge_screens.cpp src/game_view/hud_world.cpp
                                        src/game_view/saves.cpp)
     target_include_directories(altera_game_view PUBLIC src)
     target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
@@ -668,6 +670,11 @@ if(ASR_BUILD_CLIENT)
 
     # altera_game - the game on the lab's world view: the life-sim with the
     # player's HUD from the start (terrain_lab --game, under its own name).
+    # altera_world_gen - a procedural world (AL-69) into its folder, with its
+    # picture and checks, without the game: altera_world_gen --spec '{...}' --out DIR
+    add_executable(altera_world_gen tools/world_gen_cli.cpp)
+    target_link_libraries(altera_world_gen PRIVATE altera_terrain_core asr_warnings)
+
     add_executable(altera_game tools/terrain_lab/main.cpp)
     target_link_libraries(altera_game PRIVATE altera_terrain_core altera_game_view asr_warnings)
     target_compile_definitions(altera_game PRIVATE _CRT_SECURE_NO_WARNINGS ALTERA_GAME_DEFAULT=1
@@ -1029,7 +1036,7 @@ if(ASR_BUILD_TESTS)
     target_sources(asr_terrain_tests PRIVATE tests/test_world_scale.cpp tests/test_land_coverage.cpp
             tests/test_terrain_source.cpp)
     if(TARGET altera_terrain_core)
-        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp)
+        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp)
         target_link_libraries(altera_terrain_core_tests PRIVATE altera_terrain_core asr_warnings)
         add_test(NAME terrain_core_unit COMMAND altera_terrain_core_tests)
     endif()

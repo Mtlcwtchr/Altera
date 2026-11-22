@@ -13,6 +13,7 @@
 #include <SDL3/SDL.h>
 
 #include "terrain_core/lighting.hpp"
+#include "terrain_core/world_gen.hpp"
 
 namespace engine { class Device; }
 namespace terrain_core { class MacroMap; class BiomeMap; struct Params; struct RiverSegment; class Relief; }
@@ -60,6 +61,13 @@ struct GameOptions {
     // The view's fine relief (terrain_core/relief.hpp): the game lays its
     // pads on it (building sites, fields). None: the ground stays as it is.
     terrain_core::Relief* relief = nullptr;
+    // AL-69: the world the view is on (kind "lore": the imported Altera), the
+    // folder the worlds are kept in, and what to do once open: "new" (a new
+    // game on this world), "load:N" (slot N), empty (the main menu)
+    terrain_core::WorldSpec world;
+    std::string worldsDir;
+    std::string begin;
+    std::string exe;             // this program, to start it again on another world
 };
 
 // The life-sim (altera_sim) on a region of the world centred on (x, y) metres.
