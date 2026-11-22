@@ -67,6 +67,14 @@ public:
     virtual void wallMode(int mode) { (void)mode; }
     // AL-64: where the camera looks, radians in the sim's plane (x east, y north), for the compass.
     virtual double cameraYaw() const { return 1.5707963; }
+    // AL-67: an operation of the HUD on the sim thread: say_topic {id, target,
+    // index}, set_name {id, forms}; and the case forms the language suggests
+    // for a typed name ({nom, gen, dat, acc, ins, pre, g}).
+    virtual void simOp(const std::string& op, const sim::Json& args) { (void)op, (void)args; }
+    virtual sim::Json nameCases(const std::string& name, char sex) const {
+        (void)sex;
+        return sim::Json{{"nom", name}};
+    }
 };
 
 class Hud {
@@ -134,7 +142,7 @@ public:
     }
     // The target whose acts the sim should check (the ring or the wheel open on it).
     EntityId actTarget() const {
-        if (panel == "wheel") return wheelTarget_;
+        if (panel == "wheel" || panel == "talk") return wheelTarget_;
         if (panel == "beast") return beastTarget_;
         if (panel == "thing") return thingTarget_;
         return sim::kNone;
@@ -151,7 +159,21 @@ public:
     std::string leadName;   // whom keys / mouse would take under control (nobody led)
     bool walkMark = false;
     double walkMarkX = 0, walkMarkY = 0;
-    void setTone(int t) { tone_ = t; }   // the wheel's tone chip (tour scripts)
+    void setTone(int t) { tone_ = t; }
+    // AL-67: the name screen for a person (panel "name"; scripts may open it), the talk topics (panel "talk")
+    EntityId nameFor = sim::kNone;
+    void openName(EntityId id) {
+        panel = "name";
+        nameFor = id;
+        nameNom_.clear();
+        nameTyped_.clear();
+        nameCases_.clear();
+        nameEdited_.clear();
+    }
+    void openTalk(EntityId target) {
+        panel = "talk";
+        wheelTarget_ = target;
+    }   // the wheel's tone chip (tour scripts)
     void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
     int socialKey = 0;   // AL-65, set by the game's keys: 1 Y (yes), -1 N (no), 2 X (let the followers go)
@@ -263,6 +285,13 @@ private:
     // AL-65: an NPC's ask (yes / no, its time running out) and the followers' chip
     void socialAsk(const Snapshot& s, float W, float H);
     void followerChip(const Snapshot& s, float x, float y);
+    // AL-67: the name screen with its cases, the talk topics, the case card
+    void namePanel(const Snapshot& s, float W, float H);
+    void talkPanel(const Snapshot& s, float W, float H);
+    void caseCard(const Snapshot& s, float x, float y, float w);
+    std::string nameNom_, nameTyped_;
+    std::map<std::string, std::string> nameCases_;
+    std::map<std::string, bool> nameEdited_;
     bool compact_ = false;       // a small screen: fewer lines, tighter rows
     float familyBottom_ = 40;    // where the family list ended (the follower chip goes under it)
     struct SkillToast {

@@ -47,6 +47,8 @@
 #include "sim/gear.hpp"
 #include "sim/loc.hpp"
 #include "sim/social_chain.hpp"
+#include "sim/dialogue_say.hpp"
+#include "sim/justice.hpp"
 #include "sim/tones.hpp"
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
@@ -687,7 +689,17 @@ public:
     bool event(const SDL_Event& e) override {
         switch (e.type) {
         case SDL_EVENT_QUIT: return false;
+        case SDL_EVENT_TEXT_INPUT:   // AL-67: typing into a text field of the HUD
+            if (ui_.typing()) input_.text += e.text.text;
+            break;
         case SDL_EVENT_KEY_DOWN:
+            if (ui_.typing()) {   // the keys edit the field, they are not commands
+                if (e.key.key == SDLK_BACKSPACE) input_.backspace = true;
+                if (e.key.key == SDLK_RETURN || e.key.key == SDLK_KP_ENTER) input_.enter = true;
+                if (e.key.key == SDLK_ESCAPE) input_.escape = true;
+                if (e.key.key == SDLK_TAB) input_.tab = true;
+                break;
+            }
             // AL-29: F11 / Alt+Enter toggle the full screen anywhere
             if (!e.key.repeat && (e.key.key == SDLK_F11 || (e.key.key == SDLK_RETURN && (e.key.mod & SDL_KMOD_ALT)))) {
                 settings_.fullscreen = !settings_.fullscreen;
@@ -1492,6 +1504,13 @@ public:
         SDL_RenderPresent(sw);
         input_.pressed = input_.released = input_.rightPressed = input_.doubleClick = false;
         input_.wheel = 0;
+        input_.text.clear();
+        input_.backspace = input_.enter = input_.escape = input_.tab = false;
+        // the window takes typed text only while a field has the keyboard
+        if (window_ && ui_.typing() != SDL_TextInputActive(window_)) {
+            if (ui_.typing()) SDL_StartTextInput(window_);
+            else SDL_StopTextInput(window_);
+        }
 
         if (!uiTexture_) {
             SDL_GPUTextureCreateInfo info{};
@@ -1928,6 +1947,25 @@ private:
                     const auto r = world_->applyNow(cmd);
                     if (r.result != "ok") result_ = r.result;
                     if (const Character* me = world_->character(c.args.value("id", kNone))) prevPos_[me->id] = me->pos;
+                } else if (c.op == "say_topic") {
+                    // AL-67: the player's person brings a topic up (the menu without an agent)
+                    Character* me = world_->character(c.args.value("id", kNone));
+                    Character* t = world_->character(c.args.value("target", kNone));
+                    const int k = c.args.value("index", -1);
+                    if (me && t && k >= 0) {
+                        const auto topics = dialogueTopics(*world_, *me, *t);
+                        if (k < int(topics.size())) {
+                            const MenuTopic& tp = topics[std::size_t(k)];
+                            say(*world_, *me, *t, tp.act, tp.prop, tp.epi);
+                            result_ = "ok";
+                        }
+                    }
+                } else if (c.op == "set_name") {
+                    // AL-67: a name the player gave, with its case forms (sim/loc.hpp setOwnName)
+                    if (Character* me = world_->character(c.args.value("id", kNone))) {
+                        setOwnName(*me, opts_.lang, c.args.value("forms", Json::object()));
+                        result_ = "ok";
+                    }
                 } else if (c.op == "craft_kit") {
                     if (Character* b = world_->character(c.args.value("id", kNone))) craftKit(*b);
                 } else if (c.op == "cmd") {
@@ -2556,6 +2594,7 @@ private:
         }
         wheelChances(s.wheel);
         socialSnap(w, s);
+        talkSnap(w, s);
         thingsSnap(w, s);
         actsSnap(w, s);
         feedbackSnap(w, s);
@@ -4547,6 +4586,32 @@ private:
         }
         sendCommand(type, args);
     }
+    // AL-67: the topics the player's person could bring up with the wheel's
+    // target, and the cases opened against the person.
+    void talkSnap(const World& w, Snapshot& s) const {
+        const Character* me = w.character(s.controlled);
+        if (!me) return;
+        if (const Character* t = w.character(wheelWanted_); t && t->id != me->id && !t->isAnimal()) {
+            s.topicsFor = t->id;
+            for (const auto& tp : dialogueTopics(w, *me, *t))
+                s.topics.push_back({tp.act, menuLabel(*loc_, opts_.lang, w, *me, *t, tp)});
+        }
+        for (const auto& m : me->memory) {
+            if (m.type != "case_pending" || m.who.empty()) continue;
+            CaseSnap c;
+            c.accuser = m.who[0];
+            if (const Character* a = w.character(m.who[0])) c.accuserName = a->name;
+            if (m.who.size() > 1)
+                if (const Character* j = w.character(m.who[1])) c.judgeName = j->name;
+            c.stage = m.source;
+            if (const Character* o = w.character(m.object)) c.what = o->name;
+            c.day = int(m.tick / kTicksPerDay) + 1;
+            s.cases.push_back(std::move(c));
+        }
+        if (!s.cases.empty())
+            for (const auto& a : caseRules(w.content()).answers) s.caseAnswers.push_back(a.id);
+    }
+
     // AL-65: an NPC's ask the player's person has to answer, and its followers.
     void socialSnap(const World& w, Snapshot& s) const {
         const Character* me = w.character(s.controlled);
@@ -4625,6 +4690,13 @@ private:
         return on;
     }
     double cameraYaw() const override { return orbitYaw_; }
+    // AL-67: the HUD's own operations on the sim (a topic brought up, a name given).
+    void simOp(const std::string& op, const Json& args) override {
+        noteInput();
+        post({op, 0, "", args});
+    }
+    // The case forms the language's rules suggest for a typed name (prefill of the name screen).
+    Json nameCases(const std::string& n, char sex) const override { return loc_->personNoun(opts_.lang, n, sex); }
     void toUi(float& x, float& y) const {
         const float s = uiScale_ > 0 ? uiScale_ : 1.0f;
         x /= s;

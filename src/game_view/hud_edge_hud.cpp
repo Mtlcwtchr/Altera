@@ -40,6 +40,7 @@ void Hud::edgeHud(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     edgeFamily(s, sel, ox);
     followerChip(s, ox + 60 + 300, familyBottom_ + 4);   // AL-65
     edgeTracker(s, ox, band);
+    caseCard(s, ox + band - 60 - 480, compact_ ? 170.f : 262.f, 480);   // AL-67
     if (sel && !sel->animal) {
         edgeVitals(s, *sel, ox, H);
         edgeQueue(s, ox, H);
@@ -236,7 +237,12 @@ void Hud::edgeVitals(const Snapshot& s, const ActorSnap& a, float ox, float H) {
     if (clicked({pcx - ph * 0.7f, pcy - ph * 0.7f, ph * 1.4f, ph * 1.4f})) panel = panel == "sheet" ? "none" : "sheet";
     const float tx = pcx + ph + 24, bw = 300;
     const int moodLevel = std::clamp(int((s.detail.mood + 1.0) * 2.5), 0, 4);
-    caps(tx, pcy - 48, ui_->fit(a.name, bw, 20 / 15.f, true), kText, 20, 0.14f, true, true);
+    const std::string shownName = ui_->fit(a.name, bw - 30, 20 / 15.f, true);
+    caps(tx, pcy - 48, shownName, kText, 20, 0.14f, true, true);
+    // AL-67: the player's own person can be named, with the cases
+    if (a.player || a.id == s.controlled)
+        if (diamondButton(tx + capsW(shownName, 20, 0.14f) + 22, pcy - 38, 20, "a_rename", false, host_->text("hud.name.open")))
+            openName(a.id);
     caps(tx, pcy - 20, host_->text("hud.mood." + std::to_string(moodLevel)), kGold, 12, 0.1f, false, true);
     const double spirit = std::clamp(0.5 + s.detail.mood * 0.5, 0.0, 1.0);
     const double strength = std::clamp(1.0 - s.detail.fatigue, 0.0, 1.0);
