@@ -733,6 +733,8 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "sheet" && sel && !sel->animal) sheet(s, *sel, W, H);
     else if (panel == "sheet") panel = "none";
     if (panel == "wheel") wheel(s, W, H);
+    if (panel == "talk") talkPanel(s, W, H);   // AL-67
+    if (panel == "name") namePanel(s, W, H);
     if (panel == "beast") {
         names(s);
         beast(s, W, H);
@@ -1620,6 +1622,15 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             if (clicked(b)) tone_ = i;
         }
         x += w + 8;
+    }
+    // AL-67: the topics the person could bring up with the target (the menu without an agent)
+    if (canAct && edge) {
+        const std::string tl = host_->text("hud.talk.open");
+        const float bw = capsW(tl, 15, 0.12f, false) + 40;
+        if (edgeButton({P.x, P.y - 50, bw, 36}, tl)) {
+            openTalk(t->id);
+            return;
+        }
     }
     if (cardFor) actCard(*cardFor, P.right() + 16 + 330 <= W - 12 ? P.right() + 16 : P.x - 346, cardY, W, H);
     const std::string note = !canAct ? host_->text(s.controlled == t->id ? "hud.wheel.self" : "hud.wheel.need_control")

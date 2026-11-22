@@ -656,6 +656,7 @@ if(ASR_BUILD_CLIENT)
                                        src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
                                        src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
                                        src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_social.cpp
+                                       src/game_view/hud_edge_screens.cpp
                                        src/game_view/saves.cpp)
     target_include_directories(altera_game_view PUBLIC src)
     target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)

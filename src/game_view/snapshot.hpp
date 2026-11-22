@@ -252,6 +252,18 @@ struct SocialSnap {
     std::vector<std::pair<EntityId, std::string>> followers;   // id, name
 };
 
+// AL-67: what the player's person could bring up with the wheel's target
+// (sim/dialogue_say.hpp dialogueTopics, the menu without an agent), and the
+// cases opened against the person (sim/justice.hpp case_pending).
+struct TopicSnap {
+    std::string act, label;
+};
+struct CaseSnap {
+    EntityId accuser = sim::kNone;
+    std::string accuserName, judgeName, stage, what;
+    int day = 0;
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -283,6 +295,10 @@ struct Snapshot {
     std::vector<ActInfoSnap> acts;
     std::vector<FeedbackSnap> feedback;   // a bounded tail, newest last
     SocialSnap social;                    // AL-65
+    EntityId topicsFor = sim::kNone;      // AL-67: the target the topics are for
+    std::vector<TopicSnap> topics;
+    std::vector<CaseSnap> cases;
+    std::vector<std::string> caseAnswers; // the accused's possible answers (consequences.json case.answers)
 };
 
 } // namespace altera::game

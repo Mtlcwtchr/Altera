@@ -1,0 +1,128 @@
+[
+ {
+  "at": 2,
+  "backstory": "peasant"
+ },
+ {
+  "at": 3,
+  "backstory_begin": true
+ },
+ {
+  "at": 7,
+  "zoom": 16,
+  "pitch": 0.42,
+  "yawDeg": 30
+ },
+ {
+  "at": 9,
+  "shot": "e720_01_hud.png"
+ },
+ {
+  "at": 9.3,
+  "slot": 0
+ },
+ {
+  "at": 9.7,
+  "shot": "e720_01b_needs.png"
+ },
+ {
+  "at": 9.9,
+  "slot": -1
+ },
+ {
+  "at": 10,
+  "aim_person": true
+ },
+ {
+  "at": 11.5,
+  "shot": "e720_02_wheel.png"
+ },
+ {
+  "at": 12,
+  "panel": "talk"
+ },
+ {
+  "at": 13,
+  "shot": "e720_03_talk.png"
+ },
+ {
+  "at": 13.5,
+  "panel": "name"
+ },
+ {
+  "at": 14.5,
+  "shot": "e720_04_name.png"
+ },
+ {
+  "at": 15,
+  "panel": "sheet"
+ },
+ {
+  "at": 16,
+  "shot": "e720_05_sheet.png"
+ },
+ {
+  "at": 16.5,
+  "panel": "inventory"
+ },
+ {
+  "at": 17.5,
+  "shot": "e720_06_things.png"
+ },
+ {
+  "at": 18,
+  "panel": "kin"
+ },
+ {
+  "at": 19,
+  "shot": "e720_07_dynasty.png"
+ },
+ {
+  "at": 19.5,
+  "panel": "annals"
+ },
+ {
+  "at": 20.5,
+  "shot": "e720_08_annals.png"
+ },
+ {
+  "at": 21,
+  "panel": "build"
+ },
+ {
+  "at": 22,
+  "shot": "e720_09_build.png"
+ },
+ {
+  "at": 22.5,
+  "panel": "workshop"
+ },
+ {
+  "at": 23.5,
+  "shot": "e720_10_workshop.png"
+ },
+ {
+  "at": 24,
+  "panel": "none"
+ },
+ {
+  "at": 24.5,
+  "menu": "pause"
+ },
+ {
+  "at": 25.5,
+  "shot": "e720_11_pause.png"
+ },
+ {
+  "at": 26,
+  "menu": "settings"
+ },
+ {
+  "at": 27,
+  "shot": "e720_12_settings.png"
+ },
+ {
+  "at": 28,
+  "quit": true
+ }
+]
