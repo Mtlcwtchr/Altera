@@ -158,6 +158,10 @@ void Hud::shutdown() {
     previews_ = nullptr;
     if (minimap_) SDL_DestroyTexture(minimap_);
     minimap_ = nullptr;
+    if (worldJob_.valid()) worldJob_.wait();
+    if (worldTex_) SDL_DestroyTexture(worldTex_);
+    worldTex_ = nullptr;
+    worldShown_ = {};
 }
 
 // The palette and the theme it came from (hud_style.hpp, AL-62).
@@ -769,6 +773,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "pause") pauseMenu(W, H);
     if (panel == "slots") slotsPanel(W, H);
     if (panel == "settings") settingsPanel(W, H);
+    if (panel == "world") worldPanel(W, H);   // AL-69
     if (!inMenu() && !s.result.empty() && s.result != "ok") {
         const std::string t = ui.fit(s.result, 600, 14 / 15.f);
         const float w = textW(t, 14) + 28;

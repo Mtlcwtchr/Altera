@@ -408,5 +408,6 @@
  "hud.status.purpose.why": "нет своего дела",
  "hud.status.purpose.help": "взяться за ремесло, исполнить желание",
  "hud.status.fun.why": "скучно",
- "hud.status.fun.help": "песня, игра, праздник у кольца"
+ "hud.status.fun.help": "песня, игра, праздник у кольца",
+ "loading.world": "Новый мир"
 }

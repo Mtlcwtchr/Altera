@@ -214,6 +214,12 @@ public:
         if (first == "menu") openMainMenu();
         if (settings_.fullscreen) SDL_SetWindowFullscreen(window_, true);
         thread_ = std::thread([this] { simLoop(); });
+        // AL-69: this world is the one to open next time; and what the start was for
+        if (!opts_.worldsDir.empty())
+            terrain_core::writeWorldSpec(fs::path(opts_.worldsDir) / "current.json", opts_.world);
+        if (opts_.begin == "new") menuQueue_.push_back({"new_here", Json::object()});
+        else if (opts_.begin.rfind("load:", 0) == 0)
+            menuQueue_.push_back({"load", {{"slot", std::atoi(opts_.begin.c_str() + 5)}}});
         return true;
     }
 
@@ -364,8 +370,79 @@ public:
     }
     // Esc inside the menus: one step back.
     void menuEscape() {
-        if (hud_.panel == "pause") closePause();
+        if (hud_.panel == "world") openMainMenu();
+        else if (hud_.panel == "pause") closePause();
         else if (hud_.panel == "slots" || hud_.panel == "settings") menuBack();
+    }
+
+    // ---- AL-69: the world -------------------------------------------------
+    // New game opens the world's making: size, seed, water, mountains,
+    // climate, rivers, or the imported world of Altera. The same world again
+    // starts at once; another one is made by the game started afresh on it
+    // (the view's terrain, water and plants are built for one world).
+    void openWorldPanel() {
+        hud_.worldDraft = opts_.world;
+        if (hud_.worldDraft.lore()) hud_.worldDraft = terrain_core::WorldSpec{};
+        hud_.worldDraft.seed = std::uint32_t(SDL_GetTicksNS() % 900000u) + 1u;   // a new one each time
+        hud_.worldSeedText = std::to_string(hud_.worldDraft.seed);
+        hud_.menuNote.clear();
+        menuBack_ = "menu";
+        hud_.panel = "world";
+    }
+    void createWorld(const Json& a) {
+        terrain_core::WorldSpec spec;
+        std::string why;
+        if (!terrain_core::parseWorldSpec(a.dump(), spec, &why)) {
+            hud_.menuNote = text("menu.failed", {{"why", why}});
+            return;
+        }
+        if (spec == opts_.world) {   // this very world: no restart
+            newGame();
+            return;
+        }
+        relaunch(spec, "new");
+    }
+    // The game again on `spec`'s world, then `begin` there (new | load:N).
+    void relaunch(const terrain_core::WorldSpec& spec, const std::string& begin) {
+        const fs::path next = fs::path(opts_.worldsDir.empty() ? "terrain_lab_out/worlds" : opts_.worldsDir) / "next.json";
+        std::string why;
+        if (!spec.lore() && !terrain_core::writeWorldSpec(next, spec, &why)) {
+            hud_.menuNote = text("menu.failed", {{"why", why}});
+            return;
+        }
+        int w = 1600, h = 900;
+        SDL_GetWindowSize(window_, &w, &h);
+        const std::string size = std::to_string(w) + "x" + std::to_string(h), file = next.string();
+        std::vector<const char*> args{opts_.exe.c_str()};
+        if (spec.lore()) args.push_back("--lore");
+        else {
+            args.push_back("--world-spec");
+            args.push_back(file.c_str());
+        }
+        args.push_back("--begin");
+        args.push_back(begin.c_str());
+        args.push_back("--size");
+        args.push_back(size.c_str());
+        args.push_back(nullptr);
+        SDL_Log("altera_game: restarting on world %s (%s)", spec.key().c_str(), begin.c_str());
+        // a tour goes on in the new game with its next script, or none
+        // (SDL's environment calls only: on Windows they and the C library's keep separate copies)
+        if (SDL_getenv_unsafe("ALTERA_GAME_SCRIPT")) {
+            const char* next = SDL_getenv_unsafe("ALTERA_GAME_SCRIPT_NEXT");
+            const std::string nextScript = next ? next : "";
+            if (nextScript.empty()) SDL_unsetenv_unsafe("ALTERA_GAME_SCRIPT");
+            else SDL_setenv_unsafe("ALTERA_GAME_SCRIPT", nextScript.c_str(), 1);
+            SDL_unsetenv_unsafe("ALTERA_GAME_SCRIPT_NEXT");
+        }
+        SDL_Process* child = opts_.exe.empty() ? nullptr : SDL_CreateProcess(args.data(), false);
+        if (!child) {
+            hud_.menuNote = text("menu.failed", {{"why", std::string(SDL_GetError())}});
+            return;
+        }
+        SDL_DestroyProcess(child);   // forgets it; the new game runs on
+        SDL_Event q{};
+        q.type = SDL_EVENT_QUIT;
+        SDL_PushEvent(&q);
     }
 
     void newGame() {
@@ -399,7 +476,8 @@ public:
                   {"game",
                    {{"origin_x", originX_}, {"origin_y", originY_}, {"target_x", target_[0]}, {"target_y", target_[1]},
                     {"zoom", zoom_}, {"yaw", orbitYaw_}, {"pitch", orbitPitch_}, {"speed", speed_},
-                    {"seed", opts_.seed}, {"lang", opts_.lang}}},
+                    {"seed", opts_.seed}, {"lang", opts_.lang},
+                    {"world", Json::parse(terrain_core::worldSpecJson(opts_.world))}}},
                   {"world", world_->toJson()}};
         SaveMeta m;
         m.slot = slot;
@@ -433,6 +511,18 @@ public:
             SDL_Log("altera_game: load %d: %s", slot, e.what());
             hud_.menuNote = text("menu.failed", {{"why", std::string(e.what())}});
             return false;
+        }
+        {
+            // AL-69: a save made on another world opens that world first
+            // (saves from before worlds were chosen are of Altera's)
+            terrain_core::WorldSpec saved;
+            saved.kind = "lore";
+            const Json g = save.value("game", Json::object());
+            if (g.contains("world") && g["world"].is_object()) terrain_core::parseWorldSpec(g["world"].dump(), saved);
+            if (!(saved == opts_.world)) {
+                relaunch(saved, "load:" + std::to_string(slot));
+                return true;
+            }
         }
         stopSim();
         try {
@@ -508,7 +598,9 @@ public:
                     hud_.panel = "none";
                     post({"unhold"});
                 } else if (const int n = latestSave(); n >= 0) loadSlot(n);
-            } else if (act == "new") newGame();
+            } else if (act == "new") openWorldPanel();
+            else if (act == "new_here") newGame();
+            else if (act == "world_create") createWorld(args);
             else if (act == "open_load") openSlots(false);
             else if (act == "open_save") openSlots(true);
             else if (act == "settings") openSettings();
@@ -1595,6 +1687,8 @@ private:
                 scriptWalk_[2] = st["walk"][2].get<double>();
             }
             if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
+            // AL-70 shots: "anim" plays a state or interaction clip on the led person ("" = off)
+            if (st.contains("anim")) scriptAnim_ = st["anim"].get<std::string>();
             // checks: face_house turns the camera (and so WASD) to the nearest
             // house as drawn; probe writes where the person is and what stops
             // them to terrain_lab_out/probe.jsonl
@@ -1697,6 +1791,18 @@ private:
                 else if (m == "pause") openPause();
                 else menuAction(m, Json::object());
             }
+            // AL-69: world_panel {spec}: the making of a world open on that
+            // spec; world {spec}: create it (the game restarts on it, with
+            // ALTERA_GAME_SCRIPT_NEXT as its script)
+            if (st.contains("world_panel")) {
+                openWorldPanel();
+                if (st["world_panel"].is_object()) {
+                    terrain_core::parseWorldSpec(st["world_panel"].dump(), hud_.worldDraft);
+                    hud_.worldSeedText = std::to_string(hud_.worldDraft.seed);
+                }
+            }
+            if (st.contains("next_script")) SDL_setenv_unsafe("ALTERA_GAME_SCRIPT_NEXT", st["next_script"].get<std::string>().c_str(), 1);
+            if (st.contains("world") && st["world"].is_object()) menuAction("world_create", st["world"]);
             if (st.contains("save")) saveSlot(st["save"].get<int>());
             if (st.contains("load")) loadSlot(st["load"].get<int>());
             if (st.contains("panel")) {
@@ -3807,6 +3913,11 @@ private:
     int personClip(const ActorSnap& a, double speed, double& rate) const {
         rate = 1.0;
         auto st = [&](const char* s) { return people_.stateClip(s); };
+        if (!scriptAnim_.empty() && a.id == avatar_.id) {
+            const int c = people_.interactionClip(scriptAnim_);
+            const int k = c >= 0 ? c : people_.stateClip(scriptAnim_);
+            if (k >= 0) return k;
+        }
         if (!a.alive) return st("death");
         if (a.down) return st("down");
         if (speed > 0.25) {
@@ -4515,10 +4626,15 @@ private:
             const fs::path root(opts_.root);
             std::string whyPeople;
             // AL-11: the Skyrim stand-ins on the same rig (tools/game_assets/skyrim/actors.py), when baked.
+            // AL-70: they are on Skyrim's own skeleton now, with Skyrim's clips (skyrim/people_native.py).
             const fs::path peopleSky = root / "assets/altera_game/people/people_sky.askin";
-            if (!people_.load(device_, fs::exists(peopleSky) ? peopleSky : root / "assets/altera_game/people/people.askin",
-                              root / "content/animations/humanoid_ual/baked/people.aanim",
-                              root / "content/animations/humanoid_ual/baked/people_anim.json", &whyPeople))
+            const fs::path animSky = root / "assets/altera_game/people/people_sky.aanim";
+            const bool sky = fs::exists(peopleSky) && fs::exists(animSky);
+            if (!people_.load(device_, sky ? peopleSky : root / "assets/altera_game/people/people.askin",
+                              sky ? animSky : root / "content/animations/humanoid_ual/baked/people.aanim",
+                              sky ? root / "assets/altera_game/people/people_sky_anim.json"
+                                  : root / "content/animations/humanoid_ual/baked/people_anim.json",
+                              &whyPeople))
                 SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
             for (int i = 0; i < people_.lookCount(); ++i)
                 (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
@@ -4863,6 +4979,7 @@ private:
     double simSize_ = 0;   // the sim map's side, metres
     double scriptWalk_[3] = {0, 0, 0};
     bool scriptRun_ = false;
+    std::string scriptAnim_;
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
     float vp_[16] = {};
     double eye_[3] = {};
