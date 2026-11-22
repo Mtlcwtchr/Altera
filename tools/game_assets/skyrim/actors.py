@@ -101,54 +101,137 @@ def skeleton_world(lib, path):
     return out
 
 
-class Atlas:
-    def __init__(self):
-        self.cells, self.index = [], {}
+# AL-71: the light European skin every Skyrim skin texture is brought to (atlas texel
+# values, the game reads them as albedo as they are). Skyrim's own skin diffuse sits at
+# ~0.3 and is lit by its race tint x2, so drawn raw it came out dark brown.
+SKIN_ALBEDO = np.array([0.80, 0.63, 0.53])
 
-    def add(self, lib, tex, kind, cutout=False):
-        key = (tex.lower(), kind, cutout)
+
+def read_image(lib, tex):
+    data = lib.read(texture_key(tex)) if tex else None
+    if not data:
+        return None
+    try:
+        img = Image.open(io.BytesIO(data))
+        img.load()
+        return img.convert('RGBA')
+    except Exception as e:
+        print('  texture', tex, 'unreadable:', e)
+        return None
+
+
+def skin_cell(a, tint=None):
+    """A skin texture (float RGBA) to SKIN_ALBEDO, keeping its detail. A FaceGen face tint
+    is laid on first the way Skyrim does it (overlay of the tint on the base)."""
+    rgb = a[:, :, :3]
+    if tint is not None:
+        # half strength: the dirt, war paint and heavy make-up of the NPCs' tints read as
+        # bruises once the skin is light
+        t = tint[:, :, :3]
+        med = np.median(t.reshape(-1, 3), 0)
+        t = med + (t - med) * 0.5
+        rgb = np.where(rgb < 0.5, 2 * rgb * t, 1 - 2 * (1 - rgb) * (1 - t))
+    # the skin's own mean, from the middle of the texture's brightness (seams and holes out)
+    lum = rgb.mean(2)
+    lo, hi = np.percentile(lum, [25, 85])
+    sel = (lum >= lo) & (lum <= hi)
+    m = rgb[sel].mean(0) if sel.any() else rgb.reshape(-1, 3).mean(0)
+    # to the target colour, the texture's own relief at 60% (raised from ~0.3 it was harsh)
+    rel = rgb / np.maximum(m, 1e-3)
+    out = a.copy()
+    out[:, :, :3] = np.clip(SKIN_ALBEDO * (1 + (rel - 1) * 0.6), 0, 1)
+    return out
+
+
+def dilate(rgb, steps=6):
+    """Grow the texture's islands over the black around them, so a resized cell has no dark
+    seams (AL-71: a black line round the neck where head and body meet)."""
+    rgb = rgb.copy()
+    ok = rgb.max(2) > 0.04
+    for _ in range(steps):
+        if ok.all():
+            break
+        acc = np.zeros_like(rgb)
+        cnt = np.zeros(ok.shape)
+        for dy, dx in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+            m = np.roll(ok, (dy, dx), (0, 1))
+            acc += np.roll(rgb, (dy, dx), (0, 1)) * m[..., None]
+            cnt += m
+        grow = ~ok & (cnt > 0)
+        rgb[grow] = acc[grow] / cnt[grow, None]
+        ok = ok | grow
+    return rgb
+
+
+class Atlas:
+    """Textures of a bake on one sheet. A cell is `cell` px; a big cell (faces) takes 2x2."""
+
+    def __init__(self, cell=CELL):
+        self.cell = cell
+        self.cells, self.index, self.big = [], {}, []
+        self.layout = None
+
+    def add(self, lib, tex, kind, cutout=False, tint='', big=False, alpha_gain=1.0):
+        key = (tex.lower(), kind, cutout, tint.lower(), big, alpha_gain)
         if key in self.index:
             return self.index[key]
-        p = texture_key(tex)
-        data = lib.read(p)
-        img = None
-        if data:
-            try:
-                img = Image.open(io.BytesIO(data))
-                img.load()
-                img = img.convert('RGBA').resize((CELL, CELL), Image.LANCZOS)
-            except Exception as e:
-                print('  texture', tex, 'unreadable:', e)
-        if img is None:
-            img = Image.new('RGBA', (CELL, CELL), (150, 140, 130, 255))
+        C = self.cell * (2 if big else 1)
+        img = read_image(lib, tex)
+        if img is not None and kind == 'skin':
+            src = np.asarray(img, np.float32) / 255.0
+            src[:, :, :3] = dilate(src[:, :, :3], 12)
+            img = Image.fromarray((src * 255 + 0.5).astype(np.uint8), 'RGBA')
+        img = img.resize((C, C), Image.LANCZOS) if img is not None else             Image.new('RGBA', (C, C), (150, 140, 130, 255))
         a = np.asarray(img, np.float32) / 255.0
         if kind == 'hair':
             # tinted per person (klass 2): a light grey with the strands' detail
             g = a[:, :, :3].mean(2, keepdims=True)
             m = max(float(g[a[:, :, 3] > 0.5].mean()) if (a[:, :, 3] > 0.5).any() else 0.5, 0.05)
             a[:, :, :3] = np.clip(g / m * 0.85, 0, 1)
-        if not cutout:
+        elif kind == 'skin':
+            t = read_image(lib, tint) if tint else None
+            t = np.asarray(t.resize((C, C), Image.LANCZOS), np.float32) / 255.0 if t is not None else None
+            a = skin_cell(a, t)
+        if cutout:
+            a[:, :, 3] = np.clip(a[:, :, 3] * alpha_gain, 0, 1)
+        else:
             a[:, :, 3] = 1.0   # Skyrim keeps gloss in the alpha of opaque textures
         self.index[key] = len(self.cells)
         self.cells.append((np.clip(a, 0, 1) * 255 + 0.5).astype(np.uint8))
+        self.big.append(big)
         return self.index[key]
 
     def image(self):
-        n = max(1, len(self.cells))
+        need = sum(4 if b else 1 for b in self.big)
         side = 1
-        while side * side < n:
+        while side * side < need + (2 * side if any(self.big) else 0):   # slack for 2x2 alignment
             side *= 2
-        img = np.zeros((side * CELL, side * CELL, 4), np.uint8)
+        used = np.zeros((side, side), bool)
+        self.layout = [None] * len(self.cells)
+        order = sorted(range(len(self.cells)), key=lambda i: not self.big[i])
+        for i in order:
+            n = 2 if self.big[i] else 1
+            for slot in range(side * side):
+                y, x = divmod(slot, side)
+                if y % n or x % n or y + n > side or x + n > side or used[y:y + n, x:x + n].any():
+                    continue
+                used[y:y + n, x:x + n] = True
+                self.layout[i] = (x, y, n)
+                break
+            else:
+                raise RuntimeError('atlas full')
+        C = self.cell
+        img = np.zeros((side * C, side * C, 4), np.uint8)
         for i, c in enumerate(self.cells):
-            y, x = divmod(i, side)
-            img[y * CELL:(y + 1) * CELL, x * CELL:(x + 1) * CELL] = c
+            x, y, n = self.layout[i]
+            img[y * C:(y + n) * C, x * C:(x + n) * C] = c
         return img, side
 
     def remap(self, uv, cell, side):
-        y, x = divmod(cell, side)
-        h = 0.5 / CELL
+        x, y, n = self.layout[cell]
+        h = 0.5 / (self.cell * n)
         u = np.clip(uv, h, 1 - h)
-        return np.c_[(x + u[:, 0]) / side, (y + u[:, 1]) / side].astype(np.float32)
+        return np.c_[(x + u[:, 0] * n) / side, (y + u[:, 1] * n) / side].astype(np.float32)
 
 
 def rot_between(a, b):
@@ -166,12 +249,14 @@ def rot_between(a, b):
     return np.eye(3) + K + K @ K / (1 + c)
 
 
-def nif_parts(lib, path):
+def nif_parts(lib, path, blended=False):
+    """Skinned shapes of a NIF. Blended shapes are left out unless `blended` (a FaceGen
+    head: its eyes, brows, beard and hairline are all alpha blended)."""
     d = lib.read('meshes' + SEP + path.replace('/', SEP))
     if d is None:
         print('  MISSING', path)
         return []
-    return [s for s in Nif(d).skinned() if not s.alpha_blend or s.alpha_test]
+    return [s for s in Nif(d).skinned() if blended or not s.alpha_blend or s.alpha_test]
 
 
 # ------------------------------------------------------------------ people

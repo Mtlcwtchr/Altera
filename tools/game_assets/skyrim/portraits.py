@@ -26,7 +26,8 @@ ORTHO = 0.46
 def render(a, look):
     nm, skel, fi, ic, _ = look
     R = a.rest_world(skel)
-    head = R[a.names.index('Head')][:3, 3]
+    hj = a.names.index('Head') if 'Head' in a.names else a.names.index('NPC Head [Head]')   # UAL or Skyrim rig
+    head = R[hj][:3, 3]
     target = head + [0, 0, 0.02]   # Skyrim heads sit lower on the rig than ours
     cam = target + [0.22, -1.2, 0.05]
     f = target - cam

@@ -4054,8 +4054,11 @@ private:
     // Skin from a small range of tones, hair from the family's line, cloth a
     // muted shade of the family's colour. Shared by the figure and its portrait.
     void personTints(const ActorSnap& a, float skin[3], float hair[3], float cloth[3]) const {
-        static const float kSkin[][3] = {{1.00f, 0.92f, 0.86f}, {0.94f, 0.80f, 0.70f}, {0.82f, 0.66f, 0.54f},
-                                         {0.66f, 0.50f, 0.40f}, {1.05f, 0.88f, 0.78f}};
+        // AL-71: fair European skin by default (the skin textures are baked to a light skin
+        // colour, see tools/game_assets/skyrim/actors.py SKIN_ALBEDO): small shifts round it,
+        // rosier, paler, a touch of sun, no dark tones.
+        static const float kSkin[][3] = {{1.00f, 1.00f, 1.00f}, {1.04f, 0.98f, 0.96f}, {0.97f, 0.93f, 0.90f},
+                                         {1.02f, 0.95f, 0.91f}, {0.93f, 0.87f, 0.82f}};
         static const float kHair[][3] = {{0.32f, 0.22f, 0.14f}, {0.16f, 0.12f, 0.10f}, {0.55f, 0.38f, 0.20f},
                                          {0.70f, 0.55f, 0.32f}, {0.45f, 0.20f, 0.10f}, {0.08f, 0.07f, 0.07f}};
         const std::uint64_t h = std::uint64_t(a.id) * 0x9E3779B97F4A7C15ull;

@@ -288,9 +288,9 @@ def read_aanim(path):
 
 
 # ------------------------------------------------------------------ meshes
-def read_part(lib, path, weight):
+def read_part(lib, path, weight, blended=False):
     """Skinned shapes of a part; a _1 (heavy) mesh is blended with its _0 (thin) twin."""
-    shapes = A.nif_parts(lib, path)
+    shapes = A.nif_parts(lib, path, blended)
     if path.endswith('_1.nif'):
         thin = A.nif_parts(lib, path[:-6] + '_0.nif')
         if len(thin) == len(shapes):
@@ -300,10 +300,45 @@ def read_part(lib, path, weight):
     return shapes
 
 
+FACEGEN = 'actors/character/facegendata/facegeom/'
+
+
+def shape_kind(sh, kind):
+    """What a shape is, by its texture: the skin under the clothes is skin, not cloth (AL-71:
+    the necks and arms took the family's cloth colour), brows and beards are hair."""
+    t = sh.texture.lower().replace(SEP, '/')
+    if '/hair/' in t or '/beards/' in t or 'brows/' in t:
+        return 'hair'
+    if '/eyes/' in t or '/mouth/' in t:
+        return 'plain'
+    if 'actors/character/male/' in t or 'actors/character/female/' in t:
+        return 'skin'
+    return kind
+
+
+def expand_looks(cfg):
+    """AL-71: every outfit with several FaceGen heads (head, eyes, brows, hair, beard of a
+    named Skyrim NPC, morphed and tinted by the game's own FaceGen bake): more faces."""
+    faces = cfg.get('faces')
+    if not faces:
+        return cfg['looks']
+    out = []
+    for sex in 'mf':
+        outs = [L for L in cfg['looks'] if L['look'][0] == sex]
+        fs = faces[sex]
+        for i, L in enumerate(outs):
+            for k, face in enumerate(fs[i::len(outs)]):
+                parts = [p for p in L['parts'] if p.get('kind') != 'hair'
+                         and not p['nif'].endswith(('head.nif', 'eyesmale.nif', 'eyesfemale.nif'))]
+                parts.append({'nif': FACEGEN + face['id'] + '.nif', 'kind': 'face'})
+                out.append({'look': L['look'] + '_' + face['name'].lower(), 'parts': parts, 'face': face['name']})
+    return out
+
+
 def bake_meshes(lib, cfg, rigs, nif_skel, atlas, weight, report):
     verts, idx, looks = [], [], []
     nv = 0
-    for L in cfg['looks']:
+    for L in expand_looks(cfg):
         sex = L['look'][0]
         si = 0 if sex == 'm' else 1
         rig, nsk = rigs[si], nif_skel[si]
@@ -317,7 +352,7 @@ def bake_meshes(lib, cfg, rigs, nif_skel, atlas, weight, report):
         first = len(idx)
         for part in L['parts']:
             kind = part.get('kind', 'plain')
-            for sh in read_part(lib, part['nif'], weight):
+            for sh in read_part(lib, part['nif'], weight, kind == 'face'):
                 if not any(b in nsk for b in sh.bones):
                     print('  no skeleton bone in', part['nif'])
                     continue
@@ -353,13 +388,19 @@ def bake_meshes(lib, cfg, rigs, nif_skel, atlas, weight, report):
                 top = np.argsort(-jw, axis=1)[:, :4]
                 tw = np.take_along_axis(jw, top, 1)
                 tw /= np.maximum(tw.sum(1, keepdims=True), 1e-9)
-                cell = atlas.add(lib, sh.texture, 'hair' if kind == 'hair' else 'plain', sh.alpha_test)
+                sk = shape_kind(sh, 'plain' if kind == 'face' else kind)
+                tint = sh.textures[6] if sk == 'skin' and len(sh.textures) > 6 else ''
+                eyes = '/eyes/' in sh.texture.lower().replace(SEP, '/')
+                cut = sh.alpha_test or sh.alpha_blend   # eyes too: the black round the iris is clear
+                gain = 1.0 if sh.alpha_test or eyes else 1.7   # blended brows/beards kept thick
+                cell = atlas.add(lib, sh.texture, sk if sk in ('hair', 'skin') else 'plain', cut,
+                                 tint=tint, big=bool(tint), alpha_gain=gain)
                 v = np.zeros(len(p), VDT)
                 v['pos'], v['nrm'], v['uv'], v['j'] = p, n, sh.uv, top
                 wq = np.round(tw * 255).astype(np.int32)
                 wq[:, 0] += 255 - wq.sum(1)
                 v['w'] = np.clip(wq, 0, 255)
-                v['k'] = {'skin': 1, 'hair': 2, 'cloth': 3}.get(kind, 0)
+                v['k'] = {'skin': 1, 'hair': 2, 'cloth': 3}.get(sk, 0)
                 verts.append((v, cell))
                 idx.append(sh.tris.reshape(-1).astype(np.uint32) + nv)
                 nv += len(p)
@@ -414,7 +455,7 @@ def main():
         d = [np.linalg.norm(FLIP @ nsk[nm][0][:3, 3] * sc - rig.rest_p[j]) for nm, j in rig.index.items() if nm in nsk]
         print('rig %s: %d bones, hkx vs nif rest max %.4f m' % ('mf'[si], rig.n, max(d)))
     report = []
-    atlas = A.Atlas()
+    atlas = A.Atlas(cell=256)
     verts, idx, looks = bake_meshes(lib, pc, rigs, nif_skel, atlas, a.weight, report)
 
     class Base:

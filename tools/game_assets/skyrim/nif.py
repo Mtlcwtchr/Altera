@@ -66,6 +66,7 @@ class Shape:
         self.nrm = None      # (n, 3)
         self.tris = None     # (m, 3) uint32
         self.texture = ''    # diffuse, a textures\... path
+        self.textures = []   # every slot of the texture set (6: the face tint of a FaceGen head)
         self.alpha_test = False
         self.alpha_blend = False
         self.weights = None  # (n, 4) float32, skinned shapes only
@@ -134,6 +135,7 @@ class Nif:
         return name, t, rot, s, kids
 
     def texture_of(self, shader):
+        self.last_textures = []
         if shader < 0:
             return '', False
         ty = self.types[shader]
@@ -151,6 +153,7 @@ class Nif:
             q = _R(self.data, self.offsets[ts])
             n = q.u32()
             tex = [q.sized() for _ in range(n)]
+            self.last_textures = tex
             return (tex[0] if tex else ''), False
         if ty == 'BSEffectShaderProperty':
             self._netobj(r)
@@ -228,6 +231,7 @@ class Nif:
             sh.bidx = raw[:, so + 8:so + 12].copy()
             sh.bones, sh.bind = self.skin_bones(skin)
         sh.texture, sh.alpha_blend = self.texture_of(shader)
+        sh.textures = self.last_textures
         test, blend = self.alpha_of(alpha)
         sh.alpha_test = test
         sh.alpha_blend = sh.alpha_blend or (blend and not test)
@@ -391,6 +395,7 @@ class Nif:
         sh.name = name
         sh.pos, sh.uv, sh.nrm, sh.tris = pos, uv, nrm, tris
         sh.texture, sh.alpha_blend = self.texture_of(shader)
+        sh.textures = self.last_textures
         test, blend = self.alpha_of(alpha)
         sh.alpha_test = test
         sh.alpha_blend = sh.alpha_blend or (blend and not test)
