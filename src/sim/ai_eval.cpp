@@ -315,7 +315,7 @@ void runConversation(World& w, Character& c, Character& other, const Json& param
                     break;
                 }
             trace(w, c, 'C', "dialog.refused", why);
-            sayRefusal(w, other, c, "consent"); // AL-36: the line itself (AL-53)
+            sayRefusal(w, other, c, "consent", "task.share_food_task.name"); // AL-36: the line itself (AL-53)
         }
     }
 }

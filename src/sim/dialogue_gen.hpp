@@ -90,6 +90,9 @@ struct Utterance {
     Epistemic epi;
     Stance stance;
     std::uint64_t seed = 0;
+    // The moment's own arguments the content has no role for (LOC v0.1 lines): action
+    // (text: interaction.<id>.name), give / get (item), person (char), need, deadline (text).
+    std::map<std::string, Ref> args;
     bool operator==(const Utterance&) const;
 };
 

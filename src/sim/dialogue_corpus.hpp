@@ -104,6 +104,8 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
 // (lower case); spaces tidied, the first letter capitalized. The dialogue layer (T6)
 // glues the parts the same way.
 std::string joinDialogueParts(const std::vector<std::string>& pieces, const std::set<std::string>& names = {});
+// The lower-case words of the string forms of the given person arguments (names for joinDialogueParts).
+std::set<std::string> dialogueNameWords(const Json& args, const std::vector<std::string>& keys);
 
 // Problems of one rendered line: "error: ..." / "warning: ..." prefixed. With `names`
 // (lower case words), a capital inside a sentence that is not a name is a warning.

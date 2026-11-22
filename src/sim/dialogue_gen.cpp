@@ -83,7 +83,8 @@ bool Stance::operator==(const Stance& o) const {
 }
 bool Utterance::operator==(const Utterance& o) const {
     return speaker == o.speaker && listener == o.listener && act == o.act && tone == o.tone &&
-           intent == o.intent && content == o.content && epi == o.epi && stance == o.stance && seed == o.seed;
+           intent == o.intent && content == o.content && epi == o.epi && stance == o.stance && seed == o.seed &&
+           args == o.args;
 }
 
 const Ref* Prop::role(const std::string& r) const {
@@ -135,6 +136,11 @@ Json toJson(const Utterance& u) {
         j["stance"] = {{"valence", u.stance.valence}, {"emphasis", u.stance.emphasis},
                        {"politeness", u.stance.politeness}};
     if (u.seed) j["seed"] = u.seed;
+    if (!u.args.empty()) {
+        Json a = Json::object();
+        for (const auto& [k, r] : u.args) a[k] = toJson(r);
+        j["args"] = a;
+    }
     return j;
 }
 
@@ -241,6 +247,15 @@ bool fromJson(const Json& j, Utterance& out, std::string* e) {
         out.content = std::move(p);
     }
     if (j.contains("epi") && !fromJson(j["epi"], out.epi, e)) return false;
+    if (j.contains("args")) {
+        const Json& a = j["args"];
+        if (!a.is_object()) return fail(e, "utterance: args is not an object");
+        for (auto it = a.begin(); it != a.end(); ++it) {
+            Ref r;
+            if (!fromJson(*it, r, e)) return false;
+            out.args[it.key()] = std::move(r);
+        }
+    }
     return true;
 }
 

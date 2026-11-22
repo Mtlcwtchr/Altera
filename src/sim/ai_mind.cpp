@@ -357,7 +357,7 @@ Start startAction(World& w, Character& c, std::string& why) {
             why = "refused:" + d->id;
             // AL-36: the "no" is said aloud, with the reason the other holds
             if (!creature->isAnimal()) {
-                const SaidLine line = sayRefusal(w, *creature, c, "consent");
+                const SaidLine line = sayRefusal(w, *creature, c, "consent", "interaction." + d->id + ".name");
                 if (c.controller.isPlayer()) {
                     Json o = {{"action", d->id}, {"success", false}, {"refused", true}, {"by", creature->id}};
                     if (line.ok()) o["said"] = line.key;

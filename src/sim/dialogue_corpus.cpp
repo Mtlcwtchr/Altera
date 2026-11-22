@@ -797,6 +797,16 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
     return out;
 }
 
+std::set<std::string> dialogueNameWords(const Json& args, const std::vector<std::string>& keys) {
+    std::set<std::string> out;
+    for (const auto& k : keys)
+        if (args.contains(k) && args[k].is_object())
+            for (auto it = args[k].begin(); it != args[k].end(); ++it)
+                if (it->is_string())
+                    for (const auto& w : words(it->get<std::string>())) out.insert(w);
+    return out;
+}
+
 std::string joinDialogueParts(const std::vector<std::string>& pieces, const std::set<std::string>& names) {
     std::string joined;
     for (const auto& p0 : pieces) {

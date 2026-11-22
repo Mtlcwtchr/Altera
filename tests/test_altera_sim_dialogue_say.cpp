@@ -10,6 +10,7 @@
 #include "sim/dialogue_rules.hpp"
 #include "sim/dialogue_say.hpp"
 #include "sim/loc.hpp"
+#include "sim/loc_gen.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace altera::sim;
@@ -210,4 +211,90 @@ TEST(altera_dialogue_say_barks_are_presentation_only) {
     CHECK(clean(utteranceText(realLoc(), "ru", w, a.utterance, a.key)));
     c.ai.fsm.state = "Sleep";
     CHECK(!chooseBark(w, c).ok());
+}
+
+// AL-58 (from the AL-54 corpus): the game's lines get every v0.1 argument (no raw
+// "{Action}"), the teller as {src}, the listener inside the content as "ты" / "вы"
+// toward the nobility, and the parts around a line glued into one sentence.
+TEST(altera_dialogue_say_v01_args_and_address) {
+    World w = realWorld();
+    auto people = adults(w);
+    CHECK(people.size() >= 3);
+    if (people.size() < 3) return;
+    Character& a = *people[0];
+    Character& b = *people[1];
+    Character& teller = *people[2];
+    const Loc& loc = realLoc();
+    const DialogueGenData& D = dialogueGenData(w.content());
+
+    Prop theft;
+    theft.pred = "theft";
+    theft.roles["doer"] = Ref{"char", b.id, "", 0.0, {}};
+    theft.roles["victim"] = Ref{"char", a.id, "", 0.0, {}};
+    theft.roles["object"] = Ref{"item", kNone, "flour", 0.0, {}};
+    theft.tense = "past";
+    Utterance u;
+    u.speaker = a.id;
+    u.listener = b.id;
+    u.act = "accuse";
+    u.content = theft;
+    u.epi.source = "told";
+    u.epi.chain = {teller.id};
+    u.seed = 11;
+    u.args["action"] = Ref{"text", kNone, "interaction.chat.name", 0.0, {}};
+
+    // every ported v0.1 line and every say.* line renders with nothing raw left
+    int bad = 0;
+    for (const std::string lang : {"ru", "en"})
+        for (const auto& r : D.rules) {
+            if (r.say.rfind("dialogue.", 0) != 0 && r.say.rfind("say.", 0) != 0) continue;
+            for (std::uint64_t seed = 1; seed <= 3; ++seed) {
+                u.seed = seed;
+                const std::string t = utteranceText(loc, lang, w, u, r.say);
+                if (!clean(t)) {
+                    if (bad < 5) std::printf("  raw %s %s: %s\n", lang.c_str(), r.say.c_str(), t.c_str());
+                    ++bad;
+                }
+            }
+        }
+    CHECK_EQ(bad, 0);
+
+    // the teller is {src}, the listener carries his id
+    Json args = utteranceArgs(loc, "ru", w, u);
+    CHECK(args.contains("src") && args["src"].value("id", kNone) == teller.id);
+    CHECK(args["listener"].value("id", kNone) == b.id);
+    CHECK(!args["listener"].contains("reg"));
+    // the listener's own deed is said to him: "ты"
+    std::string clause = realizeProp(loc, "ru", args["prop"], "clause", "", args, 1);
+    CHECK(clause.find("ты") != std::string::npos);
+    // toward the nobility: "вы"
+    b.traits.push_back("noble");
+    CHECK(addressedVy(w, a.id, b.id));
+    args = utteranceArgs(loc, "ru", w, u);
+    CHECK_EQ(args["listener"].value("reg", std::string()), std::string("vy"));
+    clause = realizeProp(loc, "ru", args["prop"], "clause", "", args, 1);
+    CHECK(clause.find("вы") != std::string::npos);
+    b.traits.pop_back();
+
+    // parts: a noise opener and a tail glue onto the line
+    std::string open, tail;
+    for (const auto& r : D.rules)
+        for (const auto& c : r.when) {
+            if (c.key != "slot" || c.values.empty()) continue;
+            if (open.empty() && c.values.front() == "noise.open") open = r.say;
+            if (tail.empty() && c.values.front() == "voice.tail") tail = r.say;
+        }
+    CHECK(!open.empty() && !tail.empty());
+    const std::string line = utteranceText(loc, "ru", w, u, "say.inform.told");
+    const std::string whole = utteranceText(loc, "ru", w, u, "say.inform.told", {open}, {tail});
+    CHECK(clean(whole));
+    CHECK(whole.size() > line.size());
+    Json params = {{"key", "say.inform.told"}, {"utt", toJson(u)}, {"pre", Json::array({open})},
+                   {"post", Json::array({tail})}};
+    const std::string traced = lineText(loc, "ru", w, params);
+    CHECK(traced.find(whole) != std::string::npos);
+    // the args survive the trace
+    Utterance back;
+    CHECK(fromJson(toJson(u), back));
+    CHECK(back == u);
 }
