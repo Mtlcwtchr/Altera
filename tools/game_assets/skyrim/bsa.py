@@ -12,6 +12,17 @@ import struct, sys, os
 SEP = chr(92)   # the archives' path separator
 
 
+def texture_key(path):
+    """A NIF's texture path -> the archive key. Some meshes keep the author's
+    absolute build path (skyrimhd/build/pc/data/textures/...): cut to
+    the textures folder (AL-68: those trees and plants drew as grey cards)."""
+    p = path.lower().replace('/', SEP).lstrip(SEP)
+    i = p.find('textures' + SEP)
+    if i > 0:
+        p = p[i:]
+    return p if p.startswith('textures' + SEP) else 'textures' + SEP + p
+
+
 def _lz4_block(src, out, pos=0, end=None):
     end = len(src) if end is None else end
     while pos < end:

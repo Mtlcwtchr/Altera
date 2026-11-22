@@ -4086,11 +4086,27 @@ private:
         return true;
     }
 
+    // AL-68: one textured ground tile (props "road_tile" / "soil_tile", a unit
+    // slab with its top at the origin) lying on the ground at x, y.
+    void groundTile(int piece, double x, double y, float yaw, float size, float r, float g, float b) {
+        if (propsPlaced_.size() >= StaticSet::kMaxPlaced - 1024) return;   // keep room for the buildings
+        Placed pl;
+        pl.piece = piece;
+        pl.rel[0] = x - eye_[0];
+        pl.rel[1] = y - eye_[1];
+        pl.rel[2] = groundAt(x, y) + 0.02 - eye_[2];
+        pl.yaw = yaw;
+        pl.scale = size;
+        pl.tint[0] = r, pl.tint[1] = g, pl.tint[2] = b;
+        propsPlaced_.push_back(pl);
+    }
+
     // Fields and gardens dug into the ground: the levelled pad (layPads) laid
     // with furrows of turned earth, two metres a tile along the field's rows,
     // dark and light by turns, a garden's beds greener; each tile sits on the
     // ground under it.
     void soilTiles(std::vector<Instance>& out) {
+        const int soilPiece = propPiece("soil_tile");
         for (const auto& b0 : buildings_) {
             if (b0.type != "field" && b0.type != "garden") continue;
             BuildingSnap b;
@@ -4124,6 +4140,13 @@ private:
                     in.colour[0] = in.colour2[0] = r * n;
                     in.colour[1] = in.colour2[1] = g * n;
                     in.colour[2] = in.colour2[2] = bl * n;
+                    if (soilPiece >= 0) {   // AL-68: the textured tile, shaded like the block
+                        const float k = (ridge ? 1.0f : 0.72f) * n;
+                        groundTile(soilPiece, x, y, yaw, float(t) * 1.02f,
+                                   garden && ridge ? 0.85f * k : k, garden && ridge ? 1.05f * k : k,
+                                   garden && ridge ? 0.75f * k : k);
+                        continue;
+                    }
                     out.push_back(in);
                 }
         }
@@ -4132,6 +4155,7 @@ private:
     // AL-8: the village's roads as beaten earth, tiles of 2 m along each
     // polyline laid on the ground, a little paler at the edges.
     void roadTiles(std::vector<Instance>& out) {
+        const int roadPiece = propPiece("road_tile");
         for (std::size_t r = 0; r < roads_.size(); ++r) {
             const auto& line = roads_[r];
             const double width = r < roadWidth_.size() ? roadWidth_[r] : 3.0;
@@ -4162,6 +4186,13 @@ private:
                         in.colour[0] = in.colour2[0] = (edge ? 0.47f : 0.40f) * n;
                         in.colour[1] = in.colour2[1] = (edge ? 0.40f : 0.33f) * n;
                         in.colour[2] = in.colour2[2] = (edge ? 0.30f : 0.24f) * n;
+                        if (roadPiece >= 0) {   // AL-68: the textured tile, square, turned by quarters
+                            const float shade = (edge ? 1.12f : 1.0f) * n;
+                            const float quarter = float((std::uint64_t(i * 2654435761u) ^ std::uint64_t(s * 97u + k * 31u)) % 4) * 1.5707963f;
+                            groundTile(roadPiece, x, y, yaw + quarter,
+                                       float(std::max(width / across, len / steps)) * 1.04f, shade, shade, shade);
+                            continue;
+                        }
                         out.push_back(in);
                     }
             }

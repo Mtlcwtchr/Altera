@@ -311,7 +311,8 @@ class Nif:
                 if has_w:
                     nv = q.u16()
                     q.p += 6 * nv
-                binds.append(np.linalg.inv(M))
+                # tree wind bones (BSTreeNode) can carry a degenerate bind: statics don't need it
+                binds.append(np.linalg.inv(M) if np.isfinite(M).all() and abs(np.linalg.det(M)) > 1e-12 else np.eye(4))
         return names, binds
 
     def skinned(self):

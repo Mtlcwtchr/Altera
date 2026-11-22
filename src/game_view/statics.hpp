@@ -41,7 +41,7 @@ public:
     void draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, const float viewProjection[16],
               const terrain_core::LightUniforms& light);
 
-    static constexpr std::size_t kMaxPlaced = 2048;
+    static constexpr std::size_t kMaxPlaced = 16384;   // AL-68: road and field tiles too
 
     StaticSet() = default;
     StaticSet(const StaticSet&) = delete;

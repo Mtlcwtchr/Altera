@@ -14,7 +14,7 @@
     {"piece": "tree",          "nif": "landscape/trees/treeaspen01.nif", "fit_h": 11.0},
     {"piece": "bee_tree",      "nif": "landscape/trees/treeaspen03.nif", "fit": 6.0},
     {"piece": "oak_grove",     "nif": "landscape/trees/treeaspen05.nif", "fit_h": 13.0},
-    {"piece": "fruit_tree",    "nif": "landscape/trees/reachtree01.nif", "fit": 4.5},
+    {"piece": "fruit_tree",    "nif": "landscape/trees/treeaspen06.nif", "fit": 4.5, "note": "AL-68: the Reach tree read as a dead one by a house"},
     {"piece": "deadwood",      "nif": "landscape/trees/treeaspenlog01.nif", "fit": 3.0},
     {"piece": "riverbank",     "nif": "landscape/rocks/rockpilel01.nif", "fit": 2.4},
     {"piece": "rock_outcrop",  "nif": "landscape/rocks/rockpilel02.nif", "fit": 4.0},
@@ -60,7 +60,9 @@
     {"piece": "game_trail",    "nif": "clutter/bones/deerskullhornsstatic.nif", "fit": 0.6, "note": "an antlered skull marks the trail"},
     {"piece": "fish_pool",     "nif": "clutter/largerainbarrelwater01.nif", "hide": true, "note": "nothing drawn: the water shows it"},
     {"piece": "corpse",        "nif": "clutter/bones/deerskullstatic.nif", "fit": 0.4},
-    {"piece": "well",          "nif": "architecture/farmhouse/farmwell01.nif", "fit": 3.5, "ground": "origin", "note": "AL-7"}
+    {"piece": "well",          "nif": "architecture/farmhouse/farmwell01.nif", "fit": 3.5, "ground": "origin", "note": "AL-7"},
+    {"piece": "road_tile",     "tile": "landscape/roads/road01.dds", "note": "AL-68: village roads (Skyrim's cobbled road)"},
+    {"piece": "soil_tile",     "tile": "landscape/dirt02.dds", "note": "AL-68: furrows of fields and gardens"}
   ],
   "actors": {
    "_doc": "AL-11 people and beasts (tools/game_assets/skyrim/actors.py): Skyrim meshes moved onto our rigs so our clips play on them. Every entry is a dev stand-in: replace_before_prod. kind: skin (klass 1, tinted by skin tone), hair (klass 2, greyed and tinted by hair colour), cloth (klass 3, tinted by the family colour), else plain.",
