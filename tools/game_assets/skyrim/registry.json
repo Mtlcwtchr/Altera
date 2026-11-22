@@ -73,6 +73,37 @@
    "people": {
     "skeleton_m": "actors/character/character assets/skeleton.nif",
     "skeleton_f": "actors/character/character assets female/skeleton_female.nif",
+    "faces": {
+      "_doc": "AL-71: FaceGen heads (head, eyes, brows, hair, beard) of named Skyrim.esm NPCs, Nord/Breton/Imperial; outfit i of a sex takes faces i, i+n, ...; dev stand-ins, replace before prod",
+      "m": [
+        {"id": "skyrim.esm/0002bf9f", "name": "Hadvar"},
+        {"id": "skyrim.esm/0002bf9d", "name": "Ralof"},
+        {"id": "skyrim.esm/000350a7", "name": "Erik"},
+        {"id": "skyrim.esm/00013475", "name": "Alvor"},
+        {"id": "skyrim.esm/0001334e", "name": "Bolli"},
+        {"id": "skyrim.esm/000ae77d", "name": "Angvid"},
+        {"id": "skyrim.esm/00013ba1", "name": "Belethor"},
+        {"id": "skyrim.esm/0001a670", "name": "Mikael"},
+        {"id": "skyrim.esm/0001a692", "name": "Farkas"},
+        {"id": "skyrim.esm/0001334d", "name": "Bersi"},
+        {"id": "skyrim.esm/0003550b", "name": "Embry"},
+        {"id": "skyrim.esm/0001a6db", "name": "Torvar"}
+      ],
+      "f": [
+        {"id": "skyrim.esm/00013bab", "name": "Ysolda"},
+        {"id": "skyrim.esm/0001347b", "name": "Camilla"},
+        {"id": "skyrim.esm/00013b99", "name": "Carlotta"},
+        {"id": "skyrim.esm/000a2c8e", "name": "Lydia"},
+        {"id": "skyrim.esm/000a2c8f", "name": "Jordis"},
+        {"id": "skyrim.esm/000133b7", "name": "Senna"},
+        {"id": "skyrim.esm/0001337c", "name": "Svana"},
+        {"id": "skyrim.esm/00013476", "name": "Sigrid"},
+        {"id": "skyrim.esm/00013297", "name": "Lisette"},
+        {"id": "skyrim.esm/0001326a", "name": "Elisif"},
+        {"id": "skyrim.esm/00013b9b", "name": "Olfina"},
+        {"id": "skyrim.esm/00013364", "name": "Ingun"}
+      ]
+    },
     "looks": [
      {
       "look": "m_peasant_parted",
