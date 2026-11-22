@@ -219,6 +219,26 @@ private:
     void seal(float cx, float cy);
     float textW(const std::string& s, float px, bool titleFace = false) const;
 
+    // the Edge style's primitives (hud_edge.cpp, AL-63)
+    static std::string upper(const std::string& s);
+    void quad(const SDL_FPoint p[4], const ui::Colour c[4]);
+    void thickLine(float x0, float y0, float x1, float y1, float w, const ui::Colour& c);
+    void gradRect(const ui::Rect& r, const ui::Colour& a, const ui::Colour& b, bool vertical);
+    // a diamond of side `size` at (cx, cy): glass (or `fill`), the gold contour, lit: glowing, twice: a second contour
+    void diamond(float cx, float cy, float size, bool lit = false, bool twice = false, const ui::Colour* fill = nullptr);
+    bool diamondButton(float cx, float cy, float size, const std::string& iconName, bool on, const std::string& tip = "",
+                       bool dim = false);
+    void frameBar(const ui::Rect& r, float frac, const ui::Colour& fill);                   // a thin meter, gold contour
+    void filiBar(const ui::Rect& r, float frac, const ui::Colour& fill, const std::string& iconName);   // medallion and filigree
+    void glass(const ui::Rect& r, bool framed = false);
+    void selRow(const ui::Rect& r);                                                         // gradient, tick, bracket
+    float keyCap(float x, float y, const std::string& key, float px = 13);                  // returns its width
+    void tick(float x, float y, float h, const ui::Colour& c);
+    float capsW(const std::string& s, float px, float spacing = -1, bool titleFace = true) const;
+    void caps(float x, float y, const std::string& s, const ui::Colour& c, float px, float spacing = -1,
+              bool titleFace = true, bool shadow = false);
+    bool edgeButton(const ui::Rect& r, const std::string& s, bool primary = false, bool enabled = true);
+
     // parts of the screen
     void names(const Snapshot& s);
     void topMenu(float W);
@@ -267,6 +287,7 @@ private:
     // the workshop's parts (hud.cpp, after the design canvas boards 10-15)
     bool iconButton(const ui::Rect& r, const std::string& iconName, bool on, const std::string& tip, bool dim = false);
     void tipAt(float cx, float y, const std::string& tip);
+    void drawTip(float W, float H);
     void craftBench(const Snapshot& s, float W, float H);
     void craftHelperView(const Snapshot& s, float W, float H);
     void craftBook(const Snapshot& s, float W, float H);

@@ -414,32 +414,49 @@ bool Hud::clicked(const Rect& r) {
     return in_->pressed && ui_->hovered(r);
 }
 
+// A round icon button of style G; in the Edge style (AL-63) a diamond in the same box.
 bool Hud::roundButton(const Rect& r, const std::string& iconName, bool on, const std::string& tip) {
+    if (!hudPalette().theme.flag("textured"))
+        return diamondButton(r.x + r.w * 0.5f, r.y + r.h * 0.5f, r.w * 0.74f, iconName, on, tip);
     const bool hot = ui_->hovered(r);
     box(on ? Skin::ButtonOn : Skin::Button, r, r.h * 0.5f);
     if (hot && !on) disc(r.x + r.w * 0.5f, r.y + r.h * 0.5f, r.w * 0.5f - 1, kGold.withAlpha(0.16f));
     const float s = std::round(r.w * 0.5f);
     icon(iconName, {r.x + (r.w - s) * 0.5f, r.y + (r.h - s) * 0.5f, s, s},
          on ? kDark : hot ? kHot : kText);
-    if (hot && !tip.empty()) {
-        const float w = textW(tip, 14) + 20;
-        const Rect t{r.x + r.w * 0.5f - w * 0.5f, r.bottom() + 10, w, 28};
-        box(Skin::Leather, t, 14);
-        label(t.x + 10, t.y + 5, tip, kText, 14);
-    }
+    if (hot && !tip.empty()) tipAt(r.x + r.w * 0.5f, r.bottom() + 10, tip);
     return clicked(r);
 }
 
+// A chip: `dark` is the chosen one. Edge: a 1 px gold contour, the chosen one glazed gold.
 bool Hud::textButton(const Rect& r, const std::string& s, bool dark) {
     const bool hot = ui_->hovered(r);
-    box(dark ? Skin::ChipOn : Skin::Chip, r, r.h * 0.5f);
-    if (hot) ui_->roundRect(r, dark ? kText.withAlpha(0.08f) : kLine.withAlpha(0.12f), r.h * 0.5f);
+    const bool edge = !hudPalette().theme.flag("textured");
+    if (edge) {
+        if (dark) gradRect(r, kGold.withAlpha(0.28f), kGold.withAlpha(0.12f), true);
+        else ui_->rect(r, kText.withAlpha(0.03f));
+        ui_->border(r, dark ? kGold : kGold.withAlpha(0.45f), 1.0f, 0);
+        if (hot) ui_->border(r.inset(1), kGoldPale.withAlpha(0.5f), 1.0f, 0);
+    } else {
+        box(dark ? Skin::ChipOn : Skin::Chip, r, r.h * 0.5f);
+        if (hot) ui_->roundRect(r, dark ? kText.withAlpha(0.08f) : kLine.withAlpha(0.12f), r.h * 0.5f);
+    }
     const float w = textW(s, 15);
-    ui_->text(r.x + (r.w - w) * 0.5f, r.y + (r.h - ui_->textHeight(1.0f)) * 0.5f, s, dark ? kText : kInk, 1.0f);
+    ui_->text(r.x + (r.w - w) * 0.5f, r.y + (r.h - ui_->textHeight(1.0f)) * 0.5f, s,
+              edge ? (dark ? kHot : hot ? kGoldPale : kText) : dark ? kText : kInk, 1.0f);
     return clicked(r);
 }
 
-void Hud::seal(float cx, float cy) { box(Skin::Seal, {cx - 17, cy - 17, 34, 34}, 17); }
+// The wax seal of style G; Edge: a small double gold diamond, the panel's ornament.
+void Hud::seal(float cx, float cy) {
+    if (hudPalette().theme.flag("textured")) {
+        box(Skin::Seal, {cx - 17, cy - 17, 34, 34}, 17);
+        return;
+    }
+    diamond(cx, cy, 18, false, false);
+    const Colour f = kGold.withAlpha(0.8f);
+    diamond(cx, cy, 6, false, false, &f);
+}
 
 void Hud::dimmer(float W, float H, float a) {
     ui_->rect({0, 0, W, H}, kRim.withAlpha(a));
@@ -646,6 +663,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     sdl_ = ui.renderer();
     selected_ = selected;
     clock_ = std::chrono::duration<double>(SnapClock::now() - started_).count();
+    tipText_.clear();
     const ActorSnap* sel = actor(s, selected);
     // Portraits follow life and death: drop the dead's coloured one.
     for (const auto& a : s.actors)
@@ -721,6 +739,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         box(Skin::Paper, r, 15);
         label(r.x + 14, r.y + 6, t, kInkRed, 14);
     }
+    drawTip(W, H);   // AL-63: every panel's tooltip, over everything
 }
 
 // Names over the people near the camera, a bubble over anyone in want.
@@ -2458,6 +2477,18 @@ std::string Hud::craftIconOf(const char* map, const std::string& id, const char*
 }
 
 // The tooltip of what is under the mouse: drawn last, over everything.
+// The tooltip asked for this frame (tipAt), over everything: glass with a gold frame.
+void Hud::drawTip(float W, float H) {
+    if (tipText_.empty()) return;
+    const float w = std::min(textW(tipText_, 14) + 26, 460.f);
+    const float x = std::clamp(tipX_ - w * 0.5f, 8.f, W - w - 8);
+    const float yy = std::clamp(tipY_, 8.f, H - 40);
+    const Rect t{x, yy, w, 32};
+    box(Skin::Paper, t, 3);
+    label(t.x + 13, t.y + 7, ui_->fit(tipText_, w - 26, 14 / 15.f), kInk, 14);
+    tipText_.clear();
+}
+
 void Hud::tipAt(float cx, float y, const std::string& tip) {
     tipText_ = tip;
     tipX_ = cx;
@@ -2588,15 +2619,7 @@ void Hud::workshop(const Snapshot& s, float W, float H) {
         icon(ic, {in_->mouseX - 14, in_->mouseY - 14, 28, 28}, kGoldPale);
         if (in_->released) dragRef_.clear();
     }
-    if (!tipText_.empty()) {
-        const float w = std::min(textW(tipText_, 14) + 26, 460.f);
-        float x = std::clamp(tipX_ - w * 0.5f, 8.f, W - w - 8);
-        float y = tipY_;
-        if (y + 34 > H) y = H - 40;
-        const Rect t{x, y, w, 32};
-        box(Skin::Paper, t, 14);
-        label(t.x + 13, t.y + 7, ui_->fit(tipText_, w - 26, 14 / 15.f), kInk, 14);
-    }
+    drawTip(W, H);
 }
 
 // Board 10: the bench in the world.
@@ -3558,14 +3581,7 @@ void Hud::backstory(float W, float H) {
         host_->command("start_backstory", {{"backstory", b.id}});
         panel = "none";
     }
-    if (!tipText_.empty()) {
-        const float w = std::min(textW(tipText_, 14) + 26, 460.f);
-        const float x = std::clamp(tipX_ - w * 0.5f, 8.f, W - w - 8);
-        const float yy = std::clamp(tipY_, 8.f, H - 40);
-        const Rect t{x, yy, w, 32};
-        box(Skin::Paper, t, 14);
-        label(t.x + 13, t.y + 7, ui_->fit(tipText_, w - 26, 14 / 15.f), kInk, 14);
-    }
+    drawTip(W, H);
 }
 
 } // namespace altera::game
