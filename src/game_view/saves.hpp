@@ -40,6 +40,8 @@ struct GameSettings {
     bool cameraFollow = true;   // the camera rides on the selected person
     int wallMode = 1;           // AL-56: the walls in the top view, 0 up, 1 cut away, 2 down
     int idleAutonomyS = 20;     // free mode: idle seconds before the person lives by itself
+    std::string uiStyle = "edge";  // AL-62: the interface theme (content/ui/themes/<id>.json)
+    int uiScale = 100;          // AL-62: the interface size, 80..130 %
 };
 
 std::filesystem::path saveDir();

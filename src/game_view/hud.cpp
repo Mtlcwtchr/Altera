@@ -1,4 +1,5 @@
 #include "game_view/hud.hpp"
+#include "game_view/hud_style.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -16,23 +17,7 @@ using ui::Colour;
 using ui::Rect;
 constexpr float kPiF = 3.14159265f;
 
-// Style G of the design canvas.
-const Colour kNavy = Colour::rgb(22, 29, 40);
-const Colour kGold = Colour::rgb(226, 197, 122);
-const Colour kGoldPale = Colour::rgb(243, 226, 168);
-const Colour kGoldDark = Colour::rgb(168, 135, 62);
-const Colour kRim = Colour::rgb(16, 22, 30);
-const Colour kText = Colour::rgb(239, 230, 207);
-const Colour kInk = Colour::rgb(43, 38, 32);
-const Colour kInkSoft = Colour::rgb(94, 85, 70);
-const Colour kInkRed = Colour::rgb(150, 40, 31);
-const Colour kGood = Colour::rgb(79, 154, 76);
-const Colour kMid = Colour::rgb(201, 150, 42);
-const Colour kBad = Colour::rgb(200, 64, 44);
-const Colour kRingGood = Colour::rgb(143, 217, 138);
-const Colour kRingMid = Colour::rgb(240, 200, 90);
-const Colour kRingBad = Colour::rgb(255, 122, 98);
-const Colour kDark = Colour::rgb(28, 34, 44);
+using namespace hudroles;   // the palette's roles (hud_style.hpp): colours from the theme (AL-62)
 
 Colour barColour(double v) { return v < 0.35 ? kBad : v < 0.55 ? kMid : kGood; }
 Colour ringColour(double v) { return v < 0.35 ? kRingBad : v < 0.55 ? kRingMid : kRingGood; }
@@ -106,6 +91,17 @@ constexpr int kMargin = 8, kShadow = 10;
 bool Hud::init(SDL_Renderer* renderer, const fs::path& root, std::string* why) {
     sdl_ = renderer;
     root_ = root;
+    // AL-62: the look from content/ui/themes/<id>.json (a missing file: the Edge defaults)
+    {
+        std::string whyTheme;
+        std::vector<std::string> skipped;
+        const fs::path themes = root / "content/ui/themes";
+        applyHudTheme(UiTheme::load(themes / (themeId + ".json"), &whyTheme, &skipped));
+        if (!whyTheme.empty()) SDL_Log("hud: theme: %s", whyTheme.c_str());
+        for (const auto& k : skipped) SDL_Log("hud: theme %s: %s is not a valid value, the default stays", themeId.c_str(), k.c_str());
+        themeList.clear();
+        for (const auto& id : UiTheme::list(themes)) themeList.push_back({id, UiTheme::load(themes / (id + ".json")).nameKey});
+    }
     const fs::path ui = root / "assets/altera_game/ui";
     if (!loadImage(ui / "leather.png", leather_.w, leather_.h, leather_.rgba) ||
         !loadImage(ui / "paper.png", paper_.w, paper_.h, paper_.rgba)) {
@@ -164,23 +160,88 @@ void Hud::shutdown() {
     minimap_ = nullptr;
 }
 
+// The palette and the theme it came from (hud_style.hpp, AL-62).
+namespace {
+void fillPalette(HudPalette& p, const UiTheme& t) {
+    p.theme = t;
+    const auto c = [&](const char* k) { return toColour(t.colour(k)); };
+    p.panel = c("frost_solid");
+    if (t.flag("blur")) p.panel = c("frost");
+    p.card = c("card");
+    p.tip = c("tip");
+    p.gold = c("acc");
+    p.goldPale = c("gold2");
+    p.goldDark = c("gold_dark");
+    p.rim = c("rim");
+    p.text = c("ink");
+    p.mute = c("mute");
+    p.hot = c("hot");
+    // writing on a card: the cards are glass like the panels, so the same bone and ash
+    p.cardInk = c("ink");
+    p.cardInkSoft = c("mute");
+    p.cardLine = c("acc");
+    p.cardRed = c("bad");
+    p.good = c("good");
+    p.mid = c("warn");
+    p.bad = c("bad");
+    p.ringGood = c("good");
+    p.ringMid = c("warn");
+    p.ringBad = c("bad");
+    p.dark = c("rim");
+    p.seal = c("red");
+    p.red = c("red");
+    p.grn = c("grn");
+    p.blu = c("blu");
+    p.unk = c("unk");
+    p.line = c("line");
+    p.frame = c("frame");
+    p.sel = c("sel");
+    p.key = c("key");
+    p.keyEdge = c("key_edge");
+    p.dim = c("dim");
+}
+} // namespace
+
+HudPalette& hudPalette() {
+    static HudPalette p = [] {
+        HudPalette q;
+        fillPalette(q, UiTheme());
+        return q;
+    }();
+    return p;
+}
+
+void applyHudTheme(const UiTheme& t) { fillPalette(hudPalette(), t); }
+
 // ---------------------------------------------------------------- painting
+namespace {
+Px px(const Colour& c, float alpha = -1) { return {c.r, c.g, c.b, alpha < 0 ? c.a : alpha}; }
+} // namespace
+
 SDL_Texture* Hud::skin(Skin kind, int w, int h, float radius, std::uint32_t colour) {
     char key[96];
     std::snprintf(key, sizeof key, "%d:%d:%d:%.1f:%06x", int(kind), w, h, radius, colour);
     const auto it = skins_.find(key);
     if (it != skins_.end()) return it->second;
+    const HudPalette& P = hudPalette();
+    const bool textured = P.theme.flag("textured");
+    const float line = std::max(1.0f, P.theme.size("line", 1.0f));
     const int W = w + 2 * kMargin, H = h + 2 * kMargin + kShadow;
-    std::vector<Px> px(std::size_t(W) * H, Px{0, 0, 0, 0});
+    std::vector<Px> pxs(std::size_t(W) * H, Px{0, 0, 0, 0});
     const float cx = kMargin + w * 0.5f, cy = kMargin + h * 0.5f, hx = w * 0.5f, hy = h * 0.5f;
-    const float r = std::min(radius, std::min(hx, hy));
+    const bool plate = kind == Skin::Leather || kind == Skin::Paper;
+    // Glass panels and cards keep the theme's small corner; round buttons stay round.
+    const float rr = plate && !textured ? std::min(radius, P.theme.size("radius", 2.0f)) : radius;
+    const float r = std::min(rr, std::min(hx, hy));
     const bool paperLike = kind == Skin::Paper;
     const bool ringOnly = kind == Skin::Ring;
-    const float outer = kind == Skin::Leather ? 5.0f : paperLike ? 4.0f : ringOnly ? 6.5f
-                      : kind == Skin::Chip || kind == Skin::ChipOn ? 1.5f : 0.0f;
+    const float outer = textured ? (kind == Skin::Leather ? 5.0f : paperLike ? 4.0f : ringOnly ? 6.5f
+                                   : kind == Skin::Chip || kind == Skin::ChipOn ? 1.5f : 0.0f)
+                                 : (ringOnly ? 4.5f : kind == Skin::Disc ? 0.0f : kind == Skin::Seal ? 1.5f : line);
     const float shadowA = (kind == Skin::Button || kind == Skin::ButtonOn || kind == Skin::Chip || kind == Skin::ChipOn) ? 0.0f
-                        : kind == Skin::Seal ? 0.35f : 0.3f;
-    const float shadowY = kind == Skin::Seal ? 3.0f : 9.0f;
+                        : kind == Skin::Seal ? 0.35f : textured ? 0.3f : 0.22f;
+    const float shadowY = kind == Skin::Seal ? 3.0f : textured ? 9.0f : 6.0f;
+    const Px gold = px(P.gold), goldPale = px(P.goldPale), goldDark = px(P.goldDark), rim = px(P.rim);
     for (int y = 0; y < H; ++y)
         for (int x = 0; x < W; ++x) {
             const float fx = x + 0.5f, fy = y + 0.5f;
@@ -193,38 +254,43 @@ SDL_Texture* Hud::skin(Skin kind, int w, int h, float radius, std::uint32_t colo
             // the body
             if (!ringOnly && d < 0.5f) {
                 Px body{0, 0, 0, 0};
-                const Image* tile = kind == Skin::Leather ? &leather_ : paperLike ? &paper_ : nullptr;
-                if (kind == Skin::Leather) body = rgb(0x161d28);
-                else if (paperLike) body = rgb(0xefe4c8);
-                else if (kind == Skin::Button) body = Px{0, 0, 0, 0.22f};
-                else if (kind == Skin::ButtonOn) body = rgb(0xe2c57a);
-                else if (kind == Skin::Seal) body = rgb(0xa8322a);
-                else if (kind == Skin::Chip) body = Px{43 / 255.f, 38 / 255.f, 32 / 255.f, 0.08f};
-                else if (kind == Skin::ChipOn) body = rgb(0x2b2620);
+                const Image* tile = !textured ? nullptr : kind == Skin::Leather ? &leather_ : paperLike ? &paper_ : nullptr;
+                if (kind == Skin::Leather) body = px(P.panel);
+                else if (paperLike) body = px(P.card);
+                else if (kind == Skin::Button) body = textured ? Px{0, 0, 0, 0.22f} : px(P.panel, 0.6f);
+                else if (kind == Skin::ButtonOn) body = textured ? gold : px(P.gold, 0.30f);
+                else if (kind == Skin::Seal) body = px(P.seal);
+                else if (kind == Skin::Chip) body = textured ? px(P.cardInk, 0.08f) : px(P.text, 0.04f);
+                else if (kind == Skin::ChipOn) body = textured ? px(P.dark) : px(P.gold, 0.24f);
                 else if (kind == Skin::Disc) body = rgb(colour);
                 if (tile && tile->w > 0) {
                     const std::uint8_t* t = tile->rgba.data() + (std::size_t(y % tile->h) * tile->w + x % tile->w) * 4;
                     over(body, Px{t[0] / 255.f, t[1] / 255.f, t[2] / 255.f, t[3] / 255.f});
                 }
                 const float inside = -d;
-                if (kind == Skin::Leather) {
+                if (kind == Skin::Leather && textured) {
                     if (boxDist(fx, fy - 2, cx, cy, hx, hy, r) > 0) over(body, Px{1, 1, 1, 0.10f});
                     if (boxDist(fx, fy + 3, cx, cy, hx, hy, r) > 0) over(body, Px{0, 0, 0, 0.40f});
-                } else if (paperLike) {
-                    over(body, Px{122 / 255.f, 92 / 255.f, 40 / 255.f, 0.38f * std::exp(-inside / 9.0f)});
+                } else if (kind == Skin::Leather) {
+                    // glass: a faint sheen at the top, the gold hairline down the left edge
+                    over(body, Px{1, 1, 1, 0.035f * std::clamp(1.0f - (fy - (cy - hy)) / std::max(1.0f, hy), 0.f, 1.f)});
+                    if (fx - (cx - hx) < line + 0.5f) over(body, px(P.gold, 0.55f));
+                } else if (paperLike && textured) {
+                    over(body, Px{gold.r, gold.g, gold.b, 0.38f * std::exp(-inside / 9.0f)});
                     if (inside < 2) over(body, Px{1, 1, 1, 0.45f});
-                } else if (kind == Skin::Button) {
+                } else if (kind == Skin::Button && textured) {
                     if (boxDist(fx, fy - 2, cx, cy, hx, hy, r) > 0) over(body, Px{0, 0, 0, 0.45f});
                     if (boxDist(fx, fy + 1, cx, cy, hx, hy, r) > 0) over(body, Px{1, 1, 1, 0.10f});
-                } else if (kind == Skin::ButtonOn) {
-                    if (boxDist(fx, fy - 2, cx, cy, hx, hy, r) > 0) over(body, rgb(0xf9efc8));
-                    if (boxDist(fx, fy + 3, cx, cy, hx, hy, r) > 0) over(body, rgb(0xa8873e));
+                } else if (kind == Skin::ButtonOn && textured) {
+                    if (boxDist(fx, fy - 2, cx, cy, hx, hy, r) > 0) over(body, px(P.hot));
+                    if (boxDist(fx, fy + 3, cx, cy, hx, hy, r) > 0) over(body, goldDark);
                 } else if (kind == Skin::Seal) {
-                    if (boxDist(fx, fy - 2, cx, cy, hx, hy, r) > 0) over(body, rgb(0xde7462));
-                    if (boxDist(fx, fy + 3, cx, cy, hx, hy, r) > 0) over(body, rgb(0x6a1a16));
-                    if (inside > 7 && inside < 8.5f) over(body, rgb(0x7c211c));
-                } else if (kind == Skin::Chip) {
-                    if (inside < 1.5f) over(body, Px{122 / 255.f, 92 / 255.f, 40 / 255.f, 0.5f});
+                    Px lit = px(P.seal.lerp(Colour{1, 1, 1, 1}, 0.3f)), shade = px(P.seal.lerp(P.rim, 0.5f));
+                    if (boxDist(fx, fy - 2, cx, cy, hx, hy, r) > 0) over(body, lit);
+                    if (boxDist(fx, fy + 3, cx, cy, hx, hy, r) > 0) over(body, shade);
+                    if (inside > 7 && inside < 8.5f) over(body, shade);
+                } else if (kind == Skin::Chip && textured) {
+                    if (inside < 1.5f) over(body, Px{gold.r, gold.g, gold.b, 0.5f});
                 }
                 body.a *= cover(d);
                 over(p, body);
@@ -232,30 +298,37 @@ SDL_Texture* Hud::skin(Skin kind, int w, int h, float radius, std::uint32_t colo
             // the rings outside
             if (outer > 0 && d > -0.5f && d < outer + 0.5f) {
                 Px ring{0, 0, 0, 0};
-                if (kind == Skin::Leather) {
-                    over(ring, Px{rgb(0xf3e2a8).r, rgb(0xf3e2a8).g, rgb(0xf3e2a8).b, band(d, 0, 1.5f)});
-                    const Px gd = rgb(0xa8873e);
-                    over(ring, Px{gd.r, gd.g, gd.b, band(d, 1.5f, 3.5f)});
-                    const Px rim = rgb(0x10161e);
+                if (!textured) {
+                    if (ringOnly) {   // the double contour of a portrait: gold, a dark gap, gold faint
+                        over(ring, Px{gold.r, gold.g, gold.b, band(d, 0, 1.5f)});
+                        over(ring, Px{rim.r, rim.g, rim.b, 0.75f * band(d, 1.5f, 3.0f)});
+                        over(ring, Px{gold.r, gold.g, gold.b, 0.5f * band(d, 3.0f, 4.5f)});
+                    } else {
+                        const float a = kind == Skin::ButtonOn ? 1.0f : kind == Skin::Seal ? 0.8f
+                                      : kind == Skin::Leather ? 0.35f : P.frame.a;
+                        const Px e = kind == Skin::ButtonOn ? goldPale : gold;
+                        over(ring, Px{e.r, e.g, e.b, a * band(d, 0, outer)});
+                    }
+                } else if (kind == Skin::Leather) {
+                    over(ring, Px{goldPale.r, goldPale.g, goldPale.b, band(d, 0, 1.5f)});
+                    over(ring, Px{goldDark.r, goldDark.g, goldDark.b, band(d, 1.5f, 3.5f)});
                     over(ring, Px{rim.r, rim.g, rim.b, band(d, 3.5f, 5.0f)});
                 } else if (paperLike) {
-                    const Px e = rgb(0x8a6f34), rim = rgb(0x10161e);
-                    over(ring, Px{e.r, e.g, e.b, band(d, 0, 1.5f)});
+                    over(ring, Px{goldDark.r, goldDark.g, goldDark.b, band(d, 0, 1.5f)});
                     over(ring, Px{rim.r, rim.g, rim.b, band(d, 1.5f, 4.0f)});
                 } else if (ringOnly) {
-                    const Px a = rgb(0xf3e2a8), b = rgb(0xa8873e), c = rgb(0x10161e);
-                    over(ring, Px{a.r, a.g, a.b, band(d, 0, 2.0f)});
-                    over(ring, Px{b.r, b.g, b.b, band(d, 2.0f, 5.0f)});
-                    over(ring, Px{c.r, c.g, c.b, band(d, 5.0f, 6.5f)});
+                    over(ring, Px{goldPale.r, goldPale.g, goldPale.b, band(d, 0, 2.0f)});
+                    over(ring, Px{goldDark.r, goldDark.g, goldDark.b, band(d, 2.0f, 5.0f)});
+                    over(ring, Px{rim.r, rim.g, rim.b, band(d, 5.0f, 6.5f)});
                 } else {
-                    const Px e = kind == Skin::ChipOn ? rgb(0x2b2620) : rgb(0x7a5c28);
+                    const Px e = kind == Skin::ChipOn ? px(P.dark) : goldDark;
                     over(ring, Px{e.r, e.g, e.b, 0.5f * band(d, 0, 1.5f)});
                 }
                 over(p, ring);
             }
-            px[std::size_t(y) * W + x] = p;
+            pxs[std::size_t(y) * W + x] = p;
         }
-    SDL_Texture* t = makeTexture(sdl_, W, H, px);
+    SDL_Texture* t = makeTexture(sdl_, W, H, pxs);
     skins_[key] = t;
     return t;
 }
@@ -344,10 +417,10 @@ bool Hud::clicked(const Rect& r) {
 bool Hud::roundButton(const Rect& r, const std::string& iconName, bool on, const std::string& tip) {
     const bool hot = ui_->hovered(r);
     box(on ? Skin::ButtonOn : Skin::Button, r, r.h * 0.5f);
-    if (hot && !on) disc(r.x + r.w * 0.5f, r.y + r.h * 0.5f, r.w * 0.5f - 1, Colour::rgb(226, 197, 122, 0.16f));
+    if (hot && !on) disc(r.x + r.w * 0.5f, r.y + r.h * 0.5f, r.w * 0.5f - 1, kGold.withAlpha(0.16f));
     const float s = std::round(r.w * 0.5f);
     icon(iconName, {r.x + (r.w - s) * 0.5f, r.y + (r.h - s) * 0.5f, s, s},
-         on ? Colour::rgb(28, 34, 44) : hot ? Colour::rgb(255, 243, 207) : kText);
+         on ? kDark : hot ? kHot : kText);
     if (hot && !tip.empty()) {
         const float w = textW(tip, 14) + 20;
         const Rect t{r.x + r.w * 0.5f - w * 0.5f, r.bottom() + 10, w, 28};
@@ -360,16 +433,16 @@ bool Hud::roundButton(const Rect& r, const std::string& iconName, bool on, const
 bool Hud::textButton(const Rect& r, const std::string& s, bool dark) {
     const bool hot = ui_->hovered(r);
     box(dark ? Skin::ChipOn : Skin::Chip, r, r.h * 0.5f);
-    if (hot) ui_->roundRect(r, dark ? Colour::rgb(255, 255, 255, 0.08f) : Colour::rgb(122, 92, 40, 0.12f), r.h * 0.5f);
+    if (hot) ui_->roundRect(r, dark ? kText.withAlpha(0.08f) : kLine.withAlpha(0.12f), r.h * 0.5f);
     const float w = textW(s, 15);
-    ui_->text(r.x + (r.w - w) * 0.5f, r.y + (r.h - ui_->textHeight(1.0f)) * 0.5f, s, dark ? Colour::rgb(239, 228, 200) : kInk, 1.0f);
+    ui_->text(r.x + (r.w - w) * 0.5f, r.y + (r.h - ui_->textHeight(1.0f)) * 0.5f, s, dark ? kText : kInk, 1.0f);
     return clicked(r);
 }
 
 void Hud::seal(float cx, float cy) { box(Skin::Seal, {cx - 17, cy - 17, 34, 34}, 17); }
 
 void Hud::dimmer(float W, float H, float a) {
-    ui_->rect({0, 0, W, H}, Colour::rgb(10, 14, 20, a));
+    ui_->rect({0, 0, W, H}, kRim.withAlpha(a));
     ui_->claim({0, 0, W, H});
 }
 
@@ -780,7 +853,7 @@ void Hud::minimap(const Snapshot& s, float W) {
     const float w = textW(place, 15, true) + 32;
     const Rect pill{x + D / 2 - w / 2, y + D - 12, w, 30};
     box(Skin::Leather, pill, 15);
-    ui_->border(pill.inset(4), Colour::rgb(243, 226, 168, 0.45f), 1.0f, 11);
+    ui_->border(pill.inset(4), kGoldPale.withAlpha(0.45f), 1.0f, 11);
     title(pill.x + 16, pill.y + 5, place, kText, 15);
 }
 
@@ -811,9 +884,9 @@ void Hud::party(const Snapshot& s, const ActorSnap* sel) {
         if (a.animal || a.family != sel->family || a.id == sel->id) continue;
         const Rect r{36, y, 52, 52};
         disc(r.x + 26, r.y + 26, 24, kNavy);
-        arc(r.x + 26, r.y + 26, 24, 3, 0, 360, Colour::rgb(58, 69, 88));
+        arc(r.x + 26, r.y + 26, 24, 3, 0, 360, kInkSoft);
         portrait(a, r.x + 26, r.y + 26, 20);
-        if (a.alive) arc(r.x + 26, r.y + 26, 24, 3, -90, float(360 * std::clamp(a.hp, 0.02, 1.0)), Colour::rgb(216, 80, 60));
+        if (a.alive) arc(r.x + 26, r.y + 26, 24, 3, -90, float(360 * std::clamp(a.hp, 0.02, 1.0)), kBad);
         if (ui_->hovered(r)) {
             const std::string tip = a.name + " · " + host_->text(a.player ? "hud.kin.you" : (a.alive ? (a.sex == 'f' ? "hud.kin.self_f" : "hud.kin.self") : (a.sex == 'f' ? "hud.kin.dead_f" : "hud.kin.dead")));
             const float w = textW(tip, 14) + 20;
@@ -836,9 +909,9 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
         double v;
         Colour c;
         float rot;
-    } vit[] = {{a.hp, Colour::rgb(224, 80, 60), 95}, {strength, Colour::rgb(143, 217, 138), 215}, {spirit, Colour::rgb(106, 168, 240), 335}};
+    } vit[] = {{a.hp, kBad, 95}, {strength, kRingGood, 215}, {spirit, kRingGood, 335}};
     for (const auto& v : vit) {
-        arc(bx + 70, by + 70, 62, 6, v.rot, 109, Colour::rgb(239, 230, 207, 0.2f));
+        arc(bx + 70, by + 70, 62, 6, v.rot, 109, kText.withAlpha(0.2f));
         arc(bx + 70, by + 70, 62, 6, v.rot, float(109 * std::clamp(v.v, 0.02, 1.0)), v.c);
     }
     portrait(a, bx + 70, by + 70, 52);
@@ -849,7 +922,7 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
     // name and mood
     const float cx = bx + 140 + 16;
     const int moodLevel = std::clamp(int((s.detail.mood + 1.0) * 2.5), 0, 4);
-    const Colour mc = moodLevel >= 3 ? Colour::rgb(159, 215, 184) : moodLevel == 2 ? Colour::rgb(230, 197, 110) : Colour::rgb(232, 165, 150);
+    const Colour mc = moodLevel >= 3 ? kRingGood : moodLevel == 2 ? kGold : kGold;
     const std::string full = a.name;
     ui_->text(cx + 8, H - 30 - 34 + 2, full, kRim.withAlpha(0.85f), 28 / 15.f, true);
     title(cx + 8, H - 30 - 34, full, kText, 28);
@@ -918,13 +991,13 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
         title(p.x + 20, p.y + 14, head, kInk, 22);
         if (groups && bars) {
             const char* tk = lo < 0.35 ? "hud.status.trend.down" : lo < 0.55 ? "hud.status.trend.hold" : "hud.status.trend.up";
-            const Colour tc = lo < 0.35 ? kInkRed : lo < 0.55 ? Colour::rgb(138, 106, 28) : Colour::rgb(44, 107, 58);
+            const Colour tc = lo < 0.35 ? kInkRed : lo < 0.55 ? kGoldDark : kGood;
             const std::string tt = host_->text(tk);
             const float tx = p.right() - 20 - 34 - textW(tt, 14, true);
             title(tx, p.y + 20, tt, tc, 14);
             trendArrow(tx - 12, p.y + 29, lo < 0.35 ? -1 : lo < 0.55 ? 0 : 1, tc);
         }
-        ui_->line(p.x + 20, p.y + 46, p.right() - 20, p.y + 46, Colour::rgb(122, 92, 40, 0.45f));
+        ui_->line(p.x + 20, p.y + 46, p.right() - 20, p.y + 46, kLine.withAlpha(0.45f));
         float y = p.y + 54;
         for (std::size_t i = 0; i < rows.size(); ++i) {
             const Row& r = rows[i];
@@ -932,11 +1005,11 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
             label(p.x + 20, y, ui_->fit(r.label, r.value >= 0 ? 150 : 200, 1.0f), fg, 15);
             if (r.value >= 0) {
                 const Rect bar{p.right() - 20 - 54 - 10 - 110, y + 6, 110, 8};
-                ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.16f), 4);
+                ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
                 ui_->roundRect({bar.x, bar.y, std::max(8.f, float(bar.w * std::clamp(r.value, 0.0, 1.0))), bar.h}, barColour(r.value), 4);
                 if (!r.id.empty()) {
                     const std::string num = std::to_string(int(std::lround(std::clamp(r.value, 0.0, 1.0) * 100)));
-                    const Colour nc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? Colour::rgb(138, 106, 28) : Colour::rgb(44, 107, 58);
+                    const Colour nc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? kGoldDark : kGood;
                     title(p.right() - 20 - 18 - textW(num, 13, true), y + 1, num, nc, 13);
                     if (r.arrow >= -1 && r.arrow <= 1) trendArrow(p.right() - 20 - 7, y + 10, r.arrow, nc);
                 }
@@ -946,16 +1019,16 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
             }
             y += 28;
             if (!descLines[i].empty()) {
-                const Colour dc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? Colour::rgb(138, 106, 28) : kInkSoft;
+                const Colour dc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? kGoldDark : kInkSoft;
                 y -= 6;
                 for (const auto& l : descLines[i]) label(p.x + 20, y, l, dc, 13), y += 17;
                 y += 10;
             }
         }
-        if (groups) label(p.x + 20, y, ui_->fit(host_->text("hud.status.hint"), tw, 12 / 15.f), Colour::rgb(138, 122, 92), 12);
+        if (groups) label(p.x + 20, y, ui_->fit(host_->text("hud.status.hint"), tw, 12 / 15.f), kGoldDark, 12);
         // the caret under the shown slot
         const float caret = pill.x + 4 + shown * 45.0f + 22;
-        ui_->rect({caret - 7, p.bottom() - 2, 14, 6}, Colour::rgb(233, 221, 192));
+        ui_->rect({caret - 7, p.bottom() - 2, 14, 6}, kText);
     }
 }
 
@@ -971,7 +1044,7 @@ void Hud::quickBar(const Snapshot& s, float W, float H) {
     for (int k = 0; k < 6; ++k) {
         const Rect b{r.x + 6 + k * 54.0f, r.y + 6, 48, 48};
         box(Skin::Button, b, 24);
-        arc(b.x + 24, b.y + 24, 23, 1.5f, 0, 360, Colour::rgb(226, 197, 122, 0.4f));
+        arc(b.x + 24, b.y + 24, 23, 1.5f, 0, 360, kGold.withAlpha(0.4f));
         if (k < int(s.detail.inventory.size())) {
             const ItemSnap& it = s.detail.inventory[std::size_t(k)];
             std::string ic = "i_tool";
@@ -1003,7 +1076,7 @@ void Hud::clockPill(const Snapshot& s, float W, float H) {
     box(Skin::Leather, r, 26);
     // the dial: night blue, the day's share gold, turning with the clock
     const float cx = r.x + 6 + 18, cy = r.y + 26;
-    disc(cx, cy, 16, Colour::rgb(36, 50, 74));
+    disc(cx, cy, 16, kDark);
     const double f = double(s.tick % sim::kTicksPerDay) / double(sim::kTicksPerDay) + host_->tickAlpha() / double(sim::kTicksPerDay);
     arc(cx, cy, 8, 16, float(f * 360.0 - 180.0), 90, kGold);
     arc(cx, cy, 16, 1.5f, 0, 360, kGold);
@@ -1129,7 +1202,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
     std::string sub = a.family + " · " + host_->text("hud.kin.age", {{"n", a.age}});
     label(L.x + 34 + 128, L.y + 86, sub, kInkSoft, 15);
     const int moodLevel = std::clamp(int((s.detail.mood + 1.0) * 2.5), 0, 4);
-    label(L.x + 34 + 128, L.y + 110, host_->text("hud.mood." + std::to_string(moodLevel)), moodLevel <= 1 ? kInkRed : Colour::rgb(44, 107, 58), 15);
+    label(L.x + 34 + 128, L.y + 110, host_->text("hud.mood." + std::to_string(moodLevel)), moodLevel <= 1 ? kInkRed : kGood, 15);
     float x = L.x + 34, y = L.y + 158;
     for (const auto& t : s.detail.traits) {
         const float w = textW(t, 14) + 24;
@@ -1140,7 +1213,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
     }
     y += 46;
     title(L.x + 34, y, host_->text("hud.sheet.needs"), kInk, 22);
-    ui_->line(L.x + 34, y + 30, L.right() - 34, y + 30, Colour::rgb(122, 92, 40, 0.45f));
+    ui_->line(L.x + 34, y + 30, L.right() - 34, y + 30, kLine.withAlpha(0.45f));
     y += 44;
     for (int t = 0; t < 5; ++t) {
         const auto rows = tierRows(s, a, t);
@@ -1153,7 +1226,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
             const auto& r = rows[i];
             label(cx, y, ui_->fit(r.label, cw - 4, 14 / 15.f), r.alarm ? kInkRed : kInk, 14);
             const Rect bar{cx, y + 22, cw, 8};
-            ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.16f), 4);
+            ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
             if (r.value >= 0) ui_->roundRect({bar.x, bar.y, std::max(8.f, float(bar.w * r.value)), 8}, barColour(r.value), 4);
             cx += cw + 14;
         }
@@ -1171,7 +1244,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
             if (y > L.bottom() - 34) break;
         }
         box(Skin::Chip, {x, y, w, 28}, 14);
-        label(x + 12, y + 5, nm, v < 0 ? kInkRed : Colour::rgb(44, 107, 58), 14);
+        label(x + 12, y + 5, nm, v < 0 ? kInkRed : kGood, 14);
         x += w + 8;
     }
 
@@ -1180,7 +1253,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
     box(Skin::Paper, R, 18);
     seal(R.right() - 37, R.y + 5);
     title(R.x + 34, R.y + 30, host_->text(kTabs[sheetTab_][1]), kInk, 22);
-    ui_->line(R.x + 34, R.y + 62, R.right() - 34, R.y + 62, Colour::rgb(122, 92, 40, 0.45f));
+    ui_->line(R.x + 34, R.y + 62, R.right() - 34, R.y + 62, kLine.withAlpha(0.45f));
     y = R.y + 80;
     const Detail& d = s.detail;
     if (sheetTab_ == 0) {   // values: reputation axes as a scale, traits below
@@ -1191,7 +1264,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
         for (const auto& [nm, v] : d.reputation) {
             label(R.x + 34, y, nm, kInk, 15);
             const Rect bar{R.x + 230, y + 7, 300, 8};
-            ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.16f), 4);
+            ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
             const float m = bar.x + bar.w * float(std::clamp(0.5 + v * 0.5, 0.0, 1.0));
             box(Skin::ButtonOn, {m - 10, y + 1, 20, 20}, 10);
             y += 40;
@@ -1203,7 +1276,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
         for (const auto& w : d.wants) {
             title(R.x + 34, y, ui_->fit(w, R.w - 68, 21 / 15.f, true), kInk, 21);
             y += 34;
-            ui_->line(R.x + 34, y, R.right() - 34, y, Colour::rgb(122, 92, 40, 0.25f));
+            ui_->line(R.x + 34, y, R.right() - 34, y, kLine.withAlpha(0.25f));
             y += 12;
             if (y > R.bottom() - 120) break;
         }
@@ -1222,7 +1295,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
             if (y > R.bottom() - 170) break;
             const Rect b{gx, y, w, 28};
             box(int(i) == goalPick_ ? Skin::ChipOn : Skin::Chip, b, 14);
-            label(b.x + 11, b.y + 6, goals[i].second, int(i) == goalPick_ ? Colour::rgb(239, 228, 200) : kInk, 13);
+            label(b.x + 11, b.y + 6, goals[i].second, int(i) == goalPick_ ? kText : kInk, 13);
             if (clicked(b)) goalPick_ = int(i);
             gx += w + 6;
         }
@@ -1255,10 +1328,10 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
             title(R.x + 100, y + 2, r.name, kInk, 20);
             if (!r.kin.empty()) label(R.x + 100 + textW(r.name, 20, true) + 8, y + 6, "· " + host_->text("hud.rel." + r.kin), kInkSoft, 15);
             const Rect bar{R.x + 100, y + 32, 300, 8};
-            ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.16f), 4);
+            ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
             const float mid = bar.x + bar.w * 0.5f, len = float(std::fabs(r.affinity)) * bar.w * 0.5f;
             ui_->roundRect({r.affinity >= 0 ? mid : mid - len, bar.y, std::max(4.f, len), 8}, r.affinity >= 0 ? kGood : kBad, 4);
-            ui_->rect({mid - 1, bar.y - 3, 2, 14}, Colour::rgb(138, 111, 52));
+            ui_->rect({mid - 1, bar.y - 3, 2, 14}, kGoldDark);
             const std::string what = r.enmity > 0.3 ? "hates" : r.fear > 0.3 ? "fears" : r.affinity > 0.25 ? "likes"
                                    : r.affinity < -0.25 ? "dislikes" : r.trust > 0.3 ? "trust" : "knows";
             const std::string t = host_->text("hud.rel." + what);
@@ -1272,7 +1345,7 @@ void Hud::sheet(const Snapshot& s, const ActorSnap& a, float W, float H) {
         for (const auto& [nm, v] : d.skills) {
             label(R.x + 34, y, nm, kInk, 15);
             const Rect bar{R.x + 260, y + 7, 280, 8};
-            ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.16f), 4);
+            ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
             ui_->roundRect({bar.x, bar.y, std::max(8.f, float(bar.w * std::clamp(v, 0.0, 1.0))), 8}, kGoldDark, 4);
             y += 34;
             if (y > R.bottom() - 40) break;
@@ -1313,7 +1386,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         return;
     }
     // the dashed orbit
-    for (int d = 0; d < 72; d += 2) arc(cx, cy, R, 2, d * 5.0f, 2.0f, Colour::rgb(243, 226, 168, 0.35f));
+    for (int d = 0; d < 72; d += 2) arc(cx, cy, R, 2, d * 5.0f, 2.0f, kGoldPale.withAlpha(0.35f));
     const sim::Json& sp = spheres[std::size_t(sphere_)];
     const sim::Json subs = sp.value("subs", sim::Json::array());
     const int m = int(subs.size());
@@ -1339,7 +1412,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             for (std::size_t q = 1; q < pts.size(); ++q) {
                 if (!on && q % 2) continue;
                 const float w = on ? 4.0f : 2.5f;
-                const Colour c = on ? kGoldPale : Colour::rgb(243, 226, 168, 0.55f);
+                const Colour c = on ? kGoldPale : kGoldPale.withAlpha(0.55f);
                 const float dx = pts[q].x - pts[q - 1].x, dy = pts[q].y - pts[q - 1].y, l = std::max(0.001f, std::hypot(dx, dy));
                 const float nx = -dy / l * w * 0.5f, ny = dx / l * w * 0.5f;
                 const SDL_FColor col{c.r, c.g, c.b, c.a};
@@ -1395,7 +1468,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
     seal(P.right() - 37, P.y + 5);
     const std::string subId = m ? subs[std::size_t(sub_)].value("id", std::string()) : std::string();
     title(P.x + 24, P.y + 22, host_->text("hud.wheel.sub." + subId), kInk, 24);
-    ui_->line(P.x + 24, P.y + 58, P.right() - 24, P.y + 58, Colour::rgb(122, 92, 40, 0.45f));
+    ui_->line(P.x + 24, P.y + 58, P.right() - 24, P.y + 58, kLine.withAlpha(0.45f));
     float y = P.y + 66;
     const bool canAct = s.controlled != sim::kNone && s.controlled != t->id;
     const std::string cat = sp.value("id", std::string());
@@ -1410,7 +1483,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             if (y > P.bottom() - 120) break;
             const Rect row{P.x + 20, y, P.w - 40, 50};
             const bool hot = ui_->hovered(row) && canAct;
-            if (hot) ui_->roundRect(row, Colour::rgb(122, 92, 40, 0.12f), 10);
+            if (hot) ui_->roundRect(row, kLine.withAlpha(0.12f), 10);
             // The sim's own chance (sim/tones.hpp actChance) for this tone; the
             // old estimate from the relation only while the sim has not sent it yet.
             double chance = std::clamp(base + 0.3 * rel.affinity + 0.2 * rel.trust - 0.15 * rel.enmity, 0.02, 0.97);
@@ -1428,11 +1501,11 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             else if (!kind.empty()) label(row.x + 8, row.y + 28, host_->text("hud.wheel.kind." + kind), kInkSoft, 12);
             if (info && ui_->hovered(row)) cardFor = info, cardY = row.y;
             const float ccx = row.right() - 26, ccy = row.y + 25;
-            arc(ccx, ccy, 18, 4, 0, 360, Colour::rgb(43, 38, 32, 0.16f));
+            arc(ccx, ccy, 18, 4, 0, 360, kInk.withAlpha(0.16f));
             arc(ccx, ccy, 18, 4, -90, float(360 * chance), chance > 0.6 ? kGood : chance > 0.35 ? kMid : kBad);
             const std::string ps = std::to_string(pc);
             label(ccx - textW(ps, 13) / 2, ccy - 9, ps, kInk, 13);
-            ui_->line(row.x, row.bottom() + 2, row.right(), row.bottom() + 2, Colour::rgb(122, 92, 40, 0.25f));
+            ui_->line(row.x, row.bottom() + 2, row.right(), row.bottom() + 2, kLine.withAlpha(0.25f));
             if (canAct && clicked(row)) {
                 sim::Json args = {{"id", s.controlled}, {"interaction", id}, {"target", t->id}};
                 if (tone_ >= 0 && tone_ < int(s.wheel.tones.size())) args["tone"] = s.wheel.tones[std::size_t(tone_)];
@@ -1452,7 +1525,7 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
         if (x + w > P.right() - 20) x = P.x + 24, y += 40;
         const Rect b{x, y, w, 34};
         box(i == tone_ ? Skin::ChipOn : Skin::Chip, b, 17);
-        label(b.x + 14, b.y + 8, tn, i == tone_ ? Colour::rgb(239, 228, 200) : kInk, 14);
+        label(b.x + 14, b.y + 8, tn, i == tone_ ? kText : kInk, 14);
         if (clicked(b)) tone_ = i;
         x += w + 8;
     }
@@ -1511,7 +1584,7 @@ void Hud::actMenu(const Snapshot& s, EntityId target, const std::string& head, c
     // the point clicked, tied to the plate
     arc(beastX_, beastY_, 9, 2, 0, 360, kGold);
     ui_->line(beastX_ + (x > beastX_ ? 9 : -9), beastY_, x > beastX_ ? x : x + w, std::clamp(beastY_, y + 20, y + h - 20),
-              Colour::rgb(243, 226, 168, 0.55f));
+              kGoldPale.withAlpha(0.55f));
     box(Skin::Leather, P, 18);
     bool over = ui_->hovered(P);
     title(P.x + 18, P.y + 12, ui_->fit(head, w - 36, 19 / 15.f, true), kGoldPale, 19);
@@ -1539,7 +1612,7 @@ void Hud::actMenu(const Snapshot& s, EntityId target, const std::string& head, c
         }
         if (!r.why.empty())
             label(b.x + 14, b.bottom() + 2, ui_->fit(host_->text("hud.act.missing", {{"what", r.why}}), b.w - 20, 12 / 15.f),
-                  Colour::rgb(240, 150, 130), 12, true);
+                  kRingBad, 12, true);
         if (ui_->hovered({b.x, b.y, b.w, r.h})) {
             hovered = &r;
             hoveredY = b.y;
@@ -1617,7 +1690,7 @@ void Hud::actCard(const ActInfoSnap& a, float x, float y, float W, float H) {
         label(r.x + 16, yy, host_->text("hud.act.needs"), kInkSoft, 13);
         yy += 24;
         for (const auto& [t, ok] : a.needs) {
-            icon(ok ? "a_ok" : "close", {r.x + 16, yy, 16, 16}, ok ? Colour::rgb(70, 120, 60) : kInkRed);
+            icon(ok ? "a_ok" : "close", {r.x + 16, yy, 16, 16}, ok ? kGood : kInkRed);
             label(r.x + 38, yy, ui_->fit(t, w - 54, 14 / 15.f), ok ? kInk : kInkRed, 14);
             yy += 22;
         }
@@ -1716,7 +1789,7 @@ void Hud::feedbackFloats(const Snapshot& s) {
         if (a && host_->overHead(*a, x, y)) {
             const float rise = float(age) * 26.0f + float(stack) * 4.0f;
             const float alpha = float(std::clamp(1.0 - (age - 2.2), 0.0, 1.0));
-            const Colour c = it->kind == 1 ? Colour::rgb(170, 225, 120, alpha) : it->kind == 2 ? Colour::rgb(240, 120, 100, alpha)
+            const Colour c = it->kind == 1 ? kRingGood.withAlpha(alpha) : it->kind == 2 ? kRingBad.withAlpha(alpha)
                                                                                               : kText.withAlpha(alpha);
             const float tw = textW(it->text, 16, true);
             ui_->text(x - tw / 2, y - 112 - rise + 2, it->text, kRim.withAlpha(alpha * 0.85f), 16 / 15.f, true);
@@ -1797,9 +1870,9 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
                     dragItem_.clear();
                 }
             } else {
-                icon(itemIcon(l.item), {c.x + 6, c.y + 6, 20, 20}, Colour::rgb(239, 228, 200));
-                label(c.x + 28, c.y + 6, ui_->fit(l.itemName, lw - 32, 12 / 15.f), Colour::rgb(239, 228, 200), 12);
-                label(c.x + 8, c.y + 28, ui_->fit(l.name, lw - 14, 11 / 15.f), Colour::rgb(239, 228, 200, 0.7f), 11);
+                icon(itemIcon(l.item), {c.x + 6, c.y + 6, 20, 20}, kText);
+                label(c.x + 28, c.y + 6, ui_->fit(l.itemName, lw - 32, 12 / 15.f), kText, 12);
+                label(c.x + 8, c.y + 28, ui_->fit(l.name, lw - 14, 11 / 15.f), kText.withAlpha(0.7f), 11);
                 if (hot) hintTip = host_->text("hud.gear.take_off", {{"what", l.itemName}});
                 if (hot && in_->pressed && mine && dragItem_.empty()) host_->command("take_off", {{"id", who}, {"item", l.item}});
             }
@@ -1829,7 +1902,7 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
         where.push_back({&gr, gx, gy + 24});
         for (int j = 0; j < gr.h; ++j)
             for (int i = 0; i < gr.w; ++i)
-                ui_->roundRect({gx + i * cell + 1, gy + 24 + j * cell + 1, cell - 2, cell - 2}, Colour::rgb(43, 38, 32, 0.14f), 4);
+                ui_->roundRect({gx + i * cell + 1, gy + 24 + j * cell + 1, cell - 2, cell - 2}, kInk.withAlpha(0.14f), 4);
         gx += w + 22;
         rowMax = std::max(rowMax, h);
     }
@@ -1842,10 +1915,10 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
         if (!pl) continue;
         const Rect r{pl->x + sp.x * cell + 2, pl->y + sp.y * cell + 2, sp.w * cell - 4, sp.h * cell - 4};
         const bool dragged = dragItem_ == sp.item && dragFrom_ == sp.grid;
-        ui_->roundRect(r, dragged ? Colour::rgb(122, 92, 40, 0.15f) : Colour::rgb(28, 34, 44, 0.88f), 6);
+        ui_->roundRect(r, dragged ? kLine.withAlpha(0.15f) : kDark.withAlpha(0.88f), 6);
         const float is = std::min(r.w, r.h) * 0.55f;
         icon(itemIcon(sp.item), {r.x + (r.w - is) * 0.5f, r.y + (r.h - is) * 0.5f - (sp.h > 1 ? 6 : 0), is, is},
-             Colour::rgb(239, 228, 200, dragged ? 0.4f : 1.0f));
+             kText.withAlpha(dragged ? 0.4f : 1.0f));
         if (sp.w * sp.h > 1) label(r.x + 5, r.bottom() - 17, ui_->fit(sp.name, r.w - 8, 11 / 15.f), kText, 11);
         if (sp.count > 1) {
             const std::string n = std::to_string(sp.count);
@@ -1876,7 +1949,7 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
         const int w = dragTurned_ ? dragH_ : dragW_, h = dragTurned_ ? dragW_ : dragH_;
         // the size as it was picked up is (dragW_, dragH_) in its old turn; R swaps
         const Rect ghost{in_->mouseX - cell * 0.5f, in_->mouseY - cell * 0.5f, w * cell - 4, h * cell - 4};
-        ui_->roundRect(ghost, Colour::rgb(226, 197, 122, 0.35f), 6);
+        ui_->roundRect(ghost, kGold.withAlpha(0.35f), 6);
         icon(itemIcon(dragItem_), {ghost.x + 6, ghost.y + 6, 26, 26}, kText);
         if (in_->released) {
             for (const auto& p : where) {
@@ -1895,7 +1968,7 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     std::snprintf(line, sizeof line, "%.1f / %.0f", g.kg, g.maxKg);
     title(L.x + 18, L.y + 10, host_->text("hud.gear.load", {{"kg", std::string(line)}}), kInk, 18);
     const Rect bar{L.x + 18, L.y + 40, L.w * 0.5f, 14};
-    ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.18f), 7);
+    ui_->roundRect(bar, kInk.withAlpha(0.18f), 7);
     const float f = float(std::clamp(g.kg / std::max(1.0, g.maxKg), 0.0, 1.0));
     const Colour fill = g.kg > g.maxKg ? kInkRed : g.kg > g.comfortKg ? kMid : kGood;
     ui_->roundRect({bar.x, bar.y, bar.w * f, bar.h}, fill, 7);
@@ -1936,11 +2009,11 @@ void Hud::workFx(const Snapshot& s) {
         if (!t) continue;
         float sx, sy;
         if (!host_->groundToScreen(t->x, t->y, 0.8, sx, sy)) continue;
-        Colour c = Colour::rgb(150, 110, 70);
-        if (t->type == "riverbank") c = Colour::rgb(170, 165, 155);
+        Colour c = kGoldDark;
+        if (t->type == "riverbank") c = kMute;
         else if (t->type.find("bush") != std::string::npos || t->type.find("patch") != std::string::npos ||
                  t->type.find("glade") != std::string::npos || t->type == "reed_bed" || t->type == "hay_meadow")
-            c = Colour::rgb(120, 170, 80);
+            c = kGood;
         for (int k = 0; k < 7; ++k) {
             const double ph = std::fmod(clock_ * 1.3 + k * 0.37 + double(a.id % 7) * 0.11, 1.0);
             const double ang = double(k) * 2.4 + double(a.id);
@@ -2041,7 +2114,7 @@ void Hud::kin(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     if (kinPick_ == sim::kNone || !actor(s, kinPick_)) kinPick_ = sel->id;
     for (const ActorSnap* a : fam) {
         const auto [x, y] = at[a->id];
-        const Colour rc = a->player ? kGoldPale : !a->alive ? Colour::rgb(90, 96, 112) : Colour::rgb(138, 147, 166);
+        const Colour rc = a->player ? kGoldPale : !a->alive ? kInkSoft : kMute;
         portrait(*a, x, y, 44);
         arc(x, y, 45, 2, 0, 360, rc);
         arc(x, y, 47.5f, 3, 0, 360, kGoldDark);
@@ -2067,7 +2140,7 @@ void Hud::kin(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     label(P.x + 28, P.y + 98, host_->text("hud.kin.now") + ": " + doing, kInk, 15);
     const std::string ctl = host_->text(k->player ? "hud.kin.you" : !k->alive ? (k->sex == 'f' ? "hud.kin.dead_f" : "hud.kin.dead")
                                                                               : (k->sex == 'f' ? "hud.kin.self_f" : "hud.kin.self"));
-    label(P.x + 28, P.y + 124, host_->text("hud.kin.led") + ": " + ctl, k->player ? Colour::rgb(138, 106, 28) : kInk, 15);
+    label(P.x + 28, P.y + 124, host_->text("hud.kin.led") + ": " + ctl, k->player ? kGoldDark : kInk, 15);
     float x = P.x + 28;
     if (k->alive && !k->player) {
         const std::string t = host_->text("hud.kin.lead");
@@ -2090,7 +2163,7 @@ void Hud::kin(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     }
     ui_->paragraph(P.x + 28, P.y + 222, P.w - 56, host_->text("hud.kin.note"), kInkSoft, 13 / 15.f);
     title(P.x + 28, P.y + 270, host_->text("hud.kin.legacy"), kInk, 22);
-    ui_->line(P.x + 28, P.y + 302, P.right() - 28, P.y + 302, Colour::rgb(122, 92, 40, 0.45f));
+    ui_->line(P.x + 28, P.y + 302, P.right() - 28, P.y + 302, kLine.withAlpha(0.45f));
     float y = P.y + 316;
     for (const ActorSnap* a : fam) {
         if (y > P.bottom() - 30) break;
@@ -2127,7 +2200,7 @@ void Hud::annals(const Snapshot& s, float W, float H) {
     box(Skin::Paper, P, 18);
     if (annalsTab_ == 1) {
         title(P.x + 38, P.y + 30, host_->text("hud.annals.world_title"), kInk, 32);
-        ui_->line(P.x + 38, P.y + 74, P.right() - 38, P.y + 74, Colour::rgb(122, 92, 40, 0.45f));
+        ui_->line(P.x + 38, P.y + 74, P.right() - 38, P.y + 74, kLine.withAlpha(0.45f));
         ui_->paragraph(P.x + 38, P.y + 100, P.w - 76, host_->text("hud.annals.world_soon"), kInkSoft, 1.0f);
         return;
     }
@@ -2140,11 +2213,11 @@ void Hud::annals(const Snapshot& s, float W, float H) {
         fx -= w;
         const Rect b{fx, P.y + 30, w, 40};
         box(i == annalsFilter_ ? Skin::ChipOn : Skin::Chip, b, 20);
-        label(b.x + 14, b.y + 11, t, i == annalsFilter_ ? Colour::rgb(239, 228, 200) : kInk, 14);
+        label(b.x + 14, b.y + 11, t, i == annalsFilter_ ? kText : kInk, 14);
         if (clicked(b)) annalsFilter_ = i;
         fx -= 8;
     }
-    ui_->line(P.x + 38, P.y + 82, P.right() - 38, P.y + 82, Colour::rgb(122, 92, 40, 0.45f));
+    ui_->line(P.x + 38, P.y + 82, P.right() - 38, P.y + 82, kLine.withAlpha(0.45f));
     auto kindOf = [](const std::string& k) {
         if (k.find("birth") != std::string::npos || k.find("death") != std::string::npos || k.find("marr") != std::string::npos ||
             k.find("family") != std::string::npos || k.find("year") != std::string::npos)
@@ -2167,12 +2240,12 @@ void Hud::annals(const Snapshot& s, float W, float H) {
         const std::uint32_t c = kKindColours[kind];
         const Colour cc = Colour::rgb(int(c >> 16), int((c >> 8) & 255), int(c & 255));
         disc(x + 29, y + 29, 29, cc);
-        arc(x + 29, y + 29, 29, 1.5f, 0, 360, Colour::rgb(138, 111, 52));
+        arc(x + 29, y + 29, 29, 1.5f, 0, 360, kGoldDark);
         const ActorSnap* who = it->who.empty() ? nullptr : actor(s, it->who.front());
         if (who && !who->animal) portrait(*who, x + 29, y + 29, 26);
         else {
             const std::string ini = it->text.substr(0, it->text.size() && (unsigned char)it->text[0] >= 0xC0 ? 2 : 1);
-            title(x + 29 - textW(ini, 30, true) / 2, y + 10, ini, Colour::rgb(255, 244, 220), 30);
+            title(x + 29 - textW(ini, 30, true) / 2, y + 10, ini, kHot, 30);
         }
         label(x + 78, y, host_->text("hud.annals.day", {{"day", it->day}}) + " · " + it->time, kInkSoft, 13);
         const float h = ui_->paragraph(x + 78, y + 20, 500, it->text, kInk, 18 / 15.f);
@@ -2241,8 +2314,8 @@ void Hud::buildBar(const Snapshot& s, float W, float H) {
         if (x + cw > P.x + 14 + tabsW) break;
         const Rect card{x, top, cw, chh};
         const bool on = int(k) == buildPick;
-        ui_->roundRect(card, on ? Colour::rgb(226, 197, 122, 0.55f) : Colour::rgb(122, 92, 40, ui_->hovered(card) ? 0.16f : 0.08f), 12);
-        if (on) ui_->roundRect({card.x + 3, card.y + 3, card.w - 6, card.h - 6}, Colour::rgb(250, 242, 222, 0.55f), 10);
+        ui_->roundRect(card, on ? kGold.withAlpha(0.55f) : kLine.withAlpha(ui_->hovered(card) ? 0.16f : 0.08f), 12);
+        if (on) ui_->roundRect({card.x + 3, card.y + 3, card.w - 6, card.h - 6}, kHot.withAlpha(0.55f), 10);
         const auto it = previewIndex_.find(e.id);
         if (previews_ && it != previewIndex_.end()) {
             const SDL_FRect src{float(it->second * previewCell_), 0, float(previewCell_), float(previewCell_)};
@@ -2262,7 +2335,7 @@ void Hud::buildBar(const Snapshot& s, float W, float H) {
     if (shown == 0) label(P.x + 20, top + 10, host_->text("hud.build.tip." + buildMode), kInkSoft, 15);
     // the piece, the cursor, the plan, the buttons
     const Rect I{P.right() - infoW - 14, P.y + 12, infoW, ph - 24};
-    ui_->roundRect(I, Colour::rgb(122, 92, 40, 0.10f), 12);
+    ui_->roundRect(I, kLine.withAlpha(0.10f), 12);
     float y = I.y + 10;
     const BuildEntry* pick =
         buildPick >= 0 && buildPick < int(buildCatalog.size()) ? &buildCatalog[std::size_t(buildPick)] : nullptr;
@@ -2278,7 +2351,7 @@ void Hud::buildBar(const Snapshot& s, float W, float H) {
     label(I.x + 14, y, ui_->fit(host_->text("hud.build.tip." + buildMode), I.w - 28, 13 / 15.f), kInkSoft, 13);
     y += 22;
     if (!buildStatus.empty()) {
-        label(I.x + 14, y, ui_->fit(buildStatus, I.w - 28, 14 / 15.f), buildOk ? Colour::rgb(52, 104, 46) : kInkRed, 14);
+        label(I.x + 14, y, ui_->fit(buildStatus, I.w - 28, 14 / 15.f), buildOk ? kGood : kInkRed, 14);
         y += 22;
     }
     if (!buildPlan.empty()) label(I.x + 14, y, ui_->fit(buildPlan, I.w - 28, 13 / 15.f), kInk, 13);
@@ -2338,7 +2411,7 @@ void Hud::colony(const Snapshot& s, float W, float H) {
     for (const ColonyMember& m : c.members) {
         if (shown >= rows) break;
         ++shown;
-        if (shown % 2 == 0) ui_->roundRect({P.x + 20, y - 4, pw - 40, rowH}, Colour::rgb(122, 92, 40, 0.07f), 8);
+        if (shown % 2 == 0) ui_->roundRect({P.x + 20, y - 4, pw - 40, rowH}, kLine.withAlpha(0.07f), 8);
         label(colName, y + 4, ui_->fit(m.name, colFam - colName - 12, 15 / 15.f) + (m.chief ? "  \xE2\x99\x9B" : ""),
               m.chief ? kInkRed : kInk, 15);
         label(colFam, y + 4, ui_->fit(m.family, colAge - colFam - 12, 15 / 15.f), kInk, 15);
@@ -2354,7 +2427,7 @@ void Hud::colony(const Snapshot& s, float W, float H) {
             } else {
                 box(has ? Skin::ChipOn : Skin::Chip, b, 13);
                 const float tw = textW(t, 13);
-                label(b.x + (b.w - tw) * 0.5f, b.y + 4, t, has ? Colour::rgb(239, 228, 200) : kInkSoft, 13);
+                label(b.x + (b.w - tw) * 0.5f, b.y + 4, t, has ? kText : kInkSoft, 13);
             }
         }
         y += rowH;
@@ -2374,8 +2447,8 @@ void Hud::colony(const Snapshot& s, float W, float H) {
 // on the piece). Data: CraftSnap (sim_game.cpp), icons: content/ui/craft.json.
 namespace {
 constexpr float kHoldSeconds = 0.8f;
-const Colour kHeat = Colour::rgb(232, 136, 58);
-const Colour kScene = Colour::rgb(10, 14, 20, 0.72f);
+const Colour kHeat = kMid;
+const Colour kScene = kRim.withAlpha(0.72f);
 } // namespace
 
 std::string Hud::craftIconOf(const char* map, const std::string& id, const char* fallback) const {
@@ -2395,10 +2468,10 @@ bool Hud::iconButton(const Rect& r, const std::string& iconName, bool on, const 
     const bool hot = ui_->hovered(r);
     const float cx = r.x + r.w * 0.5f, cy = r.y + r.h * 0.5f;
     box(on ? Skin::ButtonOn : Skin::Button, r, r.h * 0.5f);
-    if (hot && !on) disc(cx, cy, r.w * 0.5f - 1, Colour::rgb(226, 197, 122, 0.16f));
-    if (dim) disc(cx, cy, r.w * 0.5f - 1, Colour::rgb(10, 14, 20, 0.5f));
+    if (hot && !on) disc(cx, cy, r.w * 0.5f - 1, kGold.withAlpha(0.16f));
+    if (dim) disc(cx, cy, r.w * 0.5f - 1, kRim.withAlpha(0.5f));
     const float s = std::round(r.w * 0.48f);
-    Colour c = on ? kDark : hot ? Colour::rgb(255, 243, 207) : kText;
+    Colour c = on ? kDark : hot ? kHot : kText;
     if (dim) c = c.withAlpha(0.45f);
     icon(iconName, {cx - s * 0.5f, cy - s * 0.5f, s, s}, c);
     if (hot) tipAt(cx, r.bottom() + 10, tip);
@@ -2510,7 +2583,7 @@ void Hud::workshop(const Snapshot& s, float W, float H) {
             if (m.ref == dragRef_) ic = m.icon;
         for (const auto& m : c.made)
             if (m.ref == dragRef_) ic = m.icon;
-        disc(in_->mouseX, in_->mouseY, 26, Colour::rgb(10, 14, 20, 0.85f));
+        disc(in_->mouseX, in_->mouseY, 26, kRim.withAlpha(0.85f));
         arc(in_->mouseX, in_->mouseY, 26, 2.5f, 0, 360, kGoldPale);
         icon(ic, {in_->mouseX - 14, in_->mouseY - 14, 28, 28}, kGoldPale);
         if (in_->released) dragRef_.clear();
@@ -2611,12 +2684,12 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
         arc(sx, sy, 40, 2, 0, 360, usedNow || hot ? kGoldPale : kGoldPale.withAlpha(0.45f));
         if (!dragRef_.empty()) arc(sx, sy, 46, 3, 0, 360, kGold.withAlpha(0.5f + 0.3f * std::sin(float(clock_) * 6)));
         const std::string ic = craftIconOf("station_icons", st.id, "c_bench");
-        icon(ic, {sx - 20, sy - 20, 40, 40}, st.tempMax > 0 ? Colour::rgb(240, 160, 100) : kGoldPale);
+        icon(ic, {sx - 20, sy - 20, 40, 40}, st.tempMax > 0 ? kRingBad : kGoldPale);
         std::string tip = host_->text("hud.craft.station_tip", {{"name", st.name}});
         if (st.tempMax > 0) {
             // the heat gauge (manometer) over the hearth: the mouse wheel turns it
             const int heat = craftHeat < 0 ? st.tempMax : std::min(craftHeat, st.tempMax);
-            arc(sx, sy, 54, 9, 135, 270, Colour::rgb(0, 0, 0, 0.45f));
+            arc(sx, sy, 54, 9, 135, 270, kRim.withAlpha(0.45f));
             arc(sx, sy, 54, 9, 135, 270.f * float(heat) / float(std::max(1, st.tempMax)), kHeat);
             for (int k = 1; k < st.tempMax; ++k) {
                 const float a = (135.f + 270.f * float(k) / float(st.tempMax)) * kPiF / 180.f;
@@ -2655,7 +2728,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
     const int cap = std::max(6, int(2 * kPiF * R / 62));
     if (int(order.size()) > cap) order.resize(size_t(cap));
     if (hasProc && std::find(order.begin(), order.end(), craftProc) == order.end()) order.back() = craftProc;
-    disc(px, py, R + 34, Colour::rgb(10, 14, 20, 0.30f));
+    disc(px, py, R + 34, kRim.withAlpha(0.30f));
     arc(px, py, R + 34, 2, 0, 360, kGoldPale.withAlpha(0.3f));
     for (size_t k = 0; k < order.size(); ++k) {
         const auto& p = c.processes[size_t(order[k])];
@@ -2679,7 +2752,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
         if (it != craftSlots.end() && !it->second.empty())
             if (const CraftThing* t = thingOf(it->second.front())) pieceIcon = t->icon;
     }
-    disc(px, py, 46, Colour::rgb(10, 14, 20, 0.85f));
+    disc(px, py, 46, kRim.withAlpha(0.85f));
     arc(px, py, 46, 2, 0, 360, kGoldPale);
     icon(pieceIcon, {px - 24, py - 24, 48, 48}, kGoldPale);
     // "make" is held: E, or the left button on the piece
@@ -2695,7 +2768,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
         holdT_ = std::max(0.f, holdT_ - craftDt_ * 3);
         holdLatch_ = false;
     }
-    arc(px, py, 58, 8, 0, 360, Colour::rgb(0, 0, 0, 0.5f));
+    arc(px, py, 58, 8, 0, 360, kRim.withAlpha(0.5f));
     if (holdT_ > 0) arc(px, py, 58, 8, -90, 360.f * holdT_ / kHoldSeconds, kGold);
     else if (c.canStart && hasProc)
         arc(px, py, 58, 8, -90, 360.f * float(std::clamp(c.expectedQ, 0.05, 1.0)), kGold.withAlpha(0.35f));
@@ -2723,7 +2796,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
             const Rect sr{sx - 22, sy - 22, 44, 44};
             const bool hot = ui_->hovered(sr);
             auto& v = craftSlots[slot];
-            disc(sx, sy, 22, Colour::rgb(10, 14, 20, 0.85f));
+            disc(sx, sy, 22, kRim.withAlpha(0.85f));
             arc(sx, sy, 22, craftSlot == slot ? 3.f : 1.5f, 0, 360, craftSlot == slot ? kGold : kGoldPale.withAlpha(0.5f));
             std::string list;
             if (!v.empty()) {
@@ -2784,7 +2857,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
             const float sx = px + (R - 62), sy = py;
             const Rect kr{sx - 18, sy - 18, 36, 36};
             const bool hot = ui_->hovered(kr);
-            arc(sx, sy, 24, 4, 135, 270, Colour::rgb(0, 0, 0, 0.45f));
+            arc(sx, sy, 24, 4, 135, 270, kRim.withAlpha(0.45f));
             if (craftLen > 0) arc(sx, sy, 24, 4, 135, 270.f * float(craftLen) / 5.f, kGold);
             iconButton(kr, "k_len", craftLen > 0, craftLen > 0 ? host_->text("hud.craft.len_tip", {{"n", craftLen}})
                                                               : host_->text("hud.craft.len_default"));
@@ -2806,7 +2879,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
     {
         const Rect sh{W - 360, 104, 316, 168};
         box(Skin::Paper, sh, 18);
-        disc(sh.x + sh.w * 0.5f, sh.y + 2, 10, Colour::rgb(166, 58, 42));
+        disc(sh.x + sh.w * 0.5f, sh.y + 2, 10, kSeal);
         if (!hasProc) {
             ui_->paragraph(sh.x + 20, sh.y + 26, sh.w - 40, host_->text("hud.craft.sheet_none"), kInkSoft, 14 / 15.f);
         } else if (!c.canStart) {
@@ -2816,18 +2889,18 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
             const bool vague = c.certainty < 0.5;
             const std::string form = c.likely.empty() ? host_->text("hud.craft.unknown_form") : c.likely + (vague ? "?" : "");
             icon(c.likely.empty() || craftShape.empty() ? pieceIcon : craftIconOf("shape_icons", craftShape, "s_lump"),
-                 {sh.x + 18, sh.y + 24, 56, 56}, Colour::rgb(122, 92, 40, vague ? 0.55f : 1.f));
+                 {sh.x + 18, sh.y + 24, 56, 56}, kLine.withAlpha(vague ? 0.55f : 1.f));
             title(sh.x + 88, sh.y + 22, ui_->fit(form, sh.w - 108, 20 / 15.f, true), kInk, 20);
             // quality: a bar, the spread hatched when the person is unsure
             const Rect bar{sh.x + 88, sh.y + 56, sh.w - 110, 12};
-            ui_->roundRect(bar, Colour::rgb(43, 38, 32, 0.18f), 6);
+            ui_->roundRect(bar, kInk.withAlpha(0.18f), 6);
             const double lo = std::clamp(c.expectedQ - c.qSpread, 0.0, 1.0), hi = std::clamp(c.expectedQ + c.qSpread, 0.0, 1.0);
             const Rect rg{bar.x + float(lo) * bar.w, bar.y, std::max(6.f, float(hi - lo) * bar.w), bar.h};
             ui_->roundRect(rg, barColour(c.expectedQ).withAlpha(vague ? 0.55f : 0.9f), 6);
             if (vague)
                 for (float hx = rg.x - 12; hx < rg.right(); hx += 6)
                     ui_->line(std::max(hx, rg.x), rg.bottom() - std::max(0.f, rg.x - hx), std::min(hx + 12, rg.right()),
-                              rg.y + std::max(0.f, hx + 12 - rg.right()), Colour::rgb(43, 38, 32, 0.35f));
+                              rg.y + std::max(0.f, hx + 12 - rg.right()), kInk.withAlpha(0.35f));
             else ui_->rect({bar.x + float(c.expectedQ) * bar.w - 1, bar.y - 3, 2, bar.h + 6}, kInk);
             label(bar.x, bar.bottom() + 6, ui_->fit(c.tier, bar.w, 13 / 15.f), kInkSoft, 13);
             float lx = sh.x + 20;
@@ -2869,7 +2942,7 @@ void Hud::craftBench(const Snapshot& s, float W, float H) {
             const bool hot = ui_->hovered(r);
             const bool made = t.ref.rfind("made:", 0) == 0;
             box(Skin::Button, r, 27);
-            if (hot) disc(r.x + 27, r.y + 27, 26, Colour::rgb(226, 197, 122, 0.16f));
+            if (hot) disc(r.x + 27, r.y + 27, 26, kGold.withAlpha(0.16f));
             if (made) arc(r.x + 27, r.y + 27, 25, 3, -90, float(360 * std::clamp(t.q, 0.05, 1.0)), ringColour(t.q));
             icon(t.icon, {r.x + 14, r.y + 14, 26, 26}, t.flawed ? kRingBad : kText);
             if (t.count > 1) {
@@ -2921,16 +2994,16 @@ void Hud::craftHelperView(const Snapshot& s, float W, float H) {
         if (hot) hoverC = int(i);
         box(Skin::Leather, r, 22);
         if (i == 0 || hot) arc(r.x + 37, r.y + 37, 30, 3, 0, 360, kGoldPale);
-        disc(r.x + 37, r.y + 37, 28, Colour::rgb(10, 14, 20, 0.7f));
+        disc(r.x + 37, r.y + 37, 28, kRim.withAlpha(0.7f));
         icon(cd.icon, {r.x + 19, r.y + 19, 36, 36}, i == 0 ? kGoldPale : kText.withAlpha(0.75f));
         title(r.x + 78, r.y + 12, ui_->fit(cd.name, r.w - 120, 18 / 15.f, true), kText, 18);
         const Rect bar{r.x + 78, r.y + 44, 150, 9};
-        ui_->roundRect(bar, Colour::rgb(0, 0, 0, 0.45f), 4);
+        ui_->roundRect(bar, kRim.withAlpha(0.45f), 4);
         ui_->roundRect({bar.x, bar.y, std::max(4.f, bar.w * float(cd.fit)), bar.h}, barColour(cd.fit), 4);
         if (!cd.missing.empty()) {
             const Rect m{r.right() - 40, r.y + 22, 30, 30};
             disc(m.x + 15, m.y + 15, 15, kBad);
-            ui_->text(m.x + 12, m.y + 6, "!", Colour::rgb(255, 255, 255), 1.0f, true);
+            ui_->text(m.x + 12, m.y + 6, "!", kText, 1.0f, true);
         }
         std::string tip = host_->text("hud.craft.fit", {{"n", int(std::lround(cd.fit * 100))}});
         if (!cd.missing.empty()) {
@@ -2980,7 +3053,7 @@ void Hud::craftHelperView(const Snapshot& s, float W, float H) {
             }
         lastX = sx, lastY = sy;
         const bool now = int(i) == cd.next;
-        disc(sx, sy, 17, now ? kGold : Colour::rgb(10, 14, 20, 0.85f));
+        disc(sx, sy, 17, now ? kGold : kRim.withAlpha(0.85f));
         arc(sx, sy, 17, 2, 0, 360, kGoldPale);
         const std::string n = std::to_string(i + 1);
         ui_->text(sx - textW(n, 15, true) * 0.5f, sy - 9, n, now ? kDark : kGoldPale, 1.0f, true);
@@ -3015,11 +3088,11 @@ void Hud::craftBook(const Snapshot& s, float W, float H) {
         if (y + 58 > L.bottom()) break;
         const Rect row{L.x, y, L.w, 52};
         const bool on = int(i) == bookPick_;
-        ui_->roundRect(row, on ? Colour::rgb(226, 197, 122, 0.35f) : ui_->hovered(row) ? Colour::rgb(122, 92, 40, 0.10f)
-                                                                                     : Colour::rgb(122, 92, 40, 0.05f), 12);
+        ui_->roundRect(row, on ? kGold.withAlpha(0.35f) : ui_->hovered(row) ? kLine.withAlpha(0.10f)
+                                                                                     : kLine.withAlpha(0.05f), 12);
         label(row.x + 14, row.y + 6, ui_->fit(r.name, row.w - 28, 15 / 15.f), kInk, 15);
         const Rect bar{row.x + 14, row.y + 34, row.w * 0.55f, 7};
-        ui_->roundRect(bar, Colour::rgb(122, 92, 40, 0.18f), 3);
+        ui_->roundRect(bar, kLine.withAlpha(0.18f), 3);
         ui_->roundRect({bar.x, bar.y, std::max(4.f, float(bar.w * r.mastery)), bar.h}, r.master ? kGood : kMid, 3);
         if (r.master) icon("esteem", {row.right() - 34, row.y + 14, 22, 22}, kGoldDark);
         if (clicked(row)) {
@@ -3050,7 +3123,7 @@ void Hud::craftBook(const Snapshot& s, float W, float H) {
     auto bar = [&](const std::string& name, double v, const std::string& right) {
         label(D.x, dy, name, kInkSoft, 13);
         const Rect b{D.x + 190, dy + 4, D.w - 300, 10};
-        ui_->roundRect(b, Colour::rgb(122, 92, 40, 0.18f), 5);
+        ui_->roundRect(b, kLine.withAlpha(0.18f), 5);
         ui_->roundRect({b.x, b.y, std::max(4.f, float(b.w * std::clamp(v, 0.0, 1.0))), b.h}, barColour(v), 5);
         label(b.right() + 12, dy, right, kInk, 13);
         dy += 30;
@@ -3071,13 +3144,13 @@ void Hud::craftBook(const Snapshot& s, float W, float H) {
         for (const auto& p : c.processes)
             if (p.id == r.steps[k]) pname = p.name;
         const Rect b{sx, dy, 44, 44};
-        disc(b.x + 22, b.y + 22, 22, Colour::rgb(43, 38, 32, known ? 0.12f : 0.06f));
-        arc(b.x + 22, b.y + 22, 21, 1.5f, 0, 360, Colour::rgb(122, 92, 40, known ? 0.8f : 0.35f));
+        disc(b.x + 22, b.y + 22, 22, kInk.withAlpha(known ? 0.12f : 0.06f));
+        arc(b.x + 22, b.y + 22, 21, 1.5f, 0, 360, kLine.withAlpha(known ? 0.8f : 0.35f));
         icon(craftIconOf("process_icons", r.steps[k], "c_hammer"), {b.x + 10, b.y + 10, 24, 24},
-             Colour::rgb(43, 38, 32, known ? 1.f : 0.3f));
+             kInk.withAlpha(known ? 1.f : 0.3f));
         if (!known) ui_->text(b.x + 30, b.y - 2, "?", kInkRed, 1.0f, true);
         if (ui_->hovered(b)) tipAt(b.x + 22, b.bottom() + 6, pname + (known ? "" : " · " + host_->text("hud.craft.step_unknown")));
-        if (k + 1 < r.steps.size()) ui_->line(b.right() + 1, b.y + 22, b.right() + 9, b.y + 22, Colour::rgb(122, 92, 40, 0.6f));
+        if (k + 1 < r.steps.size()) ui_->line(b.right() + 1, b.y + 22, b.right() + 9, b.y + 22, kLine.withAlpha(0.6f));
         sx += 54;
     }
     dy += 70;
@@ -3127,7 +3200,7 @@ void Hud::craftThings(const Snapshot& s, float W, float H) {
         if (cy + 50 > P.bottom()) break;
         const Rect r{cx - 34, cy - 34, 68, 68};
         const bool hot = ui_->hovered(r);
-        disc(cx, cy, 34, Colour::rgb(43, 38, 32, hot || thingPick_ == int(i) ? 0.2f : 0.1f));
+        disc(cx, cy, 34, kInk.withAlpha(hot || thingPick_ == int(i) ? 0.2f : 0.1f));
         arc(cx, cy, 33, 4, -90, float(360 * std::clamp(t.q, 0.05, 1.0)), barColour(t.q));
         if (t.wear > 0.05) arc(cx, cy, 26, 3, -90, float(360 * t.wear), kInkRed.withAlpha(0.7f));
         icon(t.icon, {cx - 18, cy - 18, 36, 36}, t.flawed ? kInkRed : kInk);
@@ -3192,7 +3265,7 @@ void Hud::craftRepair(const Snapshot& s, float W, float H) {
     for (const auto& [idx, t] : list) {
         if (x + 68 > P.right() - 32) break;
         const Rect r{x, y, 60, 60};
-        disc(x + 30, y + 30, 30, Colour::rgb(43, 38, 32, idx == repairPick_ ? 0.22f : 0.08f));
+        disc(x + 30, y + 30, 30, kInk.withAlpha(idx == repairPick_ ? 0.22f : 0.08f));
         arc(x + 30, y + 30, 29, 3, -90, float(360 * std::clamp(1.0 - t->wear, 0.05, 1.0)), barColour(1.0 - t->wear));
         icon(t->icon, {x + 14, y + 14, 32, 32}, t->flawed ? kInkRed : kInk);
         if (ui_->hovered(r)) tipAt(x + 30, y + 66, t->name);
@@ -3208,7 +3281,7 @@ void Hud::craftRepair(const Snapshot& s, float W, float H) {
     dy += 44;
     label(P.x + 32, dy, host_->text("hud.craft.wear"), kInkSoft, 13);
     const Rect b{P.x + 200, dy + 4, 300, 10};
-    ui_->roundRect(b, Colour::rgb(122, 92, 40, 0.18f), 5);
+    ui_->roundRect(b, kLine.withAlpha(0.18f), 5);
     ui_->roundRect({b.x, b.y, std::max(4.f, float(b.w * t->wear)), b.h}, kBad, 5);
     label(b.right() + 12, dy, std::to_string(int(std::lround(t->wear * 100))) + "%", kInk, 13);
     dy += 34;
@@ -3252,7 +3325,7 @@ void Hud::craftResultCard(const Snapshot& s, float W, float H) {
     const ActorSnap* who = actor(s, c.actor);
     {
         const std::string kicker = host_->text(r.breakthrough ? "hud.craft.insight" : "hud.craft.result");
-        label(cx - textW(kicker, 13) * 0.5f, P.y + 22, kicker, Colour::rgb(122, 90, 16), 13);
+        label(cx - textW(kicker, 13) * 0.5f, P.y + 22, kicker, kLine, 13);
         const std::string head = r.breakthrough ? host_->text("hud.craft.insight_lead", {{"name", who ? who->name : std::string()}}) : r.head;
         title(cx - textW(head, 30, true) * 0.5f, P.y + 44, ui_->fit(head, pw - 60, 30 / 15.f, true), kInk, 30);
         if (!r.what.empty()) label(cx - textW(r.what, 16) * 0.5f, P.y + 86, ui_->fit(r.what, pw - 60, 16 / 15.f), kInkSoft, 16);
@@ -3261,7 +3334,7 @@ void Hud::craftResultCard(const Snapshot& s, float W, float H) {
     if (r.q >= 0) {
         // quality as a ring, the chain's links as bars, the weakest one marked
         const float qx = P.x + 90, qy = y + 60;
-        disc(qx, qy, 50, Colour::rgb(43, 38, 32, 0.08f));
+        disc(qx, qy, 50, kInk.withAlpha(0.08f));
         arc(qx, qy, 46, 9, -90, float(360 * std::clamp(r.q, 0.03, 1.0)), barColour(r.q));
         const std::string qs = std::to_string(int(std::lround(r.q * 100)));
         title(qx - textW(qs, 26, true) * 0.5f, qy - 16, qs, kInk, 26);
@@ -3274,7 +3347,7 @@ void Hud::craftResultCard(const Snapshot& s, float W, float H) {
             const auto& [nm, q] = r.links[i];
             label(P.x + 180, ly, ui_->fit(nm, 170, 13 / 15.f), int(i) == weak ? kInkRed : kInk, 13);
             const Rect b{P.x + 360, ly + 4, pw - 420, 9};
-            ui_->roundRect(b, Colour::rgb(122, 92, 40, 0.18f), 4);
+            ui_->roundRect(b, kLine.withAlpha(0.18f), 4);
             ui_->roundRect({b.x, b.y, std::max(4.f, float(b.w * std::clamp(q, 0.0, 1.0))), b.h}, barColour(q), 4);
             ly += 24;
         }
@@ -3345,8 +3418,8 @@ void Hud::backstory(float W, float H) {
         const BackstoryCard& b = backstories[size_t(i)];
         const Rect row{C.x + 10, C.y + 12 + rowH * float(i), C.w - 20, rowH - 4};
         const bool on = i == backstoryPick, hot = ui_->hovered(row);
-        if (on) ui_->roundRect(row, Colour::rgb(226, 197, 122, 0.20f), 16);
-        else if (hot) ui_->roundRect(row, Colour::rgb(226, 197, 122, 0.08f), 16);
+        if (on) ui_->roundRect(row, kGold.withAlpha(0.20f), 16);
+        else if (hot) ui_->roundRect(row, kGold.withAlpha(0.08f), 16);
         const float d = std::min(64.0f, rowH - 14);
         const float cx = row.x + 12 + d * 0.5f, cy = row.y + row.h * 0.5f;
         box(on ? Skin::ButtonOn : Skin::Button, {cx - d * 0.5f, cy - d * 0.5f, d, d}, d * 0.5f);
@@ -3386,7 +3459,7 @@ void Hud::backstory(float W, float H) {
     for (const auto& [name, lvl] : b.skills) {
         label(lx, ly, ui_->fit(name, barX - lx - 10, 14 / 15.f), kInk, 14);
         const Rect bar{barX, ly + 5, barW, 9};
-        ui_->roundRect(bar, Colour::rgb(122, 92, 40, 0.18f), 4.5f);
+        ui_->roundRect(bar, kLine.withAlpha(0.18f), 4.5f);
         ui_->roundRect({bar.x, bar.y, std::max(9.0f, bar.w * float(lvl)), bar.h}, lvl >= 0.5 ? kGoldDark : kMid, 4.5f);
         ly += skillRowH;
     }
@@ -3404,7 +3477,7 @@ void Hud::backstory(float W, float H) {
                 cy += 30;
             }
             box(dark ? Skin::ChipOn : Skin::Chip, {cxp, cy, w, 24}, 12);
-            label(cxp + 11, cy + 3, t, dark ? Colour::rgb(239, 228, 200) : kInkSoft, 13);
+            label(cxp + 11, cy + 3, t, dark ? kText : kInkSoft, 13);
             cxp += w + 6;
         }
         cy += 32;

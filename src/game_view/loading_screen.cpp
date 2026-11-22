@@ -14,6 +14,8 @@
 #include "engine/ui/canvas.hpp"
 #include "engine/ui/font.hpp"
 #include "engine/ui/ui.hpp"
+#include "game_view/saves.hpp"
+#include "game_view/ui_theme.hpp"
 
 namespace altera::game {
 
@@ -23,6 +25,7 @@ using Clock = std::chrono::steady_clock;
 struct LoadingScreen::Impl {
     std::map<std::string, std::string> texts;
     std::shared_ptr<ui::FontFace> font, bold;
+    UiTheme theme;   // AL-62: the player's interface style
     ui::Canvas canvas;
     ui::Ui ui;
     ui::Input input;
@@ -49,9 +52,17 @@ void LoadingScreen::setup(const std::string& root, const std::string& lang) {
             for (auto it = j.begin(); it != j.end(); ++it)
                 if (it.value().is_string()) impl_->texts[it.key()] = it.value().get<std::string>();
     }
+    impl_->theme = UiTheme::load(fs::path(root) / "content/ui/themes" / (loadSettings().uiStyle + ".json"));
     const fs::path fonts = fs::path(root) / "assets" / "fonts";
-    impl_->font = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
-    impl_->bold = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
+    const auto face = [&](const std::string& f) {
+        return f.empty() ? std::shared_ptr<ui::FontFace>() : ui::FontFace::load(fonts / f);
+    };
+    impl_->font = face(impl_->theme.font("text"));
+    impl_->bold = face(impl_->theme.font("title"));
+    if (!impl_->font || !impl_->bold) {
+        impl_->font = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
+        impl_->bold = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
+    }
 }
 
 std::string LoadingScreen::text(const std::string& key) const {
@@ -134,23 +145,38 @@ void LoadingScreen::draw() {
     const float W = float(w), H = float(h);
     SDL_Renderer* sw = m.canvas.renderer();
     SDL_SetRenderDrawBlendMode(sw, SDL_BLENDMODE_NONE);
-    SDL_SetRenderDrawColor(sw, 12, 16, 22, 255);
+    SDL_SetRenderDrawColor(sw, 12, 14, 16, 255);
     SDL_RenderClear(sw);
     SDL_SetRenderDrawBlendMode(sw, SDL_BLENDMODE_BLEND);
     m.ui.begin(m.input, w, h);
-    const ui::Colour gold = ui::Colour::rgb(226, 197, 122), pale = ui::Colour::rgb(243, 226, 168),
-                     textC = ui::Colour::rgb(239, 230, 207), soft = ui::Colour::rgb(150, 140, 118);
+    const auto tc = [&](const char* k) {
+        const ThemeColour c = m.theme.colour(k);
+        return ui::Colour{c.r, c.g, c.b, c.a};
+    };
+    const ui::Colour gold = tc("acc"), pale = tc("gold2"), textC = tc("ink"), soft = tc("mute");
+    // the name in light spaced capitals, one letter at a time
     const std::string title = "ALTERA";
-    m.ui.text(W * 0.5f - m.ui.textWidth(title, 3.0f, true) * 0.5f, H * 0.32f, title, gold, 3.0f, true);
+    const float sp = m.ui.textHeight(3.0f) * 0.3f;
+    float tw = -sp;
+    for (char ch : title) tw += m.ui.textWidth(std::string(1, ch), 3.0f, true) + sp;
+    float tx = W * 0.5f - tw * 0.5f;
+    for (char ch : title) {
+        const std::string c(1, ch);
+        m.ui.text(tx, H * 0.32f, c, gold, 3.0f, true);
+        tx += m.ui.textWidth(c, 3.0f, true) + sp;
+    }
     const float bw = std::min(720.0f, W * 0.6f), bx = (W - bw) * 0.5f, by = H * 0.55f;
     const double elapsed = std::chrono::duration<double>(Clock::now() - m.start).count();
     const double inStage = std::chrono::duration<double>(Clock::now() - m.stageStart).count();
     // Creep towards the next step's share while a step runs, never past it.
     const float shown = m.fraction + float(1.0 - std::exp(-inStage / 20.0)) * 0.08f;
-    const ui::Rect bar{bx, by, bw, 14};
-    m.ui.roundRect(bar, ui::Colour::rgb(22, 29, 40), 7);
-    m.ui.roundRect({bx, by, bw * std::clamp(shown, 0.0f, 1.0f), 14}, gold, 7);
-    m.ui.border(bar, ui::Colour::rgb(168, 135, 62), 1.5f, 7);
+    // a thin bar with a gold hairline round it, and a second one a step out
+    const float bh = std::max(4.0f, m.theme.size("bar", 6.0f));
+    const ui::Rect bar{bx, by, bw, bh};
+    m.ui.rect(bar, tc("rim").withAlpha(0.8f));
+    m.ui.rect({bx, by, bw * std::clamp(shown, 0.0f, 1.0f), bh}, gold);
+    m.ui.border(bar, gold, 1.0f, 0);
+    m.ui.border({bx - 3, by - 3, bw + 6, bh + 6}, gold.withAlpha(0.35f), 1.0f, 0);
     const std::string step = m.stage.empty() ? "" : text("loading." + m.stage);
     m.ui.text(bx, by - 34, step, pale, 1.15f, true);
     char t[64];

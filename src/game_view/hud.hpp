@@ -111,11 +111,14 @@ public:
     // its species, filled by the game (species -> interaction ids), drawn
     // round the point clicked.
     std::map<std::string, std::vector<std::string>> beastActs;
+    // AL-62: pixels per point of the interface (the game sets it each frame);
+    // openBeast / openThing take the screen's pixels.
+    float scale = 1.0f;
     void openBeast(EntityId target, float x, float y) {
         panel = "beast";
         beastTarget_ = target;
-        beastX_ = x;
-        beastY_ = y;
+        beastX_ = x / scale;
+        beastY_ = y / scale;
         beastFresh_ = true;
     }
     // The act ring over a thing (a tree, deadwood, a bush): the acts the sim
@@ -123,8 +126,8 @@ public:
     void openThing(EntityId target, float x, float y) {
         panel = "thing";
         thingTarget_ = target;
-        beastX_ = x;
-        beastY_ = y;
+        beastX_ = x / scale;
+        beastY_ = y / scale;
         beastFresh_ = true;
     }
     // The target whose acts the sim should check (the ring or the wheel open on it).
@@ -183,6 +186,11 @@ public:
     std::string settingsLang = "ru";
     bool settingsFullscreen = false;
     int settingsAutosave = 10;       // minutes, 0 off
+    // AL-62: the interface style (a theme in content/ui/themes) and its size, 80..130 %
+    std::string themeId = "edge";    // the theme init() loads
+    std::vector<std::pair<std::string, std::string>> themeList;   // (id, loc key of its name)
+    std::string settingsStyle = "edge";
+    int settingsScale = 100;
     bool inMenu() const { return panel == "menu" || panel == "pause" || panel == "slots" || panel == "settings"; }
     // A new world (a load or a new game): drop what belonged to the old one's people.
     void resetWorld();

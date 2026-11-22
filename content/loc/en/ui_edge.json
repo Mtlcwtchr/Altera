@@ -1,0 +1,7 @@
+{
+ "_doc": "The 'Edge' interface style (AL-62..AL-67): style and size settings, new HUD and window captions.",
+ "menu.settings.style": "Interface style",
+ "menu.settings.style.edge": "Edge",
+ "menu.settings.ui_scale": "Interface size",
+ "menu.settings.percent": "{n}%"
+}

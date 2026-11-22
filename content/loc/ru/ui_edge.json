@@ -1,0 +1,7 @@
+{
+ "_doc": "Стиль интерфейса «Грань» (AL-62..AL-67): настройки стиля и размера, новые подписи HUD и окон.",
+ "menu.settings.style": "Стиль интерфейса",
+ "menu.settings.style.edge": "Грань",
+ "menu.settings.ui_scale": "Размер интерфейса",
+ "menu.settings.percent": "{n} %"
+}

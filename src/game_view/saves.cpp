@@ -126,6 +126,8 @@ GameSettings loadSettings() {
         s.cameraFollow = j.value("camera_follow", true);
         s.wallMode = std::clamp(j.value("wall_mode", 1), 0, 2);
         s.idleAutonomyS = std::clamp(j.value("idle_autonomy_s", 20), 3, 600);
+        s.uiStyle = j.value("ui_style", std::string("edge"));
+        s.uiScale = std::clamp(j.value("ui_scale", 100), 80, 130);
     } catch (const std::exception&) {
     }
     return s;
@@ -134,7 +136,7 @@ GameSettings loadSettings() {
 void storeSettings(const GameSettings& s) {
     const sim::Json j{{"lang", s.lang}, {"fullscreen", s.fullscreen}, {"autosave_min", s.autosaveMin},
                       {"control", s.control}, {"camera_follow", s.cameraFollow}, {"idle_autonomy_s", s.idleAutonomyS},
-                      {"wall_mode", s.wallMode}};
+                      {"wall_mode", s.wallMode}, {"ui_style", s.uiStyle}, {"ui_scale", s.uiScale}};
     std::string why;
     if (!writeFile(baseDir() / "settings.json", j.dump(1), &why)) SDL_Log("altera_game: settings: %s", why.c_str());
 }
