@@ -188,7 +188,7 @@ namespace {
 Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId id, bool vy) {
     const Character* c = w.character(id);
     if (!c) return Json::object();
-    Json n = loc.personNoun(lang, c->name, c->body.sex);
+    Json n = loc.personNoun(lang, *c);
     n["id"] = id;
     if (vy) {
         n["reg"] = "vy";
@@ -198,6 +198,12 @@ Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId
     return n;
 }
 } // namespace
+
+Json needArg(const Loc& loc, const std::string& lang, const std::string& need) {
+    const std::string want = "need." + need + ".want";
+    if (loc.has(lang, want)) return Json(loc.text(lang, want));
+    return loc.noun(lang, "need." + need + ".name", need);
+}
 
 Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, const Utterance& u) {
     Json params = u.content ? propParams(w, *u.content) : Json::object();
@@ -228,7 +234,7 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
             if (it != w.families().end())
                 for (EntityId id : it->second.members)
                     if (const Character* c = w.character(id); c && c->body.alive && !c->isAnimal())
-                        return loc.personNoun(lang, c->name, c->body.sex);
+                        return loc.personNoun(lang, *c);
             return Json("?");
         }
         if (r.kind == "text") return loc.noun(lang, r.key, r.key);
@@ -240,13 +246,17 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
         args["prop"] = propLocArg(*u.content, refNoun,
                                   [&](const std::string& unit) { return loc.noun(lang, "unit." + unit, unit); });
     // the moment's own arguments (v0.1 lines)
+    std::vector<std::pair<std::string, std::string>> phrases; // phrases with arguments ("дать {item:acc}"), at the end
     for (const auto& [k, r] : u.args) {
-        // an act in a sentence: its phrase ("дать хлеба") over the menu caption ("Дать"), when it needs no arguments
+        // an act in a sentence: its phrase ("дать хлеба") over the menu caption ("Дать")
         if (r.kind == "text" && r.key.size() > 5 && r.key.compare(r.key.size() - 5, 5, ".name") == 0) {
             const std::string phrase = r.key.substr(0, r.key.size() - 5) + ".phrase";
-            if (loc.has(lang, phrase) && loc.text(lang, phrase).find('{') == std::string::npos) {
-                args[k] = loc.noun(lang, phrase, "");
-                continue;
+            if (loc.has(lang, phrase)) {
+                if (loc.text(lang, phrase).find('{') == std::string::npos) {
+                    args[k] = loc.noun(lang, phrase, "");
+                    continue;
+                }
+                phrases.emplace_back(k, phrase);
             }
         }
         args[k] = refNoun(r);
@@ -270,7 +280,7 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
         // the speaker's most pressing need
         auto low = std::min_element(self->needs.begin(), self->needs.end(),
                                     [](const auto& a, const auto& b) { return a.second < b.second; });
-        args["need"] = loc.noun(lang, "need." + low->first + ".name", low->first);
+        args["need"] = needArg(loc, lang, low->first);
     }
     if (!args.contains("need")) args["need"] = something;
     if (!args.contains("person")) {
@@ -281,6 +291,8 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
         else args["person"] = something;
     }
     if (!args.contains("deadline")) args["deadline"] = loc.noun(lang, "hud.daypart.evening", "");
+    for (const auto& [k, phrase] : phrases)
+        if (const std::string t = loc.text(lang, phrase, args); t.find('{') == std::string::npos) args[k] = t;
     return args;
 }
 

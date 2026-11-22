@@ -216,9 +216,22 @@ Json Loc::personNoun(const std::string& lang, const std::string& name, char sex)
     while (from <= name.size()) {
         const size_t sp = name.find(' ', from);
         const std::string word = name.substr(from, sp == std::string::npos ? std::string::npos : sp - from);
-        Json forms = gr ? declineWord(*gr, word, sex) : Json{{"nom", word}};
+        // name.<word> (AL-61): the name in this language, a string declined by the rules or an
+        // object of case forms (the missing ones by the rules; "f": the woman's forms of a surname)
+        std::string base = word;
+        Json given = Json::object();
+        if (const Json* ex = entry(lang, "name." + word)) {
+            if (ex->is_string()) base = ex->get<std::string>();
+            else if (ex->is_object()) {
+                given = sex == 'f' && ex->contains("f") && (*ex)["f"].is_object() ? (*ex)["f"] : *ex;
+                base = given.value("nom", word);
+            }
+        }
+        Json forms = gr ? declineWord(*gr, base, sex) : Json{{"nom", base}};
+        for (auto it = given.begin(); it != given.end(); ++it)
+            if (it->is_string()) forms[it.key()] = *it;
         for (const char* cs : kAll) {
-            std::string f = forms.value(cs, word);
+            std::string f = forms.value(cs, base);
             if (const Json* ex = entry(lang, "name." + word + "." + cs); ex && ex->is_string()) f = ex->get<std::string>();
             std::string cur = out[cs].get<std::string>();
             out[cs] = first ? f : cur + " " + f;
@@ -230,10 +243,30 @@ Json Loc::personNoun(const std::string& lang, const std::string& name, char sex)
     return out;
 }
 
-namespace {
-Json characterNoun(const Loc& loc, const std::string& lang, const Character& c) {
-    return loc.personNoun(lang, c.name, c.body.sex);
+Json Loc::personNoun(const std::string& lang, const Character& c) const {
+    if (c.nameForms.empty()) return personNoun(lang, c.name, c.body.sex);
+    // the forms the player gave: this language's, else the first language they gave
+    auto it = c.nameForms.find(lang);
+    if (it == c.nameForms.end()) it = c.nameForms.begin();
+    static const char* kAll[] = {"nom", "gen", "dat", "acc", "ins", "pre"};
+    const auto& f = it->second;
+    const std::string nom = f.count("nom") ? f.at("nom") : c.name;
+    Json out = Json::object();
+    for (const char* cs : kAll) out[cs] = f.count(cs) && !f.at(cs).empty() ? f.at(cs) : nom;
+    out["g"] = c.body.sex == 'm' ? "m" : "f";
+    return out;
 }
+
+void setOwnName(Character& c, const std::string& lang, const Json& forms) {
+    auto& f = c.nameForms[lang];
+    f.clear();
+    for (auto it = forms.begin(); it != forms.end(); ++it)
+        if (it->is_string() && it.key() != "g") f[it.key()] = it->get<std::string>();
+    if (f.count("nom")) c.name = f["nom"];
+}
+
+namespace {
+Json characterNoun(const Loc& loc, const std::string& lang, const Character& c) { return loc.personNoun(lang, c); }
 } // namespace
 
 // --- tables -----------------------------------------------------------------

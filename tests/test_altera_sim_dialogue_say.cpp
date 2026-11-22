@@ -112,7 +112,7 @@ TEST(altera_dialogue_say_refusal_with_reason) {
     for (const std::string lang : {"ru", "en"}) {
         const std::string text = traceText(realLoc(), lang, w, asker, *a);
         CHECK(clean(text));
-        CHECK(text.find(refuser.name) != std::string::npos);
+        CHECK(text.find(realLoc().personNoun(lang, refuser)["nom"].get<std::string>()) != std::string::npos);
     }
 }
 

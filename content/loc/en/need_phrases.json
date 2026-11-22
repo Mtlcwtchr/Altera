@@ -1,0 +1,11 @@
+{
+ "_doc": "A need in a line (AL-61): {need} of a request for help, a lower-case part of a sentence (\"I'm in trouble, Oleg: I'm parched.\"), not the meter caption need.<id>.name.",
+ "need.energy.want": "I'm worn out",
+ "need.fun.want": "I'm bored stiff",
+ "need.hunger.want": "I've nothing to eat",
+ "need.hygiene.want": "I need a wash",
+ "need.purpose.want": "I feel empty inside",
+ "need.social.want": "I've no one to talk to",
+ "need.thirst.want": "I'm parched",
+ "need.warmth.want": "the cold is getting to me"
+}

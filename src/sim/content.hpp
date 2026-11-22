@@ -529,6 +529,8 @@ struct Content {
     std::map<std::string, InteractionDef> interactions;
     std::map<std::string, FsmStateDef> fsm;
     std::vector<std::string> speechActs;
+    // Names world generation gives (names.json, AL-61): ids = the Latin form, keys name.<id> of the loc.
+    std::vector<std::string> givenNamesM, givenNamesF, familyNames;
     std::map<std::string, DialogueTemplate> dialogue;
     Json dialogueRules = Json::object(); // the rest of dialogue.json (plans, menu, consent, ...)
     std::map<std::string, KnowledgeDef> knowledge;

@@ -12,8 +12,9 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seed 
 
 Json loadJsonFile(const std::string& path);
 
-// Names as world generation makes them (AL-39: newborns and strangers).
-std::string randomPersonName(Rng& r, bool female);
-std::string randomFamilyName(Rng& r);
+// Names as world generation makes them (AL-39: newborns and strangers): from the content's
+// names.json (AL-61, the loc translates them by name.<id>), else made of syllables.
+std::string randomPersonName(Rng& r, bool female, const Content* c = nullptr);
+std::string randomFamilyName(Rng& r, const Content* c = nullptr);
 
 } // namespace altera::sim

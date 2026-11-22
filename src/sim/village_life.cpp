@@ -437,7 +437,7 @@ EntityId bear(World& w, Character& mother, Character* father, Rng& rng, const Vi
     k.body.ageDays = 0;
     const auto fam = w.families().find(mother.status.family);
     const std::string famName = fam != w.families().end() ? fam->second.name : std::string();
-    k.name = randomPersonName(rng, k.body.sex == 'f') + (famName.empty() ? "" : " " + famName);
+    k.name = randomPersonName(rng, k.body.sex == 'f', &ct) + (famName.empty() ? "" : " " + famName);
     k.traits = inheritTraits(rng, ct, &mother, father, r);
     for (const auto& n : ct.needs) k.needs[n.id] = n.startHi;
     for (const auto& [a, v] : mother.attrs) {
@@ -646,7 +646,7 @@ Character makeStranger(World& w, Rng& rng, const Settlement& st, char sex, int a
     c.id = w.newId();
     c.body.sex = sex;
     c.body.ageDays = ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1);
-    c.name = randomPersonName(rng, sex == 'f') + " " + surname;
+    c.name = randomPersonName(rng, sex == 'f', &ct) + " " + surname;
     std::vector<std::string> pool;
     for (const auto& [id, t] : ct.traits) pool.push_back(id);
     for (int i = 0; i < 2 && !pool.empty(); ++i) {
@@ -685,7 +685,7 @@ void meetVillage(World& w, Character& s, const Settlement& st) {
 
 bool arrive(World& w, Settlement& st, Rng& rng, bool family, const VillageLifeRules& r, char lonely = 0) {
     const EntityId sid = st.id;
-    const std::string surname = randomFamilyName(rng);
+    const std::string surname = randomFamilyName(rng, &w.content());
     if (!family) {
         // a lone wanderer: the household with most food to spare takes them in
         EntityId best = kNone;
