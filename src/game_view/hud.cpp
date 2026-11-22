@@ -475,6 +475,7 @@ SDL_Texture* Hud::portraitOf(const ActorSnap& a) {
         loadImage(dir / ("portrait_" + look + "_id.png"), base.mask.w, base.mask.h, base.mask.rgba);
     }
     const int S = 128;
+    const bool diamondCut = !hudPalette().theme.flag("textured");
     std::vector<Px> px(std::size_t(S) * S);
     float skinT[3], hairT[3], clothT[3], fam[3];
     host_->tintsOf(a, skinT, hairT, clothT);
@@ -497,7 +498,9 @@ SDL_Texture* Hud::portraitOf(const ActorSnap& a) {
                 const float l = p.r * 0.3f + p.g * 0.59f + p.b * 0.11f;
                 p.r = p.g = p.b = l * 0.7f;
             }
-            const float d = std::hypot(x + 0.5f - S * 0.5f, y + 0.5f - S * 0.5f) - S * 0.5f;
+            // a round portrait, or (Edge) one cut to a diamond
+            const float d = diamondCut ? (std::fabs(x + 0.5f - S * 0.5f) + std::fabs(y + 0.5f - S * 0.5f) - S * 0.5f) * 0.7071f
+                                       : std::hypot(x + 0.5f - S * 0.5f, y + 0.5f - S * 0.5f) - S * 0.5f;
             p.a *= cover(d);
             px[std::size_t(y) * S + x] = p;
         }
@@ -676,8 +679,10 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
             }
         }
 
+    const bool edge = !hudPalette().theme.flag("textured");   // AL-64: the Edge HUD's layout
     if (panel == "none") names(s);
-    if (panel == "none") {
+    if (panel == "none" && edge) edgeHud(s, sel, W, H);
+    if (panel == "none" && !edge) {
         topMenu(W);
         minimap(s, W);
         toasts(s, W);
@@ -693,6 +698,8 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         quickBar(s, W, H);
         clockPill(s, W, H);
         controlPill(W, H);
+    }
+    if (panel == "none") {
         walkMarker();
         workFx(s);
         feedbackFloats(s);
@@ -720,9 +727,15 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "inventory") inventory(s, sel, W, H);
     if (panel == "annals") annals(s, W, H);
     if (panel == "build") {
-        topMenu(W);
-        toasts(s, W);
-        clockPill(s, W, H);
+        if (edge) {
+            const float band = std::min(W, H * 16.f / 9.f), ox = (W - band) * 0.5f;
+            edgeMenu(ox, band);
+            edgeClock(s, ox, band, H);
+        } else {
+            topMenu(W);
+            toasts(s, W);
+            clockPill(s, W, H);
+        }
         buildBar(s, W, H);
     }
     if (panel == "colony") colony(s, W, H);
@@ -950,8 +963,6 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
     // the slots pill
     const Rect pill{cx, H - 30 - 34 - 10 - 52, 364, 52};
     box(Skin::Leather, pill, 26);
-    static const char* kSlotNames[] = {"hud.tier.body", "hud.tier.safety", "hud.tier.belonging", "hud.tier.esteem",
-                                       "hud.tier.calling", "hud.wants", "hud.people", "hud.values"};
     int hovered = -1;
     for (int k = 0; k < 8; ++k) {
         const Rect b{pill.x + 4 + k * 45.0f, pill.y + 4, 44, 44};
@@ -970,85 +981,90 @@ void Hud::selectedCorner(const Snapshot& s, const ActorSnap& a, float H) {
         if (clicked(b)) pin_ = pin_ == k ? -1 : k;
     }
     // the paper over the slots: the group opened into its statuses (value, trend, why, what helps)
-    if (shown >= 0) {
-        auto rows = tierRows(s, a, shown);
-        const float tw = 364 - 40;
-        std::vector<std::vector<std::string>> descLines(rows.size());
-        double sum = 0, lo = 1;
-        int bars = 0;
-        float body = 0;
-        for (std::size_t i = 0; i < rows.size(); ++i) {
-            const Row& r = rows[i];
-            if (r.value >= 0) sum += r.value, lo = std::min(lo, r.value), ++bars;
-            if (!r.desc.empty()) {
-                // word wrap into at most two lines
-                std::string line;
-                std::size_t pos = 0;
-                const std::string& t = r.desc;
-                while (pos < t.size() && descLines[i].size() < 2) {
-                    std::size_t sp = t.find(' ', pos);
-                    const std::string word = t.substr(pos, sp == std::string::npos ? std::string::npos : sp - pos);
-                    const std::string next = line.empty() ? word : line + " " + word;
-                    if (!line.empty() && textW(next, 13) > tw) {
-                        descLines[i].push_back(line);
-                        line = word;
-                    } else line = next;
-                    pos = sp == std::string::npos ? t.size() : sp + 1;
-                }
-                if (!line.empty() && descLines[i].size() < 2) descLines[i].push_back(line);
-                else if (!line.empty()) descLines[i].back() = ui_->fit(descLines[i].back() + " " + line, tw, 13 / 15.f);
+    if (shown >= 0) slotCard(s, a, shown, pill.x, pill.y - 12, pill.x + 4 + shown * 45.0f + 22, 364);
+}
+
+// A status group opened into its statuses (value, trend, why, what helps): a
+// card whose bottom is at `bottom`, `width` wide, with a caret at `caret`.
+void Hud::slotCard(const Snapshot& s, const ActorSnap& a, int shown, float x, float bottom, float caret, float width) {
+    static const char* kSlotNames[] = {"hud.tier.body", "hud.tier.safety", "hud.tier.belonging", "hud.tier.esteem",
+                                       "hud.tier.calling", "hud.wants", "hud.people", "hud.values"};
+    auto rows = tierRows(s, a, shown);
+    const float tw = width - 40;
+    std::vector<std::vector<std::string>> descLines(rows.size());
+    double sum = 0, lo = 1;
+    int bars = 0;
+    float body = 0;
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+        const Row& r = rows[i];
+        if (r.value >= 0) sum += r.value, lo = std::min(lo, r.value), ++bars;
+        if (!r.desc.empty()) {
+            // word wrap into at most two lines
+            std::string line;
+            std::size_t pos = 0;
+            const std::string& t = r.desc;
+            while (pos < t.size() && descLines[i].size() < 2) {
+                std::size_t sp = t.find(' ', pos);
+                const std::string word = t.substr(pos, sp == std::string::npos ? std::string::npos : sp - pos);
+                const std::string next = line.empty() ? word : line + " " + word;
+                if (!line.empty() && textW(next, 13) > tw) {
+                    descLines[i].push_back(line);
+                    line = word;
+                } else line = next;
+                pos = sp == std::string::npos ? t.size() : sp + 1;
             }
-            body += 28 + float(descLines[i].size()) * 17.0f + (descLines[i].empty() ? 0 : 4);
+            if (!line.empty() && descLines[i].size() < 2) descLines[i].push_back(line);
+            else if (!line.empty()) descLines[i].back() = ui_->fit(descLines[i].back() + " " + line, tw, 13 / 15.f);
         }
-        const bool groups = shown < 5;
-        const float h = 16 + 30 + body + (groups ? 22 : 0) + 14;
-        const Rect p{pill.x, pill.y - 12 - h, 364, h};
-        box(Skin::Paper, p, 18);
-        seal(p.right() - 18 - 17 + 17, p.y + 5);
-        std::string head = host_->text(kSlotNames[shown]);
-        if (groups && bars) head += ": " + std::to_string(int(std::lround(sum / bars * 100)));
-        title(p.x + 20, p.y + 14, head, kInk, 22);
-        if (groups && bars) {
-            const char* tk = lo < 0.35 ? "hud.status.trend.down" : lo < 0.55 ? "hud.status.trend.hold" : "hud.status.trend.up";
-            const Colour tc = lo < 0.35 ? kInkRed : lo < 0.55 ? kGoldDark : kGood;
-            const std::string tt = host_->text(tk);
-            const float tx = p.right() - 20 - 34 - textW(tt, 14, true);
-            title(tx, p.y + 20, tt, tc, 14);
-            trendArrow(tx - 12, p.y + 29, lo < 0.35 ? -1 : lo < 0.55 ? 0 : 1, tc);
-        }
-        ui_->line(p.x + 20, p.y + 46, p.right() - 20, p.y + 46, kLine.withAlpha(0.45f));
-        float y = p.y + 54;
-        for (std::size_t i = 0; i < rows.size(); ++i) {
-            const Row& r = rows[i];
-            const Colour fg = r.alarm ? kInkRed : kInk;
-            label(p.x + 20, y, ui_->fit(r.label, r.value >= 0 ? 150 : 200, 1.0f), fg, 15);
-            if (r.value >= 0) {
-                const Rect bar{p.right() - 20 - 54 - 10 - 110, y + 6, 110, 8};
-                ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
-                ui_->roundRect({bar.x, bar.y, std::max(8.f, float(bar.w * std::clamp(r.value, 0.0, 1.0))), bar.h}, barColour(r.value), 4);
-                if (!r.id.empty()) {
-                    const std::string num = std::to_string(int(std::lround(std::clamp(r.value, 0.0, 1.0) * 100)));
-                    const Colour nc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? kGoldDark : kGood;
-                    title(p.right() - 20 - 18 - textW(num, 13, true), y + 1, num, nc, 13);
-                    if (r.arrow >= -1 && r.arrow <= 1) trendArrow(p.right() - 20 - 7, y + 10, r.arrow, nc);
-                }
-            } else if (!r.note.empty()) {
-                const float w = textW(r.note, 14);
-                label(p.right() - 20 - w, y + 1, r.note, kInkSoft, 14);
-            }
-            y += 28;
-            if (!descLines[i].empty()) {
-                const Colour dc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? kGoldDark : kInkSoft;
-                y -= 6;
-                for (const auto& l : descLines[i]) label(p.x + 20, y, l, dc, 13), y += 17;
-                y += 10;
-            }
-        }
-        if (groups) label(p.x + 20, y, ui_->fit(host_->text("hud.status.hint"), tw, 12 / 15.f), kGoldDark, 12);
-        // the caret under the shown slot
-        const float caret = pill.x + 4 + shown * 45.0f + 22;
-        ui_->rect({caret - 7, p.bottom() - 2, 14, 6}, kText);
+        body += 28 + float(descLines[i].size()) * 17.0f + (descLines[i].empty() ? 0 : 4);
     }
+    const bool groups = shown < 5;
+    const float h = 16 + 30 + body + (groups ? 22 : 0) + 14;
+    const Rect p{x, bottom - h, width, h};
+    box(Skin::Paper, p, 18);
+    seal(p.right() - 18 - 17 + 17, p.y + 5);
+    std::string head = host_->text(kSlotNames[shown]);
+    if (groups && bars) head += ": " + std::to_string(int(std::lround(sum / bars * 100)));
+    title(p.x + 20, p.y + 14, head, kInk, 22);
+    if (groups && bars) {
+        const char* tk = lo < 0.35 ? "hud.status.trend.down" : lo < 0.55 ? "hud.status.trend.hold" : "hud.status.trend.up";
+        const Colour tc = lo < 0.35 ? kInkRed : lo < 0.55 ? kGoldDark : kGood;
+        const std::string tt = host_->text(tk);
+        const float tx = p.right() - 20 - 34 - textW(tt, 14, true);
+        title(tx, p.y + 20, tt, tc, 14);
+        trendArrow(tx - 12, p.y + 29, lo < 0.35 ? -1 : lo < 0.55 ? 0 : 1, tc);
+    }
+    ui_->line(p.x + 20, p.y + 46, p.right() - 20, p.y + 46, kLine.withAlpha(0.45f));
+    float y = p.y + 54;
+    for (std::size_t i = 0; i < rows.size(); ++i) {
+        const Row& r = rows[i];
+        const Colour fg = r.alarm ? kInkRed : kInk;
+        label(p.x + 20, y, ui_->fit(r.label, r.value >= 0 ? 150 : 200, 1.0f), fg, 15);
+        if (r.value >= 0) {
+            const Rect bar{p.right() - 20 - 54 - 10 - 110, y + 6, 110, 8};
+            ui_->roundRect(bar, kInk.withAlpha(0.16f), 4);
+            ui_->roundRect({bar.x, bar.y, std::max(8.f, float(bar.w * std::clamp(r.value, 0.0, 1.0))), bar.h}, barColour(r.value), 4);
+            if (!r.id.empty()) {
+                const std::string num = std::to_string(int(std::lround(std::clamp(r.value, 0.0, 1.0) * 100)));
+                const Colour nc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? kGoldDark : kGood;
+                title(p.right() - 20 - 18 - textW(num, 13, true), y + 1, num, nc, 13);
+                if (r.arrow >= -1 && r.arrow <= 1) trendArrow(p.right() - 20 - 7, y + 10, r.arrow, nc);
+            }
+        } else if (!r.note.empty()) {
+            const float w = textW(r.note, 14);
+            label(p.right() - 20 - w, y + 1, r.note, kInkSoft, 14);
+        }
+        y += 28;
+        if (!descLines[i].empty()) {
+            const Colour dc = r.value < 0.35 ? kInkRed : r.value < 0.55 ? kGoldDark : kInkSoft;
+            y -= 6;
+            for (const auto& l : descLines[i]) label(p.x + 20, y, l, dc, 13), y += 17;
+            y += 10;
+        }
+    }
+    if (groups) label(p.x + 20, y, ui_->fit(host_->text("hud.status.hint"), tw, 12 / 15.f), kGoldDark, 12);
+    // the caret under the shown slot
+    ui_->rect({caret - 7, p.bottom() - 2, 14, 6}, kText);
 }
 
 void Hud::quickBar(const Snapshot& s, float W, float H) {

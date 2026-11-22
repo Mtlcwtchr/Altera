@@ -4598,6 +4598,7 @@ private:
         toUi(x, y);   // AL-62: the HUD is in points
         return on;
     }
+    double cameraYaw() const override { return orbitYaw_; }
     void toUi(float& x, float& y) const {
         const float s = uiScale_ > 0 ? uiScale_ : 1.0f;
         x /= s;
