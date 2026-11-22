@@ -1689,6 +1689,7 @@ private:
             if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
             // AL-70 shots: "anim" plays a state or interaction clip on the led person ("" = off)
             if (st.contains("anim")) scriptAnim_ = st["anim"].get<std::string>();
+            if (st.contains("highlight")) scriptHighlight_ = st["highlight"].get<bool>();
             // checks: face_house turns the camera (and so WASD) to the nearest
             // house as drawn; probe writes where the person is and what stops
             // them to terrain_lab_out/probe.jsonl
@@ -4376,7 +4377,8 @@ private:
             else yaw = double(a.id % 628) / 100.0;
             Instance in{};
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry), in.placeYaw[2] = float(rz), in.placeYaw[3] = float(yaw);
-            const float hl = (a.id == selected_ || a.id == hud_.aim ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
+            const float hl = !scriptHighlight_ ? 0.0f
+                             : (a.id == selected_ || a.id == hud_.aim ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
             if (!a.animal && people_.loaded()) {
                 if (figures_.size() < SkinnedSet::kMaxFigures) figures_.push_back(personFigure(a, rx, ry, rz, yaw, hl));
             } else if (!a.animal) {
@@ -4980,6 +4982,7 @@ private:
     double scriptWalk_[3] = {0, 0, 0};
     bool scriptRun_ = false;
     std::string scriptAnim_;
+    bool scriptHighlight_ = true;   // AL-70 shots: "highlight": false draws people unlit by selection
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
     float vp_[16] = {};
     double eye_[3] = {};

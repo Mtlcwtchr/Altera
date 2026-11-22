@@ -114,3 +114,6 @@ assets/terrain_core/sky/skyrim/
 assets/terrain_core/foliage/skyrim/
 assets/terrain_core/grass/skyrim/
 assets/altera_game/people/portrait_*_sky*.png
+# AL-70: Skyrim people on the Skyrim skeleton, with Skyrim clips
+assets/altera_game/people/people_sky.aanim
+assets/altera_game/people/people_sky_anim.json

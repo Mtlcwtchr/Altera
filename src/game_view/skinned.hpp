@@ -87,6 +87,7 @@ private:
     std::vector<float> frames_;   // per frame: joints x 7, then anchor x 2
     float fps_ = 15;
     std::map<std::string, int> clipIndex_, stateClips_, interactionClips_;
+    std::vector<int> femaleTake_;   // clip -> its "@f" take, -1 when none
 
     engine::Device* device_ = nullptr;
     engine::Buffer vertices_, indices_, palette_, instances_;
