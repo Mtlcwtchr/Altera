@@ -471,6 +471,10 @@ Val resolve(Ctx& c, const std::string& lang, const std::string& name, const Json
             r.v = prop[name], r.found = true;
             return r;
         }
+        // a role of the frame the proposition leaves out is absent ({listener?} of frame.say),
+        // not the line's argument of the same name (AL-61: "ты сказал Илья")
+        const Json& gov = f.frame->value("roles", Json::object());
+        if (gov.contains(name)) return r;
     }
     if (args.is_object() && args.contains(name)) {
         r.v = args[name], r.found = true;

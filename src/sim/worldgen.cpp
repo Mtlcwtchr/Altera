@@ -44,7 +44,14 @@ double fbm(std::uint64_t seed, double x, double y) {
            0.1 * valueNoise(seed + 2, x * 4.3, y * 4.3);
 }
 
-std::string makeName(Rng& r, bool female) {
+std::string makeName(Rng& r, bool female, const Content* c = nullptr) {
+    // the content's list (AL-61): names the loc has keys for
+    // (the same three draws as the syllables, so a world differs from before only by its names)
+    if (c && !(female ? c->givenNamesF : c->givenNamesM).empty()) {
+        const auto& pool = female ? c->givenNamesF : c->givenNamesM;
+        const int a = r.irange(0, 19), b = r.irange(0, 9), e = r.irange(0, 4);
+        return pool[static_cast<size_t>(a * 50 + b * 5 + e) % pool.size()];
+    }
     static const char* a[] = {"Ar", "Bel", "Cor", "Dra", "El", "Fen", "Gor", "Hal", "Is", "Kar",
                               "Lor", "Mor", "Nar", "Or", "Ral", "Sar", "Tor", "Ul", "Var", "Yr"};
     static const char* b[] = {"an", "ek", "il", "or", "un", "as", "em", "ith", "ar", "ol"};
@@ -56,7 +63,11 @@ std::string makeName(Rng& r, bool female) {
     return n;
 }
 
-std::string makeFamilyName(Rng& r) {
+std::string makeFamilyName(Rng& r, const Content* c = nullptr) {
+    if (c && !c->familyNames.empty()) {
+        const int a = r.irange(0, 9), b = r.irange(0, 7);
+        return c->familyNames[static_cast<size_t>(a * 8 + b) % c->familyNames.size()];
+    }
     static const char* a[] = {"Ash", "Black", "Crow", "Dusk", "Grim", "Iron", "Moss", "Red", "Thorn", "Wolf"};
     static const char* b[] = {"vale", "barrow", "mere", "hold", "wood", "stone", "ford", "fell"};
     return std::string(a[r.irange(0, 9)]) + b[r.irange(0, 7)];
@@ -329,7 +340,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     for (int f = 0; f < families; ++f) {
         Family fam;
         fam.id = w.newId();
-        fam.name = makeFamilyName(rng);
+        fam.name = makeFamilyName(rng, &content);
         Dynasty dyn;
         dyn.id = w.newId();
         dyn.name = "House " + fam.name;
@@ -378,7 +389,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             c.id = w.newId();
             c.body.sex = sex;
             c.body.ageDays = ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1);
-            c.name = makeName(rng, sex == 'f') + " " + fam.name;
+            c.name = makeName(rng, sex == 'f', &content) + " " + fam.name;
             c.traits = pickTraits(rng, content, pool, traitsPer);
             for (const auto& n : content.needs) c.needs[n.id] = rng.range(n.startLo, n.startHi);
             const bool child = c.body.stage() == "child";
@@ -640,7 +651,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     return w;
 }
 
-std::string randomPersonName(Rng& r, bool female) { return makeName(r, female); }
-std::string randomFamilyName(Rng& r) { return makeFamilyName(r); }
+std::string randomPersonName(Rng& r, bool female, const Content* c) { return makeName(r, female, c); }
+std::string randomFamilyName(Rng& r, const Content* c) { return makeFamilyName(r, c); }
 
 } // namespace altera::sim

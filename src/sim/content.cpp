@@ -823,6 +823,13 @@ Content Content::load(const std::string& dir) {
         for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
     c.build = parseBuild(f("build.json"));
     parseBackstories(f("backstories.json"), c);
+    {
+        const Json names = f("names.json");
+        const Json given = names.value("given", Json::object());
+        for (const auto& n : given.value("m", Json::array())) c.givenNamesM.push_back(n.get<std::string>());
+        for (const auto& n : given.value("f", Json::array())) c.givenNamesF.push_back(n.get<std::string>());
+        for (const auto& n : names.value("family", Json::array())) c.familyNames.push_back(n.get<std::string>());
+    }
     c.dir = dir;
     ValidationReport v = validate(c);
     for (auto& w : v.warnings) c.warnings.push_back(w);

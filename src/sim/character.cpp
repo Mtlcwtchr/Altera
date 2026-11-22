@@ -132,12 +132,14 @@ void to_json(Json& j, const Character& c) {
         for (const auto& [k, v] : c.gearPins) p[k] = {{"grid", v.grid}, {"x", v.x}, {"y", v.y}, {"turned", v.turned}};
         j["gear_pins"] = p;
     }
+    if (!c.nameForms.empty()) j["name_forms"] = c.nameForms;
 }
 
 void from_json(const Json& j, Character& c) {
     c = Character{};
     c.id = j.at("id").get<EntityId>();
     c.name = j.value("name", "");
+    c.nameForms = j.value("name_forms", decltype(c.nameForms){});
     c.body = j.value("body", Body{});
     c.needs = j.value("needs", std::map<std::string, double>{});
     c.moodlets = j.value("moodlets", std::vector<Moodlet>{});

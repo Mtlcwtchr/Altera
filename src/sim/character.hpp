@@ -280,6 +280,9 @@ struct AiState {
 struct Character {
     EntityId id = kNone;
     std::string name;
+    // A name the player gave, with its case forms: lang -> case -> form (AL-61, setOwnName).
+    // Empty: the name is world generation's (its words are keys name.<word> of the loc).
+    std::map<std::string, std::map<std::string, std::string>> nameForms;
     // Animals and monsters (species.json): a group of `group` heads driven by
     // animals.cpp; empty species = a person with the four-layer mind.
     std::string species;

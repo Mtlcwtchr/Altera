@@ -3,6 +3,7 @@
 #include "sim/dialogue_corpus.hpp"
 
 #include <algorithm>
+#include <cstring>
 #include <set>
 #include <sstream>
 
@@ -162,26 +163,19 @@ std::vector<std::string> wrongForms(const std::map<std::string, std::set<std::st
 // --- the corpus world -----------------------------------------------------------
 
 struct Person {
-    const char* name;
-    const char* latin; // for a language without name declension rules (en)
+    const char* name; // a name of content/ai/names.json: the loc translates it by name.<name> (AL-61)
     char sex;
     int years;
     const char* status; // "" | noble | clergy
 };
-// Names of both sexes with the hard ones of the declension (Добрыня: m, -я; Игорь: soft m; Любовь-like f).
+// Names of both sexes with the hard ones of the ru declension: Luca (m, -а), Nikolai (-й),
+// Gavriel (m, -ь), Hugo (indeclinable), Amelia (-ия), Helga (-га), Odile (f, -ь), Elwen (f, indeclinable).
 const Person kPeople[] = {
-    {"Олег", "Oleg", 'm', 34, ""},        {"Брана", "Brana", 'f', 27, ""},   {"Ждан", "Zhdan", 'm', 52, ""},
-    {"Лада", "Lada", 'f', 19, ""},        {"Мирон", "Miron", 'm', 67, ""},   {"Вера", "Vera", 'f', 41, ""},
-    {"Добрыня", "Dobrynya", 'm', 45, "noble"}, {"Любава", "Lyubava", 'f', 63, ""}, {"Игорь", "Igor", 'm', 23, "clergy"},
-    {"Марья", "Marya", 'f', 38, "noble"},  {"Илья", "Ilya", 'm', 11, ""},     {"Агафья", "Agafya", 'f', 72, ""},
+    {"Aldric", 'm', 34, ""},  {"Isolda", 'f', 27, ""},         {"Teodor", 'm', 52, ""},
+    {"Maria", 'f', 19, ""},   {"Hugo", 'm', 67, ""},           {"Helga", 'f', 41, ""},
+    {"Luca", 'm', 45, "noble"}, {"Elwen", 'f', 63, ""},        {"Nikolai", 'm', 23, "clergy"},
+    {"Amelia", 'f', 38, "noble"}, {"Gavriel", 'm', 11, ""},    {"Odile", 'f', 72, ""},
 };
-
-// The language declines names (ru: _grammar.json name_rules) -> Cyrillic names, else their Latin forms.
-bool cyrillicNames(const Loc& loc, const std::string& lang) {
-    const Json* g = loc.grammar(lang);
-    return g && g->contains("name_rules") && !(*g)["name_rules"].empty();
-}
-const char* nameOf(const Person& p, bool cyr) { return cyr ? p.name : p.latin; }
 
 struct CorpusWorld {
     World w;
@@ -337,7 +331,7 @@ Epistemic makeEpi(Rng& r, const CorpusWorld& cw, EntityId speaker, EntityId list
 Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId id, bool vy) {
     const Character* c = w.character(id);
     if (!c) return Json::object();
-    Json n = loc.personNoun(lang, c->name, c->body.sex);
+    Json n = loc.personNoun(lang, *c);
     n["id"] = id;
     if (vy) {
         n["reg"] = "vy";
@@ -364,7 +358,7 @@ Json refNoun(const Loc& loc, const std::string& lang, const CorpusWorld& cw, con
         auto it = cw.w.families().find(ref.id);
         if (it != cw.w.families().end() && !it->second.members.empty())
             if (const Character* h = cw.w.character(it->second.members.front()))
-                return loc.personNoun(lang, h->name, h->body.sex);
+                return loc.personNoun(lang, *h);
         return Json{{"nom", "?"}};
     }
     if (ref.kind == "text") return loc.noun(lang, ref.key, ref.key);
@@ -462,19 +456,18 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
         if (std::find(traitIds.begin(), traitIds.end(), id) == traitIds.end()) otherTraits.push_back(id);
     EntityId fam = kNone;
     int famLeft = 0;
-    const bool cyr = cyrillicNames(loc, lang);
     for (const Person& p : kPeople) {
         if (famLeft == 0) {
             Family f;
             f.id = cw.w.newId();
-            f.name = nameOf(p, cyr);
+            f.name = p.name;
             cw.w.families()[f.id] = f;
             cw.families.push_back(f.id);
             fam = f.id;
             famLeft = r.irange(2, 3);
         }
         Character ch;
-        ch.name = nameOf(p, cyr);
+        ch.name = p.name;
         ch.body.sex = p.sex;
         ch.body.ageDays = p.years * kDaysPerYear;
         ch.status.family = fam;
@@ -782,8 +775,9 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
         if (!pools.interactions.empty()) { // as the game passes it: the act's phrase over its menu caption
             const std::string ia = pick(r, pools.interactions);
             const std::string phrase = "interaction." + ia + ".phrase";
-            args["action"] = loc.has(lang, phrase) && loc.text(lang, phrase).find('{') == std::string::npos
-                                 ? loc.noun(lang, phrase, "")
+            const std::string t = loc.has(lang, phrase) ? loc.text(lang, phrase, args) : std::string();
+            args["action"] = !t.empty() && t.find('{') == std::string::npos
+                                 ? Json(t)
                                  : loc.noun(lang, "interaction." + ia + ".name", "");
         }
         {
@@ -793,8 +787,14 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
                     topicKey = str(*fr, "noun");
             args["topic"] = loc.noun(lang, topicKey, "");
         }
-        if (!pools.reasons.empty()) args["reason"] = loc.text(lang, pick(r, pools.reasons));
-        if (!c.needs.empty()) args["need"] = loc.noun(lang, "need." + pick(r, c.needs).id + ".name", "");
+        // {reason} of the refuse lines is a sentence of its own (dialogue.reason.<intent>)
+        if (!pools.reasons.empty()) {
+            std::string why = tidyLine(loc.text(lang, pick(r, pools.reasons)), true);
+            if (!why.empty() && !std::strchr(".!?", why.back()) && why.compare(why.size() - std::min<size_t>(3, why.size()), 3, "…") != 0)
+                why += ".";
+            args["reason"] = why;
+        }
+        if (!c.needs.empty()) args["need"] = needArg(loc, lang, pick(r, c.needs).id);
         args["person"] = personArg(loc, lang, cw.w, pick(r, cw.people), false);
         // a whole sentence (dialogue.lie.as_inform is "{text}")
         args["text"] = tidyLine((u.content ? realizeProp(loc, lang, args["prop"], "clause", "", args, u.seed)
@@ -935,7 +935,8 @@ std::vector<std::string> lintDialogueLine(const std::string& text, const std::st
         std::string prev, tok;
         while (in >> tok) {
             const std::vector<std::string> w = words(tok);
-            const bool bare = !tok.empty() && isWordByte(static_cast<unsigned char>(tok.back()));
+            const bool ellipsis = tok.size() >= 3 && tok.compare(tok.size() - 3, 3, "…") == 0; // a stammer "you… you"
+            const bool bare = !tok.empty() && !ellipsis && isWordByte(static_cast<unsigned char>(tok.back()));
             if (!prev.empty() && w.size() == 1 && w[0] == prev) {
                 out.push_back("warning: doubled word '" + prev + "'");
                 break;
@@ -1024,9 +1025,8 @@ std::vector<CorpusIssue> checkFrameAgreement(const Content& c, const Loc& loc, c
         const char* name;
         char sex;
     };
-    const bool cyr = cyrillicNames(loc, lang);
-    const Name names[] = {{cyr ? "Олег" : "Oleg", 'm'},   {cyr ? "Добрыня" : "Dobrynya", 'm'}, {cyr ? "Игорь" : "Igor", 'm'},
-                          {cyr ? "Брана" : "Brana", 'f'}, {cyr ? "Любава" : "Lyubava", 'f'}, {cyr ? "Марья" : "Marya", 'f'}};
+    const Name names[] = {{"Aldric", 'm'}, {"Luca", 'm'},  {"Nikolai", 'm'},
+                          {"Isolda", 'f'}, {"Helga", 'f'}, {"Amelia", 'f'}};
 
     for (const auto& [pred, def] : d.predicates) {
         const Json* fr = loc.find(lang, "frame." + pred);
@@ -1172,7 +1172,7 @@ CorpusReport checkDialogueCorpus(const std::vector<CorpusLine>& lines, const Con
     // the names of the corpus people in every case, for the capital check
     std::set<std::string> names;
     for (const Person& p : kPeople) {
-        const Json n = loc.personNoun(lang, nameOf(p, cyrillicNames(loc, lang)), p.sex);
+        const Json n = loc.personNoun(lang, p.name, p.sex);
         for (auto it = n.begin(); it != n.end(); ++it)
             if (it->is_string())
                 for (const auto& w : words(it->get<std::string>())) names.insert(w);

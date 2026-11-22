@@ -92,6 +92,8 @@ std::string utteranceText(const Loc& loc, const std::string& lang, const World& 
 // Every loc argument a line of the moment may use (LOC v0.1 and v0.2): speaker, self,
 // listener (with id; reg=vy and addr toward the nobility, DIALOGUE_GEN §11.2), src (the
 // teller), prop, reason, topic, text, action, give, get, need, person, deadline.
+// {need} of a line: need.<id>.want (a lower-case part of a sentence, AL-61), else the need's name.
+Json needArg(const Loc& loc, const std::string& lang, const std::string& need);
 Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, const Utterance& u);
 // Is `listener` spoken to as "вы" (reg=vy) by `speaker`: the nobility.
 bool addressedVy(const World& w, EntityId speaker, EntityId listener);

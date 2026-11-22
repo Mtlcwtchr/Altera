@@ -236,6 +236,31 @@ TEST(altera_sim_v03_validator_rejects_bad_witness_effects) {
     CHECK(mentions("unknown right"));
 }
 
+TEST(altera_sim_names_by_keys_and_own_forms) {
+    // AL-61: every name world generation gives has a ru key; the player's own name keeps its forms.
+    const Loc& l = realLoc();
+    const Content c = Content::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/ai");
+    CHECK(!c.givenNamesM.empty() && !c.givenNamesF.empty() && !c.familyNames.empty());
+    for (const auto* pool : {&c.givenNamesM, &c.givenNamesF, &c.familyNames})
+        for (const auto& n : *pool)
+            if (!l.entry("ru", "name." + n)) ::testing::fail(__FILE__, __LINE__, ("no ru key name." + n).c_str());
+    Character me;
+    me.name = "Yaropolk";
+    me.body.sex = 'm';
+    CHECK(l.personNoun("ru", me)["gen"].get<std::string>() == "Yaropolk");
+    setOwnName(me, "ru", Json{{"nom", reinterpret_cast<const char*>(u8"Ярополк")},
+                              {"gen", reinterpret_cast<const char*>(u8"Ярополка")},
+                              {"dat", reinterpret_cast<const char*>(u8"Ярополку")}});
+    CHECK(me.name == reinterpret_cast<const char*>(u8"Ярополк"));
+    CHECK(l.personNoun("ru", me)["dat"].get<std::string>() == reinterpret_cast<const char*>(u8"Ярополку"));
+    CHECK(l.personNoun("ru", me)["ins"].get<std::string>() == reinterpret_cast<const char*>(u8"Ярополк")); // not given: nom
+    CHECK(l.personNoun("en", me)["gen"].get<std::string>() == reinterpret_cast<const char*>(u8"Ярополка")); // the forms given
+    // the forms survive a save
+    Json j = me;
+    const Character back = j.get<Character>();
+    CHECK(back.nameForms == me.nameForms);
+}
+
 TEST(altera_sim_v03_name_declension_ru) {
     const Loc& l = realLoc();
     CHECK(l.grammar("ru") != nullptr);
@@ -248,9 +273,16 @@ TEST(altera_sim_v03_name_declension_ru) {
     CHECK(ivan["gen"].get<std::string>() == reinterpret_cast<const char*>(u8"\u0418\u0432\u0430\u043D\u0430"));
     CHECK(ivan["ins"].get<std::string>() == reinterpret_cast<const char*>(u8"\u0418\u0432\u0430\u043D\u043E\u043C"));
     CHECK(ivan["g"].get<std::string>() == "m");
-    // Latin (generated) names stay as they are.
-    const Json latin = l.personNoun("ru", "Ralemmund Mossbarrow", 'm');
-    CHECK(latin["dat"].get<std::string>() == "Ralemmund Mossbarrow");
+    // Latin names without a key stay as they are.
+    const Json latin = l.personNoun("ru", "Ralemmund Thornfeld", 'm');
+    CHECK(latin["dat"].get<std::string>() == "Ralemmund Thornfeld");
+    // World generation's names are keys name.<word> (AL-61): declined by the rules, or by the entry's own forms;
+    // a woman's surname on a consonant is not declined.
+    CHECK(l.personNoun("ru", "Aldric Blackwood", 'm')["dat"].get<std::string>() ==
+          reinterpret_cast<const char*>(u8"Олдрику Блэквуду"));
+    CHECK(l.personNoun("ru", "Helga Blackwood", 'f')["ins"].get<std::string>() ==
+          reinterpret_cast<const char*>(u8"Хельгой Блэквуд"));
+    CHECK(l.personNoun("en", "Helga Blackwood", 'f')["ins"].get<std::string>() == "Helga Blackwood");
     // A trace with a character argument assembles with the declined form.
     CHECK(formatLoc("{who:dat}", Json{{"who", ivan}}, "ru") == reinterpret_cast<const char*>(u8"\u0418\u0432\u0430\u043D\u0443"));
 }

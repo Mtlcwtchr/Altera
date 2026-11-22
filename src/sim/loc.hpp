@@ -52,7 +52,12 @@ public:
     // A character's name as a noun {nom, gen, ..., g} (schema v0.3 §4): each
     // word is declined by the language's _grammar.json name_rules; keys
     // name.<word>.<case> override the rules; no rule -> nom everywhere.
+    // A name word with a key name.<word> (AL-61, content/loc/<lang>/names.json) is replaced by
+    // it first: the names of world generation are keys. Called with a typed name, it gives
+    // the forms the rules suggest (a UI asking the player for the cases prefills them).
     Json personNoun(const std::string& lang, const std::string& name, char sex) const;
+    // A character: the forms the player gave (Character::nameForms) when there are any, else by name.
+    Json personNoun(const std::string& lang, const Character& c) const;
     const Json* grammar(const std::string& lang) const;
     std::set<std::string> keys(const std::string& lang) const;
 
@@ -75,6 +80,11 @@ bool checkLocPattern(const std::string& pattern, const std::string& lang, std::s
                      std::set<std::string>* names = nullptr);
 // Plural category: "one", "few", "many" (ru) / "one", "other" (en and default).
 std::string pluralCategory(const std::string& lang, double n);
+
+// A name the player gave (themself, a child, ...) with its case forms in `lang`
+// ({nom, gen, dat, acc, ins, pre}; AL-61): kept on the character and used instead of the
+// rules; nom also becomes Character::name.
+void setOwnName(Character& c, const std::string& lang, const Json& forms);
 
 // Keys the content and the code require in the base language.
 std::vector<std::string> requiredLocKeys(const Content& c);
