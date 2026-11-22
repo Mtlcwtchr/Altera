@@ -34,5 +34,9 @@
  "hud.edge.compass.S": "S",
  "hud.edge.compass.SW": "SW",
  "hud.edge.compass.W": "W",
- "hud.edge.compass.NW": "NW"
+ "hud.edge.compass.NW": "NW",
+ "hud.social.asks": "asks: {act}",
+ "hud.social.yes": "Yes",
+ "hud.social.no": "No",
+ "hud.social.dismiss": "Let go: {who}"
 }
