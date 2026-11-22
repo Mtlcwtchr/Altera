@@ -34,12 +34,18 @@ void Hud::resetWorld() {
 // A row of a menu column: a medallion with its icon and the line in Kurale.
 bool Hud::menuButton(const Rect& r, const std::string& iconName, const std::string& s, bool enabled) {
     const bool hot = enabled && ui_->hovered(r);
-    if (hot) ui_->roundRect(r, kGold.withAlpha(0.16f), r.h * 0.5f);
+    if (hot && hudPalette().theme.flag("textured")) ui_->roundRect(r, kGold.withAlpha(0.16f), r.h * 0.5f);
     const float d = r.h - 12, cx = r.x + 6 + d * 0.5f, cy = r.y + r.h * 0.5f;
-    box(hot ? Skin::ButtonOn : Skin::Button, {cx - d * 0.5f, cy - d * 0.5f, d, d}, d * 0.5f);
+    const bool edge = !hudPalette().theme.flag("textured");
+    if (edge) {   // AL-66: a diamond, lit under the pointer
+        if (hot) selRow(r);
+        diamond(cx, cy, d * 0.74f, hot, false);
+    } else {
+        box(hot ? Skin::ButtonOn : Skin::Button, {cx - d * 0.5f, cy - d * 0.5f, d, d}, d * 0.5f);
+    }
     const float is = std::round(d * 0.52f);
     const float a = enabled ? 1.0f : 0.35f;
-    icon(iconName, {cx - is * 0.5f, cy - is * 0.5f, is, is}, (hot ? kDark : kText).withAlpha(a));
+    icon(iconName, {cx - is * 0.5f, cy - is * 0.5f, is, is}, (hot ? (edge ? kGoldPale : kDark) : kText).withAlpha(a));
     title(cx + d * 0.5f + 16, cy - 15, ui_->fit(s, r.right() - cx - d * 0.5f - 24, 22 / 15.f, true),
           (hot ? kGoldPale : kText).withAlpha(a), 22);
     ui_->claim(r);
