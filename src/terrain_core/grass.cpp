@@ -34,13 +34,16 @@ Grass::~Grass() {
 }
 
 bool Grass::open(engine::Device& device, const Params& params, const GrassSettings& settings,
-                 const std::filesystem::path& spriteDir, std::string* why) {
+                 const std::filesystem::path& spriteDir0, std::string* why) {
     device_ = &device;
     params_ = params;
     settings_ = settings;
     auto fail = [&](const std::string& what) { if (why) *why = what + ": " + device.error(); return false; };
 
     std::vector<std::vector<std::filesystem::path>> layers;
+    // AL-68: dev stand-ins from Skyrim (tools/game_assets/skyrim/grass.py, git-ignored) win when baked.
+    const std::filesystem::path spriteDir = std::filesystem::exists(spriteDir0 / "skyrim" / "00.png")
+        ? spriteDir0 / "skyrim" : spriteDir0;
     for (int i = 0;; ++i) {
         char name[16];
         std::snprintf(name, sizeof name, "%02d.png", i);

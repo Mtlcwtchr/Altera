@@ -27,7 +27,7 @@ from PIL import Image
 from scipy.spatial import cKDTree
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bsa import Library, Bsa, SEP
+from bsa import Library, Bsa, SEP, texture_key
 from nif import Nif
 from askin import Askin, VDT
 
@@ -109,8 +109,7 @@ class Atlas:
         key = (tex.lower(), kind, cutout)
         if key in self.index:
             return self.index[key]
-        p = tex.lower()
-        p = p if p.startswith('textures') else 'textures' + SEP + p
+        p = texture_key(tex)
         data = lib.read(p)
         img = None
         if data:

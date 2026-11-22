@@ -110,3 +110,7 @@ assets/altera_game/beasts/*_sky.askin
 assets/altera_game/buildings/buildings_sky.astm
 assets/terrain_core/materials/skyrim/
 assets/terrain_core/sky/skyrim/
+# AL-68: foliage, grass and portraits of the Skyrim stand-ins
+assets/terrain_core/foliage/skyrim/
+assets/terrain_core/grass/skyrim/
+assets/altera_game/people/portrait_*_sky*.png

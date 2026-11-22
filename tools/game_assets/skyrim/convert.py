@@ -15,8 +15,9 @@ import numpy as np
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from bsa import Library, SEP
+from bsa import Library, SEP, texture_key
 from nif import Nif
+from foliage import shrink_cutout
 
 UNIT = 0.0142875   # metres per Skyrim unit
 LS = 256           # texture layer size
@@ -27,18 +28,20 @@ def tex_layer(lib, path, cache, layers, cutout=False):
     key = (path.lower(), cutout)
     if key in cache:
         return cache[key]
-    p = key[0] if key[0].startswith('textures') else 'textures' + SEP + key[0]
+    p = texture_key(key[0])
     data = lib.read(p)
     img = None
     if data:
         try:
             img = Image.open(io.BytesIO(data))
             img.load()
-            img = img.convert('RGBA').resize((LS, LS), Image.LANCZOS)
+            img = img.convert('RGBA')
+            img = shrink_cutout(img, (LS, LS)) if cutout else img.resize((LS, LS), Image.LANCZOS)
         except Exception as e:
             print('  texture', path, 'unreadable:', e)
             img = None
     if img is None:
+        print('  MISSING TEXTURE', path)
         img = Image.new('RGBA', (LS, LS), (150, 140, 130, 255))
     cache[key] = len(layers)
     arr = np.asarray(img, np.uint8).copy()
@@ -65,6 +68,27 @@ def main():
         name = e['piece']
         first = len(idx)
         mn, mx = [0.0] * 3, [0.0] * 3
+        if 'tile' in e:
+            # AL-68: a ground tile (roads, furrows): a unit slab 0.1 m deep, the
+            # texture on top, laid by the game a tile at a time instead of flat blocks
+            L = tex_layer(lib, e['tile'], cache, layers)
+            box = [((-.5, -.5, 0), (.5, -.5, 0), (.5, .5, 0), (-.5, .5, 0), (0, 0, 1)),
+                   ((-.5, -.5, -.1), (.5, -.5, -.1), (.5, -.5, 0), (-.5, -.5, 0), (0, -1, 0)),
+                   ((.5, .5, -.1), (-.5, .5, -.1), (-.5, .5, 0), (.5, .5, 0), (0, 1, 0)),
+                   ((.5, -.5, -.1), (.5, .5, -.1), (.5, .5, 0), (.5, -.5, 0), (1, 0, 0)),
+                   ((-.5, .5, -.1), (-.5, -.5, -.1), (-.5, -.5, 0), (-.5, .5, 0), (-1, 0, 0))]
+            for *q, nrm in box:
+                for c, (u, v) in zip(q, ((0, 1), (1, 1), (1, 0), (0, 0))):
+                    if nrm[2] == 0:
+                        v = 0.95 + 0.05 * v   # the sides: a sliver of the texture
+                    verts.append(struct.pack('<8fI', *c, *nrm, u, v, L))
+                idx.extend([nv, nv + 1, nv + 2, nv, nv + 2, nv + 3])
+                nv += 4
+            mn, mx = [-.5, -.5, -.1], [.5, .5, 0.0]
+            meshes.append((name, first, len(idx) - first, mn, mx))
+            print('%-18s tile %s' % (name, e['tile']))
+            report.append(dict(e, ok=True, size_m=[1.0, 1.0, 0.1], replace_before_prod=True))
+            continue
         data = lib.read('meshes' + SEP + e['nif'].replace('/', SEP))
         if data is None:
             print('MISSING', name, e['nif'])

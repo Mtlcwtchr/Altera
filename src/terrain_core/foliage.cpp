@@ -97,7 +97,10 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
             std::vector<Vertex> v;
             std::vector<std::uint32_t> idx;
             float lo[3], hi[3];
-            if (!readMesh(dir / (name + ".mesh"), v, idx, lo, hi))
+            // AL-68: a dev stand-in from Skyrim (tools/game_assets/skyrim/foliage.py, git-ignored) wins when baked.
+            const auto standIn = dir / "skyrim" / (name + ".mesh");
+            const auto from = std::filesystem::exists(standIn) ? dir / "skyrim" : dir;
+            if (!readMesh(from / (name + ".mesh"), v, idx, lo, hi))
                 return fail("cannot read model " + name + " (run tools/terrain_lab/build_foliage.py)");
             Model m;
             m.name = name;
@@ -112,7 +115,7 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
             const auto base = std::uint32_t(allVertices.size());
             for (auto i : idx) allIndices.push_back(base + i);
             allVertices.insert(allVertices.end(), v.begin(), v.end());
-            textureFiles.push_back(dir / (name + ".png"));
+            textureFiles.push_back(from / (name + ".png"));
             modelIndex[name] = std::uint32_t(models_.size());
             models_.push_back(m);
         }

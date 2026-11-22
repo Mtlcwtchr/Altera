@@ -490,8 +490,10 @@ SDL_Texture* Hud::portraitOf(const ActorSnap& a) {
     PortraitBase& base = portraitBases_[look];
     if (base.picture.w == 0 && !look.empty()) {
         const fs::path dir = root_ / "assets/altera_game/people";
-        loadImage(dir / ("portrait_" + look + ".png"), base.picture.w, base.picture.h, base.picture.rgba);
-        loadImage(dir / ("portrait_" + look + "_id.png"), base.mask.w, base.mask.h, base.mask.rgba);
+        // AL-68: the Skyrim stand-ins' faces (tools/game_assets/skyrim/portraits.py) when baked
+        const std::string stem = fs::exists(dir / ("portrait_" + look + "_sky.png")) ? look + "_sky" : look;
+        loadImage(dir / ("portrait_" + stem + ".png"), base.picture.w, base.picture.h, base.picture.rgba);
+        loadImage(dir / ("portrait_" + stem + "_id.png"), base.mask.w, base.mask.h, base.mask.rgba);
     }
     const int S = 128;
     const bool diamondCut = !hudPalette().theme.flag("textured");
