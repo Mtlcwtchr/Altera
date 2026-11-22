@@ -1595,6 +1595,9 @@ private:
                 scriptWalk_[2] = st["walk"][2].get<double>();
             }
             if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
+            // AL-70 shots: "anim" plays a state or interaction clip on the led person ("" = off)
+            if (st.contains("anim")) scriptAnim_ = st["anim"].get<std::string>();
+            if (st.contains("highlight")) scriptHighlight_ = st["highlight"].get<bool>();
             // checks: face_house turns the camera (and so WASD) to the nearest
             // house as drawn; probe writes where the person is and what stops
             // them to terrain_lab_out/probe.jsonl
@@ -3807,6 +3810,11 @@ private:
     int personClip(const ActorSnap& a, double speed, double& rate) const {
         rate = 1.0;
         auto st = [&](const char* s) { return people_.stateClip(s); };
+        if (!scriptAnim_.empty() && a.id == avatar_.id) {
+            const int c = people_.interactionClip(scriptAnim_);
+            const int k = c >= 0 ? c : people_.stateClip(scriptAnim_);
+            if (k >= 0) return k;
+        }
         if (!a.alive) return st("death");
         if (a.down) return st("down");
         if (speed > 0.25) {
@@ -4265,7 +4273,8 @@ private:
             else yaw = double(a.id % 628) / 100.0;
             Instance in{};
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry), in.placeYaw[2] = float(rz), in.placeYaw[3] = float(yaw);
-            const float hl = (a.id == selected_ || a.id == hud_.aim ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
+            const float hl = !scriptHighlight_ ? 0.0f
+                             : (a.id == selected_ || a.id == hud_.aim ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
             if (!a.animal && people_.loaded()) {
                 if (figures_.size() < SkinnedSet::kMaxFigures) figures_.push_back(personFigure(a, rx, ry, rz, yaw, hl));
             } else if (!a.animal) {
@@ -4515,10 +4524,15 @@ private:
             const fs::path root(opts_.root);
             std::string whyPeople;
             // AL-11: the Skyrim stand-ins on the same rig (tools/game_assets/skyrim/actors.py), when baked.
+            // AL-70: they are on Skyrim's own skeleton now, with Skyrim's clips (skyrim/people_native.py).
             const fs::path peopleSky = root / "assets/altera_game/people/people_sky.askin";
-            if (!people_.load(device_, fs::exists(peopleSky) ? peopleSky : root / "assets/altera_game/people/people.askin",
-                              root / "content/animations/humanoid_ual/baked/people.aanim",
-                              root / "content/animations/humanoid_ual/baked/people_anim.json", &whyPeople))
+            const fs::path animSky = root / "assets/altera_game/people/people_sky.aanim";
+            const bool sky = fs::exists(peopleSky) && fs::exists(animSky);
+            if (!people_.load(device_, sky ? peopleSky : root / "assets/altera_game/people/people.askin",
+                              sky ? animSky : root / "content/animations/humanoid_ual/baked/people.aanim",
+                              sky ? root / "assets/altera_game/people/people_sky_anim.json"
+                                  : root / "content/animations/humanoid_ual/baked/people_anim.json",
+                              &whyPeople))
                 SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
             for (int i = 0; i < people_.lookCount(); ++i)
                 (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
@@ -4863,6 +4877,8 @@ private:
     double simSize_ = 0;   // the sim map's side, metres
     double scriptWalk_[3] = {0, 0, 0};
     bool scriptRun_ = false;
+    std::string scriptAnim_;
+    bool scriptHighlight_ = true;   // AL-70 shots: "highlight": false draws people unlit by selection
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
     float vp_[16] = {};
     double eye_[3] = {};

@@ -215,6 +215,11 @@ bool SkinnedSet::load(engine::Device& device, const fs::path& mesh, const fs::pa
                 return fail(animJson.string() + ": " + e.what());
             }
         }
+        // AL-70: a clip may have a female take ("<clip>@f", Skyrim's female/ folder);
+        // looks on the second skeleton play it in place of the male one.
+        femaleTake_.assign(clips_.size(), -1);
+        for (std::size_t i = 0; i < clips_.size(); ++i)
+            if (const int f = clip(clips_[i].name + "@f"); f >= 0) femaleTake_[i] = f;
     }
 
     vertices_ = device.uploadBuffer(SDL_GPU_BUFFERUSAGE_VERTEX, verts, std::size_t(nv) * kStride);
@@ -319,10 +324,16 @@ void SkinnedSet::sample(int c, double time, Pose& out) const {
 
 void SkinnedSet::palette(const Figure& fig, float* rows) const {
     const std::size_t nj = joints_.size();
+    const bool female = looks_[std::size_t(fig.look)].skeleton == 1;
+    auto take = [&](int c) {
+        return female && c >= 0 && c < int(femaleTake_.size()) && femaleTake_[std::size_t(c)] >= 0
+                   ? femaleTake_[std::size_t(c)]
+                   : c;
+    };
     Pose p, from;
-    sample(fig.clip, fig.time, p);
+    sample(take(fig.clip), fig.time, p);
     if (fig.fromClip >= 0 && fig.fade > 0) {
-        sample(fig.fromClip, fig.fromTime, from);
+        sample(take(fig.fromClip), fig.fromTime, from);
         const float k = std::clamp(fig.fade, 0.0f, 1.0f);
         for (std::size_t j = 0; j < nj; ++j) {
             nlerp(&p.q[j * 4], &from.q[j * 4], k, &p.q[j * 4]);
