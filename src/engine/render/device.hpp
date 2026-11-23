@@ -202,6 +202,11 @@ public:
     // agree with its targets, so it is asked for here rather than repeated.
     SDL_GPUSampleCount samples() const { return samples_; }
     void samples(SDL_GPUSampleCount count) { samples_ = count; }
+    // The format a pipeline with no colourFormats of its own draws in: the
+    // frame's (kColourFormat unless a view keeps its scene in half floats,
+    // terrain_core::Enb). Set before the frame's pipelines are made.
+    SDL_GPUTextureFormat frameFormat() const { return frameFormat_; }
+    void frameFormat(SDL_GPUTextureFormat format) { frameFormat_ = format; }
 
     GraphicsPipeline makePipeline(const PipelineWanted& wanted);
     ComputePipeline makeCompute(const ComputeWanted& wanted);
@@ -398,6 +403,7 @@ private:
     int presentWidth_ = 0, presentHeight_ = 0;
     bool shaderCross_ = false;
     SDL_GPUSampleCount samples_ = SDL_GPU_SAMPLECOUNT_1;
+    SDL_GPUTextureFormat frameFormat_ = kColourFormat;
     struct Submission { std::uint64_t serial; SDL_GPUFence* fence; };
     std::deque<Submission> submissions_;
     std::uint64_t submitted_ = 0, completed_ = 0;

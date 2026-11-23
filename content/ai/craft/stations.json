@@ -12,8 +12,10 @@
   },
   {
    "id": "hearth",
+   "_doc": "AL-74: a household hearth with a pot hung over it: boiling, stirring, steeping happen here",
    "tags": [
-    "hearth"
+    "hearth",
+    "pot"
    ],
    "temp_max": 2,
    "quality_bonus": 0.05,
@@ -170,6 +172,15 @@
     "mortar"
    ],
    "quality_bonus": 0.05
+  },
+  {
+   "id": "table",
+   "_doc": "AL-74: the table of a house (objects.json house): kneading, moulding, carving small things, a stone mortar on it",
+   "tags": [
+    "bench",
+    "mortar"
+   ],
+   "quality_bonus": 0.0
   }
  ]
 }

@@ -20,6 +20,7 @@ using SnapClock = std::chrono::steady_clock;
 struct ActorSnap {
     EntityId id = sim::kNone;
     std::string name, species, family, state, act, goal, interaction, role;
+    std::string occupation;   // AL-75: trader | tavernkeeper | "" (sim Character::occupation)
     EntityId faces = sim::kNone;   // AL-73: whom they talk with / act on (turned to them when standing)
     std::string anim; // AL-40: the clip key of this side of a joint social act (sim FsmState::anim)
     bool animal = false, alive = true, player = false, down = false, fighting = false, captive = false;
@@ -223,6 +224,8 @@ struct ThingSnap {
     double x = 0, y = 0;                                  // sim metres
     std::vector<std::pair<std::string, int>> stock;       // display name, count
     bool busy = false;                                    // someone else works on it
+    bool faced = false;                                   // AL-76: set in a building, facing yaw
+    float yaw = 0;
     bool held = false, felled = false;                    // AL-78: a tree of the drawn forest; felled: no logs left
     float height = 0;                                     // AL-78: as drawn (m), 0 = the type's own
 };
@@ -284,6 +287,28 @@ struct JournalSnap {
     int kind = 0;   // 0 info, 1 good, 2 bad, 3 speech
 };
 
+// AL-75: the trade window (sim/trade.hpp) with the wheel's target: the goods of
+// both sides with the other's worth and taste of each, the draft the player is
+// putting together as the other side weighs it, a counter-offer waiting, and
+// the last word of the deal. All display texts but the numbers.
+struct TradeGoodSnap {
+    std::string item, name;
+    int n = 0;          // spare (carried, not worn)
+    double worth = 0;   // one of it, to the other side, in coins
+    int taste = 0;      // the other's taste: 1 likes, -1 dislikes, 0
+};
+struct TradeSnap {
+    EntityId with = sim::kNone;
+    std::string role;                          // display name of their trade role, "" = none
+    std::vector<TradeGoodSnap> mine, theirs;
+    std::vector<std::string> likes, dislikes;  // category names, as they say them
+    std::string mode, verdict, reason;          // the draft weighed: accept | counter | refuse, reason text
+    double gain = 0, loss = 0, keep = 1;
+    bool counter = false;                       // they made a counter the player may take
+    std::string counterText;
+    std::vector<std::string> last;              // the last trade lines of the player's trace (display)
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -324,6 +349,7 @@ struct Snapshot {
     std::vector<ActInfoSnap> barActs;     // and those acts (HudHost::barCheck)
     std::vector<SpeechSnap> speech;       // AL-57: lines said near the camera, a bounded tail
     std::vector<JournalSnap> journal;     // AL-57: the player's journal, a bounded tail
+    TradeSnap trade;                      // AL-75: the trade window's target (wheel target)
 };
 
 } // namespace altera::game

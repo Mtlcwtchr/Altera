@@ -316,6 +316,7 @@ add_library(altera_sim STATIC
         src/sim/content.cpp
         src/sim/expansion.cpp
         src/sim/backstory.cpp
+        src/sim/trade.cpp
         src/sim/collide.cpp
         src/sim/act_info.cpp
         src/sim/consequences.cpp
@@ -335,6 +336,7 @@ add_library(altera_sim STATIC
         src/sim/world.cpp
         src/sim/worldgen.cpp
         src/sim/village_plan.cpp
+        src/sim/structure_plan.cpp
         src/sim/ai_eval.cpp
         src/sim/animals.cpp
         src/sim/farming.cpp
@@ -639,6 +641,7 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/post.cpp
             src/terrain_core/psx.cpp
             src/terrain_core/outline.cpp
+            src/terrain_core/enb.cpp
             src/terrain_core/lighting.cpp
             src/terrain_core/sky.cpp
             src/terrain_core/hydrology.cpp
@@ -659,7 +662,7 @@ if(ASR_BUILD_CLIENT)
                                        src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
                                        src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
                                        src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_bar.cpp src/game_view/hud_edge_social.cpp
-                                       src/game_view/hud_edge_screens.cpp src/game_view/hud_world.cpp
+                                       src/game_view/hud_edge_screens.cpp src/game_view/hud_edge_trade.cpp src/game_view/hud_world.cpp
                                        src/game_view/saves.cpp)
     target_include_directories(altera_game_view PUBLIC src)
     target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
@@ -807,10 +810,10 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
-            tests/test_altera_sim_craft.cpp
+            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp
-            tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp
+            tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp tests/test_altera_sim_structures.cpp
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
             tests/test_altera_sim_dialogue_rules.cpp
             tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp tests/test_altera_sim_dialogue_say.cpp
@@ -819,7 +822,8 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_village_life.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_hotbar.cpp
+            tests/test_altera_sim_trade.cpp
+            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp tests/test_altera_hotbar.cpp
             tests/test_altera_sim_dialogue_corpus.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
@@ -1038,7 +1042,8 @@ if(ASR_BUILD_TESTS)
     target_sources(asr_terrain_tests PRIVATE tests/test_world_scale.cpp tests/test_land_coverage.cpp
             tests/test_terrain_source.cpp)
     if(TARGET altera_terrain_core)
-        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp)
+        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp
+                tests/test_terrain_core_enb.cpp)
         target_link_libraries(altera_terrain_core_tests PRIVATE altera_terrain_core asr_warnings)
         add_test(NAME terrain_core_unit COMMAND altera_terrain_core_tests)
     endif()

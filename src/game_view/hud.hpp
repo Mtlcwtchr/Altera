@@ -158,7 +158,7 @@ public:
     }
     // The target whose acts the sim should check (the ring or the wheel open on it).
     EntityId actTarget() const {
-        if (panel == "wheel" || panel == "talk") return wheelTarget_;
+        if (panel == "wheel" || panel == "talk" || panel == "trade") return wheelTarget_;
         if (panel == "beast") return beastTarget_;
         if (panel == "thing") return thingTarget_;
         return sim::kNone;
@@ -189,6 +189,23 @@ public:
     void openTalk(EntityId target) {
         panel = "talk";
         wheelTarget_ = target;
+    }
+    // AL-75: the trade window with a person (panel "trade"): the draft starts empty
+    void openTrade(EntityId target) {
+        panel = "trade";
+        wheelTarget_ = target;
+        tradeGive_.clear();
+        tradeTake_.clear();
+        tradeSent_ = false;
+    }
+    // the window's draft as a tour script puts it ({item: n} each side)
+    void setTradeDraft(const sim::Json& give, const sim::Json& take) {
+        tradeGive_.clear();
+        tradeTake_.clear();
+        for (auto it = give.begin(); it != give.end(); ++it)
+            if (it->is_number_integer()) tradeGive_[it.key()] = it->get<int>();
+        for (auto it = take.begin(); it != take.end(); ++it)
+            if (it->is_number_integer()) tradeTake_[it.key()] = it->get<int>();
     }   // the wheel's tone chip (tour scripts)
     void openSlot(int k) { pin_ = k; }   // open a status group's panel as the hover does (tour scripts; -1 closes)
     bool showThoughts = false;
@@ -211,6 +228,7 @@ public:
     int backstoryPick = 0;
     bool backstoryBegin = false;   // Enter or a script: begin with the picked one
     std::string coinIcon = "values";
+    std::map<std::string, std::string> itemIcons; // AL-74: item id -> icon (content/ui/craft.json item_icons, tag_icons)
 
     // The menus (hud_menu.cpp): panels "menu" (the main menu), "pause",
     // "slots" (save or load) and "settings", filled by the game.
@@ -364,6 +382,10 @@ private:
     // AL-67: the name screen with its cases, the talk topics, the case card
     void namePanel(const Snapshot& s, float W, float H);
     void talkPanel(const Snapshot& s, float W, float H);
+    void tradePanel(const Snapshot& s, float W, float H);   // AL-75
+    std::map<std::string, int> tradeGive_, tradeTake_;    // the draft: what I give, what I ask
+    std::string tradeSig_;                               // the draft last sent to the sim thread
+    bool tradeSent_ = false;
     void caseCard(const Snapshot& s, float x, float y, float w);
     std::string nameNom_, nameTyped_;
     std::map<std::string, std::string> nameCases_;

@@ -61,6 +61,25 @@ struct Settlement {
     std::vector<double> roadWidth;
     Vec2 square;
     double squareR = 0.0;
+    // AL-76: the buildings the village was planned with (sim/structure_plan.hpp):
+    // what each is for, whose, where its modules stand (World::pieces) and
+    // what stands in it; the view draws the props.
+    struct Prop {
+        std::string piece;
+        Vec2 pos;
+        double yaw = 0.0;
+    };
+    struct Structure {
+        std::string type;
+        EntityId family = kNone;
+        int q = 0, gx = 0, gy = 0;          // the frame: quarters, origin cell
+        int i0 = 0, j0 = 0, i1 = 0, j1 = 0; // the footprint in its own cells
+        double h = 0.0;                     // the floor (the pieces' h)
+        Vec2 door;                          // the main door, outside its sill
+        std::vector<EntityId> objects;      // the sim's things it holds (house, hearth, forge...)
+        std::vector<Prop> props;
+    };
+    std::vector<Structure> structures;
 };
 
 // One module of a building on the household's plan or standing (build.json,

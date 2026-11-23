@@ -14,6 +14,7 @@
 #include "sim/consequences.hpp"
 #include "sim/gear.hpp"
 #include "sim/social_chain.hpp"
+#include "sim/trade.hpp"
 #include "sim/village_life.hpp"
 #include "sim/wounds.hpp"
 
@@ -267,6 +268,7 @@ bool tickFsm(World& w, Character& c) {
         return true;
     }
     applyEffects(w, c, *d, target, creature);
+    tradeOnAct(w, c, *d, creature); // AL-75: a trade act makes its offer when done
     if (!d->craft.empty()) {
         const Plan& p = ai.plan;
         craftAct(w, c, *d, target, creature, p.stepIndex < p.steps.size() ? p.steps[p.stepIndex].params : Json::object());
@@ -339,6 +341,16 @@ Start startAction(World& w, Character& c, std::string& why) {
         if (d->targetsCreature() && dd > reach) {
             tp.x = c.pos.x + (tp.x - c.pos.x) * (dd - reach) / dd;
             tp.y = c.pos.y + (tp.y - c.pos.y) * (dd - reach) / dd;
+        }
+        // AL-78: a thing is worked from beside it, on the side one comes from
+        // (at the well's rim, by the trunk), not from its middle
+        if (o && !d->targetsCreature()) {
+            const auto od = w.content().objects.find(o->type);
+            const double stand = od != w.content().objects.end() ? od->second.standM : 0.0;
+            if (stand > 0.0 && dd > stand) {
+                tp.x = tp.x + (c.pos.x - tp.x) * stand / dd;
+                tp.y = tp.y + (c.pos.y - tp.y) * stand / dd;
+            }
         }
         const double walk = dist(c.pos, tp);
         ai.fsm = FsmState{"Move", "goto", t, tp, static_cast<Tick>(std::ceil(walk / cfg.walkMPerTick)), w.now()};
@@ -594,6 +606,7 @@ void installAi(World& w) {
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
+        tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
             if (!c.body.alive) continue;
@@ -611,6 +624,7 @@ void installAi(World& w) {
     installBuilding(w);
     installCrafting(w);
     installGear(w);
+    installTrade(w);
 }
 
 } // namespace altera::sim

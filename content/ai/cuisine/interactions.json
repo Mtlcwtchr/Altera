@@ -1,0 +1,1555 @@
+{
+ "_doc": "AL-74: eating and drinking the new dishes, storing them, fetching water, leaven and berry wine, using the new things. The cooking itself is the generated craft:<design> acts (craft_sim designInteractions).",
+ "interactions": [
+  {
+   "id": "eat_honey_porridge",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:honey_porridge>=1"
+   ],
+   "eff": [
+    "has:honey_porridge-1",
+    "need:hunger+0.45",
+    "need:thirst+0.1",
+    "need:fun+0.03",
+    "moodlet:ate_meal",
+    "moodlet:ate_sweet",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_honey_porridge",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:honey_porridge>=1"
+   ],
+   "eff": [
+    "has:honey_porridge-1",
+    "home:honey_porridge+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_honey_porridge",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:honey_porridge>=1"
+   ],
+   "eff": [
+    "has:honey_porridge+1",
+    "home:honey_porridge-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_milk_porridge",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:milk_porridge>=1"
+   ],
+   "eff": [
+    "has:milk_porridge-1",
+    "need:hunger+0.45",
+    "need:thirst+0.1",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_milk_porridge",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:milk_porridge>=1"
+   ],
+   "eff": [
+    "has:milk_porridge-1",
+    "home:milk_porridge+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_milk_porridge",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:milk_porridge>=1"
+   ],
+   "eff": [
+    "has:milk_porridge+1",
+    "home:milk_porridge-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_mushroom_stew",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:mushroom_stew>=1"
+   ],
+   "eff": [
+    "has:mushroom_stew-1",
+    "need:hunger+0.4",
+    "need:thirst+0.15",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_mushroom_stew",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:mushroom_stew>=1"
+   ],
+   "eff": [
+    "has:mushroom_stew-1",
+    "home:mushroom_stew+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_mushroom_stew",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:mushroom_stew>=1"
+   ],
+   "eff": [
+    "has:mushroom_stew+1",
+    "home:mushroom_stew-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_fish_soup",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:fish_soup>=1"
+   ],
+   "eff": [
+    "has:fish_soup-1",
+    "need:hunger+0.5",
+    "need:thirst+0.2",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_fish_soup",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:fish_soup>=1"
+   ],
+   "eff": [
+    "has:fish_soup-1",
+    "home:fish_soup+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_fish_soup",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:fish_soup>=1"
+   ],
+   "eff": [
+    "has:fish_soup+1",
+    "home:fish_soup-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_garden_soup",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:garden_soup>=1"
+   ],
+   "eff": [
+    "has:garden_soup-1",
+    "need:hunger+0.4",
+    "need:thirst+0.2",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_garden_soup",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:garden_soup>=1"
+   ],
+   "eff": [
+    "has:garden_soup-1",
+    "home:garden_soup+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_garden_soup",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:garden_soup>=1"
+   ],
+   "eff": [
+    "has:garden_soup+1",
+    "home:garden_soup-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_meat_pie",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:meat_pie>=1"
+   ],
+   "eff": [
+    "has:meat_pie-1",
+    "need:hunger+0.75",
+    "moodlet:ate_meal",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_meat_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:meat_pie>=1"
+   ],
+   "eff": [
+    "has:meat_pie-1",
+    "home:meat_pie+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_meat_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:meat_pie>=1"
+   ],
+   "eff": [
+    "has:meat_pie+1",
+    "home:meat_pie-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_fish_pie",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:fish_pie>=1"
+   ],
+   "eff": [
+    "has:fish_pie-1",
+    "need:hunger+0.6",
+    "moodlet:ate_meal",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_fish_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:fish_pie>=1"
+   ],
+   "eff": [
+    "has:fish_pie-1",
+    "home:fish_pie+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_fish_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:fish_pie>=1"
+   ],
+   "eff": [
+    "has:fish_pie+1",
+    "home:fish_pie-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_berry_tart",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:berry_tart>=1"
+   ],
+   "eff": [
+    "has:berry_tart-1",
+    "need:hunger+0.45",
+    "need:fun+0.08",
+    "moodlet:ate_meal",
+    "moodlet:ate_sweet",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_berry_tart",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:berry_tart>=1"
+   ],
+   "eff": [
+    "has:berry_tart-1",
+    "home:berry_tart+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_berry_tart",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:berry_tart>=1"
+   ],
+   "eff": [
+    "has:berry_tart+1",
+    "home:berry_tart-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_apple_pie",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:apple_pie>=1"
+   ],
+   "eff": [
+    "has:apple_pie-1",
+    "need:hunger+0.5",
+    "need:fun+0.06",
+    "moodlet:ate_meal",
+    "moodlet:ate_sweet",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_apple_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:apple_pie>=1"
+   ],
+   "eff": [
+    "has:apple_pie-1",
+    "home:apple_pie+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_apple_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:apple_pie>=1"
+   ],
+   "eff": [
+    "has:apple_pie+1",
+    "home:apple_pie-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_honey_cake",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:honey_cake>=1"
+   ],
+   "eff": [
+    "has:honey_cake-1",
+    "need:hunger+0.5",
+    "need:fun+0.1",
+    "moodlet:ate_meal",
+    "moodlet:ate_sweet",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_honey_cake",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:honey_cake>=1"
+   ],
+   "eff": [
+    "has:honey_cake-1",
+    "home:honey_cake+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_honey_cake",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:honey_cake>=1"
+   ],
+   "eff": [
+    "has:honey_cake+1",
+    "home:honey_cake-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_nut_bread",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:nut_bread>=1"
+   ],
+   "eff": [
+    "has:nut_bread-1",
+    "need:hunger+0.5",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_nut_bread",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:nut_bread>=1"
+   ],
+   "eff": [
+    "has:nut_bread-1",
+    "home:nut_bread+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_nut_bread",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:nut_bread>=1"
+   ],
+   "eff": [
+    "has:nut_bread+1",
+    "home:nut_bread-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_cheese_pie",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:cheese_pie>=1"
+   ],
+   "eff": [
+    "has:cheese_pie-1",
+    "need:hunger+0.6",
+    "moodlet:ate_meal",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_cheese_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:cheese_pie>=1"
+   ],
+   "eff": [
+    "has:cheese_pie-1",
+    "home:cheese_pie+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_cheese_pie",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:cheese_pie>=1"
+   ],
+   "eff": [
+    "has:cheese_pie+1",
+    "home:cheese_pie-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_wake_loaf",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:wake_loaf>=1"
+   ],
+   "eff": [
+    "has:wake_loaf-1",
+    "need:hunger+0.45",
+    "need:purpose+0.05",
+    "moodlet:ate_meal",
+    "moodlet:remembered_the_dead"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_wake_loaf",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:wake_loaf>=1"
+   ],
+   "eff": [
+    "has:wake_loaf-1",
+    "home:wake_loaf+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_wake_loaf",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:wake_loaf>=1"
+   ],
+   "eff": [
+    "has:wake_loaf+1",
+    "home:wake_loaf-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_blood_sausage",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:blood_sausage>=1"
+   ],
+   "eff": [
+    "has:blood_sausage-1",
+    "need:hunger+0.7",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_blood_sausage",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:blood_sausage>=1"
+   ],
+   "eff": [
+    "has:blood_sausage-1",
+    "home:blood_sausage+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_blood_sausage",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:blood_sausage>=1"
+   ],
+   "eff": [
+    "has:blood_sausage+1",
+    "home:blood_sausage-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_herb_roast",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:herb_roast>=1"
+   ],
+   "eff": [
+    "has:herb_roast-1",
+    "need:hunger+0.8",
+    "moodlet:ate_meal",
+    "moodlet:ate_fine_food",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_herb_roast",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:herb_roast>=1"
+   ],
+   "eff": [
+    "has:herb_roast-1",
+    "home:herb_roast+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_herb_roast",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:herb_roast>=1"
+   ],
+   "eff": [
+    "has:herb_roast+1",
+    "home:herb_roast-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_roast_fish",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:roast_fish>=1"
+   ],
+   "eff": [
+    "has:roast_fish-1",
+    "need:hunger+0.45",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_roast_fish",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:roast_fish>=1"
+   ],
+   "eff": [
+    "has:roast_fish-1",
+    "home:roast_fish+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_roast_fish",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:roast_fish>=1"
+   ],
+   "eff": [
+    "has:roast_fish+1",
+    "home:roast_fish-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_baked_apples",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:baked_apples>=1"
+   ],
+   "eff": [
+    "has:baked_apples-1",
+    "need:hunger+0.3",
+    "need:thirst+0.05",
+    "need:fun+0.05",
+    "moodlet:ate_sweet",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_baked_apples",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:baked_apples>=1"
+   ],
+   "eff": [
+    "has:baked_apples-1",
+    "home:baked_apples+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_baked_apples",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:baked_apples>=1"
+   ],
+   "eff": [
+    "has:baked_apples+1",
+    "home:baked_apples-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_baked_roots",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:baked_roots>=1"
+   ],
+   "eff": [
+    "has:baked_roots-1",
+    "need:hunger+0.35",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_baked_roots",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:baked_roots>=1"
+   ],
+   "eff": [
+    "has:baked_roots-1",
+    "home:baked_roots+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_baked_roots",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:baked_roots>=1"
+   ],
+   "eff": [
+    "has:baked_roots+1",
+    "home:baked_roots-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_eggs_greens",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:eggs_greens>=1"
+   ],
+   "eff": [
+    "has:eggs_greens-1",
+    "need:hunger+0.35",
+    "moodlet:ate_meal",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_eggs_greens",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:eggs_greens>=1"
+   ],
+   "eff": [
+    "has:eggs_greens-1",
+    "home:eggs_greens+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_eggs_greens",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:eggs_greens>=1"
+   ],
+   "eff": [
+    "has:eggs_greens+1",
+    "home:eggs_greens-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "eat_sweet_curd",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:sweet_curd>=1"
+   ],
+   "eff": [
+    "has:sweet_curd-1",
+    "need:hunger+0.35",
+    "need:thirst+0.05",
+    "need:fun+0.05",
+    "moodlet:ate_sweet"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_sweet_curd",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:sweet_curd>=1"
+   ],
+   "eff": [
+    "has:sweet_curd-1",
+    "home:sweet_curd+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_sweet_curd",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:sweet_curd>=1"
+   ],
+   "eff": [
+    "has:sweet_curd+1",
+    "home:sweet_curd-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "drink_herb_tea",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:herb_tea>=1"
+   ],
+   "eff": [
+    "has:herb_tea-1",
+    "need:thirst+0.6",
+    "need:warmth+0.05",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_herb_tea",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:herb_tea>=1"
+   ],
+   "eff": [
+    "has:herb_tea-1",
+    "home:herb_tea+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_herb_tea",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:herb_tea>=1"
+   ],
+   "eff": [
+    "has:herb_tea+1",
+    "home:herb_tea-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "drink_honey_milk",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:honey_milk>=1"
+   ],
+   "eff": [
+    "has:honey_milk-1",
+    "need:hunger+0.15",
+    "need:thirst+0.4",
+    "need:fun+0.03",
+    "moodlet:ate_sweet",
+    "moodlet:warm_belly"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74"
+  },
+  {
+   "id": "store_honey_milk",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:honey_milk>=1"
+   ],
+   "eff": [
+    "has:honey_milk-1",
+    "home:honey_milk+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_honey_milk",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:honey_milk>=1"
+   ],
+   "eff": [
+    "has:honey_milk+1",
+    "home:honey_milk-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "drink_berry_wine",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:berry_wine>=1"
+   ],
+   "eff": [
+    "has:berry_wine-1",
+    "need:hunger+0.1",
+    "need:thirst+0.3",
+    "need:fun+0.15",
+    "moodlet:merry"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.08,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "store_berry_wine",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:berry_wine>=1"
+   ],
+   "eff": [
+    "has:berry_wine-1",
+    "home:berry_wine+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_berry_wine",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:berry_wine>=1"
+   ],
+   "eff": [
+    "has:berry_wine+1",
+    "home:berry_wine-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "drink_berry_wine_at_fire",
+   "category": "social",
+   "target": "object:village_fire",
+   "pre": [
+    "has:berry_wine>=1"
+   ],
+   "eff": [
+    "has:berry_wine-1",
+    "need:thirst+0.3",
+    "need:fun+0.3",
+    "need:social+0.25",
+    "moodlet:merry"
+   ],
+   "duration": 6,
+   "cost": 2,
+   "fsm": "Talk",
+   "visibility": "public",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.12,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ],
+   "_part": "AL-74"
+  },
+  {
+   "id": "drink_mulled_wine",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:mulled_wine>=1"
+   ],
+   "eff": [
+    "has:mulled_wine-1",
+    "need:hunger+0.1",
+    "need:thirst+0.3",
+    "need:warmth+0.15",
+    "need:fun+0.2",
+    "moodlet:merry",
+    "moodlet:warm_belly",
+    "moodlet:ate_fine_food"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Eat",
+   "_part": "AL-74",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.08,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "store_mulled_wine",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "has:mulled_wine>=1"
+   ],
+   "eff": [
+    "has:mulled_wine-1",
+    "home:mulled_wine+1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "take_mulled_wine",
+   "category": "household",
+   "target": "object:storage",
+   "pre": [
+    "target_owner:family",
+    "home:mulled_wine>=1"
+   ],
+   "eff": [
+    "has:mulled_wine+1",
+    "home:mulled_wine-1"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "drink_mulled_wine_at_fire",
+   "category": "social",
+   "target": "object:village_fire",
+   "pre": [
+    "has:mulled_wine>=1"
+   ],
+   "eff": [
+    "has:mulled_wine-1",
+    "need:thirst+0.3",
+    "need:fun+0.3",
+    "need:social+0.25",
+    "moodlet:merry"
+   ],
+   "duration": 6,
+   "cost": 2,
+   "fsm": "Talk",
+   "visibility": "public",
+   "risk": [
+    {
+     "id": "too_much_drink",
+     "p": 0.12,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ],
+   "_part": "AL-74"
+  },
+  {
+   "id": "fetch_water",
+   "category": "household",
+   "target": "object:well",
+   "pre": [],
+   "eff": [
+    "has:water+3"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Work",
+   "_part": "AL-74",
+   "_doc": "набрать воды в кувшин: для похлёбок, теста, чая"
+  },
+  {
+   "id": "fetch_water_river",
+   "category": "household",
+   "target": "object:water",
+   "pre": [],
+   "eff": [
+    "has:water+3"
+   ],
+   "duration": 1,
+   "cost": 1.5,
+   "fsm": "Work",
+   "_part": "AL-74"
+  },
+  {
+   "id": "set_leaven",
+   "category": "household",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:cooking",
+    "has:grain>=1"
+   ],
+   "eff": [
+    "has:grain-1",
+    "has:yeast+2",
+    "skill:cooking+0.005"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "_part": "AL-74",
+   "_doc": "поставить закваску: горсть зерна в тёплой воде у очага"
+  },
+  {
+   "id": "brew_berry_wine",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "target_owner:family",
+    "knows:brewing",
+    "has:berries>=6",
+    "has:yeast>=1"
+   ],
+   "eff": [
+    "has:berries-6",
+    "has:yeast-1",
+    "has:berry_wine+3",
+    "skill:brewing+0.02",
+    "moodlet:made_something"
+   ],
+   "duration": 8,
+   "cost": 4,
+   "fsm": "Work",
+   "_part": "AL-74",
+   "_doc": "ягоды, вода, закваска: ставят в корчагу у очага"
+  },
+  {
+   "id": "play_flute",
+   "category": "leisure",
+   "target": "self",
+   "pre": [
+    "has:bone_flute>=1"
+   ],
+   "eff": [
+    "need:fun+0.3",
+    "moodlet:made_music"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_part": "AL-74"
+  },
+  {
+   "id": "play_drum",
+   "category": "leisure",
+   "target": "object:village_fire",
+   "pre": [
+    "has:drum>=1"
+   ],
+   "eff": [
+    "need:fun+0.3",
+    "need:social+0.2",
+    "moodlet:made_music"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "_part": "AL-74",
+   "fsm": "Talk",
+   "visibility": "public"
+  },
+  {
+   "id": "roll_bone_dice",
+   "category": "leisure",
+   "target": "object:village_fire",
+   "pre": [
+    "has:bone_dice>=1"
+   ],
+   "eff": [
+    "need:fun+0.25",
+    "need:social+0.15"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "_part": "AL-74",
+   "fsm": "Talk",
+   "visibility": "public"
+  },
+  {
+   "id": "smoke_pipe",
+   "category": "leisure",
+   "target": "self",
+   "pre": [
+    "has:clay_pipe>=1",
+    "has:dried_herbs>=1"
+   ],
+   "eff": [
+    "has:dried_herbs-1",
+    "need:fun+0.2",
+    "moodlet:pipe_smoke"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "_part": "AL-74"
+  },
+  {
+   "id": "comb_hair",
+   "category": "leisure",
+   "target": "self",
+   "pre": [
+    "has:bone_comb>=1"
+   ],
+   "eff": [
+    "need:hygiene+0.2"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "whisper_to_charm",
+   "category": "leisure",
+   "target": "self",
+   "pre": [
+    "has:bone_charm>=1"
+   ],
+   "eff": [
+    "need:purpose+0.1",
+    "moodlet:warded"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "play_with_doll",
+   "category": "leisure",
+   "target": "self",
+   "pre": [
+    "has:rag_doll>=1",
+    "age:child"
+   ],
+   "eff": [
+    "need:fun+0.35"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_part": "AL-74"
+  },
+  {
+   "id": "blow_whistle",
+   "category": "leisure",
+   "target": "self",
+   "pre": [
+    "has:clay_whistle>=1"
+   ],
+   "eff": [
+    "need:fun+0.15"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "sweep_house",
+   "category": "work",
+   "target": "object:house",
+   "pre": [
+    "has:broom>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "need:hygiene+0.1",
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "_part": "AL-74",
+   "fsm": "Work"
+  },
+  {
+   "id": "light_candlestick",
+   "category": "leisure",
+   "target": "object:house",
+   "pre": [
+    "has:clay_candlestick>=1",
+    "target_owner:family",
+    "time:night"
+   ],
+   "eff": [
+    "need:fun+0.05",
+    "moodlet:cosy_light"
+   ],
+   "duration": 1,
+   "cost": 1,
+   "_part": "AL-74"
+  },
+  {
+   "id": "dig_roots_with_spade",
+   "category": "work",
+   "target": "object:root_patch",
+   "pre": [
+    "has:wooden_spade>=1",
+    "knows:foraging",
+    "target_stock:roots>=5"
+   ],
+   "eff": [
+    "has:roots+5",
+    "target_stock:roots-5",
+    "skill:foraging+0.01",
+    "body:fatigue+0.04"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "_part": "AL-74",
+   "fsm": "Work",
+   "from_target": true,
+   "reserve": true
+  }
+ ]
+}

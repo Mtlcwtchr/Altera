@@ -744,6 +744,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     else if (panel == "sheet") panel = "none";
     if (panel == "wheel") wheel(s, W, H);
     if (panel == "talk") talkPanel(s, W, H);   // AL-67
+    if (panel == "trade") tradePanel(s, W, H); // AL-75
     if (panel == "name") namePanel(s, W, H);
     if (panel == "beast") {
         names(s);
@@ -1620,6 +1621,10 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             const std::string ps = std::to_string(pc);
             label(ccx - textW(ps, 13) / 2, ccy - 9, ps, kInk, 13);
             ui_->line(row.x, row.bottom() + 2, row.right(), row.bottom() + 2, kLine.withAlpha(0.25f));
+            if (canAct && clicked(row) && id == "trade_barter") {
+                openTrade(t->id);   // AL-75: barter is chosen thing by thing in the trade window
+                return;
+            }
             // AL-80: a press may become a drag onto the quick bars; the act goes on the release
             if (canAct && clicked(row)) barPress_ = {{"act", id, 0}, "wheel:" + id, -1, 0, -1, in_->mouseX, in_->mouseY, true, false};
             if (canAct && in_->released && barPress_.on && !barPress_.dragging && barPress_.key == "wheel:" + id &&
@@ -2073,6 +2078,8 @@ void Hud::journalBox(const Snapshot& s, float W, float H) {
 }
 
 std::string Hud::itemIcon(const std::string& id) const {
+    // AL-74: by id or tag (content/ui/craft.json); an icon the atlas lacks yet falls back to the name match
+    if (auto it = itemIcons.find(id); it != itemIcons.end() && iconIndex_.count(it->second)) return it->second;
     static const std::pair<const char*, const char*> kIcons[] = {
         {"knife", "i_knife"}, {"blade", "i_knife"}, {"axe", "i_tool"}, {"spear", "i_knife"}, {"bread", "i_bread"},
         {"meal", "i_food"}, {"berries", "i_food"}, {"roots", "i_food"}, {"mushrooms", "i_food"}, {"meat", "i_food"},

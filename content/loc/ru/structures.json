@@ -1,0 +1,13 @@
+{
+ "_doc": "AL-76: постройки деревни по назначению (content/ai/structures.json).",
+ "structure.dwelling": "жилой дом",
+ "structure.smithy": "кузница",
+ "structure.tavern": "таверна",
+ "structure.carpenter": "плотницкая",
+ "structure.weaver": "ткацкая",
+ "structure.tannery": "дубильня",
+ "structure.pottery": "гончарня",
+ "structure.chapel": "часовня",
+ "structure.bakery": "пекарня",
+ "structure.barn": "амбар"
+}

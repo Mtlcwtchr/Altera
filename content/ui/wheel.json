@@ -88,6 +88,17 @@
    "icon": "w_economy",
    "subs": [
     {
+     "id": "market",
+     "interactions": [
+      "trade_buy",
+      "trade_sell",
+      "trade_barter",
+      "trade_gift",
+      "trade_treat",
+      "trade_meal"
+     ]
+    },
+    {
      "id": "deal",
      "interactions": [
       "trade",

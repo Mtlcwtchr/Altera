@@ -751,7 +751,8 @@
     "edge": 0.4,
     "purity": 0.7
    },
-   "shape": "bone"
+   "shape": "bone",
+   "item": "bone"
   },
   {
    "id": "animal_fat",
@@ -869,7 +870,8 @@
     "purity": 0.8,
     "moisture": 1.0
    },
-   "shape": "liquid"
+   "shape": "liquid",
+   "item": "water"
   },
   {
    "id": "yeast",
@@ -882,7 +884,8 @@
     "sugar": 0.0,
     "moisture": 0.6
    },
-   "shape": "lump"
+   "shape": "lump",
+   "item": "yeast"
   },
   {
    "id": "honey",
@@ -1309,6 +1312,207 @@
    },
    "shape": "scrap",
    "raw": false
+  },
+  {
+   "id": "fish_raw",
+   "tags": [
+    "fish",
+    "food",
+    "perishable"
+   ],
+   "p": {
+    "nutrition": 0.5,
+    "moisture": 0.7,
+    "purity": 0.7,
+    "toxic": 0.05
+   },
+   "shape": "lump",
+   "item": "fish",
+   "salvage": "wood_ash",
+   "effects": [
+    {
+     "id": "umami",
+     "k": 0.4
+    }
+   ],
+   "states": [
+    {
+     "id": "cooked",
+     "when": "heat>=1",
+     "add": {
+      "toxic": -0.05
+     }
+    }
+   ]
+  },
+  {
+   "id": "garden_veg",
+   "tags": [
+    "veg",
+    "food"
+   ],
+   "p": {
+    "nutrition": 0.35,
+    "sugar": 0.2,
+    "moisture": 0.8,
+    "purity": 0.8
+   },
+   "shape": "lump",
+   "item": "vegetables",
+   "effects": [
+    {
+     "id": "sweet",
+     "k": 0.15
+    },
+    {
+     "id": "fresh",
+     "k": 0.2
+    }
+   ]
+  },
+  {
+   "id": "mushroom",
+   "tags": [
+    "mushroom",
+    "food",
+    "perishable"
+   ],
+   "p": {
+    "nutrition": 0.25,
+    "moisture": 0.8,
+    "purity": 0.7
+   },
+   "shape": "lump",
+   "item": "mushrooms",
+   "effects": [
+    {
+     "id": "umami",
+     "k": 0.5
+    }
+   ]
+  },
+  {
+   "id": "root",
+   "tags": [
+    "root",
+    "veg",
+    "food"
+   ],
+   "p": {
+    "nutrition": 0.35,
+    "sugar": 0.25,
+    "moisture": 0.5,
+    "purity": 0.7
+   },
+   "shape": "lump",
+   "item": "roots",
+   "effects": [
+    {
+     "id": "sweet",
+     "k": 0.15
+    }
+   ]
+  },
+  {
+   "id": "hazelnut",
+   "tags": [
+    "nut",
+    "food"
+   ],
+   "p": {
+    "nutrition": 0.5,
+    "moisture": 0.1,
+    "purity": 0.8
+   },
+   "shape": "lump",
+   "item": "hazelnuts",
+   "effects": [
+    {
+     "id": "rich",
+     "k": 0.4
+    }
+   ]
+  },
+  {
+   "id": "greens",
+   "tags": [
+    "greens",
+    "veg",
+    "food"
+   ],
+   "p": {
+    "nutrition": 0.1,
+    "moisture": 0.8,
+    "purity": 0.8
+   },
+   "shape": "lump",
+   "item": "wild_greens",
+   "effects": [
+    {
+     "id": "fresh",
+     "k": 0.4
+    },
+    {
+     "id": "bitter",
+     "k": 0.1
+    }
+   ]
+  },
+  {
+   "id": "hard_cheese",
+   "tags": [
+    "curd",
+    "dairy",
+    "food"
+   ],
+   "p": {
+    "nutrition": 0.6,
+    "moisture": 0.3,
+    "purity": 0.8
+   },
+   "shape": "lump",
+   "item": "cheese",
+   "effects": [
+    {
+     "id": "rich",
+     "k": 0.5
+    },
+    {
+     "id": "salty",
+     "k": 0.3
+    }
+   ]
+  },
+  {
+   "id": "fruit_wine",
+   "tags": [
+    "alcohol",
+    "liquid",
+    "wine"
+   ],
+   "p": {
+    "density": 0.45,
+    "sugar": 0.2,
+    "purity": 0.7,
+    "toxic": 0.05,
+    "flammable": 0.3
+   },
+   "shape": "liquid",
+   "item": "berry_wine",
+   "effects": [
+    {
+     "id": "warm",
+     "k": 0.3
+    },
+    {
+     "id": "sour",
+     "k": 0.2
+    },
+    {
+     "id": "sweet",
+     "k": 0.2
+    }
+   ]
   }
  ]
 }

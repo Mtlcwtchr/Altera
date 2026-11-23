@@ -12,6 +12,7 @@
 
 #include <SDL3/SDL.h>
 
+#include "terrain_core/enb.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/world_gen.hpp"
 
@@ -46,6 +47,9 @@ public:
     // True once after the game laid new pads on the ground (GameOptions::relief,
     // opened again): the view binds the relief and makes its clipmap again.
     virtual bool terrainChanged() { return false; }
+    // AL-77: the game's warm lights (fires) near `eye`, eye-relative, for the
+    // view's frame chain to add. None by default.
+    virtual void lights(const double eye[3], std::vector<terrain_core::EnbLight>& out) { (void)eye; out.clear(); }
 };
 
 struct GameOptions {
