@@ -211,7 +211,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : objects.value("objects", Json::array())) {
         warnUnknown(j, {"id", "stock", "max_stock", "regrow", "regrow_every", "biomes", "per_km2", "owned",
                         "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season", "crop", "station",
-                        "own_seed"},
+                        "own_seed", "stand_m"},
                     "objects", W);
         ObjectDef d;
         d.id = j.at("id").get<std::string>();
@@ -221,6 +221,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.regrowEvery = opt<Tick>(j, "regrow_every", 0);
         d.biomes = strings(j, "biomes");
         d.perKm2 = opt(j, "per_km2", 0.0);
+        d.standM = opt(j, "stand_m", 0.0);
         d.owned = opt(j, "owned", false);
         d.settlement = opt(j, "settlement", false);
         d.perFamily = opt(j, "per_family", 0);

@@ -207,6 +207,8 @@ public:
     const std::map<EntityId, BuildPiece>& pieces() const { return pieces_; }
     bool piecesDirty = true; // set when pieces change; building.cpp refreshes derived state
     bool removeObject(EntityId id);
+    // AL-78: many at once (the game's forest replaces the generated trees): one pass, not one a thing
+    std::size_t removeObjects(const std::vector<EntityId>& ids);
     MapGrid& map() { return map_; }
     const MapGrid& map() const { return map_; }
     const Family* familyOf(const Character& c) const;

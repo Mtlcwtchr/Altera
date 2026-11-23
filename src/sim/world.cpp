@@ -77,6 +77,15 @@ bool World::removeObject(EntityId id) {
     return true;
 }
 
+std::size_t World::removeObjects(const std::vector<EntityId>& ids) {
+    std::size_t n = 0;
+    for (EntityId id : ids) n += objects_.erase(id);
+    byType_.clear();
+    roofs_.clear();
+    for (const auto& [oid, o] : objects_) indexObject(o);
+    return n;
+}
+
 void World::indexObject(const WorldObject& o) {
     byType_[o.type].push_back(o.id);
     auto d = content_->objects.find(o.type);

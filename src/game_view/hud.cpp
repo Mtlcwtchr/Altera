@@ -728,7 +728,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "none") {
         walkMarker();
         workFx(s);
-        speechBubbles(s);
+        talkStrip(s, W, H);   // AL-78: the lines over the quick bar, not over the heads
         feedbackFloats(s);
         hoverHint(s, W);
         socialAsk(s, W, H);   // AL-65
@@ -750,7 +750,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "thing") {
         names(s);
         workFx(s);
-        speechBubbles(s);
+        talkStrip(s, W, H);
         feedbackFloats(s);
         thing(s, W, H);
     }
@@ -1920,6 +1920,114 @@ void Hud::feedbackFloats(const Snapshot& s) {
 // grows with the line; one slip per speaker (a new line takes the old one's
 // place), lifted over the name, the need bubble and the act's bar, and over
 // the slips of the others when they would lie on each other.
+// AL-78: what is said round the player's person and what came of their doing,
+// in a strip over the quick bar on a grey band that darkens downwards, newest
+// at the bottom, older lines dimming away; a talk's lines come in turn. While
+// the person talks with someone, the replies they can give are under it.
+void Hud::talkStrip(const Snapshot& s, float W, float H) {
+    const ActorSnap* me = actor(s, s.controlled);
+    // the lines: in turn (the speech queue), kept when they concern the person
+    for (const auto& sp : s.speech)
+        if (sp.seq > speechSeq_) {
+            speechSeq_ = sp.seq;
+            if (sp.line.empty()) continue;
+            const double life = std::clamp(2.4 + 0.055 * double(sp.line.size()) / 2.0, 3.0, 7.0);
+            const double at = std::max(clock_, bubbleNext_);
+            bubbleNext_ = at + std::min(2.2, life * 0.6);
+            Bubble q{sp.speaker, sp.line, at, life};
+            bubbleQueue_.push_back(q);
+            if (me && (sp.speaker == me->id || sp.listener == me->id)) {
+                const EntityId other = sp.speaker == me->id ? sp.listener : sp.speaker;
+                if (other != me->id && other != sim::kNone) stripPartner_ = other, stripPartnerAt_ = clock_;
+            }
+        }
+    for (auto it = bubbleQueue_.begin(); it != bubbleQueue_.end();) {
+        if (it->born > clock_) {
+            ++it;
+            continue;
+        }
+        const ActorSnap* a = actor(s, it->who);
+        bool near = me && a;
+        if (near && a->id != me->id) near = std::hypot(a->x - me->x, a->y - me->y) < 30.0;
+        if (a && near) strip_.push_back({a->name, it->text, 3, a->id == s.controlled, clock_});
+        it = bubbleQueue_.erase(it);
+    }
+    if (bubbleQueue_.size() > 12) bubbleQueue_.erase(bubbleQueue_.begin(), bubbleQueue_.end() - 12);
+    // the news: what came of the person's doing
+    for (const auto& f : s.feedback)
+        if (f.seq > stripFbSeq_) {
+            stripFbSeq_ = f.seq;
+            strip_.push_back({"", f.text, f.kind, false, clock_});
+        }
+    if (strip_.size() > 24) strip_.erase(strip_.begin(), strip_.end() - 24);
+    // the replies: while a talk goes on, and a little after
+    const ActorSnap* partner = actor(s, stripPartner_);
+    const bool talking = me && partner && partner->alive && !partner->animal &&
+                         (me->faces == partner->id || clock_ - stripPartnerAt_ < 12.0) &&
+                         std::hypot(partner->x - me->x, partner->y - me->y) < 12.0;
+    if (talking) host_->wheelTarget(partner->id);   // its topics come with the snapshot
+    // what is shown: the last rows, not older than half a minute
+    std::vector<const StripRow*> rows;
+    for (auto it = strip_.rbegin(); it != strip_.rend() && rows.size() < 6; ++it)
+        if (clock_ - it->born < 30.0) rows.push_back(&*it);
+    if (rows.empty() && !talking) return;
+    const float w = std::min(680.f, W - 80), rowH = 21, px = 14;
+    const float chipsH = talking ? 40.f : 0.f;
+    const float h = 18 + float(rows.size()) * rowH + chipsH;
+    const float bottom = H - 30 - 60 - 10;
+    const Rect r{(W - w) * 0.5f, bottom - h, w, h};
+    // the grey band: clear at the top, darker towards the bar
+    const int bands = 18;
+    for (int k = 0; k < bands; ++k) {
+        const float t = float(k) / float(bands - 1);
+        ui_->rect({r.x, r.y + r.h * float(k) / float(bands), r.w, r.h / float(bands) + 1}, Colour::rgb(28, 28, 30, 0.10f + 0.55f * t));
+    }
+    float y = r.y + 10;
+    for (auto it = rows.rbegin(); it != rows.rend(); ++it) {
+        const StripRow& row = **it;
+        const float age = float(clock_ - row.born);
+        const float alpha = std::clamp(1.0f - (age - 18.0f) / 12.0f, 0.25f, 1.0f) * std::clamp(age / 0.25f, 0.0f, 1.0f);
+        float x = r.x + 18;
+        if (row.kind == 3) {
+            const std::string who = row.who + ":";
+            label(x, y, who, (row.mine ? Colour::rgb(236, 196, 120) : kGold).withAlpha(alpha), px, true);
+            x += textW(who, px) + 8;
+            label(x, y, ui_->fit("«" + row.text + "»", r.right() - 18 - x, px / 15.f), kText.withAlpha(alpha), px);
+        } else {
+            const Colour c = row.kind == 1 ? Colour::rgb(170, 225, 120) : row.kind == 2 ? Colour::rgb(240, 130, 110)
+                                                                         : kText.withAlpha(0.8f);
+            label(x, y, ui_->fit(row.text, r.right() - 36, 13 / 15.f), c.withAlpha(alpha * 0.9f), 13);
+        }
+        y += rowH;
+    }
+    if (talking) {
+        // the replies: the talk acts and the topics the person could bring up
+        static const char* kActs[] = {"chat", "joke", "tell_story", "gossip", "compliment", "insult"};
+        float x = r.x + 18;
+        const float cy = r.bottom() - chipsH + 6, ch = 28;
+        auto chip = [&](const std::string& t, const sim::Json& cmd, bool say) {
+            const float cw = textW(t, 13) + 22;
+            if (x + cw > r.right() - 18) return;
+            const Rect b{x, cy, cw, ch};
+            const bool hot = ui_->hovered(b);
+            ui_->roundRect(b, Colour::rgb(20, 20, 22, hot ? 0.85f : 0.6f), 6);
+            ui_->border(b, (hot ? kGoldPale : kGold).withAlpha(0.6f), 1.0f, 6);
+            label(b.x + 11, b.y + 5, t, hot ? kGoldPale : kText, 13);
+            if (clicked(b)) {
+                if (say) host_->simOp("say_topic", cmd);
+                else host_->command("perform", cmd);
+            }
+            x += cw + 8;
+        };
+        if (s.topicsFor == partner->id)
+            for (std::size_t i = 0; i < s.topics.size() && i < 2; ++i)
+                chip(ui_->fit(s.topics[i].label, 220, 13 / 15.f), {{"id", s.controlled}, {"target", partner->id}, {"index", int(i)}}, true);
+        for (const char* a : kActs)
+            chip(host_->interactionName(a), {{"id", s.controlled}, {"interaction", a}, {"target", partner->id}}, false);
+        ui_->claim({r.x, r.bottom() - chipsH, r.w, chipsH});
+    }
+}
+
 void Hud::speechBubbles(const Snapshot& s) {
     for (const auto& sp : s.speech)
         if (sp.seq > speechSeq_) {
