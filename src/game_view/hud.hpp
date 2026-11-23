@@ -326,6 +326,8 @@ private:
     const ActInfoSnap* actInfo(const Snapshot& s, EntityId target, const std::string& id) const;
     void hoverHint(const Snapshot& s, float W);
     void feedbackFloats(const Snapshot& s);
+    void speechBubbles(const Snapshot& s);              // AL-57: lines over the speakers
+    void journalBox(const Snapshot& s, float W, float H); // AL-57: the player's journal
     void workFx(const Snapshot& s);
     void kin(const Snapshot& s, const ActorSnap* a, float W, float H);
     void annals(const Snapshot& s, float W, float H);
@@ -438,6 +440,16 @@ private:
     };
     std::vector<Float> floats_;
     int floatSeq_ = 0;
+    struct Bubble {
+        EntityId who = sim::kNone;
+        std::string text;
+        double born = 0, life = 0;
+    };
+    std::vector<Bubble> bubbles_;            // AL-57: one per speaker, the newest line
+    int speechSeq_ = 0;
+    std::map<EntityId, float> bubbleTop_;    // this frame: where a speaker's bubble ends (screen y)
+    bool journalOpen_ = true;
+    int journalSeen_ = 0;                    // the newest row shown while open
     float beastX_ = 0, beastY_ = 0;
     bool beastFresh_ = false;   // opened by this frame's click: that click does not close it
     int goalPick_ = -1;
