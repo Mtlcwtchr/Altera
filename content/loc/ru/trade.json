@@ -1,0 +1,237 @@
+{
+ "_doc": "AL-75: торг, обмен, угощения и подарки (sim/trade.cpp, content/ai/trade.json, dialogue_rules/trade.json).",
+ "say.trade.offer.buy": [
+  "Дам {price} {price:plural|монету|монеты|монет} за {get:acc}. Идёт?",
+  "{listener}, продай {get:acc}. Плачу {price} {price:plural|монету|монеты|монет}."
+ ],
+ "say.trade.offer.sell": [
+  "Возьмёшь {give:acc} за {price} {price:plural|монету|монеты|монет}?",
+  "{listener}, купи {give:acc}. Всего {price} {price:plural|монету|монеты|монет}."
+ ],
+ "say.trade.offer.barter": [
+  "Меняю {give:acc} на {get:acc}. По рукам?",
+  "{listener}, давай меняться: {give:nom} за {get:acc}."
+ ],
+ "say.trade.offer.gift": [
+  "{listener}, это тебе. Держи {give:acc}.",
+  "Возьми {give:acc}, {listener}. Подарок."
+ ],
+ "say.trade.offer.treat": [
+  "Угощайся, {listener}: {give:nom}.",
+  "{listener}, отведай-ка {give:gen}."
+ ],
+ "say.trade.offer.meal": [
+  "Накорми, {listener:g|хозяин|хозяйка}. Плачу {price} {price:plural|монету|монеты|монет} за {get:acc}.",
+  "Мне бы {get:acc}, {listener}. Вот {price} {price:plural|монету|монеты|монет}."
+ ],
+ "say.trade.accept": [
+  "По рукам.",
+  "Идёт, {listener}.",
+  "Договорились."
+ ],
+ "say.trade.accept.generous": [
+  "Щедро! Беру.",
+  "Ого, {listener}. По рукам, и спасибо."
+ ],
+ "say.trade.accept.meal": [
+  "Садись, сейчас подам {get:acc}.",
+  "Вот, {listener}, ешь на здоровье."
+ ],
+ "say.trade.accept.counter": [
+  "Ладно, будь по-твоему.",
+  "Эх... согласен{speaker:g||а}."
+ ],
+ "say.trade.gift.like": [
+  "Ох, {give:nom}! Угадал{listener:g||а}, люблю такое.",
+  "Вот это подарок! Спасибо, {listener}."
+ ],
+ "say.trade.gift.neutral": [
+  "Спасибо, {listener}.",
+  "Благодарю. Пригодится."
+ ],
+ "say.trade.gift.dislike": [
+  "Ну... спасибо. Не люблю я {give:acc}.",
+  "{give:nom}? Хм. Ну, давай."
+ ],
+ "say.trade.treat.like": [
+  "М-м, моё любимое! Спасибо, {listener}.",
+  "Ох, угодил{listener:g||а}! Вкусно."
+ ],
+ "say.trade.treat.neutral": [
+  "Благодарствую, {listener}.",
+  "Спасибо за угощение."
+ ],
+ "say.trade.treat.dislike": [
+  "Не по мне это, но спасибо.",
+  "Хм. Съем уж, раз угощаешь."
+ ],
+ "say.trade.counter.coin": [
+  "Мало. Добавь ещё {price} {price:plural|монету|монеты|монет} — и по рукам.",
+  "За {get:acc}? Ещё {price} {price:plural|монету|монеты|монет}, не меньше."
+ ],
+ "say.trade.counter.less": [
+  "Столько не отдам. Бери меньше: {get:acc} — и хватит.",
+  "За это — только {get:acc}, не больше."
+ ],
+ "say.trade.refuse.too_little": [
+  "Это мало за {get:acc}.",
+  "Нет, {listener}, так не пойдёт. Мало."
+ ],
+ "say.trade.refuse.insult": [
+  "Ты смеёшься? За {get:acc} — такое?",
+  "Грабёж средь бела дня! Нет."
+ ],
+ "say.trade.refuse.no_goods": [
+  "Нет у меня столько {get:gen}.",
+  "Откуда? Нет у меня {get:gen}."
+ ],
+ "say.trade.refuse.no_means": [
+  "Да у тебя и нет {give:gen}.",
+  "Чем платить-то будешь, {listener}?"
+ ],
+ "say.trade.refuse.no_room": [
+  "Мне это некуда деть.",
+  "Не унесу я больше, {listener}."
+ ],
+ "say.trade.refuse.distrust": [
+  "С тобой торговать не стану.",
+  "Тебе я не верю, {listener}."
+ ],
+ "say.trade.refuse.enmity": [
+  "От тебя мне ничего не надо.",
+  "Уйди, {listener}. Не возьму."
+ ],
+ "say.trade.refuse.tired": [
+  "Хватит торговаться, {listener}. Надоело.",
+  "Сколько можно? Всё, разговор окончен."
+ ],
+ "say.trade.refuse.full": [
+  "Спасибо, я сыт{speaker:g||а}.",
+  "Не лезет уже, {listener}. Сыт{speaker:g||а}."
+ ],
+ "say.trade.refuse.dislike": [
+  "{give:nom}? Не люблю. Не надо.",
+  "Убери, {listener}, терпеть такого не могу."
+ ],
+ "say.trade.refuse.busy": [
+  "Не сейчас, занят{speaker:g||а}.",
+  "Потом, {listener}."
+ ],
+ "say.trade.refuse.nothing": [
+  "Да нечего тут менять.",
+  "Нечего мне тебе предложить, {listener}."
+ ],
+ "say.trade.refuse.keeps": [
+  "{get:acc} не продаю, самому нужно.",
+  "Это не на продажу."
+ ],
+ "say.trade.done": [
+  "Спасибо, {listener}.",
+  "Добрая сделка."
+ ],
+ "say.trade.counter_no": [
+  "Нет, так не пойдёт.",
+  "Дорого. Обойдусь."
+ ],
+ "trace": {
+  "trade": {
+   "offer": "Предложено {target}: {give} ×{gn} за {get} ×{tn}",
+   "offer_gift": "Предложено {target}: {give} ×{gn}",
+   "offered": "{target} предлагает: {give} ×{gn} за {get} ×{tn}",
+   "offered_gift": "{target} предлагает: {give} ×{gn}",
+   "weigh": "{who} прикидывает: получит на {gain} мон., отдаст на {loss} мон. (наценка ×{keep})",
+   "done": "Сделка с {target}: отдано {give} ×{gn}, получено {get} ×{tn}",
+   "gift_like": "{who} рад{who:g||а} подарку ({give}): отношение +{delta}",
+   "gift_neutral": "{who} принял{who:g||а} подарок ({give}): отношение +{delta}",
+   "gift_dislike": "{who} не любит такое ({give}): отношение {delta}",
+   "treat_like": "{who} в восторге от угощения ({give}): отношение +{delta}",
+   "treat_neutral": "{who} угостил{who:g|ся|ась} ({give}): отношение +{delta}",
+   "treat_dislike": "{who} не по вкусу угощение ({give}): отношение {delta}",
+   "countered_coin": "{who} просит ещё {price} {price:plural|монету|монеты|монет}",
+   "countered_less": "{who} отдаст меньше: {get} ×{tn}",
+   "counter_declined": "Встречное предложение {target} отклонено",
+   "refused": "{who} отказал{who:g||а}: {why}",
+   "nothing": "Сделки нет: {why}",
+   "role": {
+    "trader": "{who} — торговец",
+    "tavernkeeper": "{who} держит корчму"
+   },
+   "restock": "Прилавок пополнен из запасов: {n}"
+  }
+ },
+ "reason.trade_too_little": "мало предложено",
+ "reason.trade_insult": "предложение оскорбительно",
+ "reason.trade_no_goods": "у другой стороны нет столько",
+ "reason.trade_no_means": "нечем платить",
+ "reason.trade_no_room": "некуда положить",
+ "reason.trade_distrust": "не доверяет",
+ "reason.trade_enmity": "вражда",
+ "reason.trade_tired": "надоело торговаться",
+ "reason.trade_full": "сыт",
+ "reason.trade_dislike": "не любит такое",
+ "reason.trade_busy": "занят",
+ "reason.trade_child": "дети не торгуют",
+ "reason.trade_self": "сам с собой",
+ "reason.trade_nothing": "нечего менять",
+ "reason.trade_no_counter": "встречного предложения нет",
+ "reason.trade_keeps": "не продаёт",
+ "interaction.trade_buy.name": "Купить",
+ "interaction.trade_buy.phrase": "купить",
+ "interaction.trade_sell.name": "Продать",
+ "interaction.trade_sell.phrase": "продать",
+ "interaction.trade_barter.name": "Поменяться вещами",
+ "interaction.trade_barter.phrase": "поменяться",
+ "interaction.trade_gift.name": "Подарить",
+ "interaction.trade_gift.phrase": "подарить",
+ "interaction.trade_treat.name": "Угостить",
+ "interaction.trade_treat.phrase": "угостить",
+ "interaction.trade_meal.name": "Поесть за плату",
+ "interaction.trade_meal.phrase": "поесть за плату",
+ "trade.cat.food": "еда",
+ "trade.cat.drink": "питьё",
+ "trade.cat.cooked": "стряпня",
+ "trade.cat.sweet": "сладкое",
+ "trade.cat.meat": "мясо",
+ "trade.cat.fish": "рыба",
+ "trade.cat.alcohol": "хмельное",
+ "trade.cat.luxury": "роскошь",
+ "trade.cat.tool": "инструмент",
+ "trade.cat.weapon": "оружие",
+ "trade.cat.clothing": "одежда",
+ "trade.cat.medicine": "снадобья",
+ "trade.cat.faith": "святыни",
+ "trade.cat.toy": "игрушки",
+ "trade.role.trader": "торговец",
+ "trade.role.tavernkeeper": "корчмарь",
+ "hud.trade.title": "Торг: {who}",
+ "hud.trade.mine": "Моё",
+ "hud.trade.theirs": "У него",
+ "hud.trade.offer": "Предложить",
+ "hud.trade.accept": "Согласиться",
+ "hud.trade.decline": "Отказаться",
+ "hud.trade.worth": "Оценка: получит {gain}, отдаст {loss} ×{keep}",
+ "hud.trade.verdict.accept": "согласится",
+ "hud.trade.verdict.counter": "будет торговаться",
+ "hud.trade.verdict.refuse": "откажет: {why}",
+ "hud.trade.likes": "любит: {list}",
+ "hud.trade.dislikes": "не любит: {list}",
+ "hud.trade.counter": "Встречное: ещё {price} мон.",
+ "hud.trade.counter_less": "Встречное: товара меньше",
+ "hud.trade.counter_offer": "Встречное: отдаёшь {give}; получаешь {take}",
+ "hud.trade.need_control": "Нужно управлять человеком",
+ "hud.trade.you_give": "Отдаю",
+ "hud.trade.you_get": "Получаю",
+ "hud.trade.mode.buy": "Купить",
+ "hud.trade.mode.sell": "Продать",
+ "hud.trade.mode.barter": "Обмен",
+ "hud.trade.mode.gift": "Подарить",
+ "hud.trade.mode.treat": "Угостить",
+ "hud.trade.mode.meal": "Поесть",
+ "hud.trade.clear": "Сброс",
+ "hud.trade.close": "Закрыть",
+ "hud.trade.hint": "ЛКМ по вещи — в предложение, ПКМ — убрать",
+ "hud.trade.last": "Итог: {text}",
+ "hud.trade.role": "{role}",
+ "hud.wheel.sub.market": "Рынок",
+ "hud.wheel.sub.market.d": "купить, продать, подарить, угостить"
+}

@@ -298,6 +298,11 @@ struct Character {
     std::map<std::string, double> skills;
     std::map<std::string, double> attrs; // the 8 attributes 0..1 (expansion attributes.json); empty = not rolled
     std::string backstory;               // backstories.json id the player started as; empty = none
+    // AL-75 (sim/trade.hpp): the trade role (trader | tavernkeeper, "" = none) and the
+    // deal state: {intent: the offer the next trade act makes, counter: the counter
+    // this person made and waits an answer to, rounds: partner -> ticks of recent offers}.
+    std::string occupation;
+    Json deal = Json::object();
     std::set<std::string> knowledge;
     std::set<EntityId> knownObjects;
     std::vector<MemoryEntry> memory;

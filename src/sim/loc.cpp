@@ -610,7 +610,9 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref("fsm", s);
             } else if (k == "need" || k == "item" || k == "cause") {
                 a[k] = ref(k.c_str(), s);
-            } else if (k == "to" || k == "object" || k == "target_type") {
+            } else if (k == "give" || k == "get") { // AL-75: the things of a deal
+                a[k] = ref("item", s);
+            } else if (k == "to"|| k == "object" || k == "target_type") {
                 a[k] = ref("object", s);
             } else if (k == "tag") {
                 a[k] = ref("legal", s);

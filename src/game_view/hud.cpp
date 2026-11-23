@@ -742,6 +742,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     else if (panel == "sheet") panel = "none";
     if (panel == "wheel") wheel(s, W, H);
     if (panel == "talk") talkPanel(s, W, H);   // AL-67
+    if (panel == "trade") tradePanel(s, W, H); // AL-75
     if (panel == "name") namePanel(s, W, H);
     if (panel == "beast") {
         names(s);
@@ -1606,6 +1607,10 @@ void Hud::wheel(const Snapshot& s, float W, float H) {
             const std::string ps = std::to_string(pc);
             label(ccx - textW(ps, 13) / 2, ccy - 9, ps, kInk, 13);
             ui_->line(row.x, row.bottom() + 2, row.right(), row.bottom() + 2, kLine.withAlpha(0.25f));
+            if (canAct && clicked(row) && id == "trade_barter") {
+                openTrade(t->id);   // AL-75: barter is chosen thing by thing in the trade window
+                return;
+            }
             if (canAct && clicked(row)) {
                 sim::Json args = {{"id", s.controlled}, {"interaction", id}, {"target", t->id}};
                 if (tone_ >= 0 && tone_ < int(s.wheel.tones.size())) args["tone"] = s.wheel.tones[std::size_t(tone_)];

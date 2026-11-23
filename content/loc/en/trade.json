@@ -1,0 +1,237 @@
+{
+ "_doc": "AL-75: trade, barter, treats and gifts.",
+ "say.trade.offer.buy": [
+  "I will give {price} {price:plural|coin|coins} for the {get}. Deal?",
+  "{listener}, sell me the {get}. {price} {price:plural|coin|coins}."
+ ],
+ "say.trade.offer.sell": [
+  "Will you take the {give} for {price} {price:plural|coin|coins}?",
+  "{listener}, buy my {give}. Just {price} {price:plural|coin|coins}."
+ ],
+ "say.trade.offer.barter": [
+  "My {give} for your {get}. Deal?",
+  "{listener}, let us swap: the {give} for the {get}."
+ ],
+ "say.trade.offer.gift": [
+  "{listener}, this is for you. Take the {give}.",
+  "Here, {listener}, the {give}. A gift."
+ ],
+ "say.trade.offer.treat": [
+  "Help yourself, {listener}: {give}.",
+  "{listener}, have a taste of this {give}."
+ ],
+ "say.trade.offer.meal": [
+  "Feed me, {listener}. {price} {price:plural|coin|coins} for the {get}.",
+  "I would like the {get}, {listener}. Here is {price} {price:plural|coin|coins}."
+ ],
+ "say.trade.accept": [
+  "Deal.",
+  "Fine, {listener}.",
+  "Agreed."
+ ],
+ "say.trade.accept.generous": [
+  "Generous! I will take it.",
+  "Oh, {listener}. Deal, and thank you."
+ ],
+ "say.trade.accept.meal": [
+  "Sit down, the {get} is coming.",
+  "Here, {listener}, eat well."
+ ],
+ "say.trade.accept.counter": [
+  "All right, have it your way.",
+  "Oh well... agreed."
+ ],
+ "say.trade.gift.like": [
+  "Oh, the {give}! You guessed it, I love these.",
+  "What a gift! Thank you, {listener}."
+ ],
+ "say.trade.gift.neutral": [
+  "Thank you, {listener}.",
+  "Thanks. It will come in handy."
+ ],
+ "say.trade.gift.dislike": [
+  "Well... thanks. I do not care for {give}.",
+  "The {give}? Hm. Fine, give it here."
+ ],
+ "say.trade.treat.like": [
+  "Mm, my favourite! Thank you, {listener}.",
+  "Oh, you know me! Delicious."
+ ],
+ "say.trade.treat.neutral": [
+  "Much obliged, {listener}.",
+  "Thanks for the treat."
+ ],
+ "say.trade.treat.dislike": [
+  "Not my taste, but thank you.",
+  "Hm. I will eat it, since you offer."
+ ],
+ "say.trade.counter.coin": [
+  "Too little. Add {price} {price:plural|coin|coins} and it is a deal.",
+  "For the {get}? {price} {price:plural|coin|coins} more, no less."
+ ],
+ "say.trade.counter.less": [
+  "Not that many. Take less: the {get}, and that is it.",
+  "For that - only the {get}, no more."
+ ],
+ "say.trade.refuse.too_little": [
+  "That is too little for the {get}.",
+  "No, {listener}, not like that. Too little."
+ ],
+ "say.trade.refuse.insult": [
+  "Are you joking? That, for the {get}?",
+  "Daylight robbery! No."
+ ],
+ "say.trade.refuse.no_goods": [
+  "I do not have that much {get}.",
+  "Where from? I have no {get}."
+ ],
+ "say.trade.refuse.no_means": [
+  "You do not even have the {give}.",
+  "And what will you pay with, {listener}?"
+ ],
+ "say.trade.refuse.no_room": [
+  "I have nowhere to put it.",
+  "I cannot carry any more, {listener}."
+ ],
+ "say.trade.refuse.distrust": [
+  "I will not deal with you.",
+  "I do not trust you, {listener}."
+ ],
+ "say.trade.refuse.enmity": [
+  "I want nothing from you.",
+  "Go away, {listener}. I will not take it."
+ ],
+ "say.trade.refuse.tired": [
+  "Enough haggling, {listener}. I am sick of it.",
+  "How long will this go on? We are done."
+ ],
+ "say.trade.refuse.full": [
+  "Thanks, I am full.",
+  "I could not eat another bite, {listener}."
+ ],
+ "say.trade.refuse.dislike": [
+  "The {give}? I do not like it. No thanks.",
+  "Take it away, {listener}, I cannot stand that."
+ ],
+ "say.trade.refuse.busy": [
+  "Not now, I am busy.",
+  "Later, {listener}."
+ ],
+ "say.trade.refuse.nothing": [
+  "There is nothing to trade here.",
+  "I have nothing to offer you, {listener}."
+ ],
+ "say.trade.refuse.keeps": [
+  "The {get} is not for sale, I need it.",
+  "That is not for sale."
+ ],
+ "say.trade.done": [
+  "Thank you, {listener}.",
+  "A good deal."
+ ],
+ "say.trade.counter_no": [
+  "No, that will not do.",
+  "Too dear. I will do without."
+ ],
+ "trace": {
+  "trade": {
+   "offer": "Offered to {target}: {give} ×{gn} for {get} ×{tn}",
+   "offer_gift": "Offered to {target}: {give} ×{gn}",
+   "offered": "{target} offers: {give} ×{gn} for {get} ×{tn}",
+   "offered_gift": "{target} offers: {give} ×{gn}",
+   "weigh": "{who} weighs it: gets {gain} coins of worth, gives {loss} (margin ×{keep})",
+   "done": "Deal with {target}: gave {give} ×{gn}, got {get} ×{tn}",
+   "gift_like": "{who} loves the gift ({give}): relation +{delta}",
+   "gift_neutral": "{who} accepts the gift ({give}): relation +{delta}",
+   "gift_dislike": "{who} dislikes it ({give}): relation {delta}",
+   "treat_like": "{who} loves the treat ({give}): relation +{delta}",
+   "treat_neutral": "{who} enjoys the treat ({give}): relation +{delta}",
+   "treat_dislike": "{who} does not like the treat ({give}): relation {delta}",
+   "countered_coin": "{who} asks {price} more {price:plural|coin|coins}",
+   "countered_less": "{who} will give less: {get} ×{tn}",
+   "counter_declined": "Counter-offer of {target} declined",
+   "refused": "{who} refuses: {why}",
+   "nothing": "No deal: {why}",
+   "role": {
+    "trader": "{who} is a trader",
+    "tavernkeeper": "{who} keeps the tavern"
+   },
+   "restock": "Shelf restocked from the store: {n}"
+  }
+ },
+ "reason.trade_too_little": "too little offered",
+ "reason.trade_insult": "an insulting offer",
+ "reason.trade_no_goods": "the other side has not got that much",
+ "reason.trade_no_means": "nothing to pay with",
+ "reason.trade_no_room": "no room to carry it",
+ "reason.trade_distrust": "no trust",
+ "reason.trade_enmity": "enmity",
+ "reason.trade_tired": "tired of haggling",
+ "reason.trade_full": "full",
+ "reason.trade_dislike": "dislikes it",
+ "reason.trade_busy": "busy",
+ "reason.trade_child": "children do not trade",
+ "reason.trade_self": "with oneself",
+ "reason.trade_nothing": "nothing to trade",
+ "reason.trade_no_counter": "no counter-offer",
+ "reason.trade_keeps": "not for sale",
+ "interaction.trade_buy.name": "Buy",
+ "interaction.trade_buy.phrase": "buy",
+ "interaction.trade_sell.name": "Sell",
+ "interaction.trade_sell.phrase": "sell",
+ "interaction.trade_barter.name": "Barter",
+ "interaction.trade_barter.phrase": "barter",
+ "interaction.trade_gift.name": "Give a gift",
+ "interaction.trade_gift.phrase": "give a gift",
+ "interaction.trade_treat.name": "Treat",
+ "interaction.trade_treat.phrase": "treat",
+ "interaction.trade_meal.name": "Buy a meal",
+ "interaction.trade_meal.phrase": "buy a meal",
+ "trade.cat.food": "food",
+ "trade.cat.drink": "drink",
+ "trade.cat.cooked": "cooked food",
+ "trade.cat.sweet": "sweets",
+ "trade.cat.meat": "meat",
+ "trade.cat.fish": "fish",
+ "trade.cat.alcohol": "strong drink",
+ "trade.cat.luxury": "luxury",
+ "trade.cat.tool": "tools",
+ "trade.cat.weapon": "weapons",
+ "trade.cat.clothing": "clothing",
+ "trade.cat.medicine": "medicine",
+ "trade.cat.faith": "holy things",
+ "trade.cat.toy": "toys",
+ "trade.role.trader": "trader",
+ "trade.role.tavernkeeper": "tavernkeeper",
+ "hud.trade.title": "Trade: {who}",
+ "hud.trade.mine": "Mine",
+ "hud.trade.theirs": "Theirs",
+ "hud.trade.offer": "Offer",
+ "hud.trade.accept": "Accept",
+ "hud.trade.decline": "Decline",
+ "hud.trade.worth": "Their view: gets {gain}, gives {loss} ×{keep}",
+ "hud.trade.verdict.accept": "will agree",
+ "hud.trade.verdict.counter": "will haggle",
+ "hud.trade.verdict.refuse": "will refuse: {why}",
+ "hud.trade.likes": "likes: {list}",
+ "hud.trade.dislikes": "dislikes: {list}",
+ "hud.trade.counter": "Counter: {price} more coins",
+ "hud.trade.counter_less": "Counter: fewer goods",
+ "hud.trade.counter_offer": "Counter: you give {give}; you get {take}",
+ "hud.trade.need_control": "Take control of a person first",
+ "hud.trade.you_give": "I give",
+ "hud.trade.you_get": "I get",
+ "hud.trade.mode.buy": "Buy",
+ "hud.trade.mode.sell": "Sell",
+ "hud.trade.mode.barter": "Barter",
+ "hud.trade.mode.gift": "Gift",
+ "hud.trade.mode.treat": "Treat",
+ "hud.trade.mode.meal": "Meal",
+ "hud.trade.clear": "Clear",
+ "hud.trade.close": "Close",
+ "hud.trade.hint": "LMB on a thing adds it, RMB removes it",
+ "hud.trade.last": "Result: {text}",
+ "hud.trade.role": "{role}",
+ "hud.wheel.sub.market": "Market",
+ "hud.wheel.sub.market.d": "buy, sell, gift, treat"
+}

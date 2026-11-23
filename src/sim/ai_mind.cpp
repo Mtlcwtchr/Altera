@@ -14,6 +14,7 @@
 #include "sim/consequences.hpp"
 #include "sim/gear.hpp"
 #include "sim/social_chain.hpp"
+#include "sim/trade.hpp"
 #include "sim/village_life.hpp"
 #include "sim/wounds.hpp"
 
@@ -267,6 +268,7 @@ bool tickFsm(World& w, Character& c) {
         return true;
     }
     applyEffects(w, c, *d, target, creature);
+    tradeOnAct(w, c, *d, creature); // AL-75: a trade act makes its offer when done
     if (!d->craft.empty()) {
         const Plan& p = ai.plan;
         craftAct(w, c, *d, target, creature, p.stepIndex < p.steps.size() ? p.steps[p.stepIndex].params : Json::object());
@@ -594,6 +596,7 @@ void installAi(World& w) {
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
+        tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
             if (!c.body.alive) continue;
@@ -611,6 +614,7 @@ void installAi(World& w) {
     installBuilding(w);
     installCrafting(w);
     installGear(w);
+    installTrade(w);
 }
 
 } // namespace altera::sim

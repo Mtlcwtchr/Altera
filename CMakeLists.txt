@@ -316,6 +316,7 @@ add_library(altera_sim STATIC
         src/sim/content.cpp
         src/sim/expansion.cpp
         src/sim/backstory.cpp
+        src/sim/trade.cpp
         src/sim/collide.cpp
         src/sim/act_info.cpp
         src/sim/consequences.cpp
@@ -659,7 +660,7 @@ if(ASR_BUILD_CLIENT)
                                        src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
                                        src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
                                        src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_social.cpp
-                                       src/game_view/hud_edge_screens.cpp src/game_view/hud_world.cpp
+                                       src/game_view/hud_edge_screens.cpp src/game_view/hud_edge_trade.cpp src/game_view/hud_world.cpp
                                        src/game_view/saves.cpp)
     target_include_directories(altera_game_view PUBLIC src)
     target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
@@ -819,6 +820,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_village_life.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
+            tests/test_altera_sim_trade.cpp
             tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp
             tests/test_altera_sim_dialogue_corpus.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
