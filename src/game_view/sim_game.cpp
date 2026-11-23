@@ -250,7 +250,7 @@ public:
             for (const char* t : kShown)
                 if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced});
         }
-        anims_.clear();
+        animators_.clear();
         beastAnims_.clear();
         avatar_ = Avatar{};
         hud_.resetWorld();
@@ -1691,6 +1691,14 @@ private:
                 scriptWalk_[2] = st["walk"][2].get<double>();
             }
             if (st.contains("run")) scriptRun_ = st["run"].get<bool>();
+            // AL-79: locomotion config for a comparison shot, e.g. {"loco": {"foot_ik": false}}
+            // (any key of content/animations/locomotion.json; "procedural": false drops all the layers)
+            if (st.contains("loco") && st["loco"].is_object()) {
+                const Json lj = st["loco"];
+                loco::readConfig(loco_, lj);
+                locoProc_ = lj.value("procedural", locoProc_);
+                if (people_.loaded()) applyLoco();
+            }
             // AL-70 shots: "anim" plays a state or interaction clip on the led person ("" = off)
             if (st.contains("anim")) scriptAnim_ = st["anim"].get<std::string>();
             if (st.contains("highlight")) scriptHighlight_ = st["highlight"].get<bool>();
@@ -3991,9 +3999,9 @@ private:
         return pool.empty() ? -1 : pool[std::size_t((h >> 17) % pool.size())];
     }
 
-    // What a person plays now, from what the sim says they do.
-    int personClip(const ActorSnap& a, double speed, double& rate) const {
-        rate = 1.0;
+    // What a person plays now, from what the sim says they do: an act clip, or
+    // -1 for locomotion (the animator's idle / walk / run / sprint blend, AL-79).
+    int personAct(const ActorSnap& a, double speed) const {
         auto st = [&](const char* s) { return people_.stateClip(s); };
         if (!scriptAnim_.empty() && a.id == avatar_.id) {
             const int c = people_.interactionClip(scriptAnim_);
@@ -4002,18 +4010,7 @@ private:
         }
         if (!a.alive) return st("death");
         if (a.down) return st("down");
-        if (speed > 0.25) {
-            if (a.state == "Flee" || speed > 5.5) {
-                rate = std::clamp(speed / 6.0, 0.8, 1.6);
-                return st("sprint");
-            }
-            if (speed > 2.6) {
-                rate = std::clamp(speed / 3.5, 0.8, 1.6);
-                return st("run");
-            }
-            rate = std::clamp(speed / 1.3, 0.6, 1.8);
-            return st("walk");
-        }
+        if (speed > 0.25) return -1;
         // AL-40: a joint social act names the clip of each side (kiss, embrace, refuse...).
         if (!a.anim.empty()) {
             const int c = people_.interactionClip(a.anim);
@@ -4026,58 +4023,141 @@ private:
         static const std::pair<const char*, const char*> kByState[] = {
             {"Sleep", "sleep"}, {"Rest", "sit"}, {"Talk", "talk"}, {"Pray", "pray"}, {"Fight", "fight"},
             {"Pain", "pain"}, {"Eat", "eat"}, {"Work", "work"}, {"Act", "work"}, {"Cast", "cast"},
-            {"Interact", "work"}, {"Flee", "sprint"}, {"Incapacitated", "down"}};
+            {"Interact", "work"}, {"Incapacitated", "down"}};
         for (const auto& [s, c] : kByState)
             if (a.state == s) {
                 const int k = st(c);
                 if (k >= 0) return k;
             }
-        return st("idle");
+        return -1;
     }
 
-    Figure personFigure(const ActorSnap& a, double rx, double ry, double rz, double moveYaw, float highlight) {
-        const double nowS = lastFrameS_;
-        Anim& an = anims_[a.id];
+    // AL-79: the people's animator setup: config, rig, the blend space's clips
+    // with their gaits (speeds measured from the feet where they can be).
+    void setupLoco() {
+        loco_ = loco::Config{};
+        const fs::path file = fs::path(opts_.root) / "content/animations/locomotion.json";
+        try {
+            if (fs::exists(file)) loco::readConfig(loco_, sim::loadJsonFile(file.string()));
+        } catch (const std::exception& e) {
+            SDL_Log("altera_game: %s: %s (defaults kept)", file.string().c_str(), e.what());
+        }
+        applyLoco();
+    }
+    void applyLoco() {
+        people_.setLoco(loco_);
+        locoNodes_.clear();
+        const int idle = people_.stateClip("idle");
+        loco::Node n0;
+        n0.clip = idle;
+        if (idle >= 0) locoNodes_.push_back(n0);
+        const std::pair<const char*, float> moves[] = {
+            {"walk", loco_.walkSpeed}, {"run", loco_.runSpeed}, {"sprint", loco_.sprintSpeed}};
+        for (const auto& [name, fallback] : moves) {
+            const int c = people_.stateClip(name);
+            if (c < 0 || idle < 0) continue;
+            loco::Node n;
+            n.clip = c;
+            n.gait = people_.gait(c);
+            n.speed = loco_.measureSpeeds && n.gait.ok ? n.gait.speed : fallback;
+            if (!n.gait.ok) n.gait.cycle = float(people_.clipSeconds(c)), n.gait.offset = 0;
+            // the nodes must rise in speed: a measure out of order falls back to the config's
+            if (n.speed <= locoNodes_.back().speed + 0.2f) n.speed = std::max(fallback, locoNodes_.back().speed + 0.5f);
+            SDL_Log("altera_game: loco %s: cycle %.2fs, left heel at %.2f, %.2f m/s%s", name, double(n.gait.cycle),
+                    double(n.gait.offset), double(n.speed), n.gait.ok ? " (measured)" : "");
+            locoNodes_.push_back(n);
+        }
+        turnLeft_ = people_.stateClip("turn_l");
+        turnRight_ = people_.stateClip("turn_r");
+        animators_.clear();   // set up again on the next frame
+        SDL_Log("altera_game: loco rig %s, turn clips %d/%d", people_.locoRig() ? "found" : "missing (no procedural layers)",
+                turnLeft_, turnRight_);
+    }
+
+    // A person's or a thing's point to look at (a person's eyes), world metres.
+    bool lookPoint(EntityId id, double alpha, double& x, double& y, double& z) const {
+        if (const ActorSnap* t = actor(id)) {
+            actorWorld(*t, alpha, x, y);
+            z = groundAt(x, y) + (t->animal ? 0.5 : (t->age < 16 ? 0.9 + 0.045 * t->age : 1.58));
+            return true;
+        }
+        for (const auto& t : shown_.things)
+            if (t.id == id) {
+                x = originX_ + t.x, y = originY_ + t.y;
+                z = groundAt(x, y) + 0.4;
+                return true;
+            }
+        return false;
+    }
+
+    Figure personFigure(const ActorSnap& a, double rx, double ry, double rz, double moveYaw, float highlight,
+                        double alpha) {
+        const double wx = rx + eye_[0], wy = ry + eye_[1];
         // Visual speed: the sim's step over the real time a tick takes (the
         // walker's own pace while the player drives them).
         const bool walker = avatar_.driven && a.id == avatar_.id;
+        const bool player = a.id == shown_.controlled;
         const double step = walker ? (avatar_.speed > 0 ? 1.0 : 0.0) : std::hypot(a.x - a.px, a.y - a.py);
         const double speed = walker ? avatar_.speed : shown_.paused ? 0.0 : step / std::max(0.05, shown_.tickSeconds);
-        double rate = 1;
-        const int want = personClip(a, speed, rate);
-        if (want != an.clip) {
-            an.from = an.clip;
-            an.fromStart = an.start;
-            an.fromRate = an.rate;
-            an.clip = want;
-            an.start = nowS;
-            an.switched = nowS;
+        const int act = personAct(a, speed);
+        loco::Animator& an = animators_[a.id];
+        if (!an.started()) an.setup(locoNodes_, turnLeft_, turnRight_);
+        const float scale = a.age < 16 ? float(0.55 + 0.028 * a.age) : 1.0f;
+        const double headZ = rz + eye_[2] + 1.58 * scale;
+        loco::Inputs in;
+        in.dt = float(frameDt_);
+        in.speed = act < 0 ? float(speed) : 0.0f;
+        in.moveYaw = float(moveYaw);
+        in.action = act;
+        in.actionOnFeet = act < 0 || !loco::offFeet(loco_, people_.clipName(act));
+        in.player = player;
+        // Whom they turn to and look at: the one they talk with / act on (AL-73);
+        // else NPCs to the player's person close by (called, or come near), and
+        // the player's person to what the player aims at.
+        double tx = 0, ty = 0, tz = 0;
+        bool target = false;
+        if (a.faces != kNone && lookPoint(a.faces, alpha, tx, ty, tz) && std::hypot(tx - wx, ty - wy) < loco_.lookRange) {
+            target = true;
+            if (std::hypot(tx - wx, ty - wy) > 0.2) in.face = true, in.faceYaw = float(std::atan2(ty - wy, tx - wx));
+        } else if (!player && shown_.controlled != kNone && lookPoint(shown_.controlled, alpha, tx, ty, tz)) {
+            const double d = std::hypot(tx - wx, ty - wy);
+            if (d < loco_.glanceRange) {
+                target = true;
+                const bool idle = act < 0 && speed < 0.1;
+                if (loco_.react && idle && (hud_.aim == a.id || d < loco_.reactRange) && d > 0.3)
+                    in.face = true, in.faceYaw = float(std::atan2(ty - wy, tx - wx));
+            }
+        } else if (player && hud_.aim != kNone && hud_.aim != a.id && lookPoint(hud_.aim, alpha, tx, ty, tz) &&
+                   std::hypot(tx - wx, ty - wy) < loco_.lookRange) {
+            target = true;
         }
-        an.rate += (rate - an.rate) * std::min(1.0, frameDt_ * 4.0);
-        // Turn towards the way of travel, not in a snap.
-        const float target = float(moveYaw);
-        if (!an.yawSet) {
-            an.yaw = target;
-            an.yawSet = true;
+        if (target) {
+            in.look = true;
+            in.lookYaw = float(std::atan2(ty - wy, tx - wx));
+            in.lookPitch = float(std::atan2(tz - headZ, std::max(0.3, std::hypot(tx - wx, ty - wy))));
         }
-        if (step > 0.05 || a.faces != kNone) {   // AL-73: also turning to the one they talk with
-            const float d = std::remainder(target - an.yaw, float(2 * kPi));
-            an.yaw += d * float(std::min(1.0, frameDt_ * (step > 0.05 ? 8.0 : 4.0)));
-        }
+        // the ground's slope under them (the plane the feet stand on)
+        const double gx = (groundAt(wx + 0.4, wy) - groundAt(wx - 0.4, wy)) / 0.8;
+        const double gy = (groundAt(wx, wy + 0.4) - groundAt(wx, wy - 0.4)) / 0.8;
+        in.slopeAlong = float(gx * std::cos(an.yaw()) + gy * std::sin(an.yaw()));
+        const loco::Output o = an.update(loco_, in);
         Figure f;
         f.look = std::max(0, lookIndex(a));
-        f.clip = an.clip;
-        f.time = (nowS - an.start) * an.rate;
-        if (an.from >= 0 && nowS - an.switched < 0.35) {
-            f.fromClip = an.from;
-            f.fromTime = (nowS - an.fromStart) * an.fromRate;
-            f.fade = float(1.0 - (nowS - an.switched) / 0.35);
-        }
+        f.layers = o.layers;
+        f.layerCount = o.count;
+        f.clip = o.count ? o.layers[0].clip : -1;
+        f.proc.on = locoProc_;
+        f.proc.leanFwd = o.leanFwd, f.proc.leanLeft = o.leanLeft;
+        f.proc.lookYaw = o.lookYaw, f.proc.lookPitch = o.lookPitch, f.proc.lookWeight = o.lookWeight;
+        f.proc.breath = o.breath;
+        f.proc.feet = o.feet;
+        // the shader turns the bake (facing -y) by yaw + 90 degrees
+        loco::gradientToModel(float(gx), float(gy), o.yaw + loco::kPi / 2, f.proc.gx, f.proc.gy);
         f.rel[0] = rx;
         f.rel[1] = ry;
         f.rel[2] = rz;
-        f.yaw = an.yaw;
-        f.scale = a.age < 16 ? float(0.55 + 0.028 * a.age) : 1.0f;
+        f.yaw = o.yaw;
+        f.scale = scale;
         f.highlight = highlight;
         personTints(a, f.skin, f.hair, f.cloth);
         return f;
@@ -4484,7 +4564,7 @@ private:
             const float hl = !scriptHighlight_ ? 0.0f
                              : (a.id == selected_ || a.id == hud_.aim ? 1.0f : 0.0f) + (a.player ? 0.6f : 0.0f);
             if (!a.animal && people_.loaded()) {
-                if (figures_.size() < SkinnedSet::kMaxFigures) figures_.push_back(personFigure(a, rx, ry, rz, yaw, hl));
+                if (figures_.size() < SkinnedSet::kMaxFigures) figures_.push_back(personFigure(a, rx, ry, rz, yaw, hl, alpha));
             } else if (!a.animal) {
                 const float s = a.age < 14 ? 0.55f + 0.03f * float(a.age) : 1.0f;
                 in.scale[0] = in.scale[1] = in.scale[2] = s;
@@ -4744,6 +4824,7 @@ private:
                 SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
             for (int i = 0; i < people_.lookCount(); ++i)
                 (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
+            if (people_.loaded()) setupLoco();
             std::string whyVillage;
             // AL-11: the kit with Skyrim textures (tools/game_assets/skyrim/world_tex.py), when baked.
             const fs::path villageSky = root / "assets/altera_game/buildings/buildings_sky.astm";
@@ -5107,7 +5188,12 @@ private:
         float yaw = 0;
         bool yawSet = false;
     };
-    std::map<EntityId, Anim> anims_;
+    // AL-79: the people's animators (src/game_view/locomotion.hpp), content/animations/locomotion.json
+    loco::Config loco_;
+    std::vector<loco::Node> locoNodes_;
+    int turnLeft_ = -1, turnRight_ = -1;
+    bool locoProc_ = true;   // the procedural layers at all (script key "loco": {"procedural": false})
+    std::map<EntityId, loco::Animator> animators_;
     std::map<std::string, std::unique_ptr<SkinnedSet>> beasts_;
     StaticSet village_;
     StaticSet props_;                 // AL-11 stand-ins (buildings + objects), when baked

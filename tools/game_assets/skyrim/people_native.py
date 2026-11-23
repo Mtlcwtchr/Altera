@@ -43,6 +43,10 @@ SKY = {
     'eat': 'animobjecteatingidlebase', 'cold': 'idlewarmhands_crouched', 'crouch': 'idlekneelidle',
     'work': 'idleexamine',
 }
+# AL-79 locomotion: states the UAL bake has no clip for, Skyrim only (the client's
+# animator blends them in: turning on the spot; Skyrim has no start/stop clips, the
+# start and the stop are procedural)
+SKY_ONLY = {'turn_l': 'mt_turnleft60', 'turn_r': 'mt_turnright60'}
 # interaction -> Skyrim clip (where Skyrim has the same act); the rest keep their UAL clip, retargeted
 SKY_ACT = {
     'eat_meal': 'animobjecteatingidlebase', 'eat_berries': 'animobjecteatingidlebase',
@@ -532,6 +536,11 @@ def main():
             continue
         c = sky(SKY[st]) if st in SKY else None
         state[st] = c or ret(uc)
+    for st, name in SKY_ONLY.items():
+        if not only or st in only:
+            c = sky(name)
+            if c:
+                state[st] = c
     for it, uc in ujs['interaction'].items():
         if only and it not in only:
             continue
