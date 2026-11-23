@@ -6527,6 +6527,150 @@
    ],
    "_doc": "AL-40: «пойдём со мной» - согласившийся идёт за позвавшим (и за игроком при WASD) и присоединяется к его занятию",
    "_part": "AL-40"
+  },
+  {
+   "id": "trade_buy",
+   "category": "economy",
+   "target": "character",
+   "eff": [],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "bargain",
+    "accept",
+    "refuse"
+   ],
+   "mvp": true,
+   "_doc": "AL-75: Купить: монеты за вещь другого (sim/trade.cpp); что именно - намерение команды trade или выбор по умолчанию",
+   "_part": "AL-75"
+  },
+  {
+   "id": "trade_sell",
+   "category": "economy",
+   "target": "character",
+   "eff": [],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "bargain",
+    "accept",
+    "refuse"
+   ],
+   "mvp": true,
+   "_doc": "AL-75: Продать свою вещь за монеты",
+   "_part": "AL-75"
+  },
+  {
+   "id": "trade_barter",
+   "category": "economy",
+   "target": "character",
+   "eff": [],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "bargain",
+    "accept",
+    "refuse"
+   ],
+   "mvp": true,
+   "_doc": "AL-75: Обмен вещь на вещь",
+   "_part": "AL-75"
+  },
+  {
+   "id": "trade_gift",
+   "category": "economy",
+   "target": "character",
+   "eff": [],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer",
+    "thank",
+    "accept",
+    "refuse"
+   ],
+   "mvp": true,
+   "_doc": "AL-75: Подарок: отношение растёт по вкусу получателя, нелюбимое - минус",
+   "_part": "AL-75"
+  },
+  {
+   "id": "trade_treat",
+   "category": "economy",
+   "target": "character",
+   "eff": [],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer",
+    "thank",
+    "accept",
+    "refuse"
+   ],
+   "mvp": true,
+   "_doc": "AL-75: Угостить едой или питьём: съедается сразу",
+   "_part": "AL-75"
+  },
+  {
+   "id": "trade_meal",
+   "category": "economy",
+   "target": "character",
+   "eff": [],
+   "duration": 1,
+   "cost": 1,
+   "fsm": "Interact",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": {
+    "meaning": "exchange"
+   },
+   "speech": [
+    "offer",
+    "request",
+    "accept",
+    "refuse"
+   ],
+   "mvp": true,
+   "_doc": "AL-75: Поесть за плату (у тавернщика): купить еду и съесть на месте",
+   "_part": "AL-75"
   }
  ]
 }

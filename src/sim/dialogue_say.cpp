@@ -291,6 +291,7 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
         else args["person"] = something;
     }
     if (!args.contains("deadline")) args["deadline"] = loc.noun(lang, "hud.daypart.evening", "");
+    if (!args.contains("price")) args["price"] = 0; // AL-75: coins of a deal (trade lines)
     for (const auto& [k, phrase] : phrases)
         if (const std::string t = loc.text(lang, phrase, args); t.find('{') == std::string::npos) args[k] = t;
     return args;

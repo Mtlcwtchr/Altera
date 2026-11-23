@@ -49,6 +49,7 @@
 #include "sim/gear.hpp"
 #include "sim/loc.hpp"
 #include "sim/social_chain.hpp"
+#include "sim/trade.hpp"
 #include "sim/dialogue_say.hpp"
 #include "sim/justice.hpp"
 #include "sim/speech_feed.hpp"
@@ -1829,6 +1830,34 @@ private:
                         command("perform", {{"id", me->id}, {"interaction", st["act_person"].get<std::string>()}, {"target", best->id}});
                     }
                 }
+            // AL-75: trade_with {role?, mode?, give?, take?, panel?}: the nearest person of
+            // that trade role (anyone with ""), made the wheel target; the trade window
+            // opened, the offer sent as the window sends it. trade_accept: take their counter.
+            if (st.contains("trade_with"))
+                if (const ActorSnap* me = actor(shown_.controlled)) {
+                    const Json tw = st["trade_with"];
+                    const std::string role = tw.value("role", std::string());
+                    const ActorSnap* best = nullptr;
+                    double bd = 1e18;
+                    for (const auto& a : shown_.actors) {
+                        if (a.animal || !a.alive || a.id == me->id || (!role.empty() && a.occupation != role)) continue;
+                        const double d = std::hypot(a.x - me->x, a.y - me->y);
+                        if (d < bd) bd = d, best = &a;
+                    }
+                    SDL_Log("altera_game: trade_with %s: %s (%.0f m)", role.c_str(), best ? best->name.c_str() : "none", best ? bd : 0.0);
+                    if (best) {
+                        select(best->id);
+                        wheelWanted_ = best->id;
+                        if (tw.value("panel", false)) hud_.openTrade(best->id);
+                        if (tw.contains("give") || tw.contains("take"))
+                            hud_.setTradeDraft(tw.value("give", Json::object()), tw.value("take", Json::object()));
+                        if (tw.contains("mode"))
+                            command("trade", {{"id", me->id}, {"target", best->id}, {"mode", tw["mode"]},
+                                              {"give", tw.value("give", Json::object())}, {"take", tw.value("take", Json::object())}});
+                    }
+                }
+            if (st.value("trade_accept", false) && shown_.controlled != kNone && wheelWanted_ != kNone)
+                command("trade_accept", {{"id", shown_.controlled}, {"target", wheelWanted_.load()}});
             if (st.contains("act_thing"))
                 if (const ActorSnap* me = actor(shown_.controlled)) {
                     const std::string ty = st["act_thing"][0].get<std::string>();
@@ -2141,6 +2170,8 @@ private:
                             b->inventory[it] += std::string(it) == "thatch" ? 12 : 40;
                 } else if (c.op == "craft_draft") {
                     craftDraft_ = c.args;
+                } else if (c.op == "trade_draft") {
+                    tradeDraft_ = c.args;   // AL-75: the trade window's draft, weighed in the snapshot
                 } else if (c.op == "steer") {
                     // direct control: no result line for each step, and no slide
                     // back between ticks (the step is where the person stands now)
@@ -2730,6 +2761,7 @@ private:
             if (c.ai.social.active() && c.ai.social.role != "follower") a.faces = c.ai.social.partner;
             else if (c.ai.fsm.state != "Idle" && c.ai.fsm.state != "Move" && c.ai.fsm.target != kNone) a.faces = c.ai.fsm.target;
             a.role = c.status.role;
+            a.occupation = c.occupation;
             a.spouse = c.status.spouse;
             a.mother = c.status.mother;
             a.father = c.status.father;
@@ -2835,6 +2867,7 @@ private:
         wheelChances(s.wheel);
         socialSnap(w, s);
         talkSnap(w, s);
+        tradeSnap(w, s);
         thingsSnap(w, s);
         actsSnap(w, s);
         feedbackSnap(w, s);
@@ -3313,6 +3346,16 @@ private:
                     push(traceText(*loc_, opts_.lang, w, *me, e), 2);
                 else if (e.code == "dialog.accepted")
                     push(traceText(*loc_, opts_.lang, w, *me, e), 1);
+                else if (e.code.rfind("trade.", 0) == 0 && e.code != "trade.offered" && e.code != "trade.offered_gift") {
+                    // AL-75: the deal, step by step: offered, weighed, countered, done or refused
+                    const bool good = e.code == "trade.done" || e.code == "trade.gift_like" ||
+                                      e.code == "trade.treat_like" || e.code == "trade.gift_neutral" ||
+                                      e.code == "trade.treat_neutral";
+                    const bool bad = e.code == "trade.refused" || e.code == "trade.nothing" ||
+                                     e.code == "trade.gift_dislike" || e.code == "trade.treat_dislike" ||
+                                     e.code == "trade.counter_declined";
+                    push(traceText(*loc_, opts_.lang, w, *me, e), good ? 1 : (bad ? 2 : 0));
+                }
                 else if (e.code == "act.outcome") { // AL-36: what came of it, never a bare "ok"
                     if (!e.params.value("success", true)) push(text("act.outcome.failed"), 2);
                     if (e.params.contains("tag")) {
@@ -5207,6 +5250,73 @@ private:
         }
         sendCommand(type, args);
     }
+    // AL-75: the trade window: the wheel's target, the goods of both sides as the
+    // other side weighs them (worth, taste), the HUD's draft weighed by the sim's
+    // own rule (trade.hpp weighDeal), a counter waiting, the last trade lines.
+    static std::string offerModeOf(const sim::Content& C, const sim::Goods& give, const sim::Goods& take) {
+        auto money = [&](const std::string& it) {
+            auto d = C.items.find(it);
+            return d != C.items.end() && std::find(d->second.tags.begin(), d->second.tags.end(), "money") != d->second.tags.end();
+        };
+        bool giveCoin = !give.empty(), takeCoin = !take.empty();
+        for (const auto& [it, n] : give) giveCoin = giveCoin && money(it);
+        for (const auto& [it, n] : take) takeCoin = takeCoin && money(it);
+        if (take.empty()) return "gift";
+        if (giveCoin) return "buy";
+        if (takeCoin) return "sell";
+        return "barter";
+    }
+    std::string goodsText(const sim::Goods& g) const {
+        std::string out;
+        for (const auto& [it, n] : g) out += (out.empty() ? "" : ", ") + name("item", it) + " \u00d7" + std::to_string(n);
+        return out;
+    }
+    void tradeSnap(const World& w, Snapshot& s) const {
+        const Character* me = w.character(s.controlled);
+        const Character* t = w.character(wheelWanted_);
+        if (!me || !t || t->id == me->id || t->isAnimal() || !sim::tradeRules(w.content())) return;
+        TradeSnap& ts = s.trade;
+        ts.with = t->id;
+        if (!t->occupation.empty()) ts.role = text("trade.role." + t->occupation);
+        auto goods = [&](const Character& holder, std::vector<TradeGoodSnap>& out) {
+            for (const auto& [it, n] : holder.inventory) {
+                const int k = sim::spare(holder, it);
+                if (k <= 0) continue;
+                const double tv = sim::itemTaste(w, *t, it);
+                out.push_back({it, name("item", it), k, sim::worthTo(w, *t, it, holder), tv > 0.2 ? 1 : (tv < -0.2 ? -1 : 0)});
+            }
+        };
+        goods(*me, ts.mine);
+        goods(*t, ts.theirs);
+        for (const auto& [cat, v] : sim::tasteOf(w, *t)) {
+            if (v > 0.2) ts.likes.push_back(text("trade.cat." + cat));
+            else if (v < -0.2) ts.dislikes.push_back(text("trade.cat." + cat));
+        }
+        if (tradeDraft_.value("target", sim::kNone) == t->id) {
+            sim::Offer o;
+            o.give = sim::goodsFrom(w.content(), tradeDraft_.value("give", Json::object()));
+            o.take = sim::goodsFrom(w.content(), tradeDraft_.value("take", Json::object()));
+            o.mode = offerModeOf(w.content(), o.give, o.take);
+            ts.mode = o.mode;
+            if (!o.give.empty() || !o.take.empty()) {
+                const sim::DealEval e = sim::weighDeal(w, *me, *t, o);
+                ts.verdict = e.verdict;
+                ts.reason = e.verdict == "refuse" ? text("reason.trade_" + e.reason) : std::string();
+                ts.gain = e.gain;
+                ts.loss = e.loss;
+                ts.keep = e.keep;
+            }
+        }
+        if (const Json* pc = sim::pendingCounter(w, *t, me->id)) {
+            ts.counter = true;
+            ts.counterText = text("hud.trade.counter_offer",
+                                  {{"give", goodsText(sim::goodsFrom(w.content(), pc->value("give", Json::object())))},
+                                   {"take", goodsText(sim::goodsFrom(w.content(), pc->value("take", Json::object())))}});
+        }
+        for (auto it = me->ai.trace.rbegin(); it != me->ai.trace.rend() && ts.last.size() < 4; ++it)
+            if (it->code.rfind("trade.", 0) == 0 && it->code != "trade.weigh")
+                ts.last.insert(ts.last.begin(), traceText(*loc_, opts_.lang, w, *me, *it));
+    }
     // AL-67: the topics the player's person could bring up with the wheel's
     // target, and the cases opened against the person.
     void talkSnap(const World& w, Snapshot& s) const {
@@ -5344,6 +5454,7 @@ private:
     engine::Device& device_;
     SDL_Window* window_;
     Json script_;
+    Json tradeDraft_ = Json::object();   // AL-75: the trade window's draft {target, give, take} (sim thread)
     Json craftDraft_ = Json::object();   // the workshop's attempt as the HUD has it (sim thread)
     mutable Json craftUi_;               // content/ui/craft.json, read on first use
     std::size_t scriptStep_ = 0;

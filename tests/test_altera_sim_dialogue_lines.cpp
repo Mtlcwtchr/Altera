@@ -92,7 +92,8 @@ TEST(altera_dialogue_lines_render_all) {
             Json listener = c.brana;
             if (key.find("noble") != std::string::npos) listener["reg"] = "vy";
             const Json args = {{"speaker", c.oleg}, {"listener", listener}, {"src", c.miller}, {"prop", prop},
-                               {"reason", c.theft}, {"item", c.item}, {"price", 12}};
+                               {"reason", c.theft}, {"item", c.item}, {"price", 12},
+                               {"give", c.item}, {"get", c.item}}; // AL-75: the two sides of a deal
             for (std::uint64_t seed = 0; seed < 4; ++seed) {
                 std::vector<std::string> errs;
                 const std::string t = sayLoc(loc, lang, key, args, seed, &errs);

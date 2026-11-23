@@ -1,0 +1,302 @@
+{
+ "_doc": "AL-75: lines of a deal (sim/trade.cpp): the offer (act offer, intent trade.offer.<mode>), the answer (accept / thank / bargain / refuse with intent trade.refuse.<reason>), the offerer's close (trade.done, trade.counter_no). Args: {give} the main thing offered, {get} the main thing asked, {price} coins. \"time\" makes each rule more specific than the act-only port.* lines.",
+ "rules": [
+  {
+   "id": "trade.offer.buy",
+   "when": [
+    "act=offer",
+    "intent=trade.offer.buy",
+    "time"
+   ],
+   "say": "say.trade.offer.buy"
+  },
+  {
+   "id": "trade.offer.sell",
+   "when": [
+    "act=offer",
+    "intent=trade.offer.sell",
+    "time"
+   ],
+   "say": "say.trade.offer.sell"
+  },
+  {
+   "id": "trade.offer.barter",
+   "when": [
+    "act=offer",
+    "intent=trade.offer.barter",
+    "time"
+   ],
+   "say": "say.trade.offer.barter"
+  },
+  {
+   "id": "trade.offer.gift",
+   "when": [
+    "act=offer",
+    "intent=trade.offer.gift",
+    "time"
+   ],
+   "say": "say.trade.offer.gift"
+  },
+  {
+   "id": "trade.offer.treat",
+   "when": [
+    "act=offer",
+    "intent=trade.offer.treat",
+    "time"
+   ],
+   "say": "say.trade.offer.treat"
+  },
+  {
+   "id": "trade.offer.meal",
+   "when": [
+    "act=offer",
+    "intent=trade.offer.meal",
+    "time"
+   ],
+   "say": "say.trade.offer.meal"
+  },
+  {
+   "id": "trade.accept",
+   "when": [
+    "act=accept",
+    "intent=trade.accept",
+    "time"
+   ],
+   "say": "say.trade.accept"
+  },
+  {
+   "id": "trade.accept.generous",
+   "when": [
+    "act=accept",
+    "intent=trade.accept.generous",
+    "time"
+   ],
+   "say": "say.trade.accept.generous"
+  },
+  {
+   "id": "trade.accept.meal",
+   "when": [
+    "act=accept",
+    "intent=trade.accept.meal",
+    "time"
+   ],
+   "say": "say.trade.accept.meal"
+  },
+  {
+   "id": "trade.accept.counter",
+   "when": [
+    "act=accept",
+    "intent=trade.accept.counter",
+    "time"
+   ],
+   "say": "say.trade.accept.counter"
+  },
+  {
+   "id": "trade.gift.like",
+   "when": [
+    "act=thank",
+    "intent=trade.gift.like",
+    "time"
+   ],
+   "say": "say.trade.gift.like"
+  },
+  {
+   "id": "trade.gift.neutral",
+   "when": [
+    "act=thank",
+    "intent=trade.gift.neutral",
+    "time"
+   ],
+   "say": "say.trade.gift.neutral"
+  },
+  {
+   "id": "trade.treat.like",
+   "when": [
+    "act=thank",
+    "intent=trade.treat.like",
+    "time"
+   ],
+   "say": "say.trade.treat.like"
+  },
+  {
+   "id": "trade.treat.neutral",
+   "when": [
+    "act=thank",
+    "intent=trade.treat.neutral",
+    "time"
+   ],
+   "say": "say.trade.treat.neutral"
+  },
+  {
+   "id": "trade.gift.dislike",
+   "when": [
+    "act=accept",
+    "intent=trade.gift.dislike",
+    "time"
+   ],
+   "say": "say.trade.gift.dislike"
+  },
+  {
+   "id": "trade.treat.dislike",
+   "when": [
+    "act=accept",
+    "intent=trade.treat.dislike",
+    "time"
+   ],
+   "say": "say.trade.treat.dislike"
+  },
+  {
+   "id": "trade.counter.coin",
+   "when": [
+    "act=bargain",
+    "intent=trade.counter.coin",
+    "time"
+   ],
+   "say": "say.trade.counter.coin"
+  },
+  {
+   "id": "trade.counter.less",
+   "when": [
+    "act=bargain",
+    "intent=trade.counter.less",
+    "time"
+   ],
+   "say": "say.trade.counter.less"
+  },
+  {
+   "id": "trade.refuse.too_little",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.too_little",
+    "time"
+   ],
+   "say": "say.trade.refuse.too_little"
+  },
+  {
+   "id": "trade.refuse.insult",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.insult",
+    "time"
+   ],
+   "say": "say.trade.refuse.insult"
+  },
+  {
+   "id": "trade.refuse.no_goods",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.no_goods",
+    "time"
+   ],
+   "say": "say.trade.refuse.no_goods"
+  },
+  {
+   "id": "trade.refuse.no_means",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.no_means",
+    "time"
+   ],
+   "say": "say.trade.refuse.no_means"
+  },
+  {
+   "id": "trade.refuse.no_room",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.no_room",
+    "time"
+   ],
+   "say": "say.trade.refuse.no_room"
+  },
+  {
+   "id": "trade.refuse.distrust",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.distrust",
+    "time"
+   ],
+   "say": "say.trade.refuse.distrust"
+  },
+  {
+   "id": "trade.refuse.enmity",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.enmity",
+    "time"
+   ],
+   "say": "say.trade.refuse.enmity"
+  },
+  {
+   "id": "trade.refuse.tired",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.tired",
+    "time"
+   ],
+   "say": "say.trade.refuse.tired"
+  },
+  {
+   "id": "trade.refuse.full",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.full",
+    "time"
+   ],
+   "say": "say.trade.refuse.full"
+  },
+  {
+   "id": "trade.refuse.dislike",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.dislike",
+    "time"
+   ],
+   "say": "say.trade.refuse.dislike"
+  },
+  {
+   "id": "trade.refuse.busy",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.busy",
+    "time"
+   ],
+   "say": "say.trade.refuse.busy"
+  },
+  {
+   "id": "trade.refuse.nothing",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.nothing",
+    "time"
+   ],
+   "say": "say.trade.refuse.nothing"
+  },
+  {
+   "id": "trade.refuse.keeps",
+   "when": [
+    "act=refuse",
+    "intent=trade.refuse.keeps",
+    "time"
+   ],
+   "say": "say.trade.refuse.keeps"
+  },
+  {
+   "id": "trade.done",
+   "when": [
+    "act=thank",
+    "intent=trade.done",
+    "time"
+   ],
+   "say": "say.trade.done"
+  },
+  {
+   "id": "trade.counter_no",
+   "when": [
+    "act=refuse",
+    "intent=trade.counter_no",
+    "time"
+   ],
+   "say": "say.trade.counter_no"
+  }
+ ]
+}
