@@ -20,6 +20,8 @@ struct ItemDef {
     double toolWear = 0.0;  // chance per use that the tool breaks (stage 2)
     double spoilDays = 0.0; // 0 = keeps
     std::string material;   // crafting material it is (content/ai/craft/materials.json); empty = none
+    double value = 0.0;     // AL-74: base worth in coin of one plain unit (trade, gifts); 0 = not priced
+    double quality = 0.0;   // AL-74: how fine a thing it is 0..1 (0.2 plain fare, 0.5 good, 0.8+ festive)
 };
 
 // objects.json `crop`: a field sown from `seed` in a day-of-year window,
@@ -105,6 +107,7 @@ struct ObjectDef {
     Tick regrowEvery = 0;
     std::vector<std::string> biomes;
     double perKm2 = 0.0;
+    double standM = 0.0;   // AL-78: how far from its middle one stands to work at it (the well's rim, a trunk)
     bool owned = false;
     bool settlement = false;
     int perFamily = 0;
@@ -539,6 +542,7 @@ struct Content {
     CareDef care;
     craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)
     BuildCatalog build;
+    Json structures = Json::object(); // AL-76: content/ai/structures.json (sim/structure_plan.hpp parses it)
     ExpansionData expansion; // content/ai/expansion (not loaded = none)
     std::vector<BackstoryDef> backstories; // content/ai/backstories.json, file order (none = no choice)
     BackstoryConfig backstoryCfg;

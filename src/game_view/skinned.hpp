@@ -6,6 +6,7 @@
 // (Blender's pose basis), turned into joint matrices here on the CPU each frame
 // and skinned on the GPU (assets/shaders/altera_game/skinned.hlsl).
 
+#include <array>
 #include <cstdint>
 #include <filesystem>
 #include <map>
@@ -13,6 +14,7 @@
 #include <vector>
 
 #include "engine/render/device.hpp"
+#include "game_view/locomotion.hpp"
 #include "terrain_core/lighting.hpp"
 
 namespace altera::game {
@@ -26,6 +28,11 @@ struct Figure {
     int fromClip = -1;
     double fromTime = 0;
     float fade = 0;
+    // AL-79: when `layerCount` > 0 these weighted layers are the pose instead of
+    // clip/fromClip (the people's animator), then `proc` on top of them.
+    std::array<loco::Layer, loco::kMaxLayers> layers{};
+    int layerCount = 0;
+    loco::Procedural proc;
     double rel[3] = {0, 0, 0};   // eye-relative position of the feet
     float yaw = 0;               // facing, radians, 0 = +x
     float scale = 1;
@@ -48,6 +55,13 @@ public:
     int interactionClip(const std::string& interaction) const; // -1 when none
     double clipSeconds(int clip) const;
     bool clipHolds(int clip) const;   // plays once and stays on its last frame
+    const std::string& clipName(int clip) const;
+
+    // AL-79: the procedural layers' rig (joints by the config's names) and the
+    // gait of a looped clip, read from its feet (male take; cached).
+    void setLoco(const loco::Config& c);
+    bool locoRig() const { return rig_.ok; }
+    loco::Gait gait(int clip) const;
 
     // Before the frame's passes: poses every figure and uploads.
     void prepare(SDL_GPUCommandBuffer* commands, const std::vector<Figure>& figures);
@@ -78,6 +92,7 @@ private:
         float anchor[2] = {0, 0};
     };
     void sample(int clip, double time, Pose& out) const;
+    void forward(const Pose& p, const std::vector<Bone>& bones, float* world) const;   // joints x 16
     void palette(const Figure& f, float* rows) const;   // joints x 12 floats
 
     std::vector<Joint> joints_;
@@ -88,6 +103,13 @@ private:
     float fps_ = 15;
     std::map<std::string, int> clipIndex_, stateClips_, interactionClips_;
     std::vector<int> femaleTake_;   // clip -> its "@f" take, -1 when none
+    loco::Config loco_;
+    loco::Rig rig_;
+    std::vector<int> parents_;
+    mutable std::vector<loco::Gait> gaits_;
+    mutable std::vector<char> gaitDone_;
+    mutable std::vector<char> scratch_;
+    mutable std::vector<float> world_;
 
     engine::Device* device_ = nullptr;
     engine::Buffer vertices_, indices_, palette_, instances_;

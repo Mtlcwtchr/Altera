@@ -335,6 +335,7 @@ add_library(altera_sim STATIC
         src/sim/world.cpp
         src/sim/worldgen.cpp
         src/sim/village_plan.cpp
+        src/sim/structure_plan.cpp
         src/sim/ai_eval.cpp
         src/sim/animals.cpp
         src/sim/farming.cpp
@@ -808,10 +809,10 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
-            tests/test_altera_sim_craft.cpp
+            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp
-            tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp
+            tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp tests/test_altera_sim_structures.cpp
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
             tests/test_altera_sim_dialogue_rules.cpp
             tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp tests/test_altera_sim_dialogue_say.cpp
@@ -820,7 +821,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_village_life.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp
+            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp
             tests/test_altera_sim_dialogue_corpus.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)

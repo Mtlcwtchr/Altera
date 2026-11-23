@@ -57,10 +57,14 @@ TEST(altera_sim_village_plan_lots) {
         CHECK(int(p.fields.size()) >= 4);
         for (std::size_t i = 0; i < p.lots.size(); ++i) {
             const VillageLot& L = p.lots[i];
+            CHECK(L.placed);
             CHECK(!site.water(L.house.c));
-            // fronting a road: the road is just ahead of the door
-            const Vec2 door = L.house.at(0, L.house.hd + 3.0);
-            CHECK(distToPolyline(door, p.roads[std::size_t(L.road)]) < 4.0);
+            // AL-76: turned by quarters onto the build grid
+            const double q = L.house.yaw / (3.14159265358979323846 / 2);
+            CHECK(std::fabs(q - std::round(q)) < 1e-9);
+            // fronting a road: the road is just ahead of the door (the house turned to the nearest quarter)
+            const Vec2 door = L.house.at(0, L.house.hd + 2.0);
+            CHECK(distToPolyline(door, p.roads[std::size_t(L.road)]) < 4.0 + L.house.hw * 0.75);
             for (std::size_t j = i + 1; j < p.lots.size(); ++j) CHECK(!L.house.overlaps(p.lots[j].house, 1.0));
             for (const auto& f : p.fields) CHECK(!L.house.overlaps(f, 1.0));
         }

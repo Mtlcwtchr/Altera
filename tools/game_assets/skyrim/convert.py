@@ -64,7 +64,9 @@ def main():
     meshes, verts, idx, layers, cache = [], [], [], [], {}
     nv = 0
     report = []
-    for e in reg['pieces']:
+    # AL-74: dishes and household things as pieces item_<id> (a shelf/table stand-in, icon renders)
+    items = [dict(x, piece='item_' + x['item']) for x in reg.get('items', [])]
+    for e in reg['pieces'] + items:
         name = e['piece']
         first = len(idx)
         mn, mx = [0.0] * 3, [0.0] * 3

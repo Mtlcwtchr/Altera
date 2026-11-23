@@ -197,6 +197,7 @@ public:
     int backstoryPick = 0;
     bool backstoryBegin = false;   // Enter or a script: begin with the picked one
     std::string coinIcon = "values";
+    std::map<std::string, std::string> itemIcons; // AL-74: item id -> icon (content/ui/craft.json item_icons, tag_icons)
 
     // The menus (hud_menu.cpp): panels "menu" (the main menu), "pause",
     // "slots" (save or load) and "settings", filled by the game.
@@ -326,7 +327,8 @@ private:
     const ActInfoSnap* actInfo(const Snapshot& s, EntityId target, const std::string& id) const;
     void hoverHint(const Snapshot& s, float W);
     void feedbackFloats(const Snapshot& s);
-    void speechBubbles(const Snapshot& s);              // AL-57: lines over the speakers
+    void speechBubbles(const Snapshot& s);              // AL-57: lines over the speakers (off since AL-78: the strip)
+    void talkStrip(const Snapshot& s, float W, float H); // AL-78: the talk and the news over the quick bar
     void journalBox(const Snapshot& s, float W, float H); // AL-57: the player's journal
     void workFx(const Snapshot& s);
     void kin(const Snapshot& s, const ActorSnap* a, float W, float H);
@@ -448,6 +450,17 @@ private:
     std::vector<Bubble> bubbles_;            // AL-57: one per speaker, the newest line
     std::vector<Bubble> bubbleQueue_;        // AL-73: lines waiting their turn (born = when shown)
     double bubbleNext_ = 0;                  // AL-73: the earliest a next line of a talk shows
+    // AL-78: the strip over the quick bar: what was said near the person, and what came of their doing
+    struct StripRow {
+        std::string who, text;
+        int kind = 0;        // 0 info, 1 good, 2 bad, 3 a line said
+        bool mine = false;   // said by the player's person
+        double born = 0;
+    };
+    std::vector<StripRow> strip_;
+    int stripFbSeq_ = 0;
+    EntityId stripPartner_ = sim::kNone;     // whom the person talks with (the replies' target)
+    double stripPartnerAt_ = -1e9;
     int speechSeq_ = 0;
     std::map<EntityId, float> bubbleTop_;    // this frame: where a speaker's bubble ends (screen y)
     bool journalOpen_ = true;

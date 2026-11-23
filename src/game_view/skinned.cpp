@@ -322,6 +322,66 @@ void SkinnedSet::sample(int c, double time, Pose& out) const {
     out.anchor[1] = A[nj * 7 + 1] * (1 - k) + B[nj * 7 + 1] * k;
 }
 
+const std::string& SkinnedSet::clipName(int c) const {
+    static const std::string none;
+    return c >= 0 && c < int(clips_.size()) ? clips_[std::size_t(c)].name : none;
+}
+
+void SkinnedSet::forward(const Pose& p, const std::vector<Bone>& bones, float* world) const {
+    const std::size_t nj = joints_.size();
+    for (std::size_t j = 0; j < nj; ++j) {
+        float b[16], lb[16];
+        basis(&p.q[j * 4], &p.t[j * 3], b);
+        mul(bones[j].local, b, lb);
+        if (joints_[j].parent >= 0) mul(&world[std::size_t(joints_[j].parent) * 16], lb, &world[j * 16]);
+        else std::memcpy(&world[j * 16], lb, sizeof lb);
+    }
+}
+
+void SkinnedSet::setLoco(const loco::Config& c) {
+    loco_ = c;
+    parents_.clear();
+    for (const auto& j : joints_) parents_.push_back(j.parent);
+    rig_ = loco::resolveRig(c, [&](const std::string& n) {
+        for (std::size_t i = 0; i < joints_.size(); ++i)
+            if (joints_[i].name == n) return int(i);
+        return -1;
+    });
+    gaits_.assign(clips_.size(), loco::Gait{});
+    gaitDone_.assign(clips_.size(), 0);
+    if (!rig_.ok || skeletons_.empty()) return;
+    // the ankles' height in the rest pose: "planted"
+    Pose rest;
+    sample(-1, 0, rest);
+    std::vector<float> w(joints_.size() * 16);
+    forward(rest, skeletons_[0], w.data());
+    for (int i = 0; i < 2; ++i) rig_.footRestZ[i] = loco::jointPos(w.data(), rig_.foot[i]).z;
+}
+
+loco::Gait SkinnedSet::gait(int c) const {
+    if (c < 0 || c >= int(clips_.size()) || skeletons_.empty()) return {};
+    if (gaitDone_.size() != clips_.size()) gaitDone_.assign(clips_.size(), 0), gaits_.assign(clips_.size(), {});
+    if (gaitDone_[std::size_t(c)]) return gaits_[std::size_t(c)];
+    gaitDone_[std::size_t(c)] = 1;
+    loco::Gait& g = gaits_[std::size_t(c)];
+    const Clip& cl = clips_[std::size_t(c)];
+    g.cycle = float(cl.frames) / fps_;
+    if (!rig_.ok || cl.frames < 4) return g;
+    std::vector<loco::V3> l, r;
+    std::vector<float> w(joints_.size() * 16);
+    Pose p;
+    for (std::uint32_t f = 0; f < cl.frames; ++f) {
+        sample(c, double(f) / fps_, p);
+        forward(p, skeletons_[0], w.data());
+        loco::V3 a = loco::jointPos(w.data(), rig_.foot[0]), b = loco::jointPos(w.data(), rig_.foot[1]);
+        a.x -= p.anchor[0], a.y -= p.anchor[1], b.x -= p.anchor[0], b.y -= p.anchor[1];
+        l.push_back(a), r.push_back(b);
+    }
+    g = loco::analyseGait(l, r, fps_, rig_.forward);
+    if (!g.ok) g.cycle = float(cl.frames) / fps_;
+    return g;
+}
+
 void SkinnedSet::palette(const Figure& fig, float* rows) const {
     const std::size_t nj = joints_.size();
     const bool female = looks_[std::size_t(fig.look)].skeleton == 1;
@@ -331,24 +391,50 @@ void SkinnedSet::palette(const Figure& fig, float* rows) const {
                    : c;
     };
     Pose p, from;
-    sample(take(fig.clip), fig.time, p);
-    if (fig.fromClip >= 0 && fig.fade > 0) {
-        sample(take(fig.fromClip), fig.fromTime, from);
-        const float k = std::clamp(fig.fade, 0.0f, 1.0f);
-        for (std::size_t j = 0; j < nj; ++j) {
-            nlerp(&p.q[j * 4], &from.q[j * 4], k, &p.q[j * 4]);
-            for (int i = 0; i < 3; ++i) p.t[j * 3 + i] += (from.t[j * 3 + i] - p.t[j * 3 + i]) * k;
+    if (fig.layerCount > 0) {
+        // AL-79: the animator's layers, blended in turn by their share of the weight so far
+        float sum = 0;
+        bool first = true;
+        for (int i = 0; i < fig.layerCount && i < loco::kMaxLayers; ++i) {
+            const loco::Layer& L = fig.layers[std::size_t(i)];
+            if (L.weight <= 0) continue;
+            const int c = take(L.clip);
+            double t = L.time;
+            if (L.phase >= 0) t = loco::clipTime(gait(c), L.phase);   // the take's own beat
+            Pose& dst = first ? p : from;
+            sample(c, t, dst);
+            sum += L.weight;
+            if (first) {
+                first = false;
+                continue;
+            }
+            const float k = L.weight / sum;
+            for (std::size_t j = 0; j < nj; ++j) {
+                nlerp(&p.q[j * 4], &from.q[j * 4], k, &p.q[j * 4]);
+                for (int a = 0; a < 3; ++a) p.t[j * 3 + a] += (from.t[j * 3 + a] - p.t[j * 3 + a]) * k;
+            }
+            for (int a = 0; a < 2; ++a) p.anchor[a] += (from.anchor[a] - p.anchor[a]) * k;
         }
-        for (int i = 0; i < 2; ++i) p.anchor[i] += (from.anchor[i] - p.anchor[i]) * k;
+        if (first) sample(-1, 0, p);
+    } else {
+        sample(take(fig.clip), fig.time, p);
+        if (fig.fromClip >= 0 && fig.fade > 0) {
+            sample(take(fig.fromClip), fig.fromTime, from);
+            const float k = std::clamp(fig.fade, 0.0f, 1.0f);
+            for (std::size_t j = 0; j < nj; ++j) {
+                nlerp(&p.q[j * 4], &from.q[j * 4], k, &p.q[j * 4]);
+                for (int i = 0; i < 3; ++i) p.t[j * 3 + i] += (from.t[j * 3 + i] - p.t[j * 3 + i]) * k;
+            }
+            for (int i = 0; i < 2; ++i) p.anchor[i] += (from.anchor[i] - p.anchor[i]) * k;
+        }
     }
     const auto& bones = skeletons_[std::min<std::size_t>(looks_[std::size_t(fig.look)].skeleton, skeletons_.size() - 1)];
-    std::vector<float> world(nj * 16);
+    world_.resize(nj * 16);
+    float* world = world_.data();
+    forward(p, bones, world);
+    // AL-79: look, lean, breathing and the feet on the ground, on the clip's pose
+    if (fig.proc.on && rig_.ok) loco::applyProcedural(loco_, rig_, parents_, world, fig.proc, p.anchor[0], p.anchor[1], scratch_);
     for (std::size_t j = 0; j < nj; ++j) {
-        float b[16], lb[16];
-        basis(&p.q[j * 4], &p.t[j * 3], b);
-        mul(bones[j].local, b, lb);
-        if (joints_[j].parent >= 0) mul(&world[std::size_t(joints_[j].parent) * 16], lb, &world[j * 16]);
-        else std::memcpy(&world[j * 16], lb, sizeof lb);
         float s[16];
         mul(&world[j * 16], bones[j].invRest, s);
         // The clip's travel stays with the sim: take the anchor's drift off.
