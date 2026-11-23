@@ -32,6 +32,7 @@
 #include <mutex>
 #include <set>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "engine/render/device.hpp"
@@ -54,6 +55,7 @@
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
 #include "terrain_core/clearings.hpp"
+#include "terrain_core/foliage.hpp"
 #include "terrain_core/ground_height.hpp"
 #include "terrain_core/hydrology.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -250,6 +252,7 @@ public:
             for (const char* t : kShown)
                 if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced});
         }
+        plantForest();   // AL-78: the drawn forest is the world's trees (after the buildings: their yards)
         anims_.clear();
         beastAnims_.clear();
         avatar_ = Avatar{};
@@ -911,6 +914,7 @@ public:
             std::lock_guard<std::mutex> lock(snapMutex_);
             shown_ = snap_;
         }
+        forestFelled(shown_.felled);   // AL-78
         runMenus(dt);
         if (hud_.panel == "menu") orbitYaw_ += 0.05 * dt;   // the village turns slowly behind the main menu
         const double alpha = tickAlpha();
@@ -2865,7 +2869,7 @@ private:
             const double d1 = (o.pos.x - vx) * (o.pos.x - vx) + (o.pos.y - vy) * (o.pos.y - vy);
             const double d2 = (o.pos.x - me.x) * (o.pos.x - me.x) + (o.pos.y - me.y) * (o.pos.y - me.y);
             if (d1 > R2 && d2 > R2) continue;
-            if (s.things.size() >= 700) break;
+            if (s.things.size() >= 2500) break;
             ThingSnap t;
             t.id = id;
             t.type = o.type;
@@ -2875,8 +2879,140 @@ private:
             for (const auto& [k, v] : o.stock)
                 if (v > 0) t.stock.push_back({name("item", k), v});
             t.busy = o.reservedFor(kNone, w.now()) && o.reservedBy != kNone;
+            if (const auto hi = heldIndex_.find(id); hi != heldIndex_.end()) {   // AL-78
+                const terrain_core::HeldTree& ht = heldTrees_[std::size_t(hi->second)];
+                t.held = true;
+                t.felled = o.stock.count("log") == 0 || o.stock.at("log") <= 0;
+                if (const terrain_core::Foliage* f = terrain_core::forestHold().foliage) t.height = f->modelHeight(ht.model) * ht.scale;
+            }
             s.things.push_back(std::move(t));
         }
+        // AL-78: the forest's felled trees (or gone), for the forest the GPU draws
+        for (std::size_t i = 0; i < heldIds_.size(); ++i) {
+            const WorldObject* o = w.object(heldIds_[i]);
+            if (!o || !o->stock.count("log") || o->stock.at("log") <= 0) s.felled.push_back(int(i));
+        }
+    }
+
+    // ---- AL-78: the forest the player sees is the world's trees ------------
+    // The foliage's held layers (conifers, broadleaf, autumn, dead trees) are
+    // scattered on the CPU over the sim's map, exactly as the GPU would; every
+    // tree becomes a tree of the sim (a new world: the generated trees there
+    // give way), and the GPU draws that list instead of scattering its own
+    // there. A felled tree leaves the forest and lies as a log. Called with
+    // the sim thread stopped.
+    void plantForest() {
+        heldTrees_.clear();
+        heldIds_.clear();
+        heldIndex_.clear();
+        shownFelled_.clear();
+        terrain_core::ForestHold& fh = terrain_core::forestHold();
+        fh.active = false;
+        fh.trees.clear();
+        ++fh.version;
+        terrain_core::Foliage* f = fh.foliage;
+        if (!f || !opts_.biomes || !opts_.biomes->size() || !world_) {
+            SDL_Log("altera_game: no held forest (%s)", !f ? "no foliage" : "no biome map");
+            return;
+        }
+        setClearings();   // the village's yards: no tree grows there
+        // the woods round the village, where the people live and work (the
+        // world beyond is scenery: a forest of a whole map would be a million trees)
+        const double half = 0.5 * std::min(simSize_, kHeldForestM);
+        const double cx = std::clamp(originX_ + villageCentre_[0], originX_ + half, originX_ + simSize_ - half);
+        const double cy = std::clamp(originY_ + villageCentre_[1], originY_ + half, originY_ + simSize_ - half);
+        const double rect[4] = {cx - half, cy - half, cx + half, cy + half};
+        const MapGrid& map = world_->map();
+        std::vector<terrain_core::RiverSegment> rivers;
+        if (opts_.rivers)
+            for (const auto& r : *opts_.rivers) {
+                const double pad = 0.5 * std::max(r.width0, r.width1) + 4.0;
+                if (std::max(r.x0, r.x1) + pad < rect[0] || std::min(r.x0, r.x1) - pad > rect[2] ||
+                    std::max(r.y0, r.y1) + pad < rect[1] || std::min(r.y0, r.y1) - pad > rect[3])
+                    continue;
+                rivers.push_back(r);
+            }
+        auto keep = [&](double x, double y) {
+            if (map.waterAt(Vec2{x - originX_, y - originY_})) return false;
+            {
+                for (const auto& r : rivers) {
+                    const double dx = r.x1 - r.x0, dy = r.y1 - r.y0, l2 = dx * dx + dy * dy;
+                    const double t = l2 > 0 ? std::clamp(((x - r.x0) * dx + (y - r.y0) * dy) / l2, 0.0, 1.0) : 0.0;
+                    const double d = std::hypot(x - (r.x0 + dx * t), y - (r.y0 + dy * t));
+                    if (d < 0.5 * (r.width0 + (r.width1 - r.width0) * t) + 1.5) return false;
+                }
+            }
+            return true;
+        };
+        auto height = [&](double x, double y) { return float(groundAt(x, y)); };
+        heldTrees_ = f->heldTrees(rect, *opts_.biomes, height, keep);
+        World& w = *world_;
+        // a world made just now: its generated trees in the map give way to the
+        // drawn ones (a loaded one already has them: faced trees)
+        bool planted = false;
+        for (EntityId id : w.objectsOfType("tree"))
+            if (const WorldObject* o = w.object(id); o && o->faced) {
+                planted = true;
+                break;
+            }
+        const ObjectDef* def = nullptr;
+        if (auto it = w.content().objects.find("tree"); it != w.content().objects.end()) def = &it->second;
+        if (!planted && def) {
+            std::vector<EntityId> old;
+            for (EntityId id : w.objectsOfType("tree"))
+                if (const WorldObject* o = w.object(id)) {
+                    const double x = o->pos.x + originX_, y = o->pos.y + originY_;
+                    if (x >= rect[0] && x < rect[2] && y >= rect[1] && y < rect[3]) old.push_back(id);
+                }
+            w.removeObjects(old);
+            std::vector<EntityId> fresh;
+            fresh.reserve(heldTrees_.size());
+            for (const auto& t : heldTrees_) {
+                WorldObject o;
+                o.type = "tree";
+                o.pos = Vec2{double(t.x) - originX_, double(t.y) - originY_};
+                o.stock = def->stock;
+                o.yaw = t.yaw;
+                o.faced = true;
+                fresh.push_back(w.addObject(std::move(o)).id);
+            }
+            // the people know the woods round their village
+            for (auto& [id, c] : w.characters())
+                if (!c.isAnimal()) c.knownObjects.insert(fresh.begin(), fresh.end());
+            SDL_Log("altera_game: forest: %zu generated trees gave way to %zu drawn ones", old.size(), fresh.size());
+        }
+        // which sim tree each drawn one is (the same place, to the centimetre)
+        std::map<std::pair<long long, long long>, EntityId> at;
+        for (EntityId id : w.objectsOfType("tree"))
+            if (const WorldObject* o = w.object(id); o && o->faced)
+                at[{std::llround(o->pos.x * 100.0), std::llround(o->pos.y * 100.0)}] = id;
+        heldIds_.assign(heldTrees_.size(), kNone);
+        for (std::size_t i = 0; i < heldTrees_.size(); ++i) {
+            const auto it = at.find({std::llround((double(heldTrees_[i].x) - originX_) * 100.0),
+                                     std::llround((double(heldTrees_[i].y) - originY_) * 100.0)});
+            if (it == at.end()) continue;
+            heldIds_[i] = it->second;
+            heldIndex_[it->second] = int(i);
+        }
+        fh.rect[0] = rect[0], fh.rect[1] = rect[1], fh.rect[2] = rect[2], fh.rect[3] = rect[3];
+        fh.trees = heldTrees_;
+        fh.active = true;
+        ++fh.version;
+        SDL_Log("altera_game: forest held: %zu trees over %.0f m round the village", heldTrees_.size(), 2 * half);
+    }
+    // The drawn forest without the felled trees (main thread, from the snapshot).
+    void forestFelled(const std::vector<int>& felled) {
+        if (felled == shownFelled_ || heldTrees_.empty()) return;
+        shownFelled_ = felled;
+        terrain_core::ForestHold& fh = terrain_core::forestHold();
+        fh.trees.clear();
+        std::size_t k = 0;
+        for (std::size_t i = 0; i < heldTrees_.size(); ++i) {
+            while (k < felled.size() && std::size_t(felled[k]) < i) ++k;
+            if (k < felled.size() && std::size_t(felled[k]) == i) continue;
+            fh.trees.push_back(heldTrees_[i]);
+        }
+        ++fh.version;
     }
 
     // A precondition and an effect in the player's words (content/loc hud.req.* / hud.gain.*).
@@ -3947,7 +4083,7 @@ private:
         float bd = 1e9f;
         for (const auto& t : shown_.things) {
             const double wx = originX_ + t.x, wy = originY_ + t.y;
-            const double gz = groundAt(wx, wy), h = thingHeight(t.type);
+            const double gz = groundAt(wx, wy), h = t.held && !t.felled && t.height > 0 ? double(t.height) : t.felled ? 0.6 : thingHeight(t.type);
             float fx, fy, hx, hy;
             if (!project(wx - eye_[0], wy - eye_[1], gz + 0.05 - eye_[2], fx, fy)) continue;
             if (!project(wx - eye_[0], wy - eye_[1], gz + h - eye_[2], hx, hy)) continue;
@@ -4566,6 +4702,14 @@ private:
                 in.colour2[0] = r2, in.colour2[1] = g2, in.colour2[2] = b2;
             };
             const std::string& ty = t.type;
+            if (t.held && !t.felled) continue;   // AL-78: the foliage draws it
+            if (t.held) {                        // felled: the trunk lies where it stood
+                in.scale[0] = in.scale[1] = in.scale[2] = 1.6f;
+                in.colour[0] = 0.40f, in.colour[1] = 0.30f, in.colour[2] = 0.20f;
+                in.colour2[0] = 0.33f, in.colour2[1] = 0.26f, in.colour2[2] = 0.18f;
+                per[kLog].push_back(in);
+                continue;
+            }
             if (const int pp = propPiece(ty); pp >= 0) {
                 Placed pl;
                 pl.piece = pp;
@@ -5072,6 +5216,13 @@ private:
     static constexpr int kKeys = 0, kMouse = 1, kFree = 2;
     EntityId lastLed_ = kNone, prevControlled_ = kNone;
     bool pendingAct_ = false;
+    // AL-78: the drawn forest = the world's trees (plantForest): each drawn tree,
+    // the sim tree it is, and back; the felled ones the GPU was last told of
+    std::vector<terrain_core::HeldTree> heldTrees_;
+    std::vector<EntityId> heldIds_;
+    std::unordered_map<EntityId, int> heldIndex_;
+    std::vector<int> shownFelled_;
+    static constexpr double kHeldForestM = 1400.0;   // the side of the held woods (m)
     std::string pendingType_;
     Json pendingArgs_;
     int leadMode_ = kKeys;

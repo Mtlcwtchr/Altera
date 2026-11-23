@@ -67,7 +67,9 @@ cbuffer Spawn : register(b0, space2) {
     float heightLow;           // lowest and highest ground there can be, eye-relative
     float heightHigh;
     float waterMapSize;
-    float2 spawnPad;
+    float spawnHeld;           // AL-78: 1 = inside holdRect the game holds this layer's trees
+    float spawnPad;
+    float4 holdRect;           // world metres x0, y0, x1, y1
     float4 biomeRules[32];     // density, log2 cluster cell (level-0 texels, 0 = even), cover, -
 };
 
@@ -140,6 +142,8 @@ void spawnCs(uint3 id : SV_DispatchThreadID) {
     // Nothing grows under water: a lake, a river, its wet bank.
     float wet;
     const float2 metres = (float2(p.base) + p.sub) * spacing0;
+    // AL-78: there the trees are the game's own (foliage_hold.hlsl draws them)
+    if (spawnHeld > 0.5 && all(metres >= holdRect.xy) && all(metres < holdRect.zw)) return;
     if (waterAt(waterMap, waterSampler, metres, worldSize, waterMapSize, wet).x > ground.x - 0.3) return;
     const RiverHit river = nearestRiver(metres);
     if (river.found && river.distance < river.halfWidth + 1.5) return;
