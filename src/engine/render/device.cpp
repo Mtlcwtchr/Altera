@@ -620,7 +620,7 @@ GraphicsPipeline Device::makePipeline(const PipelineWanted& wanted) {
 
     const bool offscreen = !wanted.colourFormats.empty() || wanted.depthOnly;
     SDL_GPUColorTargetDescription colour{};
-    colour.format = !wanted.colourFormats.empty() ? wanted.colourFormats.front() : kColourFormat;
+    colour.format = !wanted.colourFormats.empty() ? wanted.colourFormats.front() : frameFormat_;
     if (wanted.blend) {
         colour.blend_state.enable_blend = true;
         colour.blend_state.src_color_blendfactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
