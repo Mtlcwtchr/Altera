@@ -419,7 +419,9 @@ const std::vector<std::string>& traceCodes() {
         "deed.case_answer",    "deed.case_pursue",         "deed.case_to_judge", "deed.case_verdict",
         // AL-55 truth
         "deed.vouched",        "deed.proved",
-        "act.outcome",         "control.steer_clamped"};
+        "act.outcome",         "control.steer_clamped",
+        // AL-73
+        "gear.left"};
     return v;
 }
 

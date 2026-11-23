@@ -58,7 +58,8 @@ TEST(altera_speech_feed_new_lines_once) {
         CHECK(cleanText(got[0].line));
         CHECK(cleanText(got[0].full));
         CHECK(got[0].full.find(got[0].line) != std::string::npos);
-        CHECK(got[0].full.find(b.name) != std::string::npos);
+        // the speaker named first (in ru the name is in its Russian form, not b.name)
+        CHECK(got[0].full.find(": ") != std::string::npos && got[0].full.find(": ") > 0);
     }
     CHECK(feed.poll(w, feedLoc(), "ru").empty());
 

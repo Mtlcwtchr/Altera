@@ -65,6 +65,9 @@ SocialChainDef parseChain(const std::string& id, const Json& j) {
         sc.joinMoodlet = f.value("join_moodlet", std::string());
     }
     if (!sc.follow && sc.stages.empty()) throw std::runtime_error("social_chains.json: chain '" + id + "' has no stages");
+    sc.talk = j.value("talk", std::string());
+    sc.talkOnly = !sc.stages.empty() && std::all_of(sc.stages.begin(), sc.stages.end(),
+                                                    [](const SocialStage& s) { return s.state == "Talk"; });
     return sc;
 }
 
@@ -124,8 +127,9 @@ Vec2 shortOf(Vec2 from, Vec2 to, double gap) {
 void release(World& w, Character& c) {
     AiState& ai = c.ai;
     if (WorldObject* o = w.object(ai.social.place); o && o->reservedBy == c.id) o->reservedBy = kNone;
+    const bool aside = ai.social.aside;
     ai.social = SocialLink{};
-    ai.fsm = FsmState{};
+    if (!aside) ai.fsm = FsmState{}; // AL-73: a work talked over goes on
     ai.nextThink = w.now();
     if (ai.followAfter.active()) {
         ai.social = ai.followAfter;
@@ -135,6 +139,34 @@ void release(World& w, Character& c) {
 
 Tick stageTicks(const SocialStage& s, const InteractionDef& d) {
     return std::max<Tick>(1, s.ticks > 0 ? s.ticks : d.duration);
+}
+
+// AL-73: a line of a talk, aloud (say.line: a bubble over the speaker, the
+// journal). The beat's intent for the talk's group first ("talk_body.joke"),
+// then the beat alone; `content` (a thing to tell) before both.
+void talkLine(World& w, Character& speaker, Character& listener, const SocialChainDef& sc, const std::string& act,
+              const std::string& beat, const MenuTopic* topic = nullptr) {
+    if (sc.talk.empty()) return;
+    std::map<std::string, Ref> args;
+    args["action"] = Ref{"text", kNone, "interaction." + sc.id + ".name", 0.0, {}};
+    if (topic && say(w, speaker, listener, topic->act, topic->prop, topic->epi, "", "", args).ok()) return;
+    if (say(w, speaker, listener, act, std::nullopt, Epistemic{}, "", beat + "." + sc.talk, args).ok()) return;
+    say(w, speaker, listener, act, std::nullopt, Epistemic{}, "", beat, args);
+}
+
+// One beat of a talk's stage: one tells, the other answers; the sides take
+// turns, and a thing worth telling (dialogueTopics) goes before small talk.
+void talkBeat(World& w, Character& a, Character& t, const SocialChainDef& sc, int beat) {
+    if (sc.talk.empty()) return;
+    const bool turn = beat % 2 == 1 && !t.ai.social.aside; // a busy listener only answers
+    Character& teller = turn ? t : a;
+    Character& hearer = turn ? a : t;
+    const bool hearerBusy = !turn && t.ai.social.aside;
+    std::vector<MenuTopic> topics;
+    if (sc.talk == "chat" || sc.talk == "gossip") topics = dialogueTopics(w, teller, hearer, 4);
+    const MenuTopic* topic = beat / 2 < static_cast<int>(topics.size()) ? &topics[static_cast<size_t>(beat / 2)] : nullptr;
+    talkLine(w, teller, hearer, sc, "inform", "talk_body", topic);
+    talkLine(w, hearer, teller, sc, "inform", hearerBusy ? "talk_reply_busy" : "talk_reply");
 }
 
 void startStage(World& w, Character& a, Character& t, const SocialRules& R, const SocialChainDef& sc,
@@ -147,8 +179,9 @@ void startStage(World& w, Character& a, Character& t, const SocialRules& R, cons
     // Side by side for the act (they are within reach already).
     if (i == 0 && dist(a.pos, t.pos) > R.togetherM) a.pos = shortOf(a.pos, t.pos, R.togetherM * 0.5);
     show(a, s.state, sc.id, t.id, s.actorAnim, ticks, w.now());
-    show(t, s.state, sc.id, a.id, s.targetAnim, ticks, w.now());
+    if (!t.ai.social.aside) show(t, s.state, sc.id, a.id, s.targetAnim, ticks, w.now());
     trace(w, a, 'F', "social.stage", {{"action", sc.id}, {"stage", i}, {"who", t.id}, {"anim", s.actorAnim}});
+    if (i == 0) talkBeat(w, a, t, sc, 0);
 }
 
 // The place the pair goes to: of the actor's or the target's household,
@@ -187,13 +220,16 @@ void decide(World& w, Character& a, Character& t, const SocialRules& R, const So
         tl.phase = "refused";
         al.until = tl.until = w.now() + R.refuseTicks;
         show(a, "Talk", sc.id, t.id, R.rejectedAnim, R.refuseTicks, w.now());
-        show(t, "Talk", sc.id, a.id, R.refuseAnim, R.refuseTicks, w.now());
+        if (!tl.aside) show(t, "Talk", sc.id, a.id, R.refuseAnim, R.refuseTicks, w.now());
         trace(w, a, 'C', "social.refused", {{"action", sc.id}, {"who", t.id}});
         trace(w, t, 'C', "social.said_no", {{"action", sc.id}, {"who", a.id}});
-        sayRefusal(w, t, a, "consent", "interaction." + d.id + ".name"); // AL-36: aloud, with the reason
+        // AL-36: aloud, with the reason; AL-73: one at work says so
+        sayRefusal(w, t, a, tl.aside ? "busy" : "consent", "interaction." + d.id + ".name");
         return;
     }
     applyEffectList(w, a, sc.onAccept, nullptr, &t, nullptr);
+    // AL-73: the yes is said (a talk only simply heard has no yes of its own)
+    if (!sc.byDefault || d.consent == "target") talkLine(w, t, a, sc, "accept", tl.aside ? "talk_busy" : "talk_yes");
     trace(w, a, 'C', "social.accepted", {{"action", sc.id}, {"who", t.id}});
     trace(w, t, 'C', "social.said_yes", {{"action", sc.id}, {"who", a.id}});
     if (sc.follow) {
@@ -273,6 +309,27 @@ const SocialRules* socialRules(const Content& c) {
                                          sc.place + "'");
             r->chains[ci.key()] = std::move(sc);
         }
+        // AL-73: every other talk to a person (fsm Talk) is a chain too, so the
+        // other side hears it, answers it aloud, or says no.
+        const Json talk = j.value("talk", Json::object());
+        r->talkGroups = talk.value("groups", std::map<std::string, std::string>{});
+        r->asideStates = talk.value("aside_states", std::vector<std::string>{"Work", "Interact", "Act"});
+        const std::string fallback = talk.value("default_group", std::string("plain"));
+        if (talk.contains("default")) {
+            const Json def = talk["default"];
+            const std::vector<std::string> skip = talk.value("skip", std::vector<std::string>{});
+            for (const auto& [id, d] : c.interactions) {
+                if (r->chains.count(id) || d.fsm != "Talk" || !d.targetsCharacter()) continue;
+                if (std::find(skip.begin(), skip.end(), id) != skip.end()) continue;
+                SocialChainDef sc = parseChain(id, def);
+                sc.byDefault = true;
+                const auto g = r->talkGroups.find(d.social.is_object() ? d.social.value("meaning", std::string()) : std::string());
+                sc.talk = g != r->talkGroups.end() ? g->second : fallback;
+                r->chains[id] = std::move(sc);
+            }
+        }
+        for (auto& [id, sc] : r->chains)
+            if (sc.talk.empty() && sc.talkOnly) sc.talk = fallback;
     }
     return (cache[c.dir] = std::move(r)).get();
 }
@@ -308,6 +365,9 @@ std::string socialBlock(const World& w, const Character& actor, const Character&
 double socialAcceptChance(const World& w, const Character& actor, const Character& target, const InteractionDef& d,
                           const SocialChainDef& sc, const std::string& tone) {
     if (!target.body.alive) return 0.0;
+    // AL-73: a talk with no chain of its own is heard; one the catalog asks
+    // consent for is asked as the catalog asks it
+    if (sc.byDefault) return d.consent == "target" ? consentChance(w, actor, target, d, tone) : 1.0;
     const SocialAccept& A = sc.accept;
     double p = A.base;
     auto rel = target.relations.find(actor.id);
@@ -327,9 +387,14 @@ bool beginSocial(World& w, Character& actor, Character& target, const Interactio
     const SocialRules* R = socialRules(w.content());
     const SocialChainDef* sc = socialChain(w.content(), d.id);
     if (!R || !sc) return why = "social.no_chain", false;
+    // AL-73: one who is being talked to over their work starts no talk of their own
+    if (actor.ai.social.active() && actor.ai.social.role == "target") return why = "busy:engaged", false;
     if (const std::string b = socialBlock(w, actor, target, *sc); !b.empty()) {
         why = "refused:" + d.id + ":" + b;
         trace(w, actor, 'C', "social.blocked", {{"action", sc->id}, {"who", target.id}, {"why", b}});
+        // AL-73: one awake but busy says so, not a silent nothing
+        if (b.rfind("busy:", 0) == 0 && b != "busy:unable" && target.ai.fsm.state != "Sleep" && !target.isAnimal())
+            sayRefusal(w, target, actor, "busy", "interaction." + d.id + ".name");
         return false;
     }
     // An NPC does not pester somebody who just said no.
@@ -342,9 +407,15 @@ bool beginSocial(World& w, Character& actor, Character& target, const Interactio
             }
     if (actor.ai.social.active()) actor.ai.followAfter = actor.ai.social; // a player follower acting
     if (target.ai.social.active()) target.ai.followAfter = target.ai.social; // follows this actor (socialBlock)
-    // The target stops what it is doing; its plan keeps its place.
-    if (target.ai.fsm.state != "Idle") abortAction(w, target, "social:" + d.id);
-    releaseReservations(w, target);
+    // The target stops what it is doing; its plan keeps its place. AL-73: a
+    // talk is heard over work, which goes on.
+    const std::string& tst = target.ai.fsm.state;
+    const bool aside = sc->talkOnly && !target.ai.social.active() &&
+                       std::find(R->asideStates.begin(), R->asideStates.end(), tst) != R->asideStates.end();
+    if (!aside) {
+        if (target.ai.fsm.state != "Idle") abortAction(w, target, "social:" + d.id);
+        releaseReservations(w, target);
+    }
     SocialLink al;
     al.chain = sc->id;
     al.role = "actor";
@@ -356,12 +427,14 @@ bool beginSocial(World& w, Character& actor, Character& target, const Interactio
     SocialLink tl = al;
     tl.role = "target";
     tl.partner = actor.id;
+    tl.aside = aside;
     actor.ai.social = al;
     target.ai.social = tl;
     show(actor, "Talk", sc->id, target.id, R->askAnim, R->askTicks, w.now());
-    show(target, "Talk", sc->id, actor.id, R->listenAnim, R->askTicks, w.now());
+    if (!aside) show(target, "Talk", sc->id, actor.id, R->listenAnim, R->askTicks, w.now());
     trace(w, actor, 'C', "social.ask", {{"action", sc->id}, {"who", target.id}});
-    trace(w, target, 'C', "social.asked", {{"action", sc->id}, {"who", actor.id}});
+    trace(w, target, 'C', "social.asked", {{"action", sc->id}, {"who", actor.id}, {"aside", aside}});
+    talkLine(w, actor, target, *sc, sc->talk == "rude" ? "insult" : "greet", "talk_open"); // AL-73: the opening, aloud
     return true;
 }
 
@@ -513,6 +586,10 @@ SocialStep tickSocial(World& w, Character& c, std::string& why) {
     const AiConfig& cfg = w.content().config;
     if (l.phase == "ask") {
         if (w.now() < l.until) return SocialStep::Running;
+        if (sc->byDefault && d->consent != "target") { // AL-73: heard, nothing to answer yes or no
+            decide(w, c, *t, *R, *sc, *d, true);
+            return l.phase == "done" || l.phase == "broken" ? tickSocial(w, c, why) : SocialStep::Running;
+        }
         if (t->controller.isPlayer()) {
             // The player answers (answer_social); silence = the character's own mind.
             l.phase = t->ai.social.phase = "answer";
@@ -560,15 +637,41 @@ SocialStep tickSocial(World& w, Character& c, std::string& why) {
         return SocialStep::Running;
     }
     if (l.phase == "stage") {
-        if (w.now() < l.until) return SocialStep::Running;
+        if (w.now() < l.until) {
+            // AL-73: one who talks to a person at work keeps by them
+            if (t->ai.social.aside && dist(c.pos, t->pos) > R->togetherM * 1.5) {
+                stepTowards(c, shortOf(c.pos, t->pos, R->togetherM * 0.5), cfg.walkMPerTick);
+                c.ai.fsm.dest = c.pos;
+            }
+            const SocialStage& cur = sc->stages[static_cast<size_t>(l.stage)];
+            const Tick beat = stageTicks(cur, *d) - (l.until - w.now());
+            if (l.stage == 0 && beat > 0) talkBeat(w, c, *t, *sc, static_cast<int>(beat));
+            return SocialStep::Running;
+        }
         const SocialStage& s = sc->stages[static_cast<size_t>(l.stage)];
         applyEffectList(w, c, s.eff, w.object(l.place), t, nullptr);
         if (l.stage + 1 < static_cast<int>(sc->stages.size())) {
             startStage(w, c, *t, *R, *sc, *d, l.stage + 1);
             return SocialStep::Running;
         }
+        // AL-73: a talk of some length ends with a goodbye from both
+        if (sc->talkOnly && stageTicks(sc->stages.front(), *d) >= 2) {
+            talkLine(w, c, *t, *sc, "farewell", "talk_bye");
+            talkLine(w, *t, c, *sc, "farewell", t->ai.social.aside ? "talk_bye_busy" : "talk_bye");
+        }
         // The act itself: its catalog effects, chance, risks, witnesses.
         applyEffects(w, c, *d, nullptr, t);
+        // AL-73: a talk that fell flat (the act's chance) gets the other's reaction aloud
+        if (sc->talkOnly)
+            for (auto it = c.ai.trace.rbegin(); it != c.ai.trace.rend() && it->tick == w.now(); ++it)
+                if (it->code == "act.outcome") {
+                    if (!it->params.value("success", true)) sayFailReaction(w, *t, c, *d);
+                    break;
+                }
+        if (d->id == "start_dialog") { // what was asked in it (ask_favor: a meal), as the plain act did
+            const Plan& p = c.ai.plan;
+            runConversation(w, c, *t, p.stepIndex < p.steps.size() ? p.steps[p.stepIndex].params : Json::object());
+        }
         trace(w, c, 'F', "social.done", {{"action", l.chain}, {"who", t->id}});
         closePair(w, c, t);
         return SocialStep::Done;

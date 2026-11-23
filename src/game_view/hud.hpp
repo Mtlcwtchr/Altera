@@ -446,6 +446,8 @@ private:
         double born = 0, life = 0;
     };
     std::vector<Bubble> bubbles_;            // AL-57: one per speaker, the newest line
+    std::vector<Bubble> bubbleQueue_;        // AL-73: lines waiting their turn (born = when shown)
+    double bubbleNext_ = 0;                  // AL-73: the earliest a next line of a talk shows
     int speechSeq_ = 0;
     std::map<EntityId, float> bubbleTop_;    // this frame: where a speaker's bubble ends (screen y)
     bool journalOpen_ = true;

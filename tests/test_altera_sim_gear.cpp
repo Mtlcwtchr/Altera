@@ -92,13 +92,18 @@ TEST(altera_sim_gear_grid_and_load) {
     c->worn.clear();
     c->gearPins.clear();
     c->attrs.clear();
+    // AL-73: logs go on the shoulder (haul), outside the grids; three spears fill the hands (4 x 3, a spear 1 x 4)
     c->inventory = {{"log", 2}};
-    // two logs fill the hands (4 x 3 cells, a log 2 x 3)
     GearLayout L = arrange(*R, *c);
     CHECK(L.overflow.empty());
-    CHECK_EQ(L.spots.size(), std::size_t(2));
-    // a third finds no room; it would be too heavy as well (45 kg)
+    CHECK(L.spots.empty());
+    CHECK_EQ(L.hauled["log"], 2);
+    // a third log would be too heavy (45 kg)
     CHECK_EQ(canTake(*R, *c, {{"log", 1}}), std::string("too_heavy"));
+    c->inventory = {{"spear", 3}};
+    L = arrange(*R, *c);
+    CHECK(L.overflow.empty());
+    CHECK_EQ(L.spots.size(), std::size_t(3));
     CHECK_EQ(canTake(*R, *c, {{"stone", 1}}), std::string("no_room"));
     // a pack worn: room for the stones
     c->inventory["backpack"] = 1;
@@ -157,7 +162,7 @@ TEST(altera_sim_gear_player_refuses_heavy_act) {
     Command take = gearCmd("take_control", {{"id", c->id}, {"player", 1}});
     w.applyNow(take);
     c->worn.clear();
-    c->inventory = {{"log", 2}};
+    c->inventory = {{"spear", 3}}; // AL-73: logs go on the shoulder now; long things fill the hands
     std::string why;
     c->ai.goal.source = "player"; // AL-24: the check is for the player's own orders
     CHECK(!canPerform(w, *c, *d, bank, &why, false, nullptr));

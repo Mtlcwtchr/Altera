@@ -17,8 +17,23 @@
   "refuse_anim": "social_refuse",
   "rejected_anim": "social_rejected"
  },
+ "talk": {
+  "_doc": "AL-73. Разговор: каждое действие с fsm Talk над человеком идёт цепочкой, чтобы другой его слышал, отвечал вслух или отказывался. default - цепочка для разговорных действий без своей (без вопроса да/нет: действие с consent target спрашивается, как в каталоге, остальное просто выслушивают). groups: смысл действия (interaction.social.meaning) -> группа реплик (content/ai/dialogue_rules/talk.json); default_group - для остальных. aside_states: занятый этим собеседник отвечает, не бросая дела. skip - действия, оставленные без цепочки.",
+  "default": {"stages": [{"state": "Talk", "anim": "talk", "ticks": 0}]},
+  "default_group": "plain",
+  "aside_states": ["Work", "Interact", "Act"],
+  "skip": [],
+  "groups": {
+   "chat": "chat", "sociability": "gossip", "playfulness": "joke", "play": "joke", "celebration": "joke",
+   "culture": "story", "respect": "kind", "support": "kind", "loyalty": "kind", "care": "kind", "teaching": "kind",
+   "exchange": "kind", "devotion": "kind", "submission": "sorry", "intimacy": "tender", "courtship": "tender",
+   "disrespect": "rude", "hostility": "rude", "accusation": "rude", "discipline": "rude", "status": "rude",
+   "request": "ask", "request_help": "ask"
+  }
+ },
  "chains": {
   "chat": {
+   "talk": "chat",
    "accept": {"base": 0.7, "rel": {"affinity": 0.4, "enmity": -0.6, "fear": -0.2}, "mood": 0.15, "needs": {"social": 0.3}, "min": 0.05, "max": 0.98},
    "on_refuse": ["moodlet:rejected"],
    "stages": [{"state": "Talk", "anim": "talk", "ticks": 0}]

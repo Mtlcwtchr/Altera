@@ -1772,6 +1772,35 @@ private:
                     openActions(best->id, sx, sy);
                 }
             }
+            // AL-73: act_person "<act>" - the act on the nearest grown person (as
+            // the wheel sends it: walk there, then perform); act_thing [type, act]
+            if (st.contains("act_person"))
+                if (const ActorSnap* me = actor(shown_.controlled)) {
+                    const ActorSnap* best = nullptr;
+                    double bd = 1e18;
+                    for (const auto& a : shown_.actors) {
+                        if (a.animal || !a.alive || a.age < 16 || a.id == me->id) continue;
+                        const double d = std::hypot(a.x - me->x, a.y - me->y);
+                        if (d < bd) bd = d, best = &a;
+                    }
+                    if (best) {
+                        select(best->id);
+                        command("perform", {{"id", me->id}, {"interaction", st["act_person"].get<std::string>()}, {"target", best->id}});
+                    }
+                }
+            if (st.contains("act_thing"))
+                if (const ActorSnap* me = actor(shown_.controlled)) {
+                    const std::string ty = st["act_thing"][0].get<std::string>();
+                    const ThingSnap* best = nullptr;
+                    double bd = 1e18;
+                    for (const auto& t : shown_.things) {
+                        if (t.type != ty) continue;
+                        const double d = std::hypot(t.x - me->x, t.y - me->y);
+                        if (d < bd) bd = d, best = &t;
+                    }
+                    if (best)
+                        command("perform", {{"id", me->id}, {"interaction", st["act_thing"][1].get<std::string>()}, {"target", best->id}});
+                }
             if (st.contains("select")) {
                 int k = st["select"].get<int>();
                 for (const auto& a : shown_.actors)
@@ -2600,6 +2629,9 @@ private:
             if (a.captive) a.down = false; // led along on foot, not lying
             a.interaction = c.ai.fsm.interaction;
             a.anim = c.ai.fsm.anim;
+            // AL-73: a talk's two sides face each other (one at work too), an act its target
+            if (c.ai.social.active() && c.ai.social.role != "follower") a.faces = c.ai.social.partner;
+            else if (c.ai.fsm.state != "Idle" && c.ai.fsm.state != "Move" && c.ai.fsm.target != kNone) a.faces = c.ai.fsm.target;
             a.role = c.status.role;
             a.spouse = c.status.spouse;
             a.mother = c.status.mother;
@@ -2812,6 +2844,7 @@ private:
             g.slots.push_back(std::move(o));
         }
         for (const auto& [k, n] : L.overflow) g.overflow.push_back({name("item", k), n});
+        for (const auto& [k, n] : L.hauled) g.hauled.push_back({name("item", k), n});
     }
 
     // ---- things, acts, feedback (sim thread) ------------------------------------
@@ -3044,7 +3077,8 @@ private:
                 else if (e.code == "fsm.abort" && act != "goto" && act != "wait" && !act.empty())
                     push(text("hud.fb.abort", {{"act", name("interaction", act)}}), 2);
                 else if (e.code == "control.order_refused" || e.code == "goap.fail" || e.code == "htn.no_method" ||
-                         e.code == "dialog.refused")
+                         e.code == "dialog.refused" || e.code == "gear.left" ||
+                         (e.code == "goal.failed" && e.params.value("goal", std::string()) == "player_action"))
                     push(traceText(*loc_, opts_.lang, w, *me, e), 2);
                 else if (e.code == "dialog.accepted")
                     push(traceText(*loc_, opts_.lang, w, *me, e), 1);
@@ -4023,9 +4057,9 @@ private:
             an.yaw = target;
             an.yawSet = true;
         }
-        if (step > 0.05) {
+        if (step > 0.05 || a.faces != kNone) {   // AL-73: also turning to the one they talk with
             const float d = std::remainder(target - an.yaw, float(2 * kPi));
-            an.yaw += d * float(std::min(1.0, frameDt_ * 8.0));
+            an.yaw += d * float(std::min(1.0, frameDt_ * (step > 0.05 ? 8.0 : 4.0)));
         }
         Figure f;
         f.look = std::max(0, lookIndex(a));
@@ -4205,6 +4239,14 @@ private:
                   {"obstacles", obstacles_.size()}, {"house_d", std::hypot(cx - px, cy - py)},
                   {"house_half", {hx, hy}}, {"inside_house", inside},
                   {"blocked_here", obstacles_.blocked(px, py, 0.05)}};
+        // AL-73: what the person does, what was said near the camera, what came of it
+        if (me) j["state"] = me->state + "/" + me->interaction;
+        Json said = Json::array(), fb = Json::array();
+        for (const auto& sp : shown_.speech) said.push_back({{"who", sp.speaker}, {"line", sp.line}});
+        for (const auto& f : shown_.feedback) fb.push_back(f.text);
+        j["speech"] = said;
+        j["feedback"] = fb;
+        j["result"] = shown_.result;
         const fs::path out = fs::path(opts_.root) / "terrain_lab_out/probe.jsonl";
         if (FILE* f = std::fopen(out.string().c_str(), "ab")) {
             const std::string line = j.dump() + "\n";
@@ -4419,8 +4461,15 @@ private:
             const double rz = groundAt(wx, wy) - eye_[2];
             double yaw = 0;
             const double mx = a.x - a.px, my = a.y - a.py;
+            const ActorSnap* faced = a.faces != kNone ? actor(a.faces) : nullptr;
+            double fx = 0, fy = 0;
+            if (faced) actorWorld(*faced, alpha, fx, fy);
+            else if (a.faces != kNone)
+                for (const auto& t : shown_.things)
+                    if (t.id == a.faces) fx = originX_ + t.x, fy = originY_ + t.y, faced = &a;
             if (avatar_.driven && a.id == avatar_.id) yaw = avatar_.yaw;
             else if (mx * mx + my * my > 0.01) yaw = std::atan2(my, mx);
+            else if (faced && std::hypot(fx - wx, fy - wy) > 0.2) yaw = std::atan2(fy - wy, fx - wx); // AL-73: turned to them
             else yaw = double(a.id % 628) / 100.0;
             Instance in{};
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry), in.placeYaw[2] = float(rz), in.placeYaw[3] = float(yaw);

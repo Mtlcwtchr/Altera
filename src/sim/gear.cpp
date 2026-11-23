@@ -50,6 +50,7 @@ const GearRules* gearRules(const Content& c) {
         }
         auto readItem = [](const Json& v, GearItem& g) {
             g.kg = v.value("kg", g.kg);
+            g.haul = v.value("haul", g.haul);
             if (v.contains("size")) {
                 g.w = v["size"].at(0).get<int>();
                 g.h = v["size"].at(1).get<int>();
@@ -169,6 +170,10 @@ GearLayout arrange(const GearRules& R, const Character& c, const std::map<std::s
         const int n = n0 - wornCount(c, k);
         if (n <= 0) continue;
         const GearItem& g = R.item(k);
+        if (g.haul) { // AL-73: on the shoulder, not in the hands or bags
+            L.hauled[k] += n;
+            continue;
+        }
         // Things a stack holds per its cells: small things (a cell) stack in
         // the item's stack size, big ones one a spot.
         const int per = g.w * g.h == 1 ? stackOf(R, k) : 1;

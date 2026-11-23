@@ -1,0 +1,806 @@
+{
+ "_doc": "AL-73 (\"time\" in every rule: always true, it makes the rule more specific than the act-only port.* lines): lines of a talk between two people (social_chain.cpp talkLine/talkBeat): intent = <beat>.<group> (social_chains.json talk.groups), then <beat> alone. Beats: talk_open (the one who starts), talk_yes / talk_busy (the other agrees; over work), talk_body / talk_reply / talk_reply_busy (one tells, the other answers), talk_bye / talk_bye_busy. refuse intent=busy: one at work or engaged says no.",
+ "rules": [
+  {
+   "id": "talk.talk_open",
+   "when": [
+    "act=greet",
+    "intent=talk_open",
+    "time"
+   ],
+   "say": "say.talk.talk_open"
+  },
+  {
+   "id": "talk.talk_open.chat",
+   "when": [
+    "act=greet",
+    "intent=talk_open.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_open.chat"
+  },
+  {
+   "id": "talk.talk_open.gossip",
+   "when": [
+    "act=greet",
+    "intent=talk_open.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_open.gossip"
+  },
+  {
+   "id": "talk.talk_open.joke",
+   "when": [
+    "act=greet",
+    "intent=talk_open.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_open.joke"
+  },
+  {
+   "id": "talk.talk_open.story",
+   "when": [
+    "act=greet",
+    "intent=talk_open.story",
+    "time"
+   ],
+   "say": "say.talk.talk_open.story"
+  },
+  {
+   "id": "talk.talk_open.kind",
+   "when": [
+    "act=greet",
+    "intent=talk_open.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_open.kind"
+  },
+  {
+   "id": "talk.talk_open.sorry",
+   "when": [
+    "act=greet",
+    "intent=talk_open.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_open.sorry"
+  },
+  {
+   "id": "talk.talk_open.tender",
+   "when": [
+    "act=greet",
+    "intent=talk_open.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_open.tender"
+  },
+  {
+   "id": "talk.talk_open.ask",
+   "when": [
+    "act=greet",
+    "intent=talk_open.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_open.ask"
+  },
+  {
+   "id": "talk.talk_open.rude",
+   "when": [
+    "act=greet",
+    "intent=talk_open.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_open"
+  },
+  {
+   "id": "talk.talk_open.plain",
+   "when": [
+    "act=greet",
+    "intent=talk_open.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_open"
+  },
+  {
+   "id": "talk.talk_yes",
+   "when": [
+    "act=accept",
+    "intent=talk_yes",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.chat",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.gossip",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.joke",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.story",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.story",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.kind",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.sorry",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.tender",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.rude",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.ask",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_yes.plain",
+   "when": [
+    "act=accept",
+    "intent=talk_yes.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_yes"
+  },
+  {
+   "id": "talk.talk_busy",
+   "when": [
+    "act=accept",
+    "intent=talk_busy",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.chat",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.gossip",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.joke",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.story",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.story",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.kind",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.sorry",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.tender",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.rude",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.ask",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_busy.plain",
+   "when": [
+    "act=accept",
+    "intent=talk_busy.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_busy"
+  },
+  {
+   "id": "talk.talk_body",
+   "when": [
+    "act=inform",
+    "intent=talk_body",
+    "time"
+   ],
+   "say": "say.talk.talk_body"
+  },
+  {
+   "id": "talk.talk_body.chat",
+   "when": [
+    "act=inform",
+    "intent=talk_body.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_body.chat"
+  },
+  {
+   "id": "talk.talk_body.gossip",
+   "when": [
+    "act=inform",
+    "intent=talk_body.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_body.gossip"
+  },
+  {
+   "id": "talk.talk_body.joke",
+   "when": [
+    "act=inform",
+    "intent=talk_body.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_body.joke"
+  },
+  {
+   "id": "talk.talk_body.story",
+   "when": [
+    "act=inform",
+    "intent=talk_body.story",
+    "time"
+   ],
+   "say": "say.talk.talk_body.story"
+  },
+  {
+   "id": "talk.talk_body.kind",
+   "when": [
+    "act=inform",
+    "intent=talk_body.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_body.kind"
+  },
+  {
+   "id": "talk.talk_body.sorry",
+   "when": [
+    "act=inform",
+    "intent=talk_body.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_body.sorry"
+  },
+  {
+   "id": "talk.talk_body.tender",
+   "when": [
+    "act=inform",
+    "intent=talk_body.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_body.tender"
+  },
+  {
+   "id": "talk.talk_body.rude",
+   "when": [
+    "act=inform",
+    "intent=talk_body.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_body.rude"
+  },
+  {
+   "id": "talk.talk_body.ask",
+   "when": [
+    "act=inform",
+    "intent=talk_body.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_body.ask"
+  },
+  {
+   "id": "talk.talk_body.plain",
+   "when": [
+    "act=inform",
+    "intent=talk_body.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_body"
+  },
+  {
+   "id": "talk.talk_reply",
+   "when": [
+    "act=inform",
+    "intent=talk_reply",
+    "time"
+   ],
+   "say": "say.talk.talk_reply"
+  },
+  {
+   "id": "talk.talk_reply.chat",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.chat"
+  },
+  {
+   "id": "talk.talk_reply.gossip",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.gossip"
+  },
+  {
+   "id": "talk.talk_reply.joke",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.joke"
+  },
+  {
+   "id": "talk.talk_reply.story",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.story",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.story"
+  },
+  {
+   "id": "talk.talk_reply.kind",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.kind"
+  },
+  {
+   "id": "talk.talk_reply.sorry",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.sorry"
+  },
+  {
+   "id": "talk.talk_reply.tender",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.tender"
+  },
+  {
+   "id": "talk.talk_reply.rude",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.rude"
+  },
+  {
+   "id": "talk.talk_reply.ask",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_reply.ask"
+  },
+  {
+   "id": "talk.talk_reply.plain",
+   "when": [
+    "act=inform",
+    "intent=talk_reply.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_reply"
+  },
+  {
+   "id": "talk.talk_reply_busy",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.rude",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy.rude"
+  },
+  {
+   "id": "talk.talk_reply_busy.chat",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.gossip",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.joke",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.story",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.story",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.kind",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.sorry",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.tender",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.ask",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_reply_busy.plain",
+   "when": [
+    "act=inform",
+    "intent=talk_reply_busy.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_reply_busy"
+  },
+  {
+   "id": "talk.talk_bye",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.chat",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.gossip",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.joke",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.story",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.story",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.kind",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.sorry",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.tender",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.rude",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.ask",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye.plain",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_bye"
+  },
+  {
+   "id": "talk.talk_bye_busy",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.chat",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.chat",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.gossip",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.gossip",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.joke",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.joke",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.story",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.story",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.kind",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.kind",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.sorry",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.sorry",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.tender",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.tender",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.rude",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.rude",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.ask",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.ask",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.talk_bye_busy.plain",
+   "when": [
+    "act=farewell",
+    "intent=talk_bye_busy.plain",
+    "time"
+   ],
+   "say": "say.talk.talk_bye_busy"
+  },
+  {
+   "id": "talk.refuse.busy",
+   "when": [
+    "act=refuse",
+    "intent=busy",
+    "time"
+   ],
+   "say": "say.talk.refuse_busy"
+  }
+ ]
+}

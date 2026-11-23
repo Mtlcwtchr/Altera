@@ -36,6 +36,7 @@ struct GearItem {
     int bulk = 0;                  // the layer's cost against the slot's bulk
     int gridW = 0, gridH = 0;      // worn: the grid it adds (a belt, a satchel, a pack)
     double warmth = 0;
+    bool haul = false;             // AL-73: carried on the shoulder (a log), not in a grid: only its weight counts
 };
 struct GearSlot {
     std::string id;
@@ -82,6 +83,7 @@ struct GearLayout {
     std::vector<GearGrid> grids;
     std::vector<GearSpot> spots;
     std::map<std::string, int> overflow;   // what found no room
+    std::map<std::string, int> hauled;     // AL-73: carried on the shoulder (haul items)
 };
 
 double loadKg(const GearRules& R, const Character& c);

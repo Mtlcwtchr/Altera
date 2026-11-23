@@ -1926,10 +1926,24 @@ void Hud::speechBubbles(const Snapshot& s) {
             speechSeq_ = sp.seq;
             if (sp.line.empty()) continue;
             const double life = std::clamp(2.4 + 0.055 * double(sp.line.size()) / 2.0, 3.0, 7.0); // UTF-8 bytes / 2 ~ letters
-            bubbles_.erase(std::remove_if(bubbles_.begin(), bubbles_.end(), [&](const Bubble& b) { return b.who == sp.speaker; }),
-                           bubbles_.end());
-            bubbles_.push_back({sp.speaker, sp.line, clock_, life});
+            // AL-73: a talk's lines come in turn, one after the other, not all
+            // at once (a tick says both sides' lines; a slow tick is seconds long)
+            const double at = std::max(clock_, bubbleNext_);
+            bubbleNext_ = at + std::min(2.2, life * 0.6);
+            bubbleQueue_.push_back({sp.speaker, sp.line, at, life});
         }
+    for (auto it = bubbleQueue_.begin(); it != bubbleQueue_.end();) {
+        if (it->born > clock_) {
+            ++it;
+            continue;
+        }
+        const EntityId who = it->who;
+        bubbles_.erase(std::remove_if(bubbles_.begin(), bubbles_.end(), [&](const Bubble& b) { return b.who == who; }),
+                       bubbles_.end());
+        bubbles_.push_back(*it);
+        it = bubbleQueue_.erase(it);
+    }
+    if (bubbleQueue_.size() > 12) bubbleQueue_.erase(bubbleQueue_.begin(), bubbleQueue_.end() - 12);
     bubbles_.erase(std::remove_if(bubbles_.begin(), bubbles_.end(), [&](const Bubble& b) { return clock_ - b.born > b.life; }),
                    bubbles_.end());
     if (bubbles_.size() > 10) bubbles_.erase(bubbles_.begin(), bubbles_.end() - 10);
@@ -2220,6 +2234,11 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
         std::string t;
         for (const auto& [n, c] : g.overflow) t += (t.empty() ? "" : ", ") + n + (c > 1 ? " x" + std::to_string(c) : "");
         label(G.x + 20, G.bottom() - 28, ui_->fit(host_->text("hud.gear.no_room", {{"what", t}}), G.w - 40, 13 / 15.f), kInkRed, 13);
+    }
+    if (!g.hauled.empty()) {   // AL-73: a log on the shoulder, outside the grids
+        std::string t;
+        for (const auto& [n, c] : g.hauled) t += (t.empty() ? "" : ", ") + n + (c > 1 ? " x" + std::to_string(c) : "");
+        label(G.x + 20, G.bottom() - (g.overflow.empty() ? 28 : 48), ui_->fit(host_->text("hud.gear.hauled", {{"what", t}}), G.w - 40, 13 / 15.f), kInk, 13);
     }
     if (!mine) label(ox + 34, oy + PH - 20, host_->text("hud.gear.not_yours"), kText.withAlpha(0.8f), 13, true);
     else label(ox + 34, oy + PH - 20, host_->text("hud.gear.keys"), kText.withAlpha(0.7f), 13, true);

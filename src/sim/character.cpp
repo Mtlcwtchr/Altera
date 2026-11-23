@@ -84,7 +84,7 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Plan, methods, steps, stepIndex,
                                                 htnReplans, waits)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(FsmState, state, interaction, target, dest, timer, started, anim)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(SocialLink, chain, role, partner, phase, stage, until, since, expires,
-                                                place, tone, result)
+                                                place, tone, result, aside)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(WeightMod, target, delta, created, ttl, decay, reason, source)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(QueuedTask, task, target, priority, created, ttl, reason, source)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(TraceEntry, tick, layer, code, params)
