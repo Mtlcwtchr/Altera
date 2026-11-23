@@ -13,6 +13,7 @@
 
 #include "engine/render/device.hpp"
 #include "terrain_core/biomes.hpp"
+#include "terrain_core/clearings.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/lod_select.hpp"
 #include "terrain_core/params.hpp"
@@ -20,6 +21,7 @@
 
 #include <array>
 #include <filesystem>
+#include <functional>
 #include <string>
 #include <vector>
 
@@ -32,6 +34,7 @@ struct FoliageLayer {
     float scaleMin = 1, scaleMax = 1, minNormalZ = 0.7f;
     std::array<std::array<float, 4>, kMaxBiomes> rules{};   // density, log2 cluster cell, cover, -
     bool enabled = true;
+    bool held = false;   // AL-78: trees the game may hold (forestHold): taken over inside its rect
     // Last frame read back (two frames late): instances drawn, candidates tried.
     std::uint32_t drawn = 0, candidates = 0;
 };
@@ -67,6 +70,17 @@ public:
     std::uint64_t candidates() const;
     std::uint64_t gpuBytes() const { return gpuBytes_; }
 
+    // AL-78: the trees the GPU would scatter in `rect` (world metres x0, y0,
+    // x1, y1) for the held layers - the same cells, hashes, biome rules,
+    // patches, clearings - on the CPU, with the game's ground: `height` (m)
+    // and `keep` (false: water, a river, no place for a tree).
+    std::vector<HeldTree> heldTrees(const double rect[4], const BiomeMap& biomes,
+                                           const std::function<float(double, double)>& height,
+                                           const std::function<bool(double, double)>& keep) const;
+    // the model's crown radius and height at scale 1 (m)
+    float modelRadius(std::uint32_t m) const { return m < models_.size() ? models_[m].radius : 0.0f; }
+    float modelHeight(std::uint32_t m) const { return m < models_.size() ? models_[m].height : 0.0f; }
+
 private:
     struct Model { std::string name; std::uint32_t firstIndex, indexCount, offset, capacity; float radius, height; };
     engine::Device* device_ = nullptr;
@@ -77,7 +91,10 @@ private:
     engine::Buffer vertices_, indices_, instances_, counters_, args_, modelInfo_, modelSlots_;
     engine::Texture textures_;
     engine::Sampler nearest_, linear_;
-    engine::ComputePipeline spawn_, reset_, argsPass_;
+    engine::ComputePipeline spawn_, reset_, argsPass_, hold_;
+    engine::Buffer held_;                 // AL-78: forestHold().trees, two float4 a tree
+    std::uint32_t heldCount_ = 0;
+    std::uint64_t heldVersion_ = ~0ull;
     engine::GraphicsPipeline draw_, shadow_;
     SDL_GPUTransferBuffer* readback_[3] = {};
     std::uint64_t frame_ = 0;

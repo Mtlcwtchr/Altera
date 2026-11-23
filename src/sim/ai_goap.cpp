@@ -190,12 +190,20 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
     Node start;
     for (const auto& [item, n] : c.inventory) start.has[item] = n;
     start.pos = c.pos;
-    for (const auto& [type, p] : typePos)
-        if (dist(p, c.pos) <= cfg.interactionRangeM) {
+    for (const auto& [type, p] : typePos) {
+        // AL-78: "there already" by the act's own reach when it is the act at the end
+        // (a drink at the well wants one by its rim, not fifteen metres off)
+        double near = cfg.interactionRangeM;
+        if (finalAction && finalAction->targetType == type) {
+            const auto od = w.content().objects.find(type);
+            near = std::max(reachOf(w, *finalAction), od != w.content().objects.end() ? od->second.standM + 0.25 : 0.0);
+        }
+        if (dist(p, c.pos) <= near) {
             start.at = type;
             start.pos = p;
             break;
         }
+    }
 
     auto isGoal = [&](const Node& n) {
         for (const auto& k : goal)

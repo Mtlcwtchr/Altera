@@ -270,3 +270,48 @@ TEST(altera_sim_player_order_fails_fast) {
     dumpTrace(*me, 0);
     CHECK(!me->ai.goal.valid() || me->ai.goal.id != "player_action");
 }
+
+// AL-78: the game's forest replaces the generated trees in one pass; the
+// index by type and the rest of the world stay as they were.
+TEST(altera_sim_remove_objects_in_one_pass) {
+    World w = realWorld();
+    const std::size_t all = w.objects().size(), trees = w.objectsOfType("tree").size();
+    CHECK(trees > 10);
+    std::vector<EntityId> some(w.objectsOfType("tree").begin(), w.objectsOfType("tree").begin() + 10);
+    CHECK_EQ(w.removeObjects(some), std::size_t(10));
+    CHECK_EQ(w.objects().size(), all - 10);
+    CHECK_EQ(w.objectsOfType("tree").size(), trees - 10);
+    for (EntityId id : some) CHECK(w.object(id) == nullptr);
+    w.run(6);   // the world goes on without them
+    CHECK(!w.objectsOfType("house").empty());
+}
+
+// AL-78: one works at a thing from beside it - the well's rim, not its middle.
+TEST(altera_sim_work_beside_the_thing) {
+    World w = realWorld();
+    const WorldObject* well = nullptr;
+    for (const auto& [id, o] : w.objects())
+        if (o.type == "well") well = &o;
+    Character* me = nullptr;
+    for (auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.alive && c.body.stage() == "adult" && well && dist(c.pos, well->pos) > 5.0) {
+            me = &c;
+            break;
+        }
+    CHECK(well && me);
+    if (!well || !me) return;
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", me->id}})).result, kOk);
+    CHECK_EQ(w.applyNow(cmdOf("perform", {{"id", me->id}, {"interaction", "drink_from_well"}, {"target", well->id}})).result,
+             kOk);
+    bool at = false;
+    for (int i = 0; i < 8; ++i) {
+        w.step();
+        if (me->ai.fsm.interaction == "drink_from_well") {
+            at = true;
+            CHECK(dist(me->pos, well->pos) > 1.0);
+            CHECK(dist(me->pos, well->pos) < 1.6);
+        }
+    }
+    dumpTrace(*me, 0);
+    CHECK(at);
+}
