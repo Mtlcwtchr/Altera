@@ -21,6 +21,9 @@ public:
     bool resize(Device& device, Uint32 width, Uint32 height);
     // SDL's portable depth read path for sampler-based compute shaders.
     void sampledDepth(bool enabled) { sampledDepth_ = enabled; }
+    // The colour targets' format (kColourFormat unless set; a half-float
+    // scene for terrain_core::Enb). Takes effect at the next resize.
+    void format(SDL_GPUTextureFormat f) { format_ = f; }
     // What the passes draw into. Multisampled when the card will do it.
     SDL_GPUTexture* colour() const { return colour_.get(); }
     SDL_GPUTexture* depth() const { return depth_.get(); }
@@ -46,6 +49,7 @@ private:
     Texture colour_, depth_, resolve_, grab_;
     Uint32 width_ = 0, height_ = 0;
     bool sampledDepth_ = false, builtSampledDepth_ = false;
+    SDL_GPUTextureFormat format_ = Device::kColourFormat, builtFormat_ = Device::kColourFormat;
 };
 
 // Reads the colour target back and writes it out. Slow and synchronous, which

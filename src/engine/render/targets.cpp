@@ -8,7 +8,9 @@
 namespace engine {
 
 bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
-    if (width == width_ && height == height_ && colour_ && sampledDepth_ == builtSampledDepth_) return true;
+    if (width == width_ && height == height_ && colour_ && sampledDepth_ == builtSampledDepth_ &&
+        format_ == builtFormat_)
+        return true;
     // The old ones may still be in a frame the card has not finished, and
     // releasing a texture out from under a command buffer is a crash a long way
     // from here.
@@ -27,7 +29,7 @@ bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
 
     SDL_GPUTextureCreateInfo info{};
     info.type = SDL_GPU_TEXTURETYPE_2D;
-    info.format = Device::kColourFormat;
+    info.format = format_;
     info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
     info.width = width;
     info.height = height;
@@ -49,7 +51,7 @@ bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
         // Where the four samples are folded into one, and the only one anything
         // outside the render pass may read: a multisampled texture cannot be
         // blitted or copied.
-        info.format = Device::kColourFormat;
+        info.format = format_;
         info.usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER;
         info.sample_count = SDL_GPU_SAMPLECOUNT_1;
         resolve_ = device.makeTexture(info);
@@ -67,7 +69,7 @@ bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
     // grade). A copy destination and a sampled texture, with a full mip chain
     // for a stage that wants it blurred; generating that chain needs it to be
     // a colour target as well. Level 0 is all the water ever reads.
-    info.format = Device::kColourFormat;
+    info.format = format_;
     info.usage = SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
     info.sample_count = SDL_GPU_SAMPLECOUNT_1;
     info.num_levels = 1;
@@ -80,6 +82,7 @@ bool Targets::resize(Device& device, Uint32 width, Uint32 height) {
     width_ = width;
     height_ = height;
     builtSampledDepth_ = sampledDepth_;
+    builtFormat_ = format_;
     return true;
 }
 

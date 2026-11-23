@@ -24,6 +24,7 @@
 // Shots:  --shot PNG --at X,Y,AGL,YAWDEG,PITCHDEG (X, Y as fractions of the world)
 // Look:   --post N (style)  --psx | --no-psx  --psx-scale N (content/config/terrain_core/psx.json)
 //         --outline | --no-outline (content/config/terrain_core/outline.json)
+//         --enb NAME | --no-enb (AL-77 light, atmosphere and grade: content/config/terrain_core/enb.json; U cycles)
 // Water:  --water-skeleton PNG (red rivers, blue lakes: the main framework, painted)
 //         --water-skeleton-out PNG (the framework used, over the relief, to edit)
 //         --main-river-area KM2  --main-lakes N  --main-lake-area KM2 (generated framework)
@@ -41,6 +42,7 @@
 #include "terrain_core/post.hpp"
 #include "terrain_core/psx.hpp"
 #include "terrain_core/outline.hpp"
+#include "terrain_core/enb.hpp"
 #include "terrain_core/lighting.hpp"
 #include "terrain_core/sky.hpp"
 #include "terrain_core/water.hpp"
@@ -132,6 +134,8 @@ struct Options {
     int psx = -1;                 // the PSX look (psx.json, X): -1 as the file says, 0 off, 1 on
     int psxScale = 0;             // --psx-scale N: the file's pixel_scale overridden (0: not)
     int outline = -1;             // the ink outline (outline.json, L): -1 as the file says, 0 off, 1 on
+    std::string enb;              // AL-77 frame chain preset (enb.json, U): empty as the file says
+    bool noEnb = false;           // --no-enb: the old 8-bit frame, no chain
     bool water = true;            // rivers, lakes, sea (F11); off also skips cutting the river beds
     bool dlss = false;            // NVIDIA DLSS Super Resolution, live toggle F12
     int dlssQuality = 0;          // 0 Quality, 1 Balanced, 2 Performance
@@ -269,6 +273,8 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--psx") o.psx = 1;
         else if (a == "--no-psx") o.psx = 0;
         else if (a == "--outline") o.outline = 1;
+        else if (a == "--enb") o.enb = next();
+        else if (a == "--no-enb") o.noEnb = true;
         else if (a == "--no-outline") o.outline = 0;
         else if (a == "--psx-scale") { o.psxScale = std::atoi(next()); if (o.psx < 0) o.psx = 1; }
         else if (a == "--foliage-layers") o.foliageLayers = next();
@@ -419,6 +425,43 @@ struct Lab {
         if (loadOutlineSettings(outlineFile, fresh, &why)) outlineSettings = fresh;
         else std::fprintf(stderr, "outline: %s (defaults)\n", why.c_str());
     }
+    // AL-77: the half-float scene and the chain after it (enb.json); off, the old 8-bit frame.
+    Enb enb;
+    EnbSettings enbSettings;
+    EnbPresets enbPresets;
+    fs::path enbFile;
+    bool enbOn = false;        // decided at open: the frame's format follows it
+    bool enbReady = false;
+    engine::Targets hdrTargets;   // the scene without an upscaler
+    std::vector<EnbLight> enbLights;   // the game's fires this frame
+    void loadEnb(const std::string& preset) {
+        std::string why;
+        EnbSettings fresh;
+        if (loadEnbSettings(enbFile, preset, fresh, &why, &enbPresets)) enbSettings = fresh;
+        else std::fprintf(stderr, "enb: %s (keeping %s)\n", why.c_str(), enbSettings.preset.c_str());
+        enb.resetAdaptation();
+    }
+    // U: the next preset in the file (read again); one that wants no half-float frame is skipped.
+    void cycleEnb() {
+        if (!enbOn) return;
+        std::string why;
+        EnbPresets now;
+        EnbSettings probe;
+        loadEnbSettings(enbFile, "", probe, &why, &now);
+        if (now.names.empty()) return;
+        std::size_t at = 0;
+        for (std::size_t i = 0; i < now.names.size(); ++i)
+            if (now.names[i] == enbSettings.preset) at = i;
+        for (std::size_t k = 1; k <= now.names.size(); ++k) {
+            EnbSettings next;
+            if (loadEnbSettings(enbFile, now.names[(at + k) % now.names.size()], next, &why) && next.hdr) {
+                enbSettings = next;
+                enb.resetAdaptation();
+                SDL_Log("enb: %s", enbSettings.preset.c_str());
+                return;
+            }
+        }
+    }
     void toggleOutline() {
         const bool on = !outlineSettings.enabled;
         if (on) loadOutline();
@@ -469,6 +512,18 @@ struct Lab {
         std::printf("%s\n", dlss.status().c_str());
         targets.sampledDepth(true);
         dlssTargets.sampledDepth(true);
+        hdrTargets.sampledDepth(true);
+        {
+            // AL-77: before any pipeline is made, since the scene's pipelines draw in the frame's format.
+            enbFile = assets.parent_path().parent_path() / "content" / "config" / "terrain_core" / "enb.json";
+            loadEnb(options.enb);
+            enbOn = !options.noEnb && enbSettings.hdr;
+            if (enbOn) {
+                device.frameFormat(Enb::kSceneFormat);
+                hdrTargets.format(Enb::kSceneFormat);
+                dlssTargets.format(Enb::kSceneFormat);
+            }
+        }
         if (!targets.resize(device, options.width, options.height)) { std::fprintf(stderr, "targets\n"); return false; }
 
         const auto loadStart = Clock::now();
@@ -725,6 +780,11 @@ struct Lab {
             if (options.psx >= 0) psxSettings.enabled = options.psx == 1;
             std::printf("psx: %s, %s (%ux, %u bits)\n", psxReady ? "ready" : "no pipeline",
                         psxSettings.enabled ? "on" : "off", psxSettings.pixelScale, psxSettings.colourBits);
+            if (enbOn) {
+                enbReady = enb.open(device);
+                if (!enbReady) std::fprintf(stderr, "enb off: %s\n", device.error().c_str());
+            }
+            std::printf("enb: %s, preset %s\n", enbOn ? (enbReady ? "ready" : "no pipeline") : "off", enbSettings.preset.c_str());
             outlineReady = outline.open(device);
             if (!outlineReady) std::fprintf(stderr, "outline off: %s\n", device.error().c_str());
             outlineFile = foliageFile.parent_path() / "outline.json";
@@ -903,7 +963,8 @@ struct Lab {
             dlss.prepare(false, Uint32(outputWidth), Uint32(outputHeight), options.dlssQuality);
             useDlss = false;
         }
-        auto& sceneTargets = useDlss ? dlssTargets : targets;
+        if (enbOn && !useDlss && !hdrTargets.resize(device, Uint32(outputWidth), Uint32(outputHeight))) return s;
+        auto& sceneTargets = useDlss ? dlssTargets : enbOn ? hdrTargets : targets;
         renderer.setTextureScale(useDlss ? float(dlss.renderWidth()) / float(outputWidth) : 1.0f);
         const double aspect = double(targets.width()) / double(targets.height());
         ViewUniforms view{};
@@ -1074,13 +1135,42 @@ struct Lab {
 
         const bool cloudsDrawn = lightReady && clouds.march(commands, sceneTargets, light, rays, float(camera.nearPlane),
                                                             std::uint32_t(frames));
+        // AL-77: the half-float scene through the chain into an 8-bit picture
+        // (the display's frame, or one at the scene's size for DLSS).
+        SDL_GPUTexture* graded = nullptr;
+        if (enbOn && enbReady) {
+            EnbFrame ef;
+            ef.scene = sceneTargets.resolved();
+            ef.depth = sceneTargets.depth();
+            ef.clouds = cloudsDrawn ? clouds.texture() : nullptr;
+            ef.width = sceneTargets.width();
+            ef.height = sceneTargets.height();
+            ef.out = useDlss ? enb.scratchOut(ef.width, ef.height) : targets.resolved();
+            ef.camera = rays;
+            ef.nearPlane = float(camera.nearPlane);
+            ef.eyeZ = float(camera.eye.z);
+            ef.light = &light;
+            ef.seconds = float(seconds);
+            ef.dt = float(dt);
+            ef.grain = !useDlss;
+            if (game) {
+                const double eyeAt[3] = {camera.eye.x, camera.eye.y, camera.eye.z};
+                game->lights(eyeAt, enbLights);
+                ef.lights = &enbLights;
+            }
+            if (ef.out) {
+                enb.apply(commands, ef, enbSettings);
+                graded = ef.out;
+            }
+        }
         if (useDlss) {
             // Composite clouds before DLSS; grade and grain at display resolution.
-            if (postReady && cloudsDrawn) dlssComposite.apply(commands, sceneTargets, 0, float(seconds), clouds.texture());
+            if (postReady && cloudsDrawn && !graded) dlssComposite.apply(commands, sceneTargets, 0, float(seconds), clouds.texture());
             const double eye[3] = {camera.eye.x, camera.eye.y, camera.eye.z};
-            auto* upscaled = dlss.evaluate(commands, sceneTargets.resolved(), sceneTargets.depth(), unjittered, eye, float(dt * 1000));
+            SDL_GPUTexture* dlssIn = graded ? graded : sceneTargets.resolved();
+            auto* upscaled = dlss.evaluate(commands, dlssIn, sceneTargets.depth(), unjittered, eye, float(dt * 1000));
             SDL_GPUBlitInfo upscale{};
-            upscale.source.texture = upscaled ? upscaled : sceneTargets.resolved();
+            upscale.source.texture = upscaled ? upscaled : dlssIn;
             upscale.source.w = upscaled ? targets.width() : sceneTargets.width();
             upscale.source.h = upscaled ? targets.height() : sceneTargets.height();
             upscale.destination.texture = targets.colour();
@@ -1090,6 +1180,8 @@ struct Lab {
             SDL_BlitGPUTexture(commands, &upscale);
             if (!upscaled) options.dlss = false;
             if (postReady) post.apply(commands, targets, options.post, float(seconds));
+        } else if (postReady && graded) {
+            if (options.post) post.apply(commands, targets, options.post, float(seconds));
         } else if (postReady) post.apply(commands, targets, options.post, float(seconds), cloudsDrawn ? clouds.texture() : nullptr);
         // The PSX look last, at display resolution, over whatever style is on.
         // Ink lines over the styled picture, under the PSX cut; depth read by uv, so DLSS's smaller one serves too.
@@ -1307,7 +1399,7 @@ struct MapCamera {
 };
 
 // The game (--game): the sim's own camera and HUD; the view keeps only its
-// look keys (X PSX, L outline, F5 style, F7 shadows, F8 clouds, F12 DLSS).
+// look keys (X PSX, L outline, U light preset, F5 style, F7 shadows, F8 clouds, F12 DLSS).
 int runGame(Lab& lab, SDL_Window* window) {
     auto last = Clock::now(), titleAt = Clock::now();
     double frameMs = 0;
@@ -1323,6 +1415,7 @@ int runGame(Lab& lab, SDL_Window* window) {
                     lab.psxSettings.enabled = on;
                 }
                 if (e.key.key == SDLK_L) lab.toggleOutline();
+                if (e.key.key == SDLK_U) lab.cycleEnb();
                 if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
                 if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;
                 if (e.key.key == SDLK_F8) lab.options.light.clouds = !lab.options.light.clouds;
@@ -1388,6 +1481,7 @@ int runInteractive(Lab& lab, SDL_Window* window) {
                     lab.psxSettings.enabled = on;
                 }
                 if (e.key.key == SDLK_L && !e.key.repeat) lab.toggleOutline();
+                if (e.key.key == SDLK_U && !e.key.repeat) lab.cycleEnb();
                 if (e.key.key == SDLK_F6) lab.options.surfaceMaps = !lab.options.surfaceMaps;
                 if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;
                 if (e.key.key == SDLK_F8) lab.options.light.clouds = !lab.options.light.clouds;

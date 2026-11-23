@@ -917,6 +917,7 @@ public:
         // The hour of the day from the sim's clock, moving smoothly between ticks.
         const double ticks = double(shown_.tick % kTicksPerDay) + alpha;
         timeOfDay = ticks / double(kTicksPerDay) * 24.0;
+        if (scriptHour_ >= 0) timeOfDay = scriptHour_;   // AL-77 shots: "hour" pins the time of day
 
         if (startedAs_ && shown_.controlled != kNone) {
             startedAs_ = false;
@@ -1694,6 +1695,8 @@ private:
             // AL-70 shots: "anim" plays a state or interaction clip on the led person ("" = off)
             if (st.contains("anim")) scriptAnim_ = st["anim"].get<std::string>();
             if (st.contains("highlight")) scriptHighlight_ = st["highlight"].get<bool>();
+            // AL-77 shots: "hour" pins the time of day (the sim keeps its own clock), -1 lets it go
+            if (st.contains("hour")) scriptHour_ = st["hour"].get<double>();
             // checks: face_house turns the camera (and so WASD) to the nearest
             // house as drawn; probe writes where the person is and what stops
             // them to terrain_lab_out/probe.jsonl
@@ -3870,6 +3873,28 @@ private:
         obstacleSig_ = std::size_t(-1);   // the slopes changed
         SDL_Log("altera_game: %zu building and field pads laid on the ground", pads.size());
     }
+    // AL-77: the village fires as warm lights for the frame chain (a hearth
+    // inside a house would shine through its walls: not those).
+    void lights(const double eye[3], std::vector<terrain_core::EnbLight>& out) override {
+        out.clear();
+        for (const auto& b0 : buildings_) {
+            if (b0.type != "village_fire") continue;
+            BuildingSnap b;
+            float yaw = 0;
+            int mesh = -1;
+            if (!buildingPose(b0, b, yaw, mesh)) continue;
+            const double wx = originX_ + b.x, wy = originY_ + b.y;
+            const double rx = wx - eye[0], ry = wy - eye[1];
+            if (rx * rx + ry * ry > 220.0 * 220.0) continue;
+            terrain_core::EnbLight l;
+            l.position[0] = float(rx);
+            l.position[1] = float(ry);
+            l.position[2] = float(groundAt(wx, wy) + 0.7 - eye[2]);
+            l.radius = 16.0f;
+            l.flicker = float(std::fmod(wx * 0.37 + wy * 0.11, 6.283));
+            out.push_back(l);
+        }
+    }
     bool terrainChanged() override {
         const bool was = terrainChanged_;
         terrainChanged_ = false;
@@ -5091,6 +5116,7 @@ private:
     double scriptWalk_[3] = {0, 0, 0};
     bool scriptRun_ = false;
     std::string scriptAnim_;
+    double scriptHour_ = -1;        // AL-77 shots: "hour" pins the light's time of day (< 0: the sim's clock)
     bool scriptHighlight_ = true;   // AL-70 shots: "highlight": false draws people unlit by selection
     double zoom_ = 18.0, orbitYaw_ = 0.8, orbitPitch_ = 0.45;
     float vp_[16] = {};

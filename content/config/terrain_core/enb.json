@@ -1,0 +1,35 @@
+{
+ "comment": "AL-77: the frame chain after the scene (src/terrain_core/enb.hpp, assets/shaders/terrain_core/enb*.hlsl): the scene in half floats, then AO + contact shadows, atmosphere (more height fog, the sun's in-scatter with phase g, aerial perspective towards aerial_tint, a sun halo), bloom, light shafts, the eye's adaptation, a tone curve (none | aces | agx) and the grade (lift/gamma/gain, contrast round pivot, saturation, vibrance, split toning by the time of day: day / golden / night tints, a vignette that may sink into umber, film grain) and warm point lights (the game's fires: strength, how much is left by day, their glow in the air). `preset` is the start; the game and the lab cycle the presets with U (the file is read again) or take --enb NAME; --no-enb (or a preset with \"hdr\": false) is the old 8-bit path with no chain at all. A preset may name a \"base\" preset it starts from; anything it does not say is neutral, so \"classic\" is the old picture.",
+ "preset": "enb",
+ "presets": {
+  "enb": {
+   "comment": "Skyrim-with-ENB light in the project's dark 60s-fantasy key: deep but open shadows, warm amber light, cool blue-violet shade, haze that glows towards the sun, a soft painterly bloom, a little grain.",
+   "ao": {"strength": 1.0, "radius": 1.1, "distance": 160, "power": 1.35},
+   "contact_shadows": {"strength": 0.8, "length": 0.8, "distance": 45, "darkness": 0.5},
+   "atmosphere": {"fog_extra": 0.6, "sun_scatter": 0.8, "scatter_g": 0.72, "aerial": 0.25, "aerial_distance": 7000,
+                  "aerial_tint": [0.70, 0.80, 1.0], "sun_halo": 0.9},
+   "bloom": {"strength": 0.14, "threshold": 0.85, "knee": 0.6, "radius": 0.85},
+   "light_shafts": {"strength": 0.45, "decay": 0.965, "density": 0.85},
+   "exposure": {"exposure": 1.2, "adaptation": 0.6, "speed": 1.2, "min": 0.85, "max": 6.0, "key": 0.18},
+   "tone": {"curve": "aces", "linear": true},
+   "grade": {"contrast": 1.04, "pivot": 0.42, "saturation": 1.18, "vibrance": 0.25,
+             "lift": [0.018, 0.014, 0.028], "gamma": [1.05, 1.05, 1.04], "gain": [1.04, 1.0, 0.95]},
+   "split_tone": {"strength": 0.6, "balance": 0.0,
+                  "day": {"shadows": [0.92, 0.97, 1.08], "highlights": [1.05, 1.01, 0.93]},
+                  "golden": {"shadows": [0.86, 0.90, 1.12], "highlights": [1.14, 0.99, 0.80]},
+                  "night": {"shadows": [0.80, 0.90, 1.18], "highlights": [0.92, 0.97, 1.10]}},
+   "lens": {"vignette": 0.32, "vignette_reach": 1.1, "vignette_umber": 0.35, "grain": 0.028, "grain_size": 1.4},
+   "point_lights": {"strength": 2.4, "by_day": 0.12, "glow": 0.7}
+  },
+  "enb_soft": {
+   "comment": "The same light with less of the lens: no grain, a lighter vignette, AgX's gentler curve.",
+   "base": "enb",
+   "tone": {"curve": "agx", "linear": true},
+   "exposure": {"exposure": 1.15},
+   "lens": {"vignette": 0.18, "grain": 0.0}
+  },
+  "classic": {
+   "comment": "The picture before AL-77: nothing on, no tone curve (a clamp)."
+  }
+ }
+}
