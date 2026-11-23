@@ -201,6 +201,7 @@
   },
   {
    "id": "house",
+   "station": "table",
    "settlement": true,
    "per_family": 1,
    "owned": true,

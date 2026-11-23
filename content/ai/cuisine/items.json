@@ -1,0 +1,1040 @@
+{
+ "_doc": "AL-74 cuisine pack: dishes, drinks and household things made by the craft system (content/ai/craft forms/designs), merged before content/ai/expansion. value = base worth in coin of one plain unit, quality = how fine it is 0..1 (0.2 plain fare, 0.5 good, 0.8 festive). annotate: base/expansion items get these tags joined and the missing fields (value, quality, material) filled. _tags: the tag vocabulary other systems key on (trade, gifts, NPC tastes).",
+ "_tags": {
+  "kind": {
+   "food": "eaten for hunger",
+   "drink": "drunk for thirst",
+   "dish": "a cooked dish (not a raw ingredient)",
+   "raw": "as gathered",
+   "staple": "everyday fare",
+   "preserved": "keeps for months"
+  },
+  "making": {
+   "cooked": "boiled, roasted or stewed at the hearth",
+   "baked": "bread, pies, cakes",
+   "hot": "served hot (warms)"
+  },
+  "what": {
+   "meat": "meat",
+   "fish": "fish",
+   "veg": "vegetables, roots, greens",
+   "fruit": "apples, berries",
+   "grain": "porridge, grain",
+   "dairy": "milk, cheese, curds",
+   "egg": "eggs",
+   "mushroom": "mushrooms",
+   "nut": "nuts",
+   "sweet": "honey, sweets",
+   "herbal": "herbs, herb tea",
+   "alcohol": "ale, mead, cider, wine"
+  },
+  "worth": {
+   "festive": "for a feast or a guest",
+   "luxury": "dear, a fine gift or treat",
+   "ritual": "for wakes and rites",
+   "uncanny": "the village's dark-fantasy oddities (blood sausage, wake loaf, bone charm)"
+  },
+  "things": {
+   "household": "house goods",
+   "tableware": "spoons, trenchers, bowls",
+   "drinkware": "cups, tankards, jugs",
+   "kitchen": "pots, ladles, cauldron",
+   "container": "holds things",
+   "tool": "a tool",
+   "farming": "field tools",
+   "music": "an instrument",
+   "leisure": "for fun",
+   "game": "a game",
+   "toy": "a toy",
+   "child": "for children",
+   "grooming": "combs",
+   "faith": "faith things",
+   "charm": "a protective charm",
+   "light": "candles and holders",
+   "smoking": "pipes",
+   "gift": "a good present",
+   "wood": "wooden",
+   "bone": "bone",
+   "clay": "clay",
+   "metal": "metal",
+   "textile": "cloth"
+  }
+ },
+ "annotate": [
+  {
+   "id": "berries",
+   "add_tags": [
+    "fruit"
+   ],
+   "value": 0.5,
+   "quality": 0.1
+  },
+  {
+   "id": "roots",
+   "add_tags": [
+    "veg"
+   ],
+   "value": 0.5,
+   "quality": 0.05,
+   "material": "root"
+  },
+  {
+   "id": "mushrooms",
+   "add_tags": [
+    "mushroom"
+   ],
+   "value": 0.5,
+   "quality": 0.1,
+   "material": "mushroom"
+  },
+  {
+   "id": "meal",
+   "add_tags": [
+    "dish",
+    "staple"
+   ],
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "fish",
+   "add_tags": [
+    "fish"
+   ],
+   "value": 1,
+   "quality": 0.15,
+   "material": "fish_raw"
+  },
+  {
+   "id": "smoked_fish",
+   "add_tags": [
+    "fish"
+   ],
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "dried_meat",
+   "add_tags": [
+    "meat"
+   ],
+   "value": 2,
+   "quality": 0.25
+  },
+  {
+   "id": "dried_berries",
+   "add_tags": [
+    "fruit",
+    "sweet"
+   ],
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "grain",
+   "add_tags": [
+    "grain"
+   ],
+   "value": 0.5,
+   "quality": 0.05
+  },
+  {
+   "id": "vegetables",
+   "add_tags": [
+    "veg"
+   ],
+   "value": 1,
+   "quality": 0.1,
+   "material": "garden_veg"
+  },
+  {
+   "id": "eggs",
+   "add_tags": [
+    "egg"
+   ],
+   "value": 0.5,
+   "quality": 0.15
+  },
+  {
+   "id": "milk",
+   "add_tags": [
+    "dairy"
+   ],
+   "value": 0.5,
+   "quality": 0.15
+  },
+  {
+   "id": "cheese",
+   "add_tags": [
+    "dairy"
+   ],
+   "value": 2,
+   "quality": 0.4,
+   "material": "hard_cheese"
+  },
+  {
+   "id": "honey",
+   "add_tags": [
+    "sweet",
+    "luxury"
+   ],
+   "value": 2,
+   "quality": 0.5
+  },
+  {
+   "id": "apples",
+   "add_tags": [
+    "fruit"
+   ],
+   "value": 0.5,
+   "quality": 0.15
+  },
+  {
+   "id": "bread",
+   "add_tags": [
+    "baked",
+    "staple"
+   ],
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "ale",
+   "add_tags": [
+    "alcohol"
+   ],
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "cider",
+   "add_tags": [
+    "alcohol",
+    "fruit"
+   ],
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "mead",
+   "add_tags": [
+    "alcohol",
+    "sweet",
+    "luxury"
+   ],
+   "value": 3,
+   "quality": 0.55
+  },
+  {
+   "id": "hazelnuts",
+   "add_tags": [
+    "nut"
+   ],
+   "value": 0.5,
+   "quality": 0.15,
+   "material": "hazelnut"
+  },
+  {
+   "id": "wild_greens",
+   "add_tags": [
+    "veg"
+   ],
+   "value": 0.2,
+   "quality": 0.05,
+   "material": "greens"
+  },
+  {
+   "id": "meat",
+   "add_tags": [
+    "meat"
+   ],
+   "value": 1,
+   "quality": 0.25
+  },
+  {
+   "id": "herbs",
+   "add_tags": [
+    "herbal"
+   ],
+   "value": 0.5,
+   "quality": 0.1
+  },
+  {
+   "id": "dried_herbs",
+   "add_tags": [
+    "herbal"
+   ],
+   "value": 1,
+   "quality": 0.15
+  },
+  {
+   "id": "cloth",
+   "add_tags": [],
+   "value": 3,
+   "quality": 0.3
+  },
+  {
+   "id": "tunic",
+   "add_tags": [],
+   "value": 4,
+   "quality": 0.3
+  },
+  {
+   "id": "cloak",
+   "add_tags": [],
+   "value": 6,
+   "quality": 0.35
+  },
+  {
+   "id": "axe",
+   "add_tags": [],
+   "value": 4,
+   "quality": 0.3
+  },
+  {
+   "id": "spear",
+   "add_tags": [],
+   "value": 3,
+   "quality": 0.3
+  },
+  {
+   "id": "stone_blade",
+   "add_tags": [],
+   "value": 2,
+   "quality": 0.2
+  },
+  {
+   "id": "remedy",
+   "add_tags": [],
+   "value": 2,
+   "quality": 0.4
+  },
+  {
+   "id": "needle",
+   "add_tags": [],
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "cord",
+   "add_tags": [],
+   "value": 1,
+   "quality": 0.1
+  },
+  {
+   "id": "thread",
+   "add_tags": [],
+   "value": 0.5,
+   "quality": 0.1
+  },
+  {
+   "id": "spindle",
+   "add_tags": [
+    "household"
+   ],
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "fishing_line",
+   "add_tags": [
+    "fishing"
+   ],
+   "value": 2,
+   "quality": 0.3
+  },
+  {
+   "id": "coin",
+   "add_tags": [],
+   "value": 1,
+   "quality": 0.0
+  },
+  {
+   "id": "carved_toy",
+   "add_tags": [
+    "child",
+    "wood"
+   ],
+   "value": 2,
+   "quality": 0.4
+  }
+ ],
+ "items": [
+  {
+   "id": "honey_porridge",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "staple",
+    "sweet",
+    "grain"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 2,
+   "value": 1,
+   "quality": 0.25
+  },
+  {
+   "id": "milk_porridge",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "staple",
+    "dairy",
+    "grain"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 1.5,
+   "value": 1,
+   "quality": 0.25
+  },
+  {
+   "id": "mushroom_stew",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "veg",
+    "mushroom"
+   ],
+   "nutrition": 0.4,
+   "stack": 10,
+   "spoil_days": 2,
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "fish_soup",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "fish",
+    "veg"
+   ],
+   "nutrition": 0.5,
+   "stack": 10,
+   "spoil_days": 1.5,
+   "value": 2,
+   "quality": 0.35
+  },
+  {
+   "id": "garden_soup",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "veg"
+   ],
+   "nutrition": 0.4,
+   "stack": 10,
+   "spoil_days": 2,
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "meat_pie",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "meat",
+    "festive"
+   ],
+   "nutrition": 0.75,
+   "stack": 10,
+   "spoil_days": 4,
+   "value": 3,
+   "quality": 0.6
+  },
+  {
+   "id": "fish_pie",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "fish"
+   ],
+   "nutrition": 0.6,
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 3,
+   "quality": 0.5
+  },
+  {
+   "id": "berry_tart",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "sweet",
+    "fruit",
+    "luxury"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 3,
+   "quality": 0.65
+  },
+  {
+   "id": "apple_pie",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "sweet",
+    "fruit",
+    "festive"
+   ],
+   "nutrition": 0.5,
+   "stack": 10,
+   "spoil_days": 4,
+   "value": 3,
+   "quality": 0.6
+  },
+  {
+   "id": "honey_cake",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "sweet",
+    "luxury",
+    "festive"
+   ],
+   "nutrition": 0.5,
+   "stack": 10,
+   "spoil_days": 8,
+   "value": 4,
+   "quality": 0.75
+  },
+  {
+   "id": "nut_bread",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "staple",
+    "nut"
+   ],
+   "nutrition": 0.5,
+   "stack": 10,
+   "spoil_days": 10,
+   "value": 2,
+   "quality": 0.4
+  },
+  {
+   "id": "cheese_pie",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "dairy",
+    "festive"
+   ],
+   "nutrition": 0.6,
+   "stack": 10,
+   "spoil_days": 4,
+   "value": 3,
+   "quality": 0.6
+  },
+  {
+   "id": "wake_loaf",
+   "tags": [
+    "food",
+    "dish",
+    "baked",
+    "sweet",
+    "ritual",
+    "uncanny"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 10,
+   "value": 3,
+   "quality": 0.55
+  },
+  {
+   "id": "blood_sausage",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "meat",
+    "uncanny"
+   ],
+   "nutrition": 0.7,
+   "stack": 10,
+   "spoil_days": 12,
+   "value": 2,
+   "quality": 0.35
+  },
+  {
+   "id": "herb_roast",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "meat",
+    "luxury",
+    "festive"
+   ],
+   "nutrition": 0.8,
+   "stack": 10,
+   "spoil_days": 2,
+   "value": 4,
+   "quality": 0.7
+  },
+  {
+   "id": "roast_fish",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "fish"
+   ],
+   "nutrition": 0.45,
+   "stack": 10,
+   "spoil_days": 1.5,
+   "value": 2,
+   "quality": 0.35
+  },
+  {
+   "id": "baked_apples",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "sweet",
+    "fruit"
+   ],
+   "nutrition": 0.3,
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 1,
+   "quality": 0.35
+  },
+  {
+   "id": "baked_roots",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "veg"
+   ],
+   "nutrition": 0.35,
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "eggs_greens",
+   "tags": [
+    "food",
+    "dish",
+    "cooked",
+    "hot",
+    "veg",
+    "egg"
+   ],
+   "nutrition": 0.35,
+   "stack": 10,
+   "spoil_days": 1,
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "sweet_curd",
+   "tags": [
+    "food",
+    "dish",
+    "dairy",
+    "sweet"
+   ],
+   "nutrition": 0.35,
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 2,
+   "quality": 0.45
+  },
+  {
+   "id": "herb_tea",
+   "tags": [
+    "drink",
+    "hot",
+    "herbal"
+   ],
+   "stack": 10,
+   "spoil_days": 1,
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "honey_milk",
+   "tags": [
+    "drink",
+    "food",
+    "hot",
+    "sweet",
+    "dairy"
+   ],
+   "nutrition": 0.15,
+   "stack": 10,
+   "spoil_days": 1,
+   "value": 1,
+   "quality": 0.35
+  },
+  {
+   "id": "berry_wine",
+   "tags": [
+    "drink",
+    "alcohol",
+    "fruit",
+    "luxury"
+   ],
+   "material": "fruit_wine",
+   "nutrition": 0.1,
+   "stack": 10,
+   "spoil_days": 300,
+   "value": 4,
+   "quality": 0.65
+  },
+  {
+   "id": "mulled_wine",
+   "tags": [
+    "drink",
+    "alcohol",
+    "hot",
+    "sweet",
+    "luxury",
+    "festive"
+   ],
+   "nutrition": 0.1,
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 5,
+   "quality": 0.8
+  },
+  {
+   "id": "wooden_spoon",
+   "tags": [
+    "household",
+    "tableware",
+    "wood"
+   ],
+   "stack": 10,
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "ladle",
+   "tags": [
+    "household",
+    "kitchen",
+    "tableware",
+    "wood"
+   ],
+   "stack": 5,
+   "value": 1,
+   "quality": 0.25
+  },
+  {
+   "id": "trencher",
+   "tags": [
+    "household",
+    "tableware",
+    "wood"
+   ],
+   "stack": 10,
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "wooden_cup",
+   "tags": [
+    "household",
+    "tableware",
+    "drinkware",
+    "wood"
+   ],
+   "stack": 10,
+   "value": 1,
+   "quality": 0.25
+  },
+  {
+   "id": "tankard",
+   "tags": [
+    "household",
+    "tableware",
+    "drinkware",
+    "wood",
+    "gift"
+   ],
+   "stack": 5,
+   "value": 2,
+   "quality": 0.4
+  },
+  {
+   "id": "wooden_spade",
+   "tags": [
+    "tool",
+    "farming",
+    "wood"
+   ],
+   "stack": 1,
+   "value": 2,
+   "quality": 0.3
+  },
+  {
+   "id": "pitchfork",
+   "tags": [
+    "tool",
+    "farming",
+    "wood"
+   ],
+   "stack": 1,
+   "value": 2,
+   "quality": 0.3
+  },
+  {
+   "id": "broom",
+   "tags": [
+    "household",
+    "tool"
+   ],
+   "stack": 1,
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "drum",
+   "tags": [
+    "music",
+    "leisure",
+    "gift"
+   ],
+   "stack": 1,
+   "value": 4,
+   "quality": 0.55
+  },
+  {
+   "id": "bone_flute",
+   "tags": [
+    "music",
+    "leisure",
+    "gift",
+    "luxury",
+    "bone"
+   ],
+   "stack": 1,
+   "value": 4,
+   "quality": 0.6
+  },
+  {
+   "id": "bone_comb",
+   "tags": [
+    "grooming",
+    "gift",
+    "bone"
+   ],
+   "stack": 3,
+   "value": 2,
+   "quality": 0.45
+  },
+  {
+   "id": "bone_dice",
+   "tags": [
+    "game",
+    "leisure",
+    "gift",
+    "bone"
+   ],
+   "stack": 3,
+   "value": 2,
+   "quality": 0.4
+  },
+  {
+   "id": "bone_charm",
+   "tags": [
+    "faith",
+    "charm",
+    "gift",
+    "bone",
+    "uncanny"
+   ],
+   "stack": 3,
+   "value": 3,
+   "quality": 0.5
+  },
+  {
+   "id": "clay_jug",
+   "tags": [
+    "household",
+    "kitchen",
+    "drinkware",
+    "container",
+    "clay"
+   ],
+   "stack": 3,
+   "value": 2,
+   "quality": 0.35
+  },
+  {
+   "id": "clay_candlestick",
+   "tags": [
+    "household",
+    "light",
+    "gift",
+    "clay"
+   ],
+   "stack": 3,
+   "value": 2,
+   "quality": 0.4
+  },
+  {
+   "id": "clay_pipe",
+   "tags": [
+    "leisure",
+    "smoking",
+    "gift",
+    "clay"
+   ],
+   "stack": 3,
+   "value": 2,
+   "quality": 0.45
+  },
+  {
+   "id": "clay_whistle",
+   "tags": [
+    "toy",
+    "music",
+    "child",
+    "clay"
+   ],
+   "stack": 3,
+   "value": 1,
+   "quality": 0.3
+  },
+  {
+   "id": "rag_doll",
+   "tags": [
+    "toy",
+    "child",
+    "gift",
+    "textile"
+   ],
+   "stack": 1,
+   "value": 2,
+   "quality": 0.45
+  },
+  {
+   "id": "cauldron",
+   "tags": [
+    "household",
+    "kitchen",
+    "container",
+    "metal"
+   ],
+   "stack": 1,
+   "value": 6,
+   "quality": 0.5
+  },
+  {
+   "id": "sickle",
+   "tags": [
+    "tool",
+    "farming",
+    "metal"
+   ],
+   "stack": 1,
+   "value": 4,
+   "quality": 0.4
+  },
+  {
+   "id": "hoe",
+   "tags": [
+    "tool",
+    "farming",
+    "metal"
+   ],
+   "stack": 1,
+   "value": 4,
+   "quality": 0.4
+  },
+  {
+   "id": "bowl",
+   "tags": [
+    "household",
+    "tableware",
+    "kitchen"
+   ],
+   "stack": 10,
+   "value": 1,
+   "quality": 0.2
+  },
+  {
+   "id": "clay_pot",
+   "tags": [
+    "household",
+    "kitchen",
+    "container",
+    "clay"
+   ],
+   "stack": 3,
+   "value": 2,
+   "quality": 0.3
+  },
+  {
+   "id": "water",
+   "material": "water",
+   "tags": [
+    "drink",
+    "liquid",
+    "raw"
+   ],
+   "stack": 10,
+   "spoil_days": 3,
+   "value": 0,
+   "quality": 0.0
+  },
+  {
+   "id": "yeast",
+   "material": "yeast",
+   "tags": [
+    "ferment_agent",
+    "cooking"
+   ],
+   "stack": 10,
+   "spoil_days": 20,
+   "value": 0.5,
+   "quality": 0.1
+  },
+  {
+   "id": "bone",
+   "material": "bone",
+   "tags": [
+    "animal",
+    "bone",
+    "raw"
+   ],
+   "stack": 20,
+   "value": 0.2,
+   "quality": 0.0
+  }
+ ]
+}

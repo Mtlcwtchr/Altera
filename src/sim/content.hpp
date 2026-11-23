@@ -20,6 +20,8 @@ struct ItemDef {
     double toolWear = 0.0;  // chance per use that the tool breaks (stage 2)
     double spoilDays = 0.0; // 0 = keeps
     std::string material;   // crafting material it is (content/ai/craft/materials.json); empty = none
+    double value = 0.0;     // AL-74: base worth in coin of one plain unit (trade, gifts); 0 = not priced
+    double quality = 0.0;   // AL-74: how fine a thing it is 0..1 (0.2 plain fare, 0.5 good, 0.8+ festive)
 };
 
 // objects.json `crop`: a field sown from `seed` in a day-of-year window,

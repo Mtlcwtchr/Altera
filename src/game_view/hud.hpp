@@ -197,6 +197,7 @@ public:
     int backstoryPick = 0;
     bool backstoryBegin = false;   // Enter or a script: begin with the picked one
     std::string coinIcon = "values";
+    std::map<std::string, std::string> itemIcons; // AL-74: item id -> icon (content/ui/craft.json item_icons, tag_icons)
 
     // The menus (hud_menu.cpp): panels "menu" (the main menu), "pause",
     // "slots" (save or load) and "settings", filled by the game.

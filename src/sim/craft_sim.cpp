@@ -472,12 +472,36 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
     std::vector<InteractionDef> out;
     const CraftData& d = ct.craft;
     if (!d.loaded) return out;
-    // what the world offers: station tags by object type, tool tags by item
-    std::map<std::string, std::string> stationObject; // station tag -> object type
-    for (const auto& [type, od] : ct.objects)
-        if (const StationDef* s = d.station(od.station))
-            for (const auto& t : s->tags)
-                if (!stationObject.count(t)) stationObject[t] = type;
+    // what the world offers: object types that serve a step (its station tags, hot enough), tool tags by item
+    auto servingTypes = [&](const ProcessDef& p, int heat) {
+        std::set<std::string> out;
+        for (const auto& [type, od] : ct.objects) {
+            const StationDef* s = d.station(od.station);
+            if (!s) continue;
+            bool tagOk = p.stations.empty();
+            for (const auto& t : p.stations)
+                if (std::find(s->tags.begin(), s->tags.end(), t) != s->tags.end()) tagOk = true;
+            if (tagOk && (heat <= 0 || s->tempMax >= heat)) out.insert(type);
+        }
+        return out;
+    };
+    // AL-74: a homestead object (one per household: the hearth, the house's table) stands a
+    // few metres from the others, so one act may use several of them (craftWorkplace radius)
+    auto homestead = [&](const std::string& type) {
+        auto it = ct.objects.find(type);
+        return it != ct.objects.end() && it->second.perFamily > 0;
+    };
+    auto rank = [&](const std::string& type) { // lower = the better place for the act
+        auto it = ct.objects.find(type);
+        if (it == ct.objects.end()) return 3;
+        return it->second.perFamily > 0 ? 0 : it->second.perSettlement > 0 ? 1 : 2;
+    };
+    auto pick = [&](const std::set<std::string>& types) {
+        std::string best;
+        for (const auto& t : types)
+            if (best.empty() || rank(t) < rank(best)) best = t;
+        return best;
+    };
     std::map<std::string, std::string> toolItem; // tool tag -> item
     for (const auto& f : d.forms)
         if (!f.item.empty() && ct.items.count(f.item))
@@ -492,10 +516,20 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
         if (!f || f->item.empty() || !ct.items.count(f->item)) continue;
         std::map<std::string, int> need;  // item -> count
         std::set<std::string> tools, carried;
-        std::string objType;
+        std::vector<std::set<std::string>> places; // per step that needs a place: the object types serving it
+        int heatPlace = -1;                         // index in places of the first heated step
         bool ok = true;
         int time = 0;
         std::string skill;
+        std::vector<std::string> mainTags; // the design's first material: picks the skill by skill_by
+        for (const auto& st : ds.steps)
+            for (const auto& [slot, ins] : st.slots)
+                for (const auto& in : ins)
+                    if (mainTags.empty() && in.ref.rfind("mat:", 0) == 0)
+                        if (const MaterialDef* m = d.material(in.ref.substr(4))) {
+                            mainTags = m->tags;
+                            mainTags.push_back(m->id);
+                        }
         for (const auto& st : ds.steps) {
             const ProcessDef* p = d.process(st.process);
             if (!p) {
@@ -504,6 +538,11 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
             }
             time += p->time;
             skill = p->skill;
+            for (const auto& [tag, sk] : p->skillBy)
+                if (std::find(mainTags.begin(), mainTags.end(), tag) != mainTags.end()) {
+                    skill = sk;
+                    break;
+                }
             for (const auto& [slot, ins] : st.slots)
                 for (const auto& in : ins) {
                     if (in.ref.rfind("step:", 0) == 0) continue;
@@ -523,17 +562,42 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
                 else tools.insert(item);
             }
             if (!p->stations.empty() || p->heatMin > 0) {
-                std::string type, port;
-                for (const auto& t : p->stations) {
-                    if (stationObject.count(t) && type.empty()) type = stationObject[t];
+                const int heat = std::max(p->heatMin, p->op == ProcOp::Heat ? st.heat : 0);
+                std::string port;
+                for (const auto& t : p->stations)
                     if (portable.count(t) && port.empty()) port = portable[t];
-                }
                 if (!port.empty()) carried.insert(port);
-                else if (!type.empty()) {
-                    if (!objType.empty() && objType != type) ok = false; // one place per generated act
-                    objType = type;
-                } else ok = false;
+                else {
+                    std::set<std::string> types = servingTypes(*p, heat);
+                    if (types.empty()) ok = false;
+                    if (heat > 0 && heatPlace < 0) heatPlace = static_cast<int>(places.size());
+                    places.push_back(std::move(types));
+                }
             }
+        }
+        // the place of the act: one object type serving every step, else a homestead object
+        // (of the heated step if any) with every other step served at the homestead too
+        std::string objType;
+        if (ok && !places.empty()) {
+            std::set<std::string> all = places.front();
+            for (size_t i = 1; i < places.size(); ++i) {
+                std::set<std::string> keep;
+                for (const auto& t : all)
+                    if (places[i].count(t)) keep.insert(t);
+                all.swap(keep);
+            }
+            objType = pick(all);
+            if (objType.empty()) {
+                bool home = true;
+                for (const auto& s : places) home = home && std::any_of(s.begin(), s.end(), homestead);
+                if (home) {
+                    std::set<std::string> first;
+                    for (const auto& t : places[static_cast<size_t>(std::max(0, heatPlace))])
+                        if (homestead(t)) first.insert(t);
+                    objType = pick(first);
+                }
+            }
+            if (objType.empty()) ok = false;
         }
         if (!ok) continue;
         InteractionDef a;
@@ -541,6 +605,10 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
         a.category = "craft";
         a.target = objType.empty() ? "self" : "object:" + objType;
         a.targetType = objType;
+        const auto od = ct.objects.find(objType);
+        const bool owned = od != ct.objects.end() && (od->second.owned || od->second.perFamily > 0);
+        if (owned) a.pre.push_back(parseCondition("target_owner:family")); // one's own hearth, not a neighbour's
+        if (owned && heatPlace >= 0 && ct.items.count("firewood")) a.pre.push_back(parseCondition("home:firewood>=1"));
         for (const auto& [item, n] : need) a.pre.push_back(parseCondition("has:" + item + ">=" + std::to_string(n)));
         for (const auto& t : tools) a.pre.push_back(parseCondition("has:" + t + ">=1"));
         for (const auto& t : carried) a.pre.push_back(parseCondition("has:" + t + ">=1"));

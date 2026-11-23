@@ -35,6 +35,9 @@
   "bark": "m_wood", "fruit": "m_plant", "flour": "m_food", "sap": "c_drop", "fat": "c_drop", "wax": "c_drop",
   "mineral": "s_lump", "ash": "s_lump", "alcohol": "c_drop", "curd": "m_food"
  },
+ "_item_icons": "AL-74: the inventory icon of an item (src/game_view Hud::itemIcon): item_icons by id, else tag_icons, the first of the item's tags in this order; else the old name match.",
+ "item_icons": {"bread": "i_bread", "cheese": "i_cheese", "milk": "i_cup", "honey": "i_sweet", "bowl": "i_bowl", "trencher": "i_bowl", "clay_pot": "i_bowl", "cauldron": "i_bowl", "clay_jug": "i_jug", "honey_porridge": "i_soup", "milk_porridge": "i_soup", "fish_soup": "i_soup", "baked_roots": "i_food", "eggs_greens": "i_food", "meal": "i_food", "herbs": "i_herb", "dried_herbs": "i_herb"},
+ "tag_icons": [["music", "i_music"], ["toy", "i_toy"], ["charm", "i_charm"], ["smoking", "i_pipe"], ["alcohol", "i_wine"], ["drinkware", "i_cup"], ["drink", "i_cup"], ["fish", "i_fish"], ["meat", "i_meat"], ["dairy", "i_cheese"], ["baked", "i_pie"], ["sweet", "i_sweet"], ["hot", "i_soup"], ["tableware", "i_spoon"], ["kitchen", "i_bowl"], ["mushroom", "i_food"], ["veg", "i_herb"], ["fruit", "i_food"], ["dish", "i_food"], ["light", "i_torch"]],
  "heat_steps": 4,
  "wishes": [
   {"id": "cut", "icon": "w_cut", "needs": ["edge"]},

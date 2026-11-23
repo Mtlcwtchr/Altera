@@ -2157,6 +2157,8 @@ void Hud::journalBox(const Snapshot& s, float W, float H) {
 }
 
 std::string Hud::itemIcon(const std::string& id) const {
+    // AL-74: by id or tag (content/ui/craft.json); an icon the atlas lacks yet falls back to the name match
+    if (auto it = itemIcons.find(id); it != itemIcons.end() && iconIndex_.count(it->second)) return it->second;
     static const std::pair<const char*, const char*> kIcons[] = {
         {"knife", "i_knife"}, {"blade", "i_knife"}, {"axe", "i_tool"}, {"spear", "i_knife"}, {"bread", "i_bread"},
         {"meal", "i_food"}, {"berries", "i_food"}, {"roots", "i_food"}, {"mushrooms", "i_food"}, {"meat", "i_food"},

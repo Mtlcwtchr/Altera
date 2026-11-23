@@ -1,0 +1,21 @@
+[
+ {"at": 2, "select": 0, "speed": 1},
+ {"at": 4, "craft_kit": true},
+ {"at": 6, "panel": "workshop", "craft_tab": 1},
+ {"at": 8, "shot": "al74_cuisine_book.png"},
+ {"at": 9, "craft_design": "honey_porridge"},
+ {"at": 12, "shot": "al74_cuisine_porridge.png"},
+ {"at": 13, "craft_close": true, "craft_design": "meat_pie"},
+ {"at": 16, "shot": "al74_cuisine_meat_pie.png"},
+ {"at": 17, "craft_close": true, "craft_design": "fish_soup"},
+ {"at": 20, "craft_close": true, "craft_design": "bone_flute"},
+ {"at": 23, "shot": "al74_cuisine_flute.png"},
+ {"at": 24, "craft_close": true, "craft_design": "tankard"},
+ {"at": 27, "craft_close": true, "craft_tab": 2},
+ {"at": 29, "shot": "al74_cuisine_things.png"},
+ {"at": 30, "panel": "inventory"},
+ {"at": 32, "shot": "al74_cuisine_inventory_icons.png"},
+ {"at": 33, "panel": "none", "speed": 3},
+ {"at": 60, "shot": "al74_cuisine_village.png"},
+ {"at": 61, "quit": true}
+]
