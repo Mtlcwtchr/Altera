@@ -285,3 +285,33 @@ TEST(altera_sim_remove_objects_in_one_pass) {
     w.run(6);   // the world goes on without them
     CHECK(!w.objectsOfType("house").empty());
 }
+
+// AL-78: one works at a thing from beside it - the well's rim, not its middle.
+TEST(altera_sim_work_beside_the_thing) {
+    World w = realWorld();
+    const WorldObject* well = nullptr;
+    for (const auto& [id, o] : w.objects())
+        if (o.type == "well") well = &o;
+    Character* me = nullptr;
+    for (auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.alive && c.body.stage() == "adult" && well && dist(c.pos, well->pos) > 5.0) {
+            me = &c;
+            break;
+        }
+    CHECK(well && me);
+    if (!well || !me) return;
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", me->id}})).result, kOk);
+    CHECK_EQ(w.applyNow(cmdOf("perform", {{"id", me->id}, {"interaction", "drink_from_well"}, {"target", well->id}})).result,
+             kOk);
+    bool at = false;
+    for (int i = 0; i < 8; ++i) {
+        w.step();
+        if (me->ai.fsm.interaction == "drink_from_well") {
+            at = true;
+            CHECK(dist(me->pos, well->pos) > 1.0);
+            CHECK(dist(me->pos, well->pos) < 1.6);
+        }
+    }
+    dumpTrace(*me, 0);
+    CHECK(at);
+}

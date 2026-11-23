@@ -105,6 +105,7 @@ struct ObjectDef {
     Tick regrowEvery = 0;
     std::vector<std::string> biomes;
     double perKm2 = 0.0;
+    double standM = 0.0;   // AL-78: how far from its middle one stands to work at it (the well's rim, a trunk)
     bool owned = false;
     bool settlement = false;
     int perFamily = 0;
