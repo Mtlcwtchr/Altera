@@ -27,8 +27,6 @@ float wrapAngle(float a) {
     return a;
 }
 
-const char* kSlotIconsE[] = {"body", "safety", "belonging", "esteem", "calling", "wants", "people", "values"};
-
 } // namespace
 
 void Hud::edgeHud(const Snapshot& s, const ActorSnap* sel, float W, float H) {
@@ -42,8 +40,7 @@ void Hud::edgeHud(const Snapshot& s, const ActorSnap* sel, float W, float H) {
     edgeTracker(s, ox, band);
     caseCard(s, ox + band - 60 - 480, compact_ ? 170.f : 262.f, 480);   // AL-67
     if (sel && !sel->animal) {
-        edgeVitals(s, *sel, ox, H);
-        edgeQueue(s, ox, H);
+        edgeNameplate(s, *sel, ox, H);   // AL-80: no portrait; the bars, the cast and the vitals: edgeBars
     } else if (sel) {
         const Rect r{ox + 60, H - 110, 320, 62};
         glass(r, true);
@@ -225,108 +222,46 @@ void Hud::edgeTracker(const Snapshot& s, float ox, float band) {
     }
 }
 
-// Bottom left: the portrait in a double diamond, the name in capitals, the
-// mood and three thin bars (health, strength, spirit); over them the status
-// groups as diamonds with a short level strip under each, the group's card
-// growing over them.
-void Hud::edgeVitals(const Snapshot& s, const ActorSnap& a, float ox, float H) {
-    const float pd = compact_ ? 84.f : 96.f, ph = pd * 0.7071f;
-    const float pcx = ox + 70 + ph, pcy = H - 56 - ph;
-    diamond(pcx, pcy, pd, false, true);
-    portrait(a, pcx, pcy, ph - 7);
-    if (clicked({pcx - ph * 0.7f, pcy - ph * 0.7f, ph * 1.4f, ph * 1.4f})) panel = panel == "sheet" ? "none" : "sheet";
-    const float tx = pcx + ph + 24, bw = 300;
-    const int moodLevel = std::clamp(int((s.detail.mood + 1.0) * 2.5), 0, 4);
-    const std::string shownName = ui_->fit(a.name, bw - 30, 20 / 15.f, true);
-    caps(tx, pcy - 48, shownName, kText, 20, 0.14f, true, true);
-    // AL-67: the player's own person can be named, with the cases
-    if (a.player || a.id == s.controlled)
-        if (diamondButton(tx + capsW(shownName, 20, 0.14f) + 22, pcy - 38, 20, "a_rename", false, host_->text("hud.name.open")))
-            openName(a.id);
-    caps(tx, pcy - 20, host_->text("hud.mood." + std::to_string(moodLevel)), kGold, 12, 0.1f, false, true);
-    const double spirit = std::clamp(0.5 + s.detail.mood * 0.5, 0.0, 1.0);
-    const double strength = std::clamp(1.0 - s.detail.fatigue, 0.0, 1.0);
-    const HudPalette& P = hudPalette();
-    const float bh = P.theme.size("bar", 6.0f);
-    const struct {
-        double v;
-        Colour c;
-        const char* tip;
-    } bars[] = {{a.hp, P.red, "hud.vital.health"}, {strength, P.grn, "hud.edge.strength"}, {spirit, P.blu, "hud.edge.spirit"}};
-    float by = pcy + 2;
-    for (const auto& b : bars) {
-        const Rect r{tx, by, bw, bh};
-        frameBar(r, float(b.v), b.c);
-        if (ui_->hovered({r.x, r.y - 4, r.w, r.h + 8}))
-            tipAt(r.x + r.w * 0.5f, r.bottom() + 8, host_->text(b.tip) + " " + std::to_string(int(std::lround(b.v * 100))));
-        by += bh + 10;
-    }
-
-    // the status groups: five needs, then wants, people and values a little apart
-    const float row = pcy - ph - 60;
-    float sx = ox + 80 + 36;
-    int hovered = -1;
-    float cxs[8], ds[8];
-    for (int k = 0; k < 8; ++k) {
-        ds[k] = k < 5 ? 50.f : 40.f;
-        cxs[k] = sx;
-        sx += k == 4 ? 82.f : k < 5 ? 66.f : 56.f;
-        const float h = ds[k] * 0.7071f;
-        if (ui_->hovered({cxs[k] - h, row - h, h * 2, h * 2})) hovered = k;
-    }
-    if (hovered >= 0) hover_ = hovered;
-    else if (!ui_->hovered({ox + 60, row - 40, sx - ox - 60, 80})) hover_ = -1;
-    const int shown = hover_ >= 0 ? hover_ : pin_;
-    for (int k = 0; k < 8; ++k) {
-        const float d = ds[k], h = d * 0.7071f, cx = cxs[k];
-        const bool on = k == shown;
-        const double v = k < 5 ? tierValue(s, a, k) : k == 6 ? 0.5 : 0.6;
-        diamond(cx, row, d, on, false);
-        icon(kSlotIconsE[k], {cx - d * 0.24f, row - d * 0.24f, d * 0.48f, d * 0.48f}, on ? kGoldPale : kText);
-        if (k < 5) {
-            const Colour lc = v < 0.35 ? P.red : v < 0.55 ? P.mid : kGold;
-            const Rect strip{cx - 22, row + h + 6, 44, 3};
-            ui_->rect(strip, kText.withAlpha(0.2f));
-            ui_->rect({strip.x, strip.y, strip.w * float(std::clamp(v, 0.0, 1.0)), strip.h}, lc);
-        }
-        if (clicked({cx - h, row - h, h * 2, h * 2})) pin_ = pin_ == k ? -1 : k;
-    }
-    if (shown >= 0) slotCard(s, a, shown, ox + 60, row - 50, cxs[shown], 410);
-}
-
-// The queue: what the person does now and next, as diamonds right of the bars.
-void Hud::edgeQueue(const Snapshot& s, float ox, float H) {
-    const auto& q = s.detail.wants;
-    if (q.empty()) return;
-    const float d = 40, h = d * 0.7071f, cy = H - 64 - h;
-    float cx = ox + (compact_ ? 520.f : 580.f);
-    for (std::size_t i = 0; i < q.size() && i < 4; ++i) {
-        const Rect box{cx - h, cy - h, h * 2, h * 2};
-        diamond(cx, cy, d, i == 0, false);
-        icon(i == 0 ? "play" : "wants", {cx - 10, cy - 10, 20, 20}, kText.withAlpha(i == 0 ? 1.f : 0.7f));
-        if (ui_->hovered(box)) tipAt(cx, box.bottom() + 6, q[i]);
-        cx += 52;
-    }
-}
-
-// The bar of whom the player aims at (or points to): the "enemy bar" of the
-// reference, the medallion carrying the act, the name and the liking under it.
+// The bar of whom the player aims at (or points to), under the compass as
+// the enemy bar of Skyrim (AL-80): the name and who they are, how they feel
+// towards the person; the bar (health in a fight, else the liking) with a
+// diamond medallion carrying what they do now, named under it.
 void Hud::edgeTarget(const Snapshot& s, const ActorSnap* sel, float ox, float band, float H) {
+    (void)H;
     EntityId id = aim != sim::kNone ? aim : hoverActor;
     if (sel && id == sel->id) id = sim::kNone;
     const ActorSnap* t = id != sim::kNone ? actor(s, id) : nullptr;
     if (!t) return;
-    const float w = compact_ ? 440.f : 560.f;
-    const Rect r{ox + band * 0.5f - w * 0.5f, H - 58 - 44, w, 14};
-    filiBar(r, float(t->alive ? t->hp : 0), hudPalette().red, t->animal ? "hand" : "w_social");
-    std::string sub;
-    for (const auto& rel : s.detail.relations)
-        if (rel.id == t->id) sub = host_->text("hud.edge.affinity", {{"n", int(std::lround(rel.affinity * 100))}});
+    const float cx = ox + band * 0.5f;
+    const float top = (compact_ ? 44.f : 52.f) + 40 + 22;
+    const float w = compact_ ? 360.f : 460.f;
+    std::string who;
+    const RelSnap* rel = nullptr;
+    for (const auto& r : s.detail.relations)
+        if (r.id == t->id) {
+            rel = &r;
+            if (!r.kin.empty()) who = host_->text("hud.rel." + r.kin);
+        }
+    if (who.empty() && !t->animal && !t->role.empty()) who = t->role;
     const float nw = capsW(t->name, 17, 0.12f, false);
-    const float sw = sub.empty() ? 0 : textW(" · " + sub, 14);
-    const float x = ox + band * 0.5f - (nw + sw) * 0.5f;
-    caps(x, r.bottom() + 10, t->name, kText, 17, 0.12f, false, true);
-    if (!sub.empty()) label(x + nw, r.bottom() + 12, " · " + sub, kMute, 14, true);
+    const float sw = who.empty() ? 0 : textW(" · " + who, 14);
+    const float x = cx - (nw + sw) * 0.5f;
+    caps(x, top, t->name, kText, 17, 0.12f, false, true);
+    if (!who.empty()) label(x + nw, top + 2, " · " + who, kMute, 14, true);
+    std::string feel;
+    if (rel) feel = host_->text("hud.edge.affinity", {{"n", int(std::lround(rel->affinity * 100))}});
+    else if (!t->animal) feel = host_->text("hud.bar.stranger");
+    if (!feel.empty()) label(cx - textW(feel, 12) * 0.5f, top + 24, feel, kMute, 12, true);
+    const bool fight = t->fighting || (sel && sel->fighting);
+    const Rect r{cx - w * 0.5f, top + 50, w, 12};
+    const std::string medal = !t->interaction.empty() ? barIcon({"act", t->interaction, 0}) : (t->animal ? "hand" : "w_social");
+    if (fight || t->animal) filiBar(r, float(t->alive ? t->hp : 0), hudPalette().red, medal);
+    else filiBar(r, rel ? float(std::clamp((rel->affinity + 1) * 0.5, 0.0, 1.0)) : 0.5f, hudPalette().grn, medal);
+    const std::string doing = !t->alive ? host_->text("game.dead")
+                            : !t->interaction.empty() ? host_->interactionName(t->interaction)
+                                                      : host_->text("game.fsm." + t->state);
+    const std::string d = ui_->fit(doing, w, 12 / 15.f);
+    label(cx - textW(d, 12) * 0.5f, r.bottom() + 14, d, kText.withAlpha(0.85f), 12, true);
 }
 
 // Bottom right: the day, the season and weather; pause and speeds as diamonds;
@@ -432,7 +367,7 @@ void Hud::edgeSkillToast(const Snapshot& s, const ActorSnap* sel, float ox, floa
                        skillToasts_.end());
     if (skillToasts_.empty()) return;
     const SkillToast& t = skillToasts_.front();
-    const float w = 460, h = 76, x = ox + band * 0.5f - w * 0.5f, y = compact_ ? 120.f : 150.f;
+    const float w = 460, h = 76, x = ox + band * 0.5f - w * 0.5f, y = compact_ ? 196.f : 236.f;
     const float fade = float(std::clamp(std::min((clock_ - t.born) / 0.15, (5.0 - (clock_ - t.born)) / 0.5), 0.0, 1.0));
     gradRect({x, y, w * 0.2f, h}, kRim.withAlpha(0), kRim.withAlpha(0.8f * fade), false);
     ui_->rect({x + w * 0.2f, y, w * 0.6f, h}, kRim.withAlpha(0.8f * fade));

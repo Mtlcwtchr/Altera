@@ -255,6 +255,15 @@ bool handle(World& w, Command& cmd) {
         else resumeSuspended(w, *c, "control.confirmed");
         return true;
     }
+    // AL-80: a task the player queued, taken back (the quick bars' queue, RMB)
+    if (t == "unqueue") {
+        Character* c = nullptr;
+        requireControl(w, cmd, c);
+        const int i = cmd.args.value("index", -1);
+        if (i < 0 || i >= int(c->ai.queue.size())) cmd.result = "rejected:no_such_task";
+        else c->ai.queue.erase(c->ai.queue.begin() + i);
+        return true;
+    }
     if (t == "cancel_goal") {
         Character* c = nullptr;
         requireControl(w, cmd, c);

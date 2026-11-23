@@ -21,6 +21,7 @@
 #include <SDL3/SDL.h>
 
 #include "engine/ui/ui.hpp"
+#include "game_view/hotbar.hpp"
 #include "game_view/snapshot.hpp"
 #include "sim/core.hpp"
 #include "terrain_core/world_gen.hpp"
@@ -77,6 +78,19 @@ public:
         (void)sex;
         return sim::Json{{"nom", name}};
     }
+    // AL-80: the quick bars. What an act is done to and its sphere
+    // ({target, category} of interactions.json), the act that uses up a thing
+    // of the bag ("" none), and the acts the sim should check for the bars
+    // (Snapshot::barActs) against the person chosen.
+    virtual sim::Json actMeta(const std::string& id) const {
+        (void)id;
+        return sim::Json::object();
+    }
+    virtual std::string itemAct(const std::string& item) const {
+        (void)item;
+        return "";
+    }
+    virtual void barCheck(const std::vector<std::string>& acts, EntityId target) { (void)acts, (void)target; }
 };
 
 class Hud {
@@ -218,6 +232,25 @@ public:
     std::vector<std::pair<std::string, std::string>> themeList;   // (id, loc key of its name)
     std::string settingsStyle = "edge";
     int settingsScale = 100;
+    // AL-80: the quick bars (every person's layout, kept in the save), the
+    // second row shown, the vitals always shown (else full ones fade away)
+    Hotbars hotbars;
+    bool settingsBar2 = true, settingsVitals = false;
+    void pressSlot(int bar, int slot) { keyQueue_.push_back({bar, slot}); }   // keys 1-8, Shift+1-8
+    void turnBarPage(int step) { pageSteps_ += step; }                        // Shift + the mouse wheel
+    bool aiming() const { return aiming_; }
+    void cancelAim() { aiming_ = false; }
+    // a click on a person while the aim cursor is up: the slot's act on them (true: taken)
+    bool aimAt(EntityId id) {
+        if (!aiming_) return false;
+        aimPicked_ = id;
+        return true;
+    }
+    bool talking() const { return talkOpen_; }
+    void closeTalk() {
+        talkClosed_ = stripPartner_;
+        talkOpen_ = false;
+    }
     bool inMenu() const {
         return panel == "menu" || panel == "pause" || panel == "slots" || panel == "settings" || panel == "world";
     }
@@ -284,11 +317,47 @@ private:
     void edgeMenu(float ox, float band);
     void edgeFamily(const Snapshot& s, const ActorSnap* sel, float ox);
     void edgeTracker(const Snapshot& s, float ox, float band);
-    void edgeVitals(const Snapshot& s, const ActorSnap& a, float ox, float H);
-    void edgeQueue(const Snapshot& s, float ox, float H);
     void edgeTarget(const Snapshot& s, const ActorSnap* sel, float ox, float band, float H);
     void edgeClock(const Snapshot& s, float ox, float band, float H);
     void edgeSkillToast(const Snapshot& s, const ActorSnap* sel, float ox, float band);
+    // AL-80 (hud_edge_bar.cpp): the quick bars, the act going on over them,
+    // the vitals at their sides, the name line with the needs bottom left
+    void edgeBars(const Snapshot& s, const ActorSnap* sel, float W, float H);
+    void edgeCast(const Snapshot& s, const ActorSnap& me, float cx, float y);
+    void edgeNameplate(const Snapshot& s, const ActorSnap& a, float ox, float H);
+    void edgeSideVitals(const Snapshot& s, const ActorSnap& a, float x0, float x1, float midY, float underY);
+    void chamfer(const ui::Rect& r, float cut, const ui::Colour& fill, const ui::Colour& edge, float lw, bool dashed = false);
+    std::string barIcon(const BarRef& r) const;
+    std::string barName(const BarRef& r) const;
+    void useSlot(const Snapshot& s, const BarRef& r, EntityId forced = sim::kNone);
+    void aimMenu(const Snapshot& s);
+    float barTop_ = 0;   // this frame: the top of the quick bars (the talk goes over them)
+    std::vector<std::pair<int, int>> keyQueue_;
+    int pageSteps_ = 0;
+    bool aiming_ = false;
+    BarRef aimRef_;
+    EntityId aimPicked_ = sim::kNone;
+    // a press that may become a drag onto a bar (from the wheel, the bag, the sheet, a slot)
+    struct BarPress {
+        BarRef ref;
+        std::string key;          // what was pressed ("wheel:<id>", "goal:<id>", "slot")
+        int bar = -1, page = 0, slot = -1;
+        float x = 0, y = 0;
+        bool on = false, dragging = false;
+    };
+    BarPress barPress_;
+    std::string invDragWas_;   // the bag's thing dragged when the frame began
+    struct AimMenu {
+        bool open = false;
+        int bar = 0, page = 0, slot = 0;
+        float x = 0, y = 0;
+    };
+    AimMenu aimMenu_;
+    std::map<std::string, double> slotFlash_;   // "bar:slot" -> when it was used
+    double vitalSeen_[3] = {-1, -1, -1}, vitalAt_[3] = {0, 0, 0};
+    bool talkOpen_ = false;
+    EntityId talkClosed_ = sim::kNone;
+    int talkPick_ = 0, talkKey_ = -1;
     // AL-65: an NPC's ask (yes / no, its time running out) and the followers' chip
     void socialAsk(const Snapshot& s, float W, float H);
     void followerChip(const Snapshot& s, float x, float y);
@@ -455,6 +524,8 @@ private:
         int kind = 0;        // 0 info, 1 good, 2 bad, 3 a line said
         bool mine = false;   // said by the player's person
         double born = 0;
+        EntityId speaker = sim::kNone;   // AL-80: whose line (their diamond glows)
+        double life = 6;                 // AL-80: how long the line stays
     };
     std::vector<StripRow> strip_;
     int stripFbSeq_ = 0;

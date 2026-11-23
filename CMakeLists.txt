@@ -658,7 +658,7 @@ if(ASR_BUILD_CLIENT)
     add_library(altera_game_view STATIC src/game_view/sim_game.cpp src/game_view/loading_screen.cpp
                                        src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
                                        src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
-                                       src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_social.cpp
+                                       src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_bar.cpp src/game_view/hud_edge_social.cpp
                                        src/game_view/hud_edge_screens.cpp src/game_view/hud_world.cpp
                                        src/game_view/saves.cpp)
     target_include_directories(altera_game_view PUBLIC src)
@@ -819,7 +819,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_village_life.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp
+            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_hotbar.cpp
             tests/test_altera_sim_dialogue_corpus.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
