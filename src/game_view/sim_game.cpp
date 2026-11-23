@@ -1816,7 +1816,7 @@ private:
                     }
                 }
             if (st.value("trade_accept", false) && shown_.controlled != kNone && wheelWanted_ != kNone)
-                command("trade_accept", {{"id", shown_.controlled}, {"target", wheelWanted_}});
+                command("trade_accept", {{"id", shown_.controlled}, {"target", wheelWanted_.load()}});
             if (st.contains("act_thing"))
                 if (const ActorSnap* me = actor(shown_.controlled)) {
                     const std::string ty = st["act_thing"][0].get<std::string>();
