@@ -1,5 +1,5 @@
 {
- "_doc": "AL-75: trade, barter, treats and gifts (src/sim/trade.cpp). Everything is in coins (item coin = 1). An item's worth to a person = base (values, else the best of tag_values, + nutrition) x quality (a made thing's q) x rarity (how few there are in the world) x need (hunger for food, thirst for drink, none or too many of it) x taste (the person's likes/dislikes by category). Categories match by item tags first (so new dishes work by their tags), then by material, then by the listed ids (a stop-gap until the items carry the tag). Taste comes from traits (trait_taste) and from the person's own seed (seed_likes/seed_dislikes). A deal is offered, the other side weighs it aloud: accepts, counters (asks more coin or less goods) or refuses with the reason.",
+ "_doc": "AL-75: trade, barter, treats and gifts (src/sim/trade.cpp). Everything is in coins (item coin = 1). An item's worth to a person = base (the item's own value from items.json / cuisine (AL-74), else values here, else the best of tag_values, + nutrition) x quality (a made thing's q) x rarity (how few there are in the world) x need (hunger for food, thirst for drink, none or too many of it) x taste (the person's likes/dislikes by category). Categories match by item tags first (so new dishes work by their tags), then by material, then by the listed ids (a stop-gap until the items carry the tag). Taste comes from traits (trait_taste) and from the person's own seed (seed_likes/seed_dislikes). A deal is offered, the other side weighs it aloud: accepts, counters (asks more coin or less goods) or refuses with the reason.",
  "config": {
   "range_m": 6.0,
   "counter_min": 0.6,
@@ -61,12 +61,12 @@
  "categories": {
   "food":     {"tags": ["food"]},
   "drink":    {"tags": ["drink"]},
-  "cooked":   {"tags": ["cooked"]},
+  "cooked":   {"tags": ["cooked", "baked", "dish"]},
   "sweet":    {"tags": ["sweet"], "materials": ["honey", "apple", "berries"], "items": ["honey", "apples", "berries", "dried_berries", "mead", "cider"]},
   "meat":     {"tags": ["meat"], "materials": ["meat_raw"], "items": ["meat", "dried_meat"]},
   "fish":     {"tags": ["fish"], "items": ["fish", "smoked_fish"]},
   "alcohol":  {"tags": ["alcohol"], "items": ["ale", "cider", "mead", "wine"]},
-  "luxury":   {"tags": ["luxury", "gift", "magic"], "min_value": 12},
+  "luxury":   {"tags": ["luxury", "festive", "gift", "magic"], "min_value": 12, "min_quality": 0.8},
   "tool":     {"tags": ["tool"]},
   "weapon":   {"tags": ["weapon"]},
   "clothing": {"tags": ["clothing", "armour"]},

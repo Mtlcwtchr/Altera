@@ -50,6 +50,7 @@ struct TradeRole {
 struct TasteCategory {
     std::vector<std::string> tags, materials, items;
     double minValue = -1.0;
+    double minQuality = -1.0; // ItemDef.quality (AL-74): a fine thing falls in by itself
 };
 
 struct TradeRules {
@@ -76,7 +77,8 @@ const TradeRules* tradeRules(const Content& c);
 // --- worth ---------------------------------------------------------------------
 // The categories an item falls in (trade.json categories).
 std::vector<std::string> itemCategories(const Content& c, const std::string& item);
-// The base worth in coins (values, else the best tag value, + nutrition).
+// The base worth in coins: ItemDef.value (AL-74) when priced, else trade.json values,
+// else the best tag value + nutrition.
 double baseValue(const Content& c, const std::string& item);
 // The quality 0..1 of the best made `item` `holder` has (0.5 when none is made).
 double itemQuality(const Character& holder, const std::string& item);

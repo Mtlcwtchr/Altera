@@ -58,6 +58,7 @@ TradeRules parse(const Json& j) {
         t.materials = strs(cj.value("materials", Json::array()));
         t.items = strs(cj.value("items", Json::array()));
         t.minValue = cj.value("min_value", -1.0);
+        t.minQuality = cj.value("min_quality", -1.0);
         r.categories[id] = t;
     }
     r.seedCategories = strs(j.value("seed_categories", Json::array()));
@@ -293,6 +294,7 @@ std::vector<std::string> itemCategories(const Content& c, const std::string& ite
                 in = true;
         }
         if (!in && cat.minValue > 0 && baseValue(c, item) >= cat.minValue) in = true;
+        if (!in && d && cat.minQuality > 0 && d->quality >= cat.minQuality) in = true;
         if (in) out.push_back(id);
     }
     return out;
@@ -300,6 +302,8 @@ std::vector<std::string> itemCategories(const Content& c, const std::string& ite
 
 double baseValue(const Content& c, const std::string& item) {
     const TradeRules* R = tradeRules(c);
+    auto def = c.items.find(item);
+    if (def != c.items.end() && def->second.value > 0) return def->second.value; // AL-74: the item's own price
     if (!R) return 1.0;
     auto v = R->values.find(item);
     if (v != R->values.end()) return v->second;
