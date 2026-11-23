@@ -88,14 +88,24 @@ float sunShadow(float3 rel, float3 normal) {
     if (any(tile < 0.002) || any(tile > 0.998)) return 1.0;
     const float2 uv = float2((tile.x + float(cascade)) / 3.0, tile.y);
     const float texel = cascadeFar.w;
+    // AL-77: twelve taps of a Poisson disc over ~1.7 texels, turned by a
+    // world-fixed hash (it does not crawl as the eye moves): a soft penumbra
+    // instead of the five-tap's stepped edge.
+    static const float2 kDisc[12] = {
+        float2(-0.326, -0.406), float2(-0.840, -0.074), float2(-0.696, 0.457), float2(-0.203, 0.621),
+        float2(0.962, -0.195), float2(0.473, -0.480), float2(0.519, 0.767), float2(0.185, -0.893),
+        float2(0.507, 0.064), float2(0.896, 0.412), float2(-0.322, -0.933), float2(-0.792, -0.598)};
+    const float2 cell = floor((lightEyeXY + rel.xy) * 6.0);
+    const float turn = frac(sin(dot(cell, float2(12.9898, 78.233))) * 43758.5453) * 6.2831853;
+    const float2x2 spin = float2x2(cos(turn), -sin(turn), sin(turn), cos(turn));
     float lit = 0;
-    [unroll] for (int k = 0; k < 5; ++k) {
-        const float2 o = k == 0 ? float2(0, 0) : float2((k & 1) ? 1.0 : -1.0, (k & 2) ? 1.0 : -1.0) * 0.75;
+    [unroll] for (int k = 0; k < 12; ++k) {
+        const float2 o = mul(spin, kDisc[k]) * 1.7;
         const float stored = shadowAtlas.SampleLevel(shadowSampler, uv + o * float2(texel, texel * 3.0), 0);
         // Reversed depth: what is nearer the sun is larger.
         lit += clip.z >= stored - 1e-5 ? 1.0 : 0.0;
     }
-    lit /= 5.0;
+    lit /= 12.0;
     // Fade out towards the far end of the last cascade.
     return lerp(lit, 1.0, saturate((distance - cascadeFar.z * 0.85) / (cascadeFar.z * 0.15)));
 #endif

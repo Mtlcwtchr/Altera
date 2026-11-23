@@ -640,6 +640,7 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/post.cpp
             src/terrain_core/psx.cpp
             src/terrain_core/outline.cpp
+            src/terrain_core/enb.cpp
             src/terrain_core/lighting.cpp
             src/terrain_core/sky.cpp
             src/terrain_core/hydrology.cpp
@@ -1039,7 +1040,8 @@ if(ASR_BUILD_TESTS)
     target_sources(asr_terrain_tests PRIVATE tests/test_world_scale.cpp tests/test_land_coverage.cpp
             tests/test_terrain_source.cpp)
     if(TARGET altera_terrain_core)
-        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp)
+        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp
+                tests/test_terrain_core_enb.cpp)
         target_link_libraries(altera_terrain_core_tests PRIVATE altera_terrain_core asr_warnings)
         add_test(NAME terrain_core_unit COMMAND altera_terrain_core_tests)
     endif()
