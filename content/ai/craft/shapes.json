@@ -49,6 +49,24 @@
   {"id": "candle_raw", "stage": "finished", "role": "body"},
   {"id": "cask_raw", "stage": "finished", "role": "body", "len": [2, 4, 2], "v": {"capacity": 0.6}},
   {"id": "whet_blank", "stage": "finished"},
-  {"id": "assembly", "stage": "finished"}
+  {"id": "assembly", "stage": "finished"},
+  {"id": "spoon_raw", "stage": "finished", "len": [1, 2, 1]},
+  {"id": "trencher_raw", "stage": "finished", "v": {"capacity": 0.15}},
+  {"id": "cup_raw", "stage": "finished", "role": "body", "v": {"capacity": 0.25}},
+  {"id": "spindle_raw", "stage": "finished"},
+  {"id": "spade_raw", "stage": "finished", "role": "head"},
+  {"id": "fork_raw", "stage": "finished"},
+  {"id": "figure_raw", "stage": "finished"},
+  {"id": "flute_raw", "stage": "finished"},
+  {"id": "comb_raw", "stage": "finished"},
+  {"id": "dice_raw", "stage": "finished"},
+  {"id": "charm_raw", "stage": "finished"},
+  {"id": "candlestick_raw", "stage": "finished"},
+  {"id": "pipe_raw", "stage": "finished"},
+  {"id": "whistle_raw", "stage": "finished"},
+  {"id": "doll_raw", "stage": "finished"},
+  {"id": "cauldron_raw", "stage": "finished", "role": "body", "len": [1, 3, 2], "v": {"capacity": 0.8}},
+  {"id": "sickle_blade", "stage": "part", "role": "blade"},
+  {"id": "hoe_blade", "stage": "part", "role": "head"}
  ]
 }

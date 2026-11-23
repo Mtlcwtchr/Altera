@@ -342,6 +342,16 @@ Start startAction(World& w, Character& c, std::string& why) {
             tp.x = c.pos.x + (tp.x - c.pos.x) * (dd - reach) / dd;
             tp.y = c.pos.y + (tp.y - c.pos.y) * (dd - reach) / dd;
         }
+        // AL-78: a thing is worked from beside it, on the side one comes from
+        // (at the well's rim, by the trunk), not from its middle
+        if (o && !d->targetsCreature()) {
+            const auto od = w.content().objects.find(o->type);
+            const double stand = od != w.content().objects.end() ? od->second.standM : 0.0;
+            if (stand > 0.0 && dd > stand) {
+                tp.x = tp.x + (c.pos.x - tp.x) * stand / dd;
+                tp.y = tp.y + (c.pos.y - tp.y) * stand / dd;
+            }
+        }
         const double walk = dist(c.pos, tp);
         ai.fsm = FsmState{"Move", "goto", t, tp, static_cast<Tick>(std::ceil(walk / cfg.walkMPerTick)), w.now()};
         trace(w, c, 'F', "fsm.enter", {{"state", "Move"}, {"to", a.targetType}, {"target", t},

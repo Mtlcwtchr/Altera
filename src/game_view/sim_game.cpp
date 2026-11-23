@@ -32,6 +32,7 @@
 #include <mutex>
 #include <set>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #include "engine/render/device.hpp"
@@ -42,6 +43,7 @@
 #include "sim/act_info.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/structure_plan.hpp"
 #include "sim/collide.hpp"
 #include "sim/craft_sim.hpp"
 #include "sim/gear.hpp"
@@ -55,6 +57,7 @@
 #include "sim/worldgen.hpp"
 #include "terrain_core/biomes.hpp"
 #include "terrain_core/clearings.hpp"
+#include "terrain_core/foliage.hpp"
 #include "terrain_core/ground_height.hpp"
 #include "terrain_core/hydrology.hpp"
 #include "terrain_core/macro_map.hpp"
@@ -75,6 +78,7 @@ struct BuildingSnap {
     EntityId family = kNone;
     float yaw = 0;          // AL-8: as the village plan faced it
     bool faced = false;
+    EntityId id = kNone;    // AL-76: the sim object
 };
 
 std::string clockText(Tick t) {
@@ -235,12 +239,26 @@ public:
         jrTail_.clear();
         for (const auto& [id, c] : world_->characters()) prevPos_[id] = c.pos;
         buildings_.clear();
+        housed_.clear();          // AL-76
+        structureProps_.clear();
+        structureSpots_.clear();
         roads_.clear();
         roadWidth_.clear();
         if (!world_->settlements().empty()) {
             const Settlement& s = world_->settlements().begin()->second;
             roads_ = s.roads;
             roadWidth_ = s.roadWidth;
+            // AL-76: the planned buildings stand as built modules (World::pieces);
+            // the house and the store inside them are not drawn as a baked whole
+            for (const auto& t : s.structures) {
+                for (EntityId id : t.objects) housed_[id] = {float((t.i1 - t.i0) * content_->build.cellM * 0.5),
+                                                             float((t.j1 - t.j0) * content_->build.cellM * 0.5)};
+                for (const auto& p : t.props) structureProps_.push_back({p.piece, p.pos.x, p.pos.y, float(p.yaw)});
+                const double c = content_->build.cellM;
+                const sim::StructureFrame f{t.q, t.gx, t.gy, c};
+                const Vec2 m = f.point((t.i0 + t.i1) * 0.5 * c, (t.j0 + t.j1) * 0.5 * c);
+                structureSpots_.push_back({t.type, m.x, m.y, t.door.x, t.door.y});
+            }
             target_[0] = originX_ + s.center.x;
             target_[1] = originY_ + s.center.y;
             villageCentre_[0] = s.center.x;
@@ -249,8 +267,9 @@ public:
         for (const auto& [id, ob] : world_->objects()) {
             static const char* kShown[] = {"house", "storage", "hearth", "field", "garden", "shrine", "village_fire"};
             for (const char* t : kShown)
-                if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced});
+                if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced, id});
         }
+        plantForest();   // AL-78: the drawn forest is the world's trees (after the buildings: their yards)
         anims_.clear();
         beastAnims_.clear();
         avatar_ = Avatar{};
@@ -292,6 +311,7 @@ public:
             goalNames_.push_back(name("goal", g.id));
         }
         backstoryCards();
+        itemIconMap();
     }
     void stopSim() {
         stop_ = true;
@@ -912,6 +932,7 @@ public:
             std::lock_guard<std::mutex> lock(snapMutex_);
             shown_ = snap_;
         }
+        forestFelled(shown_.felled);   // AL-78
         runMenus(dt);
         if (hud_.panel == "menu") orbitYaw_ += 0.05 * dt;   // the village turns slowly behind the main menu
         const double alpha = tickAlpha();
@@ -1447,10 +1468,19 @@ public:
                 // a stand-in model (AL-11): its footprint as drawn (yaw and size as buildInstances has them)
                 float hx = 0, hy = 0;
                 props_.halfSize(pp, hx, hy);
-                const double var = 0.85 + 0.3 * double((h >> 20) % 100) / 100.0;
-                if (hx > 0.15 && hy > 0.15)
-                    obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, double((h >> 8) % 628) / 100.0});
+                const double var = t.faced ? 1.0 : 0.85 + 0.3 * double((h >> 20) % 100) / 100.0;
+                const double yaw = t.faced ? double(t.yaw) : double((h >> 8) % 628) / 100.0;
+                if (hx > 0.15 && hy > 0.15) obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, yaw});
             }
+        }
+        // AL-76: the furniture of the planned buildings (a fence one steps over is no wall)
+        for (const auto& pr : structureProps_) {
+            const int pp = propPiece(pr.piece);
+            if (pp < 0 || pr.piece == "fence") continue;
+            float hx = 0, hy = 0;
+            props_.halfSize(pp, hx, hy);
+            if (hx > 0.15 && hy > 0.15)
+                obstacles_.add(collide::Box{originX_ + pr.x, originY_ + pr.y, hx * 0.8, hy * 0.8, double(pr.yaw)});
         }
         for (const auto& b0 : buildings_) {
             BuildingSnap b;
@@ -1958,6 +1988,11 @@ private:
                     post({"cmd", 0, "craft_attempt", a});
                     hud_.craftSlots.clear();
                 }
+                // AL-74: craft_design "<id>": fast-craft that starter design from the person's book
+                if (st.contains("craft_design") && who != kNone)
+                    if (const craft::DesignDef* def = content_->craft.design(st["craft_design"].get<std::string>()))
+                        post({"cmd", 0, "craft_fast",
+                              {{"id", who}, {"recipe", craft::recipeFromDesign(content_->craft, *def, 1.0, true).id}, {"count", 1}}});
                 if (st.value("craft_same", false) && who != kNone)
                     for (const auto& r : shown_.craft.recipes)
                         if (r.master) {
@@ -1975,6 +2010,22 @@ private:
                     target_[1] = originY_ + b->y + dy + 2;
                     follow_ = false;
                 }
+            // AL-76: the camera on a planned building of a type ("smithy", "tavern"...), its centre
+            if (st.contains("look_structure")) {
+                const std::string want = st["look_structure"].get<std::string>();
+                bool found = false;
+                for (const auto& sp : structureSpots_) {
+                    if (sp.type != want) continue;
+                    target_[0] = originX_ + sp.x;
+                    target_[1] = originY_ + sp.y;
+                    follow_ = false;
+                    found = true;
+                    // the camera before its door, looking in
+                    if (!st.contains("yawDeg")) orbitYaw_ = std::atan2(sp.y - sp.doorY, sp.x - sp.doorX);
+                    break;
+                }
+                SDL_Log("altera_game: script look_structure %s: %s", want.c_str(), found ? "found" : "none");
+            }
             if (st.contains("look_at_build") && !shown_.pieces.empty()) {
                 const BuildPiece& p0 = shown_.pieces.begin()->second;
                 target_[0] = originX_ + (p0.x + 1) * content_->build.cellM;
@@ -2262,6 +2313,18 @@ private:
                 if (run.done) c.craft.items.push_back(run.out);
             }
         for (const char* ds : {"cord", "thread", "roast_meat", "clay_pot", "plank", "knife"}) giveDesign(*world_, c, ds);
+        // AL-74: the cuisine tour: a larder, the person at the own hearth, a few dishes and things
+        for (const char* it : {"honey", "milk", "eggs", "apples", "berries", "vegetables", "fish", "herbs", "cheese", "bone",
+                               "hazelnuts", "wild_greens", "roots", "mushrooms"})
+            c.inventory[it] += 4;
+        c.inventory["water"] += 12;
+        c.inventory["stone_blade"] += 1;
+        for (const char* ds : {"honey_porridge", "meat_pie", "herb_roast", "berry_tart", "fish_soup", "honey_cake", "bone_flute",
+                               "tankard", "clay_jug", "spoon"})
+            giveDesign(*world_, c, ds);
+        if (c.status.family != kNone)
+            if (const WorldObject* h = world_->object(world_->families().at(c.status.family).hearth)) c.pos = h->pos;
+        for (const char* s : {"toolmaking", "pottery"}) c.skills[s] = std::max(c.skills[s], 0.5);
         c.skills["spinning"] = std::max(c.skills["spinning"], 0.5);
         c.skills["carpentry"] = std::max(c.skills["carpentry"], 0.4);
         c.skills["cooking"] = std::max(c.skills["cooking"], 0.5);
@@ -2463,6 +2526,26 @@ private:
             }
         }
         return craftUi_;
+    }
+    // AL-74: the inventory icon of every item: item_icons by id, else the first of its tags
+    // found in tag_icons (dishes, drinks, tableware, music...); the rest keep Hud's name match
+    void itemIconMap() {
+        hud_.itemIcons.clear();
+        const Json& u = craftUi();
+        const Json byId = u.value("item_icons", Json::object());
+        const Json byTag = u.value("tag_icons", Json::array());
+        for (const auto& [id, d] : content_->items) {
+            if (byId.contains(id)) {
+                hud_.itemIcons[id] = byId[id].get<std::string>();
+                continue;
+            }
+            for (const auto& e : byTag)
+                if (e.is_array() && e.size() == 2 &&
+                    std::find(d.tags.begin(), d.tags.end(), e[0].get<std::string>()) != d.tags.end()) {
+                    hud_.itemIcons[id] = e[1].get<std::string>();
+                    break;
+                }
+        }
     }
     std::string craftIcon(const char* map, const std::string& id, const char* fallback) const {
         const Json& u = craftUi();
@@ -2898,7 +2981,7 @@ private:
             const double d1 = (o.pos.x - vx) * (o.pos.x - vx) + (o.pos.y - vy) * (o.pos.y - vy);
             const double d2 = (o.pos.x - me.x) * (o.pos.x - me.x) + (o.pos.y - me.y) * (o.pos.y - me.y);
             if (d1 > R2 && d2 > R2) continue;
-            if (s.things.size() >= 700) break;
+            if (s.things.size() >= 2500) break;
             ThingSnap t;
             t.id = id;
             t.type = o.type;
@@ -2908,8 +2991,142 @@ private:
             for (const auto& [k, v] : o.stock)
                 if (v > 0) t.stock.push_back({name("item", k), v});
             t.busy = o.reservedFor(kNone, w.now()) && o.reservedBy != kNone;
+            t.faced = o.faced;   // AL-76: a station set in a building faces as planned
+            t.yaw = float(o.yaw);
+            if (const auto hi = heldIndex_.find(id); hi != heldIndex_.end()) {   // AL-78
+                const terrain_core::HeldTree& ht = heldTrees_[std::size_t(hi->second)];
+                t.held = true;
+                t.felled = o.stock.count("log") == 0 || o.stock.at("log") <= 0;
+                if (const terrain_core::Foliage* f = terrain_core::forestHold().foliage) t.height = f->modelHeight(ht.model) * ht.scale;
+            }
             s.things.push_back(std::move(t));
         }
+        // AL-78: the forest's felled trees (or gone), for the forest the GPU draws
+        for (std::size_t i = 0; i < heldIds_.size(); ++i) {
+            const WorldObject* o = w.object(heldIds_[i]);
+            if (!o || !o->stock.count("log") || o->stock.at("log") <= 0) s.felled.push_back(int(i));
+        }
+    }
+
+    // ---- AL-78: the forest the player sees is the world's trees ------------
+    // The foliage's held layers (conifers, broadleaf, autumn, dead trees) are
+    // scattered on the CPU over the sim's map, exactly as the GPU would; every
+    // tree becomes a tree of the sim (a new world: the generated trees there
+    // give way), and the GPU draws that list instead of scattering its own
+    // there. A felled tree leaves the forest and lies as a log. Called with
+    // the sim thread stopped.
+    void plantForest() {
+        heldTrees_.clear();
+        heldIds_.clear();
+        heldIndex_.clear();
+        shownFelled_.clear();
+        terrain_core::ForestHold& fh = terrain_core::forestHold();
+        fh.active = false;
+        fh.trees.clear();
+        ++fh.version;
+        terrain_core::Foliage* f = fh.foliage;
+        if (!f || !opts_.biomes || !opts_.biomes->size() || !world_) {
+            SDL_Log("altera_game: no held forest (%s)", !f ? "no foliage" : "no biome map");
+            return;
+        }
+        setClearings();   // the village's yards: no tree grows there
+        // the woods round the village, where the people live and work (the
+        // world beyond is scenery: a forest of a whole map would be a million trees)
+        const double half = 0.5 * std::min(simSize_, kHeldForestM);
+        const double cx = std::clamp(originX_ + villageCentre_[0], originX_ + half, originX_ + simSize_ - half);
+        const double cy = std::clamp(originY_ + villageCentre_[1], originY_ + half, originY_ + simSize_ - half);
+        const double rect[4] = {cx - half, cy - half, cx + half, cy + half};
+        const MapGrid& map = world_->map();
+        std::vector<terrain_core::RiverSegment> rivers;
+        if (opts_.rivers)
+            for (const auto& r : *opts_.rivers) {
+                const double pad = 0.5 * std::max(r.width0, r.width1) + 4.0;
+                if (std::max(r.x0, r.x1) + pad < rect[0] || std::min(r.x0, r.x1) - pad > rect[2] ||
+                    std::max(r.y0, r.y1) + pad < rect[1] || std::min(r.y0, r.y1) - pad > rect[3])
+                    continue;
+                rivers.push_back(r);
+            }
+        auto keep = [&](double x, double y) {
+            if (map.waterAt(Vec2{x - originX_, y - originY_})) return false;
+            {
+                for (const auto& r : rivers) {
+                    const double dx = r.x1 - r.x0, dy = r.y1 - r.y0, l2 = dx * dx + dy * dy;
+                    const double t = l2 > 0 ? std::clamp(((x - r.x0) * dx + (y - r.y0) * dy) / l2, 0.0, 1.0) : 0.0;
+                    const double d = std::hypot(x - (r.x0 + dx * t), y - (r.y0 + dy * t));
+                    if (d < 0.5 * (r.width0 + (r.width1 - r.width0) * t) + 1.5) return false;
+                }
+            }
+            return true;
+        };
+        auto height = [&](double x, double y) { return float(groundAt(x, y)); };
+        heldTrees_ = f->heldTrees(rect, *opts_.biomes, height, keep);
+        World& w = *world_;
+        // a world made just now: its generated trees in the map give way to the
+        // drawn ones (a loaded one already has them: faced trees)
+        bool planted = false;
+        for (EntityId id : w.objectsOfType("tree"))
+            if (const WorldObject* o = w.object(id); o && o->faced) {
+                planted = true;
+                break;
+            }
+        const ObjectDef* def = nullptr;
+        if (auto it = w.content().objects.find("tree"); it != w.content().objects.end()) def = &it->second;
+        if (!planted && def) {
+            std::vector<EntityId> old;
+            for (EntityId id : w.objectsOfType("tree"))
+                if (const WorldObject* o = w.object(id)) {
+                    const double x = o->pos.x + originX_, y = o->pos.y + originY_;
+                    if (x >= rect[0] && x < rect[2] && y >= rect[1] && y < rect[3]) old.push_back(id);
+                }
+            w.removeObjects(old);
+            std::vector<EntityId> fresh;
+            fresh.reserve(heldTrees_.size());
+            for (const auto& t : heldTrees_) {
+                WorldObject o;
+                o.type = "tree";
+                o.pos = Vec2{double(t.x) - originX_, double(t.y) - originY_};
+                o.stock = def->stock;
+                o.yaw = t.yaw;
+                o.faced = true;
+                fresh.push_back(w.addObject(std::move(o)).id);
+            }
+            // the people know the woods round their village
+            for (auto& [id, c] : w.characters())
+                if (!c.isAnimal()) c.knownObjects.insert(fresh.begin(), fresh.end());
+            SDL_Log("altera_game: forest: %zu generated trees gave way to %zu drawn ones", old.size(), fresh.size());
+        }
+        // which sim tree each drawn one is (the same place, to the centimetre)
+        std::map<std::pair<long long, long long>, EntityId> at;
+        for (EntityId id : w.objectsOfType("tree"))
+            if (const WorldObject* o = w.object(id); o && o->faced)
+                at[{std::llround(o->pos.x * 100.0), std::llround(o->pos.y * 100.0)}] = id;
+        heldIds_.assign(heldTrees_.size(), kNone);
+        for (std::size_t i = 0; i < heldTrees_.size(); ++i) {
+            const auto it = at.find({std::llround((double(heldTrees_[i].x) - originX_) * 100.0),
+                                     std::llround((double(heldTrees_[i].y) - originY_) * 100.0)});
+            if (it == at.end()) continue;
+            heldIds_[i] = it->second;
+            heldIndex_[it->second] = int(i);
+        }
+        fh.rect[0] = rect[0], fh.rect[1] = rect[1], fh.rect[2] = rect[2], fh.rect[3] = rect[3];
+        fh.trees = heldTrees_;
+        fh.active = true;
+        ++fh.version;
+        SDL_Log("altera_game: forest held: %zu trees over %.0f m round the village", heldTrees_.size(), 2 * half);
+    }
+    // The drawn forest without the felled trees (main thread, from the snapshot).
+    void forestFelled(const std::vector<int>& felled) {
+        if (felled == shownFelled_ || heldTrees_.empty()) return;
+        shownFelled_ = felled;
+        terrain_core::ForestHold& fh = terrain_core::forestHold();
+        fh.trees.clear();
+        std::size_t k = 0;
+        for (std::size_t i = 0; i < heldTrees_.size(); ++i) {
+            while (k < felled.size() && std::size_t(felled[k]) < i) ++k;
+            if (k < felled.size() && std::size_t(felled[k]) == i) continue;
+            fh.trees.push_back(heldTrees_[i]);
+        }
+        ++fh.version;
     }
 
     // A precondition and an effect in the player's words (content/loc hud.req.* / hud.gain.*).
@@ -3990,7 +4207,7 @@ private:
         float bd = 1e9f;
         for (const auto& t : shown_.things) {
             const double wx = originX_ + t.x, wy = originY_ + t.y;
-            const double gz = groundAt(wx, wy), h = thingHeight(t.type);
+            const double gz = groundAt(wx, wy), h = t.held && !t.felled && t.height > 0 ? double(t.height) : t.felled ? 0.6 : thingHeight(t.type);
             float fx, fy, hx, hy;
             if (!project(wx - eye_[0], wy - eye_[1], gz + 0.05 - eye_[2], fx, fy)) continue;
             if (!project(wx - eye_[0], wy - eye_[1], gz + h - eye_[2], hx, hy)) continue;
@@ -4246,6 +4463,11 @@ private:
             BuildingSnap b;
             float yw = 0;
             int mesh = -1;
+            if (auto hz = housed_.find(b0.id); hz != housed_.end()) {   // AL-76: the modules' footprint
+                const double wx = originX_ + b0.x, wy = originY_ + b0.y, d = std::hypot(wx - px, wy - py);
+                if (d < bd) bd = d, hx0 = wx, hy0 = wy, yaw = b0.yaw, hx = hz->second.first, hy = hz->second.second;
+                continue;
+            }
             if (!buildingPose(b0, b, yw, mesh)) continue;
             const double wx = originX_ + b.x, wy = originY_ + b.y, d = std::hypot(wx - px, wy - py);
             if (d >= bd) continue;
@@ -4308,8 +4530,11 @@ private:
 
     bool buildingPose(const BuildingSnap& b0, BuildingSnap& b, float& yaw, int& mesh) const {
         b = b0;
-        if (b0.faced) {   // AL-8: placed by the village plan; only a hearth inside a house stays unseen
-            if (b.type == "hearth")
+        const bool housed = housed_.count(b0.id) > 0;
+        // AL-76: a house or a store of a planned building is its modules, not a baked whole
+        if (housed && (b0.type == "house" || b0.type == "storage")) return false;
+        if (b0.faced) {   // AL-8: placed by the village plan; only a hearth inside a (baked) house stays unseen
+            if (b.type == "hearth" && !housed)
                 for (const auto& h : buildings_)
                     if (h.type == "house" && std::hypot(b.x - h.x, b.y - h.y) < 4.5) return false;
         } else if (b.type != "house" && b.type != "field" && b.type != "garden")
@@ -4448,6 +4673,27 @@ private:
                         out.push_back(in);
                     }
             }
+        }
+    }
+
+    // AL-76: the props the planned buildings hold (tables, the counter,
+    // benches, beds, the yards' fences), stand-in models of the props set.
+    void structurePropsPlace() {
+        for (const auto& pr : structureProps_) {
+            const int pp = propPiece(pr.piece);
+            if (pp < 0) continue;
+            const double wx = originX_ + pr.x, wy = originY_ + pr.y;
+            const double rx = wx - eye_[0], ry = wy - eye_[1];
+            if (rx * rx + ry * ry > 300.0 * 300.0) continue;
+            if (propsPlaced_.size() >= StaticSet::kMaxPlaced - 512) return;
+            Placed pl;
+            pl.piece = pp;
+            pl.rel[0] = rx;
+            pl.rel[1] = ry;
+            pl.rel[2] = groundAt(wx, wy) - 0.02 - eye_[2];
+            pl.yaw = pr.yaw;
+            pl.scale = 1.0f;
+            propsPlaced_.push_back(pl);
         }
     }
 
@@ -4601,22 +4847,37 @@ private:
             const float var = 0.85f + 0.3f * float((h >> 20) % 100) / 100.0f;
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry);
             in.placeYaw[2] = float(groundAt(wx, wy) - 0.05 - eye_[2]);
-            in.placeYaw[3] = float(double((h >> 8) % 628) / 100.0);
-            in.scale[0] = in.scale[1] = in.scale[2] = var;
+            in.placeYaw[3] = t.faced ? t.yaw : float(double((h >> 8) % 628) / 100.0);
+            in.scale[0] = in.scale[1] = in.scale[2] = t.faced ? 1.0f : var;
             in.scale[3] = (t.id == hud_.hoverThing || (hud_.panel == "thing" && t.id == hud_.actTarget())) ? 1.0f : 0.0f;
             auto col = [&](float r, float g, float b, float r2, float g2, float b2) {
                 in.colour[0] = r, in.colour[1] = g, in.colour[2] = b;
                 in.colour2[0] = r2, in.colour2[1] = g2, in.colour2[2] = b2;
             };
             const std::string& ty = t.type;
+            if (t.held && !t.felled) continue;   // AL-78: the foliage draws it
+            if (t.held) {                        // felled: the trunk lies where it stood
+                in.scale[0] = in.scale[1] = in.scale[2] = 1.6f;
+                in.colour[0] = 0.40f, in.colour[1] = 0.30f, in.colour[2] = 0.20f;
+                in.colour2[0] = 0.33f, in.colour2[1] = 0.26f, in.colour2[2] = 0.18f;
+                per[kLog].push_back(in);
+                continue;
+            }
             if (const int pp = propPiece(ty); pp >= 0) {
+                // AL-76: a stand-in too big for its cell in a building is drawn to fit it (a pen in a byre)
+                if (t.faced && ty != "mill" && housed_.count(t.id)) {
+                    float hx = 0, hy = 0;
+                    props_.halfSize(pp, hx, hy);
+                    const float big = std::max(hx, hy);
+                    if (big > 1.2f) in.scale[0] = 1.2f / big;
+                }
                 Placed pl;
                 pl.piece = pp;
                 pl.rel[0] = rx;
                 pl.rel[1] = ry;
                 pl.rel[2] = groundAt(wx, wy) - 0.03 - eye_[2];
                 pl.yaw = in.placeYaw[3];
-                pl.scale = var;
+                pl.scale = in.scale[0];
                 pl.highlight = in.scale[3];
                 propsPlaced_.push_back(pl);
                 continue;
@@ -4640,6 +4901,7 @@ private:
             else m = kBlock, col(0.40f, 0.34f, 0.28f, 0.40f, 0.34f, 0.28f), in.scale[0] *= 0.8f, in.scale[1] *= 0.8f, in.scale[2] *= 0.6f;
             per[m].push_back(in);
         }
+        structurePropsPlace();
         soilTiles(per[kBlock]);
         roadTiles(per[kBlock]);
         cutPieces_.clear();
@@ -5117,6 +5379,19 @@ private:
     std::vector<std::vector<Vec2>> roads_;   // AL-8: the village plan's roads (sim coordinates)
     std::vector<double> roadWidth_;
     std::vector<BuildingSnap> buildings_;
+    // AL-76: objects standing in a planned building (-> its footprint half sizes) and its props
+    std::map<EntityId, std::pair<float, float>> housed_;
+    struct StructureProp {
+        std::string piece;
+        double x = 0, y = 0;
+        float yaw = 0;
+    };
+    std::vector<StructureProp> structureProps_;
+    struct StructureSpot {
+        std::string type;
+        double x = 0, y = 0, doorX = 0, doorY = 0;   // sim metres: its centre, before its door
+    };
+    std::vector<StructureSpot> structureSpots_;
     std::vector<std::string> goalIds_, goalNames_;
     int goalChoice_ = 0;
     bool goalListOpen_ = false;
@@ -5183,6 +5458,13 @@ private:
     static constexpr int kKeys = 0, kMouse = 1, kFree = 2;
     EntityId lastLed_ = kNone, prevControlled_ = kNone;
     bool pendingAct_ = false;
+    // AL-78: the drawn forest = the world's trees (plantForest): each drawn tree,
+    // the sim tree it is, and back; the felled ones the GPU was last told of
+    std::vector<terrain_core::HeldTree> heldTrees_;
+    std::vector<EntityId> heldIds_;
+    std::unordered_map<EntityId, int> heldIndex_;
+    std::vector<int> shownFelled_;
+    static constexpr double kHeldForestM = 1400.0;   // the side of the held woods (m)
     std::string pendingType_;
     Json pendingArgs_;
     int leadMode_ = kKeys;

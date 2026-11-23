@@ -1,0 +1,990 @@
+{
+ "_doc": "AL-74: блюда, напитки и утварь (content/ai/cuisine + новые формы content/ai/craft).",
+ "form.apple_pie.name": {
+  "nom": "яблочный пирог",
+  "g": "m"
+ },
+ "form.baked_apples.name": {
+  "nom": "печёные яблоки",
+  "g": "pl"
+ },
+ "form.baked_roots.name": {
+  "nom": "печёные коренья",
+  "g": "pl"
+ },
+ "form.berry_tart.name": {
+  "nom": "ягодный пирог",
+  "g": "m"
+ },
+ "form.berry_wine.name": {
+  "nom": "ягодное вино",
+  "g": "n"
+ },
+ "form.blood_sausage.name": {
+  "nom": "кровяная колбаса",
+  "g": "f"
+ },
+ "form.bone_charm.name": {
+  "nom": "костяной оберег",
+  "g": "m"
+ },
+ "form.bone_comb.name": {
+  "nom": "гребень",
+  "g": "m"
+ },
+ "form.bone_dice.name": {
+  "nom": "игральные кости",
+  "g": "pl"
+ },
+ "form.bone_flute.name": {
+  "nom": "флейта",
+  "g": "f"
+ },
+ "form.broom.name": {
+  "nom": "метла",
+  "g": "f"
+ },
+ "form.carved_figure.name": {
+  "nom": "резная фигурка",
+  "g": "f"
+ },
+ "form.cauldron.name": {
+  "nom": "котёл",
+  "g": "m"
+ },
+ "form.cheese_pie.name": {
+  "nom": "ватрушка",
+  "g": "f"
+ },
+ "form.clay_candlestick.name": {
+  "nom": "подсвечник",
+  "g": "m"
+ },
+ "form.clay_jug.name": {
+  "nom": "кувшин",
+  "g": "m"
+ },
+ "form.clay_pipe.name": {
+  "nom": "трубка",
+  "g": "f"
+ },
+ "form.clay_whistle.name": {
+  "nom": "свистулька",
+  "g": "f"
+ },
+ "form.drum.name": {
+  "nom": "бубен",
+  "g": "m"
+ },
+ "form.eggs_greens.name": {
+  "nom": "яичница с зеленью",
+  "g": "f"
+ },
+ "form.fish_pie.name": {
+  "nom": "рыбник",
+  "g": "m"
+ },
+ "form.fish_soup.name": {
+  "nom": "уха",
+  "g": "f"
+ },
+ "form.fishing_rod.name": {
+  "nom": "удочка",
+  "g": "f"
+ },
+ "form.garden_soup.name": {
+  "nom": "щи",
+  "g": "pl"
+ },
+ "form.herb_roast.name": {
+  "nom": "жаркое с травами",
+  "g": "n"
+ },
+ "form.hoe.name": {
+  "nom": "мотыга",
+  "g": "f"
+ },
+ "form.honey_cake.name": {
+  "nom": "медовик",
+  "g": "m"
+ },
+ "form.honey_milk.name": {
+  "nom": "горячее молоко с мёдом",
+  "g": "n"
+ },
+ "form.honey_porridge.name": {
+  "nom": "медовая каша",
+  "g": "f"
+ },
+ "form.ladle.name": {
+  "nom": "половник",
+  "g": "m"
+ },
+ "form.meat_pie.name": {
+  "nom": "пирог с мясом",
+  "g": "m"
+ },
+ "form.milk_porridge.name": {
+  "nom": "молочная каша",
+  "g": "f"
+ },
+ "form.mulled_wine.name": {
+  "nom": "глинтвейн",
+  "g": "m"
+ },
+ "form.mushroom_stew.name": {
+  "nom": "грибная похлёбка",
+  "g": "f"
+ },
+ "form.nut_bread.name": {
+  "nom": "ореховый хлеб",
+  "g": "m"
+ },
+ "form.pitchfork.name": {
+  "nom": "вилы",
+  "g": "pl"
+ },
+ "form.rag_doll.name": {
+  "nom": "тряпичная кукла",
+  "g": "f"
+ },
+ "form.roast_fish.name": {
+  "nom": "печёная рыба",
+  "g": "f"
+ },
+ "form.sickle.name": {
+  "nom": "серп",
+  "g": "m"
+ },
+ "form.spade.name": {
+  "nom": "лопата",
+  "g": "f"
+ },
+ "form.spindle.name": {
+  "nom": "веретено",
+  "g": "n"
+ },
+ "form.spoon.name": {
+  "nom": "ложка",
+  "g": "f"
+ },
+ "form.sweet_curd.name": {
+  "nom": "творог с мёдом",
+  "g": "m"
+ },
+ "form.tankard.name": {
+  "nom": "кружка",
+  "g": "f"
+ },
+ "form.trencher.name": {
+  "nom": "тарель",
+  "g": "f"
+ },
+ "form.wake_loaf.name": {
+  "nom": "поминальный каравай",
+  "g": "m"
+ },
+ "form.wooden_cup.name": {
+  "nom": "чарка",
+  "g": "f"
+ },
+ "interaction.blow_whistle.name": "Посвистеть в свистульку",
+ "interaction.blow_whistle.phrase": "посвистеть в свистульку",
+ "interaction.brew_berry_wine.name": "Поставить ягодное вино",
+ "interaction.brew_berry_wine.phrase": "поставить ягодное вино",
+ "interaction.comb_hair.name": "Расчесаться",
+ "interaction.comb_hair.phrase": "расчесаться",
+ "interaction.craft:apple_pie.name": "сделать: яблочный пирог",
+ "interaction.craft:baked_apples.name": "сделать: печёные яблоки",
+ "interaction.craft:baked_roots.name": "сделать: печёные коренья",
+ "interaction.craft:berry_tart.name": "сделать: ягодный пирог",
+ "interaction.craft:berry_wine.name": "сделать: ягодное вино",
+ "interaction.craft:blood_sausage.name": "сделать: кровяная колбаса",
+ "interaction.craft:bone_charm.name": "сделать: костяной оберег",
+ "interaction.craft:bone_comb.name": "сделать: гребень",
+ "interaction.craft:bone_dice.name": "сделать: игральные кости",
+ "interaction.craft:bone_flute.name": "сделать: флейта",
+ "interaction.craft:broom.name": "сделать: метла",
+ "interaction.craft:carved_figure.name": "сделать: резная фигурка",
+ "interaction.craft:cauldron.name": "сделать: котёл",
+ "interaction.craft:cheese_pie.name": "сделать: ватрушка",
+ "interaction.craft:clay_candlestick.name": "сделать: подсвечник",
+ "interaction.craft:clay_jug.name": "сделать: кувшин",
+ "interaction.craft:clay_pipe.name": "сделать: трубка",
+ "interaction.craft:clay_whistle.name": "сделать: свистулька",
+ "interaction.craft:drum.name": "сделать: бубен",
+ "interaction.craft:eggs_greens.name": "сделать: яичница с зеленью",
+ "interaction.craft:fish_pie.name": "сделать: рыбник",
+ "interaction.craft:fish_soup.name": "сделать: уха",
+ "interaction.craft:fishing_rod.name": "сделать: удочка",
+ "interaction.craft:garden_soup.name": "сделать: щи",
+ "interaction.craft:herb_roast.name": "сделать: жаркое с травами",
+ "interaction.craft:hoe.name": "сделать: мотыга",
+ "interaction.craft:honey_cake.name": "сделать: медовик",
+ "interaction.craft:honey_milk.name": "сделать: горячее молоко с мёдом",
+ "interaction.craft:honey_porridge.name": "сделать: медовая каша",
+ "interaction.craft:ladle.name": "сделать: половник",
+ "interaction.craft:meat_pie.name": "сделать: пирог с мясом",
+ "interaction.craft:milk_porridge.name": "сделать: молочная каша",
+ "interaction.craft:mulled_wine.name": "сделать: глинтвейн",
+ "interaction.craft:mushroom_stew.name": "сделать: грибная похлёбка",
+ "interaction.craft:nut_bread.name": "сделать: ореховый хлеб",
+ "interaction.craft:pitchfork.name": "сделать: вилы",
+ "interaction.craft:rag_doll.name": "сделать: тряпичная кукла",
+ "interaction.craft:roast_fish.name": "сделать: печёная рыба",
+ "interaction.craft:sickle.name": "сделать: серп",
+ "interaction.craft:spade.name": "сделать: лопата",
+ "interaction.craft:spindle.name": "сделать: веретено",
+ "interaction.craft:spoon.name": "сделать: ложка",
+ "interaction.craft:sweet_curd.name": "сделать: творог с мёдом",
+ "interaction.craft:tankard.name": "сделать: кружка",
+ "interaction.craft:trencher.name": "сделать: тарель",
+ "interaction.craft:wake_loaf.name": "сделать: поминальный каравай",
+ "interaction.craft:wooden_cup.name": "сделать: чарка",
+ "interaction.dig_roots_with_spade.name": "Накопать кореньев лопатой",
+ "interaction.dig_roots_with_spade.phrase": "накопать кореньев лопатой",
+ "interaction.drink_berry_wine.name": "Выпить ягодного вина",
+ "interaction.drink_berry_wine.phrase": "выпить ягодного вина",
+ "interaction.drink_berry_wine_at_fire.name": "Выпить ягодного вина у костра",
+ "interaction.drink_berry_wine_at_fire.phrase": "выпить ягодного вина у костра",
+ "interaction.drink_herb_tea.name": "Выпить травяного чая",
+ "interaction.drink_herb_tea.phrase": "выпить травяного чая",
+ "interaction.drink_honey_milk.name": "Выпить молока с мёдом",
+ "interaction.drink_honey_milk.phrase": "выпить молока с мёдом",
+ "interaction.drink_mulled_wine.name": "Выпить глинтвейна",
+ "interaction.drink_mulled_wine.phrase": "выпить глинтвейна",
+ "interaction.drink_mulled_wine_at_fire.name": "Выпить глинтвейна у костра",
+ "interaction.drink_mulled_wine_at_fire.phrase": "выпить глинтвейна у костра",
+ "interaction.eat_apple_pie.name": "Поесть яблочного пирога",
+ "interaction.eat_apple_pie.phrase": "поесть яблочного пирога",
+ "interaction.eat_baked_apples.name": "Поесть печёных яблок",
+ "interaction.eat_baked_apples.phrase": "поесть печёных яблок",
+ "interaction.eat_baked_roots.name": "Поесть печёных кореньев",
+ "interaction.eat_baked_roots.phrase": "поесть печёных кореньев",
+ "interaction.eat_berry_tart.name": "Поесть ягодного пирога",
+ "interaction.eat_berry_tart.phrase": "поесть ягодного пирога",
+ "interaction.eat_blood_sausage.name": "Поесть кровяной колбасы",
+ "interaction.eat_blood_sausage.phrase": "поесть кровяной колбасы",
+ "interaction.eat_cheese_pie.name": "Поесть ватрушки",
+ "interaction.eat_cheese_pie.phrase": "поесть ватрушки",
+ "interaction.eat_eggs_greens.name": "Поесть яичницы",
+ "interaction.eat_eggs_greens.phrase": "поесть яичницы",
+ "interaction.eat_fish_pie.name": "Поесть рыбника",
+ "interaction.eat_fish_pie.phrase": "поесть рыбника",
+ "interaction.eat_fish_soup.name": "Похлебать ухи",
+ "interaction.eat_fish_soup.phrase": "похлебать ухи",
+ "interaction.eat_garden_soup.name": "Похлебать щей",
+ "interaction.eat_garden_soup.phrase": "похлебать щей",
+ "interaction.eat_herb_roast.name": "Поесть жаркого",
+ "interaction.eat_herb_roast.phrase": "поесть жаркого",
+ "interaction.eat_honey_cake.name": "Поесть медовика",
+ "interaction.eat_honey_cake.phrase": "поесть медовика",
+ "interaction.eat_honey_porridge.name": "Поесть медовой каши",
+ "interaction.eat_honey_porridge.phrase": "поесть медовой каши",
+ "interaction.eat_meat_pie.name": "Поесть пирога с мясом",
+ "interaction.eat_meat_pie.phrase": "поесть пирога с мясом",
+ "interaction.eat_milk_porridge.name": "Поесть молочной каши",
+ "interaction.eat_milk_porridge.phrase": "поесть молочной каши",
+ "interaction.eat_mushroom_stew.name": "Поесть грибной похлёбки",
+ "interaction.eat_mushroom_stew.phrase": "поесть грибной похлёбки",
+ "interaction.eat_nut_bread.name": "Поесть орехового хлеба",
+ "interaction.eat_nut_bread.phrase": "поесть орехового хлеба",
+ "interaction.eat_roast_fish.name": "Поесть печёной рыбы",
+ "interaction.eat_roast_fish.phrase": "поесть печёной рыбы",
+ "interaction.eat_sweet_curd.name": "Поесть творога с мёдом",
+ "interaction.eat_sweet_curd.phrase": "поесть творога с мёдом",
+ "interaction.eat_wake_loaf.name": "Отведать поминального каравая",
+ "interaction.eat_wake_loaf.phrase": "отведать поминального каравая",
+ "interaction.fetch_water.name": "Набрать воды",
+ "interaction.fetch_water.phrase": "набрать воды",
+ "interaction.fetch_water_river.name": "Набрать воды из реки",
+ "interaction.fetch_water_river.phrase": "набрать воды из реки",
+ "interaction.light_candlestick.name": "Зажечь свечу в подсвечнике",
+ "interaction.light_candlestick.phrase": "зажечь свечу в подсвечнике",
+ "interaction.play_drum.name": "Побить в бубен у костра",
+ "interaction.play_drum.phrase": "побить в бубен у костра",
+ "interaction.play_flute.name": "Сыграть на флейте",
+ "interaction.play_flute.phrase": "сыграть на флейте",
+ "interaction.play_with_doll.name": "Поиграть с куклой",
+ "interaction.play_with_doll.phrase": "поиграть с куклой",
+ "interaction.roll_bone_dice.name": "Сыграть в кости",
+ "interaction.roll_bone_dice.phrase": "сыграть в кости",
+ "interaction.set_leaven.name": "Поставить закваску",
+ "interaction.set_leaven.phrase": "поставить закваску",
+ "interaction.smoke_pipe.name": "Выкурить трубку",
+ "interaction.smoke_pipe.phrase": "выкурить трубку",
+ "interaction.store_apple_pie.name": "Убрать яблочный пирог",
+ "interaction.store_apple_pie.phrase": "убрать яблочный пирог",
+ "interaction.store_baked_apples.name": "Убрать печёные яблоки",
+ "interaction.store_baked_apples.phrase": "убрать печёные яблоки",
+ "interaction.store_baked_roots.name": "Убрать печёные коренья",
+ "interaction.store_baked_roots.phrase": "убрать печёные коренья",
+ "interaction.store_berry_tart.name": "Убрать ягодный пирог",
+ "interaction.store_berry_tart.phrase": "убрать ягодный пирог",
+ "interaction.store_berry_wine.name": "Убрать ягодное вино",
+ "interaction.store_berry_wine.phrase": "убрать ягодное вино",
+ "interaction.store_blood_sausage.name": "Убрать кровяную колбасу",
+ "interaction.store_blood_sausage.phrase": "убрать кровяную колбасу",
+ "interaction.store_cheese_pie.name": "Убрать ватрушку",
+ "interaction.store_cheese_pie.phrase": "убрать ватрушку",
+ "interaction.store_eggs_greens.name": "Убрать яичницу с зеленью",
+ "interaction.store_eggs_greens.phrase": "убрать яичницу с зеленью",
+ "interaction.store_fish_pie.name": "Убрать рыбник",
+ "interaction.store_fish_pie.phrase": "убрать рыбник",
+ "interaction.store_fish_soup.name": "Убрать уху",
+ "interaction.store_fish_soup.phrase": "убрать уху",
+ "interaction.store_garden_soup.name": "Убрать щи",
+ "interaction.store_garden_soup.phrase": "убрать щи",
+ "interaction.store_herb_roast.name": "Убрать жаркое с травами",
+ "interaction.store_herb_roast.phrase": "убрать жаркое с травами",
+ "interaction.store_herb_tea.name": "Убрать травяной чай",
+ "interaction.store_herb_tea.phrase": "убрать травяной чай",
+ "interaction.store_honey_cake.name": "Убрать медовик",
+ "interaction.store_honey_cake.phrase": "убрать медовик",
+ "interaction.store_honey_milk.name": "Убрать горячее молоко с мёдом",
+ "interaction.store_honey_milk.phrase": "убрать горячее молоко с мёдом",
+ "interaction.store_honey_porridge.name": "Убрать медовую кашу",
+ "interaction.store_honey_porridge.phrase": "убрать медовую кашу",
+ "interaction.store_meat_pie.name": "Убрать пирог с мясом",
+ "interaction.store_meat_pie.phrase": "убрать пирог с мясом",
+ "interaction.store_milk_porridge.name": "Убрать молочную кашу",
+ "interaction.store_milk_porridge.phrase": "убрать молочную кашу",
+ "interaction.store_mulled_wine.name": "Убрать глинтвейн",
+ "interaction.store_mulled_wine.phrase": "убрать глинтвейн",
+ "interaction.store_mushroom_stew.name": "Убрать грибную похлёбку",
+ "interaction.store_mushroom_stew.phrase": "убрать грибную похлёбку",
+ "interaction.store_nut_bread.name": "Убрать ореховый хлеб",
+ "interaction.store_nut_bread.phrase": "убрать ореховый хлеб",
+ "interaction.store_roast_fish.name": "Убрать печёную рыбу",
+ "interaction.store_roast_fish.phrase": "убрать печёную рыбу",
+ "interaction.store_sweet_curd.name": "Убрать творог с мёдом",
+ "interaction.store_sweet_curd.phrase": "убрать творог с мёдом",
+ "interaction.store_wake_loaf.name": "Убрать поминальный каравай",
+ "interaction.store_wake_loaf.phrase": "убрать поминальный каравай",
+ "interaction.sweep_house.name": "Подмести в доме",
+ "interaction.sweep_house.phrase": "подмести в доме",
+ "interaction.take_apple_pie.name": "Взять яблочного пирога",
+ "interaction.take_apple_pie.phrase": "взять яблочного пирога",
+ "interaction.take_baked_apples.name": "Взять печёных яблок",
+ "interaction.take_baked_apples.phrase": "взять печёных яблок",
+ "interaction.take_baked_roots.name": "Взять печёных кореньев",
+ "interaction.take_baked_roots.phrase": "взять печёных кореньев",
+ "interaction.take_berry_tart.name": "Взять ягодного пирога",
+ "interaction.take_berry_tart.phrase": "взять ягодного пирога",
+ "interaction.take_berry_wine.name": "Взять ягодного вина",
+ "interaction.take_berry_wine.phrase": "взять ягодного вина",
+ "interaction.take_blood_sausage.name": "Взять кровяной колбасы",
+ "interaction.take_blood_sausage.phrase": "взять кровяной колбасы",
+ "interaction.take_cheese_pie.name": "Взять ватрушки",
+ "interaction.take_cheese_pie.phrase": "взять ватрушки",
+ "interaction.take_eggs_greens.name": "Взять яичницы с зеленью",
+ "interaction.take_eggs_greens.phrase": "взять яичницы с зеленью",
+ "interaction.take_fish_pie.name": "Взять рыбника",
+ "interaction.take_fish_pie.phrase": "взять рыбника",
+ "interaction.take_fish_soup.name": "Взять ухи",
+ "interaction.take_fish_soup.phrase": "взять ухи",
+ "interaction.take_garden_soup.name": "Взять щей",
+ "interaction.take_garden_soup.phrase": "взять щей",
+ "interaction.take_herb_roast.name": "Взять жаркого с травами",
+ "interaction.take_herb_roast.phrase": "взять жаркого с травами",
+ "interaction.take_herb_tea.name": "Взять травяного чая",
+ "interaction.take_herb_tea.phrase": "взять травяного чая",
+ "interaction.take_honey_cake.name": "Взять медовика",
+ "interaction.take_honey_cake.phrase": "взять медовика",
+ "interaction.take_honey_milk.name": "Взять горячего молока с мёдом",
+ "interaction.take_honey_milk.phrase": "взять горячего молока с мёдом",
+ "interaction.take_honey_porridge.name": "Взять медовой каши",
+ "interaction.take_honey_porridge.phrase": "взять медовой каши",
+ "interaction.take_meat_pie.name": "Взять пирога с мясом",
+ "interaction.take_meat_pie.phrase": "взять пирога с мясом",
+ "interaction.take_milk_porridge.name": "Взять молочной каши",
+ "interaction.take_milk_porridge.phrase": "взять молочной каши",
+ "interaction.take_mulled_wine.name": "Взять глинтвейна",
+ "interaction.take_mulled_wine.phrase": "взять глинтвейна",
+ "interaction.take_mushroom_stew.name": "Взять грибной похлёбки",
+ "interaction.take_mushroom_stew.phrase": "взять грибной похлёбки",
+ "interaction.take_nut_bread.name": "Взять орехового хлеба",
+ "interaction.take_nut_bread.phrase": "взять орехового хлеба",
+ "interaction.take_roast_fish.name": "Взять печёной рыбы",
+ "interaction.take_roast_fish.phrase": "взять печёной рыбы",
+ "interaction.take_sweet_curd.name": "Взять творога с мёдом",
+ "interaction.take_sweet_curd.phrase": "взять творога с мёдом",
+ "interaction.take_wake_loaf.name": "Взять поминального каравая",
+ "interaction.take_wake_loaf.phrase": "взять поминального каравая",
+ "interaction.whisper_to_charm.name": "Пошептать оберегу",
+ "interaction.whisper_to_charm.phrase": "пошептать оберегу",
+ "item.apple_pie.name": {
+  "nom": "яблочный пирог",
+  "gen": "яблочного пирога",
+  "dat": "яблочному пирогу",
+  "acc": "яблочный пирог",
+  "ins": "яблочным пирогом",
+  "pre": "яблочном пироге",
+  "g": "m"
+ },
+ "item.baked_apples.name": {
+  "nom": "печёные яблоки",
+  "gen": "печёных яблок",
+  "dat": "печёным яблокам",
+  "acc": "печёные яблоки",
+  "ins": "печёными яблоками",
+  "pre": "печёных яблоках",
+  "g": "pl"
+ },
+ "item.baked_roots.name": {
+  "nom": "печёные коренья",
+  "gen": "печёных кореньев",
+  "dat": "печёным кореньям",
+  "acc": "печёные коренья",
+  "ins": "печёными кореньями",
+  "pre": "печёных кореньях",
+  "g": "pl"
+ },
+ "item.berry_tart.name": {
+  "nom": "ягодный пирог",
+  "gen": "ягодного пирога",
+  "dat": "ягодному пирогу",
+  "acc": "ягодный пирог",
+  "ins": "ягодным пирогом",
+  "pre": "ягодном пироге",
+  "g": "m"
+ },
+ "item.berry_wine.name": {
+  "nom": "ягодное вино",
+  "gen": "ягодного вина",
+  "dat": "ягодному вину",
+  "acc": "ягодное вино",
+  "ins": "ягодным вином",
+  "pre": "ягодном вине",
+  "g": "n"
+ },
+ "item.blood_sausage.name": {
+  "nom": "кровяная колбаса",
+  "gen": "кровяной колбасы",
+  "dat": "кровяной колбасе",
+  "acc": "кровяную колбасу",
+  "ins": "кровяной колбасой",
+  "pre": "кровяной колбасе",
+  "g": "f"
+ },
+ "item.bone.name": {
+  "nom": "кость",
+  "gen": "кости",
+  "dat": "кости",
+  "acc": "кость",
+  "ins": "костью",
+  "pre": "кости",
+  "g": "f"
+ },
+ "item.bone_charm.name": {
+  "nom": "костяной оберег",
+  "gen": "костяного оберега",
+  "dat": "костяному оберегу",
+  "acc": "костяной оберег",
+  "ins": "костяным оберегом",
+  "pre": "костяном обереге",
+  "g": "m"
+ },
+ "item.bone_comb.name": {
+  "nom": "костяной гребень",
+  "gen": "костяного гребня",
+  "dat": "костяному гребню",
+  "acc": "костяной гребень",
+  "ins": "костяным гребнем",
+  "pre": "костяном гребне",
+  "g": "m"
+ },
+ "item.bone_dice.name": {
+  "nom": "игральные кости",
+  "gen": "игральных костей",
+  "dat": "игральным костям",
+  "acc": "игральные кости",
+  "ins": "игральными костями",
+  "pre": "игральных костях",
+  "g": "pl"
+ },
+ "item.bone_flute.name": {
+  "nom": "костяная флейта",
+  "gen": "костяной флейты",
+  "dat": "костяной флейте",
+  "acc": "костяную флейту",
+  "ins": "костяной флейтой",
+  "pre": "костяной флейте",
+  "g": "f"
+ },
+ "item.bowl.name": {
+  "nom": "миска",
+  "gen": "миски",
+  "dat": "миске",
+  "acc": "миску",
+  "ins": "миской",
+  "pre": "миске",
+  "g": "f"
+ },
+ "item.broom.name": {
+  "nom": "метла",
+  "gen": "метлы",
+  "dat": "метле",
+  "acc": "метлу",
+  "ins": "метлой",
+  "pre": "метле",
+  "g": "f"
+ },
+ "item.cauldron.name": {
+  "nom": "котёл",
+  "gen": "котла",
+  "dat": "котлу",
+  "acc": "котёл",
+  "ins": "котлом",
+  "pre": "котле",
+  "g": "m"
+ },
+ "item.cheese_pie.name": {
+  "nom": "ватрушка",
+  "gen": "ватрушки",
+  "dat": "ватрушке",
+  "acc": "ватрушку",
+  "ins": "ватрушкой",
+  "pre": "ватрушке",
+  "g": "f"
+ },
+ "item.clay_candlestick.name": {
+  "nom": "глиняный подсвечник",
+  "gen": "глиняного подсвечника",
+  "dat": "глиняному подсвечнику",
+  "acc": "глиняный подсвечник",
+  "ins": "глиняным подсвечником",
+  "pre": "глиняном подсвечнике",
+  "g": "m"
+ },
+ "item.clay_jug.name": {
+  "nom": "глиняный кувшин",
+  "gen": "глиняного кувшина",
+  "dat": "глиняному кувшину",
+  "acc": "глиняный кувшин",
+  "ins": "глиняным кувшином",
+  "pre": "глиняном кувшине",
+  "g": "m"
+ },
+ "item.clay_pipe.name": {
+  "nom": "глиняная трубка",
+  "gen": "глиняной трубки",
+  "dat": "глиняной трубке",
+  "acc": "глиняную трубку",
+  "ins": "глиняной трубкой",
+  "pre": "глиняной трубке",
+  "g": "f"
+ },
+ "item.clay_pot.name": {
+  "nom": "глиняный горшок",
+  "gen": "глиняного горшка",
+  "dat": "глиняному горшку",
+  "acc": "глиняный горшок",
+  "ins": "глиняным горшком",
+  "pre": "глиняном горшке",
+  "g": "m"
+ },
+ "item.clay_whistle.name": {
+  "nom": "глиняная свистулька",
+  "gen": "глиняной свистульки",
+  "dat": "глиняной свистульке",
+  "acc": "глиняную свистульку",
+  "ins": "глиняной свистулькой",
+  "pre": "глиняной свистульке",
+  "g": "f"
+ },
+ "item.drum.name": {
+  "nom": "бубен",
+  "gen": "бубна",
+  "dat": "бубну",
+  "acc": "бубен",
+  "ins": "бубном",
+  "pre": "бубне",
+  "g": "m"
+ },
+ "item.eggs_greens.name": {
+  "nom": "яичница с зеленью",
+  "gen": "яичницы с зеленью",
+  "dat": "яичнице с зеленью",
+  "acc": "яичницу с зеленью",
+  "ins": "яичницей с зеленью",
+  "pre": "яичнице с зеленью",
+  "g": "f"
+ },
+ "item.fish_pie.name": {
+  "nom": "рыбник",
+  "gen": "рыбника",
+  "dat": "рыбнику",
+  "acc": "рыбник",
+  "ins": "рыбником",
+  "pre": "рыбнике",
+  "g": "m"
+ },
+ "item.fish_soup.name": {
+  "nom": "уха",
+  "gen": "ухи",
+  "dat": "ухе",
+  "acc": "уху",
+  "ins": "ухой",
+  "pre": "ухе",
+  "g": "f"
+ },
+ "item.garden_soup.name": {
+  "nom": "щи",
+  "gen": "щей",
+  "dat": "щам",
+  "acc": "щи",
+  "ins": "щами",
+  "pre": "щах",
+  "g": "pl"
+ },
+ "item.herb_roast.name": {
+  "nom": "жаркое с травами",
+  "gen": "жаркого с травами",
+  "dat": "жаркому с травами",
+  "acc": "жаркое с травами",
+  "ins": "жарким с травами",
+  "pre": "жарком с травами",
+  "g": "n"
+ },
+ "item.herb_tea.name": {
+  "nom": "травяной чай",
+  "gen": "травяного чая",
+  "dat": "травяному чаю",
+  "acc": "травяной чай",
+  "ins": "травяным чаем",
+  "pre": "травяном чае",
+  "g": "m"
+ },
+ "item.hoe.name": {
+  "nom": "мотыга",
+  "gen": "мотыги",
+  "dat": "мотыге",
+  "acc": "мотыгу",
+  "ins": "мотыгой",
+  "pre": "мотыге",
+  "g": "f"
+ },
+ "item.honey_cake.name": {
+  "nom": "медовик",
+  "gen": "медовика",
+  "dat": "медовику",
+  "acc": "медовик",
+  "ins": "медовиком",
+  "pre": "медовике",
+  "g": "m"
+ },
+ "item.honey_milk.name": {
+  "nom": "горячее молоко с мёдом",
+  "gen": "горячего молока с мёдом",
+  "dat": "горячему молоку с мёдом",
+  "acc": "горячее молоко с мёдом",
+  "ins": "горячим молоком с мёдом",
+  "pre": "горячем молоке с мёдом",
+  "g": "n"
+ },
+ "item.honey_porridge.name": {
+  "nom": "медовая каша",
+  "gen": "медовой каши",
+  "dat": "медовой каше",
+  "acc": "медовую кашу",
+  "ins": "медовой кашей",
+  "pre": "медовой каше",
+  "g": "f"
+ },
+ "item.ladle.name": {
+  "nom": "половник",
+  "gen": "половника",
+  "dat": "половнику",
+  "acc": "половник",
+  "ins": "половником",
+  "pre": "половнике",
+  "g": "m"
+ },
+ "item.meat_pie.name": {
+  "nom": "пирог с мясом",
+  "gen": "пирога с мясом",
+  "dat": "пирогу с мясом",
+  "acc": "пирог с мясом",
+  "ins": "пирогом с мясом",
+  "pre": "пироге с мясом",
+  "g": "m"
+ },
+ "item.milk_porridge.name": {
+  "nom": "молочная каша",
+  "gen": "молочной каши",
+  "dat": "молочной каше",
+  "acc": "молочную кашу",
+  "ins": "молочной кашей",
+  "pre": "молочной каше",
+  "g": "f"
+ },
+ "item.mulled_wine.name": {
+  "nom": "глинтвейн",
+  "gen": "глинтвейна",
+  "dat": "глинтвейну",
+  "acc": "глинтвейн",
+  "ins": "глинтвейном",
+  "pre": "глинтвейне",
+  "g": "m"
+ },
+ "item.mushroom_stew.name": {
+  "nom": "грибная похлёбка",
+  "gen": "грибной похлёбки",
+  "dat": "грибной похлёбке",
+  "acc": "грибную похлёбку",
+  "ins": "грибной похлёбкой",
+  "pre": "грибной похлёбке",
+  "g": "f"
+ },
+ "item.nut_bread.name": {
+  "nom": "ореховый хлеб",
+  "gen": "орехового хлеба",
+  "dat": "ореховому хлебу",
+  "acc": "ореховый хлеб",
+  "ins": "ореховым хлебом",
+  "pre": "ореховом хлебе",
+  "g": "m"
+ },
+ "item.pitchfork.name": {
+  "nom": "вилы",
+  "gen": "вил",
+  "dat": "вилам",
+  "acc": "вилы",
+  "ins": "вилами",
+  "pre": "вилах",
+  "g": "pl"
+ },
+ "item.rag_doll.name": {
+  "nom": "тряпичная кукла",
+  "gen": "тряпичной куклы",
+  "dat": "тряпичной кукле",
+  "acc": "тряпичную куклу",
+  "ins": "тряпичной куклой",
+  "pre": "тряпичной кукле",
+  "g": "f"
+ },
+ "item.roast_fish.name": {
+  "nom": "печёная рыба",
+  "gen": "печёной рыбы",
+  "dat": "печёной рыбе",
+  "acc": "печёную рыбу",
+  "ins": "печёной рыбой",
+  "pre": "печёной рыбе",
+  "g": "f"
+ },
+ "item.sickle.name": {
+  "nom": "серп",
+  "gen": "серпа",
+  "dat": "серпу",
+  "acc": "серп",
+  "ins": "серпом",
+  "pre": "серпе",
+  "g": "m"
+ },
+ "item.sweet_curd.name": {
+  "nom": "творог с мёдом",
+  "gen": "творога с мёдом",
+  "dat": "творогу с мёдом",
+  "acc": "творог с мёдом",
+  "ins": "творогом с мёдом",
+  "pre": "твороге с мёдом",
+  "g": "m"
+ },
+ "item.tankard.name": {
+  "nom": "пивная кружка",
+  "gen": "пивной кружки",
+  "dat": "пивной кружке",
+  "acc": "пивную кружку",
+  "ins": "пивной кружкой",
+  "pre": "пивной кружке",
+  "g": "f"
+ },
+ "item.trencher.name": {
+  "nom": "деревянная тарель",
+  "gen": "деревянной тарели",
+  "dat": "деревянной тарели",
+  "acc": "деревянную тарель",
+  "ins": "деревянной тарелью",
+  "pre": "деревянной тарели",
+  "g": "f"
+ },
+ "item.wake_loaf.name": {
+  "nom": "поминальный каравай",
+  "gen": "поминального каравая",
+  "dat": "поминальному караваю",
+  "acc": "поминальный каравай",
+  "ins": "поминальным караваем",
+  "pre": "поминальном каравае",
+  "g": "m"
+ },
+ "item.water.name": {
+  "nom": "вода",
+  "gen": "воды",
+  "dat": "воде",
+  "acc": "воду",
+  "ins": "водой",
+  "pre": "воде",
+  "g": "f"
+ },
+ "item.wooden_cup.name": {
+  "nom": "деревянная чарка",
+  "gen": "деревянной чарки",
+  "dat": "деревянной чарке",
+  "acc": "деревянную чарку",
+  "ins": "деревянной чаркой",
+  "pre": "деревянной чарке",
+  "g": "f"
+ },
+ "item.wooden_spade.name": {
+  "nom": "деревянная лопата",
+  "gen": "деревянной лопаты",
+  "dat": "деревянной лопате",
+  "acc": "деревянную лопату",
+  "ins": "деревянной лопатой",
+  "pre": "деревянной лопате",
+  "g": "f"
+ },
+ "item.wooden_spoon.name": {
+  "nom": "деревянная ложка",
+  "gen": "деревянной ложки",
+  "dat": "деревянной ложке",
+  "acc": "деревянную ложку",
+  "ins": "деревянной ложкой",
+  "pre": "деревянной ложке",
+  "g": "f"
+ },
+ "item.yeast.name": {
+  "nom": "закваска",
+  "gen": "закваски",
+  "dat": "закваске",
+  "acc": "закваску",
+  "ins": "закваской",
+  "pre": "закваске",
+  "g": "f"
+ },
+ "material.fish_raw.made": "рыбн{form:g|ый|ая|ое|ые} {form}",
+ "material.fish_raw.name": {
+  "nom": "рыба",
+  "g": "f"
+ },
+ "material.fruit_wine.made": "винн{form:g|ый|ая|ое|ые} {form}",
+ "material.fruit_wine.name": {
+  "nom": "ягодное вино",
+  "g": "n"
+ },
+ "material.garden_veg.made": "овощн{form:g|ой|ая|ое|ые} {form}",
+ "material.garden_veg.name": {
+  "nom": "овощи",
+  "g": "pl"
+ },
+ "material.greens.made": "{form} из зелени",
+ "material.greens.name": {
+  "nom": "зелень",
+  "g": "f"
+ },
+ "material.hard_cheese.made": "сырн{form:g|ый|ая|ое|ые} {form}",
+ "material.hard_cheese.name": {
+  "nom": "сыр",
+  "g": "m"
+ },
+ "material.hazelnut.made": "орехов{form:g|ый|ая|ое|ые} {form}",
+ "material.hazelnut.name": {
+  "nom": "лесной орех",
+  "g": "m"
+ },
+ "material.mushroom.made": "грибн{form:g|ой|ая|ое|ые} {form}",
+ "material.mushroom.name": {
+  "nom": "гриб",
+  "g": "m"
+ },
+ "material.root.made": "{form} из кореньев",
+ "material.root.name": {
+  "nom": "коренья",
+  "g": "pl"
+ },
+ "moodlet.ate_fine_food.name": "Вкусно поел",
+ "moodlet.ate_sweet.name": "Сладкое",
+ "moodlet.cosy_light.name": "Уютный свет",
+ "moodlet.made_music.name": "Музицировал",
+ "moodlet.pipe_smoke.name": "Покурил",
+ "moodlet.remembered_the_dead.name": "Помянул ушедших",
+ "moodlet.warded.name": "Под защитой оберега",
+ "moodlet.warm_belly.name": "Тепло в животе",
+ "shape.candlestick_raw.name": {
+  "nom": "подсвечник-заготовка",
+  "g": "m"
+ },
+ "shape.cauldron_raw.name": {
+  "nom": "котёл-заготовка",
+  "g": "m"
+ },
+ "shape.charm_raw.name": {
+  "nom": "оберег-заготовка",
+  "g": "m"
+ },
+ "shape.comb_raw.name": {
+  "nom": "гребень-заготовка",
+  "g": "m"
+ },
+ "shape.cup_raw.name": {
+  "nom": "чарка",
+  "g": "f"
+ },
+ "shape.dice_raw.name": {
+  "nom": "кости-заготовка",
+  "g": "pl"
+ },
+ "shape.doll_raw.name": {
+  "nom": "кукла-заготовка",
+  "g": "f"
+ },
+ "shape.figure_raw.name": {
+  "nom": "фигурка",
+  "g": "f"
+ },
+ "shape.flute_raw.name": {
+  "nom": "дудка",
+  "g": "f"
+ },
+ "shape.fork_raw.name": {
+  "nom": "вилы-заготовка",
+  "g": "pl"
+ },
+ "shape.hoe_blade.name": {
+  "nom": "мотыжное лезвие",
+  "g": "n"
+ },
+ "shape.pipe_raw.name": {
+  "nom": "трубка-заготовка",
+  "g": "f"
+ },
+ "shape.sickle_blade.name": {
+  "nom": "серп-полотно",
+  "g": "n"
+ },
+ "shape.spade_raw.name": {
+  "nom": "лопата-заготовка",
+  "g": "f"
+ },
+ "shape.spindle_raw.name": {
+  "nom": "веретено-заготовка",
+  "g": "n"
+ },
+ "shape.spoon_raw.name": {
+  "nom": "ложка-заготовка",
+  "g": "f"
+ },
+ "shape.trencher_raw.name": {
+  "nom": "доска-тарель",
+  "g": "f"
+ },
+ "shape.whistle_raw.name": {
+  "nom": "свистулька-заготовка",
+  "g": "f"
+ },
+ "station.table.name": {
+  "nom": "стол",
+  "g": "m"
+ }
+}

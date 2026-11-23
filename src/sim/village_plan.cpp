@@ -86,9 +86,22 @@ double distToPolyline(Vec2 p, const std::vector<Vec2>& line) {
 }
 
 // ---- the plan -------------------------------------------------------------------
-VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre, const VillageWanted& want,
+VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre, const VillageWanted& wanted,
                         std::uint64_t seed) {
     VillagePlan plan;
+    // AL-76: the lots asked for; the old way (`houses` homes) as specs
+    VillageWanted want = wanted;
+    if (want.lots.empty())
+        for (int k = 0; k < want.houses; ++k) {
+            LotSpec L;
+            L.w = std::max(1, int(std::lround(want.houseW / want.cellM)));
+            L.d = std::max(1, int(std::lround(want.houseD / want.cellM)));
+            L.yardD = want.yardD;
+            want.lots.push_back(L);
+        }
+    const int nLots = int(want.lots.size());
+    double meanW = 0;
+    for (const auto& L : want.lots) meanW += std::max(L.w, L.d) * want.cellM / std::max(1, nLots);
     Rng rng(hashCombine(seed, hashStr("village_plan")));
     auto inMap = [&](Vec2 p) { return p.x > 2 && p.y > 2 && p.x < map.sizeM - 2 && p.y < map.sizeM - 2; };
     auto wetAt = [&](Vec2 p) { return site.water(p) || (map.w > 0 && map.waterAt(p)); };
@@ -99,8 +112,8 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
     };
 
     // the radius grows with the households (lots on both sides of the roads)
-    const double lotStep = want.houseW + 4.0;
-    const double radius = std::clamp(35.0 + lotStep * 0.55 * want.houses, 50.0, 170.0);
+    const double lotStep = meanW + 4.0;
+    const double radius = std::clamp(35.0 + lotStep * 0.55 * nLots, 50.0, 170.0);
 
     // The square: the flattest dry spot near the centre.
     {
@@ -191,7 +204,7 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
         }
         (void)both;
         // lanes off the main road, alternating sides, as many as the households need
-        const int lanes = std::clamp(want.houses / 4, 0, 4);
+        const int lanes = std::clamp(nLots / 4, 0, 4);
         const std::vector<Vec2> main = plan.roads[0];
         for (int k = 0; k < lanes && main.size() > 2; ++k) {
             const std::size_t i = std::clamp<std::size_t>(
@@ -213,17 +226,20 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
     }
 
     // Lots: along every road on both sides, a house facing the road with its
-    // yard behind; the nearest to the square are taken first.
+    // yard behind. AL-76: each lot as asked (its size, its zone): the square's
+    // first (nearest the square), then the main road's, the lanes', the
+    // edge's (the farthest out); the house turned by quarters to face the
+    // road as near as it can and set on the build grid.
     std::vector<PlanRect> taken;
     auto clearOfRoads = [&](const PlanRect& r) {
         for (std::size_t ri = 0; ri < plan.roads.size(); ++ri)
             for (double u : {-1.0, -0.5, 0.0, 0.5, 1.0})
-                for (double v : {-1.0, 0.0, 1.0})
+                for (double v : {-1.0, -0.5, 0.0, 0.5, 1.0})
                     if (distToPolyline(r.at(u * r.hw, v * r.hd), plan.roads[ri]) < plan.roadWidth[ri] * 0.5 + 0.8)
                         return false;
         return true;
     };
-    auto groundOk = [&](const PlanRect& r, double& mean) {
+    auto groundOk = [&](const PlanRect& r, double& mean, double* top = nullptr) {
         double lo = 1e9, hi = -1e9, sum = 0;
         int cnt = 0;
         for (double u : {-1.0, 0.0, 1.0})
@@ -234,67 +250,107 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
                 lo = std::min(lo, h), hi = std::max(hi, h), sum += h, ++cnt;
             }
         mean = sum / cnt;
+        if (top) *top = hi;
         return hi - lo <= want.maxRelief;
     };
-    struct Cand {
-        VillageLot lot;
-        double d;
+    // where a lot may front a road: a point on it, the way out to the lot
+    struct Anchor {
+        Vec2 p, out;
+        int road;
     };
-    std::vector<Cand> cands;
+    std::vector<Anchor> anchors;
     for (std::size_t ri = 0; ri < plan.roads.size(); ++ri) {
         const auto& line = plan.roads[ri];
-        double carried = 0;
         for (std::size_t i = 0; i + 1 < line.size(); ++i) {
             const Vec2 a = line[i], b = line[i + 1];
             const double len = dist(a, b);
+            if (len < 1e-6) continue;
             const Vec2 u{(b.x - a.x) / len, (b.y - a.y) / len};
-            for (double t = carried; t < len; t += lotStep) {
-                const Vec2 p = add(a, mul(u, t));
-                for (int sgn = -1; sgn <= 1; sgn += 2) {
-                    const Vec2 out{-u.y * sgn, u.x * sgn};   // from the road to the lot
-                    VillageLot L;
-                    L.road = int(ri);
-                    L.house.hw = want.houseW * 0.5;
-                    L.house.hd = want.houseD * 0.5;
-                    L.house.c = add(p, mul(out, plan.roadWidth[ri] * 0.5 + 2.0 + L.house.hd));
-                    // the front faces the road: front = -out
-                    L.house.yaw = std::atan2(-out.x, out.y);
-                    L.yard = L.house;
-                    L.yard.hd = want.yardD * 0.5;
-                    L.yard.c = add(L.house.c, mul(out, L.house.hd + L.yard.hd));
-                    if (dist(L.house.c, plan.square) < plan.squareR + L.house.hw + 2) continue;
-                    cands.push_back({L, dist(L.house.c, plan.square) + rng.range(0, 3)});
-                }
-            }
-            carried = std::fmod(carried + len, lotStep);
-            carried = carried > 0 ? lotStep - carried : 0;
-            if (carried >= lotStep) carried = 0;
+            for (double t = 0; t < len; t += 4.0)
+                for (int sgn = -1; sgn <= 1; sgn += 2) anchors.push_back({add(a, mul(u, t)), {-u.y * sgn, u.x * sgn}, int(ri)});
         }
     }
-    std::sort(cands.begin(), cands.end(), [](const Cand& a, const Cand& b) { return a.d < b.d; });
+    const double c = want.cellM;
+    auto snap = [&](double v) { return std::round(v / c) * c; };
+    // the lot of spec L at anchor A, `extra` metres further from the road
+    auto lotAt = [&](const LotSpec& L, const Anchor& A, double extra) {
+        VillageLot lot;
+        lot.road = A.road;
+        // front = -out, turned to the nearest quarter
+        const double yaw = std::atan2(-A.out.x, A.out.y);
+        const int q = int(std::lround(yaw / (kPi / 2))) & 3;
+        lot.house.yaw = q * kPi / 2;
+        lot.house.hw = L.w * c * 0.5;
+        lot.house.hd = L.d * c * 0.5;
+        const Vec2 back = mul(lot.house.front(), -1.0);
+        Vec2 ctr = add(A.p, mul(A.out, plan.roadWidth[std::size_t(A.road)] * 0.5 + 2.0 + extra));
+        ctr = add(ctr, mul(back, lot.house.hd));
+        // the corner on the grid: the house's cells are the world's
+        const double ex = (q & 1) ? lot.house.hd : lot.house.hw, ey = (q & 1) ? lot.house.hw : lot.house.hd;
+        lot.house.c = {snap(ctr.x - ex) + ex, snap(ctr.y - ey) + ey};
+        lot.yard = lot.house;
+        lot.yard.hd = std::max(1.0, L.yardD * 0.5);
+        lot.yard.c = add(lot.house.c, mul(back, lot.house.hd + lot.yard.hd));
+        return lot;
+    };
     const PlanRect squareRect{plan.square, 0, plan.squareR, plan.squareR};
-    for (auto& c : cands) {
-        if (int(plan.lots.size()) >= want.houses) break;
-        double mean = 0;
-        if (!groundOk(c.lot.house, mean) || !clearOfRoads(c.lot.house) || !clearOfRoads(c.lot.yard)) continue;
-        if (c.lot.house.overlaps(squareRect, 2.0)) continue;
-        bool hit = false;
-        for (const auto& t : taken)
-            if (c.lot.house.overlaps(t, 3.0) || c.lot.yard.overlaps(t, 1.0)) hit = true;
-        if (hit) continue;
-        c.lot.ground = mean;
-        taken.push_back(c.lot.house);
-        taken.push_back(c.lot.yard);
-        plan.lots.push_back(c.lot);
+    plan.lots.assign(std::size_t(nLots), VillageLot{});
+    for (auto& L : plan.lots) L.placed = false;
+    static const char* kZones[] = {"square", "road", "lane", "edge"};
+    std::vector<int> order;
+    for (const char* z : kZones)
+        for (int k = 0; k < nLots; ++k)
+            if (want.lots[std::size_t(k)].zone == z) order.push_back(k);
+    for (int k = 0; k < nLots; ++k)
+        if (std::find(order.begin(), order.end(), k) == order.end()) order.push_back(k);
+    for (int k : order) {
+        const LotSpec& L = want.lots[std::size_t(k)];
+        double bestScore = 1e18;
+        VillageLot best;
+        bool found = false;
+        for (const Anchor& A : anchors) {
+            const double d0 = dist(A.p, plan.square);
+            if (L.zone == "edge" && d0 > radius) continue;
+            for (double extra : {0.0, 2.0, 4.0}) {
+                VillageLot lot = lotAt(L, A, extra);
+                const double d = dist(lot.house.c, plan.square);
+                double score = d + rng.range(0, 3) + extra;
+                if (L.zone == "road") score += A.road != 0 ? 80.0 : 0.0;
+                else if (L.zone == "lane") score += A.road == 0 ? 20.0 : 0.0;
+                else if (L.zone == "edge") score = -d + rng.range(0, 3) + extra;
+                if (score >= bestScore) continue;
+                if (d < plan.squareR + std::min(lot.house.hw, lot.house.hd) + 2) continue;
+                double mean = 0, top = 0;
+                if (!groundOk(lot.house, mean, &top) || !clearOfRoads(lot.house) || !clearOfRoads(lot.yard)) continue;
+                if (lot.house.overlaps(squareRect, 2.0) || lot.yard.overlaps(squareRect, 1.0)) continue;
+                bool hit = false;
+                for (const auto& t : taken)
+                    if (lot.house.overlaps(t, 3.0) || lot.yard.overlaps(t, 1.0)) hit = true;
+                if (hit) continue;
+                lot.ground = mean;
+                lot.groundMax = top;
+                bestScore = score;
+                best = lot;
+                found = true;
+                break;   // further from the road only when this spot fails
+            }
+        }
+        if (!found) continue;
+        best.placed = true;
+        taken.push_back(best.house);
+        taken.push_back(best.yard);
+        plan.lots[std::size_t(k)] = best;
     }
-    if (int(plan.lots.size()) < want.houses)
-        plan.notes.push_back("only " + std::to_string(plan.lots.size()) + " of " + std::to_string(want.houses) +
-                             " lots fit");
+    int placedN = 0;
+    for (const auto& L : plan.lots) placedN += L.placed;
+    if (placedN < nLots)
+        plan.notes.push_back("only " + std::to_string(placedN) + " of " + std::to_string(nLots) + " lots fit");
 
-    // Fields: beyond each household's yard, else further out the same way,
+    // Fields: beyond each home's yard, else further out the same way,
     // else anywhere round the village edge.
     for (std::size_t i = 0; i < plan.lots.size() && int(plan.fields.size()) < want.fields; ++i) {
-        const VillageLot& L = plan.lots[i];
+        VillageLot& L = plan.lots[i];
+        if (!L.placed || !want.lots[i].home) continue;
         const Vec2 out = mul(L.house.front(), -1.0);
         bool placed = false;
         for (double extra = 4; extra < 140 && !placed; extra += 12)
@@ -311,6 +367,7 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
                     if (f.overlaps(t, 2.0)) hit = true;
                 if (hit) continue;
                 taken.push_back(f);
+                L.field = int(plan.fields.size());
                 plan.fields.push_back(f);
                 placed = true;
                 break;

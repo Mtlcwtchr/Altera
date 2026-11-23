@@ -412,7 +412,11 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
         if (target->type != d.targetType) return fail("wrong_target:" + d.targetType);
         if (target->reservedFor(c.id, w.now())) return fail("reserved:" + d.targetType);
         if (!w.inSeason(*target)) return fail("season:" + d.targetType);
-        if (checkRange && dist(target->pos, c.pos) > reachOf(w, d)) return fail("out_of_range:" + d.targetType);
+        if (checkRange) {   // AL-78: one stands beside a thing (stand_m), so it is in reach from there
+            const auto od = w.content().objects.find(target->type);
+            const double stand = od != w.content().objects.end() ? od->second.standM : 0.0;
+            if (dist(target->pos, c.pos) > std::max(reachOf(w, d), stand + 0.25)) return fail("out_of_range:" + d.targetType);
+        }
     }
     if (d.targetsCharacter() && targetChar) { // without a person only the actor's side is checked
         if (!targetChar->body.alive || targetChar->isAnimal()) return fail("no_person");

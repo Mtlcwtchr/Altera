@@ -572,7 +572,7 @@ TEST(altera_craft_designs_become_goap_actions) {
     const Content& ct = realContent();
     int n = 0;
     for (const auto& [id, d] : ct.interactions)
-        if (id.rfind("craft:", 0) == 0) {
+        if (id.rfind("craft:", 0) == 0 && d.baseId.empty()) { // <id>@foreign: the player's order at another's hearth
             ++n;
             CHECK(d.craft == "design:" + id.substr(6));
             CHECK(d.goap && !d.eff.empty());

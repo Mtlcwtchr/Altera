@@ -1,0 +1,2410 @@
+{
+ "_doc": "AL-74: methods the cuisine pack adds to existing tasks (merged like content/ai/expansion: a shared id keeps the base).",
+ "add_methods": {
+  "obtain_food": [
+   {
+    "id": "eat_honey_porridge_carried",
+    "pre": [
+     "has:honey_porridge>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_honey_porridge"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_honey_porridge_stored",
+    "pre": [
+     "home:honey_porridge>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:honey_porridge>=1"
+      ],
+      "allow": [
+       "take_honey_porridge"
+      ]
+     },
+     {
+      "do": "eat_honey_porridge"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_honey_porridge",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 1.9,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=2"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:honey_porridge"
+     },
+     {
+      "do": "eat_honey_porridge"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_milk_porridge_carried",
+    "pre": [
+     "has:milk_porridge>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_milk_porridge"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_milk_porridge_stored",
+    "pre": [
+     "home:milk_porridge>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:milk_porridge>=1"
+      ],
+      "allow": [
+       "take_milk_porridge"
+      ]
+     },
+     {
+      "do": "eat_milk_porridge"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_milk_porridge",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "home:milk>=2"
+    ],
+    "cost": 1.85,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:milk>=2"
+      ],
+      "allow": [
+       "take_milk"
+      ]
+     },
+     {
+      "do": "craft:milk_porridge"
+     },
+     {
+      "do": "eat_milk_porridge"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_mushroom_stew_carried",
+    "pre": [
+     "has:mushroom_stew>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_mushroom_stew"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_mushroom_stew_stored",
+    "pre": [
+     "home:mushroom_stew>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:mushroom_stew>=1"
+      ],
+      "allow": [
+       "take_mushroom_stew"
+      ]
+     },
+     {
+      "do": "eat_mushroom_stew"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_mushroom_stew",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "knows:foraging",
+     "known:mushroom_glade",
+     "home:roots>=1",
+     "known:storage",
+     "known:well"
+    ],
+    "cost": 2.4,
+    "steps": [
+     {
+      "achieve": [
+       "has:mushrooms>=1"
+      ],
+      "allow": [
+       "pick_mushrooms"
+      ]
+     },
+     {
+      "achieve": [
+       "has:roots>=1"
+      ],
+      "allow": [
+       "take_roots"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=3"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:mushroom_stew"
+     },
+     {
+      "do": "eat_mushroom_stew"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_fish_soup_carried",
+    "pre": [
+     "has:fish_soup>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_fish_soup"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_fish_soup_stored",
+    "pre": [
+     "home:fish_soup>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:fish_soup>=1"
+      ],
+      "allow": [
+       "take_fish_soup"
+      ]
+     },
+     {
+      "do": "eat_fish_soup"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_fish_soup",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:fish>=2",
+     "known:storage",
+     "home:vegetables>=1",
+     "known:well"
+    ],
+    "cost": 2.0,
+    "steps": [
+     {
+      "achieve": [
+       "has:fish>=1"
+      ],
+      "allow": [
+       "take_fish"
+      ]
+     },
+     {
+      "achieve": [
+       "has:vegetables>=1"
+      ],
+      "allow": [
+       "take_vegetables"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=3"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:fish_soup"
+     },
+     {
+      "do": "eat_fish_soup"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_garden_soup_carried",
+    "pre": [
+     "has:garden_soup>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_garden_soup"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_garden_soup_stored",
+    "pre": [
+     "home:garden_soup>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:garden_soup>=1"
+      ],
+      "allow": [
+       "take_garden_soup"
+      ]
+     },
+     {
+      "do": "eat_garden_soup"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_garden_soup",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:vegetables>=1",
+     "known:storage",
+     "known:well",
+     "knows:foraging",
+     "known:wild_greens_patch"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "achieve": [
+       "has:vegetables>=1"
+      ],
+      "allow": [
+       "take_vegetables"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=3"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "achieve": [
+       "has:wild_greens>=1"
+      ],
+      "allow": [
+       "gather_greens"
+      ]
+     },
+     {
+      "do": "craft:garden_soup"
+     },
+     {
+      "do": "eat_garden_soup"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_meat_pie_carried",
+    "pre": [
+     "has:meat_pie>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_meat_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_meat_pie_stored",
+    "pre": [
+     "home:meat_pie>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:meat_pie>=1"
+      ],
+      "allow": [
+       "take_meat_pie"
+      ]
+     },
+     {
+      "do": "eat_meat_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_meat_pie",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "has:meat>=1",
+     "known:well"
+    ],
+    "cost": 1.7,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:meat_pie"
+     },
+     {
+      "do": "eat_meat_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_fish_pie_carried",
+    "pre": [
+     "has:fish_pie>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_fish_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_fish_pie_stored",
+    "pre": [
+     "home:fish_pie>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:fish_pie>=1"
+      ],
+      "allow": [
+       "take_fish_pie"
+      ]
+     },
+     {
+      "do": "eat_fish_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_fish_pie",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:fish>=2",
+     "known:storage",
+     "home:grain>=1",
+     "known:well"
+    ],
+    "cost": 2.2,
+    "steps": [
+     {
+      "achieve": [
+       "has:fish>=1"
+      ],
+      "allow": [
+       "take_fish"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:fish_pie"
+     },
+     {
+      "do": "eat_fish_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_berry_tart_carried",
+    "pre": [
+     "has:berry_tart>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_berry_tart"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_berry_tart_stored",
+    "pre": [
+     "home:berry_tart>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:berry_tart>=1"
+      ],
+      "allow": [
+       "take_berry_tart"
+      ]
+     },
+     {
+      "do": "eat_berry_tart"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_berry_tart",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:berries>=1",
+     "known:storage",
+     "home:grain>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 2.3,
+    "steps": [
+     {
+      "achieve": [
+       "has:berries>=1"
+      ],
+      "allow": [
+       "take_berries"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:berry_tart"
+     },
+     {
+      "do": "eat_berry_tart"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_apple_pie_carried",
+    "pre": [
+     "has:apple_pie>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_apple_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_apple_pie_stored",
+    "pre": [
+     "home:apple_pie>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:apple_pie>=1"
+      ],
+      "allow": [
+       "take_apple_pie"
+      ]
+     },
+     {
+      "do": "eat_apple_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_apple_pie",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:apples>=1",
+     "known:storage",
+     "home:grain>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 2.25,
+    "steps": [
+     {
+      "achieve": [
+       "has:apples>=1"
+      ],
+      "allow": [
+       "take_apples"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:apple_pie"
+     },
+     {
+      "do": "eat_apple_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_honey_cake_carried",
+    "pre": [
+     "has:honey_cake>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_honey_cake"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_honey_cake_stored",
+    "pre": [
+     "home:honey_cake>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:honey_cake>=1"
+      ],
+      "allow": [
+       "take_honey_cake"
+      ]
+     },
+     {
+      "do": "eat_honey_cake"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_honey_cake",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:eggs>=1",
+     "known:storage",
+     "home:grain>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 2.35,
+    "steps": [
+     {
+      "achieve": [
+       "has:eggs>=1"
+      ],
+      "allow": [
+       "take_eggs"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:honey_cake"
+     },
+     {
+      "do": "eat_honey_cake"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_nut_bread_carried",
+    "pre": [
+     "has:nut_bread>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_nut_bread"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_nut_bread_stored",
+    "pre": [
+     "home:nut_bread>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:nut_bread>=1"
+      ],
+      "allow": [
+       "take_nut_bread"
+      ]
+     },
+     {
+      "do": "eat_nut_bread"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_nut_bread",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "home:hazelnuts>=1",
+     "known:well"
+    ],
+    "cost": 2.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:hazelnuts>=1"
+      ],
+      "allow": [
+       "take_hazelnuts"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:nut_bread"
+     },
+     {
+      "do": "eat_nut_bread"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_cheese_pie_carried",
+    "pre": [
+     "has:cheese_pie>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_cheese_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_cheese_pie_stored",
+    "pre": [
+     "home:cheese_pie>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:cheese_pie>=1"
+      ],
+      "allow": [
+       "take_cheese_pie"
+      ]
+     },
+     {
+      "do": "eat_cheese_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_cheese_pie",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:cheese>=1",
+     "known:storage",
+     "home:eggs>=1",
+     "home:grain>=1",
+     "known:well"
+    ],
+    "cost": 2.3,
+    "steps": [
+     {
+      "achieve": [
+       "has:cheese>=1"
+      ],
+      "allow": [
+       "take_cheese"
+      ]
+     },
+     {
+      "achieve": [
+       "has:eggs>=1"
+      ],
+      "allow": [
+       "take_eggs"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:cheese_pie"
+     },
+     {
+      "do": "eat_cheese_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_wake_loaf_carried",
+    "pre": [
+     "has:wake_loaf>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_wake_loaf"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_wake_loaf_stored",
+    "pre": [
+     "home:wake_loaf>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:wake_loaf>=1"
+      ],
+      "allow": [
+       "take_wake_loaf"
+      ]
+     },
+     {
+      "do": "eat_wake_loaf"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_wake_loaf",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "has:herbs>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 2.6,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:wake_loaf"
+     },
+     {
+      "do": "eat_wake_loaf"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_blood_sausage_carried",
+    "pre": [
+     "has:blood_sausage>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_blood_sausage"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_blood_sausage_stored",
+    "pre": [
+     "home:blood_sausage>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:blood_sausage>=1"
+      ],
+      "allow": [
+       "take_blood_sausage"
+      ]
+     },
+     {
+      "do": "eat_blood_sausage"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_blood_sausage",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "has:meat>=1"
+    ],
+    "cost": 1.75,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "do": "craft:blood_sausage"
+     },
+     {
+      "do": "eat_blood_sausage"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_herb_roast_carried",
+    "pre": [
+     "has:herb_roast>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_herb_roast"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_herb_roast_stored",
+    "pre": [
+     "home:herb_roast>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:herb_roast>=1"
+      ],
+      "allow": [
+       "take_herb_roast"
+      ]
+     },
+     {
+      "do": "eat_herb_roast"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_herb_roast",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "has:herbs>=1",
+     "has:meat>=1"
+    ],
+    "cost": 1.7,
+    "steps": [
+     {
+      "do": "craft:herb_roast"
+     },
+     {
+      "do": "eat_herb_roast"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_roast_fish_carried",
+    "pre": [
+     "has:roast_fish>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_roast_fish"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_roast_fish_stored",
+    "pre": [
+     "home:roast_fish>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:roast_fish>=1"
+      ],
+      "allow": [
+       "take_roast_fish"
+      ]
+     },
+     {
+      "do": "eat_roast_fish"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_roast_fish",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:fish>=2",
+     "known:storage"
+    ],
+    "cost": 2.05,
+    "steps": [
+     {
+      "achieve": [
+       "has:fish>=1"
+      ],
+      "allow": [
+       "take_fish"
+      ]
+     },
+     {
+      "do": "craft:roast_fish"
+     },
+     {
+      "do": "eat_roast_fish"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_baked_apples_carried",
+    "pre": [
+     "has:baked_apples>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_baked_apples"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_baked_apples_stored",
+    "pre": [
+     "home:baked_apples>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:baked_apples>=1"
+      ],
+      "allow": [
+       "take_baked_apples"
+      ]
+     },
+     {
+      "do": "eat_baked_apples"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_baked_apples",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:apples>=1",
+     "known:storage",
+     "home:honey>=1"
+    ],
+    "cost": 2.7,
+    "steps": [
+     {
+      "achieve": [
+       "has:apples>=1"
+      ],
+      "allow": [
+       "take_apples"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "do": "craft:baked_apples"
+     },
+     {
+      "do": "eat_baked_apples"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_baked_roots_carried",
+    "pre": [
+     "has:baked_roots>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_baked_roots"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_baked_roots_stored",
+    "pre": [
+     "home:baked_roots>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:baked_roots>=1"
+      ],
+      "allow": [
+       "take_baked_roots"
+      ]
+     },
+     {
+      "do": "eat_baked_roots"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_baked_roots",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:roots>=1",
+     "known:storage"
+    ],
+    "cost": 2.9,
+    "steps": [
+     {
+      "achieve": [
+       "has:roots>=1"
+      ],
+      "allow": [
+       "take_roots"
+      ]
+     },
+     {
+      "do": "craft:baked_roots"
+     },
+     {
+      "do": "eat_baked_roots"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_eggs_greens_carried",
+    "pre": [
+     "has:eggs_greens>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_eggs_greens"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_eggs_greens_stored",
+    "pre": [
+     "home:eggs_greens>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:eggs_greens>=1"
+      ],
+      "allow": [
+       "take_eggs_greens"
+      ]
+     },
+     {
+      "do": "eat_eggs_greens"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_eggs_greens",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:eggs>=1",
+     "known:storage",
+     "knows:foraging",
+     "known:wild_greens_patch"
+    ],
+    "cost": 2.6,
+    "steps": [
+     {
+      "achieve": [
+       "has:eggs>=1"
+      ],
+      "allow": [
+       "take_eggs"
+      ]
+     },
+     {
+      "achieve": [
+       "has:wild_greens>=1"
+      ],
+      "allow": [
+       "gather_greens"
+      ]
+     },
+     {
+      "do": "craft:eggs_greens"
+     },
+     {
+      "do": "eat_eggs_greens"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_sweet_curd_carried",
+    "pre": [
+     "has:sweet_curd>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "eat_sweet_curd"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "eat_sweet_curd_stored",
+    "pre": [
+     "home:sweet_curd>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:sweet_curd>=1"
+      ],
+      "allow": [
+       "take_sweet_curd"
+      ]
+     },
+     {
+      "do": "eat_sweet_curd"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_sweet_curd",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:apples>=1",
+     "known:storage",
+     "home:honey>=1",
+     "home:milk>=1"
+    ],
+    "cost": 2.4,
+    "steps": [
+     {
+      "achieve": [
+       "has:apples>=1"
+      ],
+      "allow": [
+       "take_apples"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:milk>=1"
+      ],
+      "allow": [
+       "take_milk"
+      ]
+     },
+     {
+      "do": "craft:sweet_curd"
+     },
+     {
+      "do": "eat_sweet_curd"
+     }
+    ],
+    "_part": "AL-74"
+   }
+  ],
+  "obtain_water": [
+   {
+    "id": "drink_herb_tea_carried",
+    "pre": [
+     "has:herb_tea>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "drink_herb_tea"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "drink_herb_tea_stored",
+    "pre": [
+     "home:herb_tea>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:herb_tea>=1"
+      ],
+      "allow": [
+       "take_herb_tea"
+      ]
+     },
+     {
+      "do": "drink_herb_tea"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_herb_tea",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "has:herbs>=1",
+     "known:well"
+    ],
+    "cost": 1.5,
+    "steps": [
+     {
+      "achieve": [
+       "has:water>=2"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:herbal_tea"
+     },
+     {
+      "do": "drink_herb_tea"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "drink_honey_milk_carried",
+    "pre": [
+     "has:honey_milk>=1"
+    ],
+    "cost": 0.8,
+    "steps": [
+     {
+      "do": "drink_honey_milk"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "drink_honey_milk_stored",
+    "pre": [
+     "home:honey_milk>=1",
+     "known:storage"
+    ],
+    "cost": 1.15,
+    "steps": [
+     {
+      "achieve": [
+       "has:honey_milk>=1"
+      ],
+      "allow": [
+       "take_honey_milk"
+      ]
+     },
+     {
+      "do": "drink_honey_milk"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_honey_milk",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:honey>=1",
+     "known:storage",
+     "home:milk>=1"
+    ],
+    "cost": 1.8,
+    "steps": [
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:milk>=1"
+      ],
+      "allow": [
+       "take_milk"
+      ]
+     },
+     {
+      "do": "craft:honey_milk"
+     },
+     {
+      "do": "drink_honey_milk"
+     }
+    ],
+    "_part": "AL-74"
+   }
+  ],
+  "brew_task": [
+   {
+    "id": "brew_berry_wine_from_store",
+    "pre": [
+     "knows:brewing",
+     "known:hearth",
+     "known:storage",
+     "home:berries>=6",
+     "home:grain>=1"
+    ],
+    "cost": 1.4,
+    "steps": [
+     {
+      "achieve": [
+       "has:berries>=6"
+      ],
+      "allow": [
+       "take_berries"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "do": "set_leaven"
+     },
+     {
+      "do": "brew_berry_wine"
+     },
+     {
+      "do": "store_berry_wine"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "mull_wine_from_store",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "known:storage",
+     "home:firewood>=1",
+     "home:berry_wine>=1",
+     "home:honey>=1",
+     "has:herbs>=1"
+    ],
+    "cost": 1.6,
+    "steps": [
+     {
+      "achieve": [
+       "has:berry_wine>=1"
+      ],
+      "allow": [
+       "take_berry_wine"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "do": "craft:mulled_wine"
+     },
+     {
+      "do": "store_mulled_wine"
+     }
+    ],
+    "_part": "AL-74"
+   }
+  ],
+  "have_fun_task": [
+   {
+    "id": "fun_berry_wine_at_fire",
+    "pre": [
+     "home:berry_wine>=1",
+     "known:storage",
+     "known:village_fire",
+     "!age:child"
+    ],
+    "cost": 3,
+    "steps": [
+     {
+      "achieve": [
+       "has:berry_wine>=1"
+      ],
+      "allow": [
+       "take_berry_wine"
+      ]
+     },
+     {
+      "do": "drink_berry_wine_at_fire"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_mulled_wine_at_fire",
+    "pre": [
+     "home:mulled_wine>=1",
+     "known:storage",
+     "known:village_fire",
+     "!age:child"
+    ],
+    "cost": 3,
+    "steps": [
+     {
+      "achieve": [
+       "has:mulled_wine>=1"
+      ],
+      "allow": [
+       "take_mulled_wine"
+      ]
+     },
+     {
+      "do": "drink_mulled_wine_at_fire"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_play_flute",
+    "pre": [
+     "has:bone_flute>=1"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "play_flute"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_play_drum",
+    "pre": [
+     "has:drum>=1",
+     "known:village_fire"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "play_drum"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_roll_bone_dice",
+    "pre": [
+     "has:bone_dice>=1",
+     "known:village_fire"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "roll_bone_dice"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_smoke_pipe",
+    "pre": [
+     "has:clay_pipe>=1",
+     "has:dried_herbs>=1"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "smoke_pipe"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_comb_hair",
+    "pre": [
+     "has:bone_comb>=1"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "comb_hair"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_whisper_to_charm",
+    "pre": [
+     "has:bone_charm>=1"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "whisper_to_charm"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_play_with_doll",
+    "pre": [
+     "has:rag_doll>=1",
+     "age:child"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "play_with_doll"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_blow_whistle",
+    "pre": [
+     "has:clay_whistle>=1"
+    ],
+    "cost": 2.5,
+    "steps": [
+     {
+      "do": "blow_whistle"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_make_bone_flute",
+    "pre": [
+     "!has:bone_flute",
+     "knows:toolmaking",
+     "has:bone>=1",
+     "has:stone_blade>=1"
+    ],
+    "cost": 6,
+    "steps": [
+     {
+      "do": "craft:bone_flute"
+     },
+     {
+      "do": "play_flute"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_make_bone_dice",
+    "pre": [
+     "!has:bone_dice",
+     "knows:toolmaking",
+     "has:bone>=1",
+     "has:stone_blade>=1",
+     "known:village_fire"
+    ],
+    "cost": 6,
+    "steps": [
+     {
+      "do": "craft:bone_dice"
+     },
+     {
+      "do": "roll_bone_dice"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_make_clay_whistle",
+    "pre": [
+     "!has:clay_whistle",
+     "knows:pottery",
+     "has:clay>=1",
+     "known:hearth",
+     "known:house",
+     "home:firewood>=1"
+    ],
+    "cost": 6,
+    "steps": [
+     {
+      "do": "craft:clay_whistle"
+     },
+     {
+      "do": "blow_whistle"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "fun_make_drum",
+    "pre": [
+     "!has:drum",
+     "knows:carpentry",
+     "has:log>=1",
+     "has:hide>=1",
+     "has:stone_blade>=1",
+     "known:village_fire"
+    ],
+    "cost": 6,
+    "steps": [
+     {
+      "do": "craft:drum"
+     },
+     {
+      "do": "play_drum"
+     }
+    ],
+    "_part": "AL-74"
+   }
+  ],
+  "gather_food_for_home": [
+   {
+    "id": "cook_meat_pie_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "has:meat>=1",
+     "known:well"
+    ],
+    "cost": 3.2,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:meat_pie"
+     },
+     {
+      "do": "store_meat_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_berry_tart_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:berries>=1",
+     "known:storage",
+     "home:grain>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 3.8,
+    "steps": [
+     {
+      "achieve": [
+       "has:berries>=1"
+      ],
+      "allow": [
+       "take_berries"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:berry_tart"
+     },
+     {
+      "do": "store_berry_tart"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_apple_pie_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:apples>=1",
+     "known:storage",
+     "home:grain>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 3.75,
+    "steps": [
+     {
+      "achieve": [
+       "has:apples>=1"
+      ],
+      "allow": [
+       "take_apples"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:apple_pie"
+     },
+     {
+      "do": "store_apple_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_honey_cake_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:eggs>=1",
+     "known:storage",
+     "home:grain>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 3.85,
+    "steps": [
+     {
+      "achieve": [
+       "has:eggs>=1"
+      ],
+      "allow": [
+       "take_eggs"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:honey_cake"
+     },
+     {
+      "do": "store_honey_cake"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_nut_bread_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "home:hazelnuts>=1",
+     "known:well"
+    ],
+    "cost": 3.65,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:hazelnuts>=1"
+      ],
+      "allow": [
+       "take_hazelnuts"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:nut_bread"
+     },
+     {
+      "do": "store_nut_bread"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_cheese_pie_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:cheese>=1",
+     "known:storage",
+     "home:eggs>=1",
+     "home:grain>=1",
+     "known:well"
+    ],
+    "cost": 3.8,
+    "steps": [
+     {
+      "achieve": [
+       "has:cheese>=1"
+      ],
+      "allow": [
+       "take_cheese"
+      ]
+     },
+     {
+      "achieve": [
+       "has:eggs>=1"
+      ],
+      "allow": [
+       "take_eggs"
+      ]
+     },
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:cheese_pie"
+     },
+     {
+      "do": "store_cheese_pie"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_wake_loaf_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "has:herbs>=1",
+     "home:honey>=1",
+     "known:well"
+    ],
+    "cost": 4.1,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "achieve": [
+       "has:honey>=1"
+      ],
+      "allow": [
+       "take_honey"
+      ]
+     },
+     {
+      "achieve": [
+       "has:water>=1"
+      ],
+      "allow": [
+       "fetch_water"
+      ]
+     },
+     {
+      "do": "craft:wake_loaf"
+     },
+     {
+      "do": "store_wake_loaf"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_blood_sausage_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "home:grain>=1",
+     "known:storage",
+     "has:meat>=1"
+    ],
+    "cost": 3.25,
+    "steps": [
+     {
+      "achieve": [
+       "has:grain>=1"
+      ],
+      "allow": [
+       "take_grain"
+      ]
+     },
+     {
+      "do": "craft:blood_sausage"
+     },
+     {
+      "do": "store_blood_sausage"
+     }
+    ],
+    "_part": "AL-74"
+   },
+   {
+    "id": "cook_herb_roast_for_home",
+    "pre": [
+     "knows:cooking",
+     "known:hearth",
+     "home:firewood>=1",
+     "has:herbs>=1",
+     "has:meat>=1"
+    ],
+    "cost": 3.2,
+    "steps": [
+     {
+      "do": "craft:herb_roast"
+     },
+     {
+      "do": "store_herb_roast"
+     }
+    ],
+    "_part": "AL-74"
+   }
+  ]
+ }
+}
