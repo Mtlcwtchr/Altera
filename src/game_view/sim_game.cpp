@@ -291,6 +291,7 @@ public:
             goalNames_.push_back(name("goal", g.id));
         }
         backstoryCards();
+        itemIconMap();
     }
     void stopSim() {
         stop_ = true;
@@ -1929,6 +1930,11 @@ private:
                     post({"cmd", 0, "craft_attempt", a});
                     hud_.craftSlots.clear();
                 }
+                // AL-74: craft_design "<id>": fast-craft that starter design from the person's book
+                if (st.contains("craft_design") && who != kNone)
+                    if (const craft::DesignDef* def = content_->craft.design(st["craft_design"].get<std::string>()))
+                        post({"cmd", 0, "craft_fast",
+                              {{"id", who}, {"recipe", craft::recipeFromDesign(content_->craft, *def, 1.0, true).id}, {"count", 1}}});
                 if (st.value("craft_same", false) && who != kNone)
                     for (const auto& r : shown_.craft.recipes)
                         if (r.master) {
@@ -2231,6 +2237,18 @@ private:
                 if (run.done) c.craft.items.push_back(run.out);
             }
         for (const char* ds : {"cord", "thread", "roast_meat", "clay_pot", "plank", "knife"}) giveDesign(*world_, c, ds);
+        // AL-74: the cuisine tour: a larder, the person at the own hearth, a few dishes and things
+        for (const char* it : {"honey", "milk", "eggs", "apples", "berries", "vegetables", "fish", "herbs", "cheese", "bone",
+                               "hazelnuts", "wild_greens", "roots", "mushrooms"})
+            c.inventory[it] += 4;
+        c.inventory["water"] += 12;
+        c.inventory["stone_blade"] += 1;
+        for (const char* ds : {"honey_porridge", "meat_pie", "herb_roast", "berry_tart", "fish_soup", "honey_cake", "bone_flute",
+                               "tankard", "clay_jug", "spoon"})
+            giveDesign(*world_, c, ds);
+        if (c.status.family != kNone)
+            if (const WorldObject* h = world_->object(world_->families().at(c.status.family).hearth)) c.pos = h->pos;
+        for (const char* s : {"toolmaking", "pottery"}) c.skills[s] = std::max(c.skills[s], 0.5);
         c.skills["spinning"] = std::max(c.skills["spinning"], 0.5);
         c.skills["carpentry"] = std::max(c.skills["carpentry"], 0.4);
         c.skills["cooking"] = std::max(c.skills["cooking"], 0.5);
@@ -2432,6 +2450,26 @@ private:
             }
         }
         return craftUi_;
+    }
+    // AL-74: the inventory icon of every item: item_icons by id, else the first of its tags
+    // found in tag_icons (dishes, drinks, tableware, music...); the rest keep Hud's name match
+    void itemIconMap() {
+        hud_.itemIcons.clear();
+        const Json& u = craftUi();
+        const Json byId = u.value("item_icons", Json::object());
+        const Json byTag = u.value("tag_icons", Json::array());
+        for (const auto& [id, d] : content_->items) {
+            if (byId.contains(id)) {
+                hud_.itemIcons[id] = byId[id].get<std::string>();
+                continue;
+            }
+            for (const auto& e : byTag)
+                if (e.is_array() && e.size() == 2 &&
+                    std::find(d.tags.begin(), d.tags.end(), e[0].get<std::string>()) != d.tags.end()) {
+                    hud_.itemIcons[id] = e[1].get<std::string>();
+                    break;
+                }
+        }
     }
     std::string craftIcon(const char* map, const std::string& id, const char* fallback) const {
         const Json& u = craftUi();

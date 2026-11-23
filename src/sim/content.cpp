@@ -196,7 +196,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     auto& W = c.warnings;
 
     for (const auto& j : items.value("items", Json::array())) {
-        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days", "material"}, "items", W);
+        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days", "material", "value", "quality"}, "items", W);
         ItemDef d;
         d.id = j.at("id").get<std::string>();
         d.tags = strings(j, "tags");
@@ -205,6 +205,8 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.toolWear = opt(j, "tool_wear", 0.0);
         d.spoilDays = opt(j, "spoil_days", 0.0);
         d.material = opt(j, "material", std::string());
+        d.value = opt(j, "value", 0.0);
+        d.quality = opt(j, "quality", 0.0);
         if (!c.items.emplace(d.id, d).second) err.add("items: duplicate id " + d.id);
     }
 
@@ -811,8 +813,34 @@ Content Content::load(const std::string& dir) {
     Json items = f("items.json"), objects = f("objects.json"), needs = f("needs.json"), traits = f("traits.json"),
          htn = f("htn.json"), interactions = f("interactions.json"), config = f("config.json"),
          knowledge = f("knowledge.json");
+    // AL-74: the cuisine pack (dishes, drinks, household things) joins before the expansion,
+    // by the same rules: a new id is added, a shared one keeps what was there.
+    ExpansionData cuisine =
+        mergeExpansion(dir + "/cuisine", items, objects, needs, traits, htn, interactions, config, knowledge);
     ExpansionData expansion =
         mergeExpansion(dir + "/expansion", items, objects, needs, traits, htn, interactions, config, knowledge);
+    for (const auto& e : cuisine.errors) expansion.errors.push_back("cuisine: " + e);
+    for (const auto& k : cuisine.kept) expansion.kept.push_back("cuisine:" + k);
+    // The cuisine pack also annotates items it does not add (base and expansion ones): its
+    // category tags join theirs, other fields (worth, quality, material) fill in where the item has none.
+    if (std::ifstream probe(dir + "/cuisine/items.json"); probe) {
+        const Json cu = readJson(dir + "/cuisine/items.json");
+        for (const auto& a : cu.value("annotate", Json::array())) {
+            const std::string id = a.value("id", std::string());
+            bool found = false;
+            for (auto& e : items["items"]) {
+                if (e.value("id", std::string()) != id) continue;
+                found = true;
+                Json& tags = e["tags"];
+                if (!tags.is_array()) tags = Json::array();
+                for (const auto& t : a.value("add_tags", Json::array()))
+                    if (std::find(tags.begin(), tags.end(), t) == tags.end()) tags.push_back(t);
+                for (const auto& [k, v] : a.items())
+                    if (k != "id" && k != "add_tags" && k[0] != '_' && !e.contains(k)) e[k] = v;
+            }
+            if (!found) expansion.errors.push_back("cuisine: annotate of unknown item '" + id + "'");
+        }
+    }
     Content c = fromJson(items, objects, needs, traits, f("goals.json"), htn, interactions, f("fsm.json"), config,
                          f("dialogue.json"), knowledge, f("species.json"));
     c.expansion = std::move(expansion);
