@@ -1798,8 +1798,11 @@ private:
                         const double d = std::hypot(t.x - me->x, t.y - me->y);
                         if (d < bd) bd = d, best = &t;
                     }
+                    SDL_Log("altera_game: act_thing %s: %s (%.0f m)", ty.c_str(), best ? "found" : "none near", best ? bd : 0.0);
                     if (best)
                         command("perform", {{"id", me->id}, {"interaction", st["act_thing"][1].get<std::string>()}, {"target", best->id}});
+                    else   // none in sight: the person finds the nearest one themselves (the sim's own search)
+                        command("perform", {{"id", me->id}, {"interaction", st["act_thing"][1].get<std::string>()}});
                 }
             if (st.contains("select")) {
                 int k = st["select"].get<int>();
@@ -4247,6 +4250,11 @@ private:
         j["speech"] = said;
         j["feedback"] = fb;
         j["result"] = shown_.result;
+        std::map<std::string, int> things;
+        for (const auto& t : shown_.things) ++things[t.type];
+        j["things"] = things;
+        j["pending_act"] = pendingAct_;
+        j["walking"] = !walkPath_.empty();
         const fs::path out = fs::path(opts_.root) / "terrain_lab_out/probe.jsonl";
         if (FILE* f = std::fopen(out.string().c_str(), "ab")) {
             const std::string line = j.dump() + "\n";
