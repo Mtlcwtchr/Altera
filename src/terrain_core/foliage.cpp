@@ -27,10 +27,91 @@ struct SpawnUniforms {
     float biomeSize, worldSize;
     std::int32_t tileLog2;
     float heightLow;
-    float heightHigh, waterMapSize, pad[2];
+    float heightHigh, waterMapSize, held, pad;   // held: AL-78, the layer is taken over inside holdRect
+    float holdRect[4];
     float biomeRules[kMaxBiomes][4];
 };
-static_assert(sizeof(SpawnUniforms) == 736);
+static_assert(sizeof(SpawnUniforms) == 752);
+
+// Must match cbuffer Hold in assets/shaders/terrain_core/foliage_hold.hlsl.
+struct HoldUniforms {
+    float planes[6][4];
+    float eye[4];
+    std::uint32_t count;
+    float pixelScale, minPixels, pad;
+};
+static_assert(sizeof(HoldUniforms) == 128);
+
+// ---- AL-78: the GPU's scattering on the CPU (foliage_spawn.hlsl, biome_pick.hlsli,
+// ground_noise.hlsli, clearings.hlsli), for the trees the game holds ----
+std::uint32_t hashCell(std::int32_t x, std::int32_t y, std::uint32_t s) {
+    std::uint32_t h = std::uint32_t(x) * 0x8da6b343u ^ std::uint32_t(y) * 0xd8163841u ^ s * 0xcb1ab31fu;
+    h ^= h >> 16;
+    h *= 0x7feb352du;
+    h ^= h >> 15;
+    h *= 0x846ca68bu;
+    h ^= h >> 16;
+    return h;
+}
+float unitOf(std::uint32_t h) { return float(h & 0xffffu) / 65536.0f; }
+float smooth(float a, float b, float x) {
+    const float t = std::clamp((x - a) / (b - a), 0.0f, 1.0f);
+    return t * t * (3.0f - 2.0f * t);
+}
+struct Point { std::int32_t bx, by; float sx, sy; };
+float cellNoiseCpu(const Point& p, int log2Cell, std::uint32_t seed) {
+    log2Cell = std::max(0, log2Cell);
+    const int size = 1 << log2Cell;
+    const float ix = (float(p.bx & (size - 1)) + p.sx) / float(size), iy = (float(p.by & (size - 1)) + p.sy) / float(size);
+    const float wx = std::floor(ix), wy = std::floor(iy);
+    const std::int32_t cx = (p.bx >> log2Cell) + std::int32_t(wx), cy = (p.by >> log2Cell) + std::int32_t(wy);
+    const float fx = ix - wx, fy = iy - wy;
+    const float ux = fx * fx * (3 - 2 * fx), uy = fy * fy * (3 - 2 * fy);
+    const float a = float(hashCell(cx, cy, seed) & 0xffffu), c = float(hashCell(cx + 1, cy, seed) & 0xffffu);
+    const float d = float(hashCell(cx, cy + 1, seed) & 0xffffu), e = float(hashCell(cx + 1, cy + 1, seed) & 0xffffu);
+    const float top = a + (c - a) * ux, bottom = d + (e - d) * ux;
+    return (top + (bottom - top) * uy) / 65535.0f;   // footprint 0: no fade
+}
+std::uint32_t dominantBiomeCpu(const BiomeMap& map, float worldSize, float spacing, int tileLog2, const Point& p) {
+    const float size = float(map.size());
+    if (size <= 0) return 0;
+    const float texelMetres = worldSize / size;
+    const float mx = (float(p.bx) + p.sx) * spacing, my = (float(p.by) + p.sy) * spacing;
+    const int warpCell = int(std::round(std::log2(std::max(texelMetres * 0.35f / spacing, 1.0f))));
+    const float wx = cellNoiseCpu(p, warpCell, 31u) - 0.5f, wy = cellNoiseCpu(p, warpCell, 37u) - 0.5f;
+    const float whx = mx / texelMetres - 0.5f + wx * 0.9f, why = my / texelMetres - 0.5f + wy * 0.9f;
+    const float bx = std::floor(whx), by = std::floor(why), fx = whx - bx, fy = why - by;
+    float w[4] = {(1 - fx) * (1 - fy), fx * (1 - fy), (1 - fx) * fy, fx * fy};
+    std::uint32_t ids[4];
+    for (int k = 0; k < 4; ++k) {
+        const int tx = int(std::clamp(bx + float(k & 1), 0.0f, size - 1)), ty = int(std::clamp(by + float(k >> 1), 0.0f, size - 1));
+        ids[k] = map.ids()[std::size_t(ty) * map.size() + std::size_t(tx)];
+    }
+    for (int a = 0; a < 4; ++a)
+        for (int c = 0; c < a; ++c)
+            if (ids[c] == ids[a] && w[c] >= 0) {
+                w[c] += w[a];
+                w[a] = -1;
+            }
+    float best = -1;
+    for (int c = 0; c < 4; ++c) {
+        if (w[c] < 0) continue;
+        w[c] += (cellNoiseCpu(p, tileLog2 + 4, 61u + ids[c]) - 0.5f) * 0.35f;
+        best = std::max(best, w[c]);
+    }
+    std::uint32_t id = ids[0];
+    for (int k = 0; k < 4; ++k)
+        if (w[k] == best) id = ids[k];
+    return id;
+}
+float clearingKeepCpu(float x, float y) {
+    const ClearingUniforms& c = clearings();
+    float keep = 1.0f;
+    const int n = std::min(int(c.info[0]), 32);
+    for (int i = 0; i < n; ++i)
+        keep = std::min(keep, smooth(c.discs[i][2], c.discs[i][3], std::hypot(x - c.discs[i][0], y - c.discs[i][1])));
+    return keep;
+}
 
 struct Vertex { float position[3], normal[3], uv[2]; };
 
@@ -89,6 +170,7 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
         layer.scaleMax = l["scale"][1].get<float>();
         layer.minNormalZ = l.value("min_normal_z", 0.7f);
         layer.maxCount = l.value("max_count", 50000u);
+        layer.held = l.value("held", false);   // AL-78
         layer.firstModel = std::uint32_t(models_.size());
         const auto& names = l["models"];
         const std::uint32_t perModel = (layer.maxCount + std::uint32_t(names.size()) - 1) / std::uint32_t(names.size());
@@ -173,6 +255,7 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
     linear_ = device.makeSampler(sampling);
 
     spawn_ = device.makeCompute({"terrain_core/foliage_spawn.hlsl", "spawnCs"});
+    hold_ = device.makeCompute({"terrain_core/foliage_hold.hlsl", "holdCs"});   // AL-78
     reset_ = device.makeCompute({"terrain_core/foliage_args.hlsl", "resetCs"});
     argsPass_ = device.makeCompute({"terrain_core/foliage_args.hlsl", "argsCs"});
     engine::PipelineWanted wanted;
@@ -204,7 +287,66 @@ bool Foliage::open(engine::Device& device, const Params& params, const std::file
     for (auto& b : readback_)
         if (!(b = SDL_CreateGPUTransferBuffer(device.handle(), &download))) return fail("foliage readback");
     lastCounts_.assign(models_.size(), 0);
+    forestHold().foliage = this;   // AL-78: the game builds its forest with this one
     return true;
+}
+
+std::vector<HeldTree> Foliage::heldTrees(const double rect[4], const BiomeMap& biomes,
+                                         const std::function<float(double, double)>& height,
+                                         const std::function<bool(double, double)>& keep) const {
+    std::vector<HeldTree> out;
+    const float spacing0 = float(params_.spacing), worldSize = float(params_.worldSize);
+    for (std::size_t li = 0; li < layers_.size(); ++li) {
+        const FoliageLayer& layer = layers_[li];
+        if (!layer.held || layer.modelCount == 0) continue;
+        const std::uint32_t seed = params_.seed * 977u + std::uint32_t(li) * 7919u;
+        const double s = layer.spacing;
+        const auto c0x = std::int32_t(std::floor(rect[0] / s)), c1x = std::int32_t(std::floor(rect[2] / s));
+        const auto c0y = std::int32_t(std::floor(rect[1] / s)), c1y = std::int32_t(std::floor(rect[3] / s));
+        for (std::int32_t cy = c0y; cy <= c1y; ++cy)
+            for (std::int32_t cx = c0x; cx <= c1x; ++cx) {
+                const std::uint32_t h = hashCell(cx, cy, seed);
+                const double x = (double(cx) + double(h & 0xffffu) / 65536.0) * s;
+                const double y = (double(cy) + double(h >> 16) / 65536.0) * s;
+                if (x < rect[0] || y < rect[1] || x >= rect[2] || y >= rect[3]) continue;
+                const float z = height(x, y);
+                if (z < 1.5f) continue;   // the sea's shore (shoreHeight)
+                const double e = spacing0;
+                const float gx = float((height(x + e, y) - height(x - e, y)) / (2 * e));
+                const float gy = float((height(x, y + e) - height(x, y - e)) / (2 * e));
+                if (1.0f / std::sqrt(1.0f + gx * gx + gy * gy) < layer.minNormalZ) continue;
+                if (!keep(x, y)) continue;
+                Point p;
+                const double tx = x / spacing0, ty = y / spacing0;
+                p.bx = std::int32_t(std::floor(tx));
+                p.by = std::int32_t(std::floor(ty));
+                p.sx = float(tx - std::floor(tx));
+                p.sy = float(ty - std::floor(ty));
+                const std::uint32_t biome = std::min(dominantBiomeCpu(biomes, worldSize, spacing0, int(tileLog2_), p), 31u);
+                const auto& rule = layer.rules[biome];
+                if (rule[0] <= 0) continue;
+                float chance = rule[0];
+                if (rule[1] > 0) {
+                    const float n = cellNoiseCpu(p, int(rule[1]), seed + 7u) * 0.7f + cellNoiseCpu(p, int(rule[1]) - 2, seed + 11u) * 0.3f;
+                    chance *= smooth(1.0f - rule[2] - 0.08f, 1.0f - rule[2] + 0.08f, n);
+                }
+                chance *= clearingKeepCpu(float(x), float(y));
+                const std::uint32_t h2 = hashCell(cx, cy, seed + 101u);
+                if (unitOf(h2) >= chance) continue;
+                const std::uint32_t h3 = hashCell(cx, cy, seed + 202u);
+                HeldTree t;
+                t.x = float(x);
+                t.y = float(y);
+                t.z = z;
+                t.yaw = unitOf(h2 >> 16) * 6.2831853f;
+                t.model = layer.firstModel + h3 % layer.modelCount;
+                t.scale = layer.scaleMin + (layer.scaleMax - layer.scaleMin) * unitOf(h3 >> 8);
+                t.range = float(layer.range);
+                t.layer = std::uint32_t(li);
+                out.push_back(t);
+            }
+    }
+    return out;
 }
 
 void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, SDL_GPUTexture* clipmap,
@@ -287,6 +429,9 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
             u.tileLog2 = std::int32_t(tileLog2_);
             u.heightLow = float(-sea * range - params_.detailBound() - frame.eye.z);
             u.heightHigh = float((1.0 - sea) * range + params_.detailBound() - frame.eye.z);
+            const ForestHold& fh = forestHold();
+            u.held = fh.active && layer.held ? 1.0f : 0.0f;
+            for (int k = 0; k < 4; ++k) u.holdRect[k] = float(fh.rect[k]);
             for (std::uint32_t b = 0; b < kMaxBiomes; ++b)
                 for (int j = 0; j < 4; ++j) u.biomeRules[b][j] = layer.rules[b][j];
             layer.candidates = u.gridSide * u.gridSide;
@@ -295,6 +440,42 @@ void Foliage::spawn(SDL_GPUCommandBuffer* commands, const FoliageFrame& frame, S
             SDL_DispatchGPUCompute(pass, (u.gridSide + 7) / 8, (u.gridSide + 7) / 8, 1);
         }
         SDL_EndGPUComputePass(pass);
+    }
+    // AL-78: the trees the game holds, appended to the same instances (frustum,
+    // range and size on screen tested as the scattering tests its own)
+    {
+        const ForestHold& fh = forestHold();
+        if (fh.version != heldVersion_) {
+            heldVersion_ = fh.version;
+            std::vector<float> data;
+            data.reserve(fh.trees.size() * 8);
+            for (const HeldTree& t : fh.trees)
+                data.insert(data.end(), {t.x, t.y, t.z, t.yaw, float(t.model), t.scale, t.range, 0.0f});
+            heldCount_ = fh.active ? std::uint32_t(fh.trees.size()) : 0;
+            held_ = heldCount_ ? device_->uploadBuffer(SDL_GPU_BUFFERUSAGE_COMPUTE_STORAGE_READ, data.data(), data.size() * 4)
+                               : engine::Buffer{};
+        }
+        bool layerOn = false;
+        for (const auto& l : layers_) layerOn = layerOn || (l.held && l.enabled);
+        if (heldCount_ && held_ && hold_ && layerOn) {
+            SDL_GPUStorageBufferReadWriteBinding rw[2] = {{instances_.get(), false, {}}, {counters_.get(), false, {}}};
+            auto* pass = SDL_BeginGPUComputePass(commands, nullptr, 0, rw, 2);
+            SDL_BindGPUComputePipeline(pass, hold_.get());
+            SDL_GPUBuffer* reads[3] = {held_.get(), modelInfo_.get(), modelSlots_.get()};
+            SDL_BindGPUComputeStorageBuffers(pass, 0, reads, 3);
+            HoldUniforms u{};
+            for (int k = 0; k < 6; ++k)
+                for (int j = 0; j < 4; ++j) u.planes[k][j] = frame.frustum[k][j];
+            u.eye[0] = float(frame.eye.x);
+            u.eye[1] = float(frame.eye.y);
+            u.eye[2] = float(frame.eye.z);
+            u.count = heldCount_;
+            u.pixelScale = frame.pixelScale;
+            u.minPixels = frame.minPixels;
+            SDL_PushGPUComputeUniformData(commands, 0, &u, sizeof(u));
+            SDL_DispatchGPUCompute(pass, (heldCount_ + 63) / 64, 1, 1);
+            SDL_EndGPUComputePass(pass);
+        }
     }
     {
         SDL_GPUStorageBufferReadWriteBinding rw[2] = {{counters_.get(), false, {}}, {args_.get(), false, {}}};

@@ -695,6 +695,162 @@
    "replace_before_prod": true
   },
   {
+   "piece": "table",
+   "nif": "furniture/farm/farmtable01.nif",
+   "fit": 1.8,
+   "note": "AL-76: furniture of the village buildings",
+   "ok": true,
+   "size_m": [
+    1.8,
+    0.9,
+    0.55
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "table_bench",
+   "nif": "furniture/farm/farmtablebench01.nif",
+   "fit": 1.9,
+   "note": "AL-76: a tavern table with its benches",
+   "ok": true,
+   "size_m": [
+    1.9,
+    0.52,
+    0.48
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "bench",
+   "nif": "furniture/common/commonbench01.nif",
+   "fit": 1.8,
+   "note": "AL-76: chapel pews",
+   "ok": true,
+   "size_m": [
+    1.8,
+    0.33,
+    0.32
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "counter",
+   "nif": "clutter/common/commoncounter01.nif",
+   "fit": 1.9,
+   "note": "AL-76: the tavern counter",
+   "ok": true,
+   "size_m": [
+    1.9,
+    0.76,
+    0.89
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "chest",
+   "nif": "clutter/common/cratesmall01.nif",
+   "fit": 0.9,
+   "note": "AL-76: a household chest (a crate)",
+   "ok": true,
+   "size_m": [
+    0.6,
+    0.9,
+    0.57
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "barrel",
+   "nif": "clutter/barrel01.nif",
+   "fit": 0.8,
+   "note": "AL-76",
+   "ok": true,
+   "size_m": [
+    0.8,
+    0.8,
+    1.15
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "sack",
+   "nif": "clutter/containers/miscsack02large.nif",
+   "fit": 0.8,
+   "note": "AL-76: flour, grain",
+   "ok": true,
+   "size_m": [
+    0.49,
+    0.8,
+    1.25
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "hay",
+   "nif": "clutter/hay/haybale01.nif",
+   "fit": 1.5,
+   "note": "AL-76: the barn",
+   "ok": true,
+   "size_m": [
+    1.5,
+    0.86,
+    0.73
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "firewood",
+   "nif": "clutter/firewood/firewoodpilelarge01.nif",
+   "fit": 1.8,
+   "note": "AL-76: a woodpile in the yard",
+   "ok": true,
+   "size_m": [
+    1.8,
+    1.16,
+    0.55
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "chopping_block",
+   "nif": "clutter/chopping block/choppingblock01.nif",
+   "fit": 0.7,
+   "note": "AL-76: the carpenter's block",
+   "ok": true,
+   "size_m": [
+    0.7,
+    0.7,
+    0.44
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "fence",
+   "nif": "architecture/farmhouse/fencewoven02.nif",
+   "fit": 4.0,
+   "note": "AL-76: the yards' fences, 4 m a piece",
+   "ok": true,
+   "size_m": [
+    4.0,
+    0.33,
+    2.63
+   ],
+   "replace_before_prod": true
+  },
+  {
+   "piece": "bed",
+   "nif": "furniture/common/commonbed01.nif",
+   "fit": 2.0,
+   "note": "AL-76: the beds the sim places in a home",
+   "ok": true,
+   "size_m": [
+    1.16,
+    2.0,
+    0.83
+   ],
+   "replace_before_prod": true
+  },
+  {
    "piece": "road_tile",
    "tile": "landscape/roads/road01.dds",
    "note": "AL-68: village roads (Skyrim's cobbled road)",
@@ -728,6 +884,109 @@
   "people": {
    "skeleton_m": "actors/character/character assets/skeleton.nif",
    "skeleton_f": "actors/character/character assets female/skeleton_female.nif",
+   "faces": {
+    "_doc": "AL-71: FaceGen heads (head, eyes, brows, hair, beard) of named Skyrim.esm NPCs, Nord/Breton/Imperial; outfit i of a sex takes faces i, i+n, ...; dev stand-ins, replace before prod",
+    "m": [
+     {
+      "id": "skyrim.esm/0002bf9f",
+      "name": "Hadvar"
+     },
+     {
+      "id": "skyrim.esm/0002bf9d",
+      "name": "Ralof"
+     },
+     {
+      "id": "skyrim.esm/000350a7",
+      "name": "Erik"
+     },
+     {
+      "id": "skyrim.esm/00013475",
+      "name": "Alvor"
+     },
+     {
+      "id": "skyrim.esm/0001334e",
+      "name": "Bolli"
+     },
+     {
+      "id": "skyrim.esm/000ae77d",
+      "name": "Angvid"
+     },
+     {
+      "id": "skyrim.esm/00013ba1",
+      "name": "Belethor"
+     },
+     {
+      "id": "skyrim.esm/0001a670",
+      "name": "Mikael"
+     },
+     {
+      "id": "skyrim.esm/0001a692",
+      "name": "Farkas"
+     },
+     {
+      "id": "skyrim.esm/0001334d",
+      "name": "Bersi"
+     },
+     {
+      "id": "skyrim.esm/0003550b",
+      "name": "Embry"
+     },
+     {
+      "id": "skyrim.esm/0001a6db",
+      "name": "Torvar"
+     }
+    ],
+    "f": [
+     {
+      "id": "skyrim.esm/00013bab",
+      "name": "Ysolda"
+     },
+     {
+      "id": "skyrim.esm/0001347b",
+      "name": "Camilla"
+     },
+     {
+      "id": "skyrim.esm/00013b99",
+      "name": "Carlotta"
+     },
+     {
+      "id": "skyrim.esm/000a2c8e",
+      "name": "Lydia"
+     },
+     {
+      "id": "skyrim.esm/000a2c8f",
+      "name": "Jordis"
+     },
+     {
+      "id": "skyrim.esm/000133b7",
+      "name": "Senna"
+     },
+     {
+      "id": "skyrim.esm/0001337c",
+      "name": "Svana"
+     },
+     {
+      "id": "skyrim.esm/00013476",
+      "name": "Sigrid"
+     },
+     {
+      "id": "skyrim.esm/00013297",
+      "name": "Lisette"
+     },
+     {
+      "id": "skyrim.esm/0001326a",
+      "name": "Elisif"
+     },
+     {
+      "id": "skyrim.esm/00013b9b",
+      "name": "Olfina"
+     },
+     {
+      "id": "skyrim.esm/00013364",
+      "name": "Ingun"
+     }
+    ]
+   },
    "looks": [
     {
      "look": "m_peasant_parted",

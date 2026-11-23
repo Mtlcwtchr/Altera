@@ -222,6 +222,10 @@ struct ThingSnap {
     double x = 0, y = 0;                                  // sim metres
     std::vector<std::pair<std::string, int>> stock;       // display name, count
     bool busy = false;                                    // someone else works on it
+    bool faced = false;                                   // AL-76: set in a building, facing yaw
+    float yaw = 0;
+    bool held = false, felled = false;                    // AL-78: a tree of the drawn forest; felled: no logs left
+    float height = 0;                                     // AL-78: as drawn (m), 0 = the type's own
 };
 
 // An act for the act ring and the wheel: what it needs (met or not), what it
@@ -311,6 +315,7 @@ struct Snapshot {
     EntityId actsFor = sim::kNone;
     std::vector<ActInfoSnap> acts;
     std::vector<FeedbackSnap> feedback;   // a bounded tail, newest last
+    std::vector<int> felled;              // AL-78: the drawn forest's trees felled (indices, ascending)
     SocialSnap social;                    // AL-65
     EntityId topicsFor = sim::kNone;      // AL-67: the target the topics are for
     std::vector<TopicSnap> topics;
