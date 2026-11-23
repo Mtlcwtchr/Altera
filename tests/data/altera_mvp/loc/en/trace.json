@@ -1,4 +1,7 @@
 { "trace": {
+    "gear": {
+      "left": "No room for {item} ×{n}: left where it was"
+    },
     "control": {
       "confirmed": "The player confirmed the paused plan \"{goal}\"",
       "free_will_resume": "{self} went back to \"{goal}\" on {self:g|his|her} own (free will)",

@@ -22,6 +22,7 @@
  "hud.gear.heavy": "Heavy: work and walking tire x{x}, slower pace",
  "hud.gear.over": "Overloaded: no running, nothing more picked up",
  "hud.gear.no_room": "No room for: {what}",
+ "hud.gear.hauled": "On the shoulder: {what}",
  "hud.gear.not_yours": "Not your person: they see to their things themselves",
  "hud.gear.keys": "Drag: move · R: turn · RMB: put on · click a worn thing: take off · I: close",
  "hud.gear.slot.head": "Head",

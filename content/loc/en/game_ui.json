@@ -194,6 +194,8 @@
  "hud.hint.click_thing": "click: what can be done",
  "hud.fb.done": "Done: {act}",
  "hud.fb.abort": "Broken off: {act}",
+ "hud.journal.title": "Journal",
+ "hud.journal.empty": "All quiet so far",
  "hud.rel.spouse": "spouse",
  "hud.rel.mother": "mother",
  "hud.rel.father": "father",

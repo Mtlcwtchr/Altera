@@ -711,6 +711,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
         topMenu(W);
         minimap(s, W);
         toasts(s, W);
+        journalBox(s, W, H);
         party(s, sel);
         if (sel && !sel->animal) selectedCorner(s, *sel, H);
         else if (sel) {
@@ -727,6 +728,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "none") {
         walkMarker();
         workFx(s);
+        speechBubbles(s);
         feedbackFloats(s);
         hoverHint(s, W);
         socialAsk(s, W, H);   // AL-65
@@ -748,6 +750,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
     if (panel == "thing") {
         names(s);
         workFx(s);
+        speechBubbles(s);
         feedbackFloats(s);
         thing(s, W, H);
     }
@@ -1904,11 +1907,144 @@ void Hud::feedbackFloats(const Snapshot& s) {
             const Colour c = it->kind == 1 ? kRingGood.withAlpha(alpha) : it->kind == 2 ? kRingBad.withAlpha(alpha)
                                                                                               : kText.withAlpha(alpha);
             const float tw = textW(it->text, 16, true);
+            if (const auto bt = bubbleTop_.find(it->who); bt != bubbleTop_.end()) y = std::min(y, bt->second + 100.0f);
             ui_->text(x - tw / 2, y - 112 - rise + 2, it->text, kRim.withAlpha(alpha * 0.85f), 16 / 15.f, true);
             ui_->text(x - tw / 2, y - 112 - rise, it->text, c, 16 / 15.f, true);
             ++stack;
         }
         ++it;
+    }
+}
+
+// AL-57: what people say, on a slip of paper over the speaker, for a time that
+// grows with the line; one slip per speaker (a new line takes the old one's
+// place), lifted over the name, the need bubble and the act's bar, and over
+// the slips of the others when they would lie on each other.
+void Hud::speechBubbles(const Snapshot& s) {
+    for (const auto& sp : s.speech)
+        if (sp.seq > speechSeq_) {
+            speechSeq_ = sp.seq;
+            if (sp.line.empty()) continue;
+            const double life = std::clamp(2.4 + 0.055 * double(sp.line.size()) / 2.0, 3.0, 7.0); // UTF-8 bytes / 2 ~ letters
+            // AL-73: a talk's lines come in turn, one after the other, not all
+            // at once (a tick says both sides' lines; a slow tick is seconds long)
+            const double at = std::max(clock_, bubbleNext_);
+            bubbleNext_ = at + std::min(2.2, life * 0.6);
+            bubbleQueue_.push_back({sp.speaker, sp.line, at, life});
+        }
+    for (auto it = bubbleQueue_.begin(); it != bubbleQueue_.end();) {
+        if (it->born > clock_) {
+            ++it;
+            continue;
+        }
+        const EntityId who = it->who;
+        bubbles_.erase(std::remove_if(bubbles_.begin(), bubbles_.end(), [&](const Bubble& b) { return b.who == who; }),
+                       bubbles_.end());
+        bubbles_.push_back(*it);
+        it = bubbleQueue_.erase(it);
+    }
+    if (bubbleQueue_.size() > 12) bubbleQueue_.erase(bubbleQueue_.begin(), bubbleQueue_.end() - 12);
+    bubbles_.erase(std::remove_if(bubbles_.begin(), bubbles_.end(), [&](const Bubble& b) { return clock_ - b.born > b.life; }),
+                   bubbles_.end());
+    if (bubbles_.size() > 10) bubbles_.erase(bubbles_.begin(), bubbles_.end() - 10);
+    bubbleTop_.clear();
+    const float px = 14, lineH = 18, maxW = 260;
+    auto wrap = [&](const std::string& t) {
+        std::vector<std::string> lines;
+        std::string line;
+        std::size_t pos = 0;
+        while (pos < t.size()) {
+            const std::size_t sp = t.find(' ', pos);
+            const std::string word = t.substr(pos, sp == std::string::npos ? std::string::npos : sp - pos);
+            const std::string next = line.empty() ? word : line + " " + word;
+            if (!line.empty() && textW(next, px) > maxW) {
+                lines.push_back(line);
+                line = word;
+            } else line = next;
+            pos = sp == std::string::npos ? t.size() : sp + 1;
+        }
+        if (!line.empty()) lines.push_back(line);
+        if (lines.size() > 3) {
+            lines[2] = ui_->fit(lines[2] + " " + lines[3] + " ...", maxW, px / 15.f);
+            lines.resize(3);
+        }
+        return lines;
+    };
+    std::vector<Rect> taken;
+    auto clash = [&](const Rect& r) {
+        for (const auto& t : taken)
+            if (r.x < t.right() && t.x < r.right() && r.y < t.bottom() && t.y < r.bottom()) return true;
+        return false;
+    };
+    // the newest on top: drawn last, placed first
+    for (auto it = bubbles_.rbegin(); it != bubbles_.rend(); ++it) {
+        const ActorSnap* a = actor(s, it->who);
+        float x, y;
+        if (!a || !a->alive || !host_->overHead(*a, x, y)) continue;
+        const auto lines = wrap(it->text);
+        if (lines.empty()) continue;
+        float w = 0;
+        for (const auto& l : lines) w = std::max(w, textW(l, px));
+        const bool busy = a->id == s.controlled && a->progress >= 0;
+        const float bottom = y - (busy ? 92.0f : 58.0f);
+        Rect r{x - w * 0.5f - 12, bottom - (float(lines.size()) * lineH + 12), w + 24, float(lines.size()) * lineH + 12};
+        for (int lift = 0; clash(r) && lift < 3; ++lift) r.y -= r.h + 6;
+        taken.push_back(r);
+        bubbleTop_[it->who] = r.y;
+        const double age = clock_ - it->born;
+        const float alpha = float(std::clamp(std::min(age / 0.18, (it->life - age) / 0.6), 0.0, 1.0));
+        ui_->roundRect({r.x + 2, r.y + 3, r.w, r.h}, kRim.withAlpha(0.35f * alpha), 9);
+        ui_->roundRect(r, Colour::rgb(238, 226, 198, 0.96f * alpha), 9);
+        // the tail down to the speaker (only where the slip sits right over them)
+        if (r.bottom() >= bottom - 1) {
+            const Colour pc = Colour::rgb(238, 226, 198, 0.96f * alpha);
+            ui_->roundRect({x - 5, r.bottom() - 2, 10, 5}, pc, 2);
+            ui_->roundRect({x - 2.5f, r.bottom() + 2, 5, 4}, pc, 2);
+        }
+        const Colour ink = (a->player ? Colour::rgb(92, 58, 20) : kInk).withAlpha(alpha);
+        float ty = r.y + 6;
+        for (const auto& l : lines) {
+            ui_->text(x - textW(l, px) * 0.5f, ty, l, ink, px / 15.f);
+            ty += lineH;
+        }
+    }
+}
+
+// AL-57: the journal over the clock - what the player's person said and heard,
+// what came of their doing, with the sim's time. A click on its head folds it;
+// folded, the head counts what came since.
+void Hud::journalBox(const Snapshot& s, float W, float H) {
+    const float w = 360, x = W - 36 - w, bottom = H - 30 - 52 - 62 - 12;
+    const int rows = journalOpen_ ? int(std::min<std::size_t>(s.journal.size(), 6)) : 0;
+    const float headH = 28, rowH = 19;
+    const float h = headH + (journalOpen_ ? std::max(1, rows) * rowH + 10 : 0);
+    const Rect r{x, bottom - h, w, h};
+    box(Skin::Leather, r, 14);
+    ui_->claim(r);
+    const Rect head{r.x, r.y, r.w, headH};
+    const int newest = s.journal.empty() ? 0 : s.journal.back().seq;
+    if (journalOpen_) journalSeen_ = newest;
+    int fresh = 0;
+    for (const auto& j : s.journal) fresh += j.seq > journalSeen_;
+    std::string t = host_->text("hud.journal.title");
+    if (!journalOpen_ && fresh > 0) t += "  +" + std::to_string(fresh);
+    title(r.x + 14, r.y + 5, t, ui_->hovered(head) ? kGoldPale : kGold, 16);
+    label(r.right() - 26, r.y + 6, journalOpen_ ? "-" : "+", kGoldPale, 15);
+    if (clicked(head)) journalOpen_ = !journalOpen_;
+    if (!journalOpen_) return;
+    float y = r.y + headH + 2;
+    if (s.journal.empty()) {
+        label(r.x + 14, y, host_->text("hud.journal.empty"), kText.withAlpha(0.6f), 13);
+        return;
+    }
+    for (std::size_t i = s.journal.size() - std::size_t(rows); i < s.journal.size(); ++i) {
+        const JournalSnap& j = s.journal[i];
+        label(r.x + 14, y, j.time, kText.withAlpha(0.55f), 12);
+        const Colour c = j.kind == 1 ? Colour::rgb(170, 225, 120) : j.kind == 2 ? Colour::rgb(240, 120, 100)
+                       : j.kind == 3 ? kGoldPale : kText;
+        const float tx = r.x + 62;
+        label(tx, y, ui_->fit(j.text, r.right() - 12 - tx, 13 / 15.f), c, 13);
+        y += rowH;
     }
 }
 
@@ -2098,6 +2234,11 @@ void Hud::inventory(const Snapshot& s, const ActorSnap* sel, float W, float H) {
         std::string t;
         for (const auto& [n, c] : g.overflow) t += (t.empty() ? "" : ", ") + n + (c > 1 ? " x" + std::to_string(c) : "");
         label(G.x + 20, G.bottom() - 28, ui_->fit(host_->text("hud.gear.no_room", {{"what", t}}), G.w - 40, 13 / 15.f), kInkRed, 13);
+    }
+    if (!g.hauled.empty()) {   // AL-73: a log on the shoulder, outside the grids
+        std::string t;
+        for (const auto& [n, c] : g.hauled) t += (t.empty() ? "" : ", ") + n + (c > 1 ? " x" + std::to_string(c) : "");
+        label(G.x + 20, G.bottom() - (g.overflow.empty() ? 28 : 48), ui_->fit(host_->text("hud.gear.hauled", {{"what", t}}), G.w - 40, 13 / 15.f), kInk, 13);
     }
     if (!mine) label(ox + 34, oy + PH - 20, host_->text("hud.gear.not_yours"), kText.withAlpha(0.8f), 13, true);
     else label(ox + 34, oy + PH - 20, host_->text("hud.gear.keys"), kText.withAlpha(0.7f), 13, true);

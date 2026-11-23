@@ -1,0 +1,167 @@
+{
+ "_doc": "AL-73: lines of a talk (content/ai/dialogue_rules/talk.json).",
+ "say.talk.talk_open": [
+  "Hey, {listener}, a word.",
+  "{listener}! Hold on."
+ ],
+ "say.talk.talk_open.chat": [
+  "Well met, {listener}. How goes it?",
+  "Ah, {listener}. How's life?",
+  "{listener}, stay a moment, let's talk."
+ ],
+ "say.talk.talk_open.gossip": [
+  "{listener}, have you heard what's going on?",
+  "Come here, {listener}, I'll tell you something."
+ ],
+ "say.talk.talk_open.joke": [
+  "{listener}, want a laugh?",
+  "Listen, {listener}, the funniest thing..."
+ ],
+ "say.talk.talk_open.story": [
+  "Sit, {listener}, I'll tell you something.",
+  "{listener}, do you know the old story?"
+ ],
+ "say.talk.talk_open.kind": [
+  "{listener}, a good day to you.",
+  "Glad to see you, {listener}."
+ ],
+ "say.talk.talk_open.sorry": [
+  "{listener}... I have to say something.",
+  "Wait, {listener}. This is awkward."
+ ],
+ "say.talk.talk_open.tender": [
+  "{listener}... a minute?",
+  "Hey, {listener}. You look fine today."
+ ],
+ "say.talk.talk_open.ask": [
+  "{listener}, help me out, will you?",
+  "{listener}, I have a favour to ask."
+ ],
+ "say.talk.talk_yes": [
+  "Well, speak.",
+  "I'm listening.",
+  "Go on, what is it?"
+ ],
+ "say.talk.talk_busy": [
+  "Talk, but I'm not stopping work.",
+  "Go on, my hands are busy though.",
+  "I'm listening. The work won't wait."
+ ],
+ "say.talk.talk_body": [
+  "That's how it is, {listener}.",
+  "I've been thinking..."
+ ],
+ "say.talk.talk_body.chat": [
+  "Some weather, eh?",
+  "Let's hope the harvest holds this year.",
+  "Something howls in the woods at night. Heard it?",
+  "Same as ever: work and sleep.",
+  "They say better not go to the river alone."
+ ],
+ "say.talk.talk_body.gossip": [
+  "You should've seen who went to the neighbours yesterday...",
+  "They say the miller is short again.",
+  "Just between us, right? Something happened there..."
+ ],
+ "say.talk.talk_body.joke": [
+  "So the fool went for salt and came back with a goat!",
+  "Know why the shepherd can't sleep? The sheep count him!",
+  "Wife says: did you sharpen the axe? He says: I did, just not that one!"
+ ],
+ "say.talk.talk_body.story": [
+  "Long ago, when the stones still spoke...",
+  "My grandfather told of a three-eyed sorcerer on the hill...",
+  "That winter the river froze to the bottom, and something knocked from under the ice."
+ ],
+ "say.talk.talk_body.kind": [
+  "You do a lot for everyone, {listener}. Thanks.",
+  "Good to have you near, {listener}."
+ ],
+ "say.talk.talk_body.sorry": [
+  "Forgive me, {listener}. I was wrong.",
+  "No hard feelings, {listener}, all right?"
+ ],
+ "say.talk.talk_body.tender": [
+  "I've been thinking of you, {listener}.",
+  "It's warmer with you around, {listener}."
+ ],
+ "say.talk.talk_body.rude": [
+  "You're nothing, {listener}.",
+  "Out of my sight, {listener}.",
+  "Who do you think you are?"
+ ],
+ "say.talk.talk_body.ask": [
+  "Help me, {listener}, I can't do it alone.",
+  "Don't say no, {listener}, I'll repay you."
+ ],
+ "say.talk.talk_reply": [
+  "Well, well.",
+  "I see.",
+  "So that's how it is."
+ ],
+ "say.talk.talk_reply.chat": [
+  "Tell me about it.",
+  "Aye, we get by.",
+  "Hm, you're right.",
+  "As long as it's no worse."
+ ],
+ "say.talk.talk_reply.gossip": [
+  "No! Can't be.",
+  "I knew it.",
+  "Hush, they'll hear."
+ ],
+ "say.talk.talk_reply.joke": [
+  "Ha! You're something.",
+  "Oh, you killed me!",
+  "Heh... old, but funny."
+ ],
+ "say.talk.talk_reply.story": [
+  "And then what?",
+  "Brr, gives me chills.",
+  "Just tales... probably."
+ ],
+ "say.talk.talk_reply.kind": [
+  "Thanks for the kind word.",
+  "Same to you, {listener}."
+ ],
+ "say.talk.talk_reply.sorry": [
+  "All right, it's forgotten.",
+  "Good that you said it."
+ ],
+ "say.talk.talk_reply.tender": [
+  "Oh, {listener}... the things you say.",
+  "I like it with you too."
+ ],
+ "say.talk.talk_reply.rude": [
+  "You're the nothing!",
+  "One more word and you'll be sorry.",
+  "Go your own way."
+ ],
+ "say.talk.talk_reply.ask": [
+  "All right, I'll help as I can.",
+  "We'll see what can be done."
+ ],
+ "say.talk.talk_reply_busy": [
+  "Mm-hm... (not looking up)",
+  "Aye, I hear you.",
+  "Go on, I'm listening."
+ ],
+ "say.talk.talk_reply_busy.rude": [
+  "Don't get in the way of my work.",
+  "Leave off, I've no time."
+ ],
+ "say.talk.talk_bye": [
+  "Well, take care.",
+  "Right, I'm off.",
+  "See you around."
+ ],
+ "say.talk.talk_bye_busy": [
+  "Well, back to work.",
+  "Off you go, I've plenty to do."
+ ],
+ "say.talk.refuse_busy": [
+  "Not now, can't you see I'm busy?",
+  "Later, later. No time for talk.",
+  "I've no time, {listener}."
+ ]
+}

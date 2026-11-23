@@ -20,6 +20,7 @@ using SnapClock = std::chrono::steady_clock;
 struct ActorSnap {
     EntityId id = sim::kNone;
     std::string name, species, family, state, act, goal, interaction, role;
+    EntityId faces = sim::kNone;   // AL-73: whom they talk with / act on (turned to them when standing)
     std::string anim; // AL-40: the clip key of this side of a joint social act (sim FsmState::anim)
     bool animal = false, alive = true, player = false, down = false, fighting = false, captive = false;
     char sex = 'f';
@@ -88,6 +89,7 @@ struct GearSnap {
     std::vector<Spot> spots;
     std::vector<Slot> slots;
     std::vector<std::pair<std::string, int>> overflow;   // display name, count
+    std::vector<std::pair<std::string, int>> hauled;     // AL-73: on the shoulder (a log)
 };
 
 struct Detail {
@@ -264,6 +266,21 @@ struct CaseSnap {
     int day = 0;
 };
 
+// A line someone said (AL-57, say.line of the sim): a bubble over the speaker.
+struct SpeechSnap {
+    int seq = 0;
+    EntityId speaker = sim::kNone, listener = sim::kNone;
+    std::string line;
+};
+
+// A row of the journal (AL-57): what the player's person said and heard, what
+// came of their doing. Newest last.
+struct JournalSnap {
+    int seq = 0;
+    std::string time, text;
+    int kind = 0;   // 0 info, 1 good, 2 bad, 3 speech
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -299,6 +316,8 @@ struct Snapshot {
     std::vector<TopicSnap> topics;
     std::vector<CaseSnap> cases;
     std::vector<std::string> caseAnswers; // the accused's possible answers (consequences.json case.answers)
+    std::vector<SpeechSnap> speech;       // AL-57: lines said near the camera, a bounded tail
+    std::vector<JournalSnap> journal;     // AL-57: the player's journal, a bounded tail
 };
 
 } // namespace altera::game

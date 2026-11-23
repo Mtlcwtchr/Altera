@@ -50,6 +50,15 @@ struct SocialChainDef {
     bool follow = false;
     Tick followTicks = 36, playerLeaderTicks = 72;
     std::string joinMoodlet;
+    // AL-73: a talk (every stage is "Talk"): the lines the pair says, by
+    // group (social_chains.json talk.groups); a busy listener answers over
+    // its work instead of dropping it.
+    std::string talk;
+    bool talkOnly = false;
+    // A talk act with no chain of its own (talk.default): no question of
+    // its own - an act the target consents to (consent: target) is asked as
+    // the catalog asks it, any other is simply heard.
+    bool byDefault = false;
 };
 
 struct SocialRules {
@@ -59,6 +68,8 @@ struct SocialRules {
     std::string askAnim = "social_ask", listenAnim = "social_listen", refuseAnim = "social_refuse",
                 rejectedAnim = "social_rejected";
     std::map<std::string, SocialChainDef> chains;
+    std::map<std::string, std::string> talkGroups; // meaning -> line group (talk.groups)
+    std::vector<std::string> asideStates;          // a target in these talks over its work
 };
 
 // Loaded once per content directory; nullptr without the file. Throws on a

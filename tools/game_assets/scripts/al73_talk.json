@@ -1,0 +1,22 @@
+[
+ {"at": 2, "backstory": "peasant"},
+ {"at": 3, "backstory_begin": true},
+ {"at": 6, "highlight": false, "zoom": 7, "pitch": 0.32, "yawDeg": 30, "camera_follow": true, "control": 0},
+ {"at": 7, "act_person": "chat", "probe": "al73_chat_start"},
+ {"at": 16, "shot": "al73_01_chat_approach.png"},
+ {"at": 24, "shot": "al73_02_chat_open.png"},
+ {"at": 33, "shot": "al73_03_chat_lines.png"},
+ {"at": 45, "shot": "al73_04_chat_lines2.png"},
+ {"at": 55, "shot": "al73_05_chat_bye.png", "probe": "al73_chat_end"},
+ {"at": 60, "act_person": "joke"},
+ {"at": 72, "shot": "al73_06_joke.png"},
+ {"at": 80, "shot": "al73_07_joke_reply.png", "probe": "al73_joke_end"},
+ {"at": 85, "act_thing": ["tree", "chop_tree"]},
+ {"at": 86, "probe": "al73_chop_order"},
+ {"at": 100, "shot": "al73_08_chop_walk.png", "probe": "al73_chop_walk"},
+ {"at": 140, "shot": "al73_09_chop_work.png", "probe": "al73_chop_work"},
+ {"at": 200, "shot": "al73_10_chop_done.png", "probe": "al73_chop_end"},
+ {"at": 201, "panel": "inventory"},
+ {"at": 203, "shot": "al73_11_inventory.png"},
+ {"at": 205, "quit": true}
+]

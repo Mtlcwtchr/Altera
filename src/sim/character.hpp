@@ -202,6 +202,7 @@ struct SocialLink {
     EntityId place = kNone; // where the pair does it (a bed), kNone = where they stand
     std::string tone;      // the actor's tone when asked
     std::string result;    // actor: why the other side broke the chain (phase "broken")
+    bool aside = false;    // target: talks over its own work, which goes on (AL-73)
     bool active() const { return !chain.empty(); }
 };
 

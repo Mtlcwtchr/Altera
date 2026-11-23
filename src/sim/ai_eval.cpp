@@ -449,8 +449,14 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
             if (!gains.empty()) {
                 const std::string heavy = canTake(*R, c, gains);
                 if (heavy == "too_heavy") return fail("gear:too_heavy");
-                if (!bagged.empty())
-                    if (const std::string why = canTake(*R, c, bagged); !why.empty()) return fail("gear:" + why);
+                // AL-73: what does not fit is left where it was (takeWhatFits); only
+                // an act of which not one thing finds room is refused
+                if (!bagged.empty()) {
+                    bool any = false;
+                    for (const auto& [k, n] : bagged)
+                        if (canTake(*R, c, {{k, 1}}).empty()) any = true;
+                    if (!any) return fail("gear:" + canTake(*R, c, bagged));
+                }
             }
         }
     return true;
@@ -772,6 +778,38 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
 
 } // namespace
 
+// AL-73: the player's person takes of an act's yield what the hands and bags
+// hold; the rest stays where it was (the tree keeps its logs), said in the
+// trace "gear.left" so the game shows it. Food goes to the mouth and others'
+// lives are not counted (canPerform, AL-24).
+static std::vector<Effect> takeWhatFits(World& w, Character& c, const InteractionDef& d, const std::vector<Effect>& eff) {
+    if (!c.controller.isPlayer() || c.ai.goal.source != "player") return eff;
+    const GearRules* R = gearRules(w.content());
+    if (!R) return eff;
+    std::vector<Effect> out = eff;
+    std::map<std::string, int> took;
+    for (auto& e : out) {
+        if (e.onTarget || e.onWitnesses || e.subject != "has" || e.op != '+' || e.isParam()) continue;
+        const auto it = w.content().items.find(e.key);
+        if (it != w.content().items.end() && it->second.nutrition > 0.0) continue;
+        const int want = static_cast<int>(e.value);
+        int n = want;
+        while (n > 0 && !canTake(*R, c, {{e.key, n}}).empty()) --n;
+        if (n == want) continue;
+        e.value = n;
+        e.text = "has:" + e.key + "+" + std::to_string(n);
+        took[e.key] = want - n;
+    }
+    if (took.empty()) return out;
+    for (auto& e : out)
+        if (e.subject == "target_stock" && e.op == '-' && took.count(e.key)) {
+            e.value = std::max(0.0, e.value - took[e.key]);
+            e.text = "target_stock:" + e.key + "-" + std::to_string(static_cast<int>(e.value));
+        }
+    for (const auto& [k, n] : took) trace(w, c, 'F', "gear.left", {{"action", d.id}, {"item", k}, {"n", n}});
+    return out;
+}
+
 void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar) {
     // chance: one deterministic roll per (actor, tick, interaction); a failed
     // roll applies on_fail instead of eff. Risks roll independently after.
@@ -794,7 +832,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     const std::vector<EntityId> wit = witnessesOf(w, c, d, targetChar);
     // a crafting act's eff is what the planner expects; the resolver decides
     // what really comes of it (craftAct, called by the FSM with the step's params)
-    if (d.craft.empty()) applyEffectList(w, c, success ? d.eff : d.onFail, target, targetChar, &wit);
+    if (d.craft.empty()) applyEffectList(w, c, success ? takeWhatFits(w, c, d, d.eff) : d.onFail, target, targetChar, &wit);
     if (!tone.empty() && tr) {
         const ToneDef& td = tr->tones.at(tone);
         applyEffectList(w, c, success ? td.eff : td.onFail, target, targetChar, &wit);

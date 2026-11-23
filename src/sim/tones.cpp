@@ -120,7 +120,7 @@ ActChance actChance(World& w, Character& actor, const InteractionDef& d, Charact
     }
     // AL-40: an act with a social chain - the other's answer.
     if (target && !target->isAnimal())
-        if (const SocialChainDef* sc = socialChain(w.content(), d.id)) {
+        if (const SocialChainDef* sc = socialChain(w.content(), d.id); sc && !sc->byDefault) { // AL-73: a talk heard as before
             a.kind = "consent";
             a.p = socialBlock(w, actor, *target, *sc).empty() ? socialAcceptChance(w, actor, *target, d, *sc, tone) : 0.0;
             return a;

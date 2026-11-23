@@ -52,6 +52,13 @@ void replanStep(World& w, Character& c, const std::string& why) {
     p.actions.clear();
     p.actionIndex = 0;
     ++c.ai.stats.replans;
+    // AL-73: the player's own order that cannot be done as asked (what it
+    // needs, no room for what it gives) is refused at once, with the reason -
+    // not tried again for minutes while the person stands still.
+    if (c.ai.goal.source == "player" && (why.rfind("gear:", 0) == 0 || why.rfind("pre:", 0) == 0)) {
+        dropGoal(w, c, why, true);
+        return;
+    }
     if (++p.stepReplans > kMaxStepReplans) failStep(w, c, why);
     else trace(w, c, 'G', "goap.replan", {{"why", why}, {"attempt", p.stepReplans}});
 }
@@ -147,6 +154,12 @@ void failStep(World& w, Character& c, const std::string& why) {
     ++ai.stats.failReasons[why];
     trace(w, c, 'H', "htn.method_failed", {{"method", method}, {"why", why}, {"fails", mf.count}});
     abortAction(w, c, why);
+    // AL-73: the player's own act, done the one way it can be done: another
+    // try comes to the same - refused now, with the reason
+    if (ai.goal.source == "player" && method.rfind("direct/", 0) == 0) {
+        dropGoal(w, c, why, true);
+        return;
+    }
     if (p.htnReplans >= kMaxHtnReplans) {
         dropGoal(w, c, why, true);
         return;
@@ -542,8 +555,10 @@ void thinkCharacter(World& w, Character& c) {
     if (c.ai.social.active()) {
         std::string why;
         const bool actor = c.ai.social.role == "actor";
+        // AL-73: one talked to over their work hears it and works on
+        const bool aside = c.ai.social.role == "target" && c.ai.social.aside;
         const SocialStep st = tickSocial(w, c, why);
-        if (st == SocialStep::Running) return;
+        if (st == SocialStep::Running && !aside) return;
         if (actor && st == SocialStep::Done && ai.goal.valid()) finishAction(w, c);
         if (actor && st == SocialStep::Failed && ai.goal.valid()) {
             if (why.rfind("refused:", 0) == 0 && ai.goal.source == "player") dropGoal(w, c, why, true); // asked once

@@ -1,5 +1,8 @@
 { "_doc": "Trace, reasons, report and chronicle texts (base language). trace.<code> gets the trace params; ids of known kinds arrive as names (LOC_FORMAT.md §5), self is the traced character.",
   "trace": {
+    "gear": {
+      "left": "Не поместилось: {item} ×{n}, осталось на месте"
+    },
     "control": {
       "confirmed": "Игрок подтвердил приостановленный план «{goal}»",
       "free_will_resume": "{self} сам{self:g||а} вернул{self:g|ся|ась} к плану «{goal}» (свобода воли)",
