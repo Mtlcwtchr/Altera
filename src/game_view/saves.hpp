@@ -42,6 +42,8 @@ struct GameSettings {
     int idleAutonomyS = 20;     // free mode: idle seconds before the person lives by itself
     std::string uiStyle = "edge";  // AL-62: the interface theme (content/ui/themes/<id>.json)
     int uiScale = 100;          // AL-62: the interface size, 80..130 %
+    bool bar2 = true;           // AL-80: the second quick bar (Shift+1-8) shown
+    bool vitalsAlways = false;  // AL-80: full vitals stay (else they fade away)
 };
 
 std::filesystem::path saveDir();

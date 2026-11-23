@@ -29,6 +29,10 @@ void Hud::resetWorld() {
     selected_ = wheelTarget_ = kinPick_ = aim = sim::kNone;
     pin_ = hover_ = -1;
     pendingSlot_ = -1;
+    hotbars.people.clear();   // AL-80: a new world's people start with the starting bars
+    aiming_ = false;
+    talkOpen_ = false;
+    strip_.clear();
 }
 
 // A row of a menu column: a medallion with its icon and the line in Kurale.
@@ -178,7 +182,7 @@ void Hud::slotsPanel(float W, float H) {
 
 void Hud::settingsPanel(float W, float H) {
     dimmer(W, H, 0.66f);
-    const float w = std::min(760.0f, W - 80), h = 470;
+    const float w = std::min(760.0f, W - 80), h = 578;
     const Rect P{(W - w) * 0.5f, (H - h) * 0.5f, w, h};
     box(Skin::Paper, P, 22);
     seal(P.right() - 44, P.y + 40);
@@ -240,9 +244,23 @@ void Hud::settingsPanel(float W, float H) {
         settingsScale = kScale[z];
         changed = true;
     }
+    // AL-80: the second quick bar, the vitals kept when full
+    const std::string on = host_->text("menu.settings.on"), off = host_->text("menu.settings.off");
+    const int b2 = row(host_->text("menu.settings.bar2"), {{on, settingsBar2}, {off, !settingsBar2}});
+    if (b2 >= 0 && (b2 == 0) != settingsBar2) {
+        settingsBar2 = b2 == 0;
+        changed = true;
+    }
+    const int vs = row(host_->text("menu.settings.vitals"), {{host_->text("menu.settings.vitals.always"), settingsVitals},
+                                                             {host_->text("menu.settings.vitals.fade"), !settingsVitals}});
+    if (vs >= 0 && (vs == 0) != settingsVitals) {
+        settingsVitals = vs == 0;
+        changed = true;
+    }
     if (changed)
         host_->menuAction("apply", {{"lang", settingsLang}, {"fullscreen", settingsFullscreen}, {"autosave", settingsAutosave},
-                                    {"style", settingsStyle}, {"ui_scale", settingsScale}});
+                                    {"style", settingsStyle}, {"ui_scale", settingsScale}, {"bar2", settingsBar2},
+                                    {"vitals", settingsVitals}});
     const std::string back = host_->text("menu.back");
     const float bw = textW(back, 15) + 48;
     if (textButton({P.x + (P.w - bw) * 0.5f, P.bottom() - 56, bw, 34}, back, true))

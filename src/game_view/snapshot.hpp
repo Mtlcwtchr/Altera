@@ -105,6 +105,7 @@ struct Detail {
     std::vector<std::pair<std::string, double>> moodlets, skills, reputation;
     std::vector<RelSnap> relations;
     std::vector<std::string> wants;   // goal now, queued tasks
+    bool wantsGoal = false;           // AL-80: wants[0] is the goal going on (the rest: the queue)
 };
 
 // How the wheel's target feels about the player's own character, and the
@@ -344,6 +345,8 @@ struct Snapshot {
     std::vector<TopicSnap> topics;
     std::vector<CaseSnap> cases;
     std::vector<std::string> caseAnswers; // the accused's possible answers (consequences.json case.answers)
+    EntityId barFor = sim::kNone;         // AL-80: the person the quick bars' acts were checked against
+    std::vector<ActInfoSnap> barActs;     // and those acts (HudHost::barCheck)
     std::vector<SpeechSnap> speech;       // AL-57: lines said near the camera, a bounded tail
     std::vector<JournalSnap> journal;     // AL-57: the player's journal, a bounded tail
     TradeSnap trade;                      // AL-75: the trade window's target (wheel target)

@@ -316,3 +316,23 @@ TEST(altera_sim_switching_replays_from_the_log) {
     b.run(150);
     CHECK_EQ(a.stateHash(), b.stateHash());
 }
+
+// AL-80: the quick bars' queue: a task the player queued is taken back by its
+// place in the queue; a place that is not there is refused.
+TEST(altera_sim_control_unqueue) {
+    World w = aiWorld();
+    const auto [A, B] = twoAdults(w);
+    (void)B;
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}}, 1)).result, kOk);
+    std::vector<std::string> ids;
+    for (const auto& [id, d] : content().interactions)
+        if (d.target == "self" && ids.size() < 2) ids.push_back(id);
+    CHECK_EQ(ids.size(), std::size_t(2));
+    const std::size_t before = w.character(A)->ai.queue.size();
+    for (const auto& id : ids) w.applyNow(cmdOf("queue_task", {{"id", A}, {"task", id}}));
+    CHECK_EQ(w.character(A)->ai.queue.size(), before + 2);
+    CHECK_EQ(w.applyNow(cmdOf("unqueue", {{"id", A}, {"index", int(before)}})).result, kOk);
+    CHECK_EQ(w.character(A)->ai.queue.size(), before + 1);
+    CHECK_EQ(w.character(A)->ai.queue.back().task, ids[1]);
+    CHECK(w.applyNow(cmdOf("unqueue", {{"id", A}, {"index", 99}})).result != kOk);
+}

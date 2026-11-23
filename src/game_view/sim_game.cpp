@@ -383,6 +383,8 @@ public:
         hud_.settingsAutosave = settings_.autosaveMin;
         hud_.settingsStyle = settings_.uiStyle;
         hud_.settingsScale = settings_.uiScale;
+        hud_.settingsBar2 = settings_.bar2;
+        hud_.settingsVitals = settings_.vitalsAlways;
         hud_.menuNote.clear();
         hud_.panel = "settings";
     }
@@ -501,7 +503,7 @@ public:
                   {"game",
                    {{"origin_x", originX_}, {"origin_y", originY_}, {"target_x", target_[0]}, {"target_y", target_[1]},
                     {"zoom", zoom_}, {"yaw", orbitYaw_}, {"pitch", orbitPitch_}, {"speed", speed_},
-                    {"seed", opts_.seed}, {"lang", opts_.lang},
+                    {"seed", opts_.seed}, {"lang", opts_.lang}, {"hotbars", hud_.hotbars.toJson()},
                     {"world", Json::parse(terrain_core::worldSpecJson(opts_.world))}}},
                   {"world", world_->toJson()}};
         SaveMeta m;
@@ -564,6 +566,7 @@ public:
             return false;
         }
         const Json g = save.value("game", Json::object());
+        hud_.hotbars.fromJson(g.value("hotbars", Json::object()));   // AL-80: every person's quick bars
         originX_ = g.value("origin_x", originX_);
         originY_ = g.value("origin_y", originY_);
         adoptWorld();
@@ -599,6 +602,10 @@ public:
         settings_.fullscreen = fs;
         settings_.autosaveMin = std::clamp(a.value("autosave", settings_.autosaveMin), 0, 120);
         settings_.uiScale = std::clamp(a.value("ui_scale", settings_.uiScale), 80, 130);
+        settings_.bar2 = a.value("bar2", settings_.bar2);                  // AL-80
+        settings_.vitalsAlways = a.value("vitals", settings_.vitalsAlways);
+        hud_.settingsBar2 = settings_.bar2;
+        hud_.settingsVitals = settings_.vitalsAlways;
         const std::string style = a.value("style", settings_.uiStyle);
         if (style != settings_.uiStyle) {   // AL-62: another theme: the HUD and the faces again
             settings_.uiStyle = style;
@@ -839,6 +846,15 @@ public:
                 break;
             }
             if (e.key.key == SDLK_ESCAPE) {
+                // AL-80: the aim cursor of a quick bar, then the talk over the bars
+                if (hud_.aiming()) {
+                    hud_.cancelAim();
+                    break;
+                }
+                if (hud_.panel == "none" && hud_.talking()) {
+                    hud_.closeTalk();
+                    break;
+                }
                 if (hud_.panel != "none") {
                     hud_.panel = "none";
                     break;
@@ -849,7 +865,20 @@ public:
             if (e.key.repeat) break;
             noteInput();
             if (e.key.key == SDLK_SPACE) post({"pause"});
-            if (e.key.key >= SDLK_1 && e.key.key <= SDLK_4 && !speedLocked()) post({"speed", int(e.key.key - SDLK_1) + 1});
+            // AL-80: 1-8 the first quick bar, Shift+1-8 the second (by the key's place, any layout);
+            // the clock on - and = (slower: down to a pause; faster: out of it)
+            if (e.key.scancode >= SDL_SCANCODE_1 && e.key.scancode <= SDL_SCANCODE_8)
+                hud_.pressSlot((e.key.mod & SDL_KMOD_SHIFT) ? 1 : 0, int(e.key.scancode - SDL_SCANCODE_1));
+            if (e.key.scancode == SDL_SCANCODE_MINUS || e.key.scancode == SDL_SCANCODE_KP_MINUS) {
+                if (!shown_.paused) {
+                    if (shown_.speed > 1 && !speedLocked()) post({"speed", shown_.speed - 1});
+                    else post({"pause"});
+                }
+            }
+            if (e.key.scancode == SDL_SCANCODE_EQUALS || e.key.scancode == SDL_SCANCODE_KP_PLUS) {
+                if (shown_.paused) post({"pause"});
+                else if (shown_.speed < 3 && !speedLocked()) post({"speed", shown_.speed + 1});
+            }
             if (e.key.key == SDLK_TAB) cameraFollow(!follow_);
             if (e.key.key == SDLK_V) controlMode((control_ + 1) % 3);
             if (e.key.key == SDLK_H) hud_.panel = hud_.panel == "annals" ? "none" : "annals";
@@ -917,7 +946,10 @@ public:
             break;
         case SDL_EVENT_MOUSE_WHEEL:
             input_.wheel += e.wheel.y;
-            if (!overUi_) zoom_ = std::clamp(zoom_ * std::pow(0.85, e.wheel.y), 4.0, 6000.0);
+            // AL-80: Shift + the wheel turns the quick bar's page
+            if (SDL_GetModState() & SDL_KMOD_SHIFT) {
+                if (hud_.panel == "none" && e.wheel.y != 0) hud_.turnBarPage(e.wheel.y > 0 ? -1 : 1);
+            } else if (!overUi_) zoom_ = std::clamp(zoom_ * std::pow(0.85, e.wheel.y), 4.0, 6000.0);
             break;
         default: break;
         }
@@ -966,6 +998,10 @@ public:
                 const EntityId hit = pick(pickAt_.x, pickAt_.y);
                 if (shown_.controlled == kNone) {
                     if (hit != kNone) select(hit);
+                } else if (hud_.aiming() && hit != kNone && hit != shown_.controlled) {
+                    hud_.aimAt(hit);   // AL-80: the quick bar's act on whom the aim cursor picked
+                } else if (hud_.aiming()) {
+                    hud_.cancelAim();
                 } else if (hit == kNone) {
                     hud_.aim = kNone;
                     // a thing to work on: its act ring; else, in the mouse and
@@ -1931,6 +1967,18 @@ private:
             }
             if (st.value("backstory_begin", false)) hud_.backstoryBegin = true;
             if (st.contains("tone")) hud_.setTone(st["tone"].get<int>());
+            // AL-80: the quick bars: bar_set [bar, page, slot, kind, id], bar [bar, slot] (a key),
+            // bar_page n (Shift + wheel), bar_lock, aim_cancel, talk_close
+            if (st.contains("bar_set") && shown_.controlled != kNone) {
+                const Json& b = st["bar_set"];
+                hud_.hotbars.set(shown_.controlled, b[0].get<int>(), b[1].get<int>(), b[2].get<int>(),
+                                 {b[3].get<std::string>(), b[4].get<std::string>(), 0});
+            }
+            if (st.contains("bar")) hud_.pressSlot(st["bar"][0].get<int>(), st["bar"][1].get<int>());
+            if (st.contains("bar_page")) hud_.turnBarPage(st["bar_page"].get<int>());
+            if (st.contains("bar_lock")) hud_.hotbars.locked = st["bar_lock"].get<bool>();
+            if (st.value("aim_cancel", false)) hud_.cancelAim();
+            if (st.value("talk_close", false)) hud_.closeTalk();
             if (st.contains("slot")) hud_.openSlot(st["slot"].get<int>());
             // building and the colony
             if (st.value("take_chief", false) && shown_.colony.chief != kNone)
@@ -2842,6 +2890,7 @@ private:
                 const double b = (y.kin.empty() ? 0 : 2) + std::fabs(y.affinity) + y.familiarity;
                 return a > b;
             });
+            d.wantsGoal = c->ai.goal.valid();
             if (c->ai.goal.valid())
                 d.wants.push_back(c->ai.goal.id == "player_action" ? name("interaction", c->ai.goal.task) : name("goal", c->ai.goal.id));
             for (const auto& q : c->ai.queue) d.wants.push_back(name("interaction", q.task));
@@ -2870,6 +2919,7 @@ private:
         tradeSnap(w, s);
         thingsSnap(w, s);
         actsSnap(w, s);
+        barSnap(w, s);
         feedbackSnap(w, s);
         speechSnap(w, s);
         s.centre[0] = villageCentre_[0];
@@ -3291,6 +3341,40 @@ private:
             for (const auto& t : a.legal) o.needs.push_back({text("act.outcome.crime", {{"tag", name("legal", t)}}), false});
             o.minutes = int(a.duration) * int(24 * 60 / kTicksPerDay);
             s.acts.push_back(std::move(o));
+        }
+    }
+
+    // AL-80: the acts of the quick bars, checked for the player's person
+    // against the person chosen (acts on a person) or nobody (on oneself);
+    // acts on places are left to the sim's own search.
+    void barSnap(const World& w, Snapshot& s) {
+        std::vector<std::string> ids;
+        EntityId tid = kNone;
+        {
+            std::lock_guard<std::mutex> lock(barMutex_);
+            ids = barWanted_;
+            tid = barTarget_;
+        }
+        s.barFor = tid;
+        const Character* me = w.character(s.controlled);
+        if (!me || ids.empty()) return;
+        const Character* tc = tid != kNone ? w.character(tid) : nullptr;
+        std::sort(ids.begin(), ids.end());
+        ids.erase(std::unique(ids.begin(), ids.end()), ids.end());
+        for (const auto& id : ids) {
+            const InteractionDef* d = w.content().interaction(id);
+            if (!d) continue;
+            if (d->target != "self" && !(d->target == "character" && tc)) continue;
+            const ActInfo a = actInfo(w, *me, *d, nullptr, d->target == "character" ? tc : nullptr);
+            ActInfoSnap o;
+            o.id = id;
+            o.name = name("interaction", id);
+            o.can = a.can;
+            for (const auto& r : a.pre)
+                if (!r.ok && o.why.empty()) o.why = describeCondition(r.cond);
+            if (!a.can)
+                if (std::string t = whyText(a.why, *d, nullptr, tc); !t.empty()) o.why = t;
+            s.barActs.push_back(std::move(o));
         }
     }
 
@@ -5392,6 +5476,35 @@ private:
         }
     }
     void wheelTarget(EntityId id) override { wheelWanted_ = id; }
+    // AL-80: the quick bars
+    Json actMeta(const std::string& id) const override {
+        const InteractionDef* d = content_ ? content_->interaction(id) : nullptr;
+        if (!d) return Json::object();
+        return Json{{"target", d->target}, {"category", d->category}};
+    }
+    std::string itemAct(const std::string& item) const override {
+        if (!content_) return "";
+        if (const auto it = itemActs_.find(item); it != itemActs_.end()) return it->second;
+        // the act on oneself that uses the thing up (eating and drinking first)
+        std::string best;
+        int bestScore = -1;
+        for (const auto& [id, d] : content_->interactions) {
+            if (d.target != "self" || !d.baseId.empty()) continue;
+            bool uses = false;
+            for (const auto& e : d.eff)
+                if (e.subject == "has" && e.key == item && e.op == '-') uses = true;
+            if (!uses) continue;
+            const int score = (id.rfind("eat_", 0) == 0 || id.rfind("drink_", 0) == 0 ? 2 : 1) * 100 - int(id.size());
+            if (score > bestScore) bestScore = score, best = id;
+        }
+        itemActs_[item] = best;
+        return best;
+    }
+    void barCheck(const std::vector<std::string>& acts, EntityId target) override {
+        std::lock_guard<std::mutex> lock(barMutex_);
+        barWanted_ = acts;
+        barTarget_ = target;
+    }
     void craftDraft(const Json& draft) override { post({"craft_draft", 0, "", draft}); }
     std::vector<std::pair<std::string, std::string>> goals() const override {
         std::vector<std::pair<std::string, std::string>> out;
@@ -5538,6 +5651,10 @@ private:
     std::mutex cmdMutex_;
     std::deque<Command> commands_;
     std::mutex snapMutex_;
+    std::mutex barMutex_;                       // AL-80: the quick bars' acts to check, and against whom
+    std::vector<std::string> barWanted_;
+    EntityId barTarget_ = kNone;
+    mutable std::map<std::string, std::string> itemActs_;
     Snapshot snap_;
 
     // Frame state (main thread).
