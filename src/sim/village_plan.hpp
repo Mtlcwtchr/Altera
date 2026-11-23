@@ -46,7 +46,22 @@ struct VillageLot {
     PlanRect house;                  // the building, front to the road
     PlanRect yard;                   // behind it
     double ground = 0;               // mean ground height under the house
+    double groundMax = 0;            // AL-76: the highest ground under it (the floor goes there)
     int road = 0;                    // which road it fronts
+    bool placed = true;              // AL-76: false = no room for it (lots follow VillageWanted::lots)
+    int field = -1;                  // AL-76: its field in VillagePlan::fields, -1 none
+};
+
+// AL-76: a lot the village is asked for: the building's footprint in cells of
+// cell_m (w across its front, d deep), where it goes (zone: square = by the
+// square, road = along the main road, lane = anywhere, edge = out at the
+// edge), a yard behind it and a field beyond (home). The house is turned by
+// quarters (its modules stand on the world's grid) and set on the grid.
+struct LotSpec {
+    int w = 7, d = 6;
+    std::string zone = "lane";
+    double yardD = 12.0;
+    bool home = true;
 };
 
 struct VillagePlan {
@@ -55,8 +70,8 @@ struct VillagePlan {
     std::vector<double> roadWidth;
     Vec2 square;                                 // the village square
     double squareR = 12.0;
-    std::vector<VillageLot> lots;                // nearest the square first
-    std::vector<PlanRect> fields;                // one per household that got a lot, same order
+    std::vector<VillageLot> lots;                // one per VillageWanted lot, in its order (see placed)
+    std::vector<PlanRect> fields;                // the homes' fields (VillageLot::field)
     std::vector<Vec2> squareSpots;               // places round the square for shared things
     std::vector<std::string> notes;              // what the planner had to give up
 };
@@ -69,6 +84,10 @@ struct VillageWanted {
     double yardD = 12.0;
     double fieldW = 40.0, fieldD = 30.0;
     double maxRelief = 2.2;                // the most a lot's corners may differ in height
+    // AL-76: the lots one by one (their order is the plan's lots' order);
+    // empty = `houses` homes of houseW x houseD
+    std::vector<LotSpec> lots;
+    double cellM = 2.0;                    // the grid the houses stand on
 };
 
 VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre, const VillageWanted& want,

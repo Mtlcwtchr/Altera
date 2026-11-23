@@ -43,6 +43,7 @@
 #include "sim/act_info.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/structure_plan.hpp"
 #include "sim/collide.hpp"
 #include "sim/craft_sim.hpp"
 #include "sim/gear.hpp"
@@ -76,6 +77,7 @@ struct BuildingSnap {
     EntityId family = kNone;
     float yaw = 0;          // AL-8: as the village plan faced it
     bool faced = false;
+    EntityId id = kNone;    // AL-76: the sim object
 };
 
 std::string clockText(Tick t) {
@@ -236,12 +238,26 @@ public:
         jrTail_.clear();
         for (const auto& [id, c] : world_->characters()) prevPos_[id] = c.pos;
         buildings_.clear();
+        housed_.clear();          // AL-76
+        structureProps_.clear();
+        structureSpots_.clear();
         roads_.clear();
         roadWidth_.clear();
         if (!world_->settlements().empty()) {
             const Settlement& s = world_->settlements().begin()->second;
             roads_ = s.roads;
             roadWidth_ = s.roadWidth;
+            // AL-76: the planned buildings stand as built modules (World::pieces);
+            // the house and the store inside them are not drawn as a baked whole
+            for (const auto& t : s.structures) {
+                for (EntityId id : t.objects) housed_[id] = {float((t.i1 - t.i0) * content_->build.cellM * 0.5),
+                                                             float((t.j1 - t.j0) * content_->build.cellM * 0.5)};
+                for (const auto& p : t.props) structureProps_.push_back({p.piece, p.pos.x, p.pos.y, float(p.yaw)});
+                const double c = content_->build.cellM;
+                const sim::StructureFrame f{t.q, t.gx, t.gy, c};
+                const Vec2 m = f.point((t.i0 + t.i1) * 0.5 * c, (t.j0 + t.j1) * 0.5 * c);
+                structureSpots_.push_back({t.type, m.x, m.y, t.door.x, t.door.y});
+            }
             target_[0] = originX_ + s.center.x;
             target_[1] = originY_ + s.center.y;
             villageCentre_[0] = s.center.x;
@@ -250,7 +266,7 @@ public:
         for (const auto& [id, ob] : world_->objects()) {
             static const char* kShown[] = {"house", "storage", "hearth", "field", "garden", "shrine", "village_fire"};
             for (const char* t : kShown)
-                if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced});
+                if (ob.type == t) buildings_.push_back({ob.type, ob.pos.x, ob.pos.y, ob.ownerFamily, float(ob.yaw), ob.faced, id});
         }
         plantForest();   // AL-78: the drawn forest is the world's trees (after the buildings: their yards)
         anims_.clear();
@@ -1450,10 +1466,19 @@ public:
                 // a stand-in model (AL-11): its footprint as drawn (yaw and size as buildInstances has them)
                 float hx = 0, hy = 0;
                 props_.halfSize(pp, hx, hy);
-                const double var = 0.85 + 0.3 * double((h >> 20) % 100) / 100.0;
-                if (hx > 0.15 && hy > 0.15)
-                    obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, double((h >> 8) % 628) / 100.0});
+                const double var = t.faced ? 1.0 : 0.85 + 0.3 * double((h >> 20) % 100) / 100.0;
+                const double yaw = t.faced ? double(t.yaw) : double((h >> 8) % 628) / 100.0;
+                if (hx > 0.15 && hy > 0.15) obstacles_.add(collide::Box{wx, wy, hx * var * 0.8, hy * var * 0.8, yaw});
             }
+        }
+        // AL-76: the furniture of the planned buildings (a fence one steps over is no wall)
+        for (const auto& pr : structureProps_) {
+            const int pp = propPiece(pr.piece);
+            if (pp < 0 || pr.piece == "fence") continue;
+            float hx = 0, hy = 0;
+            props_.halfSize(pp, hx, hy);
+            if (hx > 0.15 && hy > 0.15)
+                obstacles_.add(collide::Box{originX_ + pr.x, originY_ + pr.y, hx * 0.8, hy * 0.8, double(pr.yaw)});
         }
         for (const auto& b0 : buildings_) {
             BuildingSnap b;
@@ -1950,6 +1975,22 @@ private:
                     target_[1] = originY_ + b->y + dy + 2;
                     follow_ = false;
                 }
+            // AL-76: the camera on a planned building of a type ("smithy", "tavern"...), its centre
+            if (st.contains("look_structure")) {
+                const std::string want = st["look_structure"].get<std::string>();
+                bool found = false;
+                for (const auto& sp : structureSpots_) {
+                    if (sp.type != want) continue;
+                    target_[0] = originX_ + sp.x;
+                    target_[1] = originY_ + sp.y;
+                    follow_ = false;
+                    found = true;
+                    // the camera before its door, looking in
+                    if (!st.contains("yawDeg")) orbitYaw_ = std::atan2(sp.y - sp.doorY, sp.x - sp.doorX);
+                    break;
+                }
+                SDL_Log("altera_game: script look_structure %s: %s", want.c_str(), found ? "found" : "none");
+            }
             if (st.contains("look_at_build") && !shown_.pieces.empty()) {
                 const BuildPiece& p0 = shown_.pieces.begin()->second;
                 target_[0] = originX_ + (p0.x + 1) * content_->build.cellM;
@@ -2879,6 +2920,8 @@ private:
             for (const auto& [k, v] : o.stock)
                 if (v > 0) t.stock.push_back({name("item", k), v});
             t.busy = o.reservedFor(kNone, w.now()) && o.reservedBy != kNone;
+            t.faced = o.faced;   // AL-76: a station set in a building faces as planned
+            t.yaw = float(o.yaw);
             if (const auto hi = heldIndex_.find(id); hi != heldIndex_.end()) {   // AL-78
                 const terrain_core::HeldTree& ht = heldTrees_[std::size_t(hi->second)];
                 t.held = true;
@@ -4339,6 +4382,11 @@ private:
             BuildingSnap b;
             float yw = 0;
             int mesh = -1;
+            if (auto hz = housed_.find(b0.id); hz != housed_.end()) {   // AL-76: the modules' footprint
+                const double wx = originX_ + b0.x, wy = originY_ + b0.y, d = std::hypot(wx - px, wy - py);
+                if (d < bd) bd = d, hx0 = wx, hy0 = wy, yaw = b0.yaw, hx = hz->second.first, hy = hz->second.second;
+                continue;
+            }
             if (!buildingPose(b0, b, yw, mesh)) continue;
             const double wx = originX_ + b.x, wy = originY_ + b.y, d = std::hypot(wx - px, wy - py);
             if (d >= bd) continue;
@@ -4401,8 +4449,11 @@ private:
 
     bool buildingPose(const BuildingSnap& b0, BuildingSnap& b, float& yaw, int& mesh) const {
         b = b0;
-        if (b0.faced) {   // AL-8: placed by the village plan; only a hearth inside a house stays unseen
-            if (b.type == "hearth")
+        const bool housed = housed_.count(b0.id) > 0;
+        // AL-76: a house or a store of a planned building is its modules, not a baked whole
+        if (housed && (b0.type == "house" || b0.type == "storage")) return false;
+        if (b0.faced) {   // AL-8: placed by the village plan; only a hearth inside a (baked) house stays unseen
+            if (b.type == "hearth" && !housed)
                 for (const auto& h : buildings_)
                     if (h.type == "house" && std::hypot(b.x - h.x, b.y - h.y) < 4.5) return false;
         } else if (b.type != "house" && b.type != "field" && b.type != "garden")
@@ -4541,6 +4592,27 @@ private:
                         out.push_back(in);
                     }
             }
+        }
+    }
+
+    // AL-76: the props the planned buildings hold (tables, the counter,
+    // benches, beds, the yards' fences), stand-in models of the props set.
+    void structurePropsPlace() {
+        for (const auto& pr : structureProps_) {
+            const int pp = propPiece(pr.piece);
+            if (pp < 0) continue;
+            const double wx = originX_ + pr.x, wy = originY_ + pr.y;
+            const double rx = wx - eye_[0], ry = wy - eye_[1];
+            if (rx * rx + ry * ry > 300.0 * 300.0) continue;
+            if (propsPlaced_.size() >= StaticSet::kMaxPlaced - 512) return;
+            Placed pl;
+            pl.piece = pp;
+            pl.rel[0] = rx;
+            pl.rel[1] = ry;
+            pl.rel[2] = groundAt(wx, wy) - 0.02 - eye_[2];
+            pl.yaw = pr.yaw;
+            pl.scale = 1.0f;
+            propsPlaced_.push_back(pl);
         }
     }
 
@@ -4694,8 +4766,8 @@ private:
             const float var = 0.85f + 0.3f * float((h >> 20) % 100) / 100.0f;
             in.placeYaw[0] = float(rx), in.placeYaw[1] = float(ry);
             in.placeYaw[2] = float(groundAt(wx, wy) - 0.05 - eye_[2]);
-            in.placeYaw[3] = float(double((h >> 8) % 628) / 100.0);
-            in.scale[0] = in.scale[1] = in.scale[2] = var;
+            in.placeYaw[3] = t.faced ? t.yaw : float(double((h >> 8) % 628) / 100.0);
+            in.scale[0] = in.scale[1] = in.scale[2] = t.faced ? 1.0f : var;
             in.scale[3] = (t.id == hud_.hoverThing || (hud_.panel == "thing" && t.id == hud_.actTarget())) ? 1.0f : 0.0f;
             auto col = [&](float r, float g, float b, float r2, float g2, float b2) {
                 in.colour[0] = r, in.colour[1] = g, in.colour[2] = b;
@@ -4711,13 +4783,20 @@ private:
                 continue;
             }
             if (const int pp = propPiece(ty); pp >= 0) {
+                // AL-76: a stand-in too big for its cell in a building is drawn to fit it (a pen in a byre)
+                if (t.faced && ty != "mill" && housed_.count(t.id)) {
+                    float hx = 0, hy = 0;
+                    props_.halfSize(pp, hx, hy);
+                    const float big = std::max(hx, hy);
+                    if (big > 1.2f) in.scale[0] = 1.2f / big;
+                }
                 Placed pl;
                 pl.piece = pp;
                 pl.rel[0] = rx;
                 pl.rel[1] = ry;
                 pl.rel[2] = groundAt(wx, wy) - 0.03 - eye_[2];
                 pl.yaw = in.placeYaw[3];
-                pl.scale = var;
+                pl.scale = in.scale[0];
                 pl.highlight = in.scale[3];
                 propsPlaced_.push_back(pl);
                 continue;
@@ -4741,6 +4820,7 @@ private:
             else m = kBlock, col(0.40f, 0.34f, 0.28f, 0.40f, 0.34f, 0.28f), in.scale[0] *= 0.8f, in.scale[1] *= 0.8f, in.scale[2] *= 0.6f;
             per[m].push_back(in);
         }
+        structurePropsPlace();
         soilTiles(per[kBlock]);
         roadTiles(per[kBlock]);
         cutPieces_.clear();
@@ -5150,6 +5230,19 @@ private:
     std::vector<std::vector<Vec2>> roads_;   // AL-8: the village plan's roads (sim coordinates)
     std::vector<double> roadWidth_;
     std::vector<BuildingSnap> buildings_;
+    // AL-76: objects standing in a planned building (-> its footprint half sizes) and its props
+    std::map<EntityId, std::pair<float, float>> housed_;
+    struct StructureProp {
+        std::string piece;
+        double x = 0, y = 0;
+        float yaw = 0;
+    };
+    std::vector<StructureProp> structureProps_;
+    struct StructureSpot {
+        std::string type;
+        double x = 0, y = 0, doorX = 0, doorY = 0;   // sim metres: its centre, before its door
+    };
+    std::vector<StructureSpot> structureSpots_;
     std::vector<std::string> goalIds_, goalNames_;
     int goalChoice_ = 0;
     bool goalListOpen_ = false;

@@ -335,6 +335,17 @@ void to_json(Json& j, const Settlement& s) {
         j["square"] = s.square;
         j["square_r"] = s.squareR;
     }
+    if (!s.structures.empty()) {   // AL-76
+        Json a = Json::array();
+        for (const auto& t : s.structures) {
+            Json props = Json::array();
+            for (const auto& p : t.props) props.push_back(Json{{"piece", p.piece}, {"pos", p.pos}, {"yaw", p.yaw}});
+            a.push_back(Json{{"type", t.type}, {"family", t.family}, {"frame", {t.q, t.gx, t.gy}},
+                             {"cells", {t.i0, t.j0, t.i1, t.j1}}, {"h", t.h}, {"door", t.door},
+                             {"objects", t.objects}, {"props", props}});
+        }
+        j["structures"] = a;
+    }
 }
 void from_json(const Json& j, Settlement& s) {
     const Settlement d;
@@ -348,6 +359,22 @@ void from_json(const Json& j, Settlement& s) {
     s.roadWidth = j.value("road_width", d.roadWidth);
     s.square = j.value("square", d.square);
     s.squareR = j.value("square_r", d.squareR);
+    s.structures.clear();
+    for (const auto& t : j.value("structures", Json::array())) {
+        Settlement::Structure x;
+        x.type = t.value("type", std::string());
+        x.family = t.value("family", kNone);
+        const auto fr = t.value("frame", std::vector<int>{0, 0, 0});
+        if (fr.size() == 3) x.q = fr[0], x.gx = fr[1], x.gy = fr[2];
+        const auto cl = t.value("cells", std::vector<int>{0, 0, 0, 0});
+        if (cl.size() == 4) x.i0 = cl[0], x.j0 = cl[1], x.i1 = cl[2], x.j1 = cl[3];
+        x.h = t.value("h", 0.0);
+        x.door = t.value("door", Vec2{});
+        x.objects = t.value("objects", std::vector<EntityId>{});
+        for (const auto& p : t.value("props", Json::array()))
+            x.props.push_back({p.value("piece", std::string()), p.value("pos", Vec2{}), p.value("yaw", 0.0)});
+        s.structures.push_back(std::move(x));
+    }
 }
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, code, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Fact, id, tick, pred, roles, place, witnesses, evidence, tags, goods,

@@ -5,6 +5,7 @@
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
 #include "sim/village_plan.hpp"
+#include "sim/structure_plan.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -203,10 +204,75 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     // village_site from the terrain) or asks for one; else the old ring.
     const bool planned = cfg.contains("village_site") || cfg.value("village_plan", false);
     VillagePlan vplan;
+    // AL-76: the buildings by purpose (structures.json): a home per family -
+    // a share of them a trade's (the smithy first) - and the shared ones
+    // whose objects the world has (the chapel's shrine, the mill...); each
+    // planned from modules, then given a lot of its size in its zone.
+    const StructureCatalog scat = planned ? parseStructures(content.structures) : StructureCatalog{};
+    struct Built {
+        const StructureTypeDef* def = nullptr;
+        StructurePlan plan;
+        int family = -1;        // index of the family it houses, -1 shared
+        StructureFrame frame;
+        double h = 0.0;
+        std::vector<bool> used; // stations already standing
+        int index = -1;         // in st.structures
+    };
+    std::vector<Built> builds;
+    std::vector<int> peopleOf;   // planned: each family's size drawn before the plan
     if (planned) {
+        const int fams = std::max(1, cfg.value("families", 3));
+        int lo = 4, hi = 6;
+        if (cfg.contains("people_per_family")) lo = cfg["people_per_family"].at(0).get<int>(), hi = cfg["people_per_family"].at(1).get<int>();
+        for (int f = 0; f < fams; ++f) peopleOf.push_back(rng.irange(lo, hi));
+        if (scat.loaded() && scat.find("dwelling")) {
+            Rng sr(hashCombine(seed, hashStr("structures")));
+            std::vector<std::string> trades;
+            for (const auto& t : scat.trades)
+                if (scat.find(t)) trades.push_back(t);
+            for (std::size_t i = trades.size(); i > 2; --i)   // the smithy and the tavern lead, the rest by seed
+                std::swap(trades[i - 1], trades[2 + std::size_t(sr.irange(0, int(i) - 3))]);
+            const int nTrade = fams >= 2 ? std::clamp(int(std::lround(fams * scat.tradeShare)), 1, std::min<int>(fams, int(trades.size()))) : 0;
+            std::vector<int> idx(static_cast<std::size_t>(fams));
+            for (int f = 0; f < fams; ++f) idx[std::size_t(f)] = f;
+            for (int i = fams - 1; i > 0; --i) std::swap(idx[std::size_t(i)], idx[std::size_t(sr.irange(0, i))]);
+            std::vector<std::string> famType(std::size_t(fams), "dwelling");
+            for (int t = 0; t < nTrade; ++t) famType[std::size_t(idx[std::size_t(t)])] = trades[std::size_t(t)];
+            for (int f = 0; f < fams; ++f) {
+                Built b;
+                b.def = scat.find(famType[std::size_t(f)]);
+                b.family = f;
+                b.plan = planStructure(scat, content.build, *b.def, {peopleOf[std::size_t(f)], hashCombine(seed, std::uint64_t(f) + 1)});
+                builds.push_back(std::move(b));
+            }
+            for (const auto& id : scat.shared) {
+                const StructureTypeDef* d = scat.find(id);
+                if (!d) continue;
+                bool hosted = d->hosts.empty();
+                for (const auto& h : d->hosts) {
+                    auto o = content.objects.find(h);
+                    if (o != content.objects.end() && o->second.perSettlement > 0) hosted = true;
+                }
+                if (!hosted) continue;
+                Built b;
+                b.def = d;
+                b.plan = planStructure(scat, content.build, *d, {4, hashCombine(seed, hashStr("shared:" + id))});
+                builds.push_back(std::move(b));
+            }
+        }
         const VillageSite site = VillageSite::fromJson(cfg.value("village_site", Json::object()));
         VillageWanted want;
-        want.houses = want.fields = std::max(1, cfg.value("families", 3));
+        want.houses = want.fields = fams;
+        want.cellM = content.build.cellM;
+        for (const auto& b : builds) {
+            LotSpec L;
+            L.w = b.plan.i1 - b.plan.i0;
+            L.d = b.plan.j1 - b.plan.j0;
+            L.zone = b.def->zone;
+            L.home = b.def->home;
+            L.yardD = b.def->home ? scat.yardD : 4.0;
+            want.lots.push_back(L);
+        }
         vplan = planVillage(site, m, center, want, seed);
         center = vplan.square;
         st.center = center;
@@ -214,7 +280,56 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         st.roadWidth = vplan.roadWidth;
         st.square = vplan.square;
         st.squareR = vplan.squareR;
+        // the buildings on their lots: the frame, the floor, the modules as built pieces
+        for (std::size_t k = 0; k < builds.size() && k < vplan.lots.size(); ++k) {
+            Built& b = builds[k];
+            const VillageLot& L = vplan.lots[k];
+            if (!L.placed) continue;
+            const double c = content.build.cellM;
+            b.frame.cellM = c;
+            b.frame.q = int(std::lround(L.house.yaw / (kPi / 2))) & 3;
+            const Vec2 fc = footprintCentre(b.plan, c);
+            const StructureFrame f0{b.frame.q, 0, 0, c};
+            const Vec2 r0 = f0.point(fc.x, fc.y);
+            b.frame.gx = int(std::lround((L.house.c.x - r0.x) / c));
+            b.frame.gy = int(std::lround((L.house.c.y - r0.y) / c));
+            b.h = site.loaded() ? L.groundMax + 0.1 : 0.0;
+            b.used.assign(b.plan.stations.size(), false);
+            Settlement::Structure rec;
+            rec.type = b.def->id;
+            rec.q = b.frame.q, rec.gx = b.frame.gx, rec.gy = b.frame.gy;
+            rec.i0 = b.plan.i0, rec.j0 = b.plan.j0, rec.i1 = b.plan.i1, rec.j1 = b.plan.j1;
+            rec.h = b.h;
+            rec.door = b.frame.point((b.plan.doorI + 0.5) * c, -0.6);
+            for (const auto& d : b.plan.decor)
+                rec.props.push_back({d.what, b.frame.point(d.u, d.v), b.frame.yaw(d.yaw)});
+            // a fence round a home's yard (its back and sides, a gap at the back for the gate)
+            if (b.def->home && !scat.fence.empty()) {
+                const PlanRect& Y = L.yard;
+                const double seg = 4.0;
+                auto run = [&](Vec2 a, Vec2 z, double yaw, bool gate) {
+                    const double len = dist(a, z);
+                    const int n = std::max(1, int(std::lround(len / seg)));
+                    for (int i = 0; i < n; ++i) {
+                        if (gate && i == n / 2) continue;
+                        const double t = (i + 0.5) / n;
+                        rec.props.push_back({scat.fence, {a.x + (z.x - a.x) * t, a.y + (z.y - a.y) * t}, yaw});
+                    }
+                };
+                run(Y.at(-Y.hw, -Y.hd), Y.at(Y.hw, -Y.hd), Y.yaw, true);              // the back
+                run(Y.at(-Y.hw, -Y.hd), Y.at(-Y.hw, Y.hd), Y.yaw + kPi / 2, false);    // the sides
+                run(Y.at(Y.hw, -Y.hd), Y.at(Y.hw, Y.hd), Y.yaw + kPi / 2, false);
+            }
+            b.index = int(st.structures.size());
+            st.structures.push_back(std::move(rec));
+        }
     }
+    // AL-76: a building's station of `type` not yet standing (index into its plan), -1 none
+    auto freeStation = [&](Built& b, const std::string& type) {
+        for (std::size_t i = 0; i < b.plan.stations.size(); ++i)
+            if (!b.used[i] && b.plan.stations[i].what == type) return int(i);
+        return -1;
+    };
 
     // --- natural resources --------------------------------------------------
     const double cellKm2 = (m.cellM / 1000.0) * (m.cellM / 1000.0);
@@ -331,10 +446,41 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         Rng& r = def.ownSeed ? own : rng;
         for (int k = 0; k < def.perSettlement; ++k) {
             Vec2 p{center.x + r.range(-15.0, 15.0), center.y + r.range(-15.0, 15.0)};
+            bool housed = false;
+            for (auto& b : builds) {   // AL-76: in the shared building that holds it
+                if (b.index < 0 || b.family >= 0) continue;
+                const int si = freeStation(b, type);
+                if (si < 0) continue;
+                const LocalThing& t = b.plan.stations[std::size_t(si)];
+                const double yaw = b.frame.yaw(t.yaw);
+                b.used[std::size_t(si)] = true;
+                st.structures[std::size_t(b.index)].objects.push_back(
+                    spawnSettlementObject(type, b.frame.point(t.u, t.v), kNone, &yaw));
+                housed = true;
+                break;
+            }
+            if (housed) continue;
             if (planned && squareSpot < vplan.squareSpots.size()) p = vplan.squareSpots[squareSpot++];
             spawnSettlementObject(type, p, kNone);
         }
     }
+
+    // AL-76: whatever else a building holds (an oven, a quern, the forge and the anvil) stands in it
+    auto fillStations = [&](Built& b, EntityId fam) {
+        if (b.index < 0) return;
+        for (std::size_t i = 0; i < b.plan.stations.size(); ++i) {
+            if (b.used[i]) continue;
+            const LocalThing& t = b.plan.stations[i];
+            const auto d = content.objects.find(t.what);
+            if (d == content.objects.end() || d->second.perSettlement > 0 || d->second.perFamily > 0 || d->second.perPerson > 0)
+                continue;   // unknown here, or the settlement's / the household's own loop places it
+            const double yaw = b.frame.yaw(t.yaw);
+            b.used[i] = true;
+            st.structures[std::size_t(b.index)].objects.push_back(spawnSettlementObject(t.what, b.frame.point(t.u, t.v), fam, &yaw));
+        }
+    };
+    for (auto& b : builds)
+        if (b.family < 0) fillStations(b, kNone);
 
     std::vector<EntityId> everyone;
     for (int f = 0; f < families; ++f) {
@@ -349,10 +495,46 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         const double ang = 2.0 * kPi * (f + 0.25 * rng.uniform()) / std::max(1, families);
         const double rad = rng.range(60.0, 120.0);
         Vec2 house{center.x + std::cos(ang) * rad, center.y + std::sin(ang) * rad};
-        const VillageLot* lot = planned && f < int(vplan.lots.size()) ? &vplan.lots[std::size_t(f)] : nullptr;
-        const PlanRect* field = planned && f < int(vplan.fields.size()) ? &vplan.fields[std::size_t(f)] : nullptr;
+        const VillageLot* lot =
+            planned && f < int(vplan.lots.size()) && vplan.lots[std::size_t(f)].placed ? &vplan.lots[std::size_t(f)] : nullptr;
+        const PlanRect* field = lot && lot->field >= 0 ? &vplan.fields[std::size_t(lot->field)] : nullptr;
         if (lot) house = lot->house.c;
-        const int people = rng.irange(ppfLo, ppfHi);
+        const int people = f < int(peopleOf.size()) ? peopleOf[std::size_t(f)] : rng.irange(ppfLo, ppfHi);
+        // AL-76: the family's building (its home, maybe a trade's)
+        Built* home = f < int(builds.size()) && builds[std::size_t(f)].family == f && builds[std::size_t(f)].index >= 0
+                          ? &builds[std::size_t(f)]
+                          : nullptr;
+        std::vector<Vec2> bedSpots;
+        if (home) {
+            st.structures[std::size_t(home->index)].family = fam.id;
+            const double c = content.build.cellM;
+            const StructureVolume& mv = home->plan.volumes[0];
+            std::set<std::pair<int, int>> busy{{home->plan.doorI, 0}};
+            for (const auto* list : {&home->plan.stations, &home->plan.decor})
+                for (const auto& t : *list) busy.insert({t.i, t.j});
+            for (int pass = 0; pass < 2; ++pass)   // along the walls first, then the rest
+                for (int j = mv.j1 - 1; j >= mv.j0; --j)
+                    for (int i = mv.i0; i < mv.i1; ++i) {
+                        const bool wallSide = i == mv.i0 || i == mv.i1 - 1 || j == mv.j1 - 1;
+                        if ((pass == 0) != wallSide || busy.count({i, j})) continue;
+                        bedSpots.push_back(home->frame.point((i + 0.5) * c, (j + 0.5) * c));
+                    }
+            // the modules: built pieces of the household
+            for (const auto& lp : home->plan.pieces) {
+                BuildPiece bp;
+                bp.id = w.newId();
+                bp.kind = lp.kind;
+                home->frame.cell(lp.i, lp.j, bp.x, bp.y);
+                bp.z = lp.z;
+                bp.rot = home->frame.rot(lp.rot);
+                bp.h = home->h;
+                bp.built = true;
+                bp.family = fam.id;
+                w.pieces()[bp.id] = bp;
+            }
+            w.piecesDirty = true;
+        }
+        int bedN = 0;
         for (const auto& [type, def] : content.objects) {
             if (!def.settlement) continue;
             const int n = def.perFamily + def.perPerson * people;
@@ -365,11 +547,29 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 // AL-8: on the household's lot - the house facing the road, the
                 // hearth and beds inside, the store beside, the garden and the
                 // rest in the yard, the field beyond it.
+                double syaw = 0.0;
                 const double* yaw = nullptr;
                 if (lot) {
                     const PlanRect& H = lot->house;
                     const double ox = std::clamp(p.x - house.x, -6.0, 6.0) / 6.0, oy = std::clamp(p.y - house.y, -6.0, 6.0) / 6.0;
-                    if (type == "house") p = H.c, yaw = &H.yaw;
+                    const int si = home ? freeStation(*home, type) : -1;
+                    if (home && type == "house") {   // AL-76: the house is the main volume
+                        const StructureVolume& mv = home->plan.volumes[0];
+                        const double c = content.build.cellM;
+                        p = home->frame.point((mv.i0 + mv.i1) * 0.5 * c, (mv.j0 + mv.j1) * 0.5 * c);
+                        yaw = &H.yaw;
+                    } else if (si >= 0) {   // at its slot in the building
+                        const LocalThing& t = home->plan.stations[std::size_t(si)];
+                        home->used[std::size_t(si)] = true;
+                        p = home->frame.point(t.u, t.v);
+                        syaw = home->frame.yaw(t.yaw);
+                        yaw = &syaw;
+                    } else if (home && type == "bed" && !bedSpots.empty()) {
+                        p = bedSpots[std::size_t(bedN) % bedSpots.size()];
+                        if (bedN >= int(bedSpots.size())) p.x += 0.5 * double(bedN / int(bedSpots.size()));
+                        else st.structures[std::size_t(home->index)].props.push_back({"bed", p, home->frame.yaw(0.0)});
+                        ++bedN;
+                    } else if (type == "house") p = H.c, yaw = &H.yaw;
                     else if (type == "hearth") p = H.at(0.0, -1.0);
                     else if (type == "bed") p = H.at(ox * H.hw * 0.6, oy * H.hd * 0.6);
                     else if (type == "storage") p = H.at(H.hw + 3.0, -H.hd * 0.4), yaw = &H.yaw;
@@ -378,10 +578,13 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                     else if (!def.hasCrop) p = lot->yard.at(ox * lot->yard.hw * 0.8, oy * lot->yard.hd * 0.8);
                 }
                 const EntityId oid = spawnSettlementObject(type, p, fam.id, yaw);
+                if (home && (type == "house" || yaw)) st.structures[std::size_t(home->index)].objects.push_back(oid);
                 if (type == "storage" && fam.storage == kNone) fam.storage = oid;
                 if (type == "hearth" && fam.hearth == kNone) fam.hearth = oid;
             }
         }
+
+        if (home) fillStations(*home, fam.id);   // AL-76: the trade's stations (the forge, the anvil...)
 
         std::vector<EntityId> members;
         auto makePerson = [&](char sex, int ageYears, const std::string& role) -> Character& {
@@ -408,6 +611,11 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         };
         Character& father = makePerson('m', rng.irange(26, 46), "head");
         const EntityId fatherId = father.id;
+        // AL-76: a trade's household: its head knows the trade
+        if (home && !home->def->trade.empty() && content.knowledge.count(home->def->trade)) {
+            teach(father, home->def->trade, rng);
+            father.skills[home->def->trade] = std::max(father.skills[home->def->trade], 0.55);
+        }
         Character& mother = makePerson('f', rng.irange(24, 42), "spouse");
         const EntityId motherId = mother.id;
         w.character(fatherId)->status.spouse = motherId;

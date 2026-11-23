@@ -222,6 +222,8 @@ struct ThingSnap {
     double x = 0, y = 0;                                  // sim metres
     std::vector<std::pair<std::string, int>> stock;       // display name, count
     bool busy = false;                                    // someone else works on it
+    bool faced = false;                                   // AL-76: set in a building, facing yaw
+    float yaw = 0;
     bool held = false, felled = false;                    // AL-78: a tree of the drawn forest; felled: no logs left
     float height = 0;                                     // AL-78: as drawn (m), 0 = the type's own
 };

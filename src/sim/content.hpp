@@ -540,6 +540,7 @@ struct Content {
     CareDef care;
     craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)
     BuildCatalog build;
+    Json structures = Json::object(); // AL-76: content/ai/structures.json (sim/structure_plan.hpp parses it)
     ExpansionData expansion; // content/ai/expansion (not loaded = none)
     std::vector<BackstoryDef> backstories; // content/ai/backstories.json, file order (none = no choice)
     BackstoryConfig backstoryCfg;

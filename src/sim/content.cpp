@@ -823,6 +823,7 @@ Content Content::load(const std::string& dir) {
     if (c.craft.loaded && c.craft.cfg.goapDesigns)
         for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
     c.build = parseBuild(f("build.json"));
+    c.structures = f("structures.json");
     parseBackstories(f("backstories.json"), c);
     {
         const Json names = f("names.json");
