@@ -102,5 +102,22 @@
  "material.oak_bark.name": "oak bark",
  "material.oak_bark.made": "oak bark {form}",
  "material.peat.name": "peat",
- "material.peat.made": "peat {form}"
+ "material.peat.made": "peat {form}",
+ "item.animal_fat.name": "animal fat",
+ "item.sinew.name": "sinew",
+ "item.beeswax.name": "beeswax",
+ "item.feathers.name": "feathers",
+ "item.arrows.name": "arrow",
+ "item.longbow.name": "longbow",
+ "interaction.harvest_hive.name": "Harvest the hive",
+ "object.beehive.name": "beehive",
+ "material.tallow.name": "tallow",
+ "material.tallow.made": "tallow {form}",
+ "material.feather.name": "feather",
+ "material.feather.made": "feather {form}",
+ "form.arrows.name": "arrows",
+ "form.longbow.name": "longbow",
+ "interaction.craft:arrows.name": "make: arrows",
+ "interaction.craft:longbow.name": "make: longbow",
+ "interaction.craft:tallow_candle.name": "make: tallow candle"
 }

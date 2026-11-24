@@ -1365,7 +1365,9 @@
     "has:carcass-1",
     "has:meat+3",
     "has:hide+1",
-    "has:bone+2"
+    "has:bone+2",
+    "has:animal_fat+1",
+    "has:sinew+1"
    ],
    "duration": 4,
    "cost": 4,
@@ -3952,7 +3954,8 @@
     "t.group:heads-1",
     "skill:hunting+0.02",
     "body:fatigue+0.12",
-    "memory:good_hunt"
+    "memory:good_hunt",
+    "has:antler+1"
    ],
    "duration": 6,
    "cost": 6,
@@ -5171,7 +5174,8 @@
     "t.group:heads-1",
     "has:carcass+1",
     "skill:husbandry+0.01",
-    "body:fatigue+0.04"
+    "body:fatigue+0.04",
+    "has:horn+2"
    ],
    "duration": 6,
    "cost": 4,
@@ -5190,7 +5194,8 @@
    ],
    "eff": [
     "t.group:heads-1",
-    "has:meat+1"
+    "has:meat+1",
+    "has:feathers+4"
    ],
    "duration": 2,
    "cost": 2,
@@ -5209,7 +5214,8 @@
    ],
    "eff": [
     "t.group:heads-1",
-    "has:meat+1"
+    "has:meat+1",
+    "has:feathers+4"
    ],
    "duration": 2,
    "cost": 6,
@@ -5593,7 +5599,8 @@
     "target_stock:honey-2",
     "has:honey+2",
     "has:firewood-1",
-    "skill:foraging+0.01"
+    "skill:foraging+0.01",
+    "has:beeswax+1"
    ],
    "duration": 6,
    "cost": 4,

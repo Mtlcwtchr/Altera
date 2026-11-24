@@ -155,6 +155,29 @@ TEST(altera_craft_every_archetype_reachable) {
     CHECK(bad == 0);
 }
 
+TEST(altera_craft_every_design_makes_its_form) {
+    // AL-89: the other designs of an archetype (tallow candle beside the wax one) make it too
+    const CraftData& d = data();
+    Actor master = actorWith(0.95);
+    int bad = 0;
+    for (const auto& ds : d.designs) {
+        if (ds.id == ds.form) continue; // the starter design: every_archetype_reachable
+        int made = 0;
+        std::string last;
+        for (std::uint64_t seed = 1; seed <= 5; ++seed) {
+            ChainRun r = runDesign(ds.id, master, seed);
+            if (r.done && r.out.form == ds.form) ++made;
+            else if (r.done) last = describe(r.out);
+            else last = "stop " + r.stop + " " + r.stopArg + " at " + std::to_string(r.stopStep);
+        }
+        if (made < 3) {
+            std::cerr << "    " << ds.id << " -> " << ds.form << ": " << made << "/5; " << last << "\n";
+            ++bad;
+        }
+    }
+    CHECK(bad == 0);
+}
+
 TEST(altera_craft_deterministic) {
     // the same world seed, actor, tick and step number give the same result
     Actor a = actorWith(0.5);

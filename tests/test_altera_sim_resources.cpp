@@ -22,10 +22,8 @@ const Content& resContent() {
 
 // Materials still waiting for their source: the later stages of AL-86 shrink this list.
 const std::set<std::string>& pendingMaterials() {
-    static const std::set<std::string> s{"sinew",   "animal_fat", "beeswax", "wheat_grain", "garlic",
-                                         "hemlock", "poppy",      "nettle",  "salt",
-                                         "horn",    "antler",     // AL-89 (butchery), AL-90
-                                         "tin_ore", "silver",     "gold"}; // trade from afar, AL-91
+    static const std::set<std::string> s{"wheat_grain", "garlic", "hemlock", "poppy", "nettle", // AL-90
+                                         "salt", "tin_ore", "silver", "gold"}; // salt springs and trade, AL-91
     return s;
 }
 

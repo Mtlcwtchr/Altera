@@ -617,5 +617,90 @@
   "nom": "торф",
   "g": "m"
  },
- "material.peat.made": "торфян{form:g|ой|ая|ое|ые} {form}"
+ "material.peat.made": "торфян{form:g|ой|ая|ое|ые} {form}",
+ "item.animal_fat.name": {
+  "nom": "жир",
+  "gen": "жира",
+  "dat": "жиру",
+  "acc": "жир",
+  "ins": "жиром",
+  "pre": "жире",
+  "g": "m"
+ },
+ "item.sinew.name": {
+  "nom": "жилы",
+  "gen": "жил",
+  "dat": "жилам",
+  "acc": "жилы",
+  "ins": "жилами",
+  "pre": "жилах",
+  "g": "pl"
+ },
+ "item.beeswax.name": {
+  "nom": "воск",
+  "gen": "воска",
+  "dat": "воску",
+  "acc": "воск",
+  "ins": "воском",
+  "pre": "воске",
+  "g": "m"
+ },
+ "item.feathers.name": {
+  "nom": "перья",
+  "gen": "перьев",
+  "dat": "перьям",
+  "acc": "перья",
+  "ins": "перьями",
+  "pre": "перьях",
+  "g": "pl"
+ },
+ "item.arrows.name": {
+  "nom": "стрела",
+  "gen": "стрелы",
+  "dat": "стреле",
+  "acc": "стрелу",
+  "ins": "стрелой",
+  "pre": "стреле",
+  "g": "f"
+ },
+ "item.longbow.name": {
+  "nom": "длинный лук",
+  "gen": "длинного лука",
+  "dat": "длинному луку",
+  "acc": "длинный лук",
+  "ins": "длинным луком",
+  "pre": "длинном луке",
+  "g": "m"
+ },
+ "interaction.harvest_hive.name": "Подрезать соты",
+ "object.beehive.name": {
+  "nom": "улей",
+  "gen": "улья",
+  "dat": "улью",
+  "acc": "улей",
+  "ins": "ульем",
+  "pre": "улье",
+  "g": "m"
+ },
+ "material.tallow.name": {
+  "nom": "сало",
+  "g": "n"
+ },
+ "material.tallow.made": "сальн{form:g|ый|ая|ое|ые} {form}",
+ "material.feather.name": {
+  "nom": "перо",
+  "g": "n"
+ },
+ "material.feather.made": "{form} из перьев",
+ "form.arrows.name": {
+  "nom": "стрелы",
+  "g": "pl"
+ },
+ "form.longbow.name": {
+  "nom": "длинный лук",
+  "g": "m"
+ },
+ "interaction.craft:arrows.name": "сделать: стрелы",
+ "interaction.craft:longbow.name": "сделать: длинный лук",
+ "interaction.craft:tallow_candle.name": "сделать: сальная свеча"
 }

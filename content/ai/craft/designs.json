@@ -3386,6 +3386,147 @@
      }
     }
    ]
+  },
+  {
+   "id": "tallow_candle",
+   "form": "candle",
+   "steps": [
+    {
+     "process": "heat",
+     "mode": "roast",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "mat:animal_fat"
+      ]
+     }
+    },
+    {
+     "process": "mould",
+     "shape": "candle_raw",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:2"
+      ],
+      "b": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "arrows",
+   "form": "arrows",
+   "steps": [
+    {
+     "process": "knap",
+     "shape": "blade",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:flint"
+      ]
+     }
+    },
+    {
+     "process": "carve",
+     "shape": "shaft",
+     "len": 3,
+     "slots": {
+      "work": [
+       "mat:ash_wood"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:2"
+      ],
+      "b": [
+       "step:1"
+      ],
+      "binder": [
+       "mat:resin"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:3"
+      ],
+      "b": [
+       "mat:feather"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "longbow",
+   "form": "longbow",
+   "steps": [
+    {
+     "process": "carve",
+     "shape": "bow_stave",
+     "len": 4,
+     "slots": {
+      "work": [
+       "mat:yew_wood"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:sinew"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "join",
+     "slots": {
+      "a": [
+       "step:1"
+      ],
+      "b": [
+       "step:3"
+      ]
+     }
+    }
+   ]
   }
  ]
 }

@@ -378,6 +378,68 @@
    ],
    "stack": 5,
    "value": 0.5
+  },
+  {
+   "id": "animal_fat",
+   "material": "animal_fat",
+   "tags": [
+    "animal",
+    "craft_raw",
+    "fat"
+   ],
+   "stack": 20,
+   "value": 0.4
+  },
+  {
+   "id": "sinew",
+   "material": "sinew",
+   "tags": [
+    "animal",
+    "craft_raw",
+    "fiber"
+   ],
+   "stack": 30,
+   "value": 0.4
+  },
+  {
+   "id": "beeswax",
+   "material": "beeswax",
+   "tags": [
+    "craft_raw",
+    "wax",
+    "trade_good"
+   ],
+   "stack": 20,
+   "value": 1.5
+  },
+  {
+   "id": "feathers",
+   "material": "feather",
+   "tags": [
+    "animal",
+    "craft_raw"
+   ],
+   "stack": 40,
+   "value": 0.1
+  },
+  {
+   "id": "arrows",
+   "tags": [
+    "weapon",
+    "ranged",
+    "ammo"
+   ],
+   "stack": 20,
+   "value": 0.5
+  },
+  {
+   "id": "longbow",
+   "tags": [
+    "weapon",
+    "ranged"
+   ],
+   "stack": 1,
+   "value": 14
   }
  ],
  "annotate": [

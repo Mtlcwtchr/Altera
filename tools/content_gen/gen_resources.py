@@ -7,7 +7,7 @@ Source of truth for content/ai/resources/*.json and content/loc/{ru,en}/resource
 
     python tools/content_gen/gen_resources.py
 
-Stages: AL-88 wood/stone/iron. Later stages append to the tables below.
+Stages: AL-88 wood/stone/iron, AL-89 animals and light. Later stages append to the tables below.
 """
 import json
 import os
@@ -168,9 +168,9 @@ OBJECTS = [
         _doc="залежь болотной руды, копится годами"),
     obj("peat_bog", {"peat": 40}, ["marsh"], 2, regrow={"peat": 1}, every=720, stand=0.6, _doc="торфяник"),
     obj("copper_vein", {"copper_ore": 15}, ["forest", "meadow"], 0.3, stand=0.8, _doc="медная жила, редкая"),
-    obj("charcoal_clamp", {}, stand=1.2, settlement=True, per_settlement=1,
+    obj("charcoal_clamp", {}, stand=1.2, settlement=True, per_settlement=1, own_seed=True,
         _doc="угольная яма на краю деревни: дрова/брёвна -> древесный уголь"),
-    obj("lime_kiln", {}, stand=1.2, settlement=True, per_settlement=1,
+    obj("lime_kiln", {}, stand=1.2, settlement=True, per_settlement=1, own_seed=True,
         _doc="известковая печь: известняк + дрова -> известь"),
 ]
 
@@ -283,6 +283,86 @@ MATERIAL_NAMES = {  # material: (ru nom, g, ru made, en, en made)
 }
 
 
+# ================================================================ AL-89: animals and light
+# Butchery gives fat and sinew, a goat its horns, a stag its antlers, a hen its feathers;
+# hives give wax. Tallow is rendered from fat at the hearth (a heat step of the designs).
+NEW_MATERIALS += [
+    {"id": "tallow", "tags": ["fat", "animal"],
+     "p": {"flammable": 0.75, "workable": 0.55, "tacky": 0.2, "waterproof": 0.6, "purity": 0.7, "melt": 1},
+     "shape": "lump", "raw": False, "worth": 0.9},
+    {"id": "feather", "tags": ["feather", "animal"],
+     "p": {"fiber": 0.3, "flex": 0.6, "density": 0.05, "warmth": 0.7, "purity": 0.7, "flammable": 0.6},
+     "shape": "fiber_raw", "item": "feathers", "worth": 0.5},
+]
+MATERIAL_ITEMS.update({"animal_fat": "animal_fat", "sinew": "sinew", "beeswax": "beeswax"})
+# rendering: fat gently roasted at the hearth turns to tallow (a material transform)
+MATERIAL_HEAT = {"animal_fat": [{"id": "roast", "at": 1, "to": "tallow"}]}
+FORM_ITEMS.update({})
+ITEMS += [
+    ("animal_fat", "animal_fat", ["animal", "craft_raw", "fat"], 20, 0.4, 0.3, [1, 1], ru("жир", "жира", "жиру", "жир", "жиром", "жире", "m"), "animal fat"),
+    ("sinew", "sinew", ["animal", "craft_raw", "fiber"], 30, 0.4, 0.1, [1, 1], ru("жилы", "жил", "жилам", "жилы", "жилами", "жилах", "pl"), "sinew"),
+    ("beeswax", "beeswax", ["craft_raw", "wax", "trade_good"], 20, 1.5, 0.3, [1, 1], ru("воск", "воска", "воску", "воск", "воском", "воске", "m"), "beeswax"),
+    ("feathers", "feather", ["animal", "craft_raw"], 40, 0.1, 0.05, [1, 1], ru("перья", "перьев", "перьям", "перья", "перьями", "перьях", "pl"), "feathers"),
+    ("arrows", None, ["weapon", "ranged", "ammo"], 20, 0.5, 0.05, [1, 3], ru("стрела", "стрелы", "стреле", "стрелу", "стрелой", "стреле", "f"), "arrow"),
+    ("longbow", None, ["weapon", "ranged"], 1, 14, 1.0, [1, 4], ru("длинный лук", "длинного лука", "длинному луку", "длинный лук", "длинным луком", "длинном луке", "m"), "longbow"),
+]
+# new archetypes (one form per line in forms.json)
+NEW_FORMS = {
+    "arrows": '{"id": "arrows", "item": "arrows", "category": "ranged", "named": false, "needs": {"shape": ["shaft"], "has(blade)": "1", "edge": ">=0.25", "reach": "2", "profile": ["feather"]},\n   "derive": {"kind": "ammo", "weapon_id": "bow", "pen": "edge*q", "durability": "3*(0.5+q)"}}',
+    "longbow": '{"id": "longbow", "item": "longbow", "worth": 1.3, "category": "ranged", "needs": {"shape": ["bow_stave"], "has(string)": "1", "stave.len": "4", "flexion": ">=0.7", "bind": ">=0.3"},\n   "derive": {"kind": "ranged", "weapon_id": "bow", "power": "0.7*stave.flex*string.toughness*(0.5+q)", "durability": "100*stave.toughness*(0.5+q)"}}',
+}
+NEW_DESIGNS = [
+    {"id": "tallow_candle", "form": "candle", "steps": [
+        {"process": "heat", "mode": "roast", "heat": 1, "slots": {"work": ["mat:animal_fat"]}},
+        {"process": "mould", "shape": "candle_raw", "slots": {"work": ["step:1"]}},
+        {"process": "twist", "shape": "strand", "slots": {"work": ["mat:flax_fiber"]}},
+        {"process": "join", "slots": {"a": ["step:2"], "b": ["step:3"]}}]},
+    {"id": "arrows", "form": "arrows", "steps": [
+        {"process": "knap", "shape": "blade", "len": 1, "slots": {"work": ["mat:flint"]}},
+        {"process": "carve", "shape": "shaft", "len": 3, "slots": {"work": ["mat:ash_wood"]}},
+        {"process": "join", "slots": {"a": ["step:2"], "b": ["step:1"], "binder": ["mat:resin"]}},
+        {"process": "join", "slots": {"a": ["step:3"], "b": ["mat:feather"]}}]},
+    {"id": "longbow", "form": "longbow", "steps": [
+        {"process": "carve", "shape": "bow_stave", "len": 4, "slots": {"work": ["mat:yew_wood"]}},
+        {"process": "twist", "shape": "strand", "slots": {"work": ["mat:sinew"]}},
+        {"process": "twist", "shape": "cord", "slots": {"work": ["step:2"]}},
+        {"process": "join", "slots": {"a": ["step:1"], "b": ["step:3"]}}]},
+]
+# what the base acts also give (content/ai/interactions.json; appended once)
+BASE_EFFECTS = {
+    "butcher_carcass": ["has:animal_fat+1", "has:sinew+1"],
+    "slaughter_goat": ["has:horn+2"],
+    "hunt_game": ["has:antler+1"],
+    "kill_hen": ["has:feathers+4"],
+    "kill_hen_for_pot": ["has:feathers+4"],
+    "gather_honey": ["has:beeswax+1"],
+}
+OBJECTS += [
+    obj("beehive", {"honey": 4, "beeswax": 2}, regrow={"honey": 1, "beeswax": 1}, every=288, stand=0.8,
+        settlement=True, per_settlement=2, own_seed=True,
+        _doc="улей-колода у домов: мёд и воск (расставляет тред поселений)"),
+]
+INTERACTIONS += [
+    work("harvest_hive", "beehive", ["has:firewood>=1", "target_stock:honey>=2", "target_stock:beeswax>=1"],
+         ["has:honey+2", "has:beeswax+1", "target_stock:honey-2", "target_stock:beeswax-1", "has:firewood-1",
+          "skill:husbandry+0.01", "body:fatigue+0.03"], 3,
+         risk=[{"id": "bee_stings", "p": 0.05, "eff": ["body:health-0.03"]}],
+         ru_name="Подрезать соты", en_name="Harvest the hive"),
+]
+FORM_NAMES = {  # form: (ru nom, g, en)
+    "arrows": ("стрелы", "pl", "arrows"),
+    "longbow": ("длинный лук", "m", "longbow"),
+}
+DESIGN_NAMES = {  # design: (ru, en) of the act craft:<design>
+    "arrows": ("стрелы", "arrows"), "longbow": ("длинный лук", "longbow"), "tallow_candle": ("сальная свеча", "tallow candle"),
+}
+OBJECT_NAMES["beehive"] = (ru("улей", "улья", "улью", "улей", "ульем", "улье", "m"), "beehive")
+MATERIAL_NAMES.update({
+    "tallow": ("сало", "n", "сальн{form:g|ый|ая|ое|ые} {form}", "tallow", "tallow {form}"),
+    "feather": ("перо", "n", "{form} из перьев", "feather", "feather {form}"),
+})
+
+
 # ---------------------------------------------------------------- build
 def text_link(path, pairs, field):
     """Insert "field": "value" right after {"id": "<id>" on one-object-per-line files."""
@@ -296,6 +376,20 @@ def text_link(path, pairs, field):
         else:
             line2 = line.replace('{"id": "%s"' % k, '{"id": "%s", "%s": "%s"' % (k, field, v), 1)
         t = t.replace(line, line2, 1)
+    json.loads(t)
+    open(path, "w", encoding="utf-8").write(t)
+
+
+def add_forms(path, forms):
+    """Append archetypes missing from a one-object-per-line forms file."""
+    t = open(path, encoding="utf-8").read()
+    for fid, line in forms.items():
+        if re.search(r'\{"id": "%s"' % re.escape(fid), t):
+            continue
+        end = t.rstrip().rfind("]")
+        start = t.rfind("\n", 0, end)  # the line of the closing bracket keeps its indent
+        head = t[:start].rstrip()
+        t = head + ",\n  " + line + t[start:]
     json.loads(t)
     open(path, "w", encoding="utf-8").write(t)
 
@@ -314,8 +408,27 @@ def main():
     have = {m["id"]: m for m in md["materials"]}
     for mat, item in MATERIAL_ITEMS.items():
         have[mat]["item"] = item
+    for mat, heat in MATERIAL_HEAT.items():
+        have[mat]["heat"] = heat
     save(mp, md)
+    add_forms(P("content/ai/craft/forms.json"), NEW_FORMS)
     text_link(P("content/ai/craft/forms.json"), FORM_ITEMS, "item")
+    dp = P("content/ai/craft/designs.json")
+    dd = load(dp)
+    dl = {x["id"]: i for i, x in enumerate(dd["designs"])}
+    for ds in NEW_DESIGNS:
+        if ds["id"] in dl:
+            dd["designs"][dl[ds["id"]]] = ds
+        else:
+            dd["designs"].append(ds)
+    save(dp, dd)
+    ip = P("content/ai/interactions.json")
+    idd = load(ip)
+    for a in idd["interactions"]:
+        for e in BASE_EFFECTS.get(a["id"], []):
+            if e not in a["eff"]:
+                a["eff"].append(e)
+    save(ip, idd)
 
     # items: only the ones no other file has
     base = set()
@@ -354,6 +467,12 @@ def main():
     for oid, (rn, en) in OBJECT_NAMES.items():
         loc_ru[f"object.{oid}.name"] = rn
         loc_en[f"object.{oid}.name"] = en
+    for fid, (nom, g, en) in FORM_NAMES.items():
+        loc_ru[f"form.{fid}.name"] = {"nom": nom, "g": g}
+        loc_en[f"form.{fid}.name"] = en
+    for did, (rn, en) in DESIGN_NAMES.items():
+        loc_ru[f"interaction.craft:{did}.name"] = "сделать: " + rn
+        loc_en[f"interaction.craft:{did}.name"] = "make: " + en
     for mid, (nom, g, made, en, enmade) in MATERIAL_NAMES.items():
         loc_ru[f"material.{mid}.name"] = {"nom": nom, "g": g}
         loc_ru[f"material.{mid}.made"] = made
