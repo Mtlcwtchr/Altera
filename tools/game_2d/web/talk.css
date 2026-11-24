@@ -1,0 +1,78 @@
+/* AL-98: the talk (03) and trade (05) windows, "Резной рубеж" (gdd/ui/client_2d/ui_h3/UI_H3.md):
+   two portraits facing each other, the lines on parchment, panels of leather, bronze buttons. */
+.win .sub { color: var(--dim); font-size: 13px; }
+.win .sub.good { color: #9ac878; } .win .sub.bad { color: #e08a70; }
+.pt { width: 96px; height: 96px; background: #2a1a0e; border: 2px solid #000; box-shadow: inset 0 0 0 2px var(--bronze-d), inset 0 0 0 4px var(--player); display: flex; align-items: center; justify-content: center; flex: 0 0 auto; }
+.pt canvas { image-rendering: pixelated; }
+.meet { display: grid; grid-template-columns: 1fr minmax(300px, 420px) 1fr; gap: 14px; align-items: start; }
+.meet .side { display: flex; gap: 10px; align-items: flex-start; }
+.meet .side.r { justify-content: flex-end; text-align: right; }
+.meet .nm { font: 700 22px "Alegreya SC", serif; color: var(--gold); text-shadow: 2px 2px 0 #000; }
+.meet .rel h3 { text-align: center; margin-top: 0; }
+.relrow { display: grid; grid-template-columns: 96px 1fr 40px; gap: 8px; align-items: center; font-size: 14px; margin: 3px 0; }
+.sbar { position: relative; height: 12px; background: #1a0e06; border: 2px solid #000; }
+.sbar i { position: absolute; top: 0; bottom: 0; box-shadow: inset 0 1px 0 rgba(255,255,255,.25); }
+.sbar b { position: absolute; left: 50%; top: -3px; bottom: -3px; width: 2px; background: var(--bronze-l); }
+.dv { font: 600 13px "Alegreya SC", serif; color: var(--dim); }
+.dv.up { color: #9ac878; } .dv.down { color: #e08a70; }
+.talklog { margin: 10px 0; height: 170px; overflow: auto; padding: 8px 14px; font-size: 16px; line-height: 1.4; }
+.talklog .t { color: #8a6a40; font-size: 12px; margin-right: 6px; }
+.talklog b.me { color: #1f3f75; } .talklog b.them { color: #7a2a10; }
+.talklog .aside { opacity: .65; }
+.talklog .none { color: #7a5a30; font-style: italic; }
+.ask { display: flex; gap: 8px; align-items: center; padding: 6px 10px; margin-bottom: 8px; color: var(--gold); font-weight: 600; }
+.ask span { flex: 1; }
+.talkgrid { display: grid; grid-template-columns: minmax(220px, 34%) 1fr; gap: 12px; align-items: start; }
+.topics { padding: 8px 10px; max-height: 330px; overflow: auto; }
+.topics h3 { margin-top: 0; }
+.topic { display: block; width: 100%; text-align: left; margin: 3px 0; padding: 4px 8px; background: transparent; color: var(--text); border: 1px solid transparent; font: 15px Alegreya, serif; cursor: pointer; }
+.topic:hover { border-color: var(--gold); background: rgba(90,58,34,.6); }
+.topic .verb { color: var(--gold); font-family: "Alegreya SC", serif; }
+.chip.rumor { margin-left: 6px; color: #e0b040; font-size: 12px; }
+.spheres { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 8px; }
+.actgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; }
+.btn.ta { height: auto; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 4px; font-size: 14px; line-height: 1.1; }
+.btn.ta .ch { font: 12px Alegreya, serif; color: var(--dim); margin-top: 2px; }
+.btn.ta.off { color: #8a7a62; cursor: default; filter: saturate(.4) brightness(.8); }
+.btn.ta.off .ch { color: #d08a6a; }
+.tonerow { display: flex; gap: 8px; align-items: center; margin-top: 10px; flex-wrap: wrap; }
+.tonerow .h { font: 700 15px "Alegreya SC", serif; color: var(--gold); }
+.tones { display: flex; gap: 4px; padding: 3px; }
+.tone { width: 34px; height: 18px; background: #2a1a10; border: 2px solid #000; box-shadow: inset 0 0 0 2px var(--bronze-d); cursor: pointer; padding: 0; }
+.tone.on { background: var(--gold); }
+.tonerow .tn { font: 600 14px "Alegreya SC", serif; color: var(--text); }
+.talkbtns { display: flex; gap: 8px; align-items: center; margin-top: 10px; }
+.talkbtns .agent { flex: 1; text-align: center; font-style: italic; opacity: .6; }
+.menutop { display: flex; gap: 4px; margin-bottom: 4px; }
+.menutop .btn { flex: 1; }
+
+.tradegrid { display: grid; grid-template-columns: minmax(230px, 1fr) minmax(320px, 1.4fr) minmax(230px, 1fr); gap: 14px; align-items: start; }
+.pack { padding: 8px 10px; }
+.pack .ph { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; }
+.pack .ph h3 { margin: 0; flex: 1; }
+.pack .pt { width: 56px; height: 56px; }
+.pack .grid { display: grid; grid-template-columns: repeat(auto-fill, 60px); gap: 6px; margin: 6px 0; }
+.slot.tg { width: 60px; height: 60px; padding: 2px; flex-direction: column; justify-content: flex-start; }
+.slot.tg .gl { width: 32px; height: 32px; margin-top: 4px; display: flex; align-items: center; justify-content: center; font: 700 20px "Alegreya SC", serif; color: var(--gold); text-shadow: 2px 2px 0 #000; }
+.slot.tg .gl.ic { text-shadow: none; }
+.slot.tg .cnt { position: absolute; right: 3px; top: 1px; font: 700 12px "Alegreya SC", serif; color: #fff2c0; text-shadow: 1px 1px 0 #000; }
+.slot.tg .nm { font-size: 10px; color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 56px; }
+.slot.tg.like { box-shadow: inset 2px 2px 0 var(--bronze-d), inset -2px -2px 0 var(--bronze-l), inset 0 0 0 3px #4a7a2a; }
+.slot.tg.dislike { box-shadow: inset 2px 2px 0 var(--bronze-d), inset -2px -2px 0 var(--bronze-l), inset 0 0 0 3px #8a3020; }
+.slot.tg.used { opacity: .4; }
+.slot.tg:hover { outline: 2px solid var(--gold); }
+.deal { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.deal .boxes { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; width: 100%; }
+.deal .boxes h3 { text-align: center; margin: 0 0 4px; }
+.deal .box { min-height: 140px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start; padding: 8px; background: #1a0e06; border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--bronze-d), inset -2px -2px 0 var(--bronze-l); }
+.deal .box .empty { margin: auto; }
+.scales { image-rendering: pixelated; }
+.deal .bal { font: 700 17px "Alegreya SC", serif; color: var(--gold); text-shadow: 2px 2px 0 #000; }
+.deal .how { display: grid; grid-template-columns: 110px 1fr auto; gap: 8px; align-items: center; width: 90%; }
+.deal .how .bar { height: 14px; }
+.deal .why { color: #e08a70; }
+.deal .counter, .deal .last { width: 100%; font-size: 14px; }
+.tradebtns { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
+.tradebtns .btn[disabled] { opacity: .45; cursor: default; }
+.deal .hint { text-align: center; max-width: 520px; }
+.pack .price { margin-top: 6px; font-size: 13px; }

@@ -43,6 +43,7 @@ using socket_t = int;
 
 #include "client2d/acts2d.hpp"
 #include "client2d/grid2d.hpp"
+#include "client2d/talk2d.hpp"
 #include "client2d/view2d.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
@@ -66,6 +67,7 @@ struct App {
     std::string lastResult;
     c2::ActCatalog acts;        // AL-96: the act menu's catalog
     SpeechFeed speech;          // AL-96: what people said (lines) and mutter (barks)
+    c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
 };
 
@@ -165,6 +167,11 @@ std::string handleCmd(App& a, const Json& body) {
         const Command r = w.applyNow(cmd);
         a.lastResult = cmd.type + ": " + (r.result.empty() ? "ok" : r.result);
         return r.result == "ok" ? std::string() : r.result;
+    } else if (op == "say_topic") {
+        // AL-98: the player's person brings a topic of the talk window up
+        const std::string why = c2::sayTopic(w, controlled(w), body.value("target", kNone), body.value("index", -1));
+        a.lastResult = "say_topic: " + (why.empty() ? std::string("ok") : why);
+        return why.empty() ? "ok" : "rejected:" + why;
     } else return "unknown op";
     return "ok";
 }
@@ -275,6 +282,22 @@ void serveClient(App& a, socket_t s) {
             respond(s, 200, "application/json",
                     c2::barJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone), q.value("slots", Json::array()))
                         .dump());
+        } else if (path.rfind("/api/talk", 0) == 0) {
+            // AL-98: the talk window with a person
+            EntityId target = kNone;
+            try {
+                target = EntityId(std::stoull(queryParam(path, "target")));
+            } catch (...) {
+            }
+            respond(s, 200, "application/json",
+                    c2::talkJson(*a.world, a.text, a.acts, a.talk, controlled(*a.world), target, queryParam(path, "tone")).dump());
+        } else if (path.rfind("/api/trade", 0) == 0 && method == "POST") {
+            // AL-98: the trade window, the draft {target, give, take} weighed
+            const Json q = Json::parse(body.empty() ? "{}" : body);
+            respond(s, 200, "application/json",
+                    c2::tradeJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone),
+                                  q.value("give", Json::object()), q.value("take", Json::object()))
+                        .dump());
         } else {
             respond(s, 404, "text/plain", "not found");
         }
@@ -347,6 +370,7 @@ int main(int argc, char** argv) {
         bool haveWheel = false;
         const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
         app.acts = c2::ActCatalog::make(world, haveWheel ? Json::parse(wheel) : Json());
+        app.talk = c2::TalkCatalog::make(haveWheel ? Json::parse(wheel) : Json());
         // AL-96: the player leads the head of the village (the mandate holder), as the 3D game starts
         if (!observe)
             for (const auto& [sid, st] : world.settlements()) {

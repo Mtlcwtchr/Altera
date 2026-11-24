@@ -183,6 +183,7 @@
           (!a.can && a.why ? `<span class="w">${esc(a.why)}</span>` : '') + `<span class="pin" data-pin="${esc(a.id)}" title="${esc(L('ui2d.pin'))}">＋</span></button>`;
       }
       menu.innerHTML = h;
+      for (const f of G.hooks.menu || []) f(menu, target);   // AL-98: the talk / trade buttons on a person
       menu.hidden = false;
       const mx = e.clientX - r.left + 14, my = e.clientY - r.top;
       menu.style.left = Math.min(mx, r.width - menu.offsetWidth - 10) + 'px';
