@@ -165,6 +165,7 @@ public:
     }
     // What the mouse is over in the world (the game fills it): the hint.
     EntityId hoverActor = sim::kNone, hoverThing = sim::kNone;
+    std::string hoverRoom, hoverRoomOf;   // AL-81: the room under the mouse (its type, its building's)
     void turnDrag() { dragTurned_ = !dragTurned_; }   // R in the inventory: the dragged thing turned
     EntityId aim = sim::kNone;   // the target the player clicked (marked, its name shown)
     // Filled by the game every frame: the control bar's state, the speed held

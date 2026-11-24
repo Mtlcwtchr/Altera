@@ -1,6 +1,7 @@
 // Building from modules and the colony's mandate (sim/building.hpp).
 
 #include "sim/building.hpp"
+#include "sim/rooms.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -420,6 +421,7 @@ std::map<std::string, int> missingOf(const World& w, const BuildPiece& p) {
 void refreshPieces(World& w) {
     computeStability(w.content().build, w.pieces());
     w.piecesDirty = false;
+    w.roomsDirty = true;   // AL-81
 }
 
 double siteValue(const World& w, const Character& c, const WorldObject* site, const std::string& key) {
@@ -506,6 +508,7 @@ void buildingTick(World& w) {
         }
     }
     if (w.piecesDirty) refreshPieces(w);
+    roomsTick(w);   // AL-81: the rooms follow the pieces and what stands in them
     // The mandate outlives the chief: his heir takes it (eldest grown child,
     // else the spouse, else the eldest grown person of the colony).
     for (auto& [sid, st] : w.settlements()) {

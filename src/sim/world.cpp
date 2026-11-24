@@ -340,7 +340,7 @@ void to_json(Json& j, const Settlement& s) {
         for (const auto& t : s.structures) {
             Json props = Json::array();
             for (const auto& p : t.props) props.push_back(Json{{"piece", p.piece}, {"pos", p.pos}, {"yaw", p.yaw}});
-            a.push_back(Json{{"type", t.type}, {"family", t.family}, {"frame", {t.q, t.gx, t.gy}},
+            a.push_back(Json{{"family", t.family}, {"frame", {t.q, t.gx, t.gy}},
                              {"cells", {t.i0, t.j0, t.i1, t.j1}}, {"h", t.h}, {"door", t.door},
                              {"objects", t.objects}, {"props", props}});
         }
@@ -362,7 +362,6 @@ void from_json(const Json& j, Settlement& s) {
     s.structures.clear();
     for (const auto& t : j.value("structures", Json::array())) {
         Settlement::Structure x;
-        x.type = t.value("type", std::string());
         x.family = t.value("family", kNone);
         const auto fr = t.value("frame", std::vector<int>{0, 0, 0});
         if (fr.size() == 3) x.q = fr[0], x.gx = fr[1], x.gy = fr[2];
@@ -386,6 +385,7 @@ void to_json(Json& j, const WorldObject& o) {
              {"owner", o.ownerFamily}, {"stock", o.stock}, {"reserved_by", o.reservedBy},
              {"reserved_until", o.reservedUntil}};
     if (o.faced) j["yaw"] = o.yaw;
+    if (o.storey) j["storey"] = o.storey;   // AL-81
 }
 void from_json(const Json& j, WorldObject& o) {
     o.id = j.at("id").get<EntityId>();
@@ -397,6 +397,7 @@ void from_json(const Json& j, WorldObject& o) {
     o.reservedUntil = j.value("reserved_until", Tick{0});
     o.faced = j.contains("yaw");
     o.yaw = j.value("yaw", 0.0);
+    o.storey = j.value("storey", 0);
 }
 void to_json(Json& j, const Command& c) {
     j = Json{{"tick", c.tick}, {"seq", c.seq}, {"source", c.source}, {"type", c.type}, {"args", c.args},

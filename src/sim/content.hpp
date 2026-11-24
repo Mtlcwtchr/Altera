@@ -517,6 +517,33 @@ struct BuildCatalog {
     }
 };
 
+// AL-81: rooms.json - what a room is by what stands in it (RimWorld-like).
+// A rule fits when each of its needs is met (n things of any of its types)
+// and the room is closed / open as it asks; the highest priority wins.
+struct RoomNeed {
+    std::vector<std::string> any;
+    int n = 1;
+};
+struct RoomRuleDef {
+    std::string id;
+    int priority = 0;
+    int purposeRank = 0;             // what a building of such rooms is for: the highest (default priority)
+    std::vector<RoomNeed> needs;
+    std::string enclosure = "any";   // closed | open | any
+};
+struct RoomCatalog {
+    std::vector<RoomRuleDef> rules;  // highest priority first
+    std::string closedFallback = "room", openFallback = "shelter";
+    double roofCover = 0.75;         // an open space is a room when this share of it is roofed
+    std::vector<std::string> thingTypes;   // every object type a rule reads
+    const RoomRuleDef* find(const std::string& id) const {
+        for (const auto& r : rules)
+            if (r.id == id) return &r;
+        return nullptr;
+    }
+};
+RoomCatalog parseRooms(const Json& j);
+
 // Relation axes (rel:<axis>), -1..1 except familiarity/debt (0..1 / any).
 const std::vector<std::string>& relAxes();
 
@@ -542,7 +569,8 @@ struct Content {
     CareDef care;
     craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)
     BuildCatalog build;
-    Json structures = Json::object(); // AL-76: content/ai/structures.json (sim/structure_plan.hpp parses it)
+    Json roomsJson = Json::object();  // AL-81: content/ai/rooms.json (sim/structure_plan.hpp parses the recipes)
+    RoomCatalog rooms;                // and the rules that tell rooms apart (sim/rooms.hpp)
     ExpansionData expansion; // content/ai/expansion (not loaded = none)
     std::vector<BackstoryDef> backstories; // content/ai/backstories.json, file order (none = no choice)
     BackstoryConfig backstoryCfg;

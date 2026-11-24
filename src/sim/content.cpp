@@ -806,6 +806,34 @@ BuildCatalog parseBuild(const Json& j) {
     return b;
 }
 
+RoomCatalog parseRooms(const Json& j) {
+    RoomCatalog c;
+    if (!j.is_object()) return c;
+    const Json fb = j.value("fallback", Json::object());
+    c.closedFallback = fb.value("closed", c.closedFallback);
+    c.openFallback = fb.value("open", c.openFallback);
+    c.roofCover = j.value("roof_cover", c.roofCover);
+    std::set<std::string> types;
+    for (const auto& r : j.value("rooms", Json::array())) {
+        RoomRuleDef d;
+        d.id = r.at("id").get<std::string>();
+        d.priority = r.value("priority", 0);
+        d.purposeRank = r.value("purpose_rank", d.priority);
+        d.enclosure = r.value("enclosure", d.enclosure);
+        for (const auto& n : r.value("needs", Json::array())) {
+            RoomNeed need;
+            need.any = n.value("any", std::vector<std::string>{});
+            need.n = std::max(1, n.value("n", 1));
+            for (const auto& t : need.any) types.insert(t);
+            d.needs.push_back(std::move(need));
+        }
+        c.rules.push_back(std::move(d));
+    }
+    std::stable_sort(c.rules.begin(), c.rules.end(), [](const RoomRuleDef& a, const RoomRuleDef& b) { return a.priority > b.priority; });
+    c.thingTypes.assign(types.begin(), types.end());
+    return c;
+}
+
 Content Content::load(const std::string& dir) {
     auto f = [&](const char* name) {
         std::ifstream probe(dir + "/" + name);
@@ -851,7 +879,8 @@ Content Content::load(const std::string& dir) {
     if (c.craft.loaded && c.craft.cfg.goapDesigns)
         for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
     c.build = parseBuild(f("build.json"));
-    c.structures = f("structures.json");
+    c.roomsJson = f("rooms.json");
+    c.rooms = parseRooms(c.roomsJson);
     parseBackstories(f("backstories.json"), c);
     {
         const Json names = f("names.json");

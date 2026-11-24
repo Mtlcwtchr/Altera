@@ -257,7 +257,7 @@ public:
                 const double c = content_->build.cellM;
                 const sim::StructureFrame f{t.q, t.gx, t.gy, c};
                 const Vec2 m = f.point((t.i0 + t.i1) * 0.5 * c, (t.j0 + t.j1) * 0.5 * c);
-                structureSpots_.push_back({t.type, m.x, m.y, t.door.x, t.door.y});
+                structureSpots_.push_back({m.x, m.y, t.door.x, t.door.y});
             }
             target_[0] = originX_ + s.center.x;
             target_[1] = originY_ + s.center.y;
@@ -1080,6 +1080,24 @@ public:
             hud_.hoverActor = pick(input_.mouseX, input_.mouseY);
             if (hud_.hoverActor == kNone) hud_.hoverThing = pickThing(input_.mouseX, input_.mouseY);
         }
+        // AL-81: over a room (with nothing else under the mouse, or while building): what it is
+        hud_.hoverRoom.clear();
+        hud_.hoverRoomOf.clear();
+        if ((hud_.panel == "none" || hud_.panel == "build") && !overUi_ && hud_.hoverActor == kNone && hud_.hoverThing == kNone &&
+            !shown_.rooms.empty()) {
+            double gx = 0, gy = 0;
+            if (groundUnder(input_.mouseX, input_.mouseY, gx, gy)) {
+                const double c = content_->build.cellM;
+                const int x = int(std::floor((gx - originX_) / c)), y = int(std::floor((gy - originY_) / c));
+                for (const auto& r : shown_.rooms) {
+                    if (r.z != 0 || x < r.x0 || y < r.y0 || x >= r.x1 || y >= r.y1) continue;
+                    if (std::find(r.cells.begin(), r.cells.end(), std::pair<int, int>{x, y}) == r.cells.end()) continue;
+                    hud_.hoverRoom = r.name;
+                    if (r.purpose != r.type) hud_.hoverRoomOf = text("hud.room.building", {{"what", r.purposeName}});
+                    break;
+                }
+            }
+        }
         hud_.walkMark = !walkPath_.empty();
         if (hud_.walkMark) {
             hud_.walkMarkX = walkPath_.back().first - originX_;
@@ -1501,7 +1519,7 @@ public:
             else if (t.type == "riverbank") obstacles_.add(collide::Circle{wx, wy, 0.9});
             else if (t.type == "deadwood")
                 obstacles_.add(collide::Box{wx, wy, 1.15, 0.3, double((h >> 8) % 628) / 100.0});
-            else if (const int pp = propPiece(t.type); pp >= 0 && !walkThrough(t.type)) {
+            else if (const int pp = propPiece(t.type); pp >= 0 && !walkThrough(t.type) && t.storey == 0) {
                 // a stand-in model (AL-11): its footprint as drawn (yaw and size as buildInstances has them)
                 float hx = 0, hy = 0;
                 props_.halfSize(pp, hx, hy);
@@ -2069,21 +2087,25 @@ private:
                     target_[1] = originY_ + b->y + dy + 2;
                     follow_ = false;
                 }
-            // AL-76: the camera on a planned building of a type ("smithy", "tavern"...), its centre
-            if (st.contains("look_structure")) {
-                const std::string want = st["look_structure"].get<std::string>();
-                bool found = false;
-                for (const auto& sp : structureSpots_) {
-                    if (sp.type != want) continue;
-                    target_[0] = originX_ + sp.x;
-                    target_[1] = originY_ + sp.y;
+            // AL-81: the camera on a room of a type ("smithy", "tavern_hall", "bedroom"...) as the
+            // sim reads it, from before the door of the house it is in
+            if (st.contains("look_room")) {
+                const std::string want = st["look_room"].get<std::string>();
+                const RoomSnap* hit = nullptr;
+                for (const auto& r : shown_.rooms)
+                    if (r.type == want && (!hit || r.z < hit->z)) hit = &r;
+                if (hit) {
+                    const double c = content_->build.cellM;
+                    const double rx = (hit->x0 + hit->x1) * 0.5 * c, ry = (hit->y0 + hit->y1) * 0.5 * c;
+                    target_[0] = originX_ + rx;
+                    target_[1] = originY_ + ry;
                     follow_ = false;
-                    found = true;
-                    // the camera before its door, looking in
-                    if (!st.contains("yawDeg")) orbitYaw_ = std::atan2(sp.y - sp.doorY, sp.x - sp.doorX);
-                    break;
+                    const StructureSpot* near = nullptr;
+                    for (const auto& sp : structureSpots_)
+                        if (!near || std::hypot(sp.x - rx, sp.y - ry) < std::hypot(near->x - rx, near->y - ry)) near = &sp;
+                    if (near && !st.contains("yawDeg")) orbitYaw_ = std::atan2(near->y - near->doorY, near->x - near->doorX);
                 }
-                SDL_Log("altera_game: script look_structure %s: %s", want.c_str(), found ? "found" : "none");
+                SDL_Log("altera_game: script look_room %s: %s", want.c_str(), hit ? "found" : "none");
             }
             if (st.contains("look_at_build") && !shown_.pieces.empty()) {
                 const BuildPiece& p0 = shown_.pieces.begin()->second;
@@ -2927,6 +2949,22 @@ private:
         s.mapSize = w.map().sizeM;
         // building: the pieces, what the planned ones lack, who builds
         s.pieces = w.pieces();
+        // AL-81: the rooms as the sim reads them, and what their buildings are for
+        s.rooms.clear();
+        for (const auto& r : w.rooms()) {
+            RoomSnap rs;
+            rs.type = r.type;
+            rs.name = text("room." + r.type);
+            if (r.building >= 0 && r.building < int(w.roomBuildings().size())) {
+                rs.purpose = w.roomBuildings()[std::size_t(r.building)].purpose;
+                rs.purposeName = text("room." + rs.purpose);
+            }
+            rs.z = r.z;
+            rs.enclosed = r.enclosed;
+            rs.x0 = r.x0, rs.y0 = r.y0, rs.x1 = r.x1, rs.y1 = r.y1;
+            rs.cells = r.cells;
+            s.rooms.push_back(std::move(rs));
+        }
         for (const auto& [id, p] : w.pieces())
             if (!p.built) s.missing[id] = missingOf(w, p);
         const EntityId by = s.controlled != kNone ? s.controlled : sel;
@@ -3031,7 +3069,7 @@ private:
     // Things one can work on, near the camera and near the player's person.
     void thingsSnap(const World& w, Snapshot& s) {
         static const std::set<std::string> kSkip = {"house", "storage", "hearth", "field", "garden", "shrine",
-                                                    "village_fire", "bed", "build_site", "roof_piece", "water"};
+                                                    "village_fire", "build_site", "roof_piece", "water"};
         const double vx = viewX_, vy = viewY_;
         Vec2 me{1e18, 1e18};
         for (const auto& [id, c] : w.characters())
@@ -3053,6 +3091,7 @@ private:
                 if (v > 0) t.stock.push_back({name("item", k), v});
             t.busy = o.reservedFor(kNone, w.now()) && o.reservedBy != kNone;
             t.faced = o.faced;   // AL-76: a station set in a building faces as planned
+            t.storey = o.storey; // AL-81: upstairs
             t.yaw = float(o.yaw);
             if (const auto hi = heldIndex_.find(id); hi != heldIndex_.end()) {   // AL-78
                 const terrain_core::HeldTree& ht = heldTrees_[std::size_t(hi->second)];
@@ -5064,7 +5103,7 @@ private:
                 pl.piece = pp;
                 pl.rel[0] = rx;
                 pl.rel[1] = ry;
-                pl.rel[2] = groundAt(wx, wy) - 0.03 - eye_[2];
+                pl.rel[2] = groundAt(wx, wy) - 0.03 + t.storey * content_->build.storeyM - eye_[2];
                 pl.yaw = in.placeYaw[3];
                 pl.scale = in.scale[0];
                 pl.highlight = in.scale[3];
@@ -5607,8 +5646,7 @@ private:
     };
     std::vector<StructureProp> structureProps_;
     struct StructureSpot {
-        std::string type;
-        double x = 0, y = 0, doorX = 0, doorY = 0;   // sim metres: its centre, before its door
+        double x = 0, y = 0, doorX = 0, doorY = 0;   // sim metres: a planned house's centre, before its door
     };
     std::vector<StructureSpot> structureSpots_;
     std::vector<std::string> goalIds_, goalNames_;

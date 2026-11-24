@@ -771,6 +771,7 @@ void Hud::draw(ui::Ui& ui, ui::Input& input, const Snapshot& s, EntityId selecte
             clockPill(s, W, H);
         }
         buildBar(s, W, H);
+        if (hoverActor == sim::kNone && hoverThing == sim::kNone) hoverHint(s, W);   // AL-81: the room under the cursor
     }
     if (panel == "colony") colony(s, W, H);
     if (panel == "workshop") workshop(s, W, H);
@@ -1872,6 +1873,9 @@ void Hud::hoverHint(const Snapshot& s, float W) {
         for (const auto& [k, v] : t->stock) lines.push_back(k + ": " + std::to_string(v));
         if (t->busy) lines.push_back(host_->text("hud.hint.busy"));
         lines.push_back(host_->text("hud.hint.click_thing"));
+    } else if (!hoverRoom.empty()) {   // AL-81: what the room is by what stands in it
+        head = hoverRoom;
+        if (!hoverRoomOf.empty()) lines.push_back(hoverRoomOf);
     } else {
         return;
     }

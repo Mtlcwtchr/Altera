@@ -24,6 +24,7 @@ struct WorldObject {
     // the game turns buildings); unplaced objects leave it to the view.
     double yaw = 0.0;
     bool faced = false;
+    int storey = 0;   // AL-81: the storey of a building it stands on (0 = the ground)
     EntityId reservedBy = kNone;
     Tick reservedUntil = 0;
     bool reservedFor(EntityId who, Tick now) const { return reservedBy != kNone && reservedBy != who && now < reservedUntil; }
@@ -69,8 +70,8 @@ struct Settlement {
         Vec2 pos;
         double yaw = 0.0;
     };
+    // AL-81: a house the village was planned with; what it is for is its rooms' (World::rooms)
     struct Structure {
-        std::string type;
         EntityId family = kNone;
         int q = 0, gx = 0, gy = 0;          // the frame: quarters, origin cell
         int i0 = 0, j0 = 0, i1 = 0, j1 = 0; // the footprint in its own cells
@@ -98,6 +99,26 @@ struct BuildPiece {
     // derived (sim/building.cpp refreshPieces), not saved
     double stability = 0.0;      // counting planned pieces
     double builtStability = 0.0; // counting built pieces only: can it go up now
+};
+
+// AL-81: a room - cells of one storey closed by walls and doors (or open
+// under a roof) - and what it is by what stands in it (rooms.json rules).
+struct Room {
+    int id = 0;
+    std::string type;                         // the rule that fits, or the fallback
+    int z = 0;                                // storey
+    bool enclosed = false;
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;       // bounds in grid cells [x0, x1) x [y0, y1)
+    std::vector<std::pair<int, int>> cells;
+    std::vector<EntityId> things;             // the objects the rules read that stand in it
+    int building = -1;                        // index in World::roomBuildings
+};
+// A building: rooms on touching footings; what it is for = its highest room.
+struct RoomBuilding {
+    int id = 0;
+    std::string purpose;                      // a room type
+    std::vector<int> rooms;
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;       // bounds in grid cells
 };
 
 // A coarse grid: biome per cell, water flags. A stub of the real world's
@@ -206,6 +227,13 @@ public:
     std::map<EntityId, BuildPiece>& pieces() { return pieces_; }
     const std::map<EntityId, BuildPiece>& pieces() const { return pieces_; }
     bool piecesDirty = true; // set when pieces change; building.cpp refreshes derived state
+    // AL-81: the rooms the built pieces close (sim/rooms.hpp), derived, not saved
+    std::vector<Room>& rooms() { return rooms_; }
+    const std::vector<Room>& rooms() const { return rooms_; }
+    std::vector<RoomBuilding>& roomBuildings() { return roomBuildings_; }
+    const std::vector<RoomBuilding>& roomBuildings() const { return roomBuildings_; }
+    bool roomsDirty = true;          // set when pieces or the things in rooms change
+    std::uint64_t roomsSig = 0;      // what the rooms were read from last
     bool removeObject(EntityId id);
     // AL-78: many at once (the game's forest replaces the generated trees): one pass, not one a thing
     std::size_t removeObjects(const std::vector<EntityId>& ids);
@@ -287,6 +315,8 @@ private:
     std::map<EntityId, Dynasty> dynasties_;
     std::map<EntityId, Settlement> settlements_;
     std::map<EntityId, BuildPiece> pieces_;
+    std::vector<Room> rooms_;
+    std::vector<RoomBuilding> roomBuildings_;
     std::vector<Event> events_; // min-heap on (tick, seq)
     std::vector<Command> pending_;
     std::vector<Command> replay_;

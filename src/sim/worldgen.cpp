@@ -6,6 +6,7 @@
 #include "sim/building.hpp"
 #include "sim/village_plan.hpp"
 #include "sim/structure_plan.hpp"
+#include "sim/rooms.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -204,11 +205,13 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     // village_site from the terrain) or asks for one; else the old ring.
     const bool planned = cfg.contains("village_site") || cfg.value("village_plan", false);
     VillagePlan vplan;
-    // AL-76: the buildings by purpose (structures.json): a home per family -
-    // a share of them a trade's (the smithy first) - and the shared ones
-    // whose objects the world has (the chapel's shrine, the mill...); each
-    // planned from modules, then given a lot of its size in its zone.
-    const StructureCatalog scat = planned ? parseStructures(content.structures) : StructureCatalog{};
+    // AL-76 / AL-81: houses put together from rooms (rooms.json): each family's
+    // by its recipe - a share of them a trade's (the smith and the innkeeper
+    // first), the rest a farmer's - and the shared ones whose objects the
+    // world has (the chapel's shrine, the mill); each raised from modules and
+    // furnished room by room, then given a lot of its size in its zone. What
+    // a house is for is then read from its rooms (sim/rooms.hpp).
+    const StructureCatalog scat = planned ? parseStructures(content.roomsJson) : StructureCatalog{};
     struct Built {
         const StructureTypeDef* def = nullptr;
         StructurePlan plan;
@@ -225,18 +228,18 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         int lo = 4, hi = 6;
         if (cfg.contains("people_per_family")) lo = cfg["people_per_family"].at(0).get<int>(), hi = cfg["people_per_family"].at(1).get<int>();
         for (int f = 0; f < fams; ++f) peopleOf.push_back(rng.irange(lo, hi));
-        if (scat.loaded() && scat.find("dwelling")) {
+        if (scat.loaded() && scat.find("farmer")) {
             Rng sr(hashCombine(seed, hashStr("structures")));
             std::vector<std::string> trades;
             for (const auto& t : scat.trades)
                 if (scat.find(t)) trades.push_back(t);
-            for (std::size_t i = trades.size(); i > 2; --i)   // the smithy and the tavern lead, the rest by seed
+            for (std::size_t i = trades.size(); i > 2; --i)   // the smith and the innkeeper lead, the rest by seed
                 std::swap(trades[i - 1], trades[2 + std::size_t(sr.irange(0, int(i) - 3))]);
             const int nTrade = fams >= 2 ? std::clamp(int(std::lround(fams * scat.tradeShare)), 1, std::min<int>(fams, int(trades.size()))) : 0;
             std::vector<int> idx(static_cast<std::size_t>(fams));
             for (int f = 0; f < fams; ++f) idx[std::size_t(f)] = f;
             for (int i = fams - 1; i > 0; --i) std::swap(idx[std::size_t(i)], idx[std::size_t(sr.irange(0, i))]);
-            std::vector<std::string> famType(std::size_t(fams), "dwelling");
+            std::vector<std::string> famType(std::size_t(fams), "farmer");
             for (int t = 0; t < nTrade; ++t) famType[std::size_t(idx[std::size_t(t)])] = trades[std::size_t(t)];
             for (int f = 0; f < fams; ++f) {
                 Built b;
@@ -296,13 +299,10 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             b.h = site.loaded() ? L.groundMax + 0.1 : 0.0;
             b.used.assign(b.plan.stations.size(), false);
             Settlement::Structure rec;
-            rec.type = b.def->id;
             rec.q = b.frame.q, rec.gx = b.frame.gx, rec.gy = b.frame.gy;
             rec.i0 = b.plan.i0, rec.j0 = b.plan.j0, rec.i1 = b.plan.i1, rec.j1 = b.plan.j1;
             rec.h = b.h;
             rec.door = b.frame.point((b.plan.doorI + 0.5) * c, -0.6);
-            for (const auto& d : b.plan.decor)
-                rec.props.push_back({d.what, b.frame.point(d.u, d.v), b.frame.yaw(d.yaw)});
             // a fence round a home's yard (its back and sides, a gap at the back for the gate)
             if (b.def->home && !scat.fence.empty()) {
                 const PlanRect& Y = L.yard;
@@ -324,6 +324,25 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             st.structures.push_back(std::move(rec));
         }
     }
+    // AL-81: a house's modules, built pieces of its household (kNone: the settlement's)
+    auto raise = [&](Built& b, EntityId fam) {
+        if (b.index < 0) return;
+        for (const auto& lp : b.plan.pieces) {
+            BuildPiece bp;
+            bp.id = w.newId();
+            bp.kind = lp.kind;
+            b.frame.cell(lp.i, lp.j, bp.x, bp.y);
+            bp.z = lp.z;
+            bp.rot = b.frame.rot(lp.rot);
+            bp.h = b.h;
+            bp.built = true;
+            bp.family = fam;
+            w.pieces()[bp.id] = bp;
+        }
+        w.piecesDirty = true;
+    };
+    for (auto& b : builds)
+        if (b.family < 0) raise(b, kNone);
     // AL-76: a building's station of `type` not yet standing (index into its plan), -1 none
     auto freeStation = [&](Built& b, const std::string& type) {
         for (std::size_t i = 0; i < b.plan.stations.size(); ++i)
@@ -447,8 +466,8 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         for (int k = 0; k < def.perSettlement; ++k) {
             Vec2 p{center.x + r.range(-15.0, 15.0), center.y + r.range(-15.0, 15.0)};
             bool housed = false;
-            for (auto& b : builds) {   // AL-76: in the shared building that holds it
-                if (b.index < 0 || b.family >= 0) continue;
+            for (auto& b : builds) {   // AL-76: in the house whose room holds it (a chapel's altar, a bakery's oven)
+                if (b.index < 0) continue;
                 const int si = freeStation(b, type);
                 if (si < 0) continue;
                 const LocalThing& t = b.plan.stations[std::size_t(si)];
@@ -476,7 +495,17 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 continue;   // unknown here, or the settlement's / the household's own loop places it
             const double yaw = b.frame.yaw(t.yaw);
             b.used[i] = true;
-            st.structures[std::size_t(b.index)].objects.push_back(spawnSettlementObject(t.what, b.frame.point(t.u, t.v), fam, &yaw));
+            const EntityId oid = spawnSettlementObject(t.what, b.frame.point(t.u, t.v), fam, &yaw);
+            if (WorldObject* o = w.object(oid)) o->storey = t.z;
+            st.structures[std::size_t(b.index)].objects.push_back(oid);
+        }
+        // AL-81: the furniture (sim objects: the rooms are read from them)
+        for (const auto& t : b.plan.decor) {
+            if (!content.objects.count(t.what)) continue;
+            const double yaw = b.frame.yaw(t.yaw);
+            const EntityId oid = spawnSettlementObject(t.what, b.frame.point(t.u, t.v), fam, &yaw);
+            if (WorldObject* o = w.object(oid)) o->storey = t.z;
+            st.structures[std::size_t(b.index)].objects.push_back(oid);
         }
     };
     for (auto& b : builds)
@@ -504,35 +533,9 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         Built* home = f < int(builds.size()) && builds[std::size_t(f)].family == f && builds[std::size_t(f)].index >= 0
                           ? &builds[std::size_t(f)]
                           : nullptr;
-        std::vector<Vec2> bedSpots;
         if (home) {
             st.structures[std::size_t(home->index)].family = fam.id;
-            const double c = content.build.cellM;
-            const StructureVolume& mv = home->plan.volumes[0];
-            std::set<std::pair<int, int>> busy{{home->plan.doorI, 0}};
-            for (const auto* list : {&home->plan.stations, &home->plan.decor})
-                for (const auto& t : *list) busy.insert({t.i, t.j});
-            for (int pass = 0; pass < 2; ++pass)   // along the walls first, then the rest
-                for (int j = mv.j1 - 1; j >= mv.j0; --j)
-                    for (int i = mv.i0; i < mv.i1; ++i) {
-                        const bool wallSide = i == mv.i0 || i == mv.i1 - 1 || j == mv.j1 - 1;
-                        if ((pass == 0) != wallSide || busy.count({i, j})) continue;
-                        bedSpots.push_back(home->frame.point((i + 0.5) * c, (j + 0.5) * c));
-                    }
-            // the modules: built pieces of the household
-            for (const auto& lp : home->plan.pieces) {
-                BuildPiece bp;
-                bp.id = w.newId();
-                bp.kind = lp.kind;
-                home->frame.cell(lp.i, lp.j, bp.x, bp.y);
-                bp.z = lp.z;
-                bp.rot = home->frame.rot(lp.rot);
-                bp.h = home->h;
-                bp.built = true;
-                bp.family = fam.id;
-                w.pieces()[bp.id] = bp;
-            }
-            w.piecesDirty = true;
+            raise(*home, fam.id);   // the modules: built pieces of the household
         }
         int bedN = 0;
         for (const auto& [type, def] : content.objects) {
@@ -548,6 +551,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 // hearth and beds inside, the store beside, the garden and the
                 // rest in the yard, the field beyond it.
                 double syaw = 0.0;
+                int bedStorey = 0;
                 const double* yaw = nullptr;
                 if (lot) {
                     const PlanRect& H = lot->house;
@@ -564,11 +568,12 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                         p = home->frame.point(t.u, t.v);
                         syaw = home->frame.yaw(t.yaw);
                         yaw = &syaw;
-                    } else if (home && type == "bed" && !bedSpots.empty()) {
-                        p = bedSpots[std::size_t(bedN) % bedSpots.size()];
-                        if (bedN >= int(bedSpots.size())) p.x += 0.5 * double(bedN / int(bedSpots.size()));
-                        else st.structures[std::size_t(home->index)].props.push_back({"bed", p, home->frame.yaw(0.0)});
-                        ++bedN;
+                    } else if (home && type == "bed" && bedN < int(home->plan.beds.size())) {   // AL-81: in its bedroom
+                        const LocalThing& t = home->plan.beds[std::size_t(bedN++)];
+                        p = home->frame.point(t.u, t.v);
+                        syaw = home->frame.yaw(t.yaw);
+                        yaw = &syaw;
+                        bedStorey = t.z;
                     } else if (type == "house") p = H.c, yaw = &H.yaw;
                     else if (type == "hearth") p = H.at(0.0, -1.0);
                     else if (type == "bed") p = H.at(ox * H.hw * 0.6, oy * H.hd * 0.6);
@@ -578,6 +583,8 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                     else if (!def.hasCrop) p = lot->yard.at(ox * lot->yard.hw * 0.8, oy * lot->yard.hd * 0.8);
                 }
                 const EntityId oid = spawnSettlementObject(type, p, fam.id, yaw);
+                if (bedStorey)
+                    if (WorldObject* o = w.object(oid)) o->storey = bedStorey;
                 if (home && (type == "house" || yaw)) st.structures[std::size_t(home->index)].objects.push_back(oid);
                 if (type == "storage" && fam.storage == kNone) fam.storage = oid;
                 if (type == "hearth" && fam.hearth == kNone) fam.hearth = oid;
@@ -648,6 +655,10 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         everyone.insert(everyone.end(), members.begin(), members.end());
     }
     w.settlements()[st.id] = st;
+    if (planned && !w.pieces().empty()) {   // AL-81: the rooms as the world starts
+        refreshPieces(w);
+        refreshRooms(w);
+    }
 
     // --- the colony's mandate (GDD §2.2): the start is a chief - the head of
     // the eldest household, who drew the others to himself - holding every
