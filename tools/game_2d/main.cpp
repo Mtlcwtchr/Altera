@@ -48,6 +48,7 @@ using socket_t = int;
 #include <string>
 
 #include "client2d/acts2d.hpp"
+#include "client2d/craft2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
 #include "client2d/talk2d.hpp"
@@ -76,6 +77,7 @@ struct App {
     c2::ActCatalog acts;        // AL-96: the act menu's catalog
     SpeechFeed speech;          // AL-96: what people said (lines) and mutter (barks)
     c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
+    Json craftUi;               // AL-97: content/ui/craft.json (the helper's wishes)
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
     // AL-99: the session (new game, saves)
     const Content* content = nullptr;
@@ -429,6 +431,18 @@ void serveClient(App& a, socket_t s) {
                     c2::tradeJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone),
                                   q.value("give", Json::object()), q.value("take", Json::object()))
                         .dump());
+        } else if (path.rfind("/api/workshop", 0) == 0 && method == "POST") {
+            // AL-97: the workshop of the player's person (or `id`): {draft, wish, kit, texts}
+            const Json q = Json::parse(body.empty() ? "{}" : body);
+            EntityId who = q.value("id", controlled(*a.world));
+            if (q.value("kit", false))
+                if (Character* c = a.world->character(who)) c2::craftKit(*a.world, *c);
+            c2::WorkshopQuery wq;
+            wq.draft = q.value("draft", Json::object());
+            wq.wish = q.value("wish", std::string());
+            Json r = {{"ws", c2::workshopJson(*a.world, a.text, a.craftUi, who, wq)}};
+            if (q.value("texts", false)) r["texts"] = c2::workshopTexts(a.text);
+            respond(s, 200, "application/json", r.dump());
         } else if (path.rfind("/api/", 0) == 0 && handleSession(a, s, method, path, body)) {
             // AL-99: menu, new game, saves
         } else {
@@ -495,6 +509,9 @@ int main(int argc, char** argv) {
         app.saveDir = c2::saveDir2d();
         bool haveWheel = false;
         const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
+        bool haveCraftUi = false;
+        const std::string craftUi = readFile(app.root + "/content/ui/craft.json", &haveCraftUi);
+        app.craftUi = haveCraftUi ? Json::parse(craftUi) : Json::object();
         app.talk = c2::TalkCatalog::make(haveWheel ? Json::parse(wheel) : Json());
         app.wheel = haveWheel ? Json::parse(wheel) : Json();
         app.game.seed = seed;

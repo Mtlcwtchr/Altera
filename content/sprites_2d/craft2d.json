@@ -1,0 +1,672 @@
+{
+ "_doc": "AL-97: the workshop of the 2D client (tools/game_2d/web/craft.js): 16x16 sprites of the stations in the palette of sprites.json (pal), station -> sprite, glyphs and palette colours of processes, shapes, wishes and kinds (an item without its own record in resources.json/map2d.json shows the glyph of its shape). Hand-made here, not generated. items/forms: a sprite (of this file or sprites.json) or a glyph + palette colour for the base items and archetypes the resources pack does not cover.",
+ "sprites": {
+  "st_forge": [
+   "................",
+   "....kkkkkkkk....",
+   "....kMMMMMMk....",
+   "....kMxxxxMk....",
+   "...kkMxxxxMkk...",
+   "..kMMMMMMMMMMk..",
+   "..kMkkkkkkkkMk..",
+   "..kMkfFFFFfkMk..",
+   "..kMkFfFFfFkMk..",
+   "..kMkffnnffkMk..",
+   "..kMkkkkkkkkMk..",
+   "..kMMMMMMMMMMk..",
+   "..kWWWWWWWWWWk..",
+   "..kkkkkkkkkkkk..",
+   "................",
+   "................"
+  ],
+  "st_oven": [
+   "................",
+   "................",
+   ".....kkkkkk.....",
+   "...kkzzzzzzkk...",
+   "..kzzZzzzzZzzk..",
+   "..kzzzzzzzzzzk..",
+   ".kzzZzkkkkzZzzk.",
+   ".kzzzkfFFfkzzzk.",
+   ".kzZzkFffFkzZzk.",
+   ".kzzzkkkkkkzzzk.",
+   ".kZZZZZZZZZZZZk.",
+   ".kkkkkkkkkkkkkk.",
+   "................",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_campfire": [
+   "................",
+   "................",
+   "................",
+   "................",
+   ".......kk.......",
+   "......kFFk......",
+   ".....kFfFfk.....",
+   ".....kfFFfk.....",
+   "....kkfffFkk....",
+   "...knnkffknnk...",
+   "..knNnnkknnNnk..",
+   "...kkNnnnnNkk...",
+   ".....kkkkkk.....",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_bench": [
+   "................",
+   "................",
+   "................",
+   "..kkkkkkkkkkkk..",
+   ".knnnnnnnnnnnnk.",
+   ".knNnnnnnnnnNnk.",
+   ".knnnkMMkknnnnk.",
+   ".knnnkkkkknnnnk.",
+   ".kkkkkkkkkkkkkk.",
+   "..kN........Nk..",
+   "..kN........Nk..",
+   "..kNkkkkkkkkNk..",
+   "..kN........Nk..",
+   "..kk........kk..",
+   "................",
+   "................"
+  ],
+  "st_loom": [
+   "................",
+   "..kk........kk..",
+   "..knkkkkkkkknk..",
+   "..knNNNNNNNNnk..",
+   "..knwbwbwbwbnk..",
+   "..knbwbwbwbwnk..",
+   "..knwbwbwbwbnk..",
+   "..knbwbwbwbwnk..",
+   "..knwbwbwbwbnk..",
+   "..knNNNNNNNNnk..",
+   "..knkkkkkkkknk..",
+   "..kn........nk..",
+   "..kn........nk..",
+   "..kk........kk..",
+   "................",
+   "................"
+  ],
+  "st_wheel": [
+   "................",
+   "................",
+   "................",
+   ".....kkkkkk.....",
+   "...kkeeeeeekk...",
+   "..keeEkkkkEeek..",
+   "..keEkzzzzkEek..",
+   ".keeEkzZZzkEeek.",
+   ".keeEkzZZzkEeek.",
+   "..keEkzzzzkEek..",
+   "..keeEkkkkEeek..",
+   "...kkeeeeeekk...",
+   ".....kkkkkk.....",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_tub": [
+   "................",
+   "................",
+   "................",
+   "................",
+   "...kkkkkkkkkk...",
+   "..knNnnnnnnNnk..",
+   "..kUuuuUuuuuUk..",
+   "..knuUuuuuUunk..",
+   "..knNnnnnnnNnk..",
+   "..knnnnnnnnnnk..",
+   "..knNnnnnnnNnk..",
+   "...knnnnnnnnk...",
+   "...kkkkkkkkkk...",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_pot": [
+   "................",
+   "................",
+   "......kkkk......",
+   ".....kk..kk.....",
+   "....k......k....",
+   "...kkkkkkkkkk...",
+   "..kxMMMMMMMMxk..",
+   "..kxwwwwwwwwxk..",
+   "..kxMMMMMMMMxk..",
+   "..kxxMMMMMMxxk..",
+   "...kxxxxxxxxk...",
+   "....kkkkkkkk....",
+   "....kfFfFfFk....",
+   ".....kkkkkk.....",
+   "................",
+   "................"
+  ],
+  "st_jar": [
+   "................",
+   "................",
+   "................",
+   "......kkkk......",
+   ".....kZZZZk.....",
+   "......kzzk......",
+   "....kkzzzzkk....",
+   "...kzzzZzzzzk...",
+   "...kzZzzzzzzk...",
+   "...kzzzzzzZzk...",
+   "...kzzzzzzzzk...",
+   "....kzzzzzzk....",
+   ".....kkkkkk.....",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_rack": [
+   "................",
+   "................",
+   "..kk........kk..",
+   "..knkkkkkkkknk..",
+   "..knNNNNNNNNnk..",
+   "..kn.lk.Gk.lnk..",
+   "..kn.lk.Gk.lnk..",
+   "..kn..k..k..nk..",
+   "..knNNNNNNNNnk..",
+   "..kn.tk.tk.tnk..",
+   "..kn.tk.tk.tnk..",
+   "..kn........nk..",
+   "..kn........nk..",
+   "..kk........kk..",
+   "................",
+   "................"
+  ],
+  "st_mortar": [
+   "................",
+   "................",
+   "................",
+   "..........kk....",
+   ".........kek....",
+   "........kek.....",
+   ".......kek......",
+   "...kkkkkekkkk...",
+   "..kWWWWkWWWWWk..",
+   "..kWwwwwwwwwWk..",
+   "...kWWWWWWWWk...",
+   "....kWWWWWWk....",
+   "....kkkkkkkk....",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_quern": [
+   "................",
+   "................",
+   ".......kk.......",
+   ".......nk.......",
+   "....kkkkkkkk....",
+   "...kWWWWWWWWk...",
+   "..kWWWWkkWWWWk..",
+   "..kWWWWWWWWWWk..",
+   "..kkkkkkkkkkkk..",
+   "..kMMMMMMMMMMk..",
+   "..kMMWWWWWWMMk..",
+   "..kMMMMMMMMMMk..",
+   "...kkkkkkkkkk...",
+   "................",
+   "................",
+   "................"
+  ],
+  "st_grind": [
+   "................",
+   "................",
+   ".....kkkkkk.....",
+   "....kWWWWWWk....",
+   "...kWWMMMMWWk...",
+   "...kWMWkkWMWk...",
+   "...kWMkkkkMWk...",
+   "...kWMWkkWMWk...",
+   "...kWWMMMMWWk...",
+   "..kkkWWWWWWkkk..",
+   "..knnkkkkkknnk..",
+   "..kn.kuuuuk.nk..",
+   "..kn.kkkkkk.nk..",
+   "..kk........kk..",
+   "................",
+   "................"
+  ],
+  "st_pit": [
+   "................",
+   "................",
+   "................",
+   "..kkkkkkkkkkkk..",
+   ".kWWWWWWWWWWWWk.",
+   ".kWkkkkkkkkkkWk.",
+   ".kWkeEeeEeeEkWk.",
+   ".kWkEeTeeTeEkWk.",
+   ".kWkeeEeEeeekWk.",
+   ".kWkkkkkkkkkkWk.",
+   ".kWWWWWWWWWWWWk.",
+   "..kkkkkkkkkkkk..",
+   "................",
+   "................",
+   "................",
+   "................"
+  ]
+ },
+ "stations": {
+  "campfire": "st_campfire",
+  "hearth": "ob_hearth",
+  "oven": "st_oven",
+  "forge": "st_forge",
+  "furnace": "st_oven",
+  "anvil": "ob_anvil",
+  "quench_tub": "st_tub",
+  "grindstone": "st_grind",
+  "bench": "st_bench",
+  "loom": "st_loom",
+  "frame": "st_loom",
+  "wheel": "st_wheel",
+  "tub": "st_tub",
+  "pot": "st_pot",
+  "vat": "ob_barrel",
+  "jar": "st_jar",
+  "barrel": "ob_barrel",
+  "rack": "st_rack",
+  "mortar": "st_mortar",
+  "tanning_pit": "st_pit",
+  "quern": "st_quern",
+  "table": "ob_table"
+ },
+ "station_glyphs": {
+  "campfire": "♨",
+  "hearth": "♨",
+  "oven": "∩",
+  "forge": "♨",
+  "furnace": "∩",
+  "anvil": "⊥",
+  "quench_tub": "≈",
+  "grindstone": "◎",
+  "bench": "π",
+  "loom": "#",
+  "frame": "#",
+  "wheel": "◎",
+  "tub": "≈",
+  "pot": "Ω",
+  "vat": "Θ",
+  "jar": "δ",
+  "barrel": "Θ",
+  "rack": "Ħ",
+  "mortar": "υ",
+  "tanning_pit": "□",
+  "quern": "⊜",
+  "table": "π"
+ },
+ "processes": {
+  "heat": [
+   "☼",
+   "f"
+  ],
+  "smelt": [
+   "♨",
+   "z"
+  ],
+  "cut": [
+   "✂",
+   "m"
+  ],
+  "carve": [
+   "⌇",
+   "n"
+  ],
+  "knap": [
+   "◆",
+   "W"
+  ],
+  "hammer": [
+   "⚒",
+   "M"
+  ],
+  "quench": [
+   "≈",
+   "U"
+  ],
+  "link": [
+   "∞",
+   "M"
+  ],
+  "grind": [
+   "◎",
+   "W"
+  ],
+  "mill": [
+   "⊜",
+   "t"
+  ],
+  "soak": [
+   "≋",
+   "u"
+  ],
+  "dry": [
+   "☀",
+   "y"
+  ],
+  "ferment": [
+   "◌",
+   "o"
+  ],
+  "twist": [
+   "§",
+   "t"
+  ],
+  "weave": [
+   "#",
+   "e"
+  ],
+  "sew": [
+   "⌒",
+   "w"
+  ],
+  "join": [
+   "╋",
+   "n"
+  ],
+  "mix": [
+   "⊕",
+   "o"
+  ],
+  "mould": [
+   "Ω",
+   "z"
+  ],
+  "tan": [
+   "▤",
+   "e"
+  ],
+  "alloy": [
+   "⊗",
+   "H"
+  ],
+  "repair": [
+   "✚",
+   "l"
+  ]
+ },
+ "shapes": {
+  "lump": "•",
+  "powder": "∴",
+  "liquid": "≈",
+  "scrap": "∵",
+  "log": "═",
+  "strip": "~",
+  "fiber_raw": "≀",
+  "withy": "~",
+  "hide": "▧",
+  "bone": "⌐",
+  "strand": "~",
+  "cord": "§",
+  "rope": "§",
+  "plank": "▭",
+  "beam": "▬",
+  "stave": "|",
+  "handle": "|",
+  "shaft": "|",
+  "bow_stave": ")",
+  "bowl_raw": "◡",
+  "vessel_raw": "Ω",
+  "needle_blank": "/",
+  "bar": "▬",
+  "bar_thin": "-",
+  "wire": "~",
+  "nail": "┬",
+  "rivet": "°",
+  "plate": "▫",
+  "blank_blade": "/",
+  "blade": "†",
+  "blank_head": "▼",
+  "sheet_metal": "▫",
+  "blank_helm": "∩",
+  "ring_mail": "○",
+  "cloth": "▒",
+  "net": "#",
+  "basket_raw": "◡",
+  "sheet": "▒",
+  "garment_raw": "▒",
+  "padded_raw": "▓",
+  "armor_raw": "[",
+  "pouch_raw": "δ",
+  "boot_raw": "L",
+  "brick_raw": "▬",
+  "tile_raw": "▫",
+  "candle_raw": "¡",
+  "cask_raw": "Θ",
+  "whet_blank": "▬",
+  "assembly": "╋"
+ },
+ "wishes": {
+  "cut": "†",
+  "strike": "⚒",
+  "hold": "Ω",
+  "warm": "♨",
+  "cover": "[",
+  "bind": "§",
+  "feed": "♣",
+  "heal": "✚"
+ },
+ "kinds": {
+  "weapon": [
+   "/",
+   "M"
+  ],
+  "armor": [
+   "[",
+   "M"
+  ],
+  "tool": [
+   "⚒",
+   "n"
+  ],
+  "food": [
+   "%",
+   "o"
+  ],
+  "drink": [
+   "!",
+   "u"
+  ],
+  "container": [
+   "Ω",
+   "z"
+  ],
+  "garment": [
+   "[",
+   "e"
+  ]
+ },
+ "items": {
+  "grain": {
+   "sprite": "it_wheat"
+  },
+  "wheat": {
+   "sprite": "it_wheat"
+  },
+  "bread": {
+   "sprite": "it_bread"
+  },
+  "apples": {
+   "sprite": "it_apple"
+  },
+  "herbs": {
+   "sprite": "it_herb"
+  },
+  "ale": {
+   "sprite": "it_ale"
+  },
+  "ore": {
+   "sprite": "it_ore"
+  },
+  "iron_ore": {
+   "sprite": "it_ore"
+  },
+  "ingot": {
+   "sprite": "it_ingot"
+  },
+  "iron": {
+   "sprite": "it_ingot"
+  },
+  "coin": {
+   "sprite": "it_coin"
+  },
+  "coins": {
+   "sprite": "it_coin"
+  },
+  "log": {
+   "sprite": "ob_log"
+  },
+  "stone": {
+   "glyph": "●",
+   "colour": "W"
+  },
+  "clay": {
+   "glyph": "●",
+   "colour": "z"
+  },
+  "hide": {
+   "glyph": "▧",
+   "colour": "e"
+  },
+  "meat": {
+   "glyph": "%",
+   "colour": "r"
+  },
+  "fish": {
+   "glyph": "α",
+   "colour": "U"
+  },
+  "fiber_raw": {
+   "glyph": "≀",
+   "colour": "t"
+  },
+  "bast_fiber": {
+   "glyph": "≀",
+   "colour": "o"
+  },
+  "branch": {
+   "glyph": "⌇",
+   "colour": "n"
+  },
+  "honey": {
+   "glyph": "♦",
+   "colour": "y"
+  },
+  "milk": {
+   "glyph": "!",
+   "colour": "w"
+  },
+  "eggs": {
+   "glyph": "o",
+   "colour": "w"
+  },
+  "berries": {
+   "glyph": "∴",
+   "colour": "v"
+  },
+  "vegetables": {
+   "glyph": "♠",
+   "colour": "l"
+  },
+  "cheese": {
+   "glyph": "▲",
+   "colour": "y"
+  },
+  "bone": {
+   "glyph": "⌐",
+   "colour": "w"
+  },
+  "water": {
+   "glyph": "≈",
+   "colour": "U"
+  },
+  "wool": {
+   "glyph": "≀",
+   "colour": "w"
+  },
+  "flax": {
+   "glyph": "≀",
+   "colour": "l"
+  },
+  "firewood": {
+   "sprite": "ob_log"
+  },
+  "charcoal": {
+   "glyph": "●",
+   "colour": "x"
+  },
+  "salt": {
+   "glyph": "∴",
+   "colour": "w"
+  },
+  "mushrooms": {
+   "glyph": "♠",
+   "colour": "t"
+  },
+  "roots": {
+   "glyph": "√",
+   "colour": "e"
+  },
+  "hazelnuts": {
+   "glyph": "∴",
+   "colour": "n"
+  },
+  "wild_greens": {
+   "glyph": "♣",
+   "colour": "l"
+  },
+  "sinew": {
+   "glyph": "~",
+   "colour": "s"
+  },
+  "antler": {
+   "glyph": "Ψ",
+   "colour": "t"
+  },
+  "feathers": {
+   "glyph": "⌠",
+   "colour": "w"
+  },
+  "fat": {
+   "glyph": "●",
+   "colour": "t"
+  },
+  "tallow": {
+   "glyph": "●",
+   "colour": "t"
+  },
+  "reeds": {
+   "glyph": "‖",
+   "colour": "l"
+  },
+  "straw": {
+   "glyph": "‖",
+   "colour": "y"
+  },
+  "sand": {
+   "glyph": "∴",
+   "colour": "t"
+  }
+ },
+ "forms": {
+  "sword": {
+   "sprite": "it_sword"
+  },
+  "hammer_tool": {
+   "sprite": "it_hammer"
+  },
+  "hammer": {
+   "sprite": "it_hammer"
+  },
+  "bread": {
+   "sprite": "it_bread"
+  }
+ }
+}
