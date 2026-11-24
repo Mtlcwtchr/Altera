@@ -375,13 +375,6 @@ void wed(World& w, Character& a, Character& b, const VillageLifeRules& r) {
 
 // --- conception and birth ----------------------------------------------------
 
-double conceiveChanceOf(const Character& woman, const VillageLifeRules& r) {
-    const int y = years(woman);
-    if (y <= r.fadeFromYears) return r.conceiveChance;
-    const double span = std::max(1, r.fertileF[1] - r.fadeFromYears);
-    return r.conceiveChance * std::max(0.15, 1.0 - 0.85 * (y - r.fadeFromYears) / span);
-}
-
 void startPregnancy(World& w, Character& mother, EntityId father, Tick due) {
     moodlet(w, mother, "pregnant", due + 1);
     memo(w, mother, "with_child", father, 0.4, 0.8);
@@ -938,6 +931,113 @@ void villageAfterAct(World& w, Character& actor, const InteractionDef& d, Charac
                         {{"a", actor.id}, {"b", t->id}, {"act", id}});
             return;
         }
+}
+
+double conceiveChanceOf(const Character& woman, const VillageLifeRules& r) {
+    const int y = years(woman);
+    if (y <= r.fadeFromYears) return r.conceiveChance;
+    const double span = std::max(1, r.fertileF[1] - r.fadeFromYears);
+    return r.conceiveChance * std::max(0.15, 1.0 - 0.85 * (y - r.fadeFromYears) / span);
+}
+
+bool refugeesArrive(World& w, EntityId settlement, const std::vector<EntityId>& whoIn) {
+    auto it = w.settlements().find(settlement);
+    if (it == w.settlements().end() || whoIn.empty() || !it->second.full()) return false;
+    Settlement& st = it->second;
+    const VillageLifeRules& r = R(w);
+    for (EntityId id : whoIn)
+        if (!w.offstage().count(id)) return false;
+    Rng rng = w.rng(settlement, "village:refugees");
+    // the household with most food to spare takes a lone one in
+    EntityId best = kNone;
+    if (whoIn.size() == 1) {
+        double bestDays = -1.0;
+        for (EntityId fid : st.families) {
+            auto f = w.families().find(fid);
+            if (f == w.families().end()) continue;
+            const Character* head = nullptr;
+            for (EntityId m : f->second.members)
+                if (const Character* x = w.character(m); person(x)) head = x;
+            if (!head) continue;
+            const double d = homeFoodDays(w, *head);
+            if (d > bestDays) bestDays = d, best = fid;
+        }
+        if (best == kNone) return false;
+    }
+    // onto the map: the same people, at the edge, knowing what a stranger knows
+    std::vector<EntityId> who;
+    for (EntityId id : whoIn) {
+        Character* c = w.toStage(id);
+        if (!c) continue;
+        const Content& ct = w.content();
+        for (const auto& n : ct.needs)
+            if (!c->needs.count(n.id)) c->needs[n.id] = rng.range(n.startLo, n.startHi);
+        if (c->body.stage() != "child")
+            for (const auto& k : ct.householdMust)
+                if (!c->knowledge.count(k)) {
+                    c->knowledge.insert(k);
+                    c->skills[k] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
+                }
+        c->status.settlement = st.id;
+        c->status.family = kNone;
+        c->ai = AiState{};
+        const double ang = rng.range(0.0, 6.283185307179586);
+        c->pos = {st.center.x + std::cos(ang) * r.arriveM, st.center.y + std::sin(ang) * r.arriveM};
+        for (const auto& [oid, o] : w.objects())
+            if (dist(o.pos, st.center) <= 1500.0 && !o.ownerFamily) c->knownObjects.insert(oid);
+        who.push_back(id);
+    }
+    if (who.empty()) return false;
+    if (who.size() == 1) {
+        Character& s = *w.character(who[0]);
+        s.status.dynasty = kNone;
+        moveToFamily(w, s, best, r.takenInRole);
+        meetVillage(w, s, st);
+        w.chronicle("stranger", {s.id}, "chronicle.village.stranger_taken_in", {{"who", s.id}, {"family", best}});
+        return true;
+    }
+    const Character& head0 = *w.character(who[0]);
+    const std::string surname = head0.name.find(' ') != std::string::npos ? head0.name.substr(head0.name.rfind(' ') + 1)
+                                                                          : randomFamilyName(rng, &w.content());
+    Family fam;
+    fam.id = w.newId();
+    fam.name = surname;
+    fam.settlement = st.id;
+    Dynasty dyn;
+    dyn.id = w.newId();
+    dyn.name = "House " + surname;
+    fam.dynasty = dyn.id;
+    const double ang = rng.range(0.0, 6.283185307179586);
+    WorldObject store;
+    store.type = "storage";
+    store.pos = {st.center.x + std::cos(ang) * r.arriveM * 0.7, st.center.y + std::sin(ang) * r.arriveM * 0.7};
+    store.ownerFamily = fam.id;
+    if (auto def = w.content().objects.find("storage"); def != w.content().objects.end()) store.stock = def->second.stock;
+    for (const auto& [item, n] : r.householdKit) store.stock[item] += n;
+    fam.storage = w.addObject(store).id;
+    w.families()[fam.id] = fam;
+    w.dynasties()[dyn.id] = dyn;
+    st.families.push_back(fam.id);
+    const EntityId headId = who[0];
+    const EntityId spouseId = w.character(headId)->status.spouse;
+    for (EntityId id : who) {
+        Character& s = *w.character(id);
+        s.status.dynasty = dyn.id;
+        moveToFamily(w, s, fam.id, id == headId ? "head" : (id == spouseId ? "spouse" : "child"));
+        for (EntityId o : who)
+            if (o != id) {
+                Relation& rel = s.relations[o];
+                rel.familiarity = 1.0;
+                rel.affinity = std::max(rel.affinity, 0.6);
+                rel.trust = std::max(rel.trust, 0.6);
+            }
+    }
+    if (Character* sp = w.character(spouseId)) setPair(w, *w.character(headId), *sp, "married", true);
+    w.dynasties()[dyn.id].founder = headId;
+    for (EntityId id : who) meetVillage(w, *w.character(id), st);
+    w.chronicle("stranger", who, "chronicle.village.strangers_settled",
+                {{"who", headId}, {"spouse", spouseId}, {"family", fam.id}, {"people", static_cast<int>(who.size())}});
+    return true;
 }
 
 bool strangersArrive(World& w, EntityId settlement, bool family) {

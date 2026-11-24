@@ -59,7 +59,7 @@ struct RealmRules {
     std::map<std::string, std::vector<std::string>> names;
     std::map<std::string, RealmQuestKind> quests;
     std::map<std::string, std::vector<std::string>> arcTags;
-    Json eco, pol, war, suc, rev, ban, fig, wan, loc;
+    Json eco, pol, war, suc, rev, ban, fig, wan, loc, ppl;
     std::map<std::string, std::map<std::string, double>> traitAxes;
     std::map<std::string, double> grudgeMult;
 
@@ -148,6 +148,7 @@ RealmRules parseRules(const Json& j) {
     r.rev = j.value("revolt", Json::object());
     r.ban = j.value("bandits", Json::object());
     r.fig = j.value("figures", Json::object());
+    r.ppl = j.value("people", Json::object());
     r.wan = j.value("wanderers", Json::object());
     r.loc = j.value("local", Json::object());
     const Json ta = r.fig.value("trait_axes", Json::object());
@@ -313,10 +314,23 @@ std::vector<std::reference_wrapper<Settlement>> polities(Ctx& x) {
 // map's villagers live by the village's own rules until they take a role.
 std::vector<std::reference_wrapper<Character>> people(Ctx& x) {
     std::vector<std::reference_wrapper<Character>> out;
+    // the people the chronicle follows: those with a Standing role (the rest are residents())
     for (auto& [id, c] : x.w.offstage())
-        if (!c.isAnimal()) out.push_back(c);
+        if (!c.isAnimal() && !c.standing.role.empty()) out.push_back(c);
     for (auto& [id, c] : x.w.characters())
         if (!c.isAnimal() && !c.standing.role.empty() && (c.body.alive || c.standing.deathDay == 0)) out.push_back(c);
+    return out;
+}
+
+// Whether `c` lives in settlement `p` offstage (counted in its numbers): at home, not on the road, free.
+bool residentOf(const Character& c, EntityId p) {
+    return c.body.alive && !c.isAnimal() && c.status.settlement == p && c.standing.life != "road" && c.standing.captor == kNone;
+}
+// The people who live in a stat settlement, every one (AL-92): its numbers are their count.
+std::vector<Character*> residents(Ctx& x, EntityId p) {
+    std::vector<Character*> out;
+    for (auto& [id, c] : x.w.offstage())
+        if (residentOf(c, p)) out.push_back(&c);
     return out;
 }
 
@@ -634,8 +648,9 @@ std::string pickTrait(Rng& rng, const Content& ct, const std::vector<std::string
 
 // A new person of the world, offstage: a whole Character from the first day (needs,
 // skills, gear), so that walking onto the map is only a move.
-Character& newFigure(Ctx& x, Rng& rng, EntityId home, const std::string& role, char sex, int ageYears,
-                     const std::string& house) {
+// One of the people (AL-92): a body, a name, a home, the hands of a household. Most
+// people stay that; some draw a Standing (promote) and walk into the chronicle.
+Character& newResident(Ctx& x, Rng& rng, EntityId home, char sex, int ageYears, const std::string& house) {
     const Content& ct = x.w.content();
     Character f;
     f.id = x.w.newId();
@@ -651,13 +666,28 @@ Character& newFigure(Ctx& x, Rng& rng, EntityId home, const std::string& role, c
     }
     f.body.ageDays = std::max(0, ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1));
     f.status.settlement = f.standing.at = home;
-    f.standing.role = role;
     const int nt = inum(x.r.fig, "traits", 2);
     for (int i = 0; i < nt; ++i)
         if (auto t = pickTrait(rng, ct, f.traits); !t.empty()) f.traits.push_back(t);
+    for (const auto& n : ct.needs) f.needs[n.id] = rng.range(std::max(0.5, n.startLo), std::max(0.7, n.startHi));
+    if (ageYears >= 12)
+        for (const auto& k : ct.householdMust) {
+            f.knowledge.insert(k);
+            f.skills[k] = rng.range(0.2, 0.45);
+        }
+    const EntityId id = f.id;
+    x.w.offstage().emplace(id, std::move(f));
+    return x.w.offstage().at(id);
+}
+
+// Someone steps out of the crowd: a role, the axes the chronicle reads, a purse and a kit.
+Character& promote(Ctx& x, Rng& rng, Character& f, const std::string& role) {
+    const Content& ct = x.w.content();
+    f.standing.role = role;
     Axes a = axesOfTraits(x.r, f.traits);
     Standing& s = f.standing;
     s.drawn = true;
+    const char sex = f.body.sex;
     s.martial = clamp01(a.martial + rng.range(-0.2, 0.35) + (sex == 'm' ? 0.1 : -0.1));
     s.ambition = clamp01(a.ambition + rng.range(-0.25, 0.4));
     s.greed = clamp01(a.greed + rng.range(-0.2, 0.35));
@@ -665,25 +695,28 @@ Character& newFigure(Ctx& x, Rng& rng, EntityId home, const std::string& role, c
     s.wanderlust = clamp01(a.wanderlust + rng.range(-0.15, 0.4));
     s.renown = role == "ruler" ? rng.range(0.15, 0.45) : (role == "knight" ? rng.range(0.1, 0.3) : rng.range(0.0, 0.1));
     s.purse = role == "ruler" ? rng.range(20, 60) : rng.range(2, 15);
-    // the body and the hands, as any villager's
-    for (const auto& n : ct.needs) f.needs[n.id] = rng.range(std::max(0.5, n.startLo), std::max(0.7, n.startHi));
-    for (const auto& k : ct.householdMust) {
-        f.knowledge.insert(k);
-        f.skills[k] = rng.range(0.2, 0.45);
-    }
+    for (const auto& k : ct.householdMust)
+        if (!f.knowledge.count(k)) {
+            f.knowledge.insert(k);
+            f.skills[k] = rng.range(0.2, 0.45);
+        }
     for (const char* k : {"hunting", "combat"})
         if (ct.knowledge.count(k)) {
             f.knowledge.insert(k);
-            f.skills[k] = clamp01(0.2 + s.martial * 0.7);
+            f.skills[k] = std::max(f.skills[k], clamp01(0.2 + s.martial * 0.7));
         }
     if (itemDef(ct, "spear")) f.inventory["spear"] = 1;
     const char* coat = s.martial > 0.6 ? "mail_shirt" : "gambeson";
     if (itemDef(ct, coat)) f.inventory[coat] = 1;
     for (const char* it : {"bread", "dried_meat"})
         if (itemDef(ct, it)) f.inventory[it] = 3;
-    const EntityId id = f.id;
-    x.w.offstage().emplace(id, std::move(f));
-    return x.w.offstage().at(id);
+    return f;
+}
+
+Character& newFigure(Ctx& x, Rng& rng, EntityId home, const std::string& role, char sex, int ageYears,
+                     const std::string& house) {
+    Character& f = newResident(x, rng, home, sex, ageYears, house);
+    return promote(x, rng, f, role);
 }
 
 void marry(Character& a, Character& b) {
@@ -712,6 +745,176 @@ std::string pickHouse(Ctx& x, Rng& rng, std::set<std::string>& used) {
         }
     }
     return randomFamilyName(rng, &x.w.content());
+}
+
+// --- the people of a settlement (AL-92) -------------------------------------------------
+
+bool lawlessHome(const Ctx& x, EntityId p) {
+    const Settlement* s = pol(x, p);
+    return s && (outlaw(*s) || s->tagged("raiders"));
+}
+
+// Fills a stat settlement with its people up to its numbers: households (a couple,
+// their children, now and then an old parent) and singles, by the demography in
+// realm.json "people". A band outside the law is young men; a celibate house has no
+// families. Existing people (the ruling family, knights) count.
+void populate(Ctx& x, Settlement& p) {
+    if (p.full() || p.ruined) return;
+    const Json& d = x.r.ppl;
+    Rng rng = rngOf(x, p.id, "realm:populate");
+    int have = static_cast<int>(residents(x, p.id).size());
+    const int want = static_cast<int>(std::round(p.pop));
+    const bool lawless = p.tagged("outlaw") || p.tagged("raiders");
+    const bool celibate = institutionOf(x.r, p).celibate;
+    std::set<std::string> used;
+    while (have < want) {
+        const std::string house = pickHouse(x, rng, used);
+        if (lawless || celibate || rng.chance(num(d, "single_share", 0.18)) || want - have < 2) {
+            const char sex = lawless ? (rng.chance(0.9) ? 'm' : 'f') : celibate ? (rng.chance(0.6) ? 'm' : 'f') : (rng.chance(0.5) ? 'm' : 'f');
+            Character& c = newResident(x, rng, p.id, sex, lawless ? rng.irange(17, 40) : rng.irange(16, 70), house);
+            if (lawless) c.standing.life = "outlaw";
+            ++have;
+            continue;
+        }
+        Character& man = newResident(x, rng, p.id, 'm', rng.irange(19, 58), house);
+        const EntityId mid = man.id;
+        const int my = years(man);
+        Character& wife = newResident(x, rng, p.id, 'f', std::clamp(my - rng.irange(-3, 7), 16, 60), house);
+        const EntityId wid = wife.id;
+        marry(*fig(x, mid), *fig(x, wid));
+        have += 2;
+        const int wy = years(*fig(x, wid));
+        const auto kidsN = pair2(d, "children", {0, 5});
+        const int kids = std::min(want - have, rng.irange(static_cast<int>(kidsN[0]), static_cast<int>(kidsN[1])));
+        for (int k = 0; k < kids && wy > 17; ++k) {
+            Character& ch = newResident(x, rng, p.id, rng.chance(0.5) ? 'm' : 'f', rng.irange(0, std::min(wy - 17, 24)), house);
+            ch.status.father = mid, ch.status.mother = wid;
+            const EntityId cid = ch.id;
+            fig(x, mid)->status.children.push_back(cid);
+            fig(x, wid)->status.children.push_back(cid);
+            ++have;
+        }
+        if (have < want && rng.chance(num(d, "elder_share", 0.15))) {
+            newResident(x, rng, p.id, rng.chance(0.6) ? 'f' : 'm', rng.irange(60, 78), house);
+            ++have;
+        }
+    }
+    // fields: how many heads they feed at full yield (more hands add little)
+    if (p.fields <= 0.0 && p.land > 0.0) {
+        const auto f = pair2(d, "fields_per_head", {1.3, 1.7});
+        p.fields = std::round(std::max(10.0, p.pop) * rng.range(f[0], f[1]));
+    }
+    p.pop = have;
+}
+
+// The death of one of the people. A person of Standing dies through figureDies (the
+// chronicle, a successor); the rest quietly: the widow is free to marry again.
+void figureDies(Ctx& x, Character& who, const std::string& cause);
+void personDies(Ctx& x, Character& c, const std::string& cause) {
+    if (!c.body.alive) return;
+    if (!c.standing.role.empty()) return figureDies(x, c, cause);
+    c.body.alive = false;
+    c.body.causeOfDeath = cause;
+    c.standing.deathDay = x.day;
+    if (Character* sp = fig(x, c.status.spouse)) sp->status.spouse = kNone;
+    ++x.s.stats["died_" + cause];
+}
+
+// `n` of a settlement's people die by `cause` (a raid, a battle, a riot put down): the
+// fighting age first for violence, anyone else otherwise. People of Standing are
+// spared here (their deaths are the chronicle's own).
+void losePeople(Ctx& x, Settlement& p, int n, const std::string& cause) {
+    if (n <= 0 || p.full()) return;
+    const bool violence = cause != "hunger" && cause != "illness";
+    std::vector<Character*> pool;
+    std::vector<double> wt;
+    for (Character* c : residents(x, p.id)) {
+        if (!c->standing.role.empty()) continue;
+        const int y = years(*c);
+        double w = 1.0;
+        if (violence) w = (y >= 16 && y < 60) ? (c->body.sex == 'm' ? 3.0 : 1.0) : 0.3;
+        pool.push_back(c), wt.push_back(w);
+    }
+    Rng rng = rngOf(x, p.id, "realm:lose:" + cause);
+    for (int k = 0; k < n && !pool.empty(); ++k) {
+        double sum = 0.0;
+        for (double w : wt) sum += w;
+        double pick = rng.range(0.0, sum);
+        size_t i = 0;
+        for (; i + 1 < pool.size() && pick > wt[i]; ++i) pick -= wt[i];
+        personDies(x, *pool[i], cause);
+        pool.erase(pool.begin() + static_cast<long>(i));
+        wt.erase(wt.begin() + static_cast<long>(i));
+    }
+}
+
+// A household of `p` (a couple and their children at home, or a single): who leaves together.
+std::vector<EntityId> householdOf(Ctx& x, Character& c) {
+    std::vector<EntityId> out = {c.id};
+    if (Character* sp = fig(x, c.status.spouse); sp && residentOf(*sp, c.status.settlement) && sp->standing.role.empty())
+        out.push_back(sp->id);
+    for (EntityId k : c.status.children)
+        if (Character* ch = fig(x, k); ch && residentOf(*ch, c.status.settlement) && ch->standing.role.empty() &&
+                                       ch->status.spouse == kNone && years(*ch) < 16)
+            out.push_back(k);
+    return out;
+}
+
+// Up to `n` of the people of `from` move to `to` (whole households; `adults`: grown-ups
+// one by one, as the restless run off to a band). Returns how many went.
+int movePeople(Ctx& x, Settlement& from, Settlement& to, int n, bool adults, const std::string& salt) {
+    if (n <= 0 || from.full()) return 0;
+    Rng rng = rngOf(x, from.id, "realm:move:" + salt);
+    std::vector<Character*> pool;
+    for (Character* c : residents(x, from.id))
+        if (c->standing.role.empty() && years(*c) >= 16 && (!adults || years(*c) < 45)) pool.push_back(c);
+    int moved = 0;
+    while (moved < n && !pool.empty()) {
+        const size_t i = static_cast<size_t>(rng.irange(0, static_cast<int>(pool.size()) - 1));
+        Character* c = pool[i];
+        pool.erase(pool.begin() + static_cast<long>(i));
+        if (c->status.settlement != from.id) continue; // went with a spouse already
+        std::vector<EntityId> who = adults ? std::vector<EntityId>{c->id} : householdOf(x, *c);
+        for (EntityId id : who) {
+            Character* m = fig(x, id);
+            if (!m) continue;
+            if (adults && m->status.spouse != kNone)
+                if (Character* sp = fig(x, m->status.spouse)) sp->status.spouse = kNone, m->status.spouse = kNone; // left behind
+            m->status.settlement = m->standing.at = to.id;
+            if (lawlessHome(x, to.id)) m->standing.life = "outlaw";
+            else if (m->standing.life == "outlaw") m->standing.life = "settled";
+            ++moved;
+        }
+    }
+    return moved;
+}
+
+// A band broken: half its common men fall, the rest slip back to the nearest place
+// that takes people in and live there as anyone else.
+void scatterBand(Ctx& x, Settlement& camp) {
+    int n = 0;
+    for (Character* c : residents(x, camp.id)) n += c->standing.role.empty() ? 1 : 0;
+    losePeople(x, camp, n / 2, "battle");
+    Settlement* to = nullptr;
+    for (Settlement& p : polities(x))
+        if (p.id != camp.id && !p.ruined && !p.full() && !lawlessHome(x, p.id) && (!to || dkm(p.km, camp.km) < dkm(to->km, camp.km)))
+            to = &p;
+    for (Character* c : residents(x, camp.id)) {
+        if (!c->standing.role.empty()) continue;
+        if (to) c->status.settlement = c->standing.at = to->id, c->standing.life = "settled";
+        else personDies(x, *c, "battle");
+    }
+    camp.pop = 0.0;
+}
+
+// One of the common people of `p` in an age range (of a sex, 0 = either), to step
+// forward: null when there is none (then a newcomer is made).
+Character* fromCrowd(Ctx& x, Rng& rng, EntityId p, int minAge, int maxAge, char sex) {
+    std::vector<Character*> pool;
+    for (Character* c : residents(x, p))
+        if (c->standing.role.empty() && years(*c) >= minAge && years(*c) <= maxAge && (!sex || c->body.sex == sex)) pool.push_back(c);
+    if (pool.empty()) return nullptr;
+    return pool[static_cast<size_t>(rng.irange(0, static_cast<int>(pool.size()) - 1))];
 }
 
 // --- genesis ---------------------------------------------------------------------
@@ -868,6 +1071,9 @@ void genesis(Ctx& x) {
         const auto wl = pair2(x.r.wan, "start_wealth", {3, 20});
         f.standing.purse = rng.range(wl[0], wl[1]);
     }
+    // and the people of every settlement, the ruling families among them
+    for (EntityId id : made) populate(x, *pol(x, id));
+    s.once["peopled"] = 1;
     log(x, "region", {{"n", static_cast<int>(made.size())}});
 }
 
@@ -893,6 +1099,16 @@ Character* materialize(Ctx& x, Character& f, Settlement& at, int stayDays, Entit
     const Settlement* from = pol(x, cameFrom);
     Character* c = x.w.toStage(f.id);
     if (!c) return nullptr;
+    // a child on the way comes with her: the village's own birth (village_life) takes it
+    for (const auto& m : c->moodlets)
+        if (m.id == "pregnant" && m.until > x.w.now()) {
+            Event e;
+            e.tick = m.until - 1;
+            e.type = "village_birth";
+            e.a = c->id;
+            e.b = c->status.spouse;
+            x.w.schedule(e);
+        }
     c->body.downUntil = 0;
     c->body.health = std::clamp(c->body.health, 0.3, 1.0);
     c->ai.queue.clear();
@@ -1143,7 +1359,7 @@ double realmRaid(World& w, RealmState& s, EntityId byId, EntityId onId) {
         const double coin = std::max(0.0, on->wealth) * share;
         on->food -= food, on->wealth -= coin;
         by->food += food, by->wealth += coin;
-        on->pop = std::max(1.0, on->pop - std::round(rng.range(0, 3)));
+        losePeople(x, *on, static_cast<int>(std::round(rng.range(0, 3))), "raid");
         on->militia = std::max(0.0, on->militia * (1.0 - rng.range(0.03, 0.1)));
         taken = food + coin;
         worth = food * price + coin;
@@ -1200,7 +1416,6 @@ void economyDaily(Ctx& x) {
     }
     const double yieldDays = num(x.r.eco, "year_yield_days", 400);
     const double cap = num(x.r.eco, "food_cap_days", 420);
-    const double growth = num(x.r.eco, "growth_per_year", 0.025) / kDaysPerYear;
     const double keep = std::pow(0.5, 1.0 / num(x.r.cls, "income_halflife_days", 180));
     for (Settlement& p : polities(x)) {
         // what it lives by fades unless renewed; once a season it is read again what it is
@@ -1210,7 +1425,9 @@ void economyDaily(Ctx& x) {
         Rng rng = rngOf(x, p.id, "realm:eco");
         if (harvestDay && x.day > 0) {
             const double local = 1.0 + (rng.uniform() - 0.5) * 2.0 * num(x.r.eco, "harvest_local_sd", 0.12);
-            const double crop = p.pop * yieldDays * p.land * x.s.harvest * local;
+            // the fields feed so many heads at full yield; more hands add little (realm.json people)
+            const double hands = p.fields > 0.0 ? std::min(p.pop, p.fields) + num(x.r.ppl, "extra_hands", 0.2) * std::max(0.0, p.pop - p.fields) : p.pop;
+            const double crop = hands * yieldDays * p.land * x.s.harvest * local;
             p.food += crop;
             p.income["fields"] += crop * num(x.r.eco, "grain_price", 0.05);
         }
@@ -1226,12 +1443,8 @@ void economyDaily(Ctx& x) {
         if (p.food < 0.0) {
             // famine: the weak die, the rest grumble and some leave
             p.food = 0.0;
-            const double lost = std::max(0.0, p.pop * num(x.r.eco, "famine_death_per_day", 0.004));
-            p.pop = std::max(0.0, p.pop - lost);
-            if (p.tagged("raiders")) {
-                p.militia = std::max(0.0, p.militia * (1.0 - num(x.r.ban, "starve_desert", 0.02)));
-                p.pop = std::max(p.militia, p.pop);
-            }
+            // the weak die of it in their own day (figuresDaily); a band deserts
+            if (p.tagged("raiders")) p.militia = std::max(0.0, p.militia * (1.0 - num(x.r.ban, "starve_desert", 0.02)));
             p.unrest = clamp01(p.unrest + num(x.r.eco, "famine_unrest_per_day", 0.012));
             if (firstTime(x, "famine_" + std::to_string(p.id) + "_" + std::to_string(x.day / 60))) log(x, "famine", {{"pol", p.id}});
             // refugees: to the village of the map when it is near
@@ -1241,14 +1454,26 @@ void economyDaily(Ctx& x) {
                 x.day - p.lastRefugees >= inum(x.r.eco, "refugee_gap_days", 18) &&
                 rng.chance(num(x.r.eco, "refugee_chance_per_day", 0.06)) && !p.tagged("raiders")) {
                 p.lastRefugees = x.day;
-                const int before = static_cast<int>(local->pop);
-                if (strangersArrive(x.w, local->id, rng.chance(0.5))) {
-                    p.pop = std::max(0.0, p.pop - 2.0);
-                    log(x, "refugees", {{"pol", p.id}, {"n", std::max(1, static_cast<int>(localPeople(x, *local).size()) - before)}});
+                // they are the settlement's own people: a household, or one alone
+                std::vector<Character*> pool;
+                for (Character* c : residents(x, p.id))
+                    if (c->standing.role.empty() && years(*c) >= 16 && years(*c) < 55) pool.push_back(c);
+                if (!pool.empty()) {
+                    Character* c = pool[static_cast<size_t>(rng.irange(0, static_cast<int>(pool.size()) - 1))];
+                    std::vector<EntityId> who = rng.chance(0.5) ? householdOf(x, *c) : std::vector<EntityId>{c->id};
+                    // a family is headed by its man: him first, his wife next
+                    std::stable_sort(who.begin(), who.end(), [&](EntityId a, EntityId b) {
+                        auto rank = [&](EntityId i) {
+                            const Character* m = fig(x, i);
+                            return !m ? 3 : years(*m) < 16 ? 2 : m->body.sex == 'm' ? 0 : 1;
+                        };
+                        return rank(a) < rank(b);
+                    });
+                    if (who.size() > 1 && fig(x, who[0])->status.spouse != who[1]) who.resize(1);
+                    const int n = static_cast<int>(who.size());
+                    if (refugeesArrive(x.w, local->id, who)) log(x, "refugees", {{"pol", p.id}, {"n", n}});
                 }
             }
-        } else if (p.food > p.pop * 30) {
-            p.pop += p.pop * growth;
         }
         if (p.pop < 1.0 && !p.ruined) {
             p.ruined = true;
@@ -1303,48 +1528,188 @@ void figureDies(Ctx& x, Character& who, const std::string& cause) {
         else if (p.heir == fid) p.heir = kNone;
 }
 
-double ageHazard(const RealmRules& r, int y) {
-    const int from = inum(r.fig, "death_from_years", 45);
-    if (y < from) return num(r.fig, "ill_daily", 0.00003);
-    return num(r.fig, "death_daily_at_from", 0.00006) * std::pow(2.0, (y - from) / num(r.fig, "double_years", 8)) +
-           num(r.fig, "ill_daily", 0.00003);
+// The stat executor of a person's life (AL-92): the rules of village_life.json, as
+// chances for a day instead of acts. Offstage people age and heal; go hungry when
+// their settlement has no bread and may die of it; fall ill (the same kinds, the same
+// course) and die of old age by the village's own curve; the unmarried marry, a wife
+// conceives, carries the child and gives birth. On the map the world's day and
+// village_life do all this themselves; a settlement's numbers are its people's count.
+bool hasMood(const Character& c, const std::string& id, Tick now) {
+    for (const auto& m : c.moodlets)
+        if (m.id == id && m.until > now) return true;
+    return false;
+}
+void setMood(Character& c, const std::string& id, Tick until) {
+    for (auto& m : c.moodlets)
+        if (m.id == id) {
+            m.until = until;
+            return;
+        }
+    c.moodlets.push_back({id, 0.0, until});
+}
+bool illNow(const Character& c, const VillageLifeRules& vl, Tick now) {
+    for (const auto& k : vl.illnesses)
+        if (hasMood(c, k.moodlet, now)) return true;
+    return false;
 }
 
-// The stat executor of a person's life (AL-92): offstage people age, heal, fall ill
-// and die, and bear children here; on the map the world's own day does it.
+void birthOffstage(Ctx& x, Character& mother, const VillageLifeRules& vl) {
+    Rng rng = rngOf(x, mother.id, "realm:birth");
+    const EntityId mid = mother.id;
+    Character* fa = fig(x, mother.status.spouse);
+    const EntityId faId = fa ? fa->id : kNone;
+    const bool ruling = [&] {
+        for (Settlement& p : polities(x))
+            if (p.chief == mid || (faId != kNone && p.chief == faId)) return true;
+        return false;
+    }();
+    if (rng.chance(vl.stillbirth)) {
+        ++x.s.stats["stillbirth"];
+    } else {
+        const int n = rng.chance(vl.twins) ? 2 : 1;
+        for (int i = 0; i < n; ++i) {
+            Character* mo = fig(x, mid);
+            const std::string house = fa && !fa->standing.house.empty() ? fa->standing.house : mo->standing.house;
+            Character& k = newResident(x, rng, mo->status.settlement, rng.chance(0.5) ? 'm' : 'f', 0, house);
+            k.body.ageDays = 0;
+            k.status.mother = mid;
+            k.status.father = faId;
+            const EntityId kid = k.id;
+            fig(x, mid)->status.children.push_back(kid);
+            if (Character* f2 = fig(x, faId)) f2->status.children.push_back(kid);
+            if (ruling) {
+                promote(x, rng, *fig(x, kid), "kin");
+                log(x, "birth", {{"fig", kid}, {"fig2", mid}, {"pol", fig(x, mid)->status.settlement}});
+                for (Settlement& p : polities(x))
+                    if ((p.chief == mid || p.chief == faId) && p.heir == kNone) {
+                        p.heir = kid;
+                        fig(x, kid)->standing.role = "heir";
+                    }
+            }
+            ++x.s.stats["born"];
+        }
+    }
+    if (rng.chance(vl.motherDeath)) personDies(x, *fig(x, mid), "childbirth");
+}
+
 void figuresDaily(Ctx& x) {
+    const VillageLifeRules& vl = villageLifeRules(x.w.content());
+    const Json& d = x.r.ppl;
+    const Tick now = x.w.now();
+    const std::string season = x.w.season();
+    auto mult = [&](const std::string& k) {
+        auto it = vl.illMult.find(k);
+        return it == vl.illMult.end() ? 1.0 : it->second;
+    };
     std::vector<EntityId> ids;
     for (const auto& [id, c] : x.w.offstage())
         if (c.body.alive && !c.isAnimal()) ids.push_back(id);
     for (EntityId id : ids) {
-        Character* f = x.w.offstage().count(id) ? &x.w.offstage().at(id) : nullptr;
-        if (!f || !f->body.alive) continue;
+        Character* f = fig(x, id);
+        if (!f || !f->body.alive || onMap(x, *f)) continue;
         ++f->body.ageDays;
         Rng rng = rngOf(x, id, "realm:life");
-        if (f->body.health < 1.0) f->body.health = std::min(1.0, f->body.health + num(x.r.wan, "heal_per_day", 0.03));
-        if (rng.chance(ageHazard(x.r, years(*f)))) figureDies(x, *f, years(*f) >= 55 ? "old_age" : "illness");
-    }
-    // births (once a year per couple, on its own day)
-    for (EntityId id : ids) {
-        Character* m = x.w.offstage().count(id) ? &x.w.offstage().at(id) : nullptr;
-        if (!m || !m->body.alive || m->body.sex != 'f' || m->status.spouse == kNone) continue;
-        if ((x.day + static_cast<int>(id)) % kDaysPerYear != 0) continue;
-        Character* fa = fig(x, m->status.spouse);
-        if (!fa || !fa->body.alive || onMap(x, *fa)) continue;
-        const auto ff = pair2(x.r.fig, "fertile_f", {17, 42});
-        const int y = years(*m);
-        if (y < ff[0] || y > ff[1]) continue;
-        Rng rng = rngOf(x, id, "realm:birth");
-        if (!rng.chance(num(x.r.fig, "birth_yearly", 0.3))) continue;
-        Character& k = childOf(x, rng, *fa, *m, 0);
-        const EntityId kid = k.id;
-        Character* mo = fig(x, id);
-        log(x, "birth", {{"fig", kid}, {"fig2", mo->id}, {"pol", mo->status.settlement}});
-        for (Settlement& p : polities(x))
-            if ((p.chief == mo->id || p.chief == mo->status.spouse) && p.heir == kNone) {
-                p.heir = kid;
-                fig(x, kid)->standing.role = "heir";
+        const Settlement* home = pol(x, f->status.settlement);
+        const bool resident = home && residentOf(*f, home->id) && !home->full();
+        // hunger by expectation: the household eats while the settlement has bread
+        const bool hungry = resident && home->food <= 0.0;
+        double& h = f->needs["hunger"];
+        h = hungry ? std::max(0.0, h - num(d, "hunger_drop_per_day", 0.12)) : 1.0;
+        const std::string stage = f->body.stage();
+        if (hungry && h < 0.25) {
+            const double frail = stage == "adult" ? num(d, "famine_adult", 0.6) : num(d, "famine_frail", 1.8);
+            if (rng.chance(num(x.r.eco, "famine_death_per_day", 0.004) * frail)) {
+                personDies(x, *f, "hunger");
+                continue;
             }
+        }
+        // illness: the village's kinds and course, resolved at once
+        if (!illNow(*f, vl, now)) {
+            if (f->body.health < 1.0) f->body.health = std::min(1.0, f->body.health + num(x.r.wan, "heal_per_day", 0.03));
+            double p = vl.illDaily * mult(season);
+            if (stage == "child") p *= mult("child");
+            if (stage == "elder") p *= mult("elder");
+            if (h < 0.25) p *= mult("hungry");
+            if (!vl.illnesses.empty() && rng.chance(p)) {
+                double total = 0.0;
+                for (const auto& k : vl.illnesses) total += std::max(0.0, k.weight);
+                double r = rng.uniform() * total;
+                const IllnessKind* kind = &vl.illnesses.back();
+                for (const auto& k : vl.illnesses)
+                    if ((r -= std::max(0.0, k.weight)) <= 0.0) {
+                        kind = &k;
+                        break;
+                    }
+                const int days = rng.irange(kind->days[0], kind->days[1]);
+                setMood(*f, kind->moodlet, now + static_cast<Tick>(days + vl.immuneDays) * kTicksPerDay);
+                f->body.health -= kind->healthPerDay * (stage == "adult" ? 1.0 : 1.3) * days;
+                if (f->body.health <= 0.0) {
+                    personDies(x, *f, "illness");
+                    continue;
+                }
+            }
+        }
+        // old age: the village's curve
+        if (years(*f) >= vl.oldFromYears &&
+            rng.chance(vl.oldDailyAtFrom * std::pow(2.0, (years(*f) - vl.oldFromYears) / vl.oldDoubleYears))) {
+            personDies(x, *f, "old_age");
+            continue;
+        }
+        if (!resident || f->body.sex != 'f') continue;
+        // the child is due
+        if (hasMood(*f, "pregnant", 0)) {
+            if (!hasMood(*f, "pregnant", now + 1)) {
+                for (auto it = f->moodlets.begin(); it != f->moodlets.end(); ++it)
+                    if (it->id == "pregnant") {
+                        f->moodlets.erase(it);
+                        break;
+                    }
+                birthOffstage(x, *f, vl);
+            }
+            continue;
+        }
+        // a wife conceives (the act's daily chance in expectation, realm.json people)
+        Character* hu = fig(x, f->status.spouse);
+        if (!hu || !hu->body.alive || onMap(x, *hu) || hu->status.settlement != f->status.settlement) continue;
+        const int fy = years(*f), my = years(*hu);
+        if (fy < vl.fertileF[0] || fy > vl.fertileF[1] || my < vl.fertileM[0] || my > vl.fertileM[1]) continue;
+        if (institutionOf(x.r, *home).celibate && home->chief == f->id) continue;
+        bool spaced = true;
+        for (EntityId k : f->status.children)
+            if (const Character* ch = fig(x, k); ch && ch->body.alive && ch->body.ageDays < vl.birthSpacingDays) spaced = false;
+        if (!spaced) continue;
+        if (rng.chance(num(d, "intimacy_daily", 0.006) * conceiveChanceOf(*f, vl)))
+            setMood(*f, "pregnant", now + static_cast<Tick>(vl.pregnancyDays) * kTicksPerDay + 1);
+    }
+    // the unmarried marry within their settlement (the courtship's outcome as a daily chance)
+    for (Settlement& p : polities(x)) {
+        if (p.full() || p.ruined || institutionOf(x.r, p).celibate || lawlessHome(x, p.id)) continue;
+        std::vector<Character*> men, women;
+        for (Character* c : residents(x, p.id))
+            if (c->standing.role.empty() && c->status.spouse == kNone && years(*c) >= vl.minAgeYears && years(*c) < 60)
+                (c->body.sex == 'm' ? men : women).push_back(c);
+        if (men.empty() || women.empty()) continue;
+        Rng rng = rngOf(x, p.id, "realm:marry");
+        for (Character* m : men) {
+            if (!rng.chance(num(d, "marry_daily", 0.004))) continue;
+            Character* best = nullptr;
+            double bestU = -1e9;
+            for (Character* w : women) {
+                if (w->status.spouse != kNone || std::abs(years(*w) - years(*m)) > vl.maxAgeGapYears) continue;
+                if ((w->status.father != kNone && w->status.father == m->status.father) ||
+                    (w->status.mother != kNone && w->status.mother == m->status.mother))
+                    continue; // kin
+                const double u = -std::abs(years(*w) - years(*m) + 3) + rng.range(0.0, 6.0);
+                if (u > bestU) bestU = u, best = w;
+            }
+            if (!best) continue;
+            marry(*m, *best);
+            if (vl.takeFamilyName && !m->standing.house.empty()) {
+                best->standing.house = m->standing.house;
+                best->name = best->name.substr(0, best->name.rfind(' ')) + " " + m->standing.house;
+            }
+            ++x.s.stats["wedding"];
+        }
     }
 }
 
@@ -1370,8 +1735,9 @@ void notables(Ctx& x) {
     size_t k = 0;
     for (; k + 1 < homes.size() && pick > wts[k]; ++k) pick -= wts[k];
     std::set<std::string> used;
-    Character& f = newFigure(x, rng, homes[k], "commoner", rng.chance(0.75) ? 'm' : 'f', rng.irange(17, 30),
-                               pickHouse(x, rng, used));
+    const char sex = rng.chance(0.75) ? 'm' : 'f';
+    Character* one = fromCrowd(x, rng, homes[k], 17, 30, sex);
+    Character& f = one ? promote(x, rng, *one, "commoner") : newFigure(x, rng, homes[k], "commoner", sex, rng.irange(17, 30), pickHouse(x, rng, used));
     const Settlement* p = pol(x, homes[k]);
     if (p && (p->unrest > 0.5 || p->food <= 0)) f.standing.greed = clamp01(f.standing.greed + 0.2), f.standing.honor = clamp01(f.standing.honor - 0.15);
     f.standing.wanderlust = clamp01(f.standing.wanderlust + 0.15);
@@ -1415,7 +1781,7 @@ void lifestyle(Ctx& x) {
                 f.status.settlement = camp->id;
                 f.standing.travelTo = camp->id;
                 f.standing.arrive = x.day + 2;
-                camp->pop += 1, camp->militia += 1;
+                camp->militia += 1;
             }
             log(x, "went_outlaw", {{"fig", f.id}, {"pol", camp ? camp->id : f.status.settlement}});
             deed(f, x.day, "went_outlaw");
@@ -1459,14 +1825,23 @@ void banditsFound(Ctx& x) {
     const double ang = rng.range(0, 6.283185307179586), d = rng.range(x.r.regionKm[0], x.r.regionKm[1]);
     Settlement& c = newSettlement(x, rng, tpl, name, {std::cos(ang) * d, std::sin(ang) * d});
     c.tags.insert("outlaw");
-    c.pop = 6, c.militia = 5, c.food = 80, c.wealth = wealthOf(x, *chief);
+    c.pop = 0, c.militia = 5, c.food = 80, c.wealth = wealthOf(x, *chief);
     setWealth(x, *chief, 0.0);
     c.chief = chief->id;
     classify(x.r, c, x.day);
     chief->status.settlement = chief->standing.at = c.id;
     chief->standing.role = "ruler";
     for (Character& f : people(x))
-        if (f.body.alive && f.standing.life == "outlaw" && f.id != chief->id && !onMap(x, f)) f.status.settlement = c.id, c.pop += 1, c.militia += 1;
+        if (f.body.alive && f.standing.life == "outlaw" && f.id != chief->id && !onMap(x, f)) f.status.settlement = c.id, c.militia += 1;
+    // the band: young men of the most restless place run off with him
+    {
+        Settlement* restless = nullptr;
+        for (Settlement& p : polities(x))
+            if (p.id != c.id && !p.ruined && !p.full() && !lawlessHome(x, p.id) && (!restless || p.unrest > restless->unrest)) restless = &p;
+        const int have = static_cast<int>(residents(x, c.id).size());
+        if (restless) movePeople(x, *restless, c, std::max(0, inum(x.r.ban, "band_start", 6) - have), true, "band");
+        c.pop = static_cast<double>(residents(x, c.id).size());
+    }
     for (Settlement& p : polities(x)) {
         if (p.id == c.id) continue;
         x.s.view(c.id, p.id).opinion = -0.5;
@@ -1488,9 +1863,8 @@ void resettle(Ctx& x) {
                 from = &q;
         if (!from) continue;
         Rng rng = rngOf(x, p.id, "realm:resettle");
-        const double n = std::round(std::min(from->pop * 0.15, 30.0));
-        from->pop -= n;
         p.ruined = false;
+        const double n = movePeople(x, *from, p, static_cast<int>(std::round(std::min(from->pop * 0.15, 30.0))), false, "resettle");
         p.pop = n;
         p.food = n * 120;
         p.wealth = n;
@@ -1520,8 +1894,7 @@ void banditsDaily(Ctx& x) {
         for (Settlement& p : polities(x))
             if (outlaw(camp) && !p.ruined && !p.full() && !p.tagged("raiders") && p.unrest > 0.4 &&
                 rng.chance(num(x.r.ban, "outlaws_from_unrest", 0.02) * p.unrest)) {
-                p.pop = std::max(1.0, p.pop - 1);
-                camp.pop += 1, camp.militia += 1;
+                if (movePeople(x, p, camp, 1, true, "outlaws")) camp.militia += 1;
             }
         const Character* at = fig(x, camp.chief);
         if (!at || !at->body.alive) continue;
@@ -1616,8 +1989,10 @@ void succession(Ctx& x, Settlement& p, const std::string& why) {
     if (heir == kNone) {
         // a new head from among the people: an elder monk, the strongest of the band, a reeve
         std::set<std::string> used;
-        Character& n = newFigure(x, rng, p.id, "ruler", monastery && rng.chance(0.3) ? 'f' : 'm', rng.irange(30, 55),
-                                   p.house.empty() ? pickHouse(x, rng, used) : p.house);
+        const char sex = monastery && rng.chance(0.3) ? 'f' : 'm';
+        Character* one = fromCrowd(x, rng, p.id, 30, 55, sex);
+        Character& n = one ? promote(x, rng, *one, "ruler")
+                           : newFigure(x, rng, p.id, "ruler", sex, rng.irange(30, 55), p.house.empty() ? pickHouse(x, rng, used) : p.house);
         if (outlaw(p)) n.standing.life = "outlaw", n.standing.honor = clamp01(n.standing.honor - 0.3);
         heir = n.id;
     }
@@ -1719,7 +2094,8 @@ void revolts(Ctx& x) {
                 leader = &f;
         if (!leader || leader->standing.ambition < 0.4) {
             std::set<std::string> used;
-            leader = &newFigure(x, rng, p.id, "commoner", 'm', rng.irange(22, 45), pickHouse(x, rng, used));
+            Character* one = fromCrowd(x, rng, p.id, 22, 45, 'm');
+            leader = one ? &promote(x, rng, *one, "commoner") : &newFigure(x, rng, p.id, "commoner", 'm', rng.irange(22, 45), pickHouse(x, rng, used));
             leader->standing.ambition = clamp01(leader->standing.ambition + 0.3);
         }
         const EntityId lid = leader->id;
@@ -1739,7 +2115,7 @@ void revolts(Ctx& x) {
         } else {
             p.unrest = clamp01(p.unrest - 0.3);
             p.morale = clamp01(p.morale - 0.1);
-            p.pop = std::max(1.0, p.pop - std::round(rebels * 0.3));
+            losePeople(x, p, static_cast<int>(std::round(rebels * 0.3)), "revolt");
             log(x, "revolt_crushed", {{"fig", lid}, {"pol", p.id}});
             figureDies(x, *fig(x, lid), "executed");
         }
@@ -2032,7 +2408,7 @@ void warStep(Ctx& x, RealmWar& wr) {
     if (wr.siege) {
         if (D->food <= 0.0 || D->morale < 0.2) {
             log(x, "siege_falls", {{"pol", A->id}, {"pol2", D->id}});
-            D->pop *= 0.9;
+            losePeople(x, *D, static_cast<int>(std::round(D->pop * 0.1)), "war");
             D->wealth *= 0.6;
             A->wealth += D->wealth * 0.3;
             endWar(x, wr, "dictated", A->id, D->id);
@@ -2061,7 +2437,7 @@ void warStep(Ctx& x, RealmWar& wr) {
         const auto ll = pair2(x.r.war, "loser_losses", {0.15, 0.3}), wl = pair2(x.r.war, "winner_losses", {0.04, 0.12});
         if (!L.full()) L.militia *= 1.0 - rng.range(ll[0], ll[1]);
         if (!W.full()) W.militia *= 1.0 - rng.range(wl[0], wl[1]);
-        if (!L.full()) L.pop = std::max(1.0, L.pop - std::round(rng.range(1, 4)));
+        if (!L.full()) losePeople(x, L, static_cast<int>(std::round(rng.range(1, 4))), "battle");
         W.morale = clamp01(W.morale + 0.08);
         L.morale = clamp01(L.morale - 0.12);
         const double margin = std::abs(pa - 0.5) * 2.0;
@@ -2349,6 +2725,7 @@ void councils(Ctx& x) {
                         log(x, "camp_destroyed", {{"pol", Q.id}, {"fig", P.chief}});
                         for (Character& f : people(x))
                             if (f.body.alive && f.status.settlement == Q.id) f.status.settlement = kNone, f.standing.role = "outlaw";
+                        scatterBand(x, Q);
                     }
                 }
                 rode = true;
@@ -2564,7 +2941,7 @@ void resolveAway(Ctx& x, RealmQuest& q) {
         ok = rng.uniform() * (sp + sc) < sp;
         if (ok) {
             camp->militia *= 0.3;
-            camp->pop *= 0.4;
+            losePeople(x, *camp, static_cast<int>(std::round(camp->pop * 0.6)), "battle");
             camp->wealth *= 0.3;
             log(x, "camp_broken", {{"pol", camp->id}, {"fig", men[0]->id}});
             if (Character* at = fig(x, camp->chief); at && at->body.alive) {
@@ -2583,6 +2960,7 @@ void resolveAway(Ctx& x, RealmQuest& q) {
                 log(x, "camp_destroyed", {{"pol", camp->id}, {"fig", men[0]->id}});
                 for (Character& f : people(x))
                     if (f.body.alive && f.status.settlement == camp->id) f.status.settlement = kNone, f.standing.role = "outlaw";
+                scatterBand(x, *camp);
             }
         }
     } else {
@@ -2827,6 +3205,23 @@ void wanderersDaily(Ctx& x) {
     }
 }
 
+// A settlement's numbers are its people: counted at the end of the day. The common
+// dead leave the world (people of Standing stay, the chronicle names them).
+void countPeople(Ctx& x) {
+    std::vector<EntityId> gone;
+    for (const auto& [id, c] : x.w.offstage())
+        if (!c.body.alive && c.standing.role.empty() && !c.isAnimal()) gone.push_back(id);
+    for (EntityId id : gone) x.w.offstage().erase(id);
+    std::map<EntityId, int> n;
+    for (const auto& [id, c] : x.w.offstage())
+        if (c.body.alive && !c.isAnimal() && c.standing.life != "road" && c.standing.captor == kNone) ++n[c.status.settlement];
+    for (Settlement& p : polities(x)) {
+        if (p.full()) continue;
+        p.pop = n.count(p.id) ? n[p.id] : 0;
+        p.militia = std::min(p.militia, p.pop);
+    }
+}
+
 } // namespace
 
 // --- the daily pass -------------------------------------------------------------------
@@ -2840,6 +3235,10 @@ void realmDaily(World& w) {
     if (!s.inited) {
         if (w.settlements().empty()) return;
         genesis(x);
+    }
+    if (!s.once.count("peopled")) { // a region laid out before its people were (AL-92 stage 1 saves)
+        for (Settlement& p : polities(x)) populate(x, p);
+        s.once["peopled"] = 1;
     }
     for (Settlement& p : polities(x))
         if (p.full() && !p.ruined) {
@@ -2865,6 +3264,7 @@ void realmDaily(World& w) {
     questsDaily(x);
     wanderersDaily(x);
     for (auto& h : hooks()) h(w, s);
+    countPeople(x);
     saveRealm(w, s);
 }
 

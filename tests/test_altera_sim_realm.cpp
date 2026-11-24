@@ -298,18 +298,74 @@ TEST(altera_sim_realm_commands) {
     CHECK(war);
 }
 
+// The people of a settlement off the map are people (AL-92 stage 2): its numbers are
+// their count, they live by the village's rules (wed, bear, fall ill, die), and when
+// hunger drives them out they reach the map as themselves.
+TEST(altera_sim_realm_people_offstage) {
+    World w = quietWorld(7);
+    days(w, 1);
+    Settlement* v = nullptr;
+    for (auto& [id, p] : w.settlements())
+        if (!p.full() && p.tagged("farming") && !p.tagged("cult") && (!v || p.pop > v->pop)) v = &p;
+    CHECK(v != nullptr);
+    if (!v) return;
+    const EntityId vid = v->id;
+    int n = 0, couples = 0, kids = 0;
+    for (const auto& [id, c] : w.offstage())
+        if (c.body.alive && c.status.settlement == vid && c.standing.life != "road") {
+            ++n;
+            couples += c.status.spouse != kNone && c.body.sex == 'f';
+            kids += c.body.ageDays < 16 * kDaysPerYear;
+        }
+    CHECK_EQ(static_cast<int>(v->pop), n);
+    CHECK(n >= 20);
+    CHECK(couples > 0 && kids > 0);
+    // a famine there: hunger kills the weak, and the hungry flee to the map as themselves
+    for (int i = 0; i < 120; ++i) {
+        Settlement& p = w.settlements().at(vid);
+        p.food = 0.0, p.unrest = 0.0;
+        days(w, 1);
+    }
+    const RealmState s = loadRealm(w);
+    const int left = static_cast<int>(w.settlements().at(vid).pop);
+    bool fled = false;
+    for (const auto& [id, c] : w.characters())
+        fled |= c.standing.at == vid && c.status.settlement == realmLocal(w)->id; // came from there, the same person
+    std::printf("  famine 120d: %d -> %d people, hunger deaths %d, refugees %d, fled %d\n", n, left, stat(s, "died_hunger"),
+                stat(s, "refugees"), fled ? 1 : 0);
+    CHECK(stat(s, "died_hunger") > 0);
+    CHECK(left < n);
+    if (stat(s, "refugees") > 0) CHECK(fled);
+}
+
 TEST(altera_sim_realm_lives_three_years) {
     World w = quietWorld(11);
     days(w, 3 * kDaysPerYear);
     const RealmState s = loadRealm(w);
-    int alive = 0;
-    for (const auto& [id, f] : w.offstage()) alive += f.body.alive && !f.isAnimal();
-    std::printf("  realm 3y: %d offstage people alive of %zu, wars %d, peace %d, quests taken %d done %d, successions %d, raids %d\n",
-                alive, w.offstage().size(), stat(s, "war_declared"),
+    int alive = 0, people = 0;
+    for (const auto& [id, f] : w.offstage()) {
+        alive += f.body.alive && !f.isAnimal() && !f.standing.role.empty();
+        people += f.body.alive && !f.isAnimal();
+    }
+    // a settlement's numbers are its people
+    for (const auto& [id, p] : w.settlements()) {
+        if (p.full()) continue;
+        int n = 0;
+        for (const auto& [cid, c] : w.offstage())
+            n += c.body.alive && c.status.settlement == id && c.standing.life != "road" && c.standing.captor == kNone;
+        CHECK_EQ(static_cast<int>(p.pop), n);
+    }
+    std::printf("  realm 3y: %d people offstage (born %d, weddings %d, died ill %d old %d hunger %d raid/war %d), %d of Standing, "
+                "wars %d, peace %d, quests taken %d done %d, successions %d, raids %d\n",
+                people, stat(s, "born"), stat(s, "wedding"), stat(s, "died_illness"), stat(s, "died_old_age"), stat(s, "died_hunger"),
+                stat(s, "died_raid") + stat(s, "died_battle") + stat(s, "died_war") + stat(s, "died_revolt"), alive,
+                stat(s, "war_declared"),
                 stat(s, "peace_white") + stat(s, "peace_tribute") + stat(s, "peace_vassal") + stat(s, "peace_reparation"),
                 stat(s, "quest_taken"), stat(s, "quest_done"), stat(s, "succession") + stat(s, "succession_crisis"),
                 stat(s, "raid") + stat(s, "raid_village"));
     CHECK(alive > 10 && alive <= 140);
+    CHECK(people > 150);
+    CHECK(stat(s, "born") > 0 && stat(s, "wedding") > 0);
     CHECK(stat(s, "quest_taken") > 0);
     CHECK(stat(s, "war_declared") + stat(s, "offer") > 0);
 }
