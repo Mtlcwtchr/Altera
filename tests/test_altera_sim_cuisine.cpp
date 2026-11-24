@@ -165,8 +165,12 @@ TEST(altera_cuisine_dishes_are_hearth_acts) {
         CHECK(it != ct.interactions.end());
         if (it == ct.interactions.end()) std::cerr << "    no act craft:" << design << "\n";
     }
-    // the metal ones and the doll need a forge or a loom: workshop only
-    for (const char* id : {"cauldron", "sickle", "hoe"}) CHECK(!ct.interactions.count(std::string("craft:") + id));
+    // the metal ones need a forge: made in the smithy (AL-88), never at the homestead
+    for (const char* id : {"cauldron", "sickle", "hoe"}) {
+        auto it = ct.interactions.find(std::string("craft:") + id);
+        CHECK(it != ct.interactions.end());
+        if (it != ct.interactions.end()) CHECK(it->second.targetType != "homestead");
+    }
 }
 
 TEST(altera_cuisine_cook_and_eat_every_dish) {

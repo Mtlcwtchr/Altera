@@ -102,7 +102,6 @@ TEST(altera_rumor_spread_noise_in_retelling) {
     }
     (void)from;
     CHECK(heard >= 5);
-    CHECK(distorted >= 1); // drop_detail alone fires about one time in four
 
     // the second hop: further decayed, chain of two, still the same fact
     Character* first = nullptr;
@@ -132,6 +131,28 @@ TEST(altera_rumor_spread_noise_in_retelling) {
     CHECK(rep["distorted"].get<int>() >= distorted);
     CHECK(rep["mean_drift"].get<double>() > 0.0);
     CHECK(rep["max_hops"].get<int>() >= 1);
+
+    // drop_detail alone fires about one time in four: eight listeners may all be lucky, so a few
+    // more villages (the same one, a tick or two on) tell it too, until some retelling is distorted
+    for (int k = 1; k <= 4 && distorted == 0; ++k) {
+        World v = realWorld();
+        for (int i = 0; i < k; ++i) v.step();
+        auto vp = adults(v);
+        if (vp.size() < 3) break;
+        WorldObject* vs = storeOf(v, vp[0]->status.family);
+        if (!vs) break;
+        Fact g;
+        g.pred = "theft";
+        g.roles = {{"doer", vp[0]->id}, {"object", vs->id}, {"victim_family", vs->ownerFamily}};
+        g.witnesses = {vp[1]->id};
+        const EntityId gf = v.addFact(g).id;
+        v.remember(*vp[1], deedMemory("saw_crime", vp[0]->id, vs->id, gf, "seen", 1.0));
+        for (size_t i = 2; i < vp.size(); ++i) {
+            passRumor(v, *vp[1], *vp[i], consequenceRules(v.content()));
+            if (const MemoryEntry* m = rumorOf(*vp[i], gf); m && !m->prop.is_null()) ++distorted;
+        }
+    }
+    CHECK(distorted >= 1);
 }
 
 TEST(altera_rumor_spread_eyewitness_rejects_lie) {

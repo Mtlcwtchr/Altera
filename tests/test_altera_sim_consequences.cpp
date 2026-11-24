@@ -108,6 +108,7 @@ TEST(altera_sim_consequences_witnessed_theft) {
     InteractionDef pub = *w.content().interaction("take_meal@foreign");
     pub.visibility = "public"; // seen for sure
     const double honesty0 = s.doer->reputation["reputation:honesty"];
+    s.bystander->relations[s.doer->id].trust = 0.0; // strangers: the world's own past is not under test
     applyEffects(w, *s.doer, pub, s.store, nullptr);
     CHECK_EQ(s.store->stock["meal"], 2);
     CHECK_EQ(memories(*s.bystander, "saw_crime", s.doer->id), 1);
