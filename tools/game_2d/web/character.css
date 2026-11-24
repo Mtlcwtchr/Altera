@@ -1,0 +1,83 @@
+/* AL-100: the character sheet (character.js) in the "Резной рубеж" frame:
+   walnut window, leather insets, parchment text, bronze bars. */
+.cs { display: flex; flex-direction: column; height: 100%; gap: 10px; }
+.inset { background: var(--leather); border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--leather-d), inset -2px -2px 0 var(--bronze-d); padding: 8px 10px; }
+.cs-head { display: flex; align-items: center; gap: 12px; }
+.cs-head .btn.sq { width: 40px; height: 40px; font-size: 18px; }
+.cs-pic canvas, .cs-ohead canvas, .cs-dollpic canvas { image-rendering: pixelated; background: #2a1a0e; border: 2px solid #000; box-shadow: inset 0 0 0 2px var(--bronze-d); display: block; }
+.cs-name { min-width: 0; }
+.cs-name .n { font: 700 26px "Alegreya SC", serif; color: var(--gold); text-shadow: 2px 2px 0 #000; }
+.cs .sub { color: var(--dim); font-size: 14px; }
+.cs .bad, .cs td.bad { color: var(--bad); }
+.cs td.good { color: #7fc46a; }
+.cs-btns { margin-left: auto; display: flex; gap: 6px; }
+.cs-page { flex: 1; min-height: 0; }
+.cs .parch { font-size: 14px; margin-bottom: 4px; }
+.cs .parch.dim, .cs .dim { color: #7a6a58; font-style: italic; }
+.cs h3 { margin: 8px 0 4px; }
+.cs h3:first-child { margin-top: 0; }
+.cs .row { grid-template-columns: 130px 1fr 44px; }
+.cs .row > span:last-child { text-align: right; white-space: nowrap; }
+.cs .bar.mid::before { content: ""; position: absolute; left: 50%; top: -2px; bottom: -2px; width: 1px; background: var(--bronze-d); }
+
+/* overview */
+.cs-meters { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 8px; }
+.cs-meter { text-align: center; }
+.cs-meter .h { font: 700 16px "Alegreya SC", serif; color: var(--gold); text-shadow: 1px 1px 0 #000; }
+.cs-meter .v { font: 600 20px "Alegreya SC", serif; margin: 2px 0 4px; }
+.cs-meter .sub { margin-top: 4px; min-height: 18px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; height: calc(100% - 4px); min-height: 0; }
+.cs-page > .cs-cols { height: 100%; }
+.cs-meters + .cs-cols { height: calc(100% - 118px); }
+.cs-cols.two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.cs-box { overflow: auto; min-height: 0; }
+.cs-plan { margin: 0; padding-left: 22px; font-size: 14px; }
+.cs-plan li.now { color: var(--gold); font-weight: 600; }
+.cs-thought { margin: 2px 0; }
+.cs i.plus, .cs i.minus, .cs i.dot { font-style: normal; font-weight: 700; display: inline-block; min-width: 30px; }
+.cs i.plus { color: #3a7a2a; } .cs i.minus { color: var(--bad); } .cs i.dot { color: #8a7a60; min-width: 12px; }
+.cs small { color: #7a6a50; }
+.cs .need i { font-style: normal; font-size: 10px; margin-left: 3px; display: inline-block; width: 9px; }
+.cs .need i.up { color: #7fc46a; } .cs .need i.down { color: var(--bad); }
+.cs .need.crit > span:first-child { color: #ff8a70; }
+
+/* relations */
+.cs-filters { display: flex; gap: 4px; margin-bottom: 8px; }
+.cs-filters small { color: var(--dim); font-size: 11px; }
+.cs-rel { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 8px; height: calc(100% - 40px); min-height: 0; }
+.cs-table { overflow: auto; min-height: 0; padding: 0; }
+.cs-table table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.cs-table th { position: sticky; top: 0; background: var(--leather-d); color: var(--gold); font: 600 13px "Alegreya SC", serif; text-align: left; padding: 4px 8px; border-bottom: 2px solid var(--bronze-d); }
+.cs-table td { padding: 3px 8px; border-bottom: 1px solid rgba(0,0,0,.35); cursor: pointer; }
+.cs-table td.num { text-align: right; width: 70px; font-variant-numeric: tabular-nums; }
+.cs-table tr:hover td { background: rgba(232,192,96,.08); }
+.cs-table tr.sel td { background: rgba(232,192,96,.18); color: #fff2c0; }
+.cs-table tr.dead td { color: #7a6a58; text-decoration: line-through; }
+.cs-ohead { display: flex; gap: 10px; align-items: center; margin-bottom: 6px; }
+.cs-ohead .n { font: 700 20px "Alegreya SC", serif; color: var(--gold); text-shadow: 2px 2px 0 #000; }
+.cs-mem { margin: 2px 0; font-size: 13.5px; }
+.cs-mem b { color: #7a4a20; font-weight: 600; margin-right: 3px; }
+.cs-mem.rumor { color: #5a4a38; font-style: italic; }
+.cs-day { font: 700 13px "Alegreya SC", serif; color: #7a4a20; border-bottom: 1px solid var(--parch-d); margin-top: 6px; }
+
+/* things */
+.cs-things { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 8px; height: 100%; min-height: 0; }
+.cs-doll { display: grid; grid-template-columns: 1fr auto 1fr; grid-auto-rows: minmax(72px, auto); gap: 6px; position: relative; }
+.cs-dollpic { grid-column: 2; grid-row: 1 / 5; align-self: center; justify-self: center; }
+.cs-place { background: #1a0e06; border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--bronze-d), inset -2px -2px 0 var(--bronze-l); padding: 3px 6px; }
+.cs-place.full { background: #2a1a0e; }
+.cs-place .pn { font: 600 12px "Alegreya SC", serif; color: var(--gold); }
+.cs-place .pi { font-size: 13.5px; cursor: pointer; }
+.cs-place .pi small { color: var(--dim); margin-left: 4px; font-size: 11px; }
+.cs-place .pi.empty { color: #6a5a48; font-style: italic; cursor: default; }
+.cs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 4px; margin-top: 6px; }
+.cs-cell { position: relative; min-height: 54px; background: #1a0e06; border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--bronze-d), inset -2px -2px 0 var(--bronze-l); display: flex; align-items: center; justify-content: center; text-align: center; font-size: 12.5px; padding: 4px; cursor: pointer; }
+.cs-cell b { position: absolute; right: 3px; bottom: 1px; font: 700 11px "Alegreya SC", serif; color: var(--gold); text-shadow: 1px 1px 0 #000; }
+.cs-cell.sel, .cs-cell:hover { box-shadow: inset 0 0 0 2px var(--gold); }
+.cs-thing { margin-top: 8px; }
+
+/* skills */
+.cs-cat { font: 600 13px "Alegreya SC", serif; color: var(--dim); margin: 8px 0 2px; border-bottom: 1px solid var(--bronze-d); }
+.cs-cat:first-of-type { margin-top: 0; }
+.cs-trait { margin: 3px 0; }
+.cs-who div { margin: 2px 0; }

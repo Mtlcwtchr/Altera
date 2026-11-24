@@ -43,6 +43,7 @@ using socket_t = int;
 
 #include "client2d/acts2d.hpp"
 #include "client2d/grid2d.hpp"
+#include "client2d/sheet2d.hpp"
 #include "client2d/view2d.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
@@ -260,6 +261,9 @@ void serveClient(App& a, socket_t s) {
         } else if (path.rfind("/api/chronicle", 0) == 0) {
             respond(s, 200, "application/json",
                     c2::chronicleJson(*a.world, a.text, std::size_t(std::max(0, intParam(path, "since", 0)))).dump());
+        } else if (path.rfind("/api/sheet", 0) == 0) {
+            // AL-100: the character sheet (src/client2d/sheet2d)
+            respond(s, 200, "application/json", c2::sheetJson(*a.world, a.text, EntityId(std::max(0, intParam(path, "id", 0)))).dump());
         } else if (path.rfind("/api/acts", 0) == 0) {
             // AL-96: the act menu of the player's person on a thing / person / beast (none: on oneself)
             const std::string tq = queryParam(path, "target");
