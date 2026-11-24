@@ -199,6 +199,15 @@ TEST(altera_sim_village_worldgen_layout_saved) {
     for (const auto& [id, o] : w.objects())
         if (o.type == "well" && dist(o.pos, st.square) < 0.5) well = true;
     CHECK(well);   // the well in the middle of the square
+    // the hives in the yards: close behind a home, not on the square
+    for (const auto& [id, o] : w.objects())
+        if (o.type == "beehive") {
+            CHECK(dist(o.pos, st.square) > st.squareR);
+            double nearest = 1e9;
+            for (const auto& s : st.structures)
+                if (s.family != kNone) nearest = std::min(nearest, dist(o.pos, s.door));
+            CHECK(nearest < 30.0);
+        }
     // the smoky works stand out of the village, off every house
     for (const auto& [id, o] : w.objects())
         if (o.type == "charcoal_clamp" || o.type == "lime_kiln") {
