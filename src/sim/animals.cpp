@@ -138,7 +138,7 @@ Character* nearestPrey(World& w, const Character& a, const SpeciesDef& s, double
             // A fed pack keeps away from the houses: livestock in the village is safe from it.
             bool village = false;
             for (const auto& [sid, st] : w.settlements())
-                if (dist(o.pos, st.center) < 300.0) village = true;
+                if (st.full() && dist(o.pos, st.center) < 300.0) village = true;
             if (village) continue;
         }
         const double d = dist(o.pos, a.pos);
@@ -606,7 +606,7 @@ void animalsDaily(World& w) {
         // Being hunted near the village pushes the den away (the herd learns).
         if (a.hasMoodlet("alarmed", w.now()) && r.uniform() < 0.2) {
             for (const auto& [sid, st] : w.settlements())
-                if (dist(a.den, st.center) < 2500.0) {
+                if (st.full() && dist(a.den, st.center) < 2500.0) {
                     Vec2 away{a.den.x + (a.den.x - st.center.x) * 0.3, a.den.y + (a.den.y - st.center.y) * 0.3};
                     away = clampToMap(w, away);
                     if (inBiome(w, s, away)) a.den = away;
@@ -639,7 +639,7 @@ void spawnAnimals(World& w, std::uint64_t seed) {
                     a.pos = {(x + cr.uniform()) * m.cellM, (y + cr.uniform()) * m.cellM};
                     bool nearVillage = false;
                     for (const auto& [sid, st] : w.settlements())
-                        if (dist(a.pos, st.center) < 400.0 && s.habitat != "water") nearVillage = true;
+                        if (st.full() && dist(a.pos, st.center) < 400.0 && s.habitat != "water") nearVillage = true;
                     if (nearVillage) continue;
                     a.den = a.pos;
                     a.needs["hunger"] = cr.range(0.5, 0.9);

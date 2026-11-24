@@ -1,33 +1,30 @@
 #pragma once
-// The realm (AL-85, gdd/realm/REALM_v0.1.md, content/ai/realm.json): the
-// world beyond the village map. A handful of settlements around it - other
-// villages, a town, a keep, a monastery, a bandit camp - each with its people,
-// stores, wealth, levy, morale and unrest, a ruler and an heir; and the people
-// who matter in them (rulers, heirs, knights, wanderers, outlaws) as permanent
-// figures with traits, axes, renown, wealth, kin and grudges.
+// The realm (AL-85, AL-92; gdd/realm/REALM_v0.2_unified.md, content/ai/realm.json):
+// the world beyond the village map and the village in it, by one set of rules.
+//
+// One kind of settlement, one kind of person. Every settlement - the map's
+// village, the next village, a town, a keep, a monastery, a robbers' nest - is a
+// World Settlement; what it is (its size, its tags: raiders, outlaw, cult,
+// fortified, farming, trade, vassal...) is classified each season from its
+// numbers and its history, never set. Every person is a Character with a
+// Standing (role, life, axes, renown, claim...). The only difference is how a
+// thing is computed: a settlement in "full" mode is on the map, its people act
+// and its stores are real; one in "stat" mode is counted by the same rules
+// (people offstage in World::offstage()). A person who walks onto the map is
+// moved, not copied: the same object, the same id, every time.
 //
 // Nothing is scripted. Every story is the state moving on: a bad harvest
-// across the region starves the weak, the starving riot or flee (refugees
-// reach the village as strangers), bandits grow from the outcast, rulers who
-// have grudges, greed or ambition and the strength for it demand tribute or go
-// to war, battles kill and take knights and lords, a dead lord's child heir
-// draws an ambitious kinsman's claim, the exile comes back with hired swords.
-// Wanderers take the bounties that real needs post (beasts that mauled
-// villagers, a camp that raids, a lord who needs swords) and earn renown or
-// die.
+// starves the weak, the starving riot or flee (refugees reach the village as
+// strangers), outlaws gather where the land is restless and live by raids,
+// rulers with grudges, greed or ambition and the strength for it demand tribute
+// or go to war, battles kill and take knights and lords, a child heir draws an
+// ambitious kinsman's claim, the exile comes back with hired swords. Wanderers
+// take the bounties real needs post and earn renown or die.
 //
-// The village is a settlement of the realm too: its numbers come from the
-// real sim, and what happens to it is real - a raid takes grain from the real
-// storages and hurts real people, envoys talk to the real chief, a wanderer
-// comes in as an ordinary Character with the figure's own id (the same person
-// every time: leaving, the Character is parked whole in the figure and comes
-// back as it was) and fights the real pack.
-//
-// Far away the step is daily and aggregate; deterministic (agentRng from the
-// seed). Text only through loc keys chronicle.realm.* / realm.* (content/loc).
-// Extension point for magic: quest and arc kinds carry tags, realm.json
-// disabled_tags switches them off (magic is off), figures carry aptitudes,
-// addRealmHook() lets later modules join the daily pass.
+// Deterministic (World::rng by id and salt). Text only through loc keys
+// chronicle.realm.* / realm.* (content/loc). Extension point for magic: quest
+// and arc kinds carry tags, realm.json disabled_tags switches them off (magic
+// is off), Standing::aptitudes, addRealmHook() joins the daily pass.
 
 #include <functional>
 #include <map>
@@ -41,6 +38,8 @@ namespace altera::sim {
 
 class World;
 struct Content;
+struct Settlement;
+struct Character;
 class Loc;
 
 struct RealmGrievance {
@@ -49,62 +48,11 @@ struct RealmGrievance {
     int day = 0;
 };
 
-// How one polity sees another (directional).
+// How one settlement sees another (directional).
 struct RealmView {
     double opinion = 0.0;
     std::vector<RealmGrievance> grievances;
     double grudge() const;
-};
-
-struct RealmPolity {
-    EntityId id = kNone;
-    std::string kind;  // village | town | keep | monastery | bandit_camp (realm.json kinds)
-    std::string name;  // realm.place.<name>
-    Vec2 pos;          // km; the village map is at (0, 0)
-    EntityId settlement = kNone; // the real Settlement (the village of the map)
-    double pop = 0.0, food = 0.0, wealth = 0.0, militia = 0.0;
-    double morale = 0.6, unrest = 0.1;
-    EntityId ruler = kNone, heir = kNone; // figures, or Characters for the village
-    std::string house;                    // the ruling family name
-    std::string institution;              // chief | lord | abbot | ataman | council
-    EntityId liege = kNone;               // whose vassal it is
-    EntityId tributeTo = kNone;
-    double tribute = 0.0;                 // paid each month
-    bool ruined = false;
-    int lastRaid = -9999, lastRaided = -9999, lastRevolt = -9999, lastRefugees = -9999;
-    int unrestDays = 0;                   // days unrest stayed over the revolt line
-    int founded = 0;
-};
-
-struct RealmFigure {
-    EntityId id = kNone;   // the same id as its Character when it comes to the village
-    std::string name;      // "Given House" (name.<word> keys)
-    std::string house;
-    char sex = 'm';
-    int born = 0;          // world day of birth (may be negative)
-    EntityId home = kNone, at = kNone; // polities
-    std::string role;      // ruler | consort | heir | kin | knight | elder | abbot | ataman | outlaw | wanderer | commoner
-    std::string life = "settled"; // settled | road | outlaw (reconsidered each season)
-    std::vector<std::string> traits;
-    double martial = 0.3, ambition = 0.3, greed = 0.3, honor = 0.5, wanderlust = 0.2;
-    double renown = 0.0, wealth = 0.0, health = 1.0;
-    bool alive = true;
-    std::string death;
-    int deathDay = 0;
-    EntityId spouse = kNone, father = kNone, mother = kNone;
-    std::vector<EntityId> children;
-    EntityId travelTo = kNone;
-    int arrive = 0;
-    EntityId quest = kNone;
-    EntityId claim = kNone;   // a polity it claims (exiled heir, usurper)
-    EntityId captor = kNone;  // held by that polity
-    std::map<std::string, double> opinions; // figure id -> -1..1
-    std::map<std::string, double> aptitudes; // magic extension (empty)
-    std::vector<Json> deeds;                 // {day, code, ...}
-    bool present = false;     // a Character in the village now
-    int leaveDay = 0;
-    Json parked;              // the Character while away (empty: never came)
-    int ageYears(int today) const { return (today - born) / kDaysPerYear; }
 };
 
 struct RealmQuest {
@@ -147,27 +95,23 @@ struct RealmOffer {
     std::string status = "pending"; // pending | accepted | refused
 };
 
+// What is between settlements; the settlements themselves are World::settlements()
+// (Settlement, its realm fields) and the people are Characters (Standing), on the map
+// or offstage (AL-92).
 struct RealmState {
     bool inited = false;
     int nextId = 1;
     int year = -1;
     double harvest = 1.0;  // this year's yield over the region (one weather for all)
-    std::vector<RealmPolity> polities;
-    std::vector<RealmFigure> figures;
     std::map<std::string, RealmView> views; // "<a>><b>"
     std::vector<std::pair<EntityId, EntityId>> alliances;
     std::vector<RealmQuest> quests;
     std::vector<RealmWar> wars;
     std::vector<RealmOffer> offers;
     std::map<std::string, int> stats;
+    std::map<std::string, int> once;  // dedup marks of the chronicle (a famine per season, unpaid tribute per year)
 
-    RealmPolity* polity(EntityId id);
-    const RealmPolity* polity(EntityId id) const;
-    RealmFigure* figure(EntityId id);
-    const RealmFigure* figure(EntityId id) const;
     RealmView& view(EntityId a, EntityId b);
-    const RealmPolity* local() const;
-    RealmPolity* local();
 };
 
 void to_json(Json& j, const RealmState& s);
@@ -202,7 +146,11 @@ bool realmLoaded(const Content& c);
 // Whether a quest kind is on (known and none of its tags disabled: magic is off).
 bool realmQuestOn(const Content& c, const std::string& kind);
 // Strength in the field (levy x morale x the leader, hired swords).
-double realmStrength(const World& w, const RealmState& s, const RealmPolity& p);
+double realmStrength(const World& w, const RealmState& s, const Settlement& p);
+// The settlement the player's map shows (the first one in full mode), null if none.
+Settlement* realmLocal(World& w);
+// Re-reads what a settlement is (size, tags) from its numbers and history.
+void realmClassify(World& w, Settlement& p);
 // A raid of `by` on `on` now (for tests and commands): what was taken.
 double realmRaid(World& w, RealmState& s, EntityId by, EntityId on);
 

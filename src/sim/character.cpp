@@ -135,6 +135,7 @@ void to_json(Json& j, const Character& c) {
         j["gear_pins"] = p;
     }
     if (!c.nameForms.empty()) j["name_forms"] = c.nameForms;
+    if (!c.standing.empty()) j["standing"] = c.standing;
 }
 
 void from_json(const Json& j, Character& c) {
@@ -174,6 +175,11 @@ void from_json(const Json& j, Character& c) {
     c.starveDays = j.value("starve_days", 0);
     c.captivity = j.value("captivity", Captivity{});
     c.craft = j.value("craft", craft::CraftState{});
+    c.standing = j.value("standing", Standing{});
 }
+
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Standing, role, life, house, drawn, martial, ambition, greed, honor,
+                                                wanderlust, renown, purse, at, travelTo, arrive, leaveDay, deathDay,
+                                                quest, claim, captor, aptitudes, deeds)
 
 } // namespace altera::sim

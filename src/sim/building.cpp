@@ -512,7 +512,7 @@ void buildingTick(World& w) {
     // The mandate outlives the chief: his heir takes it (eldest grown child,
     // else the spouse, else the eldest grown person of the colony).
     for (auto& [sid, st] : w.settlements()) {
-        if (st.chief == kNone) continue;
+        if (st.chief == kNone || !st.full()) continue; // AL-92: beyond the map the realm crowns
         const Character* chief = w.character(st.chief);
         if (chief && chief->body.alive) continue;
         Character* heir = nullptr;

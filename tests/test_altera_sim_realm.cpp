@@ -1,5 +1,6 @@
-// The realm (AL-85): the region beyond the map - polities, figures, politics,
-// wars, wanderers and quests - and what of it reaches the real village.
+// The realm (AL-85, AL-92): the region beyond the map and the village in it, one
+// kind of settlement and one kind of person - politics, wars, wanderers, quests,
+// what a settlement is (classified, not set) and people crossing onto the map.
 
 #include <algorithm>
 
@@ -40,9 +41,16 @@ int stat(const RealmState& s, const std::string& k) {
     return it == s.stats.end() ? 0 : it->second;
 }
 
-RealmFigure* aWanderer(RealmState& s) {
-    for (auto& f : s.figures)
-        if (f.alive && f.life == "road" && !f.present && f.travelTo == kNone && f.captor == kNone) return &f;
+// Someone on the road, offstage, free and going nowhere (or, with `any`, going anywhere).
+Character* aWanderer(World& w, bool any = false) {
+    for (auto& [id, f] : w.offstage())
+        if (f.body.alive && f.standing.life == "road" && (any || f.standing.travelTo == kNone) && f.standing.captor == kNone) return &f;
+    return nullptr;
+}
+
+Settlement* firstWith(World& w, const char* tag) {
+    for (auto& [id, p] : w.settlements())
+        if (!p.full() && p.tagged(tag)) return &p;
     return nullptr;
 }
 
@@ -78,15 +86,19 @@ TEST(altera_sim_realm_genesis_is_deterministic) {
     days(b, 1);
     const RealmState sa = loadRealm(a);
     CHECK(sa.inited);
-    CHECK(sa.polities.size() >= 6);
-    CHECK(sa.local() != nullptr);
-    CHECK_EQ(sa.local()->settlement, a.settlements().begin()->first);
-    for (const auto& p : sa.polities) {
-        if (p.settlement != kNone) continue;
-        const RealmFigure* r = sa.figure(p.ruler);
-        CHECK(r && r->alive);
+    CHECK(a.settlements().size() >= 7);
+    CHECK(realmLocal(a) != nullptr);
+    CHECK_EQ(realmLocal(a)->id, a.settlements().begin()->first);
+    // every settlement is classified the same way, the map's village too
+    for (const auto& [id, p] : a.settlements()) {
+        CHECK(!p.size.empty());
+        if (p.full()) continue;
+        const Character* r = a.person(p.chief);
+        CHECK(r && r->body.alive);
     }
+    CHECK(realmLocal(a)->tagged("farming"));
     CHECK(Json(sa).dump() == Json(loadRealm(b)).dump());
+    CHECK(a.toJson().dump() == b.toJson().dump());
     // the chronicle renders with names, not ids
     const Loc loc = Loc::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/loc");
     for (const auto& e : a.chronicleLog())
@@ -104,16 +116,16 @@ TEST(altera_sim_realm_saves_and_loads) {
     v.loadJson(w.toJson());
     CHECK(Json(loadRealm(v)).dump() == before);
     CHECK_EQ(v.stateHash(), w.stateHash());
+    CHECK_EQ(v.offstage().size(), w.offstage().size());
+    CHECK(v.toJson().dump() == w.toJson().dump());
 }
 
 TEST(altera_sim_realm_raid_takes_real_grain) {
     World w = quietWorld(7);
     days(w, 1);
     RealmState s = loadRealm(w);
-    RealmPolity* local = s.local();
-    RealmPolity* camp = nullptr;
-    for (auto& p : s.polities)
-        if (p.kind == "bandit_camp") camp = &p;
+    Settlement* local = realmLocal(w);
+    Settlement* camp = firstWith(w, "raiders");
     CHECK(local && camp);
     if (!local || !camp) return;
     camp->militia = 200; // a horde: the raid gets through
@@ -134,41 +146,77 @@ TEST(altera_sim_realm_raid_takes_real_grain) {
 TEST(altera_sim_realm_wanderer_comes_as_himself) {
     World w = quietWorld(7);
     days(w, 1);
-    RealmState s = loadRealm(w);
-    RealmFigure* f = aWanderer(s);
+    Character* f = aWanderer(w);
     CHECK(f != nullptr);
     if (!f) return;
     const EntityId id = f->id;
-    f->travelTo = s.local()->id;
-    f->arrive = w.day() + 1;
-    saveRealm(w, s);
+    const Character* self = f; // one object: moved onto the map and off it, never copied
+    const std::string name = f->name;
+    f->standing.travelTo = realmLocal(w)->id;
+    f->standing.arrive = w.day() + 1;
     days(w, 1);
     Character* c = w.character(id);
     CHECK(c != nullptr);
     if (!c) return;
-    CHECK(c->name == loadRealm(w).figure(id)->name);
+    CHECK(c == self);
+    CHECK(c->name == name);
+    CHECK(!w.offstage().count(id));
     MemoryEntry m;
     m.type = "good_chat";
     m.salience = 0.9;
     w.remember(*c, m);
-    // he leaves when his days are up: parked, with what he lived through
+    // he leaves when his days are up: offstage, with what he lived through
     for (int i = 0; i < 12 && w.character(id); ++i) days(w, 1);
     CHECK(w.character(id) == nullptr);
-    s = loadRealm(w);
-    CHECK(s.figure(id)->parked.is_object());
+    CHECK(w.offstage().count(id) == 1);
+    Character* g = w.person(id);
+    CHECK(g == self);
     // and comes back the same
-    RealmFigure* g = s.figure(id);
-    g->travelTo = s.local()->id;
-    g->arrive = w.day() + 1;
-    saveRealm(w, s);
+    g->standing.travelTo = realmLocal(w)->id;
+    g->standing.arrive = w.day() + 1;
     // checked on the day he is in (a short stay may already be over a day later)
     for (int i = 0; i < 3 && !w.character(id); ++i) days(w, 1);
     c = w.character(id);
     CHECK(c != nullptr);
     if (!c) return;
+    CHECK(c == self);
     bool remembers = false;
     for (const auto& e : c->memory) remembers |= e.type == "good_chat";
     CHECK(remembers);
+}
+
+// What a settlement is comes from its numbers and history: a band that settles and
+// ploughs stops being a robbers' nest; a village that grows is a town.
+TEST(altera_sim_realm_classified_not_set) {
+    World w = quietWorld(7);
+    days(w, 1);
+    Settlement* camp = firstWith(w, "outlaw");
+    CHECK(camp != nullptr);
+    if (!camp) return;
+    CHECK(camp->tagged("raiders"));
+    camp->land = 1.2;
+    camp->income.clear();
+    camp->income["fields"] = 40.0;
+    camp->lastRaid = -9999;
+    camp->pop = 300;
+    realmClassify(w, *camp);
+    CHECK(!camp->tagged("raiders"));
+    CHECK(!camp->tagged("outlaw"));
+    CHECK(camp->tagged("farming"));
+    CHECK_EQ(camp->size, std::string("town"));
+    // and a farming village that lives by raids turns into raiders, then outlaws
+    Settlement* v = nullptr;
+    for (auto& [id, p] : w.settlements())
+        if (!p.full() && p.tagged("farming") && !p.tagged("cult") && p.liege == kNone && p.id != camp->id) v = &p;
+    CHECK(v != nullptr);
+    if (!v) return;
+    v->income.clear();
+    v->income["raids"] = 60.0;
+    v->income["fields"] = 20.0;
+    v->lastRaid = w.day();
+    realmClassify(w, *v);
+    CHECK(v->tagged("raiders"));
+    CHECK(v->tagged("outlaw"));
 }
 
 TEST(altera_sim_realm_beast_bounty) {
@@ -181,7 +229,7 @@ TEST(altera_sim_realm_beast_bounty) {
     if (!pack) return;
     const EntityId packId = pack->id;
     RealmState s = loadRealm(w);
-    const EntityId localId = s.local()->id;
+    const EntityId localId = realmLocal(w)->id;
     // a villager was mauled
     for (auto& [id, c] : w.characters())
         if (!c.isAnimal() && c.body.alive && c.status.settlement != kNone) {
@@ -189,7 +237,7 @@ TEST(altera_sim_realm_beast_bounty) {
             break;
         }
     // the chief has something to pay with
-    if (const Character* chief = w.character(s.local()->ruler))
+    if (const Character* chief = w.character(realmLocal(w)->chief))
         if (auto f = w.families().find(chief->status.family); f != w.families().end())
             w.object(f->second.storage)->stock["coin"] += 40;
     days(w, 1);
@@ -201,17 +249,16 @@ TEST(altera_sim_realm_beast_bounty) {
     if (!q) return;
     const EntityId qid = q->id;
     // a wanderer takes it and comes (one on his way elsewhere turns back: the trip is set below)
-    RealmFigure* f = aWanderer(s);
-    for (auto& ff : s.figures)
-        if (!f && ff.alive && ff.life == "road" && !ff.present && ff.captor == kNone) f = &ff;
+    Character* f = aWanderer(w);
+    if (!f) f = aWanderer(w, true);
     CHECK(f != nullptr);
     if (!f) return;
     const EntityId fid = f->id;
-    const double wealth = f->wealth;
+    const double wealth = f->standing.purse;
     q->takers.push_back(fid);
-    f->quest = qid;
-    f->travelTo = localId;
-    f->arrive = w.day() + 1;
+    f->standing.quest = qid;
+    f->standing.travelTo = localId;
+    f->standing.arrive = w.day() + 1;
     saveRealm(w, s);
     days(w, 1);
     Character* hunter = w.character(fid);
@@ -226,27 +273,28 @@ TEST(altera_sim_realm_beast_bounty) {
     s = loadRealm(w);
     for (const auto& qq : s.quests)
         if (qq.id == qid) CHECK(qq.status == "done");
-    CHECK(s.figure(fid)->wealth > wealth || w.character(fid)->has("coin") > 0);
+    const Character* paid = w.person(fid);
+    CHECK(paid && (paid->standing.purse > wealth || paid->has("coin") > 0));
 }
 
 TEST(altera_sim_realm_commands) {
     World w = quietWorld(7);
     days(w, 1);
-    RealmState s = loadRealm(w);
     EntityId target = kNone;
-    for (const auto& p : s.polities)
-        if (p.settlement == kNone && p.kind == "village") target = p.id;
+    for (const auto& [id, p] : w.settlements())
+        if (!p.full() && p.size == "village" && !p.tagged("outlaw") && !p.tagged("cult")) target = p.id;
+    CHECK(target != kNone);
     Command no;
     no.source = "player:1";
     no.type = "realm.declare_war";
     no.args = {{"actor", 999999}, {"polity", target}};
     CHECK(w.applyNow(no).result.rfind("rejected", 0) == 0);
     Command yes = no;
-    yes.args["actor"] = s.local()->ruler;
+    yes.args["actor"] = realmLocal(w)->chief;
     CHECK_EQ(w.applyNow(yes).result, std::string("ok"));
-    s = loadRealm(w);
+    const RealmState s = loadRealm(w);
     bool war = false;
-    for (const auto& wr : s.wars) war |= !wr.over && wr.attacker == s.local()->id && wr.defender == target;
+    for (const auto& wr : s.wars) war |= !wr.over && wr.attacker == realmLocal(w)->id && wr.defender == target;
     CHECK(war);
 }
 
@@ -255,9 +303,9 @@ TEST(altera_sim_realm_lives_three_years) {
     days(w, 3 * kDaysPerYear);
     const RealmState s = loadRealm(w);
     int alive = 0;
-    for (const auto& f : s.figures) alive += f.alive;
-    std::printf("  realm 3y: %d figures alive of %zu, wars %d, peace %d, quests taken %d done %d, successions %d, raids %d\n",
-                alive, s.figures.size(), stat(s, "war_declared"),
+    for (const auto& [id, f] : w.offstage()) alive += f.body.alive && !f.isAnimal();
+    std::printf("  realm 3y: %d offstage people alive of %zu, wars %d, peace %d, quests taken %d done %d, successions %d, raids %d\n",
+                alive, w.offstage().size(), stat(s, "war_declared"),
                 stat(s, "peace_white") + stat(s, "peace_tribute") + stat(s, "peace_vassal") + stat(s, "peace_reparation"),
                 stat(s, "quest_taken"), stat(s, "quest_done"), stat(s, "succession") + stat(s, "succession_crisis"),
                 stat(s, "raid") + stat(s, "raid_village"));
