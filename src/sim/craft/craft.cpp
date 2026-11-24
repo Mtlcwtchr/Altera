@@ -925,6 +925,71 @@ std::string qualityTier(const CraftData& d, double q) {
     return "common";
 }
 
+namespace {
+double tagSetWorth(const CraftData& d, const std::set<std::string>& tags) {
+    double w = 1.0;
+    for (const auto& t : tags) {
+        auto f = d.cfg.tagWorth.find(t);
+        if (f != d.cfg.tagWorth.end()) w *= f->second;
+    }
+    return w;
+}
+
+double flawsWorth(const CraftData& d, const Item& it) {
+    double w = 1.0;
+    for (const auto& f : it.flaws)
+        if (const FlawDef* fd = d.flaw(f.id)) w *= fd->worth;
+    return w;
+}
+
+// A piece or a part: what it is made of and how it is shaped, without the archetype.
+double partWorth(const CraftData& d, const Item& it) {
+    double w = 1.0;
+    if (!it.isAssembly()) {
+        if (const MaterialDef* m = d.material(it.material)) w *= m->worth;
+        if (const ShapeDef* s = d.shape(it.shape)) w *= s->worth;
+        w *= tagSetWorth(d, it.tags);
+    } else {
+        double total = 0.0, acc = 0.0, finest = 0.0;
+        std::set<std::string> partTags;
+        for (const auto& part : it.parts) {
+            const Item& pi = part.item.front();
+            const double m = std::max(1e-6, itemMass(d, pi)), pw = partWorth(d, pi);
+            total += m;
+            acc += pw * m;
+            finest = std::max(finest, pw);
+            partTags.insert(pi.tags.begin(), pi.tags.end());
+        }
+        const double avg = total > 0 ? acc / total : 1.0;
+        const double sum = d.cfg.worthAvg + d.cfg.worthMax;
+        w *= sum > 0 ? (d.cfg.worthAvg * avg + d.cfg.worthMax * finest) / sum : avg;
+        if (const ShapeDef* s = d.shape(it.shape)) w *= s->worth;
+        std::set<std::string> own; // marks the assembly got itself, not the ones of its parts
+        for (const auto& t : it.tags)
+            if (!partTags.count(t)) own.insert(t);
+        w *= tagSetWorth(d, own);
+    }
+    return w * flawsWorth(d, it);
+}
+} // namespace
+
+double tagsWorth(const CraftData& d, const std::vector<std::string>& tags) {
+    return tagSetWorth(d, std::set<std::string>(tags.begin(), tags.end()));
+}
+
+double itemWorth(const CraftData& d, const Item& it) {
+    double w = partWorth(d, it);
+    if (const FormDef* f = d.form(it.form)) w *= f->worth;
+    std::set<std::string> procs;
+    for (const auto& st : it.trace) procs.insert(st.process);
+    for (const auto& p : procs)
+        if (const ProcessDef* pd = d.process(p)) w *= pd->worth;
+    std::set<std::string> dtags(it.derivedTags.begin(), it.derivedTags.end());
+    for (const auto& t : it.tags) dtags.erase(t);
+    w *= tagSetWorth(d, dtags);
+    return std::clamp(w, d.cfg.worthMin, d.cfg.worthCap);
+}
+
 void recognize(const CraftData& d, Item& it) {
     ItemCtx ctx(d, it, 0);
     std::map<std::string, double> fn;

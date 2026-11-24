@@ -51,7 +51,7 @@
    "requires": {"tool": ["striking"], "station": ["anvil"], "heat_min": 2, "tool_hardness_ge": "hardness*0.8"},
    "inputs": [{"slot": "work", "shape": ["lump", "bar", "plate", "bar_thin"], "tag": ["metal", "metal_raw"], "p": {"workable": ">=0.3"}}],
    "time": 4, "difficulty": {"base": 0.35, "add": "0.3*hardness - 0.2*purity"},
-   "shape_map": {"lump": ["bar"], "bar": ["bar", "blank_blade", "blank_head", "plate", "bar_thin", "wire", "nail", "rivet", "sickle_blade"], "plate": ["blank_helm", "sheet_metal", "cauldron_raw", "hoe_blade"], "bar_thin": ["wire"]},
+   "shape_map": {"lump": ["bar"], "bar": ["bar", "blank_blade", "blank_head", "plate", "bar_thin", "wire", "nail", "rivet", "sickle_blade"], "plate": ["blank_helm", "sheet_metal", "cauldron_raw", "hoe_blade", "comb_raw", "charm_raw"], "bar_thin": ["wire"]},
    "transform": {"purity": "min(1, x + 0.08*q)", "hardness": "min(1, x + 0.02)"},
    "flaws": [{"id": "crack", "p": "0.3*(1-q)", "when": "toughness<0.2"}, {"id": "uneven", "p": "0.4*(1-q)"}],
    "fixes": ["impure"],
@@ -165,7 +165,7 @@
    "flaws": [{"id": "impure", "p": "0.4*(1-q)"}],
    "reacts": true, "risky": true},
 
-  {"id": "repair", "op": "shape", "skill": "smithing", "skill_by": [{"tag": "hide", "skill": "sewing"}, {"tag": "leather", "skill": "sewing"}, {"tag": "fiber", "skill": "sewing"}, {"tag": "wood", "skill": "carpentry"}],
+  {"id": "repair", "worth": 0.9, "op": "shape", "skill": "smithing", "skill_by": [{"tag": "hide", "skill": "sewing"}, {"tag": "leather", "skill": "sewing"}, {"tag": "fiber", "skill": "sewing"}, {"tag": "wood", "skill": "carpentry"}],
    "requires": {"tool": ["striking", "needle", "whetstone", "grit"]},
    "inputs": [{"slot": "work", "shape": ["any"], "p": {"wear": ">0"}}],
    "time": 4, "difficulty": {"base": 0.3},

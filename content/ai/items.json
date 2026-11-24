@@ -655,6 +655,53 @@
    ],
    "stack": 1,
    "_part": "gear"
+  },
+  {
+   "id": "silver",
+   "material": "silver",
+   "tags": [
+    "metal",
+    "precious",
+    "valuable"
+   ],
+   "stack": 20,
+   "value": 12,
+   "_doc": "AL-87: слиток/самородок серебра; пока только товаром"
+  },
+  {
+   "id": "gold",
+   "material": "gold",
+   "tags": [
+    "metal",
+    "precious",
+    "valuable"
+   ],
+   "stack": 20,
+   "value": 30,
+   "_doc": "AL-87: золото; пока только товаром"
+  },
+  {
+   "id": "horn",
+   "material": "horn",
+   "tags": [
+    "animal",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 2,
+   "_doc": "AL-87: рог быка/козы, источник — разделка (AL-89)"
+  },
+  {
+   "id": "antler",
+   "material": "antler",
+   "tags": [
+    "animal",
+    "craft_raw",
+    "trophy"
+   ],
+   "stack": 6,
+   "value": 3,
+   "_doc": "AL-87: рога оленя, источник — разделка (AL-89)"
   }
  ]
 }

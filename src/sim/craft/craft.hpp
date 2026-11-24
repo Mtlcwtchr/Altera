@@ -74,6 +74,13 @@ std::map<std::string, double> effectiveProps(const CraftData& d, const Item& it,
 // Functions, archetype, derive. Called after every step.
 void recognize(const CraftData& d, Item& it);
 std::string qualityTier(const CraftData& d, double q); // crude | common | good | masterwork
+// Worth of a made thing (AL-87): the product of the value components it really holds:
+// its archetype, its materials and shapes (an assembly blends its parts: mass average plus
+// a share of the finest part), the processes it went through, its flaws and its tags
+// (crafting_config worth.tags). 1 = an ordinary thing of its kind; skill (q) is separate.
+double itemWorth(const CraftData& d, const Item& it);
+// worth.tags over a plain list of tags (items that were not crafted).
+double tagsWorth(const CraftData& d, const std::vector<std::string>& tags);
 
 struct Actor {
     std::uint64_t id = 0;
