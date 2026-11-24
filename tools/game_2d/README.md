@@ -13,3 +13,5 @@
 Тест: `altera_sim_tests client2d`.
 
 Управление: ЛКМ выбрать, ПКМ/СКМ или WASD двигать, колесо или 1/2/3 зум, R крыши (авто/все/сняты), G символы, F следить, Пробел пауза, −/= скорость, Alt имена.
+
+**Разговор и торг (AL-98):** `web/talk.js` + `web/talk.css`, сервер `src/client2d/talk2d.*`, маршруты `/api/talk?target=&tone=`, `POST /api/trade {target, give, take}`, команда `say_topic`. Открываются кнопками «Поговорить» / «Торговать» в ПКМ-меню на человеке или клавишей T по выбранному. Кадры: `node tools/game_2d/shots_talk.js`. Строки `content/loc/<lang>/ui2d_talk.json`.
