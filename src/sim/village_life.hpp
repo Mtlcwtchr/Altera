@@ -128,6 +128,13 @@ void seedVillageLife(World& w, std::uint64_t seed);
 
 // Strangers come to `settlement` now (one taken in, or a family of their own); false: nowhere to go.
 bool strangersArrive(World& w, EntityId settlement, bool family);
+// The same, but the strangers are people who already live offstage (World::offstage(),
+// AL-92): refugees from a hungry settlement walk onto the map as themselves. One
+// person is taken in by a household; more found their own (the first man heads it,
+// his wife and children with him). False: nowhere to go (nobody moved).
+bool refugeesArrive(World& w, EntityId settlement, const std::vector<EntityId>& who);
+// The chance that a woman conceives at one act (fades after age_fade_from_years).
+double conceiveChanceOf(const Character& woman, const VillageLifeRules& r);
 
 // Queries
 bool isPregnant(const World& w, const Character& c);

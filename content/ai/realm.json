@@ -438,6 +438,25 @@
    "proud": 1.15
   }
  },
+ "people": {
+  "_doc": "AL-92 stage 2: the people of stat settlements are Characters too. Their day is village_life.json's rules as chances (illness, old age, fertility, pregnancy, twins, stillbirth); these are only the expectations of acts the map does by itself and the start demography.",
+  "intimacy_daily": 0.006,
+  "marry_daily": 0.004,
+  "hunger_drop_per_day": 0.12,
+  "famine_adult": 0.6,
+  "famine_frail": 1.8,
+  "single_share": 0.18,
+  "children": [
+   0,
+   5
+  ],
+  "elder_share": 0.15,
+  "fields_per_head": [
+   1.3,
+   1.7
+  ],
+  "extra_hands": 0.2
+ },
  "wanderers": {
   "speed_km_day": 30,
   "stop_radius_km": 9,

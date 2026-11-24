@@ -363,7 +363,7 @@ void to_json(Json& j, const Settlement& s) {
     }
     if (s.polity() || !s.full()) {   // AL-92: the realm's numbers
         j["polity"] = Json{{"mode", s.mode}, {"km", s.km}, {"pop", s.pop}, {"food", s.food}, {"wealth", s.wealth},
-                           {"militia", s.militia}, {"morale", s.morale}, {"unrest", s.unrest}, {"land", s.land},
+                           {"militia", s.militia}, {"morale", s.morale}, {"unrest", s.unrest}, {"land", s.land}, {"fields", s.fields},
                            {"crafts", s.crafts}, {"fort", s.fort}, {"heir", s.heir}, {"liege", s.liege},
                            {"tribute_to", s.tributeTo}, {"tribute", s.tribute}, {"house", s.house}, {"ruined", s.ruined},
                            {"founded", s.founded}, {"ruined_on", s.ruinedOn}, {"last_raid", s.lastRaid},
@@ -402,7 +402,7 @@ void from_json(const Json& j, Settlement& s) {
         s.km = p.value("km", d.km);
         s.pop = p.value("pop", d.pop), s.food = p.value("food", d.food), s.wealth = p.value("wealth", d.wealth);
         s.militia = p.value("militia", d.militia), s.morale = p.value("morale", d.morale), s.unrest = p.value("unrest", d.unrest);
-        s.land = p.value("land", d.land), s.crafts = p.value("crafts", d.crafts), s.fort = p.value("fort", d.fort);
+        s.land = p.value("land", d.land), s.fields = p.value("fields", d.fields), s.crafts = p.value("crafts", d.crafts), s.fort = p.value("fort", d.fort);
         s.heir = p.value("heir", d.heir), s.liege = p.value("liege", d.liege), s.tributeTo = p.value("tribute_to", d.tributeTo);
         s.tribute = p.value("tribute", d.tribute), s.house = p.value("house", d.house), s.ruined = p.value("ruined", d.ruined);
         s.founded = p.value("founded", d.founded), s.ruinedOn = p.value("ruined_on", d.ruinedOn);

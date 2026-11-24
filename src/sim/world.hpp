@@ -104,6 +104,7 @@ struct Settlement {
     double pop = 0.0, food = 0.0, wealth = 0.0, militia = 0.0;  // full: read from the map each day
     double morale = 0.6, unrest = 0.1;
     double land = 1.0;               // what its fields give a head in a year (soil, work)
+    double fields = 0.0;             // how many heads its fields feed at full yield (0 = no limit); more hands add little
     double crafts = 0.0;             // share of its people in crafts and trade, 0..1
     double fort = 0.0;               // walls and a keep, 0..1
     EntityId heir = kNone, liege = kNone, tributeTo = kNone;
