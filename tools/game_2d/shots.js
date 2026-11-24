@@ -15,6 +15,10 @@ const SHOTS = [
   ['2d_03_selected_x3', 'zoom=3&select=3'],
   ['2d_04_roofs_off_x2', 'zoom=2&roofs=none&select=6'],
   ['2d_05_glyphs_x2', 'zoom=2&glyphs=1&roofs=none&select=0'],
+  // AL-99: the main menu, a new game, the save slots
+  ['2d_10_menu', 'menu=main&zoom=2'],
+  ['2d_11_new_game', 'menu=new&zoom=2'],
+  ['2d_12_saves', 'menu=load&zoom=2'],
 ];
 (async () => {
   fs.mkdirSync(out, { recursive: true });
