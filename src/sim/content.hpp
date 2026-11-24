@@ -511,12 +511,18 @@ struct BuildPieceDef {
     bool shelter = false;  // a roof: the needs' sheltered multiplier applies under it
     bool mirror = false;   // a gable: rotations 4..7 are the mirrored triangle
     bool door = false;
+    // slot "thing" (category furniture): a planned piece of furniture on a
+    // finer grid (cell_m / sub metres a cell, thing_m); built, it becomes the
+    // world object `makes` (a bed, a hearth, an anvil) that tells rooms apart.
+    std::string makes;
+    int sub = 1;
 };
 struct BuildCatalog {
     double cellM = 2.0;
     double storeyM = 3.0;
     double minStability = 0.2;
-    int maxPerFamily = 400;
+    int maxPerFamily = 400;   // the 3D build mode's own cap; the sim plans without a limit (24.11)
+    double thingM = 1.0;      // the furniture grid
     std::vector<BuildPieceDef> pieces; // palette order
     const BuildPieceDef* find(const std::string& id) const {
         for (const auto& p : pieces)

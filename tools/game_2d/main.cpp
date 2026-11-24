@@ -49,6 +49,7 @@ using socket_t = int;
 
 #include "client2d/acts2d.hpp"
 #include "client2d/craft2d.hpp"
+#include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
 #include "client2d/talk2d.hpp"
@@ -78,6 +79,7 @@ struct App {
     SpeechFeed speech;          // AL-96: what people said (lines) and mutter (barks)
     c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
     Json craftUi;               // AL-97: content/ui/craft.json (the helper's wishes)
+    EntityId colonyOf = kNone;  // AL-94: colony mode - the person handed to free will; the player plans as them
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
     // AL-99: the session (new game, saves)
     const Content* content = nullptr;
@@ -108,6 +110,14 @@ EntityId controlled(const World& w) {
     for (const auto& [id, c] : w.characters())
         if (c.controller.isPlayer() && c.controller.playerId == 1) return id;
     return kNone;
+}
+
+// Who plans and runs the colony: the led person, or in colony mode the one handed to free will.
+EntityId planner(const App& a) {
+    const EntityId me = controlled(*a.world);
+    if (me != kNone) return me;
+    const Character* c = a.colonyOf != kNone ? a.world->character(a.colonyOf) : nullptr;
+    return c && c->body.alive ? a.colonyOf : kNone;
 }
 
 Json speechJson(App& a, const Vec2* near) {
@@ -415,6 +425,42 @@ void serveClient(App& a, socket_t s) {
             respond(s, 200, "application/json",
                     c2::barJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone), q.value("slots", Json::array()))
                         .dump());
+        } else if (path.rfind("/api/build/catalog", 0) == 0) {
+            // AL-94: the build mode (tools/game_2d/web/build.js): the palette
+            respond(s, 200, "application/json", c2::catalogJson(*a.world, a.text).dump());
+        } else if (path.rfind("/api/build/plan", 0) == 0) {
+            const int x = intParam(path, "x", 0), y = intParam(path, "y", 0);
+            const int w = std::clamp(intParam(path, "w", 128), 1, 512), h = std::clamp(intParam(path, "h", 128), 1, 512);
+            respond(s, 200, "application/json", c2::planJson(*a.world, a.text, planner(a), x, y, w, h).dump());
+        } else if ((path.rfind("/api/build/preview", 0) == 0 || path.rfind("/api/build/place", 0) == 0) && method == "POST") {
+            // a tool's stroke: checked as the sim checks it; place lays it into the plan
+            const c2::Stroke st = c2::Stroke::fromJson(Json::parse(body.empty() ? "{}" : body));
+            const c2::Planner who{planner(a), st.forSettlement};
+            const bool place = path.rfind("/api/build/place", 0) == 0;
+            respond(s, 200, "application/json",
+                    (place ? c2::placeJson(*a.world, a.text, who, st) : c2::previewJson(*a.world, a.text, who, st)).dump());
+        } else if (path.rfind("/api/colony", 0) == 0) {
+            // AL-94: the colony window (tools/game_2d/web/colony.js)
+            if (path.rfind("/api/colony/mode", 0) == 0 && method == "POST") {
+                // colony mode: one's person lives on their own, the player runs the settlement
+                const bool on = Json::parse(body.empty() ? "{}" : body).value("on", a.colonyOf == kNone);
+                Command c;
+                c.source = "player:1";
+                c.args = {{"player", 1}};
+                if (on && a.colonyOf == kNone && controlled(*a.world) != kNone) {
+                    a.colonyOf = controlled(*a.world);
+                    c.type = "release_control";
+                    a.world->applyNow(c);
+                } else if (!on && a.colonyOf != kNone) {
+                    c.type = "take_control";
+                    c.args["id"] = a.colonyOf;
+                    a.colonyOf = kNone;
+                    a.world->applyNow(c);
+                }
+            }
+            Json j = c2::colonyJson(*a.world, a.text, planner(a));
+            if (j.is_object()) j["colony_mode"] = a.colonyOf != kNone;
+            respond(s, 200, "application/json", j.dump());
         } else if (path.rfind("/api/talk", 0) == 0) {
             // AL-98: the talk window with a person
             EntityId target = kNone;

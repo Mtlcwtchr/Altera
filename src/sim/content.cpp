@@ -793,6 +793,7 @@ BuildCatalog parseBuild(const Json& j) {
     b.storeyM = j.value("storey_m", b.storeyM);
     b.minStability = j.value("min_stability", b.minStability);
     b.maxPerFamily = j.value("max_per_family", b.maxPerFamily);
+    b.thingM = j.value("thing_m", b.thingM);
     const Json list = j.value("pieces", Json::array());
     for (const auto& p : list) {
         BuildPieceDef d;
@@ -808,6 +809,8 @@ BuildCatalog parseBuild(const Json& j) {
         d.shelter = p.value("shelter", false);
         d.mirror = p.value("mirror", false);
         d.door = p.value("door", false);
+        d.makes = p.value("makes", std::string());
+        if (d.slot == "thing") d.sub = std::max(1, int(std::lround(b.cellM / std::max(0.1, b.thingM))));
         b.pieces.push_back(std::move(d));
     }
     return b;

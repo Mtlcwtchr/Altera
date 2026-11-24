@@ -204,6 +204,7 @@ Grid2d buildGrid(const World& w, const GroundRules& rules, int x0, int y0, int w
                                          : p.kind.find("window") != std::string::npos ? "window" : "wall");
             g.edges.push_back(e);
         } else if (k.layer == 'r') {
+            if (!p.built) continue;   // AL-94: a planned roof is drawn by the build overlay (web/build.js)
             Roof2d r;
             r.x = px;
             r.y = py;
