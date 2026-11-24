@@ -180,5 +180,7 @@
  "interaction.give_bread_share.name": "Bring the neighbours bread",
  "method.bring_bread.thought": "I will take them bread.",
  "interaction.give_dried_berries_share.name": "Bring the neighbours dried berries",
- "method.bring_dried_berries.thought": "I will take them dried berries."
+ "method.bring_dried_berries.thought": "I will take them dried berries.",
+ "interaction.give_hazelnuts_share.name": "Bring the neighbours hazelnuts",
+ "method.bring_hazelnuts.thought": "I will take them hazelnuts."
 }

@@ -3009,6 +3009,18 @@
        "do": "give_dried_berries_share"
       }
      ]
+    },
+    {
+     "id": "bring_hazelnuts",
+     "pre": [
+      "home:hazelnuts>=30"
+     ],
+     "cost": 1.35,
+     "steps": [
+      {
+       "do": "give_hazelnuts_share"
+      }
+     ]
     }
    ],
    "_doc": "помочь соседскому двору, у которого кончается еда",

@@ -300,5 +300,6 @@
  "interaction.give_dried_meat_share.phrase": "отнести соседям вяленого мяса",
  "interaction.give_meal_share.phrase": "отнести соседям горячей еды",
  "interaction.give_bread_share.phrase": "отнести соседям хлеба",
- "interaction.give_dried_berries_share.phrase": "отнести соседям сушёных ягод"
+ "interaction.give_dried_berries_share.phrase": "отнести соседям сушёных ягод",
+ "interaction.give_hazelnuts_share.phrase": "отнести соседям орехов"
 }

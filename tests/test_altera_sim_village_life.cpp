@@ -220,6 +220,13 @@ TEST(altera_sim_village_strangers) {
     // the newcomers have a home, their household its store
     for (const auto& [id, c] : w.characters())
         if (!c.isAnimal() && c.body.alive) CHECK(c.status.family != kNone && w.object(c.home) != nullptr);
+    // AL-82: ...and a hearth of its own they know, to cook the grain they brought
+    for (const auto& [fid, f] : w.families()) {
+        const WorldObject* h = w.object(f.hearth);
+        CHECK(h != nullptr && h->type == "hearth" && h->ownerFamily == fid);
+        for (EntityId m : f.members)
+            if (const Character* c = w.character(m); c && c->body.alive) CHECK(c->knownObjects.count(f.hearth) == 1);
+    }
 }
 
 TEST(altera_sim_village_lives_over_two_months) {

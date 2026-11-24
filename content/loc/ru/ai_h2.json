@@ -388,5 +388,7 @@
  "interaction.give_bread_share.name": "Отнести соседям хлеба",
  "method.bring_bread.thought": "Отнесу им хлеба.",
  "interaction.give_dried_berries_share.name": "Отнести соседям сушёных ягод",
- "method.bring_dried_berries.thought": "Отнесу им сушёных ягод."
+ "method.bring_dried_berries.thought": "Отнесу им сушёных ягод.",
+ "interaction.give_hazelnuts_share.name": "Отнести соседям орехов",
+ "method.bring_hazelnuts.thought": "Отнесу им орехов."
 }

@@ -6176,6 +6176,37 @@
    "_part": "H2"
   },
   {
+   "id": "give_hazelnuts_share",
+   "pre": [
+    "home:hazelnuts>=30",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:hazelnuts-10",
+    "t.home:hazelnuts+10",
+    "rel_back:affinity+0.05",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "AL-82: отнести двору, где кончается еда, из своего запаса сверх нужного своим",
+   "_part": "AL-82"
+  },
+  {
    "id": "give_smoked_fish_share",
    "pre": [
     "home:smoked_fish>=12",
