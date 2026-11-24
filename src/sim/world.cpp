@@ -478,7 +478,8 @@ Json World::toJson() const {
                 {"command_log", commandLog_},
                 {"chronicle", chronicle_},
                 {"facts", facts_},
-                {"said", altera::sim::toJson(said_)}};
+                {"said", altera::sim::toJson(said_)},
+                {"modules", modules_}};
 }
 
 void World::loadJson(const Json& j) {
@@ -536,6 +537,9 @@ void World::loadJson(const Json& j) {
     facts_ = j.value("facts", std::vector<Fact>{});
     said_ = SaidMemory{};
     if (j.contains("said")) altera::sim::fromJson(j["said"], said_);
+    modules_.clear();
+    if (j.contains("modules"))
+        for (auto it = j["modules"].begin(); it != j["modules"].end(); ++it) modules_[it.key()] = *it;
 }
 
 Fact& World::addFact(Fact f) {

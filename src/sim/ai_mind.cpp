@@ -17,6 +17,7 @@
 #include "sim/social_chain.hpp"
 #include "sim/trade.hpp"
 #include "sim/village_life.hpp"
+#include "sim/realm.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -603,6 +604,7 @@ void installAi(World& w) {
             spoilFood(world);
             cropsDaily(world);
             villageDaily(world); // AL-39: courtship, births, illness, quarrels, strangers
+            realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         healWounds(world); // wounds in the profile heal in the ordinary ticks
@@ -627,6 +629,7 @@ void installAi(World& w) {
     installCrafting(w);
     installGear(w);
     installTrade(w);
+    installRealm(w);
 }
 
 } // namespace altera::sim
