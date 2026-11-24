@@ -209,7 +209,7 @@
   "w_fear": 0.8,
   "w_bread": 0.35,
   "grievance_halflife_days": 420,
-  "truce_days": 360,
+  "truce_days": 720,
   "tribute_share": 0.06,
   "tribute_years": 3,
   "tribute_unrest": 0.03,

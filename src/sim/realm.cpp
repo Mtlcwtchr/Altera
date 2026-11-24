@@ -476,12 +476,24 @@ int warsOf(const Ctx& x, EntityId p) {
     return n;
 }
 
+// An exile's band for taking his seat back (not hired for someone's war).
+bool isReclaim(const Ctx& x, const RealmQuest& q) {
+    const RealmFigure* g = x.s.figure(q.giver);
+    return q.kind == "war_service" && g && g->claim == q.polity && g->home != q.polity;
+}
+
 bool inTruce(Ctx& x, EntityId a, EntityId b) {
     const int truce = inum(x.r.pol, "truce_days", 360);
-    for (const auto& wr : x.s.wars)
-        if (wr.over && ((wr.attacker == a && wr.defender == b) || (wr.attacker == b && wr.defender == a)) &&
-            x.day - wr.last < truce)
-            return true;
+    for (const auto& wr : x.s.wars) {
+        if (!wr.over || x.day - wr.last >= truce) continue;
+        // the sides of a war that ended lately, allies included, keep the truce
+        auto side = [&](EntityId p, bool att) {
+            if (p == (att ? wr.attacker : wr.defender)) return true;
+            const auto& al = att ? wr.alliesA : wr.alliesD;
+            return std::find(al.begin(), al.end(), p) != al.end();
+        };
+        if ((side(a, true) && side(b, false)) || (side(a, false) && side(b, true))) return true;
+    }
     return false;
 }
 
@@ -1644,9 +1656,15 @@ void reclaims(Ctx& x) {
             if (qq.kind == "war_service" && qq.giver == f.id && qq.status == "open") q = &qq;
         if (!q) {
             if (f.wealth < num(x.r.suc, "reclaim_wealth", 30) && f.renown < 0.3) continue;
+            // a band that melted away is gathered again only after a while
+            int lastTry = -99999;
+            for (const auto& d : f.deeds)
+                if (d.value("code", "") == "reclaim_start") lastTry = std::max(lastTry, d.value("day", 0));
+            if (x.day - lastTry < inum(x.r.suc, "reclaim_after_days", 360)) continue;
             RealmQuest* nq = postQuest(x, "war_service", f.claim, f.id, f.claim, std::min(f.wealth * 0.6, 45.0) + 10.0);
             if (nq) {
                 nq->target = f.claim;
+                deed(f, x.day, "reclaim_start");
                 log(x, "reclaim_start", {{"fig", f.id}, {"pol", f.claim}});
             }
             continue;
@@ -1775,7 +1793,8 @@ void endWar(Ctx& x, RealmWar& wr, const std::string& outcome, EntityId winner, E
     }
     // the hired swords are paid off and go
     for (auto& q : x.s.quests)
-        if (q.kind == "war_service" && q.status == "open" && (q.polity == wr.attacker || q.polity == wr.defender) && q.giver != wr.claimant) {
+        if (q.kind == "war_service" && q.status == "open" && (q.polity == wr.attacker || q.polity == wr.defender) && q.giver != wr.claimant &&
+            !isReclaim(x, q)) {
             q.status = "done";
             q.closed = x.day;
             RealmPolity* emp = x.s.polity(q.polity);
@@ -2229,6 +2248,8 @@ void councils(Ctx& x) {
             if (Q.id == P.id || Q.ruined) continue;
             if (Q.kind == "monastery" || Q.kind == "bandit_camp") continue; // camps are hunted, not fought
             if (warBetween(x, P.id, Q.id) || allied(x, P.id, Q.id) || P.liege == Q.id || Q.liege == P.id) continue;
+            if (Q.tributeTo == P.id || P.tributeTo == Q.id) continue; // the peace that pays holds
+            const bool truce = inTruce(x, P.id, Q.id);
             const RealmView& v = x.s.view(P.id, Q.id);
             const double sQ = strength(x, Q) + 0.5 * [&] {
                 double s = 0.0;
@@ -2246,10 +2267,10 @@ void councils(Ctx& x) {
                        num(x.r.pol, "w_strength", 0.45) * std::clamp(ratio - 1.0, -1.0, 1.5) + bread -
                        num(x.r.pol, "w_honor", 0.45) * a.honor * (v.opinion > 0 ? 1.0 : 0.4) -
                        num(x.r.pol, "w_fear", 0.8) * std::max(0.0, 1.0 - ratio) - 0.25 * std::max(0.0, v.opinion);
-            if (inTruce(x, P.id, Q.id)) u -= 0.6;
+            if (truce) u -= 0.6;
             u += rng.range(-0.1, 0.1);
             // nobody starts a war he expects to lose, unless the grudge is burning
-            const bool canWar = warsOf(x, P.id) < inum(x.r.pol, "max_wars", 2) && x.r.arcOn("war") &&
+            const bool canWar = !truce && warsOf(x, P.id) < inum(x.r.pol, "max_wars", 2) && x.r.arcOn("war") &&
                                 (ratio >= num(x.r.pol, "war_min_ratio", 1.1) || (grudge >= 1.0 && ratio >= 0.8));
             if (canWar && u > num(x.r.pol, "war_threshold", 0.62) && u > bestU) {
                 // an honourable ruler asks first; a greedy strong one demands tribute
