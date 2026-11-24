@@ -23,10 +23,12 @@ struct VillageSite {
     int n = 0;
     std::vector<float> h;            // n*n heights, metres
     std::vector<std::uint8_t> wet;   // n*n, 1 = water
+    std::vector<std::uint8_t> wood;  // AL-84: n*n, 1 = woodland (optional; else the map's forest biome)
     bool loaded() const { return n > 1 && h.size() == std::size_t(n) * std::size_t(n); }
     bool inside(Vec2 p) const;
     double height(Vec2 p) const;     // bilinear; 0 outside
     bool water(Vec2 p) const;        // nearest cell; false outside
+    bool woodland(Vec2 p) const;     // AL-84: nearest cell; false outside or without wood
     static VillageSite fromJson(const Json& j);
 };
 
@@ -62,12 +64,49 @@ struct LotSpec {
     std::string zone = "lane";
     double yardD = 12.0;
     bool home = true;
+    // AL-84: where on the site it would rather stand (StructureTypeDef::site):
+    // metres of distance it trades for a metre nearer the water / the wood /
+    // the village's way in, or further downwind; a nuisance (smoke, stench,
+    // the hammer) keeps off the quiet ones (the chapel, the inn) and the square.
+    std::string recipe;
+    double water = 0, wood = 0, entrance = 0, downwind = 0;
+    bool nuisance = false, quiet = false;
+};
+
+// AL-84: how the village is laid out (rooms.json village.layout).
+struct VillageLayout {
+    double windFromDeg = 270;          // the prevailing wind blows from (0 = +x, 90 = +y)
+    bool roadOut = true;               // the main road goes on out of the village both ways
+    double rowBonus = 18.0;            // metres a lot gives for standing next to a neighbour
+    double rowGap = 3.0;               // metres between neighbours in a row
+    double nuisanceR = 40.0;           // a nuisance keeps this far from the quiet ones and the square
+    double pathW = 1.4;                // footpaths: door to street, yard gate to field
+    double fieldArea = 1200.0;         // a household's field, m2, as a strip behind its yard
+    double stripLo = 14.0, stripHi = 26.0;   // the strip's width
+    int spareLots = 2;                 // empty lots left along the streets for new households
+    struct Common {
+        std::string kind;              // cemetery | pasture | woodlot
+        std::string by;                // behind:<recipe> | water | wood
+        double w = 20, d = 20;
+    };
+    std::vector<Common> commons;
+    static VillageLayout fromJson(const Json& j);
+};
+
+// AL-84: a piece of village land that is not a building: a field, a common
+// (the churchyard, the pasture, the village's wood) or a lot kept for later.
+struct VillageZone {
+    std::string kind;   // field | cemetery | pasture | woodlot | spare
+    PlanRect rect;
 };
 
 struct VillagePlan {
     double yaw = 0;                              // the main road's direction (radians from +x)
     std::vector<std::vector<Vec2>> roads;        // polylines, the main road first
     std::vector<double> roadWidth;
+    std::vector<std::string> roadKind;           // AL-84: main | lane | out (beyond the village) | path
+    Vec2 entrance;                               // AL-84: where the main road leaves toward the world
+    std::vector<VillageZone> zones;              // AL-84: fields, commons, spare lots
     Vec2 square;                                 // the village square
     double squareR = 12.0;
     std::vector<VillageLot> lots;                // one per VillageWanted lot, in its order (see placed)
@@ -88,6 +127,7 @@ struct VillageWanted {
     // empty = `houses` homes of houseW x houseD
     std::vector<LotSpec> lots;
     double cellM = 2.0;                    // the grid the houses stand on
+    VillageLayout layout;                  // AL-84
 };
 
 VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre, const VillageWanted& want,
@@ -95,5 +135,17 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
 
 // Distance from p to a polyline.
 double distToPolyline(Vec2 p, const std::vector<Vec2>& line);
+// AL-84: the point of a polyline nearest p.
+Vec2 closestOnPolyline(Vec2 p, const std::vector<Vec2>& line);
+
+// AL-84: a footpath from `from` to the nearest street (main or lane) or to
+// `to` when given (anyRoad: or the road out); appended as kind "path".
+void addPath(VillagePlan& plan, Vec2 from, const Vec2* to, double width, bool anyRoad = false);
+
+// AL-84: what is wrong with a village plan ("" = nothing): a placed house on
+// water or too steep, a door far from every street, a field on a road, a
+// nuisance by a quiet house or the square, roads that do not meet.
+std::vector<std::string> checkVillage(const VillagePlan& plan, const VillageSite& site, const MapGrid& map,
+                                      const VillageWanted& want);
 
 }  // namespace altera::sim

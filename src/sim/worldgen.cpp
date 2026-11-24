@@ -267,8 +267,13 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         VillageWanted want;
         want.houses = want.fields = fams;
         want.cellM = content.build.cellM;
+        want.layout = VillageLayout::fromJson(scat.layout);
         for (const auto& b : builds) {
             LotSpec L;
+            L.recipe = b.def->id;   // AL-84: what the site gives it
+            L.water = b.def->siteWater, L.wood = b.def->siteWood;
+            L.entrance = b.def->siteEntrance, L.downwind = b.def->siteDownwind;
+            L.nuisance = b.def->nuisance, L.quiet = b.def->quiet;
             L.w = b.plan.i1 - b.plan.i0;
             L.d = b.plan.j1 - b.plan.j0;
             L.zone = b.def->zone;
@@ -281,6 +286,9 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         st.center = center;
         st.roads = vplan.roads;
         st.roadWidth = vplan.roadWidth;
+        st.roadKind = vplan.roadKind;     // AL-84
+        st.entrance = vplan.entrance;
+        for (const auto& z : vplan.zones) st.zones.push_back({z.kind, z.rect.c, z.rect.yaw, z.rect.hw, z.rect.hd});
         st.square = vplan.square;
         st.squareR = vplan.squareR;
         // the buildings on their lots: the frame, the floor, the modules as built pieces
@@ -299,6 +307,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             b.h = site.loaded() ? L.groundMax + 0.1 : 0.0;
             b.used.assign(b.plan.stations.size(), false);
             Settlement::Structure rec;
+            rec.recipe = b.def->id;   // AL-84: what it was planned as (its rooms tell what it is)
             rec.q = b.frame.q, rec.gx = b.frame.gx, rec.gy = b.frame.gy;
             rec.i0 = b.plan.i0, rec.j0 = b.plan.j0, rec.i1 = b.plan.i1, rec.j1 = b.plan.j1;
             rec.h = b.h;
@@ -479,7 +488,8 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 break;
             }
             if (housed) continue;
-            if (planned && squareSpot < vplan.squareSpots.size()) p = vplan.squareSpots[squareSpot++];
+            if (planned && type == scat.layout.value("square_centre", std::string()) && k == 0) p = vplan.square;   // AL-84: the well in the middle
+            else if (planned && squareSpot < vplan.squareSpots.size()) p = vplan.squareSpots[squareSpot++];
             spawnSettlementObject(type, p, kNone);
         }
     }

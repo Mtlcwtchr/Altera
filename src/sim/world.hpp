@@ -62,6 +62,17 @@ struct Settlement {
     std::vector<double> roadWidth;
     Vec2 square;
     double squareR = 0.0;
+    // AL-84: main | lane | out | path per road; where the main road comes in;
+    // the land that is not buildings (fields, churchyard, pasture, the
+    // village's wood, lots kept for new households).
+    std::vector<std::string> roadKind;
+    Vec2 entrance;
+    struct Zone {
+        std::string kind;
+        Vec2 c;
+        double yaw = 0.0, hw = 0.0, hd = 0.0;
+    };
+    std::vector<Zone> zones;
     // AL-76: the buildings the village was planned with (sim/structure_plan.hpp):
     // what each is for, whose, where its modules stand (World::pieces) and
     // what stands in it; the view draws the props.
@@ -73,6 +84,7 @@ struct Settlement {
     // AL-81: a house the village was planned with; what it is for is its rooms' (World::rooms)
     struct Structure {
         EntityId family = kNone;
+        std::string recipe;                 // AL-84: what the village planned it as
         int q = 0, gx = 0, gy = 0;          // the frame: quarters, origin cell
         int i0 = 0, j0 = 0, i1 = 0, j1 = 0; // the footprint in its own cells
         double h = 0.0;                     // the floor (the pieces' h)

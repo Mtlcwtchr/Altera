@@ -48,6 +48,9 @@ struct StructureTypeDef {
     std::vector<std::string> hosts;    // per_settlement objects it takes in
     std::vector<std::string> yard;     // objects behind it
     std::string zone = "lane";         // square | road | lane | edge
+    // AL-84: where on the site it would rather stand (VillageWanted LotSpec)
+    double siteWater = 0, siteWood = 0, siteEntrance = 0, siteDownwind = 0;
+    bool nuisance = false, quiet = false;
     int wLo = 3, wHi = 3, dLo = 3, dHi = 3;
     int bigFamily = 0;                 // this many people or more: one cell wider
     int storeys = 1;
@@ -73,6 +76,7 @@ struct StructureCatalog {
     double tradeShare = 0.67;
     double yardD = 10.0;
     std::string fence;
+    Json layout;                       // AL-84: village.layout (VillageLayout::fromJson)
     const StructureTypeDef* find(const std::string& id) const {
         for (const auto& t : types)
             if (t.id == id) return &t;

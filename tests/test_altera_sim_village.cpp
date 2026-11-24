@@ -3,6 +3,7 @@
 
 #include "framework.hpp"
 #include "sim/ai.hpp"
+#include "sim/structure_plan.hpp"
 #include "sim/village_plan.hpp"
 #include "sim/world.hpp"
 #include "sim/worldgen.hpp"
@@ -95,4 +96,118 @@ TEST(altera_sim_village_worldgen_planned) {
     // saved and loaded, the plan stays
     const Json j = w.toJson();
     CHECK(j.dump().find("road_width") != std::string::npos);
+}
+
+// AL-84: a living, sensible layout: trades by what they need (the tanner by
+// the water and downwind, the carpenter toward the wood), the nuisance off the
+// chapel and the inn, houses in rows, the main road out, footpaths, strips
+// behind the yards, the commons, spare lots; and the plan passes its checks.
+TEST(altera_sim_village_layout_logic) {
+    const MapGrid m = dryMap();
+    VillageSite site = riverSite();
+    site.wood.assign(site.h.size(), 0);
+    for (int y = 0; y < site.n; ++y)
+        for (int x = 0; x < site.n; ++x)
+            if (site.x0 + x * site.cell < 1780) site.wood[std::size_t(y * site.n + x)] = 1;
+    const StructureCatalog cat = parseStructures(realContent().roomsJson);
+    VillageWanted want;
+    want.layout = VillageLayout::fromJson(cat.layout);
+    auto spec = [&](const std::string& id) {
+        const StructureTypeDef* d = cat.find(id);
+        LotSpec L;
+        L.recipe = id;
+        L.w = d ? d->wHi : 3;
+        L.d = d ? d->dHi : 3;
+        L.zone = d ? d->zone : "lane";
+        L.home = d ? d->home : true;
+        L.yardD = L.home ? cat.yardD : 4.0;
+        if (d) L.water = d->siteWater, L.wood = d->siteWood, L.entrance = d->siteEntrance, L.downwind = d->siteDownwind,
+               L.nuisance = d->nuisance, L.quiet = d->quiet;
+        return L;
+    };
+    for (const char* id : {"innkeeper", "chapel", "smith", "tanner", "carpenter", "baker"}) want.lots.push_back(spec(id));
+    for (int k = 0; k < 8; ++k) want.lots.push_back(spec("farmer"));
+    int homes = 0;
+    for (const auto& L : want.lots) homes += L.home;
+    want.houses = want.fields = homes;
+    for (std::uint64_t seed : {3ull, 11ull, 29ull}) {
+        const VillagePlan p = planVillage(site, m, {2000, 2000}, want, seed);
+        const auto bad = checkVillage(p, site, m, want);
+        for (const auto& b : bad) printf("  village %llu: %s\n", (unsigned long long)seed, b.c_str());
+        CHECK(bad.empty());
+        auto lotOf = [&](const std::string& id) -> const VillageLot& {
+            for (std::size_t i = 0; i < want.lots.size(); ++i)
+                if (want.lots[i].recipe == id) return p.lots[i];
+            return p.lots[0];
+        };
+        int placed = 0;
+        double farmWater = 0, farmWood = 0;
+        int farms = 0;
+        for (std::size_t i = 0; i < p.lots.size(); ++i) {
+            placed += p.lots[i].placed;
+            if (want.lots[i].recipe == "farmer" && p.lots[i].placed) {
+                farmWater += std::fabs(p.lots[i].house.c.x - 2100), farmWood += std::fabs(p.lots[i].house.c.x - 1780), ++farms;
+                // in a row: a neighbour close by
+                double nearest = 1e9;
+                for (std::size_t j = 0; j < p.lots.size(); ++j)
+                    if (j != i && p.lots[j].placed) nearest = std::min(nearest, dist(p.lots[i].house.c, p.lots[j].house.c));
+                CHECK(nearest < 30.0);
+            }
+        }
+        CHECK(placed == int(want.lots.size()));
+        CHECK(farms > 0);
+        // the tanner nearer the water, the carpenter nearer the wood than the farmers
+        CHECK(std::fabs(lotOf("tanner").house.c.x - 2100) < farmWater / std::max(1, farms));
+        CHECK(std::fabs(lotOf("carpenter").house.c.x - 1780) < farmWood / std::max(1, farms));
+        // the nuisance off the quiet ones
+        CHECK(dist(lotOf("smith").house.c, lotOf("chapel").house.c) >= want.layout.nuisanceR);
+        CHECK(dist(lotOf("tanner").house.c, lotOf("innkeeper").house.c) >= want.layout.nuisanceR);
+        // roads: the main road goes out, paths to the doors
+        int out = 0, paths = 0;
+        for (const auto& k : p.roadKind) out += k == "out", paths += k == "path";
+        CHECK(out >= 1);
+        CHECK(paths >= placed);
+        CHECK(p.roadKind.size() == p.roads.size());
+        // every home has its strip, and no field across the river
+        int fields = 0, cemetery = 0, pasture = 0, woodlot = 0, spare = 0;
+        for (const auto& z : p.zones) {
+            fields += z.kind == "field", cemetery += z.kind == "cemetery", pasture += z.kind == "pasture";
+            woodlot += z.kind == "woodlot", spare += z.kind == "spare";
+            if (z.kind == "field") CHECK(z.rect.c.x < 2100);
+        }
+        CHECK(fields == homes);
+        CHECK(cemetery == 1);
+        if (cemetery != 1) for (const auto& n : p.notes) printf("  note %s\n", n.c_str());
+        CHECK(pasture == 1);
+        CHECK(woodlot == 1);
+        CHECK(spare >= 1);
+        // the same seed, the same village
+        const VillagePlan q = planVillage(site, m, {2000, 2000}, want, seed);
+        CHECK(q.roads.size() == p.roads.size() && q.zones.size() == p.zones.size());
+    }
+}
+
+TEST(altera_sim_village_worldgen_layout_saved) {
+    Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    cfg["village_plan"] = true;
+    cfg["families"] = 8;
+    World w = makeTestWorld(realContent(), cfg, 7);
+    const Settlement& st = w.settlements().begin()->second;
+    CHECK(st.roadKind.size() == st.roads.size());
+    CHECK(!st.zones.empty());
+    bool well = false;
+    for (const auto& [id, o] : w.objects())
+        if (o.type == "well" && dist(o.pos, st.square) < 0.5) well = true;
+    CHECK(well);   // the well in the middle of the square
+    bool recipes = true;
+    for (const auto& s : st.structures) recipes = recipes && !s.recipe.empty();
+    CHECK(recipes);
+    // saved and loaded, the layout stays
+    World back(realContent(), 7);
+    back.loadJson(w.toJson());
+    const Settlement& sb = back.settlements().begin()->second;
+    CHECK(sb.zones.size() == st.zones.size());
+    CHECK(sb.roadKind == st.roadKind);
+    CHECK(dist(sb.entrance, st.entrance) < 1e-9);
+    CHECK(!sb.structures.empty() && sb.structures[0].recipe == st.structures[0].recipe);
 }
