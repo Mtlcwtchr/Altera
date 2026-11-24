@@ -440,6 +440,122 @@
    ],
    "stack": 1,
    "value": 14
+  },
+  {
+   "id": "hemp_fiber",
+   "material": "hemp_fiber",
+   "tags": [
+    "fiber",
+    "craft_raw"
+   ],
+   "stack": 30,
+   "value": 0.3
+  },
+  {
+   "id": "woad",
+   "material": "woad",
+   "tags": [
+    "plant",
+    "craft_raw",
+    "dye"
+   ],
+   "stack": 20,
+   "value": 0.5
+  },
+  {
+   "id": "madder",
+   "material": "madder",
+   "tags": [
+    "plant",
+    "craft_raw",
+    "dye"
+   ],
+   "stack": 20,
+   "value": 0.6
+  },
+  {
+   "id": "weld",
+   "material": "weld",
+   "tags": [
+    "plant",
+    "craft_raw",
+    "dye"
+   ],
+   "stack": 20,
+   "value": 0.4
+  },
+  {
+   "id": "poppy",
+   "material": "poppy",
+   "tags": [
+    "plant",
+    "herb"
+   ],
+   "stack": 20,
+   "value": 0.8
+  },
+  {
+   "id": "hemlock",
+   "material": "hemlock",
+   "tags": [
+    "plant",
+    "herb",
+    "poisonous"
+   ],
+   "stack": 20,
+   "value": 0.6
+  },
+  {
+   "id": "hellebore",
+   "material": "hellebore",
+   "tags": [
+    "plant",
+    "herb",
+    "poisonous"
+   ],
+   "stack": 20,
+   "value": 0.6
+  },
+  {
+   "id": "garlic",
+   "material": "garlic",
+   "tags": [
+    "plant",
+    "herb",
+    "food"
+   ],
+   "stack": 20,
+   "value": 0.3
+  },
+  {
+   "id": "hops",
+   "material": "hops",
+   "tags": [
+    "plant",
+    "herb"
+   ],
+   "stack": 20,
+   "value": 0.4
+  },
+  {
+   "id": "linden_flower",
+   "material": "linden_flower",
+   "tags": [
+    "plant",
+    "herb"
+   ],
+   "stack": 20,
+   "value": 0.3
+  },
+  {
+   "id": "nettle",
+   "material": "nettle",
+   "tags": [
+    "plant",
+    "herb"
+   ],
+   "stack": 20,
+   "value": 0.1
   }
  ],
  "annotate": [

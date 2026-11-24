@@ -3527,6 +3527,286 @@
      }
     }
    ]
+  },
+  {
+   "id": "blue_tunic",
+   "form": "tunic",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "garment_raw",
+     "len": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ],
+      "thread": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:woad"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "soak",
+     "slots": {
+      "work": [
+       "step:4"
+      ],
+      "liquid": [
+       "step:5"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "red_cloak",
+   "form": "cloak",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:wool_raw"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "sew",
+     "shape": "garment_raw",
+     "len": 3,
+     "slots": {
+      "work": [
+       "step:2"
+      ],
+      "thread": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:madder"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "soak",
+     "slots": {
+      "work": [
+       "step:4"
+      ],
+      "liquid": [
+       "step:5"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "yellow_cloth",
+   "form": "cloth",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:flax_fiber"
+      ]
+     }
+    },
+    {
+     "process": "weave",
+     "shape": "cloth",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:weld"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "soak",
+     "slots": {
+      "work": [
+       "step:2"
+      ],
+      "liquid": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "hemp_rope",
+   "form": "rope",
+   "steps": [
+    {
+     "process": "twist",
+     "shape": "strand",
+     "slots": {
+      "work": [
+       "mat:hemp_fiber"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "cord",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "twist",
+     "shape": "rope",
+     "len": 3,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "hellebore_poison",
+   "form": "poison",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:hellebore"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "linden_tea",
+   "form": "herbal_tea",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "stir",
+     "slots": {
+      "a": [
+       "mat:linden_flower"
+      ],
+      "b": [
+       {
+        "ref": "mat:water",
+        "n": 2
+       }
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "boil",
+     "heat": 1,
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
   }
  ]
 }

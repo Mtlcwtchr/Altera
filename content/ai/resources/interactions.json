@@ -602,6 +602,262 @@
      ]
     }
    ]
+  },
+  {
+   "id": "cut_hemp",
+   "category": "work",
+   "target": "object:wild_hemp",
+   "pre": [
+    "has:stone_blade",
+    "target_stock:hemp_fiber>=3"
+   ],
+   "eff": [
+    "has:hemp_fiber+3",
+    "target_stock:hemp_fiber-3",
+    "skill:fiber_working+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "pull_wild_flax",
+   "category": "work",
+   "target": "object:wild_hemp",
+   "pre": [
+    "target_stock:fiber_raw>=2"
+   ],
+   "eff": [
+    "has:fiber_raw+2",
+    "target_stock:fiber_raw-2",
+    "skill:fiber_working+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "gather_woad",
+   "category": "work",
+   "target": "object:dye_meadow",
+   "pre": [
+    "target_stock:woad>=2"
+   ],
+   "eff": [
+    "has:woad+2",
+    "target_stock:woad-2",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "dig_madder",
+   "category": "work",
+   "target": "object:dye_meadow",
+   "pre": [
+    "target_stock:madder>=1"
+   ],
+   "eff": [
+    "has:madder+1",
+    "target_stock:madder-1",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.05"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "gather_weld",
+   "category": "work",
+   "target": "object:dye_meadow",
+   "pre": [
+    "target_stock:weld>=2"
+   ],
+   "eff": [
+    "has:weld+2",
+    "target_stock:weld-2",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "gather_poppy",
+   "category": "work",
+   "target": "object:poppy_patch",
+   "pre": [
+    "knows:herbalism",
+    "target_stock:poppy>=2"
+   ],
+   "eff": [
+    "has:poppy+2",
+    "target_stock:poppy-2",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "gather_hemlock",
+   "category": "work",
+   "target": "object:hemlock_stand",
+   "pre": [
+    "knows:herbalism",
+    "target_stock:hemlock>=1"
+   ],
+   "eff": [
+    "has:hemlock+1",
+    "target_stock:hemlock-1",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "dig_hellebore",
+   "category": "work",
+   "target": "object:hellebore_patch",
+   "pre": [
+    "knows:herbalism",
+    "target_stock:hellebore>=1"
+   ],
+   "eff": [
+    "has:hellebore+1",
+    "target_stock:hellebore-1",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "gather_ramsons",
+   "category": "work",
+   "target": "object:ramsons",
+   "pre": [
+    "target_stock:garlic>=2"
+   ],
+   "eff": [
+    "has:garlic+2",
+    "target_stock:garlic-2",
+    "skill:foraging+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "pick_hops",
+   "category": "work",
+   "target": "object:hop_vine",
+   "pre": [
+    "target_stock:hops>=2"
+   ],
+   "eff": [
+    "has:hops+2",
+    "target_stock:hops-2",
+    "skill:foraging+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "pick_linden_flowers",
+   "category": "work",
+   "target": "object:linden_tree",
+   "pre": [
+    "target_stock:linden_flower>=1"
+   ],
+   "eff": [
+    "has:linden_flower+1",
+    "target_stock:linden_flower-1",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "pick_nettle_leaves",
+   "category": "work",
+   "target": "object:nettle_patch",
+   "pre": [
+    "target_stock:fiber_raw>=2"
+   ],
+   "eff": [
+    "has:nettle+2",
+    "target_stock:fiber_raw-2",
+    "skill:herbalism+0.005",
+    "moodlet:stung"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
   }
  ]
 }

@@ -7,7 +7,7 @@ Source of truth for content/ai/resources/*.json and content/loc/{ru,en}/resource
 
     python tools/content_gen/gen_resources.py
 
-Stages: AL-88 wood/stone/iron, AL-89 animals and light. Later stages append to the tables below.
+Stages: AL-88 wood/stone/iron, AL-89 animals and light, AL-90 plants. Later stages append to the tables below.
 """
 import json
 import os
@@ -363,6 +363,137 @@ MATERIAL_NAMES.update({
 })
 
 
+# ================================================================ AL-90: plants
+# Wild hemp and flax, dye plants (blue woad, red madder, yellow weld: a dye bath soaks its
+# colour and the `dyed` tag into cloth), herbs and poisons each their own item and patch.
+# Magic is not here yet: poppy, hemlock, hellebore and yew carry the tag `reagent`.
+NEW_MATERIALS += [
+    {"id": "hemp_fiber", "tags": ["fiber", "plant_fiber", "bast"],
+     "p": {"fiber": 0.85, "flex": 0.55, "toughness": 0.75, "flammable": 0.6, "moisture": 0.3, "purity": 0.75, "warmth": 0.25},
+     "shape": "fiber_raw", "item": "hemp_fiber", "worth": 0.9},
+    {"id": "woad", "tags": ["herb", "dye", "dyed", "colour_blue"], "p": {"moisture": 0.6, "purity": 0.7},
+     "shape": "lump", "item": "woad", "worth": 1.2},
+    {"id": "madder", "tags": ["herb", "dye", "dyed", "colour_red"], "p": {"moisture": 0.5, "purity": 0.7},
+     "shape": "lump", "item": "madder", "worth": 1.4},
+    {"id": "weld", "tags": ["herb", "dye", "dyed", "colour_yellow"], "p": {"moisture": 0.6, "purity": 0.7},
+     "shape": "lump", "item": "weld", "worth": 1.0},
+    {"id": "hellebore", "tags": ["herb", "poisonous", "reagent"], "p": {"toxic": 0.7, "moisture": 0.6, "purity": 0.8},
+     "shape": "lump", "item": "hellebore", "effects": [{"id": "poison", "k": 0.6}, {"id": "bitter", "k": 0.5}], "worth": 1.2},
+    {"id": "hops", "tags": ["herb", "aromatic"], "p": {"moisture": 0.5, "purity": 0.8},
+     "shape": "lump", "item": "hops", "effects": [{"id": "preserves", "k": 0.5}, {"id": "bitter", "k": 0.4}], "worth": 0.9},
+    {"id": "linden_flower", "tags": ["herb", "aromatic"], "p": {"moisture": 0.5, "purity": 0.85},
+     "shape": "lump", "item": "linden_flower", "effects": [{"id": "fresh", "k": 0.4}, {"id": "warm", "k": 0.2}], "worth": 0.8},
+]
+MATERIAL_ITEMS.update({"poppy": "poppy", "hemlock": "hemlock", "garlic": "garlic", "nettle": "nettle"})
+MATERIAL_TAGS = {"poppy": ["reagent"], "hemlock": ["reagent"]}  # appended once
+ITEMS += [
+    ("hemp_fiber", "hemp_fiber", ["fiber", "craft_raw"], 30, 0.3, 0.2, [1, 1], ru("пенька", "пеньки", "пеньке", "пеньку", "пенькой", "пеньке", "f"), "hemp fibre"),
+    ("woad", "woad", ["plant", "craft_raw", "dye"], 20, 0.5, 0.2, [1, 1], ru("вайда", "вайды", "вайде", "вайду", "вайдой", "вайде", "f"), "woad"),
+    ("madder", "madder", ["plant", "craft_raw", "dye"], 20, 0.6, 0.2, [1, 1], ru("марена", "марены", "марене", "марену", "мареной", "марене", "f"), "madder"),
+    ("weld", "weld", ["plant", "craft_raw", "dye"], 20, 0.4, 0.2, [1, 1], ru("резеда", "резеды", "резеде", "резеду", "резедой", "резеде", "f"), "weld"),
+    ("poppy", "poppy", ["plant", "herb"], 20, 0.8, 0.1, [1, 1], ru("мак", "мака", "маку", "мак", "маком", "маке", "m"), "poppy"),
+    ("hemlock", "hemlock", ["plant", "herb", "poisonous"], 20, 0.6, 0.1, [1, 1], ru("болиголов", "болиголова", "болиголову", "болиголов", "болиголовом", "болиголове", "m"), "hemlock"),
+    ("hellebore", "hellebore", ["plant", "herb", "poisonous"], 20, 0.6, 0.1, [1, 1], ru("чемерица", "чемерицы", "чемерице", "чемерицу", "чемерицей", "чемерице", "f"), "hellebore"),
+    ("garlic", "garlic", ["plant", "herb", "food"], 20, 0.3, 0.1, [1, 1], ru("черемша", "черемши", "черемше", "черемшу", "черемшой", "черемше", "f"), "wild garlic"),
+    ("hops", "hops", ["plant", "herb"], 20, 0.4, 0.1, [1, 1], ru("хмель", "хмеля", "хмелю", "хмель", "хмелем", "хмеле", "m"), "hops"),
+    ("linden_flower", "linden_flower", ["plant", "herb"], 20, 0.3, 0.05, [1, 1], ru("липовый цвет", "липового цвета", "липовому цвету", "липовый цвет", "липовым цветом", "липовом цвете", "m"), "linden blossom"),
+    ("nettle", "nettle", ["plant", "herb"], 20, 0.1, 0.1, [1, 1], ru("крапива", "крапивы", "крапиве", "крапиву", "крапивой", "крапиве", "f"), "nettle"),
+]
+OBJECTS += [
+    obj("wild_hemp", {"hemp_fiber": 10, "fiber_raw": 6}, ["meadow", "river"], 6, regrow={"hemp_fiber": 2, "fiber_raw": 1},
+        every=288, stand=0.7, _doc="дикая конопля и лён: пенька для верёвок и сетей, волокно на ткань"),
+    obj("dye_meadow", {"woad": 4, "madder": 3, "weld": 4}, ["meadow"], 4, regrow={"woad": 1, "madder": 1, "weld": 1},
+        every=288, stand=0.6, _doc="красильные травы: вайда (синее), марена (красное), резеда (жёлтое)"),
+    obj("poppy_patch", {"poppy": 5}, ["meadow"], 3, regrow={"poppy": 1}, every=288, stand=0.6, _doc="мак: снотворное и боль"),
+    obj("hemlock_stand", {"hemlock": 4}, ["river", "marsh"], 2, regrow={"hemlock": 1}, every=288, stand=0.6,
+        _doc="болиголов у воды: яд"),
+    obj("hellebore_patch", {"hellebore": 3}, ["marsh", "forest"], 1.5, regrow={"hellebore": 1}, every=432, stand=0.6,
+        _doc="чемерица: яд и рвотное; лекарь или отравитель, судят по поступку"),
+    obj("ramsons", {"garlic": 6}, ["forest"], 6, regrow={"garlic": 2}, every=144, stand=0.6,
+        _doc="черемша: дикий чеснок, от заражения ран и в еду"),
+    obj("hop_vine", {"hops": 5}, ["forest", "river"], 3, regrow={"hops": 1}, every=288, stand=0.7,
+        _doc="хмель на опушке: эль дольше не киснет"),
+]
+# the linden flowers in summer (an object of this pack: its stock is rewritten here)
+for _o in OBJECTS:
+    if _o["id"] == "linden_tree":
+        _o["stock"]["linden_flower"] = 3
+        _o["regrow"]["linden_flower"] = 1
+        _o["max_stock"]["linden_flower"] = 3
+INTERACTIONS += [
+    take("cut_hemp", "wild_hemp", "hemp_fiber", 3, 3, tool="stone_blade", skill="fiber_working",
+         ru_name="Нарезать конопли", en_name="Cut hemp"),
+    take("pull_wild_flax", "wild_hemp", "fiber_raw", 2, 3, skill="fiber_working", ru_name="Надёргать льна", en_name="Pull wild flax"),
+    take("gather_woad", "dye_meadow", "woad", 2, 2, skill="herbalism", ru_name="Нарвать вайды", en_name="Gather woad"),
+    take("dig_madder", "dye_meadow", "madder", 1, 3, skill="herbalism", fatigue=0.05, ru_name="Накопать марены", en_name="Dig madder root"),
+    take("gather_weld", "dye_meadow", "weld", 2, 2, skill="herbalism", ru_name="Нарвать резеды", en_name="Gather weld"),
+    take("gather_poppy", "poppy_patch", "poppy", 2, 2, knows="herbalism", skill="herbalism", ru_name="Собрать мак", en_name="Gather poppies"),
+    take("gather_hemlock", "hemlock_stand", "hemlock", 1, 2, knows="herbalism", skill="herbalism",
+         ru_name="Срезать болиголов", en_name="Cut hemlock"),
+    take("dig_hellebore", "hellebore_patch", "hellebore", 1, 3, knows="herbalism", skill="herbalism",
+         ru_name="Выкопать чемерицу", en_name="Dig hellebore"),
+    take("gather_ramsons", "ramsons", "garlic", 2, 2, skill="foraging", ru_name="Нарвать черемши", en_name="Gather wild garlic"),
+    take("pick_hops", "hop_vine", "hops", 2, 2, skill="foraging", ru_name="Собрать хмель", en_name="Pick hops"),
+    take("pick_linden_flowers", "linden_tree", "linden_flower", 1, 2, skill="herbalism",
+         ru_name="Собрать липовый цвет", en_name="Pick linden blossom"),
+    work("pick_nettle_leaves", "nettle_patch", ["target_stock:fiber_raw>=2"],
+         ["has:nettle+2", "target_stock:fiber_raw-2", "skill:herbalism+0.005", "moodlet:stung"], 2,
+         ru_name="Нарвать крапивы", en_name="Pick nettles"),
+]
+def _dyed(base_steps, dye):
+    n = len(base_steps)
+    return base_steps + [
+        {"process": "mix", "mode": "stir", "slots": {"a": [f"mat:{dye}"], "b": [{"ref": "mat:water", "n": 2}]}},
+        {"process": "soak", "slots": {"work": [f"step:{n}"], "liquid": [f"step:{n + 1}"]}}]
+_TUNIC = [{"process": "twist", "shape": "strand", "slots": {"work": ["mat:flax_fiber"]}},
+          {"process": "weave", "shape": "cloth", "slots": {"work": ["step:1"]}},
+          {"process": "twist", "shape": "strand", "slots": {"work": ["mat:flax_fiber"]}},
+          {"process": "sew", "shape": "garment_raw", "len": 2, "slots": {"work": ["step:2"], "thread": ["step:3"]}}]
+_CLOAK = [{"process": "twist", "shape": "strand", "slots": {"work": ["mat:wool_raw"]}},
+          {"process": "weave", "shape": "cloth", "slots": {"work": ["step:1"]}},
+          {"process": "twist", "shape": "strand", "slots": {"work": ["mat:flax_fiber"]}},
+          {"process": "sew", "shape": "garment_raw", "len": 3, "slots": {"work": ["step:2"], "thread": ["step:3"]}}]
+_CLOTH = [{"process": "twist", "shape": "strand", "slots": {"work": ["mat:flax_fiber"]}},
+          {"process": "weave", "shape": "cloth", "slots": {"work": ["step:1"]}}]
+NEW_DESIGNS += [
+    {"id": "blue_tunic", "form": "tunic", "steps": _dyed(_TUNIC, "woad")},
+    {"id": "red_cloak", "form": "cloak", "steps": _dyed(_CLOAK, "madder")},
+    {"id": "yellow_cloth", "form": "cloth", "steps": _dyed(_CLOTH, "weld")},
+    {"id": "hemp_rope", "form": "rope", "steps": [
+        {"process": "twist", "shape": "strand", "slots": {"work": ["mat:hemp_fiber"]}},
+        {"process": "twist", "shape": "cord", "slots": {"work": ["step:1"]}},
+        {"process": "twist", "shape": "rope", "len": 3, "slots": {"work": ["step:2"]}}]},
+    {"id": "hellebore_poison", "form": "poison", "steps": [
+        {"process": "mix", "mode": "stir", "slots": {"a": ["mat:hellebore"], "b": [{"ref": "mat:water", "n": 2}]}}]},
+    {"id": "linden_tea", "form": "herbal_tea", "steps": [
+        {"process": "mix", "mode": "stir", "slots": {"a": ["mat:linden_flower"], "b": [{"ref": "mat:water", "n": 2}]}},
+        {"process": "heat", "mode": "boil", "heat": 1, "slots": {"work": ["step:1"]}}]},
+]
+DESIGN_NAMES.update({
+    "blue_tunic": ("синяя рубаха", "blue tunic"), "red_cloak": ("красный плащ", "red cloak"),
+    "yellow_cloth": ("жёлтое полотно", "yellow cloth"), "hemp_rope": ("пеньковая верёвка", "hemp rope"),
+    "hellebore_poison": ("яд из чемерицы", "hellebore poison"), "linden_tea": ("липовый чай", "linden tea"),
+})
+OBJECT_NAMES.update({
+    "wild_hemp": (ru("конопляник", "конопляника", "коноплянику", "конопляник", "конопляником", "коноплянике", "m"), "wild hemp"),
+    "dye_meadow": (ru("красильный луг", "красильного луга", "красильному лугу", "красильный луг", "красильным лугом", "красильном лугу", "m"), "dye meadow"),
+    "poppy_patch": (ru("маковая поляна", "маковой поляны", "маковой поляне", "маковую поляну", "маковой поляной", "маковой поляне", "f"), "poppy patch"),
+    "hemlock_stand": (ru("заросли болиголова", "зарослей болиголова", "зарослям болиголова", "заросли болиголова", "зарослями болиголова", "зарослях болиголова", "pl"), "hemlock stand"),
+    "hellebore_patch": (ru("чемерица", "чемерицы", "чемерице", "чемерицу", "чемерицей", "чемерице", "f"), "hellebore patch"),
+    "ramsons": (ru("черемша", "черемши", "черемше", "черемшу", "черемшой", "черемше", "f"), "wild garlic"),
+    "hop_vine": (ru("хмельник", "хмельника", "хмельнику", "хмельник", "хмельником", "хмельнике", "m"), "hop vine"),
+})
+MATERIAL_NAMES.update({
+    "hemp_fiber": ("пенька", "f", "пеньков{form:g|ый|ая|ое|ые} {form}", "hemp", "hemp {form}"),
+    "woad": ("вайда", "f", "{form}, крашенн{form:g|ый|ая|ое|ые} вайдой", "woad", "woad-dyed {form}"),
+    "madder": ("марена", "f", "{form}, крашенн{form:g|ый|ая|ое|ые} мареной", "madder", "madder-dyed {form}"),
+    "weld": ("резеда", "f", "{form}, крашенн{form:g|ый|ая|ое|ые} резедой", "weld", "weld-dyed {form}"),
+    "hellebore": ("чемерица", "f", "{form} из чемерицы", "hellebore", "hellebore {form}"),
+    "hops": ("хмель", "m", "хмелев{form:g|ой|ая|ое|ые} {form}", "hops", "hop {form}"),
+    "linden_flower": ("липовый цвет", "m", "{form} из липового цвета", "linden blossom", "linden {form}"),
+})
+
+
 # ---------------------------------------------------------------- build
 def text_link(path, pairs, field):
     """Insert "field": "value" right after {"id": "<id>" on one-object-per-line files."""
@@ -410,6 +541,8 @@ def main():
         have[mat]["item"] = item
     for mat, heat in MATERIAL_HEAT.items():
         have[mat]["heat"] = heat
+    for mat, tags in MATERIAL_TAGS.items():
+        have[mat]["tags"] += [t for t in tags if t not in have[mat]["tags"]]
     save(mp, md)
     add_forms(P("content/ai/craft/forms.json"), NEW_FORMS)
     text_link(P("content/ai/craft/forms.json"), FORM_ITEMS, "item")
