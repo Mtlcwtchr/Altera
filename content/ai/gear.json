@@ -1099,6 +1099,62 @@
     1,
     1
    ]
+  },
+  "brine": {
+   "kg": 1.0,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "yarrow": {
+   "kg": 0.1,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "salted_meat": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "salted_fish": {
+   "kg": 0.3,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "sauerkraut": {
+   "kg": 0.5,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "salted_mushrooms": {
+   "kg": 0.3,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "rusks": {
+   "kg": 0.2,
+   "size": [
+    1,
+    1
+   ]
+  },
+  "lard": {
+   "kg": 0.4,
+   "size": [
+    1,
+    1
+   ]
   }
  }
 }
