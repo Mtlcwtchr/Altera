@@ -51,7 +51,7 @@
  "chronicle.realm.camp_disbanded": "The band of {pol} scattered, the camp stands empty",
  "chronicle.realm.raid": "Men of {pol} fell on {pol2} and carried off goods worth {n}",
  "chronicle.realm.raid_repelled": "{pol2} drove off a raid from {pol}",
- "chronicle.realm.raid_village": "A raid on the village: men of {pol} plundered the stores (food for {n} days)",
+ "chronicle.realm.raid_village": "A raid on the village: men of {pol} plundered the stores, food taken: {n}",
  "chronicle.realm.raid_village_repelled": "The village drove off a raid from {pol}",
  "chronicle.realm.villager_hurt_raid": "{who} was wounded in the raid from {pol}",
  "chronicle.realm.villager_killed_raid": "{who} was killed in the raid from {pol}",

@@ -323,7 +323,7 @@
  "chronicle.realm.camp_disbanded": "Шайка {pol:gen} разбрелась, лагерь пуст",
  "chronicle.realm.raid": "Люди {pol:gen} налетели на {pol2:acc} и унесли добра на {n}",
  "chronicle.realm.raid_repelled": "{pol2} отбил{pol2:g||а|о} набег {pol:gen}",
- "chronicle.realm.raid_village": "Набег на деревню: люди {pol:gen} разграбили амбары (еды на {n} дней)",
+ "chronicle.realm.raid_village": "Набег на деревню: люди {pol:gen} разграбили амбары, унесено еды: {n}",
  "chronicle.realm.raid_village_repelled": "Деревня отбила набег {pol:gen}",
  "chronicle.realm.villager_hurt_raid": "{who} ранен{who:g||а} при набеге {pol:gen}",
  "chronicle.realm.villager_killed_raid": "{who} погиб{who:g||ла} при набеге {pol:gen}",
