@@ -488,6 +488,24 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
         }
         return out;
     };
+    // AL-88: a station that does not heat (the anvil) works with the heat of another one at
+    // hand (the forge): the step then needs both, each its own place
+    auto taggedTypes = [&](const ProcessDef& p) {
+        std::set<std::string> out;
+        for (const auto& [type, od] : ct.objects) {
+            const StationDef* s = d.station(od.station);
+            if (!s) continue;
+            for (const auto& t : p.stations)
+                if (std::find(s->tags.begin(), s->tags.end(), t) != s->tags.end()) out.insert(type);
+        }
+        return out;
+    };
+    auto hotTypes = [&](int heat) {
+        std::set<std::string> out;
+        for (const auto& [type, od] : ct.objects)
+            if (const StationDef* s = d.station(od.station); s && s->tempMax >= heat) out.insert(type);
+        return out;
+    };
     // AL-74: a homestead object (one per household: the hearth, the house's table) stands a
     // few metres from the others, so one act may use several of them (craftWorkplace radius)
     auto homestead = [&](const std::string& type) {
@@ -510,10 +528,44 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
         if (!f.item.empty() && ct.items.count(f.item))
             for (const auto& t : f.deriveTags)
                 if (!toolItem.count(t)) toolItem[t] = f.item;
+    // AL-88: raw things that work as tools by themselves (craftWorkplace): sand is grit,
+    // a hard stone in hand is a hammerstone
+    for (const auto& [id, it] : ct.items) {
+        const MaterialDef* m = it.material.empty() ? nullptr : d.material(it.material);
+        if (!m) continue;
+        const bool grit = std::find(m->tags.begin(), m->tags.end(), "grit") != m->tags.end();
+        const bool stone = std::find(m->tags.begin(), m->tags.end(), "stone") != m->tags.end();
+        auto h = m->p.find("hardness");
+        if (grit && !toolItem.count("grit")) toolItem["grit"] = id;
+        if (stone && h != m->p.end() && h->second >= 0.6 && !toolItem.count("striking")) toolItem["striking"] = id;
+    }
     std::map<std::string, std::string> portable; // station tag -> carried item that is that station
     for (const auto& [id, it] : ct.items)
         if (const StationDef* s = d.station(id))
             for (const auto& t : s->tags) portable[t] = id;
+    // AL-88: the object types each room of rooms.json brings together (its needs and stations)
+    std::vector<std::set<std::string>> workshopRooms;
+    for (const auto& r : ct.roomsJson.value("rooms", Json::array())) {
+        std::set<std::string> types;
+        for (const auto& n : r.value("needs", Json::array()))
+            for (const auto& t : n.value("any", Json::array()))
+                if (t.is_string()) types.insert(t.get<std::string>());
+        if (r.contains("furnish"))
+            for (const auto& st : r["furnish"].value("stations", Json::array()))
+                if (st.contains("object") && st["object"].is_string()) types.insert(st["object"].get<std::string>());
+        if (types.size() > 1) workshopRooms.push_back(std::move(types));
+    }
+    // things an authored chore already makes at a place out of one's own stuff (brew_ale at the
+    // hearth): the room rule leaves them to it (a theft or a bare-handed make_axe does not count)
+    std::set<std::string> authored;
+    for (const auto& [id, a] : ct.interactions) {
+        if (a.target.rfind("object:", 0) != 0) continue;
+        bool uses = false;
+        for (const auto& e : a.eff) uses = uses || (e.subject == "has" && e.op == '-' && !e.onTarget);
+        if (!uses) continue;
+        for (const auto& e : a.eff)
+            if (e.subject == "has" && e.op == '+' && !e.onTarget) authored.insert(e.key);
+    }
     for (const auto& ds : d.designs) {
         const FormDef* f = d.form(ds.form);
         if (!f || f->item.empty() || !ct.items.count(f->item)) continue;
@@ -565,13 +617,22 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
                 else tools.insert(item);
             }
             if (!p->stations.empty() || p->heatMin > 0) {
-                const int heat = std::max(p->heatMin, p->op == ProcOp::Heat ? st.heat : 0);
+                int heat = std::max(p->heatMin, p->op == ProcOp::Heat ? st.heat : 0);
                 std::string port;
                 for (const auto& t : p->stations)
                     if (portable.count(t) && port.empty()) port = portable[t];
                 if (!port.empty()) carried.insert(port);
                 else {
                     std::set<std::string> types = servingTypes(*p, heat);
+                    if (types.empty() && heat > 0 && !p->stations.empty()) {
+                        std::set<std::string> tagged = taggedTypes(*p), hot = hotTypes(heat);
+                        if (!tagged.empty() && !hot.empty()) {
+                            if (heatPlace < 0) heatPlace = static_cast<int>(places.size());
+                            places.push_back(std::move(hot));
+                            types = std::move(tagged);
+                            heat = 0;
+                        }
+                    }
                     if (types.empty()) ok = false;
                     if (heat > 0 && heatPlace < 0) heatPlace = static_cast<int>(places.size());
                     places.push_back(std::move(types));
@@ -600,6 +661,24 @@ std::vector<InteractionDef> designInteractions(const Content& ct) {
                     objType = pick(first);
                 }
             }
+            // AL-88: a workshop room (rooms.json) groups stations within reach of each other
+            // (smithy: forge, anvil, quench tub, grindstone): the act stands at the room's object
+            // serving the heated step (else the first), when the room serves every step
+            if (objType.empty() && !authored.count(f->item))
+                for (const auto& room : workshopRooms) {
+                    bool all = true;
+                    for (const auto& st : places) {
+                        bool any = false;
+                        for (const auto& t : st) any = any || room.count(t);
+                        all = all && any;
+                    }
+                    if (!all) continue;
+                    std::set<std::string> at;
+                    for (const auto& t : places[static_cast<size_t>(std::max(0, heatPlace))])
+                        if (room.count(t)) at.insert(t);
+                    objType = pick(at);
+                    if (!objType.empty()) break;
+                }
             if (objType.empty()) ok = false;
         }
         if (!ok) continue;

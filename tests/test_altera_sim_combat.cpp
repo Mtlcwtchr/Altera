@@ -191,6 +191,7 @@ TEST(altera_sim_combat_wounds_heal_in_ticks) {
     a.inventory["bandage"] = 1;
     a.body.health = 0.7;
     a.wounds.push_back(freshWound(w, "arm_l", "cut", 6.0));
+    a.wounds.back().infectionRolled = true; // the healing is under test, not the luck of a fever
     liveDays(w, 1);
     CHECK(a.wounds.empty() || a.wounds.front().treatment == "bandage");
     CHECK_EQ(a.has("bandage"), 0);

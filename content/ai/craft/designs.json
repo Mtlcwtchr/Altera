@@ -1465,21 +1465,11 @@
    "form": "mortar_lime",
    "steps": [
     {
-     "process": "heat",
-     "mode": "calcine",
-     "heat": 3,
-     "slots": {
-      "work": [
-       "mat:limestone"
-      ]
-     }
-    },
-    {
      "process": "mix",
      "mode": "stir",
      "slots": {
       "a": [
-       "step:1"
+       "mat:quicklime"
       ],
       "b": [
        "mat:water"

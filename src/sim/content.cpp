@@ -846,14 +846,23 @@ Content Content::load(const std::string& dir) {
     // by the same rules: a new id is added, a shared one keeps what was there.
     ExpansionData cuisine =
         mergeExpansion(dir + "/cuisine", items, objects, needs, traits, htn, interactions, config, knowledge);
+    // AL-86: the resources pack (world sources, raw things, the items archetypes count as),
+    // by the same rules, after the cuisine and before the expansion.
+    ExpansionData resources =
+        mergeExpansion(dir + "/resources", items, objects, needs, traits, htn, interactions, config, knowledge);
     ExpansionData expansion =
         mergeExpansion(dir + "/expansion", items, objects, needs, traits, htn, interactions, config, knowledge);
     for (const auto& e : cuisine.errors) expansion.errors.push_back("cuisine: " + e);
     for (const auto& k : cuisine.kept) expansion.kept.push_back("cuisine:" + k);
-    // The cuisine pack also annotates items it does not add (base and expansion ones): its
-    // category tags join theirs, other fields (worth, quality, material) fill in where the item has none.
-    if (std::ifstream probe(dir + "/cuisine/items.json"); probe) {
-        const Json cu = readJson(dir + "/cuisine/items.json");
+    for (const auto& e : resources.errors) expansion.errors.push_back("resources: " + e);
+    for (const auto& k : resources.kept) expansion.kept.push_back("resources:" + k);
+    // A pack may annotate items it does not add (base and expansion ones): its category tags
+    // join theirs, other fields (worth, quality, material) fill in where the item has none.
+    for (const char* pack : {"cuisine", "resources"}) {
+        const std::string path = dir + "/" + pack + "/items.json";
+        std::ifstream probe(path);
+        if (!probe) continue;
+        const Json cu = readJson(path);
         for (const auto& a : cu.value("annotate", Json::array())) {
             const std::string id = a.value("id", std::string());
             bool found = false;
@@ -867,7 +876,7 @@ Content Content::load(const std::string& dir) {
                 for (const auto& [k, v] : a.items())
                     if (k != "id" && k != "add_tags" && k[0] != '_' && !e.contains(k)) e[k] = v;
             }
-            if (!found) expansion.errors.push_back("cuisine: annotate of unknown item '" + id + "'");
+            if (!found) expansion.errors.push_back(std::string(pack) + ": annotate of unknown item '" + id + "'");
         }
     }
     Content c = fromJson(items, objects, needs, traits, f("goals.json"), htn, interactions, f("fsm.json"), config,
@@ -875,11 +884,11 @@ Content Content::load(const std::string& dir) {
     c.expansion = std::move(expansion);
     c.climate = parseClimate(f("climate.json"), c.warnings);
     c.care = parseCare(f("care.json"), c.warnings);
+    c.roomsJson = f("rooms.json"); // AL-88: before the design acts (workshop rooms)
     c.craft = craft::CraftData::load(dir + "/craft");
     if (c.craft.loaded && c.craft.cfg.goapDesigns)
         for (auto& a : designInteractions(c)) c.interactions.emplace(a.id, a);
     c.build = parseBuild(f("build.json"));
-    c.roomsJson = f("rooms.json");
     c.rooms = parseRooms(c.roomsJson);
     parseBackstories(f("backstories.json"), c);
     {
