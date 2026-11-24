@@ -1,0 +1,205 @@
+#include "client2d/view2d.hpp"
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <map>
+#include <set>
+
+#include "client2d/grid2d.hpp"
+#include "sim/ai.hpp"
+
+namespace altera::client2d {
+
+using namespace altera::sim;
+
+std::string ViewText::name(const std::string& kind, const std::string& id) const {
+    if (id.empty() || !loc) return id;
+    const std::string k = kind + "." + id + ".name";
+    if (loc->has(lang, k)) return loc->text(lang, k);
+    const std::string k2 = kind + "." + id;   // rooms: room.<type>
+    if (loc->has(lang, k2)) return loc->text(lang, k2);
+    return id;
+}
+
+namespace {
+
+double r2(double v) { return std::round(v * 100) / 100; }
+
+std::string clockText(Tick t) {
+    const int m = static_cast<int>(t % kTicksPerDay) * 10;
+    char b[16];
+    std::snprintf(b, sizeof b, "%02d:%02d", m / 60, m % 60);
+    return b;
+}
+
+std::string personName(const ViewText& t, const Character& c) {
+    if (c.isAnimal()) return t.name("species", c.species);
+    if (!t.loc) return c.name;
+    const Json n = t.loc->personNoun(t.lang, c);
+    return n.is_object() ? n.value("nom", c.name) : c.name;
+}
+
+// The act going on: the interaction, or where the walk leads.
+std::string activityOf(const ViewText& t, const Character& c) {
+    if (!c.body.alive) return "";
+    const FsmState& f = c.ai.fsm;
+    if (!f.interaction.empty() && f.interaction != "goto") return t.name("interaction", f.interaction);
+    if (f.interaction == "goto" && c.ai.plan.actionIndex + 1 < c.ai.plan.actions.size()) {
+        const auto& next = c.ai.plan.actions[c.ai.plan.actionIndex + 1];
+        if (next.interaction != "goto") return t.name("interaction", next.interaction);
+    }
+    return "";
+}
+
+// The interaction the person is busy with, or the one the walk leads to (its icon).
+std::string actId(const Character& c) {
+    const FsmState& f = c.ai.fsm;
+    if (f.interaction == "goto" && c.ai.plan.actionIndex + 1 < c.ai.plan.actions.size())
+        return c.ai.plan.actions[c.ai.plan.actionIndex + 1].interaction;
+    return f.interaction;
+}
+
+std::string goalOf(const ViewText& t, const Character& c) {
+    if (!c.ai.goal.valid()) return "";
+    if (c.ai.goal.id == "player_action") return t.name("interaction", c.ai.goal.task);
+    return t.name("goal", c.ai.goal.id);
+}
+
+} // namespace
+
+Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beastsR) {
+    Json out = Json::array();
+    for (const auto& [id, c] : w.characters()) {
+        if (near && c.isAnimal() && dist(c.pos, *near) > beastsR) continue;
+        const Family* f = w.familyOf(c);
+        Json p = {{"id", id},
+                  {"name", personName(t, c)},
+                  {"sp", c.species},
+                  {"x", r2(c.pos.x)},
+                  {"y", r2(c.pos.y)},
+                  {"alive", c.body.alive},
+                  {"down", c.body.downUntil > w.now()},
+                  {"pl", c.controller.isPlayer()},
+                  {"sex", std::string(1, c.body.sex)},
+                  {"age", c.body.ageDays / kDaysPerYear},
+                  {"fam", f ? f->name : ""},
+                  {"famId", f ? f->id : kNone},
+                  {"st", c.ai.fsm.state},
+                  {"ia", actId(c)},
+                  {"act", activityOf(t, c)},
+                  {"goal", goalOf(t, c)},
+                  {"hp", r2(c.body.health)}};
+        if (c.ai.fsm.interaction == "goto" || c.ai.fsm.state == "Move")
+            p["dest"] = Json::array({r2(c.ai.fsm.dest.x), r2(c.ai.fsm.dest.y)});
+        if (!c.isAnimal()) {
+            Json worn = Json::array();
+            for (const auto& [slot, item] : c.worn) worn.push_back(item);
+            p["worn"] = worn;
+            Json inv = Json::array();
+            for (const auto& [item, n] : c.inventory)
+                if (n > 0) inv.push_back(item);
+            p["inv"] = inv;
+            p["occ"] = c.occupation;
+            p["role"] = c.status.role;
+        }
+        out.push_back(std::move(p));
+    }
+    return out;
+}
+
+Json personJson(const World& w, const ViewText& t, EntityId id) {
+    const Character* cp = w.character(id);
+    if (!cp) return nullptr;
+    const Character& c = *cp;
+    const Family* f = w.familyOf(c);
+    Json d = {{"id", id},
+              {"name", personName(t, c)},
+              {"sp", c.species},
+              {"spn", c.isAnimal() ? t.name("species", c.species) : ""},
+              {"alive", c.body.alive},
+              {"cause", c.body.causeOfDeath},
+              {"sex", std::string(1, c.body.sex)},
+              {"age", c.body.ageDays / kDaysPerYear},
+              {"fam", f ? f->name : ""},
+              {"act", activityOf(t, c)},
+              {"goal", goalOf(t, c)},
+              {"hp", r2(c.body.health)},
+              {"fatigue", r2(c.body.fatigue)},
+              {"mood", r2(c.mood(w.now()))},
+              {"role", c.status.role},
+              {"occ", c.occupation},
+              {"pl", c.controller.isPlayer()}};
+    Json needs = Json::array();
+    for (const auto& nd : w.content().needs) {
+        auto it = c.needs.find(nd.id);
+        if (it == c.needs.end()) continue;
+        needs.push_back({{"id", nd.id}, {"name", t.name("need", nd.id)}, {"v", r2(it->second)}});
+    }
+    d["needs"] = needs;
+    Json inv = Json::array();
+    for (const auto& [item, n] : c.inventory)
+        if (n > 0) inv.push_back({{"id", item}, {"name", t.name("item", item)}, {"n", n}});
+    d["inv"] = inv;
+    Json worn = Json::array();
+    for (const auto& [slot, item] : c.worn) worn.push_back({{"slot", slot}, {"id", item}, {"name", t.name("item", item)}});
+    d["worn"] = worn;
+    Json traits = Json::array();
+    for (const auto& tr : c.traits) traits.push_back(t.name("trait", tr));
+    d["traits"] = traits;
+    Json trace = Json::array();
+    const std::size_t from = c.ai.trace.size() > 6 ? c.ai.trace.size() - 6 : 0;
+    for (std::size_t i = c.ai.trace.size(); i-- > from;) {
+        const TraceEntry& e = c.ai.trace[i];
+        trace.push_back({{"t", clockText(e.tick)},
+                         {"text", t.loc ? traceText(*t.loc, t.lang, w, c, e) : e.code}});
+    }
+    d["trace"] = trace;
+    return d;
+}
+
+Json staticJson(const World& w, const ViewText& t) {
+    const MapGrid& m = w.map();
+    Json j;
+    j["size"] = m.sizeM;
+    j["ground"] = groundNames();
+    Json st = Json::array();
+    for (const auto& [id, s] : w.settlements())
+        st.push_back({{"id", id}, {"name", s.name}, {"x", r2(s.center.x)}, {"y", r2(s.center.y)}, {"mode", s.mode}});
+    j["settlements"] = st;
+    Json rooms = Json::object();
+    for (const auto& r : w.content().rooms.rules) rooms[r.id] = t.name("room", r.id);
+    rooms[w.content().rooms.closedFallback] = t.name("room", w.content().rooms.closedFallback);
+    rooms[w.content().rooms.openFallback] = t.name("room", w.content().rooms.openFallback);
+    j["rooms"] = rooms;
+    std::set<std::string> types;
+    for (const auto& [id, o] : w.objects()) types.insert(o.type);
+    Json objs = Json::object();
+    for (const auto& ty : types) objs[ty] = t.name("object", ty);
+    j["objects"] = objs;
+    Json fams = Json::object();
+    for (const auto& [id, f] : w.families()) fams[std::to_string(id)] = f.name;
+    j["families"] = fams;
+    Json ui = Json::object();
+    if (t.loc)
+        for (const auto& k : t.loc->keys(t.lang))
+            if (k.rfind("ui2d.", 0) == 0) ui[k] = t.loc->text(t.lang, k);
+    j["ui"] = ui;
+    return j;
+}
+
+Json clockJson(const World& w) {
+    Json j;
+    j["tick"] = w.now();
+    j["day"] = w.day();
+    j["time"] = clockText(w.now());
+    j["night"] = w.isNight();
+    j["season"] = w.season();
+    if (!w.settlements().empty()) {
+        const DayWeather dw = weatherToday(w, w.settlements().begin()->first);
+        j["weather"] = {{"t", std::round(dw.tempC * 10) / 10}, {"rain", std::round(dw.rainMm * 10) / 10}, {"wet", dw.wet}};
+    }
+    return j;
+}
+
+} // namespace altera::client2d
