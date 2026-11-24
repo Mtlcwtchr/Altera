@@ -2949,6 +2949,66 @@
        "do": "give_cheese"
       }
      ]
+    },
+    {
+     "id": "bring_smoked_fish",
+     "pre": [
+      "home:smoked_fish>=12"
+     ],
+     "cost": 1.1,
+     "steps": [
+      {
+       "do": "give_smoked_fish_share"
+      }
+     ]
+    },
+    {
+     "id": "bring_dried_meat",
+     "pre": [
+      "home:dried_meat>=8"
+     ],
+     "cost": 1.15,
+     "steps": [
+      {
+       "do": "give_dried_meat_share"
+      }
+     ]
+    },
+    {
+     "id": "bring_meal",
+     "pre": [
+      "home:meal>=6"
+     ],
+     "cost": 1.2,
+     "steps": [
+      {
+       "do": "give_meal_share"
+      }
+     ]
+    },
+    {
+     "id": "bring_bread",
+     "pre": [
+      "home:bread>=4"
+     ],
+     "cost": 1.25,
+     "steps": [
+      {
+       "do": "give_bread_share"
+      }
+     ]
+    },
+    {
+     "id": "bring_dried_berries",
+     "pre": [
+      "home:dried_berries>=20"
+     ],
+     "cost": 1.3,
+     "steps": [
+      {
+       "do": "give_dried_berries_share"
+      }
+     ]
     }
    ],
    "_doc": "помочь соседскому двору, у которого кончается еда",

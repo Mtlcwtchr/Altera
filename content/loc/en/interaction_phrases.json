@@ -295,5 +295,10 @@
  "interaction.watch_hare.phrase": "watch the hare",
  "interaction.watch_wolf.phrase": "watch the wolf",
  "interaction.weave_cloth.phrase": "weave cloth",
- "interaction.weed_garden.phrase": "weed the garden"
+ "interaction.weed_garden.phrase": "weed the garden",
+ "interaction.give_smoked_fish_share.phrase": "bring the neighbours smoked fish",
+ "interaction.give_dried_meat_share.phrase": "bring the neighbours dried meat",
+ "interaction.give_meal_share.phrase": "bring the neighbours a hot meal",
+ "interaction.give_bread_share.phrase": "bring the neighbours bread",
+ "interaction.give_dried_berries_share.phrase": "bring the neighbours dried berries"
 }

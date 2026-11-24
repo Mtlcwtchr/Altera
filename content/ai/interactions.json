@@ -6176,6 +6176,161 @@
    "_part": "H2"
   },
   {
+   "id": "give_smoked_fish_share",
+   "pre": [
+    "home:smoked_fish>=12",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:smoked_fish-6",
+    "t.home:smoked_fish+6",
+    "rel_back:affinity+0.06",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "AL-82: отнести двору, где кончается еда, из своего запаса сверх нужного своим",
+   "_part": "AL-82"
+  },
+  {
+   "id": "give_dried_meat_share",
+   "pre": [
+    "home:dried_meat>=8",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:dried_meat-4",
+    "t.home:dried_meat+4",
+    "rel_back:affinity+0.08",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "AL-82: отнести двору, где кончается еда, из своего запаса сверх нужного своим",
+   "_part": "AL-82"
+  },
+  {
+   "id": "give_meal_share",
+   "pre": [
+    "home:meal>=6",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:meal-3",
+    "t.home:meal+3",
+    "rel_back:affinity+0.06",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "AL-82: отнести двору, где кончается еда, из своего запаса сверх нужного своим",
+   "_part": "AL-82"
+  },
+  {
+   "id": "give_bread_share",
+   "pre": [
+    "home:bread>=4",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:bread-2",
+    "t.home:bread+2",
+    "rel_back:affinity+0.05",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "AL-82: отнести двору, где кончается еда, из своего запаса сверх нужного своим",
+   "_part": "AL-82"
+  },
+  {
+   "id": "give_dried_berries_share",
+   "pre": [
+    "home:dried_berries>=20",
+    "charity:target>=1"
+   ],
+   "eff": [
+    "home:dried_berries-8",
+    "t.home:dried_berries+8",
+    "rel_back:affinity+0.05",
+    "rel_back:trust+0.03",
+    "reputation:generosity+0.02",
+    "moodlet:helped_someone",
+    "memory:gave_food"
+   ],
+   "category": "family",
+   "target": "character",
+   "fsm": "Interact",
+   "goap": false,
+   "visibility": "public",
+   "social": {
+    "meaning": "gift"
+   },
+   "speech": [
+    "offer"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "_doc": "AL-82: отнести двору, где кончается еда, из своего запаса сверх нужного своим",
+   "_part": "AL-82"
+  },
+  {
    "id": "deliver_to_site",
    "category": "work",
    "target": "object:build_site",
