@@ -2,7 +2,7 @@
 // life-sim seen from above, tiles 16x16, people as layered pawns.
 //   altera_game_2d [--seed N] [--season spring|summer|autumn|winter] [--world FILE]
 //                  [--content DIR] [--loc DIR] [--lang ru|en] [--port 8766]
-//                  [--no-browser] [--run-hours H]
+//                  [--no-browser] [--run-hours H] [--paused] [--observe]
 // One process: the sim steps on the main thread between HTTP requests (no
 // locks); the page (tools/game_2d/web/, read from disk on every request, so it
 // can be edited without a rebuild) draws the map from /api/grid, polls
@@ -41,10 +41,13 @@ using socket_t = int;
 #include <sstream>
 #include <string>
 
+#include "client2d/acts2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/view2d.hpp"
 #include "sim/ai.hpp"
+#include "sim/building.hpp"
 #include "sim/loc.hpp"
+#include "sim/speech_feed.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace altera::sim;
@@ -61,7 +64,32 @@ struct App {
     double tps = 2.0;   // sim ticks per real second (1 tick = 10 game minutes)
     double lastStepMs = 0.0;
     std::string lastResult;
+    c2::ActCatalog acts;        // AL-96: the act menu's catalog
+    SpeechFeed speech;          // AL-96: what people said (lines) and mutter (barks)
+    std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
 };
+
+// The player's person (player 1), kNone when the player only watches.
+EntityId controlled(const World& w) {
+    for (const auto& [id, c] : w.characters())
+        if (c.controller.isPlayer() && c.controller.playerId == 1) return id;
+    return kNone;
+}
+
+Json speechJson(App& a, const Vec2* near) {
+    Json out = Json::array();
+    auto push = [&](const SpeechEvent& e, bool bark) {
+        out.push_back({{"who", e.speaker}, {"to", e.listener}, {"line", e.line}, {"full", e.full}, {"bark", bark}});
+    };
+    for (const auto& e : a.speech.poll(*a.world, *a.text.loc, a.text.lang)) push(e, false);
+    if (near) {
+        const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - a.started).count();
+        for (const auto& e : a.speech.barks(*a.world, *a.text.loc, a.text.lang, near->x, near->y, 60.0, sec,
+                                            controlled(*a.world)))
+            push(e, true);
+    }
+    return out;
+}
 
 std::string readFile(const std::string& p, bool* ok = nullptr) {
     std::ifstream f(p, std::ios::binary);
@@ -114,6 +142,8 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     j["step_ms"] = a.lastStepMs;
     j["last_result"] = a.lastResult;
     j["people"] = c2::peopleJson(*a.world, a.text, near, r);
+    j["me"] = controlled(*a.world);
+    j["speech"] = speechJson(a, near);
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
     return j;
 }
@@ -134,7 +164,7 @@ std::string handleCmd(App& a, const Json& body) {
         cmd.args["player"] = 1;
         const Command r = w.applyNow(cmd);
         a.lastResult = cmd.type + ": " + (r.result.empty() ? "ok" : r.result);
-        return a.lastResult;
+        return r.result == "ok" ? std::string() : r.result;
     } else return "unknown op";
     return "ok";
 }
@@ -220,8 +250,31 @@ void serveClient(App& a, socket_t s) {
             const int vr = intParam(path, "vr", 0);
             respond(s, 200, "application/json", stateJson(a, id, vr > 0 ? &near : nullptr, vr).dump());
         } else if (path.rfind("/api/cmd", 0) == 0 && method == "POST") {
-            const std::string r = handleCmd(a, Json::parse(body.empty() ? "{}" : body));
-            respond(s, 200, "application/json", Json{{"result", r}}.dump());
+            std::string r;
+            try {
+                r = handleCmd(a, Json::parse(body.empty() ? "{}" : body));
+            } catch (const std::exception& e) {
+                r = std::string("rejected:") + e.what();
+            }
+            respond(s, 200, "application/json", Json{{"result", r}, {"text", c2::resultText(a.text, r)}}.dump());
+        } else if (path.rfind("/api/chronicle", 0) == 0) {
+            respond(s, 200, "application/json",
+                    c2::chronicleJson(*a.world, a.text, std::size_t(std::max(0, intParam(path, "since", 0)))).dump());
+        } else if (path.rfind("/api/acts", 0) == 0) {
+            // AL-96: the act menu of the player's person on a thing / person / beast (none: on oneself)
+            const std::string tq = queryParam(path, "target");
+            EntityId target = kNone;
+            if (!tq.empty()) try {
+                    target = EntityId(std::stoull(tq));
+                } catch (...) {
+                }
+            respond(s, 200, "application/json", c2::actsJson(*a.world, a.text, a.acts, controlled(*a.world), target).dump());
+        } else if (path.rfind("/api/bar", 0) == 0 && method == "POST") {
+            // AL-96: the quick bar's slots checked for the player's person
+            const Json q = Json::parse(body.empty() ? "{}" : body);
+            respond(s, 200, "application/json",
+                    c2::barJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone), q.value("slots", Json::array()))
+                        .dump());
         } else {
             respond(s, 404, "text/plain", "not found");
         }
@@ -240,6 +293,7 @@ int main(int argc, char** argv) {
     int port = 8766;
     double runHours = 7.0;   // the world starts at midnight; the view opens in the morning
     bool openBrowser = true;
+    bool observe = false;   // --observe: watch only, nobody is led
     for (int i = 1; i < argc; ++i) {
         auto next = [&]() -> std::string {
             if (i + 1 >= argc) {
@@ -259,6 +313,7 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--run-hours")) runHours = std::stod(next());
         else if (!std::strcmp(argv[i], "--paused")) app.paused = true;
         else if (!std::strcmp(argv[i], "--no-browser")) openBrowser = false;
+        else if (!std::strcmp(argv[i], "--observe")) observe = true;
         else {
             std::cerr << "unknown argument " << argv[i] << "\n";
             return 2;
@@ -289,6 +344,26 @@ int main(int argc, char** argv) {
         installAi(world);
         world.run(Tick(runHours * kTicksPerDay / 24));
         app.world = &world;
+        bool haveWheel = false;
+        const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
+        app.acts = c2::ActCatalog::make(world, haveWheel ? Json::parse(wheel) : Json());
+        // AL-96: the player leads the head of the village (the mandate holder), as the 3D game starts
+        if (!observe)
+            for (const auto& [sid, st] : world.settlements()) {
+                if (st.mode != "full") continue;
+                EntityId who = mandateHolder(world, sid);
+                if (who == kNone && !st.families.empty())
+                    if (const auto* f = &world.families().at(st.families.front()); !f->members.empty()) who = f->members.front();
+                if (who != kNone) {
+                    Command take;
+                    take.source = "player:1";
+                    take.type = "take_control";
+                    take.args = {{"id", who}, {"player", 1}};
+                    world.applyNow(take);
+                }
+                break;
+            }
+        app.speech.poll(world, loc, app.text.lang);   // old talk stays unshown
 
 #ifdef _WIN32
         WSADATA wsa;
