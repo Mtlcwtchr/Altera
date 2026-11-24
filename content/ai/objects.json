@@ -518,6 +518,16 @@
    "_doc": "поставленный скат крыши: под ним кров (needs.sheltered_mult)",
    "_part": "build"
   },
-  {"id": "well", "stand_m": 1.25, "settlement": true, "per_settlement": 1, "owned": false, "own_seed": true, "_doc": "AL-7: the village well: drinking, washing, water for the pot"}
+  {"id": "well", "stand_m": 1.25, "settlement": true, "per_settlement": 1, "owned": false, "own_seed": true, "_doc": "AL-7: the village well: drinking, washing, water for the pot"},
+  {"id": "table", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a table; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "table_bench", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a table with benches; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "bench", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a bench, a pew; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "counter", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a tavern counter; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "chest", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a household chest; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "barrel", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a barrel; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "sack", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a sack of grain or flour; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "hay", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a bale of hay; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "firewood", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a woodpile; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "chopping_block", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a chopping block; placed by the village generator, read by the room rules (rooms.json)"}
  ]
 }

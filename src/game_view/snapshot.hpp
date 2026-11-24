@@ -226,6 +226,7 @@ struct ThingSnap {
     bool busy = false;                                    // someone else works on it
     bool faced = false;                                   // AL-76: set in a building, facing yaw
     float yaw = 0;
+    int storey = 0;                                       // AL-81: on the upper storey of a building
     bool held = false, felled = false;                    // AL-78: a tree of the drawn forest; felled: no logs left
     float height = 0;                                     // AL-78: as drawn (m), 0 = the type's own
 };
@@ -309,6 +310,17 @@ struct TradeSnap {
     std::vector<std::string> last;              // the last trade lines of the player's trace (display)
 };
 
+// AL-81: a room as the sim reads it (sim/rooms.hpp): its type by what stands
+// in it, what its building is for, its storey and cells (grid of build cell_m).
+struct RoomSnap {
+    std::string type, name;               // id, display
+    std::string purpose, purposeName;     // the building's
+    int z = 0;
+    bool enclosed = false;
+    int x0 = 0, y0 = 0, x1 = 0, y1 = 0;
+    std::vector<std::pair<int, int>> cells;
+};
+
 struct Snapshot {
     Tick tick = 0;
     SnapClock::time_point tickAt = SnapClock::now();
@@ -329,6 +341,7 @@ struct Snapshot {
     // Building (sim/building.hpp): every piece, what planned ones still lack,
     // and the family the player builds for.
     sim::PieceMap pieces;
+    std::vector<RoomSnap> rooms;   // AL-81
     std::map<EntityId, std::map<std::string, int>> missing;
     EntityId builder = sim::kNone, builderFamily = sim::kNone;
     ColonySnap colony;

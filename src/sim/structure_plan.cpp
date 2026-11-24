@@ -1,4 +1,4 @@
-// AL-76: buildings by purpose, from modules of the build kit (sim/structure_plan.hpp).
+// AL-76 / AL-81: houses put together from rooms, from modules of the build kit (sim/structure_plan.hpp).
 
 #include "sim/structure_plan.hpp"
 
@@ -128,45 +128,68 @@ StructureCatalog parseStructures(const Json& j) {
     c.tradeShare = village.value("trade_share", c.tradeShare);
     c.yardD = village.value("yard_d", c.yardD);
     c.fence = village.value("fence", std::string());
-    for (const auto& t : j.value("types", Json::array())) {
-        StructureTypeDef d;
-        d.id = t.at("id").get<std::string>();
-        d.home = t.value("home", false);
-        d.shared = t.value("shared", false);
-        d.trade = t.value("trade", std::string());
-        d.hosts = strings(t, "hosts");
-        d.zone = t.value("zone", d.zone);
-        const Json m = t.value("main", Json::object());
-        range(m, "w", d.wLo, d.wHi);
-        range(m, "d", d.dLo, d.dHi);
-        d.bigFamily = m.value("big_family", 0);
-        d.storeys = std::clamp(m.value("storeys", 1), 1, 3);
-        d.walls = strings(m, "walls");
-        d.roofs = strings(m, "roof");
-        d.gableFront = m.value("gable_front", 0.0);
-        d.rooms = m.value("rooms", false);
-        d.aisle = m.value("aisle", false);
-        for (const auto& a : t.value("annexes", Json::array())) {
-            StructureAnnexDef x;
-            x.kind = a.at("kind").get<std::string>();
-            x.sides = strings(a, "side");
-            x.chance = a.value("chance", 1.0);
-            x.required = a.value("required", false);
-            range(a, "len", x.lenLo, x.lenHi);
-            range(a, "depth", x.depthLo, x.depthHi);
-            x.door = a.value("door", false);
-            x.stations = strings(a, "stations");
-            d.annexes.push_back(std::move(x));
-        }
+    // how each room is furnished when the generator makes one
+    for (const auto& r : j.value("rooms", Json::array())) {
+        RoomFurnish f;
+        const Json fj = r.value("furnish", Json::object());
         for (const char* key : {"stations", "decor"})
-            for (const auto& s : t.value(key, Json::array())) {
+            for (const auto& s : fj.value(key, Json::array())) {
                 StructureSlotDef x;
-                x.what = s.value(std::string(key) == "stations" ? "object" : "piece", std::string());
+                x.what = s.value("object", std::string());
                 x.at = s.value("at", x.at);
-                (std::string(key) == "stations" ? d.stations : d.decor).push_back(x);
+                (std::string(key) == "stations" ? f.stations : f.decor).push_back(x);
             }
-        c.types.push_back(std::move(d));
+        f.beds = r.value("beds", false);
+        c.furnish[r.at("id").get<std::string>()] = std::move(f);
     }
+    // the recipes: the rooms a house is put together from, and its shell
+    auto recipes = [&](const Json& list, bool home) {
+        for (const auto& t : list) {
+            StructureTypeDef d;
+            d.id = t.at("id").get<std::string>();
+            d.home = home;
+            d.shared = !home;
+            d.trade = t.value("skill", std::string());
+            d.hosts = strings(t, "hosts");
+            d.yard = strings(t, "yard");
+            d.zone = t.value("zone", d.zone);
+            const Json m = t.value("shell", Json::object());
+            range(m, "w", d.wLo, d.wHi);
+            range(m, "d", d.dLo, d.dHi);
+            d.bigFamily = m.value("big_family", 0);
+            d.storeys = std::clamp(m.value("storeys", 1), 1, 3);
+            d.walls = strings(m, "walls");
+            d.roofs = strings(m, "roof");
+            d.gableFront = m.value("gable_front", 0.0);
+            d.aisle = m.value("aisle", false);
+            for (const auto& a : t.value("rooms", Json::array())) {
+                const std::string at = a.value("at", std::string("main"));
+                const std::string room = a.value("room", std::string());
+                if (at == "main") d.mainRoom = room;
+                else if (at == "split") d.splitRoom = room, d.splitW = std::max(1, a.value("w", 2));
+                else if (at == "upper") d.upperRoom = room, d.upperN = std::max(1, a.value("n", 1));
+                else {
+                    StructureAnnexDef x;
+                    x.kind = at == "lean_to" ? "shed" : at;
+                    x.room = room;
+                    x.sides = strings(a, "side");
+                    if (x.sides.empty()) x.sides = at == "porch" ? std::vector<std::string>{"front"}
+                                                                 : std::vector<std::string>{"left", "right", "back"};
+                    x.chance = a.value("chance", 1.0);
+                    x.required = a.value("required", false);
+                    if (x.kind == "canopy") x.lenLo = x.lenHi = 2;
+                    range(a, "len", x.lenLo, x.lenHi);
+                    range(a, "depth", x.depthLo, x.depthHi);
+                    x.door = a.value("door", false);
+                    d.annexes.push_back(std::move(x));
+                }
+            }
+            if (d.storeys < 2) d.upperRoom.clear();
+            c.types.push_back(std::move(d));
+        }
+    };
+    recipes(j.value("households", Json::array()), true);
+    recipes(j.value("shared", Json::array()), false);
     return c;
 }
 
@@ -204,12 +227,15 @@ Vec2 footprintCentre(const StructurePlan& s, double cellM) {
 StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& build, const StructureTypeDef& type,
                             const StructureParams& prm) {
     StructurePlan s;
-    s.type = type.id;
+    s.recipe = type.id;
     Rng r(hashCombine(prm.seed, hashStr("structure:" + type.id)));
     const double cm = build.cellM;
-    int W = r.irange(type.wLo, type.wHi), D = r.irange(type.dLo, type.dHi);
-    if (type.home && type.bigFamily > 0 && prm.people >= type.bigFamily) ++W;
-    W = std::max(W, 2), D = std::max(D, 2);
+    int W0 = r.irange(type.wLo, type.wHi), D = r.irange(type.dLo, type.dHi);
+    if (type.home && type.bigFamily > 0 && prm.people >= type.bigFamily) ++W0;
+    W0 = std::max(W0, 2), D = std::max(D, 2);
+    // a second ground-floor room behind a partition widens the house
+    const int splitW = type.splitRoom.empty() ? 0 : type.splitW;
+    const int W = W0 + splitW;
     const int S = type.storeys;
     // a gable over the front: the roof rises across the width, so not over a wide house
     // (a third storey of slope does not hold on daub)
@@ -221,8 +247,18 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
     }
     const std::string roof = type.roofs.empty() ? "roof_thatch" : pick(r, type.roofs);
     s.volumes.push_back({"main", 0, 0, W, D, S});
-    // the door: the middle of a gable front, else any cell but the corners
+    // the door: the middle of a gable front, else any cell but the corners; into the main room
     s.doorI = gableFront ? (W % 2 ? W / 2 : W / 2 - r.irange(0, 1)) : (W > 2 ? r.irange(1, W - 2) : 0);
+    if (splitW && s.doorI >= W0) s.doorI = W0 > 2 ? r.irange(1, W0 - 1) : W0 - 1;
+    // the rooms of the main volume
+    s.parts.push_back({type.mainRoom, "main", 0, 0, 0, W0, D});
+    if (splitW) s.parts.push_back({type.splitRoom, "split", 0, W0, 0, W, D});
+    std::vector<int> upperCuts;
+    if (!type.upperRoom.empty() && S >= 2) {
+        const int n = std::clamp(type.upperN, 1, std::max(1, W / 2));
+        for (int k = 0; k <= n; ++k) upperCuts.push_back(int(std::lround(double(W) * k / n)));
+        for (int k = 0; k < n; ++k) s.parts.push_back({type.upperRoom, "upper", 1, upperCuts[k], 0, upperCuts[k + 1], D});
+    }
 
     std::set<Cell> used;   // cells of every volume
     for (int i = 0; i < W; ++i)
@@ -280,6 +316,7 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
                 for (int j = v.j0; j < v.j1; ++j) used.insert({i, j});
             annexes.push_back({&a, side, t0, len, depth, v});
             s.volumes.push_back(v);
+            s.parts.push_back({a.room, a.kind, 0, v.i0, v.j0, v.i1, v.j1});
             placed = true;
             break;
         }
@@ -337,15 +374,13 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
         add(cat.pillar, W - 1, D - 1, z, 2);
         add(cat.pillar, 0, D - 1, z, 3);
     }
-    // the upper storey cut into rooms along the back, a door into each from the front half
-    if (type.rooms && S >= 2 && D >= 3) {
-        const int jm = D / 2;
-        for (int a = 0; a < W; a += 2) {
-            for (int i = a; i < std::min(W, a + 2); ++i) add(i == a ? mat.door : mat.wall, i, jm - 1, 1, 2);
-            if (a + 2 < W)
-                for (int j = jm; j < D; ++j) add(mat.wall, a + 1, j, 1, 1);
-        }
-    }
+    // the partition of the ground floor: a wall with a door between the main room and the second one
+    if (splitW)
+        for (int j = 0; j < D; ++j) add(j == D / 2 ? mat.door : mat.wall, W0, j, 0, 3);
+    // the upper storey cut into rooms across its width, a door between each two
+    for (std::size_t k = 1; k + 1 < upperCuts.size(); ++k)
+        if (upperCuts[k] > upperCuts[k - 1])
+            for (int j = 0; j < D; ++j) add(j == D / 2 ? mat.door : mat.wall, upperCuts[k], j, 1, 3);
     // the roof: the ridge along i (eaves front and back) or, with a gable
     // front, along j; each row a storey higher toward it; at the ends gables
     // and walls under them (as the game's roof tool lays one)
@@ -434,20 +469,26 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
                 at(t, 0, i, j);
                 add(roof, i, j, 1, out);
             }
-            // the door: at the end toward the front for a side shed, else in the outer wall
-            const bool doorEnd = j_;
+            // the door: at the end toward the front for a side shed, else in the outer wall;
+            // never onto another annex (its things would stand in the way)
+            int ni, nj;
+            at(a.t0 - 1, 0, ni, nj);
+            const bool frontFree = !used.count({ni, nj});
+            at(a.t0 + a.len, 0, ni, nj);
+            const bool backFree = !used.count({ni, nj});
+            const int doorAt = !j_ ? -1 : frontFree ? 0 : backFree ? 1 : -1;   // the end, -1: the outer wall
             const int doorT = a.t0 + a.len / 2;
             for (int t = a.t0; t < a.t0 + a.len; ++t) {
                 int i, j;
                 at(t, 0, i, j);
-                add(!doorEnd && t == doorT ? mat.door : mat.wall, i, j, 0, out);
+                add(doorAt < 0 && t == doorT ? mat.door : mat.wall, i, j, 0, out);
             }
             for (int end = 0; end < 2; ++end) {
                 const int t = end ? a.t0 + a.len - 1 : a.t0;
                 const int endRot = end ? highT : lowT;
                 int i, j;
                 at(t, 0, i, j);
-                add(doorEnd && end == 0 ? mat.door : mat.wall, i, j, 0, endRot);
+                add(doorAt == end ? mat.door : mat.wall, i, j, 0, endRot);
                 if (!mat.gable.empty()) add(mat.gable, i, j, 1, gableFor(endRot, out));
             }
             corner(a.t0, 0, false, true, 0);
@@ -463,60 +504,75 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
         s.i1 = std::max(s.i1, v.i1), s.j1 = std::max(s.j1, v.j1);
     }
 
-    // ---- what stands in it ----
+    // ---- what stands in it: each room furnished as what it is ----
     Walk walk(build, s);
     std::set<Cell> reserved{{s.doorI, 0}};
     for (const auto& [c, rot] : annexDoors) reserved.insert(c);
+    if (splitW) reserved.insert({W0 - 1, D / 2}), reserved.insert({W0, D / 2});
     if (type.aisle)
-        for (int j = 0; j < D - 1; ++j) reserved.insert({W / 2, j});   // the altar closes it at the back
-    std::vector<Cell> placedCells;
-    auto mainCells = [&](const std::string& at) {
+        for (int j = 0; j < D - 1; ++j) reserved.insert({W0 / 2, j});   // the altar closes it at the back
+    std::set<std::pair<Cell, int>> upTaken;   // cells taken on the upper storeys
+    std::vector<Cell> placedCells;            // ground things that must stay usable
+    // the cells of a room for a slot, the preferred first, then the rest (back first)
+    auto partCells = [&](const StructurePart& p, const std::string& at) {
         std::vector<Cell> v;
         auto push = [&](int i, int j) {
-            if (i >= 0 && j >= 0 && i < W && j < D) v.push_back({i, j});
+            if (i >= p.i0 && j >= p.j0 && i < p.i1 && j < p.j1) v.push_back({i, j});
         };
-        if (at == "back")
-            for (int k = 0; k < W; ++k) push(W / 2 + (k % 2 ? -(k + 1) / 2 : k / 2), D - 1);
-        else if (at == "side")
-            for (int j = 1; j < D; ++j) push(0, j), push(W - 1, j);
-        else if (at == "middle")
-            for (int j = 1; j < D - 1; ++j)
-                for (int i = 1; i < W - 1; ++i) push(i, j);
-        else if (at == "front")
-            for (int i = 0; i < W; ++i) push(i, 0);
-        // then anywhere in the main volume, the back first
-        for (int j = D - 1; j >= 0; --j)
-            for (int i = 0; i < W; ++i) push(i, j);
+        const int w = p.i1 - p.i0, mid = p.i0 + w / 2;
+        const bool annex = p.at == "canopy" || p.at == "shed" || p.at == "porch";
+        if (!annex) {
+            if (at == "back")
+                for (int k = 0; k < w; ++k) push(mid + (k % 2 ? -(k + 1) / 2 : k / 2), p.j1 - 1);
+            else if (at == "side")
+                for (int j = p.j0 + 1; j < p.j1; ++j) push(p.i0, j), push(p.i1 - 1, j);
+            else if (at == "middle")
+                for (int j = p.j0 + 1; j < p.j1 - 1; ++j)
+                    for (int i = p.i0 + 1; i < p.i1 - 1; ++i) push(i, j);
+            else if (at == "front")
+                for (int i = p.i0; i < p.i1; ++i) push(i, p.j0);
+        }
+        for (int j = p.j1 - 1; j >= p.j0; --j)
+            for (int i = p.i0; i < p.i1; ++i) push(i, j);
         return v;
     };
-    auto annexCells = [&](const std::string& what) {
-        std::vector<Cell> v;
-        for (const auto& a : annexes)
-            if (std::find(a.def->stations.begin(), a.def->stations.end(), what) != a.def->stations.end())
-                for (int j = a.vol.j0; j < a.vol.j1; ++j)
-                    for (int i = a.vol.i0; i < a.vol.i1; ++i) v.push_back({i, j});
-        return v;
-    };
-    auto anyAnnexCells = [&]() {
-        std::vector<Cell> v;
-        for (const auto& a : annexes)
-            for (int j = a.vol.j0; j < a.vol.j1; ++j)
-                for (int i = a.vol.i0; i < a.vol.i1; ++i) v.push_back({i, j});
-        return v;
-    };
-    // the wall a cell leans on (rot) or -1 (none): back first, then the sides
-    auto leanOn = [&](Cell c) {
+    // the wall a ground cell leans on (rot) or -1 (none): back first, then the sides, the partition
+    auto leanOn = [&](Cell c, int z) {
         if (c.i >= 0 && c.j >= 0 && c.i < W && c.j < D) {
             if (c.j == D - 1) return 2;
             if (c.i == 0) return 3;
             if (c.i == W - 1) return 1;
+            if (z == 0 && splitW && c.i == W0 - 1) return 1;
+            if (z == 0 && splitW && c.i == W0) return 3;
             if (c.j == 0) return 0;
         }
         return -1;
     };
-    int yardN = 0;
-    auto place = [&](const std::string& what, const std::vector<Cell>& cells, bool station) {
+    auto thing = [&](const std::string& what, Cell c, int z, int part) {
+        LocalThing t;
+        t.what = what;
+        t.i = c.i, t.j = c.j, t.z = z, t.part = part;
+        const int lean = leanOn(c, z);
+        t.u = (c.i + 0.5) * cm;
+        t.v = (c.j + 0.5) * cm;
+        const double off = 0.28 * cm;
+        if (lean == 2) t.v += off, t.yaw = 0.0;
+        else if (lean == 3) t.u -= off, t.yaw = kPi / 2;
+        else if (lean == 1) t.u += off, t.yaw = -kPi / 2;
+        else if (lean == 0) t.v -= off, t.yaw = kPi;
+        else t.yaw = r.irange(0, 3) * kPi / 2;
+        return t;
+    };
+    // a thing on a free cell of the list that keeps the door and every placed thing in reach
+    auto place = [&](const std::string& what, const std::vector<Cell>& cells, int z, int part,
+                     std::vector<LocalThing>& into) {
         for (const Cell& c : cells) {
+            if (z > 0) {
+                if (upTaken.count({c, z})) continue;
+                upTaken.insert({c, z});
+                into.push_back(thing(what, c, z, part));
+                return true;
+            }
             if (walk.taken.count(c) || reserved.count(c)) continue;
             walk.taken.insert(c);
             const auto seen = walk.reach();
@@ -529,24 +585,13 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
                 continue;
             }
             placedCells.push_back(c);
-            LocalThing t;
-            t.what = what;
-            t.i = c.i, t.j = c.j;
-            const int lean = leanOn(c);
-            t.u = (c.i + 0.5) * cm;
-            t.v = (c.j + 0.5) * cm;
-            const double off = 0.28 * cm;
-            if (lean == 2) t.v += off, t.yaw = 0.0;
-            else if (lean == 3) t.u -= off, t.yaw = kPi / 2;
-            else if (lean == 1) t.u += off, t.yaw = -kPi / 2;
-            else if (lean == 0) t.v -= off, t.yaw = kPi;
-            else t.yaw = r.irange(0, 3) * kPi / 2;
-            (station ? s.stations : s.decor).push_back(t);
+            into.push_back(thing(what, c, z, part));
             return true;
         }
         return false;
     };
-    auto yard = [&](const std::string& what, bool station) {
+    int yardN = 0;
+    auto yard = [&](const std::string& what) {
         LocalThing t;
         t.what = what;
         t.yard = true;
@@ -555,48 +600,77 @@ StructurePlan planStructure(const StructureCatalog& cat, const BuildCatalog& bui
         t.i = int(std::floor(t.u / cm)), t.j = s.j1 + 1;
         t.yaw = 0.0;
         ++yardN;
-        (station ? s.stations : s.decor).push_back(t);
+        s.stations.push_back(t);
     };
-    // the annexes' own stations first (they are what the annex is for), then the main volume's
-    for (const auto& a : annexes)
-        for (const auto& what : a.def->stations) {
-            std::vector<Cell> cells = annexCells(what);
-            // a canopy's outer cells first: the worker stands outside
-            std::stable_sort(cells.begin(), cells.end(), [&](Cell x, Cell y) {
-                auto outer = [&](Cell c) {
-                    return a.side == "left" ? -c.i : a.side == "right" ? c.i : a.side == "back" ? c.j : -c.j;
-                };
-                return outer(x) > outer(y);
-            });
-            if (!place(what, cells, true)) {
-                const auto m = mainCells("side");
-                if (!place(what, m, true)) s.notes.push_back("no place for " + what);
-            }
+    // the rooms in order: the annexes (what they are for), the ground floor, the upper storey
+    std::vector<int> order;
+    for (int k = 0; k < int(s.parts.size()); ++k)
+        if (s.parts[std::size_t(k)].at != "main" && s.parts[std::size_t(k)].at != "split" && s.parts[std::size_t(k)].at != "upper")
+            order.push_back(k);
+    for (int k = 0; k < int(s.parts.size()); ++k)
+        if (std::find(order.begin(), order.end(), k) == order.end()) order.push_back(k);
+    auto outerFirst = [&](std::vector<Cell>& cells, const StructurePart& p) {
+        if (p.at != "canopy") return;
+        // a canopy's outer cells first: the worker stands outside
+        const bool left = p.i1 <= 0, right = p.i0 >= W, back = p.j0 >= D;
+        std::stable_sort(cells.begin(), cells.end(), [&](Cell x, Cell y) {
+            auto outer = [&](Cell c) { return left ? -c.i : right ? c.i : back ? c.j : -c.j; };
+            return outer(x) > outer(y);
+        });
+    };
+    for (int k : order) {
+        const StructurePart& p = s.parts[std::size_t(k)];
+        auto f = cat.furnish.find(p.room);
+        if (f == cat.furnish.end()) continue;
+        for (const auto& st : f->second.stations) {
+            std::vector<Cell> cells = partCells(p, st.at);
+            outerFirst(cells, p);
+            if (!place(st.what, cells, p.z, k, s.stations)) s.notes.push_back("no place for " + st.what + " in the " + p.room);
         }
-    for (const auto& st : type.stations) {
-        bool dup = false;
-        for (const auto& t : s.stations) dup = dup || t.what == st.what;
-        if (dup) continue;   // an annex holds it already
-        if (st.at == "yard") {
-            yard(st.what, true);
-            continue;
-        }
-        if (!place(st.what, st.at == "annex" ? anyAnnexCells() : mainCells(st.at), true))
-            s.notes.push_back("no place for " + st.what);
     }
-    for (const auto& dc : type.decor) {
-        if (dc.at == "yard") {
-            yard(dc.what, false);
-            continue;
+    for (const auto& y : type.yard) yard(y);
+    // the beds: where the household sleeps (bedrooms upstairs first, then a home)
+    if (type.home && prm.people > 0) {
+        std::vector<int> bedParts;
+        for (int pass = 0; pass < 2; ++pass)
+            for (int k = 0; k < int(s.parts.size()); ++k) {
+                const StructurePart& p = s.parts[std::size_t(k)];
+                auto f = cat.furnish.find(p.room);
+                if (f != cat.furnish.end() && f->second.beds && (p.z > 0) == (pass == 0)) bedParts.push_back(k);
+            }
+        for (int b = 0; b < prm.people && !bedParts.empty(); ++b) {
+            const int k = bedParts[std::size_t(b) % bedParts.size()];
+            const StructurePart& p = s.parts[std::size_t(k)];
+            if (place("bed", partCells(p, "side"), p.z, k, s.beds)) continue;
+            // no free cell: a bed by one that has one (a pallet beside it), in the same cell
+            LocalThing t = thing("bed", {p.i0, p.j1 - 1}, p.z, k);
+            std::vector<const LocalThing*> own;
+            for (const auto& b2 : s.beds)
+                if (b2.part == k && !b2.stacked) own.push_back(&b2);
+            int extra = 0;
+            for (const auto& b2 : s.beds) extra += b2.part == k && b2.stacked;
+            if (!own.empty()) t = *own[std::size_t(extra) % own.size()];
+            const double ox = (extra % 2 ? -1 : 1) * 0.35, oy = ((extra / 2) % 2 ? 1 : -1) * 0.3;
+            t.u = std::clamp(t.u + ox, t.i * cm + 0.15, (t.i + 1) * cm - 0.15);
+            t.v = std::clamp(t.v + oy, t.j * cm + 0.15, (t.j + 1) * cm - 0.15);
+            t.stacked = true;
+            s.beds.push_back(t);
         }
-        std::vector<Cell> cells = dc.at == "annex" ? anyAnnexCells() : mainCells(dc.at);
-        if (type.aisle && dc.at == "middle") {   // pews either side of the aisle, front to back
-            cells.clear();
-            for (int j = 1; j < D - 1; ++j)
-                for (int i = 0; i < W; ++i)
-                    if (i != W / 2) cells.push_back({i, j});
+    }
+    for (int k : order) {
+        const StructurePart& p = s.parts[std::size_t(k)];
+        auto f = cat.furnish.find(p.room);
+        if (f == cat.furnish.end()) continue;
+        for (const auto& dc : f->second.decor) {
+            std::vector<Cell> cells = partCells(p, dc.at);
+            if (type.aisle && dc.at == "middle") {   // pews either side of the aisle, front to back
+                cells.clear();
+                for (int j = p.j0 + 1; j < p.j1 - 1; ++j)
+                    for (int i = p.i0; i < p.i1; ++i)
+                        if (i != W0 / 2) cells.push_back({i, j});
+            }
+            place(dc.what, cells, p.z, k, s.decor);   // furniture is a nicety: it may find no room
         }
-        place(dc.what, cells, false);   // decor is a nicety: it may find no room
     }
     return s;
 }
@@ -616,27 +690,28 @@ std::vector<std::string> checkStructure(const BuildCatalog& build, const Structu
             bad.push_back("two pieces in one slot: " + it->second + " and " + p.kind + " at " + std::to_string(p.i) + "," +
                           std::to_string(p.j) + "," + std::to_string(p.z));
     }
-    std::set<Cell> cells;
     auto inside = [&](int i, int j) {
         for (const auto& v : s.volumes)
             if (i >= v.i0 && i < v.i1 && j >= v.j0 && j < v.j1) return true;
         return false;
     };
     Walk walk(build, s);
-    for (const auto* list : {&s.stations, &s.decor})
+    std::set<std::pair<Cell, int>> onCells;
+    for (const auto* list : {&s.stations, &s.decor, &s.beds})
         for (const auto& t : *list) {
             if (t.yard) {
                 if (t.j < s.j1) bad.push_back(t.what + " in the yard is inside the footprint");
                 continue;
             }
             if (!inside(t.i, t.j)) bad.push_back(t.what + " stands outside the building");
-            if (!cells.insert({t.i, t.j}).second) bad.push_back(t.what + " shares a cell");
-            walk.taken.insert({t.i, t.j});
+            if (t.stacked) continue;
+            if (!onCells.insert({{t.i, t.j}, t.z}).second) bad.push_back(t.what + " shares a cell");
+            if (t.z == 0) walk.taken.insert({t.i, t.j});
         }
     const auto seen = walk.reach();
     if (!seen.count({s.doorI, 0})) bad.push_back("the door is shut");
     for (const auto& t : s.stations)
-        if (!t.yard && !walk.usable(seen, {t.i, t.j})) bad.push_back(t.what + " cannot be reached");
+        if (!t.yard && t.z == 0 && !walk.usable(seen, {t.i, t.j})) bad.push_back(t.what + " cannot be reached");
     if (s.volumes.empty() || s.volumes[0].role != "main") bad.push_back("no main volume");
     return bad;
 }

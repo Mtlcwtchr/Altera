@@ -1,4 +1,4 @@
-// AL-76: village buildings by purpose, from modules (sim/structure_plan).
+// AL-76 / AL-81: village houses put together from rooms, from modules (sim/structure_plan, sim/rooms).
 #include <cmath>
 #include <cstdio>
 #include <map>
@@ -7,6 +7,7 @@
 #include "framework.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/rooms.hpp"
 #include "sim/structure_plan.hpp"
 #include "sim/village_plan.hpp"
 #include "sim/world.hpp"
@@ -21,7 +22,7 @@ const Content& realContent() {
     return c;
 }
 const StructureCatalog& catalog() {
-    static const StructureCatalog c = parseStructures(realContent().structures);
+    static const StructureCatalog c = parseStructures(realContent().roomsJson);
     return c;
 }
 
@@ -60,15 +61,37 @@ void report(const std::string& what, const std::vector<std::string>& bad) {
 
 }  // namespace
 
-TEST(altera_sim_structures_smithy) {
+namespace {
+// The rooms a plan makes, read back by the rules from its modules and what stands in it.
+RoomsResult roomsOf(const StructurePlan& s, const StructureFrame& f) {
+    std::vector<RoomThing> things;
+    EntityId id = 1000;
+    for (const auto* list : {&s.stations, &s.decor, &s.beds})
+        for (const auto& t : *list)
+            if (!t.yard) things.push_back({id++, t.what, f.point(t.u, t.v), t.z});
+    return detectRooms(realContent().build, realContent().rooms, piecesOf(s, f), things);
+}
+// The type read for the room holding a part's first cell.
+std::string readAs(const RoomsResult& r, const StructurePart& p, const StructureFrame& f) {
+    int x, y;
+    f.cell(p.i0, p.j0, x, y);
+    for (const auto& room : r.rooms)
+        if (room.z == p.z)
+            for (const auto& c : room.cells)
+                if (c.first == x && c.second == y) return room.type;
+    return "-";
+}
+}  // namespace
+
+TEST(altera_sim_structures_smith) {
     const StructureCatalog& cat = catalog();
     CHECK(cat.loaded());
-    const StructureTypeDef* smithy = cat.find("smithy");
-    CHECK(smithy != nullptr);
-    if (!smithy) return;
+    const StructureTypeDef* smith = cat.find("smith");
+    CHECK(smith != nullptr);
+    if (!smith) return;
     for (std::uint64_t seed = 1; seed <= 12; ++seed) {
-        const StructurePlan s = planStructure(cat, realContent().build, *smithy, {5, seed});
-        // a house with an open canopy beside it: the forge, the anvil, the tub and the grindstone under it
+        const StructurePlan s = planStructure(cat, realContent().build, *smith, {5, seed});
+        // a home with an open canopy beside it: the forge, the anvil, the tub and the grindstone under it
         CHECK(!s.volumes.empty() && s.volumes[0].role == "main");
         const StructureVolume* canopy = volume(s, "canopy");
         CHECK(canopy != nullptr);
@@ -79,32 +102,38 @@ TEST(altera_sim_structures_smithy) {
                 if (t.what == st) CHECK(inVolume(*canopy, t));
         }
         CHECK(hasStation(s, "hearth"));
-        // the modules: walls, a door, a roof, posts under the canopy
-        int walls = 0, doors = 0, roofs = 0, posts = 0;
+        CHECK(int(s.beds.size()) == 5);
+        int doors = 0, posts = 0;
         for (const auto& p : s.pieces) {
             const BuildPieceDef* d = realContent().build.find(p.kind);
             CHECK(d != nullptr);
             if (!d) continue;
-            walls += d->category == "wall";
             doors += d->door;
-            roofs += d->category == "roof";
             posts += d->category == "pillar" && p.i >= canopy->i0 - 1 && p.i <= canopy->i1 && p.j >= canopy->j0 - 1 && p.j <= canopy->j1;
         }
-        CHECK(walls >= 10);
         CHECK(doors >= 2);   // the front door and the one into the canopy
-        CHECK(roofs >= 9 + 4);
         CHECK(posts >= 4);
         const auto bad = checkStructure(realContent().build, s);
-        report("smithy", bad);
+        report("smith", bad);
         CHECK(bad.empty());
+        // read back from what stands in it: a home and a smithy (open, under its roof), one building
+        const StructureFrame f{int(seed % 4), 3, 9, realContent().build.cellM};
+        const RoomsResult r = roomsOf(s, f);
+        std::set<std::string> types;
+        for (const auto& room : r.rooms) types.insert(room.type);
+        CHECK(types.count("home") && types.count("smithy"));
+        CHECK(r.buildings.size() == 1);
+        if (!r.buildings.empty()) CHECK(r.buildings[0].purpose == "smithy");
+        for (const auto& room : r.rooms)
+            if (room.type == "smithy") CHECK(!room.enclosed);
     }
 }
 
-TEST(altera_sim_structures_every_type) {
+TEST(altera_sim_structures_every_recipe) {
     const StructureCatalog& cat = catalog();
     const BuildCatalog& build = realContent().build;
     CHECK(cat.types.size() >= 8);
-    std::set<std::string> annexKinds;
+    std::set<std::string> annexKinds, roomsMade;
     for (const auto& type : cat.types)
         for (std::uint64_t seed = 1; seed <= 10; ++seed) {
             const StructurePlan s = planStructure(cat, build, type, {seed % 2 ? 4 : 7, seed * 7919});
@@ -113,10 +142,19 @@ TEST(altera_sim_structures_every_type) {
             CHECK(bad.empty());
             for (const auto& n : s.notes) std::printf("    %s seed %d note: %s\n", type.id.c_str(), int(seed), n.c_str());
             CHECK(s.notes.empty());
-            // every station the type names (that the world has) stands in it
-            for (const auto& st : type.stations)
-                if (realContent().objects.count(st.what)) CHECK(hasStation(s, st.what));
             for (const auto& v : s.volumes) annexKinds.insert(v.role);
+            // every room it was put together from reads back as that room
+            const StructureFrame f0{int(seed % 4), -4, 11, build.cellM};
+            const RoomsResult rr = roomsOf(s, f0);
+            for (const auto& p : s.parts) {
+                if (p.room.empty()) continue;
+                const std::string got = readAs(rr, p, f0);
+                if (got != p.room)
+                    std::printf("    %s seed %d: the %s (%s, z %d) reads as %s\n", type.id.c_str(), int(seed), p.room.c_str(),
+                                p.at.c_str(), p.z, got.c_str());
+                CHECK(got == p.room);
+                roomsMade.insert(p.room);
+            }
             // turned any way on the grid it still stands: no slot taken twice, every piece held
             for (int q = 0; q < 4; ++q) {
                 StructureFrame f{q, 17, -5, build.cellM};
@@ -133,11 +171,14 @@ TEST(altera_sim_structures_every_type) {
                     }
                 CHECK(weak == 0);
             }
-            // the same seed, the same building
+            // the same seed, the same house
             const StructurePlan again = planStructure(cat, build, type, {seed % 2 ? 4 : 7, seed * 7919});
             CHECK(again.pieces.size() == s.pieces.size());
         }
     for (const char* k : {"main", "canopy", "shed", "porch"}) CHECK(annexKinds.count(k));
+    for (const char* k : {"home", "smithy", "tavern_hall", "kitchen", "bedroom", "bakery", "chapel", "granary", "byre", "storeroom",
+                          "brewery", "weaving", "tannery", "pottery", "carpentry"})
+        CHECK(roomsMade.count(k));
 }
 
 TEST(altera_sim_structures_frame) {
@@ -164,15 +205,29 @@ TEST(altera_sim_structures_village) {
         cfg["families"] = families;
         World w = makeTestWorld(realContent(), cfg, 7 + families);
         const Settlement& st = w.settlements().begin()->second;
-        std::map<std::string, int> types;
-        for (const auto& s : st.structures) ++types[s.type];
-        std::printf("    families %d:", families);
-        for (const auto& [t, n] : types) std::printf(" %s %d", t.c_str(), n);
+        // no building types: the rooms are read from the world, the buildings' purposes from them
+        std::map<std::string, int> rooms, purposes;
+        for (const auto& r : w.rooms()) ++rooms[r.type];
+        for (const auto& b : w.roomBuildings()) ++purposes[b.purpose];
+        std::printf("    families %d rooms:", families);
+        for (const auto& [t, n] : rooms) std::printf(" %s %d", t.c_str(), n);
+        for (const auto& r : w.rooms())
+            if (r.type == "room") {   // what a bare room holds (a room nothing furnished)
+                std::printf("\n    (a bare room: z %d, %d cells, %s:", r.z, int(r.cells.size()), r.enclosed ? "closed" : "open");
+                for (EntityId id : r.things) std::printf(" %s", w.object(id) ? w.object(id)->type.c_str() : "?");
+                std::printf(")");
+                const double cx = (r.cells[0].first + 0.5) * 2.0, cy = (r.cells[0].second + 0.5) * 2.0;
+                for (const auto& [id, o] : w.objects())
+                    if (dist(o.pos, {cx, cy}) < 3.0) std::printf(" [near: %s %.1f]", o.type.c_str(), dist(o.pos, {cx, cy}));
+            }
+        std::printf("\n    buildings:");
+        for (const auto& [t, n] : purposes) std::printf(" %s %d", t.c_str(), n);
         std::printf("\n");
-        CHECK(types.size() >= (families >= 7 ? 7u : 4u));
-        CHECK(types.count("smithy") == 1);
-        CHECK(types.count("chapel") == 1);
-        if (families >= 3) CHECK(types.count("tavern") == 1);
+        CHECK(int(w.roomBuildings().size()) == int(st.structures.size()));
+        CHECK(rooms.count("home") && rooms.count("smithy") && rooms.count("chapel"));
+        CHECK(purposes.count("smithy") == 1 && purposes.count("chapel") == 1);
+        if (families >= 3) CHECK(rooms.count("tavern_hall") && rooms.count("kitchen") && rooms.count("bedroom"));
+        CHECK(purposes.size() >= (families >= 7 ? 7u : 4u));
         int homes = 0;
         for (const auto& s : st.structures) homes += s.family != kNone;
         CHECK(homes == families);
@@ -206,44 +261,50 @@ TEST(altera_sim_structures_village) {
                 CHECK(!rects[b].overlaps(door, 0.0));
             }
         }
-        // the smithy's forge and anvil stand in it, owned by the smith's household, whose head knows smithing
-        for (const auto& s : st.structures) {
-            if (s.type != "smithy") continue;
-            std::set<std::string> held;
-            for (EntityId id : s.objects)
+        // the smithy room's forge and anvil belong to the smith's household, whose head knows smithing
+        for (const auto& r : w.rooms()) {
+            if (r.type != "smithy") continue;
+            EntityId fam = kNone;
+            for (EntityId id : r.things)
                 if (const WorldObject* o = w.object(id)) {
-                    held.insert(o->type);
-                    CHECK(o->ownerFamily == s.family);
+                    if (o->type == "forge") fam = o->ownerFamily;
                     CHECK(o->faced);
                 }
-            CHECK(held.count("forge") && held.count("anvil") && held.count("house") && held.count("hearth"));
+            CHECK(fam != kNone);
             bool smith = false;
             for (const auto& [id, ch] : w.characters())
-                if (ch.status.family == s.family && ch.status.role == "head") smith = ch.knowledge.count("smithing") > 0;
+                if (ch.status.family == fam && ch.status.role == "head") smith = ch.knowledge.count("smithing") > 0;
             CHECK(smith);
         }
-        // the zones: the tavern and the chapel by the square, the barn out at the edge
-        auto farOut = [&](const std::string& type) {
-            for (std::size_t k = 0; k < st.structures.size(); ++k)
-                if (st.structures[k].type == type) return dist(rects[k].c, st.square);
+        // the upper storey's beds: their bedrooms
+        for (const auto& [id, o] : w.objects())
+            if (o.type == "bed" && o.storey > 0) {
+                const Room* r = roomAt(w, o.pos, o.storey);
+                CHECK(r && r->type == "bedroom");
+            }
+        // the zones: the tavern and the chapel by the square, the granary out at the edge
+        auto farOut = [&](const std::string& purpose) {
+            for (const auto& b : w.roomBuildings())
+                if (b.purpose == purpose) return dist({(b.x0 + b.x1) * 0.5 * c, (b.y0 + b.y1) * 0.5 * c}, st.square);
             return -1.0;
         };
-        if (types.count("barn") && types.count("tavern")) CHECK(farOut("barn") > farOut("tavern"));
-        if (types.count("barn") && types.count("chapel")) CHECK(farOut("barn") > farOut("chapel"));
-        // saved and loaded, the buildings stay
+        if (purposes.count("granary") && purposes.count("tavern_hall")) CHECK(farOut("granary") > farOut("tavern_hall"));
+        if (purposes.count("granary") && purposes.count("chapel")) CHECK(farOut("granary") > farOut("chapel"));
+        // saved and loaded, the houses stay and the rooms read the same
         World again = makeTestWorld(realContent(), cfg, 7 + families);
         again.loadJson(w.toJson());
+        refreshRooms(again);
         const Settlement& back = again.settlements().begin()->second;
         CHECK(back.structures.size() == st.structures.size());
+        CHECK(again.rooms().size() == w.rooms().size());
         if (!back.structures.empty()) {
-            CHECK(back.structures[0].props.size() == st.structures[0].props.size());
             CHECK(back.structures[0].objects == st.structures[0].objects);
             CHECK(back.structures[0].gx == st.structures[0].gx);
         }
     }
 }
 
-TEST(altera_sim_structures_chapel_tavern) {
+TEST(altera_sim_structures_chapel_inn) {
     const StructureCatalog& cat = catalog();
     const BuildCatalog& build = realContent().build;
     for (std::uint64_t seed = 1; seed <= 8; ++seed) {
@@ -255,19 +316,21 @@ TEST(altera_sim_structures_chapel_tavern) {
             if (t.what == "shrine") altar = t.i == (m.i1 - m.i0) / 2 && t.j == m.j1 - 1;
         CHECK(altar);
         for (const auto& t : c.decor) CHECK(t.i != (m.i1 - m.i0) / 2);
-        // the tavern: two storeys, rooms upstairs, the hall with its hearth, counter and tables
-        const StructurePlan t = planStructure(cat, build, *cat.find("tavern"), {5, seed});
+        // the inn: two storeys, bedrooms upstairs, the hall with its counter and tables, a kitchen behind a partition
+        const StructurePlan t = planStructure(cat, build, *cat.find("innkeeper"), {5, seed});
         CHECK(t.volumes[0].storeys == 2);
-        int upperFloors = 0, upperDoors = 0;
+        int upperFloors = 0, upperDoors = 0, upperBeds = 0;
         for (const auto& p : t.pieces) {
             upperFloors += p.kind == "floor_plank" && p.z == 1;
             upperDoors += build.find(p.kind)->door && p.z == 1;
         }
+        for (const auto& b : t.beds) upperBeds += b.z == 1;
         CHECK(upperFloors == (t.volumes[0].i1 - t.volumes[0].i0) * (t.volumes[0].j1 - t.volumes[0].j0));
         CHECK(upperDoors >= 2);
+        CHECK(upperBeds == 5);
         int counters = 0, tables = 0;
         for (const auto& d : t.decor) counters += d.what == "counter", tables += d.what == "table_bench";
         CHECK(counters >= 1 && tables >= 2);
-        CHECK(hasStation(t, "hearth") && hasStation(t, "brewing_vat"));
+        CHECK(hasStation(t, "brewing_vat") && hasStation(t, "cook_pot"));
     }
 }
