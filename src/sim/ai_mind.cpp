@@ -9,6 +9,7 @@
 #include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/craft_sim.hpp"
+#include "sim/memory_budget.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/consequences.hpp"
@@ -602,6 +603,7 @@ void installAi(World& w) {
             spoilFood(world);
             cropsDaily(world);
             villageDaily(world); // AL-39: courtship, births, illness, quarrels, strangers
+            budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on

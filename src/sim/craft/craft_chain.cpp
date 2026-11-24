@@ -44,7 +44,13 @@ bool matchesRef(const CraftData& d, const Item& it, const std::string& ref) {
 bool matchesOut(const Item& it, const RecipeStep& s) {
     if (!s.outForm.empty() && s.outForm.rfind("improvised_", 0) != 0) return it.form == s.outForm;
     if (s.outShape.empty()) return false;
-    return !it.trace.empty() && it.shape == s.outShape && it.material == s.outMat;
+    if (it.trace.empty() || it.shape != s.outShape || it.material != s.outMat) return false;
+    // AL-83: a stored thing stands for an intermediate stage only when that stage
+    // made it: a finished nut bread is lump + flour too, but it is not the dough
+    // (taking it re-baked the same bread forever, one step longer each time)
+    if (!it.form.empty() && it.form.rfind("improvised_", 0) != 0) return false;
+    if (!s.outForm.empty() && it.form != s.outForm) return false;
+    return it.trace.back().process == s.step.process;
 }
 
 } // namespace
