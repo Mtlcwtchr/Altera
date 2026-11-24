@@ -96,6 +96,8 @@ void cropsDaily(World& w);
 // World generation: field sizes per household and their state on the start
 // day (sown, ripe, seed corn in the store).
 void seedFields(World& w, std::uint64_t seed, const Json& cfg);
+// AL-82: a field and a garden for a household that settles later, with their seed.
+void openFields(World& w, EntityId family, Vec2 at, std::uint64_t seed);
 // Care (care.cpp): the dependent category a character falls in (nullptr: none),
 // and the most pressing ward of a carer - who, which need, how urgent
 // (circle x category weight x shortfall). `care:need` is that urgency,

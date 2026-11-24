@@ -875,6 +875,22 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
             m.valence = -0.3 * tags.front().mult;
             w.remember(*wc, std::move(m));
         }
+    // AL-82: at the household's own larder (a store_* act), what else of food
+    // keeps is put away too, but for a couple for the road: otherwise each
+    // smoke-and-store leaves a fish in the satchel and the store runs dry while
+    // one member carries fifty.
+    if (success && target && target->type == "storage" && c.status.family != kNone &&
+        target->ownerFamily == c.status.family && d.id.rfind("store_", 0) == 0) {
+        constexpr int kKeep = 2;
+        for (auto it = c.inventory.begin(); it != c.inventory.end(); ++it) {
+            auto def = w.content().items.find(it->first);
+            if (def == w.content().items.end() || def->second.nutrition <= 0.0) continue;
+            if (def->second.spoilDays > 0.0 && def->second.spoilDays < 30.0) continue; // fresh food is eaten, not kept
+            if (it->second <= kKeep) continue;
+            target->stock[it->first] += it->second - kKeep;
+            it->second = kKeep;
+        }
+    }
     // ...and the world answers: repute, the owners told, a trail, rumour, the outcome (AL-31).
     afterDeed(w, c, d, target, targetChar, success, tags, wit);
     villageAfterAct(w, c, d, targetChar, success); // AL-39: courtship, wedding, conception, quarrels

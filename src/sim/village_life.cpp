@@ -112,6 +112,7 @@ void loadRules(VillageLifeRules& r, const Json& j) {
     r.strangerNoSingles = num(st, "daily_no_singles", r.strangerNoSingles);
     r.loneAge = ipair(st, "lone_age_years", r.loneAge);
     r.strangerMaxPeople = inum(st, "max_people", r.strangerMaxPeople);
+    r.strangerFoodDays = num(st, "food_days", r.strangerFoodDays);
     r.strangerCouple = num(st, "couple", r.strangerCouple);
     r.strangerChild = num(st, "child_with_couple", r.strangerChild);
     r.strangerAge = ipair(st, "age_years", r.strangerAge);
@@ -655,6 +656,24 @@ Character makeStranger(World& w, Rng& rng, const Settlement& st, char sex, int a
             c.knowledge.insert(k);
             c.skills[k] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
         }
+    // AL-82: what everyone of their age knows (knowledge.json start rules, as
+    // worldgen gives the first villagers) - a newcomer who cannot farm leaves his
+    // seed corn in the sack and starves by his own field.
+    {
+        const int age = c.body.ageDays / kDaysPerYear;
+        for (const auto& [kid, k] : ct.knowledge) {
+            const bool knows = (k.start == "all_from_child" && age >= 5) || (k.start == "all_from_youth" && age >= 12) ||
+                               (k.start == "all_adults" && age >= 14) ||
+                               (age >= 14 && k.startChanceAdult > 0.0 && rng.chance(k.startChanceAdult));
+            if (!knows || c.knowledge.count(kid)) continue;
+            bool ok = true;
+            for (const auto& req : k.requiresKnowledge) ok = ok && (c.knowledge.count(req) || ct.knowledge.count(req) == 0 ||
+                                                                    ct.knowledge.at(req).start.rfind("all_", 0) == 0);
+            if (!ok) continue;
+            c.knowledge.insert(kid);
+            if (!c.skills.count(kid)) c.skills[kid] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
+        }
+    }
     c.status.settlement = st.id;
     const double ang = rng.range(0.0, 6.283185307179586);
     c.pos = {st.center.x + std::cos(ang) * r.arriveM, st.center.y + std::sin(ang) * r.arriveM};
@@ -722,6 +741,14 @@ bool arrive(World& w, Settlement& st, Rng& rng, bool family, const VillageLifeRu
     if (auto def = w.content().objects.find("storage"); def != w.content().objects.end()) store.stock = def->second.stock;
     for (const auto& [item, n] : r.householdKit) store.stock[item] += n;
     fam.storage = w.addObject(store).id;
+    // AL-82: and a hearth by it - without one the grain they brought cannot be
+    // cooked (cook_* acts on the household's own hearth), and they starve on a full sack.
+    WorldObject hearth;
+    hearth.type = "hearth";
+    hearth.pos = {store.pos.x + 3.0, store.pos.y};
+    hearth.ownerFamily = fam.id;
+    if (auto def = w.content().objects.find("hearth"); def != w.content().objects.end()) hearth.stock = def->second.stock;
+    fam.hearth = w.addObject(hearth).id;
     w.families()[fam.id] = fam;
     w.dynasties()[dyn.id] = dyn;
     st.families.push_back(fam.id);
@@ -757,6 +784,7 @@ bool arrive(World& w, Settlement& st, Rng& rng, bool family, const VillageLifeRu
     }
     w.dynasties()[dyn.id].founder = mid;
     for (EntityId id : who) meetVillage(w, *w.character(id), st);
+    openFields(w, fam.id, store.pos, w.seed()); // AL-82: land to live on, like the others
     w.chronicle("stranger", who, "chronicle.village.strangers_settled",
                 {{"who", mid}, {"spouse", wid}, {"family", fam.id}, {"people", static_cast<int>(who.size())}});
     return true;
@@ -766,16 +794,22 @@ void strangersDaily(World& w, const VillageLifeRules& r) {
     for (auto& [sid, st] : w.settlements()) {
         if (!st.full()) continue; // AL-92
         int people = 0, singleM = 0, singleF = 0;
+        double foodDays = 0.0;
         for (const auto& [id, c] : w.characters())
             if (person(&c) && c.status.settlement == sid) {
                 ++people;
+                foodDays += homeFoodDays(w, c);
                 if (marriageable(w, c, r) && years(c) <= r.oldFromYears) ++(c.body.sex == 'm' ? singleM : singleF);
             }
         if (people == 0 || people >= r.strangerMaxPeople) continue;
         // a village with nobody to marry draws wanderers sooner
         const bool lacking = singleM == 0 || singleF == 0;
         Rng rng = w.rng(sid, "village:strangers");
-        if (!rng.chance(lacking ? r.strangerNoSingles : r.strangerDaily)) continue;
+        // AL-82: word of a hungry winter travels - wanderers keep away from a village short of food.
+        const double fed = r.strangerFoodDays > 0.0
+                               ? std::clamp((foodDays / people / r.strangerFoodDays - 1.0 / 3.0) * 1.5, 0.0, 1.0)
+                               : 1.0;
+        if (!rng.chance((lacking ? r.strangerNoSingles : r.strangerDaily) * fed)) continue;
         const char lonely = singleM > 0 && singleF == 0 ? 'f' : (singleF > 0 && singleM == 0 ? 'm' : 0);
         arrive(w, st, rng, !lonely && rng.chance(r.strangerCouple), r, lonely);
     }

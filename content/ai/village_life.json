@@ -78,6 +78,8 @@
   "age_years": [17, 40],
   "lone_age_years": [17, 30],
   "taken_in_role": "servant",
+  "food_days": 30,
+  "_doc_food_days": "AL-82: дней еды на едока в деревне; меньше - чужаки приходят реже, при трети от этого не приходят совсем (слух о голоде)",
   "household_kit": {"grain": 25, "firewood": 6},
   "skill_range": [0.2, 0.55],
   "arrive_m": 140

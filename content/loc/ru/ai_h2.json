@@ -378,5 +378,17 @@
  "task.help_neighbours_task.name": "Помощь соседям",
  "method.bring_grain.thought": "Отнесу им зерна.",
  "method.bring_vegetables.thought": "Отнесу им овощей.",
- "method.bring_cheese.thought": "Отнесу им сыра."
+ "method.bring_cheese.thought": "Отнесу им сыра.",
+ "interaction.give_smoked_fish_share.name": "Отнести соседям копчёной рыбы",
+ "method.bring_smoked_fish.thought": "Отнесу им копчёной рыбы.",
+ "interaction.give_dried_meat_share.name": "Отнести соседям вяленого мяса",
+ "method.bring_dried_meat.thought": "Отнесу им вяленого мяса.",
+ "interaction.give_meal_share.name": "Отнести соседям горячей еды",
+ "method.bring_meal.thought": "Отнесу им поесть.",
+ "interaction.give_bread_share.name": "Отнести соседям хлеба",
+ "method.bring_bread.thought": "Отнесу им хлеба.",
+ "interaction.give_dried_berries_share.name": "Отнести соседям сушёных ягод",
+ "method.bring_dried_berries.thought": "Отнесу им сушёных ягод.",
+ "interaction.give_hazelnuts_share.name": "Отнести соседям орехов",
+ "method.bring_hazelnuts.thought": "Отнесу им орехов."
 }

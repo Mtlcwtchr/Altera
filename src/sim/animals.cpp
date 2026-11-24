@@ -130,10 +130,14 @@ bool packFight(World& w, Character& pack, Character& victim) {
 
 Character* nearestPrey(World& w, const Character& a, const SpeciesDef& s, double radius) {
     Character* best = nullptr;
-    double bd = radius;
+    double bd = 1e18;
     for (auto& [id, o] : w.characters()) {
         if (!o.body.alive || o.species.empty() || o.id == a.id) continue;
         if (std::find(s.prey.begin(), s.prey.end(), o.species) == s.prey.end()) continue;
+        // AL-82: the last few of a group hide too well to be found (the stock the herd regrows from).
+        if (o.group <= s.leaveHeads) continue;
+        const SpeciesDef* ps = w.content().speciesOf(o.species);
+        if (ps && o.group <= static_cast<int>(std::ceil(ps->refugeShare * ps->maxGroup))) continue;
         if (const SpeciesDef* ps = w.content().speciesOf(o.species); ps && ps->domestic && a.need("hunger") > 0.15) {
             // A fed pack keeps away from the houses: livestock in the village is safe from it.
             bool village = false;
@@ -142,8 +146,11 @@ Character* nearestPrey(World& w, const Character& a, const SpeciesDef& s, double
             if (village) continue;
         }
         const double d = dist(o.pos, a.pos);
-        if (d <= bd) {
-            bd = d;
+        if (d > radius) continue;
+        // Big game is worth a longer chase: distance over the square root of the meat it gives.
+        const double score = d / std::sqrt(std::max(0.1, ps ? ps->meatDays : 1.0));
+        if (score <= bd) {
+            bd = score;
             best = &o;
         }
     }
@@ -434,6 +441,7 @@ void spawnLivestock(World& w, std::uint64_t seed) {
 }
 
 void loseHeads(World& w, Character& herd, int n, const std::string& cause) {
+    herd.needs["lost_" + cause] += n; // AL-82: heads taken, by cause (the run report sums them)
     herd.group -= n;
     if (herd.group <= 0 && herd.body.alive) {
         herd.group = 0;
@@ -510,16 +518,31 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
         }
     }
     // --- feed -----------------------------------------------------------------
-    if (hunger < 0.7) {
+    if (hunger < (s.diet == "prey" ? s.huntBelow : 0.7)) {
         if (s.diet == "prey") {
+            // AL-82: back to the last kill first, while there is meat on it.
+            double& left = a.needs["carcass_days"];
+            if (left > 0.0) {
+                const double eat = std::min(left, (1.0 - hunger) / std::max(1e-6, s.hungerPerDay));
+                hunger = clamp01(hunger + eat * s.hungerPerDay);
+                left -= eat;
+                return;
+            }
             Character* prey = nearestPrey(w, a, s, s.territoryM);
             if (prey) {
                 moveToward(a, prey->pos, s.speedMPerTick);
                 if (dist(a.pos, prey->pos) <= 10.0) {
                     Rng r = w.rng(a.id, "kill");
                     if (r.uniform() < 0.25) {
+                        // AL-82: one head feeds the pack by its meat: a deer is days for a pack, a hare a bite.
+                        const SpeciesDef* ps = w.content().speciesOf(prey->species);
+                        const double meat = ps ? ps->meatDays : 1.0;
                         loseHeads(w, *prey, 1, "prey");
-                        hunger = clamp01(hunger + 0.6);
+                        // What the pack cannot eat now stays at the kill for the next days.
+                        double days = meat / std::max(1, a.group);
+                        const double eat = std::min(days, (1.0 - hunger) / std::max(1e-6, s.hungerPerDay));
+                        hunger = clamp01(hunger + eat * s.hungerPerDay);
+                        a.needs["carcass_days"] += days - eat;
                     }
                     prey->moodlets.push_back({"alarmed", 0.0, now + 24});
                 }
@@ -539,6 +562,112 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
         if (inBiome(w, s, to)) moveToward(a, to, s.speedMPerTick * 0.5);
     }
 }
+
+namespace {
+
+// A young group starts with its own tally of heads lost (lost_<cause>).
+void clearTally(Character& y) {
+    for (auto it = y.needs.begin(); it != y.needs.end();)
+        it = it->first.rfind("lost_", 0) == 0 ? y.needs.erase(it) : std::next(it);
+}
+
+// Groups of a species the land carries around `p` within `radius` (per_km2 is the density at the start).
+double carryingGroups(const SpeciesDef& s, double radius) { return s.perKm2 * kPi * radius * radius / 1e6; }
+
+// Square km of the species' habitat on the map.
+double habitatKm2(const World& w, const SpeciesDef& s) {
+    const MapGrid& m = w.map();
+    int cells = 0;
+    for (int y = 0; y < m.h; ++y)
+        for (int x = 0; x < m.w; ++x)
+            if (inBiome(w, s, {(x + 0.5) * m.cellM, (y + 0.5) * m.cellM})) ++cells;
+    return cells * (m.cellM / 1000.0) * (m.cellM / 1000.0);
+}
+
+// AL-82: logistic growth of a wild group. The young come by a share of the
+// heads (growth_per_year), slower the fuller the group is; a full group splits
+// a young group off into free land nearby, as long as the land around holds
+// fewer groups than it carries. Predators bear young only when well fed.
+void wildGrowth(World& w, Character& a, const SpeciesDef& s, double fedEnough, std::vector<Character>& born) {
+    if (s.hungerPerDay > 0.0 && a.need("hunger") <= fedEnough) return;
+    const double g = std::max(2, a.group); // a group stands for a breeding pair at least
+    const double room = std::max(0.0, 1.0 - g / std::max(1, s.maxGroup));
+    double& credit = a.needs["breed_credit"];
+    credit += s.growthPerYear / kDaysPerYear * std::max(1.0, g * room);
+    if (room <= 0.0) credit = std::min(credit, 2.0);
+    while (credit >= 1.0 && a.group < s.maxGroup) {
+        credit -= 1.0;
+        ++a.group;
+    }
+    if (a.group < s.maxGroup || a.group < 4 || credit < 1.0) return;
+    const double r2 = std::max(400.0, s.territoryM * 1.5);
+    int around = 0;
+    for (const auto& [oid, o] : w.characters())
+        if (o.body.alive && o.species == a.species && oid != a.id && dist(o.den, a.den) < r2) ++around;
+    if (around >= std::max(2.0, carryingGroups(s, r2))) return;
+    Rng r = w.rng(a.id, "split");
+    const double ang = r.range(0.0, 2.0 * kPi);
+    const double rad = std::max(300.0, s.territoryM);
+    Character y = a;
+    y.id = kNone;
+    y.group = a.group / 2;
+    y.den = clampToMap(w, {a.den.x + std::cos(ang) * rad, a.den.y + std::sin(ang) * rad});
+    y.pos = y.den;
+    y.memory.clear();
+    y.moodlets.clear();
+    clearTally(y);
+    y.needs["breed_credit"] = 0.0;
+    credit = 0.0;
+    if (!inBiome(w, s, y.den)) return;
+    a.group -= y.group;
+    born.push_back(std::move(y));
+}
+
+// AL-82: the map is not an island. When a species has thinned out well below
+// what its land carries (hunted out, eaten up), now and then a group wanders
+// in across the edge of the map.
+void immigrate(World& w) {
+    const MapGrid& m = w.map();
+    for (const auto& [sid, s] : w.content().species) {
+        if (s.domestic || s.immigrateBelow <= 0.0 || s.perKm2 <= 0.0 || s.habitat == "water") continue;
+        int groups = 0;
+        for (const auto& [id, a] : w.characters())
+            if (a.body.alive && a.species == sid) ++groups;
+        const double carry = s.perKm2 * habitatKm2(w, s);
+        if (groups >= s.immigrateBelow * carry) continue;
+        Rng r = w.rng(0, "immigrate:" + sid + ":" + std::to_string(w.day()));
+        // The thinner it is, the sooner the next ones come: about every 10..40 days.
+        const double share = carry > 0.0 ? groups / (s.immigrateBelow * carry) : 0.0;
+        if (r.uniform() >= 1.0 / (10.0 + 30.0 * share)) continue;
+        for (int tries = 0; tries < 40; ++tries) {
+            // A cell on the outer band of the map, in the species' biome, away from people.
+            const int side = r.irange(0, 3);
+            const int along = r.irange(0, (side < 2 ? m.w : m.h) - 1);
+            const int in = r.irange(0, 1);
+            const int x = side == 0 ? along : side == 1 ? along : side == 2 ? in : m.w - 1 - in;
+            const int y = side == 0 ? in : side == 1 ? m.h - 1 - in : along;
+            const Vec2 p{(x + r.uniform()) * m.cellM, (y + r.uniform()) * m.cellM};
+            if (!inBiome(w, s, p)) continue;
+            bool nearVillage = false;
+            for (const auto& [stid, st] : w.settlements())
+                if (dist(p, st.center) < 1500.0) nearVillage = true;
+            if (nearVillage) continue;
+            Character a;
+            a.species = sid;
+            a.name = sid;
+            a.group = r.irange(s.groupLo, s.groupHi);
+            a.pos = p;
+            a.den = p;
+            a.needs["hunger"] = 0.6;
+            a.body.ageDays = 2 * kDaysPerYear;
+            a.body.sex = 'f';
+            w.addCharacter(std::move(a));
+            break;
+        }
+    }
+}
+
+} // namespace
 
 void animalsDaily(World& w) {
     std::vector<Character> born;
@@ -561,6 +690,11 @@ void animalsDaily(World& w) {
             livestockDaily(w, a, s);
             continue;
         }
+        // AL-82: meat left at a kill goes off and is picked by scavengers within days.
+        if (auto it = a.needs.find("carcass_days"); it != a.needs.end()) {
+            it->second *= 0.6;
+            if (it->second < 0.2) a.needs.erase(it);
+        }
         // Fish: the shoal regrows every day toward its carrying size (logistic).
         if (s.habitat == "water") {
             const double g = a.group;
@@ -571,7 +705,9 @@ void animalsDaily(World& w) {
         // Breeding: fed groups grow, full groups split off a young group nearby.
         // Predators breed only when well fed (prey is plentiful).
         const double fedEnough = s.diet == "prey" ? 0.65 : 0.45;
-        if (s.breedEveryDays > 0 && (s.hungerPerDay <= 0.0 || a.need("hunger") > fedEnough) &&
+        if (s.growthPerYear > 0.0) {
+            wildGrowth(w, a, s, fedEnough, born);
+        } else if (s.breedEveryDays > 0 && (s.hungerPerDay <= 0.0 || a.need("hunger") > fedEnough) &&
             r.uniform() < 1.0 / s.breedEveryDays) {
             // Large broods (fish) grow by a share of the group, beasts by one head.
             const int brood = s.habitat == "water" ? std::max(1, a.group / 5) : 1;
@@ -594,6 +730,7 @@ void animalsDaily(World& w) {
                 y.pos = y.den;
                 y.memory.clear();
                 y.moodlets.clear();
+                clearTally(y);
                 if (inBiome(w, s, y.den)) born.push_back(std::move(y));
             }
         }
@@ -614,6 +751,7 @@ void animalsDaily(World& w) {
         }
     }
     for (auto& y : born) w.addCharacter(std::move(y));
+    immigrate(w);
 }
 
 void spawnAnimals(World& w, std::uint64_t seed) {

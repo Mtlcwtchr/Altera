@@ -170,5 +170,17 @@
  "task.help_neighbours_task.name": "Helping the neighbours",
  "method.bring_grain.thought": "I will take them some grain.",
  "method.bring_vegetables.thought": "I will take them vegetables.",
- "method.bring_cheese.thought": "I will take them cheese."
+ "method.bring_cheese.thought": "I will take them cheese.",
+ "interaction.give_smoked_fish_share.name": "Bring the neighbours smoked fish",
+ "method.bring_smoked_fish.thought": "I will take them smoked fish.",
+ "interaction.give_dried_meat_share.name": "Bring the neighbours dried meat",
+ "method.bring_dried_meat.thought": "I will take them dried meat.",
+ "interaction.give_meal_share.name": "Bring the neighbours a hot meal",
+ "method.bring_meal.thought": "I will take them something to eat.",
+ "interaction.give_bread_share.name": "Bring the neighbours bread",
+ "method.bring_bread.thought": "I will take them bread.",
+ "interaction.give_dried_berries_share.name": "Bring the neighbours dried berries",
+ "method.bring_dried_berries.thought": "I will take them dried berries.",
+ "interaction.give_hazelnuts_share.name": "Bring the neighbours hazelnuts",
+ "method.bring_hazelnuts.thought": "I will take them hazelnuts."
 }

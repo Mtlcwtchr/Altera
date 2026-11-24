@@ -561,7 +561,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
                         "flee_m", "diet", "prey", "aggression", "attack", "hunger_per_day", "breed_every_days",
                         "territory_m", "starve_days", "domestic", "per_family", "per_family_chance",
                         "graze_seasons", "fodder", "fodder_per_head", "products", "breed_season", "brood", "cull",
-                        "_doc"},
+                        "growth_per_year", "meat_days", "hunt_below", "leave_heads", "refuge_share", "immigrate_below", "_doc"},
                     "species", W);
         SpeciesDef s;
         s.id = j.at("id").get<std::string>();
@@ -591,6 +591,12 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         s.breedEveryDays = opt(j, "breed_every_days", 0);
         s.territoryM = opt(j, "territory_m", 0.0);
         s.starveDays = opt(j, "starve_days", 0);
+        s.growthPerYear = opt(j, "growth_per_year", 0.0);
+        s.meatDays = opt(j, "meat_days", 1.0);
+        s.huntBelow = opt(j, "hunt_below", 0.7);
+        s.leaveHeads = opt(j, "leave_heads", 0);
+        s.immigrateBelow = opt(j, "immigrate_below", 0.0);
+        s.refugeShare = opt(j, "refuge_share", 0.0);
         s.domestic = opt(j, "domestic", false);
         if (j.contains("per_family")) {
             s.perFamilyLo = j["per_family"].at(0).get<int>();

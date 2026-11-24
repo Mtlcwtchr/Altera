@@ -220,6 +220,27 @@ TEST(altera_sim_village_strangers) {
     // the newcomers have a home, their household its store
     for (const auto& [id, c] : w.characters())
         if (!c.isAnimal() && c.body.alive) CHECK(c.status.family != kNone && w.object(c.home) != nullptr);
+    // AL-82: ...and a hearth of its own they know, to cook the grain they brought
+    for (const auto& [fid, f] : w.families()) {
+        const WorldObject* h = w.object(f.hearth);
+        CHECK(h != nullptr && h->type == "hearth" && h->ownerFamily == fid);
+        for (EntityId m : f.members)
+            if (const Character* c = w.character(m); c && c->body.alive) CHECK(c->knownObjects.count(f.hearth) == 1);
+        // ...and a field and a garden of its own, with the seed for them
+        int fields = 0, gardens = 0;
+        for (const auto& [oid, o] : w.objects())
+            if (o.ownerFamily == fid) {
+                if (o.type == "field") ++fields;
+                if (o.type == "garden") ++gardens;
+            }
+        CHECK(fields >= 1 && gardens >= 1);
+    }
+    const Family& newest = w.families().rbegin()->second;
+    const WorldObject* store = w.object(newest.storage);
+    CHECK(store && store->stock.count("seed_grain") && store->stock.at("seed_grain") >= 20);
+    // ...and grown newcomers can work it: farming is everyone's from youth
+    for (EntityId m : newest.members)
+        if (const Character* c = w.character(m); c && c->body.ageDays >= 14 * kDaysPerYear) CHECK(c->knowledge.count("farming") == 1);
 }
 
 TEST(altera_sim_village_lives_over_two_months) {

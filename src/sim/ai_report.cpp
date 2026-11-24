@@ -21,12 +21,15 @@ Json aiReport(const World& w) {
     int alive = 0;
     int population = 0;
     std::map<std::string, std::pair<int, int>> fauna; // species -> groups, heads
+    std::map<std::string, std::map<std::string, int>> faunaLost; // species -> cause -> heads (AL-82)
     for (const auto& [id, c] : w.characters()) {
         if (c.isAnimal()) {
             if (c.body.alive) {
                 ++fauna[c.species].first;
                 fauna[c.species].second += c.group;
             }
+            for (const auto& [k, v] : c.needs)
+                if (k.rfind("lost_", 0) == 0) faunaLost[c.species][k.substr(5)] += static_cast<int>(v);
             continue;
         }
         ++population;
@@ -88,6 +91,7 @@ Json aiReport(const World& w) {
                 {"fauna", [&] {
                      Json f = Json::object();
                      for (const auto& [sp, gh] : fauna) f[sp] = {{"groups", gh.first}, {"heads", gh.second}};
+                     for (const auto& [sp, lost] : faunaLost) f[sp]["lost"] = lost;
                      return f;
                  }()},
                 {"summary",
