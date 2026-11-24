@@ -1784,7 +1784,7 @@ void endWar(Ctx& x, RealmWar& wr, const std::string& outcome, EntityId winner, E
             const double rep = std::max(0.0, L->wealth) * num(x.r.war, "reparation_share", 0.3);
             L->wealth -= rep, W->wealth += rep;
             p["n"] = static_cast<int>(std::round(rep));
-            log(x, "peace_reparation", p);
+            log(x, rep >= 1.0 ? "peace_reparation" : "peace_white", p); // nothing to take: just peace
         }
         grieve(x, loser, winner, "war", 0.35); // the loser remembers (revanchism)
         L->unrest = clamp01(L->unrest + num(x.r.war, "defeat_unrest", 0.06));
