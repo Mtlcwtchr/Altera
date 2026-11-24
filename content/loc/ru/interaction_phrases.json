@@ -295,5 +295,11 @@
  "interaction.watch_hare.phrase": "понаблюдать за зайцем",
  "interaction.watch_wolf.phrase": "понаблюдать за волком",
  "interaction.weave_cloth.phrase": "ткать",
- "interaction.weed_garden.phrase": "прополоть огород"
+ "interaction.weed_garden.phrase": "прополоть огород",
+ "interaction.give_smoked_fish_share.phrase": "отнести соседям копчёной рыбы",
+ "interaction.give_dried_meat_share.phrase": "отнести соседям вяленого мяса",
+ "interaction.give_meal_share.phrase": "отнести соседям горячей еды",
+ "interaction.give_bread_share.phrase": "отнести соседям хлеба",
+ "interaction.give_dried_berries_share.phrase": "отнести соседям сушёных ягод",
+ "interaction.give_hazelnuts_share.phrase": "отнести соседям орехов"
 }

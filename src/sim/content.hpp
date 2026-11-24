@@ -139,6 +139,13 @@ struct SpeciesDef {
     int breedEveryDays = 0;
     double territoryM = 0.0;
     int starveDays = 0;
+    // AL-82: population dynamics of wild beasts.
+    double growthPerYear = 0.0;   // intrinsic growth per head and year (logistic toward max_group); 0 = breed_every_days
+    double meatDays = 1.0;        // predator-head-days of food one head of it gives
+    double huntBelow = 0.7;       // a predator hunts only when its hunger is below this
+    int leaveHeads = 0;           // a predator never takes a group down below this many heads (the ones it cannot find)
+    double refugeShare = 0.0;     // prey: a group down to this share of max_group is too wary to be caught by beasts
+    double immigrateBelow = 0.0;  // fewer groups than this share of the land's carrying number: groups come in from beyond the map
     // Livestock (domestic): owned by a household, tame, kept by the house.
     bool domestic = false;
     int perFamilyLo = 0, perFamilyHi = 0; // group size per household at the start (0 = none)

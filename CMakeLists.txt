@@ -824,6 +824,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_speech_feed.cpp
             tests/test_altera_sim_village_life.cpp tests/test_altera_sim_memory_budget.cpp
             tests/test_altera_sim_realm.cpp
+            tests/test_altera_sim_ecology.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
             tests/test_altera_sim_trade.cpp

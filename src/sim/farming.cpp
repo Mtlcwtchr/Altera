@@ -370,4 +370,43 @@ void seedFields(World& w, std::uint64_t seed, const Json& cfg) {
     }
 }
 
+void openFields(World& w, EntityId family, Vec2 at, std::uint64_t seed) {
+    // AL-82: a household that settles takes up land like the others have: a
+    // field and a garden by its house, fresh (nothing sown yet), and the seed for
+    // them in its store - without them a newcomer family lives off foraging and
+    // starves in its first winter.
+    auto f = w.families().find(family);
+    if (f == w.families().end()) return;
+    const double people = std::max<size_t>(1, f->second.members.size());
+    WorldObject* store = w.object(f->second.storage);
+    int k = 0;
+    for (const auto& [type, def] : w.content().objects) {
+        if (!def.hasCrop || !def.settlement || def.perFamily <= 0) continue;
+        const CropDef& cd = def.crop;
+        Rng fr(hashCombine(seed, hashCombine(static_cast<std::uint64_t>(family), hashStr("open_field:" + type))));
+        WorldObject o;
+        o.type = type;
+        const double ang = 0.9 * ++k;
+        o.pos = {at.x + std::cos(ang) * (25.0 + 15.0 * k), at.y + std::sin(ang) * (25.0 + 15.0 * k)};
+        o.ownerFamily = family;
+        o.stock = def.stock;
+        const double perLo = cd.stripsLo >= 0.0 ? cd.stripsLo : 6.0;
+        const double perHi = cd.stripsHi >= 0.0 ? cd.stripsHi : 8.0;
+        auto& s = o.stock;
+        s["strips"] = std::max(1, static_cast<int>(std::round(people * fr.range(perLo, perHi))));
+        const SoilDef& soil = w.content().climate.soil(w.map().biomeAt(o.pos));
+        auto pm = [&](double v) { return static_cast<int>(std::round(1000.0 * std::clamp(v, 0.05, 1.0))); };
+        s["soil_fertility"] = pm(soil.fertility + fr.range(-0.1, 0.1));
+        s["fertility"] = s["soil_fertility"]; // new-broken ground
+        s["soil_depth"] = pm(soil.depth + fr.range(-0.1, 0.1));
+        s["drainage"] = pm(soil.drainage + fr.range(-0.1, 0.1));
+        s["capacity"] = static_cast<int>(std::round(soil.capacityMm * fr.range(0.85, 1.15)));
+        s["moisture"] = static_cast<int>(std::round(s["capacity"] * 0.7));
+        if (store && !cd.seed.empty()) store->stock[cd.seed] += static_cast<int>(std::round(s["strips"] * cd.seedPerStrip));
+        const EntityId id = w.addObject(o).id;
+        for (EntityId m : f->second.members)
+            if (Character* c = w.character(m)) c->knownObjects.insert(id);
+    }
+}
+
 } // namespace altera::sim

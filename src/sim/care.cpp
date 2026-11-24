@@ -106,17 +106,30 @@ double shortfall(const World& w, const Family& fam, double days) {
     return 0.0;
 }
 
+// AL-82: a neighbour is a household of the same village, or one living close
+// by whatever the law says (an exile still lives next door).
+bool neighbours(const World& w, const Character& giver, EntityId family) {
+    if (family == kNone || family == giver.status.family) return false;
+    auto f = w.families().find(family);
+    if (f == w.families().end()) return false;
+    const EntityId here = settlementOfFamily(w, giver.status.family);
+    if (here != kNone && f->second.settlement == here) return true;
+    const WorldObject* mine = w.object(giver.home);
+    if (!mine) return false;
+    for (EntityId m : f->second.members)
+        if (const Character* p = w.character(m); p && p->body.alive)
+            if (const WorldObject* theirs = w.object(p->home)) return dist(mine->pos, theirs->pos) < 800.0;
+    return false;
+}
+
 } // namespace
 
 double charityValue(const World& w, const Character& giver, const Character* target, const std::string& key) {
     if (giver.status.family == kNone || giver.isAnimal()) return 0.0;
     const CareDef& cd = w.content().care;
-    const EntityId here = settlementOfFamily(w, giver.status.family);
     if (target) {
         // charity:target - a member of another household of the village that is running out.
-        if (key != "target" || target->isAnimal() || target->status.family == kNone ||
-            target->status.family == giver.status.family || settlementOfFamily(w, target->status.family) != here)
-            return 0.0;
+        if (key != "target" || target->isAnimal() || !neighbours(w, giver, target->status.family)) return 0.0;
         auto f = w.families().find(target->status.family);
         return f != w.families().end() && shortfall(w, f->second, cd.charityDays) > 0.0 ? 1.0 : 0.0;
     }
@@ -127,7 +140,7 @@ double charityValue(const World& w, const Character& giver, const Character* tar
     if (spare <= 0.0) return 0.0;
     double worst = 0.0;
     for (const auto& [fid, fam] : w.families()) {
-        if (fid == giver.status.family || fam.settlement != here) continue;
+        if (!neighbours(w, giver, fid)) continue;
         double s = shortfall(w, fam, cd.charityDays);
         // Small children in the house weigh more.
         for (EntityId m : fam.members)

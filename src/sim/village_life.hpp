@@ -100,6 +100,7 @@ struct VillageLifeRules {
     // strangers
     double strangerDaily = 0.02, strangerNoSingles = 0.05; // the latter while singles of one sex have nobody to marry
     int strangerMaxPeople = 60;
+    double strangerFoodDays = 30.0; // AL-82: a village with less food per head than this draws fewer wanderers (none at a third of it)
     double strangerCouple = 0.3, strangerChild = 0.4;
     std::array<int, 2> strangerAge = {17, 40}, loneAge = {17, 30};
     std::string takenInRole = "servant";
