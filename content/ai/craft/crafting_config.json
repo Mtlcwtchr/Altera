@@ -111,5 +111,24 @@
   "stubborn": {
    "breakthrough": -0.3
   }
+ },
+ "worth": {
+  "_doc": "AL-87: value components. Any def (material, shape, process, form, flaw) may carry \"worth\" (a multiplier, 1 = ordinary). An assembly blends its parts: parts_avg x mass average + parts_finest x the finest part. tags: worth carried by a tag wherever it shows (material tags, process marks, item tags). A made thing's worth multiplies its trade value (trade.json worth_exp).",
+  "parts_avg": 0.7,
+  "parts_finest": 0.3,
+  "min": 0.05,
+  "cap": 100,
+  "tags": {
+   "precious": 1.5,
+   "luxury": 1.3,
+   "heirloom": 1.5,
+   "dyed": 1.3,
+   "embroidered": 1.4,
+   "engraved": 1.3,
+   "inlaid": 1.4,
+   "gilded": 2.0,
+   "rotten": 0.3,
+   "soiled": 0.7
+  }
  }
 }

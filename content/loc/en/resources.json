@@ -1,0 +1,15 @@
+{
+ "_doc": "AL-86: crafting resources, their sources in the world and new things (epic AL-86).",
+ "material.silver.name": "silver",
+ "material.silver.made": "silver {form}",
+ "material.gold.name": "gold",
+ "material.gold.made": "gold {form}",
+ "material.horn.name": "horn",
+ "material.horn.made": "horn {form}",
+ "material.antler.name": "antler",
+ "material.antler.made": "antler {form}",
+ "item.silver.name": "silver",
+ "item.gold.name": "gold",
+ "item.horn.name": "horn",
+ "item.antler.name": "antlers"
+}

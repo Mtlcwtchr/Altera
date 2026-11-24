@@ -64,6 +64,7 @@ struct MaterialDef {
     std::string salvage;          // what a ruined piece leaves; empty = the material itself
     std::string item;             // items.json id this material comes as (source in the world)
     bool raw = true;              // gathered, not made (validator wants a source)
+    double worth = 1.0;           // value component (1 = ordinary), see itemWorth()
 };
 
 struct ShapeDef {
@@ -73,6 +74,7 @@ struct ShapeDef {
     int lenMin = 1, lenMax = 1, lenDefault = 1;
     int thick = 1;
     std::map<std::string, double> v; // cover, capacity, grip, ... (shape.<name> in expressions)
+    double worth = 1.0;              // value component of a piece of this shape
 };
 
 struct SlotDef {
@@ -108,6 +110,7 @@ enum class ProcOp { Shape, Heat, Blend, Join, Soak };
 
 struct ProcessDef {
     std::string id;
+    double worth = 1.0; // value component of having been worked this way (dye, engrave, ...)
     std::string skill;
     std::vector<std::pair<std::string, std::string>> skillBy; // work piece tag -> skill
     ProcOp op = ProcOp::Shape;
@@ -173,6 +176,7 @@ struct FlawDef {
     std::string fix;
     std::map<std::string, double> mods; // property or function -> multiplier
     std::string salvage;
+    double worth = 1.0;                 // value component (< 1: the flaw makes it cheaper)
 };
 
 struct FunctionDef {
@@ -197,6 +201,7 @@ struct FormDef {
     std::vector<FormNeed> needs;
     bool named = true;                 // name with the material ("iron sword") or plain ("bread")
     std::string item;                  // items.json id the sim counts it as (empty: none)
+    double worth = 1.0;                // value component of the archetype itself
     // derive (§5, §10): numbers for the combat core and the sim.
     std::string kind;
     std::map<std::string, std::string> deriveStr; // weapon_id, layer, ...
@@ -244,6 +249,11 @@ struct CraftConfig {
     double dryBelow = 0.15;
     double massUnit = 1.0;
     double stepQualityMasterBonus = 0.08;
+    // worth (value components, AL-87): any def may carry "worth" (a multiplier, 1 = ordinary);
+    // tags carry it through worth.tags. A made thing's worth multiplies its trade value.
+    double worthAvg = 0.7, worthMax = 0.3;   // parts: weighted mass average + share of the finest part
+    double worthMin = 0.05, worthCap = 100.0;
+    std::map<std::string, double> tagWorth;  // tag -> worth (material tags, marks, item tags)
     // recipe book (§17)
     double masterThreshold = 0.85;
     int masterSuccesses = 5, fastCraftMaxStages = 12, fragmentsPerSuccess = 1;

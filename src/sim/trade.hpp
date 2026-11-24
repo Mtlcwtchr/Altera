@@ -82,6 +82,9 @@ std::vector<std::string> itemCategories(const Content& c, const std::string& ite
 double baseValue(const Content& c, const std::string& item);
 // The quality 0..1 of the best made `item` `holder` has (0.5 when none is made).
 double itemQuality(const Character& holder, const std::string& item);
+// AL-87: the worth of what the holder would give: a made thing by its components
+// (craft::itemWorth), a plain item by its tags (crafting_config worth.tags). 1 = ordinary.
+double itemWorthMult(const Content& c, const Character& holder, const std::string& item);
 // A person's taste per category, -1..1 (traits + the person's own seed).
 std::map<std::string, double> tasteOf(const World& w, const Character& c);
 // The person's taste for an item, -1..1 (its categories summed, clamped).

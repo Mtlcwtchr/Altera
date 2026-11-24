@@ -11,6 +11,7 @@
 #include "sim/ai.hpp"
 #include "sim/character.hpp"
 #include "sim/content.hpp"
+#include "sim/craft/craft.hpp"
 #include "sim/dialogue_say.hpp"
 #include "sim/gear.hpp"
 #include "sim/social_chain.hpp"
@@ -328,6 +329,17 @@ double itemQuality(const Character& holder, const std::string& item) {
     return q < 0 ? 0.5 : q;
 }
 
+double itemWorthMult(const Content& c, const Character& holder, const std::string& item) {
+    // the made thing that would change hands (moveItem gives the best one first)
+    const craft::Item* best = nullptr;
+    for (const auto& it : holder.craft.items)
+        if (it.form == item && (!best || it.q > best->q)) best = &it;
+    if (best) return craft::itemWorth(c.craft, *best);
+    auto def = c.items.find(item);
+    if (def == c.items.end()) return 1.0;
+    return craft::tagsWorth(c.craft, def->second.tags);
+}
+
 std::map<std::string, double> tasteOf(const World& w, const Character& c) {
     std::map<std::string, double> t;
     const TradeRules* R = tradeRules(w.content());
@@ -369,6 +381,7 @@ double worthTo(const World& w, const Character& judge, const std::string& item, 
     double v = baseValue(C, item);
     if (!R || isMoney(C, item)) return v;
     v *= R->c("quality_lo", 0.6) + (R->c("quality_hi", 1.4) - R->c("quality_lo", 0.6)) * itemQuality(holder, item);
+    v *= std::pow(itemWorthMult(C, holder, item), R->c("worth_exp", 1.0)); // AL-87: what it is made of
     const double common = std::max(1.0, R->c("rarity_common", 30));
     v *= 1.0 + R->c("rarity_k", 0.5) * clamp01(1.0 - worldCount(w, item) / common);
     const TradeRole* role = roleOf(w, judge);

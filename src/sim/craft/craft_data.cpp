@@ -59,6 +59,17 @@ Expr exprJ(const Json& j, const char* key, const std::string& where, Errs& e) {
     return {};
 }
 
+// "worth": a value component any def may carry (AL-87); 1 = ordinary.
+double worthField(const Json& j, const std::string& where, Errs& e) {
+    if (!j.is_object() || !j.contains("worth")) return 1.0;
+    const Json& v = j["worth"];
+    if (!v.is_number() || v.get<double>() <= 0) {
+        e.add(where + ".worth: expected a number > 0");
+        return 1.0;
+    }
+    return v.get<double>();
+}
+
 void warnUnknown(const Json& j, std::initializer_list<const char*> known, const std::string& where,
                  std::vector<std::string>& w) {
     if (!j.is_object()) return;
@@ -198,6 +209,19 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
             for (auto it = c["traits"].begin(); it != c["traits"].end(); ++it)
                 for (auto jt = it.value().begin(); jt != it.value().end(); ++jt)
                     if (jt.value().is_number()) d.cfg.traitMods[it.key()][jt.key()] = jt.value().get<double>();
+        if (c.contains("worth")) {
+            const Json& wj = c["worth"];
+            d.cfg.worthAvg = opt(wj, "parts_avg", d.cfg.worthAvg);
+            d.cfg.worthMax = opt(wj, "parts_finest", d.cfg.worthMax);
+            d.cfg.worthMin = opt(wj, "min", d.cfg.worthMin);
+            d.cfg.worthCap = opt(wj, "cap", d.cfg.worthCap);
+            if (wj.contains("tags") && wj["tags"].is_object())
+                for (auto it = wj["tags"].begin(); it != wj["tags"].end(); ++it) {
+                    if (!it.value().is_number() || it.value().get<double>() <= 0)
+                        E.add("crafting_config.worth.tags." + it.key() + ": worth must be a number > 0");
+                    else d.cfg.tagWorth[it.key()] = it.value().get<double>();
+                }
+        }
         if (c.contains("heat") && c["heat"].contains("levels"))
             for (auto it = c["heat"]["levels"].begin(); it != c["heat"]["levels"].end(); ++it)
                 d.cfg.heatC[std::stoi(it.key())] = it.value().get<double>();
@@ -207,7 +231,8 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
     for (const auto& j : shapes.value("shapes", Json::array())) {
         ShapeDef s;
         s.id = j.value("id", "");
-        warnUnknown(j, {"id", "role", "stage", "len", "thick", "v"}, "shapes." + s.id, W);
+        warnUnknown(j, {"id", "role", "stage", "len", "thick", "v", "worth"}, "shapes." + s.id, W);
+        s.worth = worthField(j, "shapes." + s.id, E);
         s.role = j.value("role", "");
         s.stage = j.value("stage", "part");
         if (j.contains("len") && j["len"].is_array() && j["len"].size() == 3) {
@@ -227,8 +252,9 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         m.id = j.value("id", "");
         const std::string where = "materials." + m.id;
         warnUnknown(j, {"id", "tags", "p", "states", "heat", "refine", "effects", "potency", "shape", "len", "thick",
-                        "salvage", "item", "raw"},
+                        "salvage", "item", "raw", "worth"},
                     where, W);
+        m.worth = worthField(j, where, E);
         m.tags = strs(j, "tags");
         m.p = numMap(j, "p");
         for (const auto& [k, v] : m.p)
@@ -291,8 +317,9 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         warnUnknown(j, {"id", "op", "skill", "skill_by", "category", "requires", "inputs", "time", "difficulty",
                         "shape_map", "assemble", "transform", "set_state", "to_material", "extract", "marks", "fixes",
                         "reacts", "risky", "flaws", "risk", "modes", "no_air_modes", "ordered", "tool_wear", "needs",
-                        "fsm", "chain_in", "chain_out"},
+                        "fsm", "chain_in", "chain_out", "worth"},
                     where, W);
+        p.worth = worthField(j, where, E);
         std::string op = j.value("op", "shape");
         if (op == "shape") p.op = ProcOp::Shape;
         else if (op == "heat") p.op = ProcOp::Heat;
@@ -404,7 +431,8 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         FormDef f;
         f.id = j.value("id", "");
         const std::string where = "forms." + f.id;
-        warnUnknown(j, {"id", "category", "needs", "derive", "named", "item"}, where, W);
+        warnUnknown(j, {"id", "category", "needs", "derive", "named", "item", "worth"}, where, W);
+        f.worth = worthField(j, where, E);
         f.category = j.value("category", "");
         f.named = j.value("named", true);
         f.item = j.value("item", "");
@@ -503,6 +531,7 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         f.fix = opt<std::string>(j, "fix", "");
         f.mods = numMap(j, "mods");
         f.salvage = opt<std::string>(j, "salvage", "");
+        f.worth = worthField(j, "flaws." + f.id, E);
         if (!d.flaws.emplace(f.id, f).second) E.add("flaws: duplicate " + f.id);
     }
 

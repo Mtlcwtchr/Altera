@@ -1,0 +1,59 @@
+{
+ "_doc": "AL-86: crafting resources, their sources in the world and new things (epic AL-86).",
+ "material.silver.name": {
+  "nom": "серебро",
+  "g": "n"
+ },
+ "material.silver.made": "серебрян{form:g|ый|ая|ое|ые} {form}",
+ "material.gold.name": {
+  "nom": "золото",
+  "g": "n"
+ },
+ "material.gold.made": "золот{form:g|ой|ая|ое|ые} {form}",
+ "material.horn.name": {
+  "nom": "рог",
+  "g": "m"
+ },
+ "material.horn.made": "рогов{form:g|ой|ая|ое|ые} {form}",
+ "material.antler.name": {
+  "nom": "олений рог",
+  "g": "m"
+ },
+ "material.antler.made": "{form} из оленьего рога",
+ "item.silver.name": {
+  "nom": "серебро",
+  "gen": "серебра",
+  "dat": "серебру",
+  "acc": "серебро",
+  "ins": "серебром",
+  "pre": "серебре",
+  "g": "n"
+ },
+ "item.gold.name": {
+  "nom": "золото",
+  "gen": "золота",
+  "dat": "золоту",
+  "acc": "золото",
+  "ins": "золотом",
+  "pre": "золоте",
+  "g": "n"
+ },
+ "item.horn.name": {
+  "nom": "рог",
+  "gen": "рога",
+  "dat": "рогу",
+  "acc": "рог",
+  "ins": "рогом",
+  "pre": "роге",
+  "g": "m"
+ },
+ "item.antler.name": {
+  "nom": "оленьи рога",
+  "gen": "оленьих рогов",
+  "dat": "оленьим рогам",
+  "acc": "оленьи рога",
+  "ins": "оленьими рогами",
+  "pre": "оленьих рогах",
+  "g": "pl"
+ }
+}

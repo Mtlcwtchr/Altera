@@ -9,7 +9,8 @@
     "toughness": 0.7,
     "waterproof": 0.5
    },
-   "salvage": "scrap"
+   "salvage": "scrap",
+   "worth": 0.6
   },
   {
    "id": "brittle",
@@ -18,7 +19,8 @@
    "mods": {
     "toughness": 0.6
    },
-   "salvage": "scrap"
+   "salvage": "scrap",
+   "worth": 0.7
   },
   {
    "id": "uneven",
@@ -28,7 +30,8 @@
     "balance": 0.8,
     "edge": 0.9
    },
-   "salvage": null
+   "salvage": null,
+   "worth": 0.85
   },
   {
    "id": "impure",
@@ -38,7 +41,8 @@
     "purity": 0.7,
     "hardness": 0.9
    },
-   "salvage": "scrap"
+   "salvage": "scrap",
+   "worth": 0.8
   },
   {
    "id": "damp",
@@ -47,7 +51,8 @@
    "mods": {
     "flammable": 0.6
    },
-   "salvage": null
+   "salvage": null,
+   "worth": 0.9
   },
   {
    "id": "burnt",
@@ -57,7 +62,8 @@
     "nutrition": 0.5,
     "taste": 0.4
    },
-   "salvage": "wood_ash"
+   "salvage": "wood_ash",
+   "worth": 0.6
   },
   {
    "id": "raw",
@@ -66,7 +72,8 @@
    "mods": {
     "safe": 0.6
    },
-   "salvage": null
+   "salvage": null,
+   "worth": 0.8
   },
   {
    "id": "loose_joint",
@@ -75,7 +82,8 @@
    "mods": {
     "joint": 0.5
    },
-   "salvage": null
+   "salvage": null,
+   "worth": 0.8
   },
   {
    "id": "rot",
@@ -86,7 +94,8 @@
     "nutrition": 0.4,
     "toughness": 0.5
    },
-   "salvage": null
+   "salvage": null,
+   "worth": 0.2
   },
   {
    "id": "tainted",
@@ -96,7 +105,8 @@
     "safe": 0.4,
     "taste": 0.5
    },
-   "salvage": null
+   "salvage": null,
+   "worth": 0.3
   }
  ]
 }
