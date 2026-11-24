@@ -93,6 +93,31 @@ struct Settlement {
         std::vector<Prop> props;
     };
     std::vector<Structure> structures;
+
+    // AL-92 (sim/realm.hpp): every settlement of the world is this one thing, the
+    // map's village and the ones beyond it alike. What it is (size, tags) is
+    // classified from its numbers and history; `mode` says only how it is
+    // computed: "full" - on the map, its people act and its stores are real;
+    // "stat" - beyond the player's focus, counted by the same rules.
+    std::string mode = "full";
+    Vec2 km;                         // on the region map; the first village of the map is at (0, 0)
+    double pop = 0.0, food = 0.0, wealth = 0.0, militia = 0.0;  // full: read from the map each day
+    double morale = 0.6, unrest = 0.1;
+    double land = 1.0;               // what its fields give a head in a year (soil, work)
+    double crafts = 0.0;             // share of its people in crafts and trade, 0..1
+    double fort = 0.0;               // walls and a keep, 0..1
+    EntityId heir = kNone, liege = kNone, tributeTo = kNone;
+    double tribute = 0.0;            // paid each month
+    std::string house;               // the ruling family
+    bool ruined = false;
+    int founded = 0, ruinedOn = -1;
+    int lastRaid = -9999, lastRaided = -9999, lastRevolt = -9999, lastRefugees = -9999, unrestDays = 0;
+    std::string size;                // hamlet | village | town | city (classified)
+    std::set<std::string> tags;      // raiders, outlaw, cult, fortified, farming, trade, vassal, tributary, ruined
+    std::map<std::string, double> income; // the last year's income by source: fields | raids | trade | crafts
+    bool full() const { return mode == "full"; }
+    bool tagged(const std::string& t) const { return tags.count(t) > 0; }
+    bool polity() const { return !size.empty(); } // the realm has read it at least once
 };
 
 // One module of a building on the household's plan or standing (build.json,
@@ -225,6 +250,15 @@ public:
     const WorldObject* object(EntityId id) const;
     std::map<EntityId, Character>& characters() { return chars_; }
     const std::map<EntityId, Character>& characters() const { return chars_; }
+    // AL-92: the people beyond the player's focus - the same Characters, counted by
+    // the realm (sim/realm.cpp) instead of acting on the map. Moving between the two
+    // keeps the object where it is (node handles), so pointers stay good.
+    std::map<EntityId, Character>& offstage() { return offstage_; }
+    const std::map<EntityId, Character>& offstage() const { return offstage_; }
+    Character* person(EntityId id);              // on the map or off it
+    const Character* person(EntityId id) const;
+    Character* toOffstage(EntityId id);           // null: not on the map
+    Character* toStage(EntityId id);              // null: not offstage
     std::map<EntityId, WorldObject>& objects() { return objects_; }
     const std::map<EntityId, WorldObject>& objects() const { return objects_; }
     // Ids of every object of a type (index kept by addObject / loadJson).
@@ -344,6 +378,7 @@ private:
     std::vector<Fact> facts_;
     SaidMemory said_;
     std::map<std::string, Json> modules_;
+    std::map<EntityId, Character> offstage_;
     std::vector<CommandHandler> handlers_;
     std::vector<EventHandler> eventHandlers_;
     TickHook think_;

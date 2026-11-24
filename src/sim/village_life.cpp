@@ -771,6 +771,7 @@ bool arrive(World& w, Settlement& st, Rng& rng, bool family, const VillageLifeRu
 
 void strangersDaily(World& w, const VillageLifeRules& r) {
     for (auto& [sid, st] : w.settlements()) {
+        if (!st.full()) continue; // AL-92
         int people = 0, singleM = 0, singleF = 0;
         for (const auto& [id, c] : w.characters())
             if (person(&c) && c.status.settlement == sid) {

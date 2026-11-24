@@ -107,6 +107,26 @@ const Character* World::character(EntityId id) const {
     auto it = chars_.find(id);
     return it == chars_.end() ? nullptr : &it->second;
 }
+Character* World::person(EntityId id) {
+    if (Character* c = character(id)) return c;
+    auto it = offstage_.find(id);
+    return it == offstage_.end() ? nullptr : &it->second;
+}
+const Character* World::person(EntityId id) const {
+    if (const Character* c = character(id)) return c;
+    auto it = offstage_.find(id);
+    return it == offstage_.end() ? nullptr : &it->second;
+}
+Character* World::toOffstage(EntityId id) {
+    auto node = chars_.extract(id);
+    if (node.empty()) return nullptr;
+    return &offstage_.insert(std::move(node)).position->second;
+}
+Character* World::toStage(EntityId id) {
+    auto node = offstage_.extract(id);
+    if (node.empty()) return nullptr;
+    return &chars_.insert(std::move(node)).position->second;
+}
 WorldObject* World::object(EntityId id) {
     auto it = objects_.find(id);
     return it == objects_.end() ? nullptr : &it->second;
@@ -341,6 +361,15 @@ void to_json(Json& j, const Settlement& s) {
         for (const auto& z : s.zones) zs.push_back(Json{{"kind", z.kind}, {"rect", {z.c.x, z.c.y, z.yaw, z.hw, z.hd}}});
         j["zones"] = zs;
     }
+    if (s.polity() || !s.full()) {   // AL-92: the realm's numbers
+        j["polity"] = Json{{"mode", s.mode}, {"km", s.km}, {"pop", s.pop}, {"food", s.food}, {"wealth", s.wealth},
+                           {"militia", s.militia}, {"morale", s.morale}, {"unrest", s.unrest}, {"land", s.land},
+                           {"crafts", s.crafts}, {"fort", s.fort}, {"heir", s.heir}, {"liege", s.liege},
+                           {"tribute_to", s.tributeTo}, {"tribute", s.tribute}, {"house", s.house}, {"ruined", s.ruined},
+                           {"founded", s.founded}, {"ruined_on", s.ruinedOn}, {"last_raid", s.lastRaid},
+                           {"last_raided", s.lastRaided}, {"last_revolt", s.lastRevolt}, {"last_refugees", s.lastRefugees},
+                           {"unrest_days", s.unrestDays}, {"size", s.size}, {"tags", s.tags}, {"income", s.income}};
+    }
     if (!s.structures.empty()) {   // AL-76
         Json a = Json::array();
         for (const auto& t : s.structures) {
@@ -367,6 +396,21 @@ void from_json(const Json& j, Settlement& s) {
     s.squareR = j.value("square_r", d.squareR);
     s.roadKind = j.value("road_kind", d.roadKind);
     s.entrance = j.value("entrance", d.entrance);
+    if (j.contains("polity")) {   // AL-92
+        const Json& p = j["polity"];
+        s.mode = p.value("mode", d.mode);
+        s.km = p.value("km", d.km);
+        s.pop = p.value("pop", d.pop), s.food = p.value("food", d.food), s.wealth = p.value("wealth", d.wealth);
+        s.militia = p.value("militia", d.militia), s.morale = p.value("morale", d.morale), s.unrest = p.value("unrest", d.unrest);
+        s.land = p.value("land", d.land), s.crafts = p.value("crafts", d.crafts), s.fort = p.value("fort", d.fort);
+        s.heir = p.value("heir", d.heir), s.liege = p.value("liege", d.liege), s.tributeTo = p.value("tribute_to", d.tributeTo);
+        s.tribute = p.value("tribute", d.tribute), s.house = p.value("house", d.house), s.ruined = p.value("ruined", d.ruined);
+        s.founded = p.value("founded", d.founded), s.ruinedOn = p.value("ruined_on", d.ruinedOn);
+        s.lastRaid = p.value("last_raid", d.lastRaid), s.lastRaided = p.value("last_raided", d.lastRaided);
+        s.lastRevolt = p.value("last_revolt", d.lastRevolt), s.lastRefugees = p.value("last_refugees", d.lastRefugees);
+        s.unrestDays = p.value("unrest_days", d.unrestDays), s.size = p.value("size", d.size);
+        s.tags = p.value("tags", d.tags), s.income = p.value("income", d.income);
+    }
     s.zones.clear();
     for (const auto& z : j.value("zones", Json::array())) {
         const auto r = z.value("rect", std::vector<double>{});
@@ -471,7 +515,7 @@ Json World::toJson() const {
     for (const auto& [id, p] : pieces_) pcs.push_back(p);
     Json memEvents; // AL-83: what several people remember of one event is written once
     Json sharedChars = sharedMemoryJson(std::move(chars), memEvents);
-    return Json{{"format", "altera.sim.world/1"},
+    Json out = Json{{"format", "altera.sim.world/1"},
                 {"seed", seed_},
                 {"tick", tick_},
                 {"start_day", startDay_},
@@ -493,6 +537,12 @@ Json World::toJson() const {
                 {"facts", facts_},
                 {"said", altera::sim::toJson(said_)},
                 {"modules", modules_}};
+    if (!offstage_.empty()) { // AL-92
+        Json off = Json::array();
+        for (const auto& [id, c] : offstage_) off.push_back(c);
+        out["offstage"] = std::move(off);
+    }
+    return out;
 }
 
 void World::loadJson(const Json& j) {
@@ -550,6 +600,11 @@ void World::loadJson(const Json& j) {
     facts_ = j.value("facts", std::vector<Fact>{});
     said_ = SaidMemory{};
     if (j.contains("said")) altera::sim::fromJson(j["said"], said_);
+    offstage_.clear();
+    for (const auto& cj : j.value("offstage", Json::array())) {
+        Character c = cj.get<Character>();
+        offstage_.emplace(c.id, std::move(c));
+    }
     modules_.clear();
     if (j.contains("modules"))
         for (auto it = j["modules"].begin(); it != j["modules"].end(); ++it) modules_[it.key()] = *it;

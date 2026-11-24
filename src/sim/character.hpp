@@ -278,6 +278,27 @@ struct AiState {
     SocialLink followAfter; // a follow put aside while its leader does a joint act with this follower
 };
 
+// AL-92: a person's place in the wider world (sim/realm.hpp) - the same fields
+// for a villager of the map and a lord beyond it. Default = nobody of note yet.
+struct Standing {
+    std::string role;              // ruler | consort | heir | kin | knight | outlaw | wanderer | commoner ("" = none)
+    std::string life = "settled";  // settled | road | outlaw (reconsidered each season)
+    std::string house;             // the family name
+    bool drawn = false;            // the axes below were rolled (else read from the traits)
+    double martial = 0.3, ambition = 0.3, greed = 0.3, honor = 0.5, wanderlust = 0.2;
+    double renown = 0.0;
+    double purse = 0.0;            // coin while away from the map (on it: the coin item)
+    EntityId at = kNone;           // the settlement where the person is
+    EntityId travelTo = kNone;
+    int arrive = 0, leaveDay = 0, deathDay = 0;
+    EntityId quest = kNone, claim = kNone, captor = kNone;
+    std::map<std::string, double> aptitudes; // magic extension (empty)
+    std::vector<Json> deeds;                 // {day, code, ...}, the last 24
+    bool empty() const { return role.empty() && !drawn && deeds.empty() && at == kNone && purse == 0.0; }
+};
+void to_json(Json& j, const Standing& s);
+void from_json(const Json& j, Standing& s);
+
 struct Character {
     EntityId id = kNone;
     std::string name;
@@ -327,6 +348,7 @@ struct Character {
     Captivity captivity;
     craft::CraftState craft; // made things, recipe book, known materials (sim/craft)
     AiState ai;
+    Standing standing; // AL-92
 
     bool hasTrait(const std::string& t) const;
     int has(const std::string& item) const;

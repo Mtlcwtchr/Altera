@@ -936,6 +936,7 @@ bool hasFood(const Content& C, const Character& c) {
 
 void autoAssign(World& w, const TradeRules& R) {
     for (auto& [sid, s] : w.settlements()) {
+        if (!s.full()) continue; // AL-92: beyond the map the realm counts it
         std::vector<Character*> people;
         bool anyRole = false;
         for (EntityId fid : s.families) {
