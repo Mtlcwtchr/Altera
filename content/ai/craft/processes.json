@@ -36,7 +36,7 @@
    "requires": {"tool": ["cutting"]},
    "inputs": [{"slot": "work", "shape": ["plank", "beam", "stave", "log", "bone"]}],
    "time": 4, "difficulty": {"base": 0.35, "add": "0.25*hardness"},
-   "shape_map": {"plank": ["handle", "spoon_raw", "trencher_raw", "spade_raw", "figure_raw"], "beam": ["shaft", "handle"], "stave": ["bow_stave", "shaft", "handle", "spindle_raw", "fork_raw"], "log": ["bowl_raw", "handle", "shaft", "cup_raw", "spoon_raw", "trencher_raw", "spindle_raw", "spade_raw", "fork_raw", "figure_raw"], "bone": ["needle_blank", "flute_raw", "comb_raw", "dice_raw", "charm_raw"]},
+   "shape_map": {"plank": ["handle", "spoon_raw", "trencher_raw", "spade_raw", "figure_raw"], "beam": ["shaft", "handle"], "stave": ["bow_stave", "shaft", "handle", "spindle_raw", "fork_raw"], "log": ["bowl_raw", "handle", "shaft", "cup_raw", "spoon_raw", "trencher_raw", "spindle_raw", "spade_raw", "fork_raw", "figure_raw"], "bone": ["needle_blank", "flute_raw", "comb_raw", "dice_raw", "charm_raw", "cup_raw"]},
    "flaws": [{"id": "crack", "p": "0.25*(1-q)", "when": "toughness<0.3"}, {"id": "uneven", "p": "0.2*(1-q)"}],
    "risk": [{"id": "cut_hand", "p": 0.02, "eff": ["body:health-0.02"]}]},
 

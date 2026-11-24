@@ -858,6 +858,337 @@
    "legal": [],
    "visibility": "public",
    "reserve": true
+  },
+  {
+   "id": "draw_brine",
+   "category": "work",
+   "target": "object:salt_spring",
+   "pre": [
+    "target_stock:brine>=4"
+   ],
+   "eff": [
+    "has:brine+4",
+    "target_stock:brine-4",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "boil_brine",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:brine>=4",
+    "has:firewood>=2",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:brine-4",
+    "has:firewood-2",
+    "has:salt+2",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 8,
+   "cost": 8,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "salt_meat",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:meat>=3",
+    "has:salt>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:meat-3",
+    "has:salt-1",
+    "has:salted_meat+3",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "salt_fish",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:fish>=3",
+    "has:salt>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:fish-3",
+    "has:salt-1",
+    "has:salted_fish+3",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "make_sauerkraut",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:vegetables>=4",
+    "has:salt>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:vegetables-4",
+    "has:salt-1",
+    "has:sauerkraut+4",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "salt_mushrooms",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:mushrooms>=4",
+    "has:salt>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:mushrooms-4",
+    "has:salt-1",
+    "has:salted_mushrooms+4",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "dry_rusks",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:bread>=2",
+    "has:firewood>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:bread-2",
+    "has:firewood-1",
+    "has:rusks+3",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "salt_lard",
+   "category": "work",
+   "target": "object:hearth",
+   "pre": [
+    "has:animal_fat>=2",
+    "has:salt>=1",
+    "target_owner:family"
+   ],
+   "eff": [
+    "has:animal_fat-2",
+    "has:salt-1",
+    "has:lard+2",
+    "skill:cooking+0.01"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public"
+  },
+  {
+   "id": "eat_salted_meat",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:salted_meat>=1"
+   ],
+   "eff": [
+    "has:salted_meat-1",
+    "need:hunger+0.7",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1
+  },
+  {
+   "id": "eat_salted_fish",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:salted_fish>=1"
+   ],
+   "eff": [
+    "has:salted_fish-1",
+    "need:hunger+0.3",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1
+  },
+  {
+   "id": "eat_sauerkraut",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:sauerkraut>=1"
+   ],
+   "eff": [
+    "has:sauerkraut-1",
+    "need:hunger+0.25",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1
+  },
+  {
+   "id": "eat_salted_mushrooms",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:salted_mushrooms>=1"
+   ],
+   "eff": [
+    "has:salted_mushrooms-1",
+    "need:hunger+0.2",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1
+  },
+  {
+   "id": "eat_rusks",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:rusks>=1"
+   ],
+   "eff": [
+    "has:rusks-1",
+    "need:hunger+0.4",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1
+  },
+  {
+   "id": "eat_lard",
+   "category": "household",
+   "target": "self",
+   "pre": [
+    "has:lard>=1"
+   ],
+   "eff": [
+    "has:lard-1",
+    "need:hunger+0.6",
+    "moodlet:ate_meal"
+   ],
+   "duration": 1,
+   "cost": 1
+  },
+  {
+   "id": "tan_hides_bark",
+   "category": "work",
+   "target": "object:tanning_pit",
+   "pre": [
+    "has:hide>=2",
+    "has:oak_bark>=2"
+   ],
+   "eff": [
+    "has:hide-2",
+    "has:oak_bark-2",
+    "has:leather+2",
+    "skill:tanning+0.015",
+    "body:fatigue+0.08"
+   ],
+   "from_target": true,
+   "duration": 16,
+   "cost": 12,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "tan_hides_lime",
+   "category": "work",
+   "target": "object:tanning_pit",
+   "pre": [
+    "has:hide>=2",
+    "has:quicklime>=1"
+   ],
+   "eff": [
+    "has:hide-2",
+    "has:quicklime-1",
+    "has:leather+2",
+    "skill:tanning+0.015",
+    "body:fatigue+0.08"
+   ],
+   "from_target": true,
+   "duration": 12,
+   "cost": 10,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
+  },
+  {
+   "id": "gather_yarrow",
+   "category": "work",
+   "target": "object:yarrow_patch",
+   "pre": [
+    "target_stock:yarrow>=2"
+   ],
+   "eff": [
+    "has:yarrow+2",
+    "target_stock:yarrow-2",
+    "skill:herbalism+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true
   }
  ]
 }

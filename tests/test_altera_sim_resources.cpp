@@ -23,7 +23,7 @@ const Content& resContent() {
 // Materials still waiting for their source: the later stages of AL-86 shrink this list.
 const std::set<std::string>& pendingMaterials() {
     static const std::set<std::string> s{"wheat_grain", // the split of the field into crops: farming
-                                         "salt", "tin_ore", "silver", "gold"}; // salt springs and trade, AL-91
+                                         "tin_ore", "silver", "gold"}; // from afar: the caravans of AL-85
     return s;
 }
 
