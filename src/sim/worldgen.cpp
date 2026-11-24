@@ -488,7 +488,12 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 break;
             }
             if (housed) continue;
-            if (planned && type == scat.layout.value("square_centre", std::string()) && k == 0) p = vplan.square;   // AL-84: the well in the middle
+            const VillageZone* works = nullptr;   // AL-84: a smoky works out of the village (rooms.json commons work:<object>)
+            if (planned)
+                for (const auto& z : vplan.zones)
+                    if (z.kind == "work:" + type) works = &z;
+            if (works && k == 0) p = works->rect.c;
+            else if (planned && type == scat.layout.value("square_centre", std::string()) && k == 0) p = vplan.square;   // AL-84: the well in the middle
             else if (planned && squareSpot < vplan.squareSpots.size()) p = vplan.squareSpots[squareSpot++];
             spawnSettlementObject(type, p, kNone);
         }

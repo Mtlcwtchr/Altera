@@ -199,6 +199,13 @@ TEST(altera_sim_village_worldgen_layout_saved) {
     for (const auto& [id, o] : w.objects())
         if (o.type == "well" && dist(o.pos, st.square) < 0.5) well = true;
     CHECK(well);   // the well in the middle of the square
+    // the smoky works stand out of the village, off every house
+    for (const auto& [id, o] : w.objects())
+        if (o.type == "charcoal_clamp" || o.type == "lime_kiln") {
+            CHECK(dist(o.pos, st.square) > st.squareR + 20.0);
+            for (const auto& s : st.structures)
+                if (s.family != kNone) CHECK(dist(o.pos, s.door) > 35.0);
+        }
     bool recipes = true;
     for (const auto& s : st.structures) recipes = recipes && !s.recipe.empty();
     CHECK(recipes);

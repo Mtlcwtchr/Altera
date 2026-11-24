@@ -114,6 +114,7 @@ VillageLayout VillageLayout::fromJson(const Json& j) {
         k.by = c.value("by", std::string());
         k.w = c.value("w", k.w);
         k.d = c.value("d", k.d);
+        k.awayFromHomes = c.value("away_from_homes", 0.0);
         if (!k.kind.empty()) L.commons.push_back(k);
     }
     return L;
@@ -745,11 +746,20 @@ VillagePlan planVillage(const VillageSite& site, const MapGrid& map, Vec2 centre
                 PlanRect f = proto;
                 f.c = {plan.square.x + std::cos(a) * r, plan.square.y + std::sin(a) * r};
                 double s = dist(f.c, plan.square) * 0.15;
-                if (cm.by == "water") s += near.water(f.c);
-                else if (cm.by == "wood") s += near.wood(f.c);
+                const bool byWood = cm.by.find("wood") != std::string::npos;
+                if (cm.by.find("water") != std::string::npos) s += near.water(f.c);
+                if (byWood) s += near.wood(f.c);
+                if (cm.by.find("downwind") != std::string::npos)
+                    s -= (f.c.x - plan.square.x) * downwind.x + (f.c.y - plan.square.y) * downwind.y;
                 if (s >= bestS) continue;
+                if (cm.awayFromHomes > 0) {
+                    bool close = false;
+                    for (const auto& L : plan.lots)
+                        if (L.placed && dist(L.house.c, f.c) < cm.awayFromHomes) close = true;
+                    if (close) continue;
+                }
                 double mean = 0;
-                if (cm.by == "wood") {   // in the trees: only dry ground under it
+                if (byWood) {   // in the trees: only dry ground under it
                     bool ok = true;
                     for (double u : {-1.0, 0.0, 1.0})
                         for (double v : {-1.0, 0.0, 1.0})
