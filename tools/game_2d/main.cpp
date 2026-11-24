@@ -2,7 +2,11 @@
 // life-sim seen from above, tiles 16x16, people as layered pawns.
 //   altera_game_2d [--seed N] [--season spring|summer|autumn|winter] [--world FILE]
 //                  [--content DIR] [--loc DIR] [--lang ru|en] [--port 8766]
-//                  [--no-browser] [--run-hours H] [--paused] [--observe]
+//                  [--no-browser] [--run-hours H] [--paused] [--observe] [--autosave-min M]
+// AL-99: the page opens on the main menu: a new game (seed, world size, season,
+// then a person of a family or a newcomer with a backstory), saves and loads
+// (src/client2d/session2d). The world on start is a game already begun, so
+// Continue goes straight in.
 // One process: the sim steps on the main thread between HTTP requests (no
 // locks); the page (tools/game_2d/web/, read from disk on every request, so it
 // can be edited without a rebuild) draws the map from /api/grid, polls
@@ -36,7 +40,9 @@ using socket_t = int;
 #include <chrono>
 #include <cstdio>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
+#include <memory>
 #include <iostream>
 #include <sstream>
 #include <string>
@@ -44,7 +50,9 @@ using socket_t = int;
 #include "client2d/acts2d.hpp"
 #include "client2d/craft2d.hpp"
 #include "client2d/grid2d.hpp"
+#include "client2d/sheet2d.hpp"
 #include "client2d/talk2d.hpp"
+#include "client2d/session2d.hpp"
 #include "client2d/view2d.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
@@ -71,7 +79,29 @@ struct App {
     c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
     Json craftUi;               // AL-97: content/ui/craft.json (the helper's wishes)
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
+    // AL-99: the session (new game, saves)
+    const Content* content = nullptr;
+    Json baseCfg;               // the world file
+    Json wheel;                 // content/ui/wheel.json
+    std::unique_ptr<World> owned;
+    c2::NewGame game;
+    double runHours = 7.0;
+    std::filesystem::path saveDir;
+    int autosaveMin = 10;       // 0: off
+    std::chrono::steady_clock::time_point lastAutosave = std::chrono::steady_clock::now();
+    bool quit = false;
 };
+
+// AL-99: a new world in play: the act catalog and the talk feed start over.
+void adopt(App& a, std::unique_ptr<World> w) {
+    a.owned = std::move(w);
+    a.world = a.owned.get();
+    a.acts = c2::ActCatalog::make(*a.world, a.wheel);
+    a.speech = SpeechFeed{};
+    a.speech.poll(*a.world, *a.text.loc, a.text.lang);   // old talk stays unshown
+    a.lastResult.clear();
+    a.lastAutosave = std::chrono::steady_clock::now();
+}
 
 // The player's person (player 1), kNone when the player only watches.
 EntityId controlled(const World& w) {
@@ -178,6 +208,104 @@ std::string handleCmd(App& a, const Json& body) {
     return "ok";
 }
 
+// --- AL-99: the session ------------------------------------------------------
+Json okJson(App& a, const std::string& r) { return {{"result", r}, {"text", r == "ok" ? "" : c2::resultText(a.text, r)}}; }
+
+// The page's game state as a save keeps it: the new game's choices and the view.
+Json gameJson(App& a, const Json& view) {
+    Json g = a.game.toJson();
+    g["tps"] = a.tps;
+    if (view.is_object()) g["view"] = view;
+    return g;
+}
+
+bool autosave(App& a) {
+    std::string why;
+    a.lastAutosave = std::chrono::steady_clock::now();
+    if (controlled(*a.world) == kNone) return false;   // a game not begun is not saved
+    if (!c2::writeSave2d(a.saveDir, 0, *a.world, gameJson(a, Json()), &why, &a.text)) {
+        std::cerr << "autosave: " << why << "\n";
+        return false;
+    }
+    return true;
+}
+
+void respond(socket_t s, int code, const std::string& type, const std::string& body);
+
+// True when `path` was one of the session's routes (and is answered).
+bool handleSession(App& a, socket_t s, const std::string& method, const std::string& path, const std::string& body) {
+    auto route = [&](const char* p) { return path.rfind(p, 0) == 0; };
+    auto reply = [&](const Json& j) { respond(s, 200, "application/json", j.dump()); };
+    const Json q = method == "POST" ? Json::parse(body.empty() ? "{}" : body) : Json::object();
+    if (route("/api/menu")) {
+        reply({{"me", controlled(*a.world)},
+               {"game", a.game.toJson()},
+               {"paused", a.paused},
+               {"options", c2::newGameOptions(*a.content, a.text, a.game)},
+               {"saves", c2::listSaves2d(a.saveDir)},
+               {"autosave_min", a.autosaveMin},
+               {"save_dir", a.saveDir.string()}});
+    } else if (route("/api/saves")) {
+        reply(c2::listSaves2d(a.saveDir));
+    } else if (route("/api/dynasties")) {
+        reply({{"me", controlled(*a.world)}, {"families", c2::dynastiesJson(*a.world, a.text)}});
+    } else if (method != "POST") {
+        return false;
+    } else if (route("/api/newgame")) {
+        const c2::NewGame g = c2::NewGame::fromJson(q, a.game.seed);
+        std::cout << "new game: seed " << g.seed << ", " << g.size << (g.season.empty() ? "" : ", " + g.season) << std::endl;
+        try {
+            adopt(a, c2::makeWorld2d(*a.content, a.baseCfg, g, a.runHours));
+        } catch (const std::exception& e) {
+            reply(okJson(a, std::string("rejected:") + e.what()));
+            return true;
+        }
+        a.game = g;
+        a.paused = true;   // the world waits while the player picks whom to be
+        reply({{"result", "ok"}, {"game", g.toJson()}});
+    } else if (route("/api/begin")) {
+        const std::string r = c2::beginAs(*a.world, q);
+        if (r == "ok") {
+            a.paused = false;
+            a.lastAutosave = std::chrono::steady_clock::now();
+        }
+        reply(okJson(a, r));
+    } else if (route("/api/save")) {
+        const int slot = q.value("slot", 1);
+        std::string why;
+        if (slot <= 0) why = "bad slot";   // slot 0 is the autosave's
+        else if (c2::writeSave2d(a.saveDir, slot, *a.world, gameJson(a, q.value("view", Json())), &why, &a.text)) why.clear();
+        else if (why.empty()) why = "cannot write";
+        if (!why.empty()) std::cerr << "save " << slot << ": " << why << "\n";
+        reply({{"result", why.empty() ? "ok" : "rejected:" + why}, {"text", why}, {"saves", c2::listSaves2d(a.saveDir)}});
+    } else if (route("/api/load")) {
+        const int slot = q.value("slot", 1);
+        try {
+            const Json save = c2::readSave2d(a.saveDir, slot);
+            adopt(a, c2::loadWorld2d(*a.content, save));
+            const Json g = save.value("game", Json::object());
+            a.game = c2::NewGame::fromJson(g, a.game.seed);
+            a.tps = std::clamp(g.value("tps", a.tps), 0.25, 600.0);
+            a.paused = false;
+            std::cout << "loaded slot " << slot << std::endl;
+            reply({{"result", "ok"}, {"view", g.value("view", Json::object())}});
+        } catch (const std::exception& e) {
+            // the world in play stays as it was
+            std::cerr << "load " << slot << ": " << e.what() << "\n";
+            reply({{"result", std::string("rejected:") + e.what()}, {"text", e.what()}});
+        }
+    } else if (route("/api/delete")) {
+        const int slot = q.value("slot", -1);
+        reply({{"result", slot > 0 && c2::deleteSave2d(a.saveDir, slot) ? "ok" : "rejected:bad slot"},
+               {"saves", c2::listSaves2d(a.saveDir)}});
+    } else if (route("/api/quit")) {
+        if (q.value("autosave", true)) autosave(a);
+        a.quit = true;
+        reply({{"result", "ok"}});
+    } else return false;
+    return true;
+}
+
 // --- tiny HTTP ---------------------------------------------------------------
 void sendAll(socket_t s, const std::string& data) {
     size_t off = 0;
@@ -269,6 +397,9 @@ void serveClient(App& a, socket_t s) {
         } else if (path.rfind("/api/chronicle", 0) == 0) {
             respond(s, 200, "application/json",
                     c2::chronicleJson(*a.world, a.text, std::size_t(std::max(0, intParam(path, "since", 0)))).dump());
+        } else if (path.rfind("/api/sheet", 0) == 0) {
+            // AL-100: the character sheet (src/client2d/sheet2d)
+            respond(s, 200, "application/json", c2::sheetJson(*a.world, a.text, EntityId(std::max(0, intParam(path, "id", 0)))).dump());
         } else if (path.rfind("/api/acts", 0) == 0) {
             // AL-96: the act menu of the player's person on a thing / person / beast (none: on oneself)
             const std::string tq = queryParam(path, "target");
@@ -312,6 +443,8 @@ void serveClient(App& a, socket_t s) {
             Json r = {{"ws", c2::workshopJson(*a.world, a.text, a.craftUi, who, wq)}};
             if (q.value("texts", false)) r["texts"] = c2::workshopTexts(a.text);
             respond(s, 200, "application/json", r.dump());
+        } else if (path.rfind("/api/", 0) == 0 && handleSession(a, s, method, path, body)) {
+            // AL-99: menu, new game, saves
         } else {
             respond(s, 404, "text/plain", "not found");
         }
@@ -328,7 +461,7 @@ int main(int argc, char** argv) {
     std::string contentDir, worldFile, locDir, season, lang = "ru";
     std::uint64_t seed = 7;
     int port = 8766;
-    double runHours = 7.0;   // the world starts at midnight; the view opens in the morning
+    double& runHours = app.runHours;   // the world starts at midnight; the view opens in the morning
     bool openBrowser = true;
     bool observe = false;   // --observe: watch only, nobody is led
     for (int i = 1; i < argc; ++i) {
@@ -351,6 +484,7 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--paused")) app.paused = true;
         else if (!std::strcmp(argv[i], "--no-browser")) openBrowser = false;
         else if (!std::strcmp(argv[i], "--observe")) observe = true;
+        else if (!std::strcmp(argv[i], "--autosave-min")) app.autosaveMin = std::max(0, std::stoi(next()));
         else {
             std::cerr << "unknown argument " << argv[i] << "\n";
             return 2;
@@ -370,41 +504,51 @@ int main(int argc, char** argv) {
         bool haveRules = false;
         const std::string rulesText = readFile(app.spritesDir + "/map2d.json", &haveRules);
         if (haveRules) app.ground = c2::GroundRules::fromJson(Json::parse(rulesText).value("ground", Json::object()));
-        Json cfg = loadJsonFile(worldFile);
-        if (!cfg.contains("village_site")) cfg["village_plan"] = true;   // roads, lots, houses of pieces
-        if (!season.empty()) {
-            cfg.erase("start_day");
-            cfg["season"] = season;
-        }
-        std::cout << "generating world, seed " << seed << "..." << std::endl;
-        World world = makeTestWorld(content, cfg, seed);
-        installAi(world);
-        world.run(Tick(runHours * kTicksPerDay / 24));
-        app.world = &world;
+        app.content = &content;
+        app.baseCfg = loadJsonFile(worldFile);
+        app.saveDir = c2::saveDir2d();
         bool haveWheel = false;
         const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
         bool haveCraftUi = false;
         const std::string craftUi = readFile(app.root + "/content/ui/craft.json", &haveCraftUi);
         app.craftUi = haveCraftUi ? Json::parse(craftUi) : Json::object();
-        app.acts = c2::ActCatalog::make(world, haveWheel ? Json::parse(wheel) : Json());
         app.talk = c2::TalkCatalog::make(haveWheel ? Json::parse(wheel) : Json());
+        app.wheel = haveWheel ? Json::parse(wheel) : Json();
+        app.game.seed = seed;
+        if (app.baseCfg.contains("size_m"))   // the world file's own size stays unless a size is picked
+            app.game.size = app.baseCfg.value("size_m", 12000.0) <= 9000 ? "small" : app.baseCfg.value("size_m", 12000.0) >= 15000 ? "large" : "medium";
+        app.game.season = season;
+        std::cout << "generating world, seed " << seed << "..." << std::endl;
+        {
+            Json cfg = app.baseCfg;
+            if (!cfg.contains("village_site")) cfg["village_plan"] = true;   // roads, lots, houses of pieces
+            if (!season.empty()) {
+                cfg.erase("start_day");
+                cfg["season"] = season;
+            }
+            auto w = std::make_unique<World>(makeTestWorld(content, cfg, seed));
+            installAi(*w);
+            w->run(Tick(runHours * kTicksPerDay / 24));
+            adopt(app, std::move(w));
+        }
+        World& world0 = *app.world;
         // AL-96: the player leads the head of the village (the mandate holder), as the 3D game starts
         if (!observe)
-            for (const auto& [sid, st] : world.settlements()) {
+            for (const auto& [sid, st] : world0.settlements()) {
                 if (st.mode != "full") continue;
-                EntityId who = mandateHolder(world, sid);
+                EntityId who = mandateHolder(world0, sid);
                 if (who == kNone && !st.families.empty())
-                    if (const auto* f = &world.families().at(st.families.front()); !f->members.empty()) who = f->members.front();
+                    if (const auto* f = &world0.families().at(st.families.front()); !f->members.empty()) who = f->members.front();
                 if (who != kNone) {
                     Command take;
                     take.source = "player:1";
                     take.type = "take_control";
                     take.args = {{"id", who}, {"player", 1}};
-                    world.applyNow(take);
+                    world0.applyNow(take);
                 }
                 break;
             }
-        app.speech.poll(world, loc, app.text.lang);   // old talk stays unshown
+        app.speech.poll(world0, loc, app.text.lang);   // old talk stays unshown
 
 #ifdef _WIN32
         WSADATA wsa;
@@ -422,7 +566,7 @@ int main(int argc, char** argv) {
         if (bind(ls, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || listen(ls, 16) != 0)
             throw std::runtime_error("cannot listen on 127.0.0.1:" + std::to_string(port) + " (already running?)");
         const std::string url = "http://127.0.0.1:" + std::to_string(port) + "/";
-        std::cout << "Altera 2D: " << url << "  (" << world.characters().size() << " characters; Ctrl+C to quit)"
+        std::cout << "Altera 2D: " << url << "  (" << world0.characters().size() << " characters; Ctrl+C to quit)"
                   << std::endl;
 #ifdef _WIN32
         if (openBrowser) ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -432,7 +576,7 @@ int main(int argc, char** argv) {
         using Clock = std::chrono::steady_clock;
         auto lastTick = Clock::now();
         double owed = 0.0;
-        for (;;) {
+        while (!app.quit) {
             fd_set rd;
             FD_ZERO(&rd);
             FD_SET(ls, &rd);
@@ -459,6 +603,7 @@ int main(int argc, char** argv) {
             const auto now = Clock::now();
             const double dt = std::chrono::duration<double>(now - lastTick).count();
             lastTick = now;
+            if (app.autosaveMin > 0 && now - app.lastAutosave > std::chrono::minutes(app.autosaveMin)) autosave(app);
             if (app.paused) {
                 owed = 0.0;
                 continue;
@@ -467,14 +612,17 @@ int main(int argc, char** argv) {
             const auto budgetEnd = Clock::now() + std::chrono::milliseconds(100);
             while (owed >= 1.0 && Clock::now() < budgetEnd) {
                 const auto t0 = Clock::now();
-                world.step();
+                app.world->step();
                 app.lastStepMs = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
                 owed -= 1.0;
             }
             if (owed > 1.0 && Clock::now() >= budgetEnd) owed = std::min(owed, 1.0 + app.tps * 0.1);
         }
+        std::cout << "quit" << std::endl;
+        CLOSESOCK(ls);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\n";
         return 1;
     }
+    return 0;
 }
