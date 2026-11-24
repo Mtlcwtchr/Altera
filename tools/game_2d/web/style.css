@@ -68,3 +68,45 @@ h2 { font-size: 19px; } h3 { font-size: 15px; margin-top: 10px; }
 .btn:active, .btn.on { box-shadow: inset -2px -2px 0 var(--bronze-l), inset 2px 2px 0 var(--bronze-d); color: #fff2c0; }
 .btn.wide { min-width: 90px; }
 .lbl { font: 600 13px "Alegreya SC", serif; color: var(--dim); min-width: 74px; text-align: center; }
+
+/* AL-96: leading a person - the quick bar 1-8, the cast bar, the act menu, talk on a gradient */
+#dock { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 4px; z-index: 4; pointer-events: none; }
+#hotbar { display: flex; gap: 4px; pointer-events: auto; }
+.slot { width: 52px; height: 52px; position: relative; background: #1a0e06; border: 2px solid #000; box-shadow: inset 2px 2px 0 var(--bronze-d), inset -2px -2px 0 var(--bronze-l); cursor: pointer; display: flex; align-items: center; justify-content: center; text-align: center; font-size: 10px; line-height: 1.05; color: var(--text); padding: 12px 2px 2px; overflow: hidden; overflow-wrap: anywhere; hyphens: auto; }
+.slot .k { position: absolute; left: 3px; top: 1px; font: 700 11px "Alegreya SC", serif; color: var(--gold); text-shadow: 1px 1px 0 #000; }
+.slot.off { color: #7a6a58; }
+.slot.off::after { content: ""; position: absolute; inset: 0; background: rgba(0,0,0,.35); }
+.slot.empty { opacity: .55; }
+.slot canvas { image-rendering: pixelated; width: 32px; height: 32px; }
+#cast { width: 300px; background: rgba(20,12,6,.85); border: 2px solid #000; box-shadow: inset 0 0 0 1px var(--bronze-d); padding: 2px 6px 4px; pointer-events: none; }
+#cast span { font: 600 13px "Alegreya SC", serif; color: var(--gold); }
+#cast .bar > i { background: linear-gradient(#f0d080, #b08a4a); }
+#speech { position: absolute; left: 18px; bottom: 18px; width: min(520px, calc(50% - 250px)); padding: 26px 12px 8px; background: linear-gradient(to top, rgba(10,8,6,.78), rgba(10,8,6,0)); font-size: 14px; color: #e8e0d0; text-shadow: 1px 1px 0 #000; pointer-events: none; z-index: 3; }
+#speech div { margin: 2px 0; transition: opacity 1s; }
+#speech div.old { opacity: .45; }
+#actmenu { position: absolute; z-index: 6; min-width: 260px; max-width: 340px; max-height: 70%; overflow: auto; background: var(--walnut); border: 3px solid #000; box-shadow: inset 2px 2px 0 var(--bronze-l), inset -2px -2px 0 var(--bronze-d), 0 6px 18px rgba(0,0,0,.6); padding: 8px; }
+#actmenu h3 { margin: 0 0 6px; }
+.act { display: block; width: 100%; text-align: left; background: var(--parch); color: var(--ink); border: 2px solid #000; box-shadow: inset 0 0 0 1px var(--parch-d); margin: 3px 0; padding: 4px 8px; font: 15px Alegreya, serif; cursor: pointer; position: relative; }
+.act:hover { background: #f4e8c8; }
+.act .m { float: right; color: #7a5a30; font-size: 12px; }
+.act .g { display: block; font-size: 12px; color: #4a6a2a; }
+.act .w { display: block; font-size: 12px; color: var(--bad); }
+.act.off { background: #b8a888; color: #5a4a38; cursor: default; }
+.act .pin { position: absolute; right: 4px; bottom: 2px; font-size: 11px; color: #7a5a30; }
+.cardbtns { margin-top: 6px; display: flex; gap: 6px; }
+
+/* AL-96: windows over the darkened map, and the column's eight screen buttons */
+#windows { position: absolute; inset: 10px; z-index: 8; background: rgba(8,5,3,.55); display: flex; align-items: center; justify-content: center; }
+.win { position: absolute; width: min(760px, 92%); max-height: 92%; display: flex; flex-direction: column; padding: 14px 16px; }
+.win.wide { width: min(1180px, 96%); height: 92%; }
+.win.small { width: min(480px, 92%); }
+.win-head { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+.win-head h2 { margin: 0; flex: 0 0 auto; font-size: 22px; }
+.win-head .tabs { flex: 1; display: flex; gap: 4px; flex-wrap: wrap; }
+.win-head .x { margin-left: auto; }
+.btn.tab { min-width: 0; padding: 0 12px; }
+.win-body { flex: 1; overflow: auto; min-height: 0; }
+#screens { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
+#screens .btn { min-width: 0; height: 30px; font-size: 11.5px; padding: 0 2px; overflow: hidden; }
+.chron { margin: 3px 0; font-size: 14px; cursor: pointer; }
+.chron b { color: #7a4a20; margin-right: 4px; }

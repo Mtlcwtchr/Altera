@@ -5,6 +5,7 @@
 #include <set>
 #include <string>
 
+#include "client2d/acts2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/view2d.hpp"
 #include "framework.hpp"
@@ -178,4 +179,43 @@ TEST(altera_client2d_json) {
     const Json st = c2::staticJson(w, t);
     CHECK(st["ground"].size() == std::size_t(c2::Ground::count));
     CHECK(st["rooms"].is_object() && !st["rooms"].empty());
+}
+
+// AL-96: the act menu and the quick bar for the player's person
+TEST(altera_client2d_acts) {
+    World& w = village2d();
+    EntityId me = kNone;
+    for (const auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.alive && c.body.ageDays / kDaysPerYear >= 18) { me = id; break; }
+    CHECK(me != kNone);
+    c2::ViewText t;
+    c2::ActCatalog cat = c2::ActCatalog::make(w, loadJsonFile(kRoot + "/content/ui/wheel.json"));
+    CHECK(!cat.personActs.empty());
+    EntityId well = kNone;
+    for (const auto& [id, o] : w.objects())
+        if (o.type == "well") well = id;
+    CHECK(well != kNone);
+    const Json acts = c2::actsJson(w, t, cat, me, well);
+    CHECK(!acts.empty());
+    bool drink = false;
+    for (const auto& a : acts) {
+        CHECK(a.contains("can") && a.contains("why") && a.contains("minutes"));
+        if (a["id"] == "drink_from_well") drink = true;
+        if (!a["can"].get<bool>()) CHECK(!a["why"].get<std::string>().empty());
+    }
+    CHECK(drink);
+    // on oneself: only what can be done now
+    for (const auto& a : c2::actsJson(w, t, cat, me, kNone)) CHECK(a["can"].get<bool>());
+    // a person: the wheel's acts
+    EntityId other = kNone;
+    for (const auto& [id, c] : w.characters())
+        if (id != me && !c.isAnimal() && c.body.alive) other = id;
+    CHECK(!c2::actsJson(w, t, cat, me, other).empty());
+    // the bar: an act on a person without one chosen says why
+    const Json bar = c2::barJson(w, t, me, kNone, Json::array({{{"kind", "act"}, {"id", "chat"}}, {{"kind", "goal"}, {"id", "eat"}}}));
+    CHECK_EQ(bar.size(), std::size_t(2));
+    CHECK(!bar[0]["can"].get<bool>());
+    CHECK(!bar[0]["why"].get<std::string>().empty());
+    CHECK(c2::resultText(t, "").empty());
+    CHECK(!c2::resultText(t, "rejected:cannot:no_method").empty());
 }

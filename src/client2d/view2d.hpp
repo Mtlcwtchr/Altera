@@ -30,6 +30,9 @@ sim::Json personJson(const sim::World& w, const ViewText& t, sim::EntityId id);
 // Once per page: the map's size, the settlements, the names of the room
 // types and object types, the ui2d.* strings of the language.
 sim::Json staticJson(const sim::World& w, const ViewText& t);
+// AL-96: the village chronicle from entry `since` on (at most `limit`, the newest):
+// {n: the log's size, list: [{i, day, t, type, who, text}]}.
+sim::Json chronicleJson(const sim::World& w, const ViewText& t, std::size_t since, std::size_t limit = 300);
 // The clock and the weather, for the bottom bar.
 sim::Json clockJson(const sim::World& w);
 

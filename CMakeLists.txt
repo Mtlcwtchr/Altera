@@ -404,7 +404,7 @@ endif()
 
 # AL-95: the 2D client (gdd/ui/client_2d): src/client2d reads the sim (snapshot ->
 # 1 m cells, people), altera_game_2d serves the page tools/game_2d/web. Windows and Linux.
-add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp)
+add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp src/client2d/acts2d.cpp)
 target_include_directories(altera_client2d PUBLIC src)
 target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
 add_executable(altera_game_2d tools/game_2d/main.cpp)

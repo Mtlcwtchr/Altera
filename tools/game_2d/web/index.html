@@ -15,12 +15,22 @@
   <div id="mapwrap" class="carved">
     <canvas id="map"></canvas>
     <div id="toast" hidden></div>
+    <div id="speech"></div>
+    <div id="dock">
+      <div id="cast" hidden><span id="cast-name"></span><div class="bar"><i id="cast-fill"></i></div></div>
+      <div id="hotbar"></div>
+    </div>
+    <div id="actmenu" hidden></div>
+    <div id="windows" hidden></div>
     <div id="loading" data-k="ui2d.loading">…</div>
   </div>
   <aside id="side" class="carved">
     <section class="panel leather">
       <h2 data-k="ui2d.house">Дома</h2>
       <div id="houses"></div>
+    </section>
+    <section class="panel leather">
+      <div id="screens"></div>
     </section>
     <section class="panel leather grow">
       <div id="card"></div>
@@ -44,5 +54,9 @@
 <script src="/web/sprites.js"></script>
 <script src="/web/pawns.js"></script>
 <script src="/web/game2d.js"></script>
+<script src="/web/window.js"></script>
+<script src="/web/play.js"></script>
+<script src="/web/screens.js"></script>
+<script src="/web/chronicle.js"></script>
 </body>
 </html>

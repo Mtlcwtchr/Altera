@@ -90,6 +90,12 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
                   {"act", activityOf(t, c)},
                   {"goal", goalOf(t, c)},
                   {"hp", r2(c.body.health)}};
+        // how far the act is along (the cast bar): ticks done of done + left
+        const FsmState& fs = c.ai.fsm;
+        if (fs.state != "Idle" && fs.state != "Move" && fs.timer > 0 && w.now() >= fs.started) {
+            const double done = double(w.now() - fs.started);
+            p["prog"] = r2(done / (done + double(fs.timer)));
+        }
         if (c.ai.fsm.interaction == "goto" || c.ai.fsm.state == "Move")
             p["dest"] = Json::array({r2(c.ai.fsm.dest.x), r2(c.ai.fsm.dest.y)});
         if (!c.isAnimal()) {
@@ -186,6 +192,20 @@ Json staticJson(const World& w, const ViewText& t) {
             if (k.rfind("ui2d.", 0) == 0) ui[k] = t.loc->text(t.lang, k);
     j["ui"] = ui;
     return j;
+}
+
+Json chronicleJson(const World& w, const ViewText& t, std::size_t since, std::size_t limit) {
+    const auto& log = w.chronicleLog();
+    Json list = Json::array();
+    std::size_t from = std::min(since, log.size());
+    if (log.size() - from > limit) from = log.size() - limit;
+    for (std::size_t i = from; i < log.size(); ++i) {
+        const ChronicleEntry& e = log[i];
+        std::string text = e.code;
+        if (t.loc && t.loc->has(t.lang, e.code)) text = t.loc->text(t.lang, e.code, locArgs(*t.loc, t.lang, w, e.params));
+        list.push_back({{"i", i}, {"day", e.tick / kTicksPerDay}, {"t", clockText(e.tick)}, {"type", e.type}, {"who", e.who}, {"text", text}});
+    }
+    return {{"n", log.size()}, {"list", list}};
 }
 
 Json clockJson(const World& w) {

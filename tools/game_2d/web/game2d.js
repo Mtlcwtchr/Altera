@@ -22,6 +22,9 @@
   let cam = { x: 0, y: 0 }, zoom = 2, follow = false, glyphs = false, roofMode = 'auto';
   let altDown = false, lastFrame = performance.now();
   const keys = new Set();
+  // AL-96: play.js (leading a person) and the windows hook in here
+  const hooks = { draw: [], poll: [], click: [], rclick: [], key: [], vis: [] };
+  let me = null;                             // the player's person (id) or null: watching
 
   const L = (k, args) => {
     let s = UI[k] || k;
@@ -215,6 +218,7 @@
     for (const p of people) {
       let v = vis.get(p.id);
       if (!v) { v = { x: p.x, y: p.y, face: 'S', bob: 0, moving: false }; vis.set(p.id, v); }
+      if (v.driven) continue;   // the player's person walking under the player's hand (play.js)
       const dx = p.x - v.x, dy = p.y - v.y, d = Math.hypot(dx, dy);
       if (d > 80) { v.x = p.x; v.y = p.y; v.moving = false; continue; }
       if (d < 0.02) { v.moving = false; continue; }
@@ -247,12 +251,15 @@
     if (!ST) { requestAnimationFrame(draw); return; }
     // camera keys
     const pan = 18 * dt * (keys.has('Shift') ? 3 : 1) / Math.max(1, zoom * 0.6);
-    if (keys.has('a') || keys.has('ArrowLeft')) cam.x -= pan * 3, follow = false;
-    if (keys.has('d') || keys.has('ArrowRight')) cam.x += pan * 3, follow = false;
-    if (keys.has('w') || keys.has('ArrowUp')) cam.y -= pan * 3, follow = false;
-    if (keys.has('s') || keys.has('ArrowDown')) cam.y += pan * 3, follow = false;
+    const wasd = me == null;   // leading a person, WASD walks them (play.js)
+    if ((wasd && keys.has('a')) || keys.has('ArrowLeft')) cam.x -= pan * 3, follow = false;
+    if ((wasd && keys.has('d')) || keys.has('ArrowRight')) cam.x += pan * 3, follow = false;
+    if ((wasd && keys.has('w')) || keys.has('ArrowUp')) cam.y -= pan * 3, follow = false;
+    if ((wasd && keys.has('s')) || keys.has('ArrowDown')) cam.y += pan * 3, follow = false;
     stepVis(dt);
-    if (follow && selId != null && vis.get(selId)) { const v = vis.get(selId); cam.x += (v.x - cam.x) * Math.min(1, dt * 6); cam.y += (v.y - cam.y) * Math.min(1, dt * 6); }
+    for (const h of hooks.vis) h(dt);
+    const fid = follow ? (me != null ? me : selId) : null;
+    if (fid != null && vis.get(fid)) { const v = vis.get(fid); cam.x += (v.x - cam.x) * Math.min(1, dt * 6); cam.y += (v.y - cam.y) * Math.min(1, dt * 6); }
     ctx.imageSmoothingEnabled = false;
     ctx.fillStyle = glyphs ? '#100c08' : '#1a2a12';
     ctx.fillRect(0, 0, cv.width, cv.height);
@@ -296,6 +303,7 @@
     drawRoomLabels(tp);
     drawSelection(sc, tp);
     drawOverheads(sc, tp);
+    for (const h of hooks.draw) h(ctx, sc, tp);
     drawNight();
     requestAnimationFrame(draw);
   }
@@ -509,12 +517,13 @@
     const box = $('card');
     const d = selCard, p = byId.get(selId);
     if (!d || !p) { if (cardKey !== 'none') { box.innerHTML = `<div class="parch">${esc(L('ui2d.nobody'))}</div>`; cardKey = 'none'; } return; }
-    const key = JSON.stringify(d);
+    const key = JSON.stringify(d) + '|' + me;
     if (key === cardKey) return;
     cardKey = key;
     let h = `<div class="head"><span id="cardpic"></span><div class="t"><div class="n">${esc(d.name)}</div>` +
       `<div class="sub">${esc(d.fam || d.spn || '')}${d.age != null ? ' · ' + esc(L('ui2d.age', { n: d.age })) : ''}</div></div></div>`;
     if (!d.alive) h += `<div class="parch">${esc(L('ui2d.dead'))}${d.cause ? ': ' + esc(d.cause) : ''}</div>`;
+    if (!d.sp && d.alive) h += `<div class="cardbtns"><button class="btn wide" id="b-lead">${esc(L(d.id === me ? 'ui2d.release' : 'ui2d.lead'))}</button></div>`;
     h += `<div class="parch"><b>${esc(L('ui2d.doing'))}:</b> ${esc(d.act || L('ui2d.idle'))}` + (d.goal ? `<br><b>${esc(L('ui2d.wants'))}:</b> ${esc(d.goal)}` : '') + '</div>';
     h += `<div class="row"><span>${esc(L('ui2d.health'))}</span>${bar(d.hp, tone(d.hp))}<span>${Math.round(d.hp * 100)}</span></div>`;
     const mood = (d.mood + 1) / 2;
@@ -530,6 +539,8 @@
     if (d.trace && d.trace.length) h += `<h3>${esc(L('ui2d.thoughts'))}</h3><div class="parch trace">${d.trace.map(t => `<div><b>${esc(t.t)}</b>${esc(t.text)}</div>`).join('')}</div>`;
     box.innerHTML = h;
     if (!p.sp) $('cardpic').appendChild(portrait(p, 80));
+    const lead = $('b-lead');
+    if (lead) lead.onclick = () => cmd(d.id === me ? { op: 'cmd', type: 'release_control', args: {} } : { op: 'cmd', type: 'take_control', args: { id: d.id } }).then(() => { cardKey = ''; poll(); });
   }
   function renderBar() {
     if (!clock) return;
@@ -584,7 +595,11 @@
   }
   let drag = null;
   cv.addEventListener('mousedown', e => {
-    if (e.button === 1 || e.button === 2) { drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; e.preventDefault(); }
+    if (e.button === 1 || (e.button === 2 && e.shiftKey)) { drag = { x: e.clientX, y: e.clientY, cx: cam.x, cy: cam.y }; e.preventDefault(); return; }
+    if (e.button === 2) {
+      const w = eventWorld(e);
+      for (const h of hooks.rclick) if (h(e, w, pickPerson(...w))) return;
+    }
   });
   window.addEventListener('mouseup', e => {
     if (drag && (e.button === 1 || e.button === 2)) { drag = null; return; }
@@ -603,7 +618,8 @@
   });
   cv.addEventListener('mouseleave', () => { hoverWorld = null; hoverId = null; });
   cv.addEventListener('click', e => {
-    const p = pickPerson(...eventWorld(e));
+    const w = eventWorld(e), p = pickPerson(...w);
+    for (const h of hooks.click) if (h(e, w, p)) return;
     select(p ? p.id : null);
   });
   cv.addEventListener('wheel', e => {
@@ -616,11 +632,13 @@
   window.addEventListener('keydown', e => {
     if (e.key === 'Alt') { altDown = true; e.preventDefault(); }
     keys.add(e.key.length === 1 ? e.key.toLowerCase() : e.key);
+    if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA')) return;
+    for (const h of hooks.key) if (h(e)) return;
     if (e.key === ' ') { e.preventDefault(); togglePause(); }
-    if (e.key === '1' || e.key === '2' || e.key === '3') zoom = Number(e.key);
+    if (e.key === 'z' || e.key === 'Z') zoom = zoom % 3 + 1;
     if (e.key === 'r' || e.key === 'R') cycleRoofs();
     if (e.key === 'g' || e.key === 'G') glyphs = !glyphs;
-    if (e.key === 'f' || e.key === 'F') follow = !follow && selId != null;
+    if (e.key === 'f' || e.key === 'F') follow = !follow && (selId != null || me != null);
     if (e.key === 'Escape') select(null);
     if (e.key === '-') setSpeed(-1);
     if (e.key === '=' || e.key === '+') setSpeed(1);
@@ -643,7 +661,7 @@
   $('b-zoom').onclick = () => { zoom = zoom % 3 + 1; };
   $('b-roofs').onclick = cycleRoofs;
   $('b-mode').onclick = () => { glyphs = !glyphs; };
-  $('b-follow').onclick = () => { follow = !follow && selId != null; };
+  $('b-follow').onclick = () => { follow = !follow && (selId != null || me != null); };
   window.addEventListener('resize', resize);
 
   // --- polling -----------------------------------------------------------------------------
@@ -655,6 +673,8 @@
     const q = `/api/state?vx=${Math.round(cam.x)}&vy=${Math.round(cam.y)}&vr=${r}` + (selId != null ? `&sel=${selId}` : '');
     getJson(q).then(s => {
       clock = s; paused = s.paused; tps = s.tps;
+      if (s.me && s.me !== me) follow = true;
+      me = s.me || null;
       people = s.people;
       byId = new Map(people.map(p => [p.id, p]));
       for (const p of people) p._lookKey = (p.worn || []).join() + '|' + (p.inv || []).join() + p.age;
@@ -665,7 +685,8 @@
       selCard = s.sel || null;
       if (selId != null && !byId.has(selId)) selId = null;
       renderHouses(); renderCard(); renderBar();
-    }).catch(() => {}).finally(() => { polling = false; });
+      for (const h of hooks.poll) h(s);
+    }).catch(e => console.warn(e)).finally(() => { polling = false; });
   }
   const oldSpecs = new Map();
   setInterval(poll, 250);
@@ -704,5 +725,13 @@
     renderHint();
     requestAnimationFrame(draw);
   }).catch(e => { $('loading').textContent = String(e); });
-  window.Altera2D = { get cam() { return cam; }, get people() { return people; }, chunks, select };
+  // AL-96: what play.js and the windows use
+  window.G = {
+    hooks, chunks, vis, L, esc, $, cmd, getJson, select, pickPerson, toScreen, toWorld, pawnSpec, portrait, bar, tone,
+    get cam() { return cam; }, get people() { return people; }, get byId() { return byId; },
+    get me() { return me; }, get selId() { return selId; }, get zoom() { return zoom; }, get ST() { return ST; },
+    get MAP() { return MAP; }, get canvas() { return cv; }, get dpr() { return dpr(); }, get clock() { return clock; },
+    set follow(v) { follow = v; }, keys, refreshCard() { cardKey = ''; renderCard(); }, poll() { poll(); },
+  };
+  window.Altera2D = window.G;
 })();
