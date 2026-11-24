@@ -335,13 +335,18 @@ void to_json(Json& j, const Settlement& s) {
         j["road_width"] = s.roadWidth;
         j["square"] = s.square;
         j["square_r"] = s.squareR;
+        j["road_kind"] = s.roadKind;   // AL-84
+        j["entrance"] = s.entrance;
+        Json zs = Json::array();
+        for (const auto& z : s.zones) zs.push_back(Json{{"kind", z.kind}, {"rect", {z.c.x, z.c.y, z.yaw, z.hw, z.hd}}});
+        j["zones"] = zs;
     }
     if (!s.structures.empty()) {   // AL-76
         Json a = Json::array();
         for (const auto& t : s.structures) {
             Json props = Json::array();
             for (const auto& p : t.props) props.push_back(Json{{"piece", p.piece}, {"pos", p.pos}, {"yaw", p.yaw}});
-            a.push_back(Json{{"family", t.family}, {"frame", {t.q, t.gx, t.gy}},
+            a.push_back(Json{{"family", t.family}, {"recipe", t.recipe}, {"frame", {t.q, t.gx, t.gy}},
                              {"cells", {t.i0, t.j0, t.i1, t.j1}}, {"h", t.h}, {"door", t.door},
                              {"objects", t.objects}, {"props", props}});
         }
@@ -360,10 +365,18 @@ void from_json(const Json& j, Settlement& s) {
     s.roadWidth = j.value("road_width", d.roadWidth);
     s.square = j.value("square", d.square);
     s.squareR = j.value("square_r", d.squareR);
+    s.roadKind = j.value("road_kind", d.roadKind);
+    s.entrance = j.value("entrance", d.entrance);
+    s.zones.clear();
+    for (const auto& z : j.value("zones", Json::array())) {
+        const auto r = z.value("rect", std::vector<double>{});
+        if (r.size() == 5) s.zones.push_back({z.value("kind", std::string()), {r[0], r[1]}, r[2], r[3], r[4]});
+    }
     s.structures.clear();
     for (const auto& t : j.value("structures", Json::array())) {
         Settlement::Structure x;
         x.family = t.value("family", kNone);
+        x.recipe = t.value("recipe", std::string());
         const auto fr = t.value("frame", std::vector<int>{0, 0, 0});
         if (fr.size() == 3) x.q = fr[0], x.gx = fr[1], x.gy = fr[2];
         const auto cl = t.value("cells", std::vector<int>{0, 0, 0, 0});

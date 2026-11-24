@@ -128,6 +128,7 @@ StructureCatalog parseStructures(const Json& j) {
     c.tradeShare = village.value("trade_share", c.tradeShare);
     c.yardD = village.value("yard_d", c.yardD);
     c.fence = village.value("fence", std::string());
+    c.layout = village.value("layout", Json::object());
     // how each room is furnished when the generator makes one
     for (const auto& r : j.value("rooms", Json::array())) {
         RoomFurnish f;
@@ -153,6 +154,13 @@ StructureCatalog parseStructures(const Json& j) {
             d.hosts = strings(t, "hosts");
             d.yard = strings(t, "yard");
             d.zone = t.value("zone", d.zone);
+            const Json site = t.value("site", Json::object());   // AL-84
+            d.siteWater = site.value("water", 0.0);
+            d.siteWood = site.value("wood", 0.0);
+            d.siteEntrance = site.value("entrance", 0.0);
+            d.siteDownwind = site.value("downwind", 0.0);
+            d.nuisance = site.value("nuisance", false);
+            d.quiet = site.value("quiet", false);
             const Json m = t.value("shell", Json::object());
             range(m, "w", d.wLo, d.wHi);
             range(m, "d", d.dLo, d.dHi);
