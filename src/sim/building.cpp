@@ -43,7 +43,12 @@ std::vector<Support> supportsOf(const BuildPieceDef& d, const BuildPiece& p) {
         for (int dx = 0; dx < 2; ++dx)
             for (int dy = 0; dy < 2; ++dy) s.push_back({{'p', x + dx, y + dy, zz}, pillars});
     };
-    if (d.category == "floor") {
+    if (d.category == "furniture") {
+        // a thing stands on the floor (footing, planks) of the cell it is in
+        const int n = std::max(1, d.sub);
+        auto fdiv = [n](int v) { return v >= 0 ? v / n : -((-v + n - 1) / n); };
+        s.push_back({{'f', fdiv(x), fdiv(y), z}, floors});
+    } else if (d.category == "floor") {
         cellEdges(z - 1, walls);
         cellCorners(z - 1);
         s.push_back({{'f', x + 1, y, z}, floorOnly});
@@ -100,6 +105,7 @@ std::map<SlotKey, EntityId> indexOf(const BuildCatalog& cat, const PieceMap& pie
 double supportOf(const BuildCatalog& cat, const PieceMap& pieces, const std::map<SlotKey, EntityId>& idx,
                  const std::map<EntityId, double>& stab, const BuildPieceDef& d, const BuildPiece& p) {
     if (d.category == "foundation") return p.z == 0 ? 1.0 : 0.0;
+    if (d.category == "furniture" && p.z == 0) return 1.0;   // on the ground or a footing
     double best = 0.0;
     for (const Support& s : supportsOf(d, p)) {
         auto it = idx.find(s.key);
@@ -183,6 +189,18 @@ int collapse(World& w) {
     return fell;
 }
 
+// A piece of furniture can not go where a thing already stands (of its storey, half a metre round).
+std::string thingBlocked(const World& w, const BuildCatalog& cat, const BuildPiece& p) {
+    const BuildPieceDef* d = cat.find(p.kind);
+    if (!d || d->slot != "thing") return "";
+    const Vec2 at = pieceCentre(cat, *d, p);
+    const double r = 0.5 * cat.cellM / std::max(1, d->sub);
+    for (const auto& [id, o] : w.objects())
+        if (o.type != "build_site" && o.storey == p.z && std::abs(o.pos.x - at.x) < r && std::abs(o.pos.y - at.y) < r)
+            return "occupied";
+    return "";
+}
+
 bool sameSettlement(const Character& a, const Character& b) {
     return a.status.settlement != kNone && a.status.settlement == b.status.settlement;
 }
@@ -197,14 +215,14 @@ bool handle(World& w, Command& cmd) {
     }
     const BuildCatalog& cat = w.content().build;
     if (t == "place_piece") {
-        if (actor->status.family == kNone) {
-            cmd.result = "rejected:no_family";
-            return true;
-        }
-        int own = 0;
-        for (const auto& [id, p] : w.pieces()) own += p.family == actor->status.family;
-        if (own >= cat.maxPerFamily) {
-            cmd.result = "rejected:too_many";
+        // 24.11: planning is free and without a limit, for one's household or
+        // (for: settlement) for the settlement in common; only raising a piece
+        // takes materials. A common piece belongs to the settlement (its id
+        // stands for the owner), and every grown member may work on it.
+        const bool common = cmd.args.value("for", std::string()) == "settlement";
+        const EntityId owner = common ? actor->status.settlement : actor->status.family;
+        if (owner == kNone) {
+            cmd.result = common ? "rejected:no_settlement" : "rejected:no_family";
             return true;
         }
         if (w.piecesDirty) refreshPieces(w);
@@ -215,8 +233,9 @@ bool handle(World& w, Command& cmd) {
         p.z = cmd.args.value("z", 0);
         p.rot = cmd.args.value("rot", 0);
         p.h = cmd.args.value("h", 0.0);
-        p.family = actor->status.family;
-        const std::string why = checkPlacement(cat, w.pieces(), p);
+        p.family = owner;
+        std::string why = checkPlacement(cat, w.pieces(), p);
+        if (why.empty()) why = thingBlocked(w, cat, p);
         if (!why.empty()) {
             cmd.result = "rejected:" + why;
             return true;
@@ -227,11 +246,15 @@ bool handle(World& w, Command& cmd) {
         site.type = "build_site";
         site.pos = pieceCentre(cat, d, p);
         site.ownerFamily = p.family;
+        site.storey = p.z;
         for (const auto& [item, n] : d.cost) site.stock[item] = n;
         p.site = w.addObject(site).id;
         if (Family* f = familyOfId(w, p.family))
             for (EntityId m : f->members)
                 if (Character* mc = w.character(m)) mc->knownObjects.insert(p.site);
+        if (common)
+            for (auto& [cid, mc] : w.characters())
+                if (!mc.isAnimal() && mc.status.settlement == owner) mc.knownObjects.insert(p.site);
         w.pieces()[p.id] = p;
         refreshPieces(w);
         return true;
@@ -242,16 +265,21 @@ bool handle(World& w, Command& cmd) {
             cmd.result = "rejected:no_such_piece";
             return true;
         }
-        if (it->second.family != actor->status.family) {
+        // one's household's pieces; the settlement's: a planned one by any
+        // member, a standing one by the holder of the mandate
+        const BuildPiece& was = it->second;
+        const bool common = was.family != kNone && was.family == actor->status.settlement;
+        const bool mayCommon = common && (!was.built || mandateHolder(w, was.family) == actor->id);
+        if (was.family != actor->status.family && !mayCommon) {
             cmd.result = "rejected:not_own";
             return true;
         }
         BuildPiece p = it->second;
-        // What was already brought goes back to the household's store.
+        // What was already brought goes back to the household's store (of the one who strikes a common piece).
         if (!p.built) {
             const BuildPieceDef* d = cat.find(p.kind);
             const WorldObject* site = w.object(p.site);
-            Family* f = familyOfId(w, p.family);
+            Family* f = familyOfId(w, common ? actor->status.family : p.family);
             WorldObject* store = f ? w.object(f->storage) : nullptr;
             if (d && site && store)
                 for (const auto& [item, n] : d->cost) {
@@ -312,6 +340,7 @@ bool handle(World& w, Command& cmd) {
 SlotKey slotOf(const BuildPieceDef& d, int x, int y, int z, int rot) {
     const int r = ((rot % 4) + 4) % 4;
     if (d.slot == "roof") return {'r', x, y, z};
+    if (d.slot == "thing") return {'t', x, y, z};
     if (d.slot == "edge") {
         if (r == 0) return {'h', x, y, z};
         if (r == 1) return {'v', x + 1, y, z};
@@ -329,6 +358,10 @@ SlotKey slotOf(const BuildPieceDef& d, int x, int y, int z, int rot) {
 
 Vec2 pieceCentre(const BuildCatalog& cat, const BuildPieceDef& d, const BuildPiece& p) {
     const double c = cat.cellM;
+    if (d.slot == "thing") {
+        const double t = c / std::max(1, d.sub);
+        return {(p.x + 0.5) * t, (p.y + 0.5) * t};
+    }
     Vec2 v{(p.x + 0.5) * c, (p.y + 0.5) * c};
     const int r = ((p.rot % 4) + 4) % 4;
     if (d.slot == "edge") {
@@ -443,8 +476,9 @@ double buildValue(const World& w, const Character& c, const std::string& key) {
     if (c.status.family == kNone) return 0.0;
     int sites = 0, readyN = 0;
     std::map<std::string, int> need;
+    const EntityId town = c.status.settlement;
     for (const auto& [id, p] : w.pieces()) {
-        if (p.family != c.status.family || p.built) continue;
+        if ((p.family != c.status.family && (town == kNone || p.family != town)) || p.built) continue;
         ++sites;
         if (ready(w, p)) ++readyN;
         for (const auto& [k, v] : missingOf(w, p)) need[k] += v;
@@ -482,6 +516,31 @@ void siteEffect(World& w, Character& c, WorldObject& site, const std::string& ke
     if (++p->work < d->work) return;
     p->built = true;
     w.piecesDirty = true; // the site leaves the world in buildingTick
+    if (d->slot == "thing") {
+        // furniture: the thing itself stands now, the plan's piece is done with
+        WorldObject o;
+        o.type = d->makes;
+        o.pos = pieceCentre(w.content().build, *d, *p);
+        o.storey = p->z;
+        o.yaw = p->rot * 1.5707963267948966;
+        o.faced = true;
+        const bool common = w.settlements().count(p->family) > 0;
+        o.ownerFamily = common ? kNone : p->family;
+        const EntityId made = w.addObject(o).id;
+        if (Family* f = familyOfId(w, p->family))
+            for (EntityId m : f->members)
+                if (Character* mc = w.character(m)) mc->knownObjects.insert(made);
+        if (common)
+            for (auto& [cid, mc] : w.characters())
+                if (!mc.isAnimal() && mc.status.settlement == p->family) mc.knownObjects.insert(made);
+        const EntityId fam = p->family;
+        w.pieces().erase(p->id);
+        w.roomsDirty = true;
+        int left = 0;
+        for (const auto& [id, o2] : w.pieces()) left += o2.family == fam && !o2.built;
+        if (left == 0) w.chronicle("build", {c.id}, "chronicle.build_done", {{"who", c.id}, {"family", w.familyOf(c) ? w.familyOf(c)->name : std::string()}});
+        return;
+    }
     if (d->shelter) {
         WorldObject roof;
         roof.type = "roof_piece";

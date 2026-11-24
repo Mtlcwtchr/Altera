@@ -25,6 +25,8 @@ std::string ownerRelation(const Character& c, const WorldObject* o, const Charac
     // Livestock is owned like a thing: by the household that keeps it.
     const EntityId owner = o ? o->ownerFamily : (beast && beast->isAnimal() ? beast->status.family : kNone);
     if (owner == kNone) return "none";
+    // 24.11: what the settlement owns in common (its build sites) is its members' own
+    if (c.status.settlement != kNone && owner == c.status.settlement) return "family";
     return owner == c.status.family ? "family" : "other";
 }
 

@@ -1,9 +1,10 @@
 {
- "_doc": "Модули стройки (gdd/blueprints/ALTERA_BLUEPRINTS_SPEC_v0.2 §1-2, как в Valheim): сетка клеток cell_m x cell_m, ярусы storey_m. slot: cell (фундамент, пол), roof (объём клетки: скат), edge (ребро яруса: стена, щипец), corner (угол: столб). Устойчивость = лучшая опора x carry, земля даёт 1; ниже min_stability деталь не держится. Скат крутой: подъём на ярус (3 м) за клетку (2 м), на широком доме верхние скаты лежат на нижних. cost — что принести на стройку (build_site), work — сколько актов construct_piece. Меш = id в buildings.astm (tools/game_assets/bake_buildings.py).",
+ "_doc": "Модули стройки (gdd/blueprints/ALTERA_BLUEPRINTS_SPEC_v0.2 §1-2, как в Valheim): сетка клеток cell_m x cell_m, ярусы storey_m. slot: cell (фундамент, пол), roof (объём клетки: скат), edge (ребро яруса: стена, щипец), corner (угол: столб). Устойчивость = лучшая опора x carry, земля даёт 1; ниже min_stability деталь не держится. Скат крутой: подъём на ярус (3 м) за клетку (2 м), на широком доме верхние скаты лежат на нижних. cost — что принести на стройку (build_site), work — сколько актов construct_piece. Меш = id в buildings.astm (tools/game_assets/bake_buildings.py). 24.11: slot thing (category furniture) — мебель на сетке thing_m (1 м): makes — объект мира, который встаёт по готовности (кровать, очаг, наковальня); по ним комнаты получают тип (rooms.json). Планировать можно без лимита и бесплатно (для двора или for: settlement — для поселения), материалы тратит только сама стройка; max_per_family — предел только 3D-режима стройки.",
  "cell_m": 2.0,
  "storey_m": 3.0,
  "min_stability": 0.2,
  "max_per_family": 400,
+ "thing_m": 1.0,
  "pieces": [
   {
    "id": "foundation_stone",
@@ -211,6 +212,379 @@
    "work": 3,
    "carry": 0.65,
    "shelter": true
+  },
+  {
+   "id": "thing_bed",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "bed",
+   "cost": {
+    "log": 2,
+    "thatch": 2
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_hearth",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "hearth",
+   "cost": {
+    "stone": 6,
+    "clay": 2
+   },
+   "work": 3,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_storage",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "storage",
+   "cost": {
+    "log": 3
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_chest",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "chest",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_table",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "table",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_table_bench",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "table_bench",
+   "cost": {
+    "log": 3
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_bench",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "bench",
+   "cost": {
+    "log": 1
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_counter",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "counter",
+   "cost": {
+    "log": 3
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_shrine",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "shrine",
+   "cost": {
+    "stone": 6
+   },
+   "work": 3,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_forge",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "forge",
+   "cost": {
+    "stone": 8,
+    "clay": 4
+   },
+   "work": 4,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_furnace",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "furnace",
+   "cost": {
+    "stone": 8,
+    "clay": 4
+   },
+   "work": 4,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_anvil",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "anvil",
+   "cost": {
+    "stone": 6
+   },
+   "work": 3,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_quench_tub",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "quench_tub",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_grindstone",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "grindstone",
+   "cost": {
+    "stone": 4
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_oven",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "oven",
+   "cost": {
+    "stone": 6,
+    "clay": 4
+   },
+   "work": 3,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_quern",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "quern",
+   "cost": {
+    "stone": 4
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_mortar",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "mortar",
+   "cost": {
+    "stone": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_cook_pot",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "cook_pot",
+   "cost": {
+    "clay": 3
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_workbench",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "workbench",
+   "cost": {
+    "log": 3
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_drying_rack",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "drying_rack",
+   "cost": {
+    "branch": 4
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_chopping_block",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "chopping_block",
+   "cost": {
+    "log": 1
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_loom_frame",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "loom_frame",
+   "cost": {
+    "log": 2,
+    "branch": 4
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_weaving_frame",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "weaving_frame",
+   "cost": {
+    "log": 2,
+    "branch": 2
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_tanning_pit",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "tanning_pit",
+   "cost": {
+    "stone": 4,
+    "clay": 2
+   },
+   "work": 3,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_wash_tub",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "wash_tub",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_potter_wheel",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "potter_wheel",
+   "cost": {
+    "log": 2,
+    "stone": 2
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_brewing_vat",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "brewing_vat",
+   "cost": {
+    "log": 4
+   },
+   "work": 2,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_storage_jar",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "storage_jar",
+   "cost": {
+    "clay": 3
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_barrel",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "barrel",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_barrel_stand",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "barrel_stand",
+   "cost": {
+    "log": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_sack",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "sack",
+   "cost": {
+    "thatch": 1
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_hay",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "hay",
+   "cost": {
+    "thatch": 2
+   },
+   "work": 1,
+   "carry": 1.0
+  },
+  {
+   "id": "thing_livestock_pen",
+   "slot": "thing",
+   "category": "furniture",
+   "makes": "livestock_pen",
+   "cost": {
+    "log": 4,
+    "branch": 4
+   },
+   "work": 2,
+   "carry": 1.0
   }
  ]
 }

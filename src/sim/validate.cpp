@@ -532,8 +532,8 @@ ValidationReport validate(const Content& c) {
 
     // build.json: slots, categories, costs.
     {
-        static const std::set<std::string> slots = {"cell", "roof", "edge", "corner"};
-        static const std::set<std::string> cats = {"foundation", "floor", "wall", "gable", "pillar", "roof"};
+        static const std::set<std::string> slots = {"cell", "roof", "edge", "corner", "thing"};
+        static const std::set<std::string> cats = {"foundation", "floor", "wall", "gable", "pillar", "roof", "furniture"};
         std::set<std::string> seen;
         for (const auto& p : c.build.pieces) {
             const std::string where = "build " + p.id;
@@ -542,6 +542,8 @@ ValidationReport validate(const Content& c) {
             if (!cats.count(p.category)) v.err(where + ": bad category '" + p.category + "'");
             if (p.carry <= 0.0 || p.carry > 1.0) v.err(where + ": carry out of (0, 1]");
             if (p.cost.empty()) v.err(where + ": no cost");
+            if ((p.slot == "thing") != (p.category == "furniture")) v.err(where + ": furniture goes in slot thing");
+            if (p.slot == "thing" && !c.objects.count(p.makes)) v.err(where + ": makes unknown object '" + p.makes + "'");
             for (const auto& [item, n] : p.cost) {
                 if (!c.items.count(item)) v.err(where + ": unknown item '" + item + "'");
                 if (n <= 0) v.err(where + ": cost of '" + item + "' must be positive");

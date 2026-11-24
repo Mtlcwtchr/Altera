@@ -1,0 +1,37 @@
+/* AL-94: the build panel and the colony window (build.js, colony.js), Резной рубеж. */
+#buildbar { position: absolute; left: 18px; top: 18px; z-index: 5; width: 352px; max-height: calc(100% - 140px); overflow: auto; padding: 8px 10px 10px; box-shadow: 0 6px 18px rgba(0,0,0,.55); }
+#buildbar .bb-head { display: flex; align-items: center; gap: 4px; }
+#buildbar .bb-head h3 { margin: 0 6px 0 0; font-size: 17px; flex: 1; }
+#buildbar .bb-tools { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 8px 0 6px; }
+#buildbar .bb-tools .btn { height: 30px; }
+#buildbar .bb-row { display: flex; flex-wrap: wrap; gap: 4px; align-items: center; margin: 4px 0; }
+#buildbar .bb-row .lbl { min-width: 0; padding: 0 4px; }
+#buildbar .sep { width: 8px; }
+#buildbar .bb-tip { margin-top: 6px; font-size: 13px; }
+#buildbar #bb-info { margin-top: 6px; font-size: 13.5px; line-height: 1.3; }
+#buildbar #bb-info .good { color: #a8e088; }
+#buildbar #bb-info .bad { color: #f09070; }
+#buildbar #bb-info .cost { color: var(--text); }
+#buildbar .dim, .win .dim { color: var(--dim); }
+#buildbar .bb-things { margin-top: 4px; }
+#buildbar .bb-group { margin: 3px 0; }
+#buildbar .bb-group > .btn { width: 100%; text-align: left; }
+#buildbar .bb-thing { display: flex; align-items: center; gap: 6px; font-size: 14px; padding: 2px 6px; }
+#buildbar .bb-thing canvas { width: 32px; height: 32px; image-rendering: pixelated; background: #2a1a0e; border: 1px solid #000; flex: none; }
+#buildbar .bb-thing .m { margin-left: auto; float: none; }
+#buildbar .bb-thing.on { background: #f4e0a0; box-shadow: inset 0 0 0 2px var(--bronze); }
+#buildbar .bb-cur { font-size: 13px; color: var(--gold); margin-top: 4px; }
+#map.building { cursor: cell; }
+.win .small { font-size: 12.5px; }
+.col-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 10px; }
+.col-grid .parch h3, .col-fam h3 { color: #6a3a14; text-shadow: none; margin-top: 4px; }
+.chips.ink .chip { background: #d8c498; color: var(--ink); border-color: var(--parch-d); }
+.col-fams { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 8px; }
+.col-fam .who .nm small { color: #6a5a40; }
+.col-fam .who { color: var(--ink); }
+.col-fam .who canvas { width: 40px; height: 40px; }
+.col-sites { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 13.5px; }
+.col-sites th { text-align: left; font: 700 13px "Alegreya SC", serif; color: var(--gold); padding: 3px 6px; border-bottom: 2px solid var(--bronze-d); }
+.col-sites td { padding: 3px 6px; border-bottom: 1px solid rgba(176,138,74,.25); }
+.col-sites tr.col-site { cursor: pointer; }
+.col-sites tr.col-site:hover td { background: rgba(232,192,96,.12); }
