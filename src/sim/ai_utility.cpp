@@ -30,6 +30,18 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
     }
     if (subj == "mood") return (c.mood(w.now()) + 1.0) * 0.5;
     if (subj == "home_food_days") return clamp01(homeFoodDays(w, c) / norm);
+    if (subj == "home_food_cover") {
+        // AL-82: the store against what is still to come - `norm` days, plus the
+        // lean days of the next 150 (winter and the hungry gap of early spring,
+        // before anything grows to be gathered).
+        const int doy = (w.startDay() + w.day()) % kDaysPerYear;
+        int lean = 0;
+        for (int d = 0; d < 150; ++d) {
+            const int x = (doy + d) % kDaysPerYear;
+            if (x >= 3 * (kDaysPerYear / 4) || x < kDaysPerYear / 6) ++lean;
+        }
+        return clamp01(homeFoodDays(w, c) / (norm + lean));
+    }
     if (subj == "season") return w.season() == key ? 1.0 : 0.0;
     if (const std::string crop = cropSubjectType(w.content(), subj); !crop.empty())
         return clamp01(farmValue(w, c, nullptr, key, crop) / norm);

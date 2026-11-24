@@ -226,7 +226,18 @@ TEST(altera_sim_village_strangers) {
         CHECK(h != nullptr && h->type == "hearth" && h->ownerFamily == fid);
         for (EntityId m : f.members)
             if (const Character* c = w.character(m); c && c->body.alive) CHECK(c->knownObjects.count(f.hearth) == 1);
+        // ...and a field and a garden of its own, with the seed for them
+        int fields = 0, gardens = 0;
+        for (const auto& [oid, o] : w.objects())
+            if (o.ownerFamily == fid) {
+                if (o.type == "field") ++fields;
+                if (o.type == "garden") ++gardens;
+            }
+        CHECK(fields >= 1 && gardens >= 1);
     }
+    const Family& newest = w.families().rbegin()->second;
+    const WorldObject* store = w.object(newest.storage);
+    CHECK(store && store->stock.count("seed_grain") && store->stock.at("seed_grain") >= 20);
 }
 
 TEST(altera_sim_village_lives_over_two_months) {

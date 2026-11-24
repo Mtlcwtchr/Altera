@@ -459,7 +459,7 @@ ValidationReport validate(const Content& c) {
             else if ((subj == "has" || subj == "home") && !c.items.count(key))
                 v.err(where + ": unknown item input '" + k.input + "'");
             else if (subj != "need" && subj != "has" && subj != "home" && subj != "time" && subj != "body" &&
-                     subj != "mood" && subj != "const" && subj != "trait" && subj != "age" && subj != "home_food_days" &&
+                     subj != "mood" && subj != "const" && subj != "trait" && subj != "age" && subj != "home_food_days" && subj != "home_food_cover" &&
                      subj != "season" && cropSubjectType(c, subj).empty() && subj != "herd" && subj != "knows" && subj != "charity" &&
                      subj != "care" && subj != "build")
                 v.err(where + ": unknown input '" + k.input + "'");

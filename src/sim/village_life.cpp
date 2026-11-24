@@ -773,6 +773,7 @@ bool arrive(World& w, Settlement& st, Rng& rng, bool family, const VillageLifeRu
     }
     w.dynasties()[dyn.id].founder = mid;
     for (EntityId id : who) meetVillage(w, *w.character(id), st);
+    openFields(w, fam.id, store.pos, w.seed()); // AL-82: land to live on, like the others
     w.chronicle("stranger", who, "chronicle.village.strangers_settled",
                 {{"who", mid}, {"spouse", wid}, {"family", fam.id}, {"people", static_cast<int>(who.size())}});
     return true;
