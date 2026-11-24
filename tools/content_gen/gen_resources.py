@@ -7,7 +7,7 @@ Source of truth for content/ai/resources/*.json and content/loc/{ru,en}/resource
 
     python tools/content_gen/gen_resources.py
 
-Stages: AL-88 wood/stone/iron, AL-89 animals and light, AL-90 plants. Later stages append to the tables below.
+Stages: AL-88 wood/stone/iron, AL-89 animals and light, AL-90 plants, AL-91 salt, stores, leather, goods. Later stages append to the tables below.
 """
 import json
 import os
@@ -494,6 +494,128 @@ MATERIAL_NAMES.update({
 })
 
 
+# ================================================================ AL-91: salt, stores, leather, home, goods
+# A rare salt spring gives brine, boiled to salt at the hearth; salt keeps meat, fish,
+# cabbage and mushrooms through the winter. A tanning pit turns hides into leather with
+# oak bark or lime (the base tanning_pit, a station the tannery room brings). Things of worth for trade carry the tag `trade_good` (caravans, AL-85).
+MATERIAL_ITEMS.update({"salt": "salt"})
+NEW_MATERIALS += [
+    {"id": "brine", "tags": ["liquid", "salty"], "p": {"density": 0.5, "purity": 0.6},
+     "shape": "liquid", "item": "brine", "effects": [{"id": "salty", "k": 0.6}], "worth": 0.3},
+    # adapted from the old stone-age tables (content/resources/herbs.json): yarrow, the soldier's herb
+    {"id": "yarrow", "tags": ["herb", "aromatic"], "p": {"moisture": 0.5, "purity": 0.8},
+     "shape": "lump", "item": "yarrow", "effects": [{"id": "antiseptic", "k": 0.35}, {"id": "bitter", "k": 0.3}],
+     "worth": 0.7},
+]
+# what a food item is: nutrition and how long it keeps (fields of items.json)
+ITEM_FIELDS = {
+    "salted_meat": {"nutrition": 0.8, "spoil_days": 200},
+    "salted_fish": {"nutrition": 0.25, "spoil_days": 160},
+    "sauerkraut": {"nutrition": 0.2, "spoil_days": 150},
+    "salted_mushrooms": {"nutrition": 0.15, "spoil_days": 150},
+    "rusks": {"nutrition": 0.4, "spoil_days": 240},
+    "lard": {"nutrition": 0.7, "spoil_days": 180},
+}
+ITEMS += [
+    ("brine", "brine", ["liquid", "craft_raw"], 20, 0.1, 1.0, [1, 1], ru("рассол", "рассола", "рассолу", "рассол", "рассолом", "рассоле", "m"), "brine"),
+    ("yarrow", "yarrow", ["plant", "herb"], 20, 0.3, 0.1, [1, 1], ru("тысячелистник", "тысячелистника", "тысячелистнику", "тысячелистник", "тысячелистником", "тысячелистнике", "m"), "yarrow"),
+    ("salted_meat", None, ["food", "preserved"], 10, 2, 0.5, [1, 1], ru("солонина", "солонины", "солонине", "солонину", "солониной", "солонине", "f"), "salt meat"),
+    ("salted_fish", None, ["food", "preserved"], 10, 1, 0.3, [1, 1], ru("солёная рыба", "солёной рыбы", "солёной рыбе", "солёную рыбу", "солёной рыбой", "солёной рыбе", "f"), "salt fish"),
+    ("sauerkraut", None, ["food", "preserved"], 10, 1, 0.5, [1, 1], ru("квашеная капуста", "квашеной капусты", "квашеной капусте", "квашеную капусту", "квашеной капустой", "квашеной капусте", "f"), "sauerkraut"),
+    ("salted_mushrooms", None, ["food", "preserved"], 10, 1, 0.3, [1, 1], ru("солёные грибы", "солёных грибов", "солёным грибам", "солёные грибы", "солёными грибами", "солёных грибах", "pl"), "salted mushrooms"),
+    ("rusks", None, ["food", "preserved"], 20, 0.5, 0.2, [1, 1], ru("сухари", "сухарей", "сухарям", "сухари", "сухарями", "сухарях", "pl"), "rusks"),
+    ("lard", None, ["food", "preserved"], 10, 1.5, 0.4, [1, 1], ru("сало", "сала", "салу", "сало", "салом", "сале", "n"), "salt lard"),
+]
+TRADE_GOODS = {"beeswax", "leather", "woad", "madder", "dagger", "longbow", "tin_ore", "yew_stave"}  # pack items
+ANNOTATE += [
+    {"id": "salt", "material": "salt", "value": 3, "add_tags": ["trade_good"]},
+    {"id": "silver", "add_tags": ["trade_good"]},
+    {"id": "gold", "add_tags": ["trade_good"]},
+    {"id": "sword", "add_tags": ["trade_good"]},
+    {"id": "axe", "add_tags": ["trade_good"]},
+]
+OBJECTS += [
+    obj("salt_spring", {"brine": 12}, ["marsh", "river", "meadow"], 0.15, regrow={"brine": 3}, every=144, stand=0.8, placed_last=True,
+        _doc="солёный родник, редкий (0-1 на карту): рассол, соль выпаркой; ценный товар и повод для споров"),
+    obj("yarrow_patch", {"yarrow": 5}, ["meadow"], 4, regrow={"yarrow": 1}, every=144, stand=0.6, placed_last=True,
+        _doc="тысячелистник (из старых таблиц): трава от ран"),
+]
+_HEARTH = ["target_owner:family"]
+def _cook(id_, uses, gives, dur, ru_name, en_name, skill="cooking"):
+    pre = [f"has:{i}>={n}" for i, n in uses] + _HEARTH
+    eff = [f"has:{i}-{n}" for i, n in uses] + [f"has:{i}+{n}" for i, n in gives] + [f"skill:{skill}+0.01"]
+    return work(id_, "hearth", pre, eff, dur, reserve=False, ru_name=ru_name, en_name=en_name)
+def _eat(item, hunger, ru_name, en_name):
+    a = {"id": f"eat_{item}", "category": "household", "target": "self", "pre": [f"has:{item}>=1"],
+         "eff": [f"has:{item}-1", f"need:hunger+{hunger}", "moodlet:ate_meal"], "duration": 1, "cost": 1,
+         "_name": (ru_name, en_name)}
+    return a
+INTERACTIONS += [
+    take("draw_brine", "salt_spring", "brine", 4, 2, ru_name="Набрать рассола", en_name="Draw brine"),
+    _cook("boil_brine", [("brine", 4), ("firewood", 2)], [("salt", 2)], 8, "Выпарить соль", "Boil down salt"),
+    _cook("salt_meat", [("meat", 3), ("salt", 1)], [("salted_meat", 3)], 3, "Засолить мясо", "Salt meat"),
+    _cook("salt_fish", [("fish", 3), ("salt", 1)], [("salted_fish", 3)], 3, "Засолить рыбу", "Salt fish"),
+    _cook("make_sauerkraut", [("vegetables", 4), ("salt", 1)], [("sauerkraut", 4)], 3, "Заквасить капусту", "Make sauerkraut"),
+    _cook("salt_mushrooms", [("mushrooms", 4), ("salt", 1)], [("salted_mushrooms", 4)], 3, "Засолить грибы", "Salt mushrooms"),
+    _cook("dry_rusks", [("bread", 2), ("firewood", 1)], [("rusks", 3)], 4, "Насушить сухарей", "Dry rusks"),
+    _cook("salt_lard", [("animal_fat", 2), ("salt", 1)], [("lard", 2)], 2, "Засолить сало", "Salt lard"),
+    _eat("salted_meat", 0.7, "Съесть солонины", "Eat salt meat"),
+    _eat("salted_fish", 0.3, "Съесть солёной рыбы", "Eat salt fish"),
+    _eat("sauerkraut", 0.25, "Съесть квашеной капусты", "Eat sauerkraut"),
+    _eat("salted_mushrooms", 0.2, "Съесть солёных грибов", "Eat salted mushrooms"),
+    _eat("rusks", 0.4, "Погрызть сухарей", "Eat rusks"),
+    _eat("lard", 0.6, "Съесть сала", "Eat lard"),
+    work("tan_hides_bark", "tanning_pit", ["has:hide>=2", "has:oak_bark>=2"],
+         ["has:hide-2", "has:oak_bark-2", "has:leather+2", "skill:tanning+0.015", "body:fatigue+0.08"], 16, 12,
+         ru_name="Выдубить кожи корой", en_name="Tan hides with bark"),
+    work("tan_hides_lime", "tanning_pit", ["has:hide>=2", "has:quicklime>=1"],
+         ["has:hide-2", "has:quicklime-1", "has:leather+2", "skill:tanning+0.015", "body:fatigue+0.08"], 12, 10,
+         ru_name="Выдубить кожи известью", en_name="Tan hides with lime"),
+    take("gather_yarrow", "yarrow_patch", "yarrow", 2, 2, skill="herbalism", ru_name="Нарвать тысячелистника", en_name="Gather yarrow"),
+]
+# a cup is a cup: carved of horn it is a horn cup and worth what horn is (AL-87)
+CARVE_SHAPES = {"bone": ["cup_raw"]}
+NEW_DESIGNS += [
+    {"id": "horn_cup", "form": "wooden_cup", "steps": [
+        {"process": "carve", "shape": "cup_raw", "slots": {"work": ["mat:horn"]}}]},
+    {"id": "yarrow_poultice", "form": "poultice", "steps": [
+        {"process": "mix", "mode": "grind_herbs", "slots": {"a": ["mat:yarrow"], "b": ["mat:garlic"]}}]},
+]
+DESIGN_NAMES.update({"horn_cup": ("роговой кубок", "horn cup"), "yarrow_poultice": ("припарка из тысячелистника", "yarrow poultice")})
+OBJECT_NAMES.update({
+    "salt_spring": (ru("солёный родник", "солёного родника", "солёному роднику", "солёный родник", "солёным родником", "солёном роднике", "m"), "salt spring"),
+    "yarrow_patch": (ru("тысячелистник", "тысячелистника", "тысячелистнику", "тысячелистник", "тысячелистником", "тысячелистнике", "m"), "yarrow patch"),
+})
+MATERIAL_NAMES.update({
+    "brine": ("рассол", "m", "{form} из рассола", "brine", "brine {form}"),
+    "yarrow": ("тысячелистник", "m", "{form} из тысячелистника", "yarrow", "yarrow {form}"),
+})
+
+# ---------------------------------------------------------------- 2D client: glyphs and sprites
+# Every object and item of the pack gets a record for the 2D client (gdd/ui/client_2d):
+# a base sprite of the 16x16 set, recoloured by palette keys (sprites.py PAL), and a glyph
+# with its colour for the symbol mode. The atlas itself stays local (LFS, 24.11).
+SPRITE_RULES = [  # first match by id or tag: (test, sprite, recolour, glyph, colour)
+    (lambda i, t: i.endswith("_tree"), "ob_tree", {}, "♣", "G"),
+    (lambda i, t: i == "pine_tree", "ob_pine", {}, "♠", "D"),
+    (lambda i, t: i in ("willow_stand", "wild_hemp", "dye_meadow", "poppy_patch", "hemlock_stand", "hellebore_patch",
+                        "ramsons", "hop_vine", "yarrow_patch"), "ob_bush", {}, "\"", "l"),
+    (lambda i, t: i in ("flint_scree", "limestone_outcrop", "copper_vein"), "ob_rock", {}, "▲", "W"),
+    (lambda i, t: i in ("sand_bar", "bog_ore_bed", "peat_bog", "salt_spring"), "tl_sand", {}, "≈", "t"),
+    (lambda i, t: i in ("charcoal_clamp", "lime_kiln", "tanning_pit"), "ob_hearth", {}, "◘", "M"),
+    (lambda i, t: i == "beehive", "ob_barrel", {"n": "t", "N": "T"}, "♥", "y"),
+    (lambda i, t: "ore" in t or i in ("flint", "limestone", "quicklime", "sand", "peat"), "it_ore", {}, "*", "W"),
+    (lambda i, t: "herb" in t or "plant" in t or "dye" in t, "it_herb", {}, "♣", "l"),
+    (lambda i, t: "wood" in t or "bark" in t, "it_herb", {"G": "n", "l": "o", "D": "N"}, "/", "n"),
+    (lambda i, t: "food" in t, "it_bread", {}, "%", "o"),
+    (lambda i, t: "weapon" in t, "it_sword", {}, "†", "m"),
+    (lambda i, t: "tool" in t, "it_hammer", {}, "τ", "M"),
+    (lambda i, t: True, "ob_sack", {}, "•", "t"),
+]
+COLOUR_OF = {"woad": "b", "madder": "r", "weld": "y", "gold": "H", "silver": "m", "copper_ore": "z", "salt": "w",
+             "beeswax": "y", "tallow": "w", "poppy": "r", "hellebore": "G", "hemlock": "w", "brine": "U"}
+
+
 # ---------------------------------------------------------------- build
 def text_link(path, pairs, field):
     """Insert "field": "value" right after {"id": "<id>" on one-object-per-line files."""
@@ -525,6 +647,26 @@ def add_forms(path, forms):
     open(path, "w", encoding="utf-8").write(t)
 
 
+def add_shape_map(path, proc, extra):
+    """Add shapes a process may make from an input shape (one process per line)."""
+    t = open(path, encoding="utf-8").read()
+    m = re.search(r'\{"id": "%s".*?"shape_map": (\{[^\n]*?\})' % re.escape(proc), t, re.S)
+    assert m, proc
+    sm = json.loads(m.group(1))
+    for src, outs in extra.items():
+        sm.setdefault(src, [])
+        sm[src] += [o for o in outs if o not in sm[src]]
+    t = t[:m.start(1)] + json.dumps(sm, ensure_ascii=False) + t[m.end(1):]
+    json.loads(t)
+    open(path, "w", encoding="utf-8").write(t)
+
+
+def sprite_of(iid, tags):
+    for test, sprite, recolour, glyph, colour in SPRITE_RULES:
+        if test(iid, tags):
+            return {"sprite": sprite, "recolour": recolour, "glyph": glyph, "colour": COLOUR_OF.get(iid, colour)}
+
+
 def main():
     # craft materials
     mp = P("content/ai/craft/materials.json")
@@ -545,6 +687,7 @@ def main():
         have[mat]["tags"] += [t for t in tags if t not in have[mat]["tags"]]
     save(mp, md)
     add_forms(P("content/ai/craft/forms.json"), NEW_FORMS)
+    add_shape_map(P("content/ai/craft/processes.json"), "carve", CARVE_SHAPES)
     text_link(P("content/ai/craft/forms.json"), FORM_ITEMS, "item")
     dp = P("content/ai/craft/designs.json")
     dd = load(dp)
@@ -574,7 +717,9 @@ def main():
         e = {"id": iid}
         if mat:
             e["material"] = mat
-        e.update({"tags": tags, "stack": stack, "value": value})
+        e.update({"tags": tags + (["trade_good"] if iid in TRADE_GOODS and "trade_good" not in tags else []),
+                  "stack": stack, "value": value})
+        e.update(ITEM_FIELDS.get(iid, {}))
         pack_items.append(e)
         gear[iid] = {"kg": kg, "size": size}
         loc_ru[f"item.{iid}.name"] = rn
@@ -617,6 +762,14 @@ def main():
     for k, v in gear.items():
         gd["items"].setdefault(k, v)
     save(gp, gd)
+    sprites = {"_doc": "AL-86: 2D client records of the resources pack (gdd/ui/client_2d): base sprite of the 16x16 "
+                       "set, recolour by palette keys of sprites.py, glyph and colour for the symbol mode. "
+                       "Generated by tools/content_gen/gen_resources.py.", "objects": {}, "items": {}}
+    for o in OBJECTS:
+        sprites["objects"][o["id"]] = sprite_of(o["id"], [])
+    for (iid, mat, tags, *_rest) in ITEMS:
+        sprites["items"][iid] = sprite_of(iid, tags)
+    save(P("content/sprites_2d/resources.json"), sprites)
     for lang, src in (("ru", loc_ru), ("en", loc_en)):
         p = P("content/loc", lang, "resources.json")
         d = load(p) if os.path.exists(p) else {}

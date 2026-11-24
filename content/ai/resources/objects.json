@@ -451,6 +451,50 @@
    "per_km2": 3,
    "owned": false,
    "_doc": "хмель на опушке: эль дольше не киснет"
+  },
+  {
+   "id": "salt_spring",
+   "stand_m": 0.8,
+   "stock": {
+    "brine": 12
+   },
+   "regrow": {
+    "brine": 3
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "brine": 12
+   },
+   "biomes": [
+    "marsh",
+    "river",
+    "meadow"
+   ],
+   "per_km2": 0.15,
+   "owned": false,
+   "placed_last": true,
+   "_doc": "солёный родник, редкий (0-1 на карту): рассол, соль выпаркой; ценный товар и повод для споров"
+  },
+  {
+   "id": "yarrow_patch",
+   "stand_m": 0.6,
+   "stock": {
+    "yarrow": 5
+   },
+   "regrow": {
+    "yarrow": 1
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "yarrow": 5
+   },
+   "biomes": [
+    "meadow"
+   ],
+   "per_km2": 4,
+   "owned": false,
+   "placed_last": true,
+   "_doc": "тысячелистник (из старых таблиц): трава от ран"
   }
  ]
 }

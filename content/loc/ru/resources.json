@@ -917,5 +917,124 @@
   "nom": "липовый цвет",
   "g": "m"
  },
- "material.linden_flower.made": "{form} из липового цвета"
+ "material.linden_flower.made": "{form} из липового цвета",
+ "item.brine.name": {
+  "nom": "рассол",
+  "gen": "рассола",
+  "dat": "рассолу",
+  "acc": "рассол",
+  "ins": "рассолом",
+  "pre": "рассоле",
+  "g": "m"
+ },
+ "item.yarrow.name": {
+  "nom": "тысячелистник",
+  "gen": "тысячелистника",
+  "dat": "тысячелистнику",
+  "acc": "тысячелистник",
+  "ins": "тысячелистником",
+  "pre": "тысячелистнике",
+  "g": "m"
+ },
+ "item.salted_meat.name": {
+  "nom": "солонина",
+  "gen": "солонины",
+  "dat": "солонине",
+  "acc": "солонину",
+  "ins": "солониной",
+  "pre": "солонине",
+  "g": "f"
+ },
+ "item.salted_fish.name": {
+  "nom": "солёная рыба",
+  "gen": "солёной рыбы",
+  "dat": "солёной рыбе",
+  "acc": "солёную рыбу",
+  "ins": "солёной рыбой",
+  "pre": "солёной рыбе",
+  "g": "f"
+ },
+ "item.sauerkraut.name": {
+  "nom": "квашеная капуста",
+  "gen": "квашеной капусты",
+  "dat": "квашеной капусте",
+  "acc": "квашеную капусту",
+  "ins": "квашеной капустой",
+  "pre": "квашеной капусте",
+  "g": "f"
+ },
+ "item.salted_mushrooms.name": {
+  "nom": "солёные грибы",
+  "gen": "солёных грибов",
+  "dat": "солёным грибам",
+  "acc": "солёные грибы",
+  "ins": "солёными грибами",
+  "pre": "солёных грибах",
+  "g": "pl"
+ },
+ "item.rusks.name": {
+  "nom": "сухари",
+  "gen": "сухарей",
+  "dat": "сухарям",
+  "acc": "сухари",
+  "ins": "сухарями",
+  "pre": "сухарях",
+  "g": "pl"
+ },
+ "item.lard.name": {
+  "nom": "сало",
+  "gen": "сала",
+  "dat": "салу",
+  "acc": "сало",
+  "ins": "салом",
+  "pre": "сале",
+  "g": "n"
+ },
+ "interaction.draw_brine.name": "Набрать рассола",
+ "interaction.boil_brine.name": "Выпарить соль",
+ "interaction.salt_meat.name": "Засолить мясо",
+ "interaction.salt_fish.name": "Засолить рыбу",
+ "interaction.make_sauerkraut.name": "Заквасить капусту",
+ "interaction.salt_mushrooms.name": "Засолить грибы",
+ "interaction.dry_rusks.name": "Насушить сухарей",
+ "interaction.salt_lard.name": "Засолить сало",
+ "interaction.eat_salted_meat.name": "Съесть солонины",
+ "interaction.eat_salted_fish.name": "Съесть солёной рыбы",
+ "interaction.eat_sauerkraut.name": "Съесть квашеной капусты",
+ "interaction.eat_salted_mushrooms.name": "Съесть солёных грибов",
+ "interaction.eat_rusks.name": "Погрызть сухарей",
+ "interaction.eat_lard.name": "Съесть сала",
+ "interaction.tan_hides_bark.name": "Выдубить кожи корой",
+ "interaction.tan_hides_lime.name": "Выдубить кожи известью",
+ "interaction.gather_yarrow.name": "Нарвать тысячелистника",
+ "object.salt_spring.name": {
+  "nom": "солёный родник",
+  "gen": "солёного родника",
+  "dat": "солёному роднику",
+  "acc": "солёный родник",
+  "ins": "солёным родником",
+  "pre": "солёном роднике",
+  "g": "m"
+ },
+ "object.yarrow_patch.name": {
+  "nom": "тысячелистник",
+  "gen": "тысячелистника",
+  "dat": "тысячелистнику",
+  "acc": "тысячелистник",
+  "ins": "тысячелистником",
+  "pre": "тысячелистнике",
+  "g": "m"
+ },
+ "interaction.craft:horn_cup.name": "сделать: роговой кубок",
+ "interaction.craft:yarrow_poultice.name": "сделать: припарка из тысячелистника",
+ "material.brine.name": {
+  "nom": "рассол",
+  "g": "m"
+ },
+ "material.brine.made": "{form} из рассола",
+ "material.yarrow.name": {
+  "nom": "тысячелистник",
+  "g": "m"
+ },
+ "material.yarrow.made": "{form} из тысячелистника"
 }

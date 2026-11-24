@@ -3807,6 +3807,39 @@
      }
     }
    ]
+  },
+  {
+   "id": "horn_cup",
+   "form": "wooden_cup",
+   "steps": [
+    {
+     "process": "carve",
+     "shape": "cup_raw",
+     "slots": {
+      "work": [
+       "mat:horn"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "yarrow_poultice",
+   "form": "poultice",
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "grind_herbs",
+     "slots": {
+      "a": [
+       "mat:yarrow"
+      ],
+      "b": [
+       "mat:garlic"
+      ]
+     }
+    }
+   ]
   }
  ]
 }

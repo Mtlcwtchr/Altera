@@ -138,7 +138,8 @@
    "tags": [
     "wood",
     "craft_raw",
-    "valuable"
+    "valuable",
+    "trade_good"
    ],
    "stack": 10,
    "value": 2.5
@@ -177,7 +178,8 @@
    "id": "dagger",
    "tags": [
     "tool",
-    "weapon"
+    "weapon",
+    "trade_good"
    ],
    "stack": 1,
    "value": 8
@@ -299,7 +301,8 @@
    "id": "leather",
    "tags": [
     "textile",
-    "craft_raw"
+    "craft_raw",
+    "trade_good"
    ],
    "stack": 10,
    "value": 3
@@ -436,7 +439,8 @@
    "id": "longbow",
    "tags": [
     "weapon",
-    "ranged"
+    "ranged",
+    "trade_good"
    ],
    "stack": 1,
    "value": 14
@@ -457,7 +461,8 @@
    "tags": [
     "plant",
     "craft_raw",
-    "dye"
+    "dye",
+    "trade_good"
    ],
    "stack": 20,
    "value": 0.5
@@ -468,7 +473,8 @@
    "tags": [
     "plant",
     "craft_raw",
-    "dye"
+    "dye",
+    "trade_good"
    ],
    "stack": 20,
    "value": 0.6
@@ -556,6 +562,92 @@
    ],
    "stack": 20,
    "value": 0.1
+  },
+  {
+   "id": "brine",
+   "material": "brine",
+   "tags": [
+    "liquid",
+    "craft_raw"
+   ],
+   "stack": 20,
+   "value": 0.1
+  },
+  {
+   "id": "yarrow",
+   "material": "yarrow",
+   "tags": [
+    "plant",
+    "herb"
+   ],
+   "stack": 20,
+   "value": 0.3
+  },
+  {
+   "id": "salted_meat",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "stack": 10,
+   "value": 2,
+   "nutrition": 0.8,
+   "spoil_days": 200
+  },
+  {
+   "id": "salted_fish",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "stack": 10,
+   "value": 1,
+   "nutrition": 0.25,
+   "spoil_days": 160
+  },
+  {
+   "id": "sauerkraut",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "stack": 10,
+   "value": 1,
+   "nutrition": 0.2,
+   "spoil_days": 150
+  },
+  {
+   "id": "salted_mushrooms",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "stack": 10,
+   "value": 1,
+   "nutrition": 0.15,
+   "spoil_days": 150
+  },
+  {
+   "id": "rusks",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "stack": 20,
+   "value": 0.5,
+   "nutrition": 0.4,
+   "spoil_days": 240
+  },
+  {
+   "id": "lard",
+   "tags": [
+    "food",
+    "preserved"
+   ],
+   "stack": 10,
+   "value": 1.5,
+   "nutrition": 0.7,
+   "spoil_days": 180
   }
  ],
  "annotate": [
@@ -568,6 +660,38 @@
    "id": "wool",
    "material": "wool_raw",
    "value": 1
+  },
+  {
+   "id": "salt",
+   "material": "salt",
+   "value": 3,
+   "add_tags": [
+    "trade_good"
+   ]
+  },
+  {
+   "id": "silver",
+   "add_tags": [
+    "trade_good"
+   ]
+  },
+  {
+   "id": "gold",
+   "add_tags": [
+    "trade_good"
+   ]
+  },
+  {
+   "id": "sword",
+   "add_tags": [
+    "trade_good"
+   ]
+  },
+  {
+   "id": "axe",
+   "add_tags": [
+    "trade_good"
+   ]
   }
  ]
 }
