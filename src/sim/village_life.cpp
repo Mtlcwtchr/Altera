@@ -633,6 +633,25 @@ void quarrelDaily(World& w, Character& c, const VillageLifeRules& r) {
 
 // --- strangers -----------------------------------------------------------------
 
+void startKnowledge(const Content& ct, Character& c, Rng& rng, const VillageLifeRules& r) {
+    // AL-82: what everyone of their age knows (knowledge.json start rules, as
+    // worldgen gives the first villagers) - a newcomer who cannot farm leaves his
+    // seed corn in the sack and starves by his own field.
+    const int age = c.body.ageDays / kDaysPerYear;
+    for (const auto& [kid, k] : ct.knowledge) {
+        const bool knows = (k.start == "all_from_child" && age >= 5) || (k.start == "all_from_youth" && age >= 12) ||
+                           (k.start == "all_adults" && age >= 14) ||
+                           (age >= 14 && k.startChanceAdult > 0.0 && rng.chance(k.startChanceAdult));
+        if (!knows || c.knowledge.count(kid)) continue;
+        bool ok = true;
+        for (const auto& req : k.requiresKnowledge) ok = ok && (c.knowledge.count(req) || ct.knowledge.count(req) == 0 ||
+                                                                ct.knowledge.at(req).start.rfind("all_", 0) == 0);
+        if (!ok) continue;
+        c.knowledge.insert(kid);
+        if (!c.skills.count(kid)) c.skills[kid] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
+    }
+}
+
 Character makeStranger(World& w, Rng& rng, const Settlement& st, char sex, int ageYears, const std::string& surname,
                        const VillageLifeRules& r) {
     const Content& ct = w.content();
@@ -656,24 +675,7 @@ Character makeStranger(World& w, Rng& rng, const Settlement& st, char sex, int a
             c.knowledge.insert(k);
             c.skills[k] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
         }
-    // AL-82: what everyone of their age knows (knowledge.json start rules, as
-    // worldgen gives the first villagers) - a newcomer who cannot farm leaves his
-    // seed corn in the sack and starves by his own field.
-    {
-        const int age = c.body.ageDays / kDaysPerYear;
-        for (const auto& [kid, k] : ct.knowledge) {
-            const bool knows = (k.start == "all_from_child" && age >= 5) || (k.start == "all_from_youth" && age >= 12) ||
-                               (k.start == "all_adults" && age >= 14) ||
-                               (age >= 14 && k.startChanceAdult > 0.0 && rng.chance(k.startChanceAdult));
-            if (!knows || c.knowledge.count(kid)) continue;
-            bool ok = true;
-            for (const auto& req : k.requiresKnowledge) ok = ok && (c.knowledge.count(req) || ct.knowledge.count(req) == 0 ||
-                                                                    ct.knowledge.at(req).start.rfind("all_", 0) == 0);
-            if (!ok) continue;
-            c.knowledge.insert(kid);
-            if (!c.skills.count(kid)) c.skills[kid] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
-        }
-    }
+    startKnowledge(ct, c, rng, r);
     c.status.settlement = st.id;
     const double ang = rng.range(0.0, 6.283185307179586);
     c.pos = {st.center.x + std::cos(ang) * r.arriveM, st.center.y + std::sin(ang) * r.arriveM};
@@ -1012,6 +1014,7 @@ bool refugeesArrive(World& w, EntityId settlement, const std::vector<EntityId>& 
                     c->knowledge.insert(k);
                     c->skills[k] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
                 }
+        startKnowledge(ct, *c, rng, r);
         c->status.settlement = st.id;
         c->status.family = kNone;
         c->ai = AiState{};
@@ -1049,6 +1052,12 @@ bool refugeesArrive(World& w, EntityId settlement, const std::vector<EntityId>& 
     if (auto def = w.content().objects.find("storage"); def != w.content().objects.end()) store.stock = def->second.stock;
     for (const auto& [item, n] : r.householdKit) store.stock[item] += n;
     fam.storage = w.addObject(store).id;
+    WorldObject hearth; // as any newcomer household's (AL-82)
+    hearth.type = "hearth";
+    hearth.pos = {store.pos.x + 3.0, store.pos.y};
+    hearth.ownerFamily = fam.id;
+    if (auto def = w.content().objects.find("hearth"); def != w.content().objects.end()) hearth.stock = def->second.stock;
+    fam.hearth = w.addObject(hearth).id;
     w.families()[fam.id] = fam;
     w.dynasties()[dyn.id] = dyn;
     st.families.push_back(fam.id);
@@ -1069,6 +1078,7 @@ bool refugeesArrive(World& w, EntityId settlement, const std::vector<EntityId>& 
     if (Character* sp = w.character(spouseId)) setPair(w, *w.character(headId), *sp, "married", true);
     w.dynasties()[dyn.id].founder = headId;
     for (EntityId id : who) meetVillage(w, *w.character(id), st);
+    openFields(w, fam.id, store.pos, w.seed());
     w.chronicle("stranger", who, "chronicle.village.strangers_settled",
                 {{"who", headId}, {"spouse", spouseId}, {"family", fam.id}, {"people", static_cast<int>(who.size())}});
     return true;
