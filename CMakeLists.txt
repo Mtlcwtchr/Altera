@@ -402,6 +402,18 @@ if(WIN32)
     target_compile_definitions(altera_sim_view PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 endif()
 
+# AL-95: the 2D client (gdd/ui/client_2d): src/client2d reads the sim (snapshot ->
+# 1 m cells, people), altera_game_2d serves the page tools/game_2d/web. Windows and Linux.
+add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp)
+target_include_directories(altera_client2d PUBLIC src)
+target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
+add_executable(altera_game_2d tools/game_2d/main.cpp)
+target_link_libraries(altera_game_2d PRIVATE altera_client2d asr_warnings)
+if(WIN32)
+    target_link_libraries(altera_game_2d PRIVATE ws2_32)
+endif()
+target_compile_definitions(altera_game_2d PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+
 if(NOT ALTERA_SIM_ONLY)
 # ---------------------------------------------------------------------------
 # tools - content validator.
@@ -829,9 +841,9 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
             tests/test_altera_sim_trade.cpp
             tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp tests/test_altera_hotbar.cpp
-            tests/test_altera_sim_dialogue_corpus.cpp)
+            tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp)
     target_include_directories(altera_sim_tests PRIVATE src tests)
-    target_link_libraries(altera_sim_tests PRIVATE altera_sim asr_warnings)
+    target_link_libraries(altera_sim_tests PRIVATE altera_sim altera_client2d asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     # The suite is split by test name: the long multi-year worlds (cmake/test_labels.cmake)
     # run as altera_sim_slow, label "full"; the rest is altera_sim, label "fast".

@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Altera 2D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Alegreya+SC:wght@500;700&family=Alegreya:wght@400;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/web/style.css">
+</head>
+<body>
+<!-- AL-95: the 2D client, stage 1 (gdd/ui/client_2d): the map from above, pawns, selection.
+     Frame in the spirit of "Резной рубеж" (gdd/ui/client_2d/ui_h3/UI_H3.md): walnut, bronze, leather, parchment. -->
+<div id="frame">
+  <div id="mapwrap" class="carved">
+    <canvas id="map"></canvas>
+    <div id="toast" hidden></div>
+    <div id="loading" data-k="ui2d.loading">…</div>
+  </div>
+  <aside id="side" class="carved">
+    <section class="panel leather">
+      <h2 data-k="ui2d.house">Дома</h2>
+      <div id="houses"></div>
+    </section>
+    <section class="panel leather grow">
+      <div id="card"></div>
+    </section>
+  </aside>
+  <footer id="bar" class="carved">
+    <div id="hint" class="parch"></div>
+    <div id="clock" class="parch"></div>
+    <div class="btns">
+      <button id="b-pause" class="btn" title="Space">❚❚</button>
+      <button id="b-slower" class="btn" title="−">−</button>
+      <span id="speed" class="lbl"></span>
+      <button id="b-faster" class="btn" title="=">=</button>
+      <button id="b-zoom" class="btn wide" title="1/2/3"></button>
+      <button id="b-roofs" class="btn wide" title="R"></button>
+      <button id="b-mode" class="btn wide" title="G"></button>
+      <button id="b-follow" class="btn wide" title="F"></button>
+    </div>
+  </footer>
+</div>
+<script src="/web/sprites.js"></script>
+<script src="/web/pawns.js"></script>
+<script src="/web/game2d.js"></script>
+</body>
+</html>
