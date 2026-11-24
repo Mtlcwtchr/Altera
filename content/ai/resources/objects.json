@@ -261,6 +261,7 @@
    "owned": false,
    "settlement": true,
    "per_settlement": 1,
+   "own_seed": true,
    "_doc": "угольная яма на краю деревни: дрова/брёвна -> древесный уголь"
   },
   {
@@ -270,7 +271,30 @@
    "owned": false,
    "settlement": true,
    "per_settlement": 1,
+   "own_seed": true,
    "_doc": "известковая печь: известняк + дрова -> известь"
+  },
+  {
+   "id": "beehive",
+   "stand_m": 0.8,
+   "stock": {
+    "honey": 4,
+    "beeswax": 2
+   },
+   "regrow": {
+    "honey": 1,
+    "beeswax": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "honey": 4,
+    "beeswax": 2
+   },
+   "owned": false,
+   "settlement": true,
+   "per_settlement": 2,
+   "own_seed": true,
+   "_doc": "улей-колода у домов: мёд и воск (расставляет тред поселений)"
   }
  ]
 }

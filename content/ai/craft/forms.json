@@ -140,6 +140,10 @@
   {"id": "rag_doll", "category": "leisure", "item": "rag_doll", "named": false, "needs": {"shape": ["doll_raw"]}},
   {"id": "cauldron", "category": "container", "item": "cauldron", "needs": {"shape": ["cauldron_raw"], "mat": ["metal"], "capacity": ">=0.5"}, "derive": {"kind": "container", "capacity": "capacity", "tags": ["pot", "cauldron"]}},
   {"id": "sickle", "category": "tool", "item": "sickle", "needs": {"shape": ["sickle_blade"], "has(handle)": "1"}, "derive": {"kind": "tool", "tags": ["reaping"], "tool_wear": "0.02*(1.5-q)"}},
-  {"id": "hoe", "category": "tool", "item": "hoe", "needs": {"shape": ["hoe_blade"], "has(shaft)": "1"}, "derive": {"kind": "tool", "tags": ["digging", "hoeing"], "tool_wear": "0.02*(1.5-q)"}}
+  {"id": "hoe", "category": "tool", "item": "hoe", "needs": {"shape": ["hoe_blade"], "has(shaft)": "1"}, "derive": {"kind": "tool", "tags": ["digging", "hoeing"], "tool_wear": "0.02*(1.5-q)"}},
+  {"id": "arrows", "item": "arrows", "category": "ranged", "named": false, "needs": {"shape": ["shaft"], "has(blade)": "1", "edge": ">=0.25", "reach": "2", "profile": ["feather"]},
+   "derive": {"kind": "ammo", "weapon_id": "bow", "pen": "edge*q", "durability": "3*(0.5+q)"}},
+  {"id": "longbow", "item": "longbow", "worth": 1.3, "category": "ranged", "needs": {"shape": ["bow_stave"], "has(string)": "1", "stave.len": "4", "flexion": ">=0.7", "bind": ">=0.3"},
+   "derive": {"kind": "ranged", "weapon_id": "bow", "power": "0.7*stave.flex*string.toughness*(0.5+q)", "durability": "100*stave.toughness*(0.5+q)"}}
  ]
 }

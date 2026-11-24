@@ -567,6 +567,41 @@
    "fsm": "Work",
    "legal": [],
    "visibility": "public"
+  },
+  {
+   "id": "harvest_hive",
+   "category": "work",
+   "target": "object:beehive",
+   "pre": [
+    "has:firewood>=1",
+    "target_stock:honey>=2",
+    "target_stock:beeswax>=1"
+   ],
+   "eff": [
+    "has:honey+2",
+    "has:beeswax+1",
+    "target_stock:honey-2",
+    "target_stock:beeswax-1",
+    "has:firewood-1",
+    "skill:husbandry+0.01",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 3,
+   "cost": 3,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true,
+   "risk": [
+    {
+     "id": "bee_stings",
+     "p": 0.05,
+     "eff": [
+      "body:health-0.03"
+     ]
+    }
+   ]
   }
  ]
 }
