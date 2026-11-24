@@ -408,6 +408,7 @@ add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.c
             src/client2d/session2d.cpp)
 target_include_directories(altera_client2d PUBLIC src)
 target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
+target_sources(altera_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
 add_executable(altera_game_2d tools/game_2d/main.cpp)
 target_link_libraries(altera_game_2d PRIVATE altera_client2d asr_warnings)
 if(WIN32)
@@ -844,6 +845,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp tests/test_altera_hotbar.cpp
             tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp
             tests/test_altera_client2d_talk.cpp tests/test_altera_client2d_session.cpp)
+    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sheet.cpp)   # AL-100
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim altera_client2d asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
