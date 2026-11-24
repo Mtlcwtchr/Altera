@@ -663,6 +663,24 @@ Character makeStranger(World& w, Rng& rng, const Settlement& st, char sex, int a
             c.knowledge.insert(k);
             c.skills[k] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
         }
+    // AL-82: what everyone of their age knows (knowledge.json start rules, as
+    // worldgen gives the first villagers) - a newcomer who cannot farm leaves his
+    // seed corn in the sack and starves by his own field.
+    {
+        const int age = c.body.ageDays / kDaysPerYear;
+        for (const auto& [kid, k] : ct.knowledge) {
+            const bool knows = (k.start == "all_from_child" && age >= 5) || (k.start == "all_from_youth" && age >= 12) ||
+                               (k.start == "all_adults" && age >= 14) ||
+                               (age >= 14 && k.startChanceAdult > 0.0 && rng.chance(k.startChanceAdult));
+            if (!knows || c.knowledge.count(kid)) continue;
+            bool ok = true;
+            for (const auto& req : k.requiresKnowledge) ok = ok && (c.knowledge.count(req) || ct.knowledge.count(req) == 0 ||
+                                                                    ct.knowledge.at(req).start.rfind("all_", 0) == 0);
+            if (!ok) continue;
+            c.knowledge.insert(kid);
+            if (!c.skills.count(kid)) c.skills[kid] = rng.range(r.strangerSkill[0], r.strangerSkill[1]);
+        }
+    }
     c.status.settlement = st.id;
     const double ang = rng.range(0.0, 6.283185307179586);
     c.pos = {st.center.x + std::cos(ang) * r.arriveM, st.center.y + std::sin(ang) * r.arriveM};

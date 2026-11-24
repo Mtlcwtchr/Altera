@@ -238,6 +238,9 @@ TEST(altera_sim_village_strangers) {
     const Family& newest = w.families().rbegin()->second;
     const WorldObject* store = w.object(newest.storage);
     CHECK(store && store->stock.count("seed_grain") && store->stock.at("seed_grain") >= 20);
+    // ...and grown newcomers can work it: farming is everyone's from youth
+    for (EntityId m : newest.members)
+        if (const Character* c = w.character(m); c && c->body.ageDays >= 14 * kDaysPerYear) CHECK(c->knowledge.count("farming") == 1);
 }
 
 TEST(altera_sim_village_lives_over_two_months) {
