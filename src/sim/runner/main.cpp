@@ -25,6 +25,7 @@
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
 #include "sim/loc_gen.hpp"
+#include "sim/realm.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace altera::sim;
@@ -35,7 +36,8 @@ int main(int argc, char** argv) {
     std::string worldFile = root + "/content/sim/test_world.json";
     std::string locDir = root + "/content/loc";
     std::string lang = "ru";
-    std::string saveFile, reportFile, traceFile;
+    std::string saveFile, reportFile, traceFile, chronicleFile, chronicleFilter;
+    bool realmOnly = false;
     std::uint64_t seed = 0;
     int days = 3;
     bool validateOnly = false;
@@ -57,6 +59,9 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--save")) saveFile = next();
         else if (!std::strcmp(argv[i], "--report")) reportFile = next();
         else if (!std::strcmp(argv[i], "--trace")) traceFile = next();
+        else if (!std::strcmp(argv[i], "--realm-only")) realmOnly = true;          // AL-85: the region's history alone (the village fed, no minds)
+        else if (!std::strcmp(argv[i], "--chronicle")) chronicleFile = next();       // AL-85: the chronicle as text
+        else if (!std::strcmp(argv[i], "--chronicle-only")) chronicleFilter = next(); // a code prefix, e.g. chronicle.realm.
         else if (!std::strcmp(argv[i], "--validate")) validateOnly = true;
         else if (!std::strcmp(argv[i], "--loc")) locDir = next();
         else if (!std::strcmp(argv[i], "--lang")) lang = next();
@@ -131,8 +136,18 @@ int main(int argc, char** argv) {
             return 0;
         }
         World world = makeTestWorld(content, loadJsonFile(worldFile), seed);
-        installAi(world);
-        world.run(static_cast<Tick>(days) * kTicksPerDay);
+        if (realmOnly) {
+            installRealm(world);
+            for (int d = 0; d < days; ++d) {
+                for (auto& [id, c] : world.characters())
+                    if (!c.isAnimal() && c.body.alive) c.needs["hunger"] = 1.0, c.needs["thirst"] = 1.0;
+                world.run(kTicksPerDay);
+                realmDaily(world);
+            }
+        } else {
+            installAi(world);
+            world.run(static_cast<Tick>(days) * kTicksPerDay);
+        }
         Json report = aiReport(world);
         localizeReport(report, loc, lang, world);
         std::cout << "alive " << report["alive"] << "/" << report["population"] << "\n"
@@ -140,6 +155,15 @@ int main(int argc, char** argv) {
                   << "why_idle: " << report["summary"]["why_idle"].dump() << "\n"
                   << "plan_failures: " << report["summary"]["plan_failures"].dump() << "\n";
         if (!reportFile.empty()) std::ofstream(reportFile) << report.dump(1);
+        if (!chronicleFile.empty()) {
+            std::ofstream out(chronicleFile);
+            for (const auto& e : world.chronicleLog()) {
+                if (!chronicleFilter.empty() && e.code.rfind(chronicleFilter, 0) != 0) continue;
+                const int d = static_cast<int>(e.tick / kTicksPerDay);
+                out << "y" << (d / kDaysPerYear + 1) << " d" << (d % kDaysPerYear + 1) << "\t"
+                    << loc.text(lang, e.code, locArgs(loc, lang, world, e.params)) << "\n";
+            }
+        }
         if (!traceFile.empty()) {
             Json t = Json::object();
             for (const auto& [id, c] : world.characters()) {

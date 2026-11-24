@@ -5,6 +5,7 @@
 #include "sim/loc.hpp"
 
 #include "sim/village_life.hpp"
+#include "sim/realm.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -490,6 +491,8 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
                            "memory.suspects.text", "memory.noticed_missing.text"})
         k.insert(mk);
     for (const auto& vk : villageLifeLocKeys()) k.insert(vk); // AL-39
+    if (realmLoaded(c))
+        for (const auto& rk : realmLocKeys()) k.insert(rk); // AL-85
     if (c.craft.loaded)
         for (const auto& ck : craft::craftLocKeys(c.craft)) k.insert(ck);
     return {k.begin(), k.end()};
@@ -616,6 +619,8 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref("object", s);
             } else if (k == "tag") {
                 a[k] = ref("legal", s);
+            } else if (k == "quest" || k == "offer" || k == "casus") { // AL-85: the realm's kinds
+                a[k] = ref((std::string("realm.") + k).c_str(), s);
             } else if (k == "why" || k == "for") {
                 a[k] = reasonText(loc, lang, s);
             } else {
@@ -624,10 +629,11 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
         } else if (v.is_number_integer() &&
                    (k == "who" || k == "speaker" || k == "listener" || k == "actor" || k == "target" || k == "a" ||
                     k == "b" || k == "doer" || k == "suspect" || k == "owner" || k == "victim" || k == "from" ||
-                    k == "object")) {
+                    k == "object" || k == "fig" || k == "fig2" || k == "pol" || k == "pol2" || k == "giver")) {
             const EntityId id = v.get<EntityId>();
             if (const Character* c = w.character(id)) a[k] = characterNoun(loc, lang, *c);
             else if (const WorldObject* o = w.object(id)) a[k] = ref("object", o->type);
+            else if (Json rn = realmNoun(loc, lang, w, id); !rn.is_null()) a[k] = rn; // AL-85: figures, polities
             else a[k] = v;
         } else {
             a[k] = v;

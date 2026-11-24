@@ -265,6 +265,12 @@ public:
     // What was said, for cooldown / once_per of dialogue rules (AL-53); saved.
     SaidMemory& said() { return said_; }
     const SaidMemory& said() const { return said_; }
+    // Saved state of a higher layer by key (AL-85: "realm"); null JSON until written.
+    Json& moduleState(const std::string& key) { return modules_[key]; }
+    const Json* moduleState(const std::string& key) const {
+        auto it = modules_.find(key);
+        return it == modules_.end() ? nullptr : &it->second;
+    }
 
     // --- commands -------------------------------------------------------
     // Queued for the start of the next step (or `cmd.tick` if later). Returns
@@ -337,6 +343,7 @@ private:
     std::vector<ChronicleEntry> chronicle_;
     std::vector<Fact> facts_;
     SaidMemory said_;
+    std::map<std::string, Json> modules_;
     std::vector<CommandHandler> handlers_;
     std::vector<EventHandler> eventHandlers_;
     TickHook think_;

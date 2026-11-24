@@ -1,0 +1,520 @@
+{
+ "_doc": "AL-85: the realm beyond the village map (src/sim/realm.cpp, gdd/realm/REALM_v0.1.md). Polities in aggregate, permanent figures, politics, wars, wanderers and quests. Food in person-days, wealth in coin, distances in km (the village map at 0,0).",
+ "enabled": true,
+ "disabled_tags": [
+  "magic"
+ ],
+ "region_km": [
+  12,
+  38
+ ],
+ "layout": [
+  {
+   "kind": "town",
+   "n": 1
+  },
+  {
+   "kind": "keep",
+   "n": 1
+  },
+  {
+   "kind": "village",
+   "n": 2
+  },
+  {
+   "kind": "monastery",
+   "n": 1
+  },
+  {
+   "kind": "bandit_camp",
+   "n": 1
+  }
+ ],
+ "kinds": {
+  "village": {
+   "pop": [
+    40,
+    110
+   ],
+   "wealth_per_head": 1.0,
+   "income_per_head_year": 0.6,
+   "militia_share": 0.2,
+   "food_days": [
+    120,
+    200
+   ],
+   "yield": 1.35,
+   "institution": "chief",
+   "knights": [
+    0,
+    0
+   ],
+   "children": [
+    1,
+    3
+   ]
+  },
+  "town": {
+   "pop": [
+    220,
+    420
+   ],
+   "wealth_per_head": 4.0,
+   "income_per_head_year": 1.6,
+   "militia_share": 0.1,
+   "food_days": [
+    120,
+    200
+   ],
+   "yield": 1.05,
+   "institution": "lord",
+   "knights": [
+    1,
+    3
+   ],
+   "children": [
+    1,
+    3
+   ]
+  },
+  "keep": {
+   "pop": [
+    50,
+    110
+   ],
+   "wealth_per_head": 3.0,
+   "income_per_head_year": 1.0,
+   "militia_share": 0.35,
+   "food_days": [
+    120,
+    200
+   ],
+   "yield": 1.0,
+   "institution": "lord",
+   "knights": [
+    2,
+    3
+   ],
+   "children": [
+    1,
+    3
+   ]
+  },
+  "monastery": {
+   "pop": [
+    25,
+    60
+   ],
+   "wealth_per_head": 2.5,
+   "income_per_head_year": 1.0,
+   "militia_share": 0.12,
+   "food_days": [
+    120,
+    200
+   ],
+   "yield": 1.3,
+   "institution": "abbot",
+   "knights": [
+    0,
+    0
+   ],
+   "children": [
+    0,
+    0
+   ],
+   "peaceful": true,
+   "celibate": true
+  },
+  "bandit_camp": {
+   "pop": [
+    10,
+    24
+   ],
+   "wealth_per_head": 0.8,
+   "income_per_head_year": 0.0,
+   "militia_share": 0.85,
+   "food_days": [
+    30,
+    60
+   ],
+   "yield": 0.0,
+   "institution": "ataman",
+   "knights": [
+    1,
+    2
+   ],
+   "children": [
+    0,
+    0
+   ],
+   "lives_by_raids": true
+  }
+ },
+ "names": {
+  "bandit_camp": [
+   "wolfhollow",
+   "blackfen",
+   "redmoor"
+  ],
+  "monastery": [
+   "brightvale",
+   "whitecliff"
+  ],
+  "*": [
+   "longbridge",
+   "ravensholm",
+   "greymarch",
+   "saltmere",
+   "thornhill",
+   "highcairn",
+   "stillwater",
+   "bullford",
+   "ashgrove",
+   "kingsbarrow",
+   "goatridge"
+  ]
+ },
+ "economy": {
+  "harvest_mean": 1.0,
+  "harvest_sd": 0.28,
+  "harvest_local_sd": 0.12,
+  "year_yield_days": 400,
+  "food_cap_days": 420,
+  "growth_per_year": 0.025,
+  "famine_death_per_day": 0.004,
+  "famine_unrest_per_day": 0.012,
+  "refugee_chance_per_day": 0.06,
+  "refugee_gap_days": 18,
+  "refugee_reach_km": 45,
+  "militia_recover_per_day": 0.01,
+  "local_meal_per_day": 1.0,
+  "local_wealth_per_coin": 1.0,
+  "refugee_village_cap": 40,
+  "resettle_after_days": 720,
+  "buy_below_days": 60,
+  "sell_above_days": 150,
+  "grain_price": 0.05,
+  "trade_share": 0.25
+ },
+ "politics": {
+  "council_every_days": 30,
+  "war_threshold": 0.85,
+  "demand_threshold": 0.6,
+  "alliance_opinion": 0.3,
+  "w_grudge": 1.1,
+  "w_greed": 0.45,
+  "w_ambition": 0.35,
+  "w_strength": 0.45,
+  "w_honor": 0.45,
+  "w_fear": 0.8,
+  "w_bread": 0.35,
+  "grievance_halflife_days": 420,
+  "truce_days": 720,
+  "tribute_share": 0.06,
+  "tribute_years": 3,
+  "tribute_unrest": 0.03,
+  "envoy_stay_days": 3,
+  "max_wars": 1,
+  "opinion_drift": 0.01,
+  "neighbour_km": 25,
+  "war_min_ratio": 1.15
+ },
+ "war": {
+  "action_every_days": 10,
+  "battle_chance": 0.45,
+  "raid_loot": [
+   0.08,
+   0.25
+  ],
+  "loser_losses": [
+   0.15,
+   0.3
+  ],
+  "winner_losses": [
+   0.04,
+   0.12
+  ],
+  "figure_death": 0.07,
+  "figure_capture": 0.12,
+  "siege_score": 3.0,
+  "siege_food_mult": 1.5,
+  "siege_morale_per_day": 0.008,
+  "exhaustion": 0.35,
+  "max_days": 300,
+  "ransom_base": 20,
+  "ransom_per_renown": 60,
+  "captive_days": 150,
+  "local_casualty": 0.45,
+  "defender_bonus": 1.25,
+  "reparation_share": 0.3,
+  "defeat_unrest": 0.06,
+  "raid_gap_days": 15,
+  "village_raid_gap_days": 35
+ },
+ "succession": {
+  "adult_years": 16,
+  "claim_ambition": 0.62,
+  "claim_martial": 0.3,
+  "weak_heir_renown": 0.12,
+  "strife_days": [
+   15,
+   45
+  ],
+  "reclaim_after_days": 360,
+  "reclaim_wealth": 30,
+  "reclaim_wait_days": 45
+ },
+ "revolt": {
+  "unrest_line": 0.72,
+  "days": 20,
+  "decay_per_day": 0.0025,
+  "rebel_per_head": 0.12
+ },
+ "bandits": {
+  "raid_every_days": [
+   14,
+   30
+  ],
+  "min_pop": 5,
+  "found_unrest": 0.5,
+  "outlaws_from_unrest": 0.02,
+  "starve_desert": 0.02,
+  "same_target_gap_days": 40
+ },
+ "figures": {
+  "death_from_years": 45,
+  "death_daily_at_from": 6e-05,
+  "double_years": 8,
+  "ill_daily": 3e-05,
+  "birth_yearly": 0.3,
+  "fertile_f": [
+   17,
+   42
+  ],
+  "marry_from": 17,
+  "lifestyle_every_days": 90,
+  "lifestyle_hysteresis": 0.15,
+  "wanderers_start": [
+   4,
+   6
+  ],
+  "notables_yearly": 2.0,
+  "max_alive": 120,
+  "traits": 2,
+  "trait_axes": {
+   "honest": {
+    "honor": 0.25
+   },
+   "unscrupulous": {
+    "honor": -0.3,
+    "greed": 0.15
+   },
+   "proud": {
+    "ambition": 0.15,
+    "honor": 0.1
+   },
+   "ambitious": {
+    "ambition": 0.3
+   },
+   "modest": {
+    "ambition": -0.2
+   },
+   "generous": {
+    "greed": -0.25
+   },
+   "thrifty": {
+    "greed": 0.1
+   },
+   "hoarder": {
+    "greed": 0.25
+   },
+   "spendthrift": {
+    "greed": 0.1
+   },
+   "brawny": {
+    "martial": 0.2
+   },
+   "puny": {
+    "martial": -0.2
+   },
+   "hardy": {
+    "martial": 0.1
+   },
+   "frail": {
+    "martial": -0.2
+   },
+   "robust": {
+    "martial": 0.1
+   },
+   "sickly": {
+    "martial": -0.15
+   },
+   "hot_tempered": {
+    "martial": 0.1,
+    "honor": -0.05
+   },
+   "curious": {
+    "wanderlust": 0.2
+   },
+   "family_minded": {
+    "wanderlust": -0.25
+   },
+   "loner": {
+    "wanderlust": 0.15
+   },
+   "dutiful": {
+    "honor": 0.2
+   },
+   "competitive": {
+    "ambition": 0.1,
+    "martial": 0.05
+   },
+   "born_leader": {
+    "ambition": 0.15
+   },
+   "pious": {
+    "honor": 0.1
+   },
+   "nimble": {
+    "martial": 0.1
+   },
+   "tireless": {
+    "wanderlust": 0.1
+   },
+   "flaky": {
+    "honor": -0.1
+   },
+   "jealous": {
+    "ambition": 0.05
+   }
+  },
+  "grudge_mult": {
+   "forgiving": 0.6,
+   "unforgiving": 1.5,
+   "stoic": 0.85,
+   "jealous": 1.2,
+   "proud": 1.15
+  }
+ },
+ "wanderers": {
+  "speed_km_day": 30,
+  "stop_radius_km": 9,
+  "stay_days": [
+   1,
+   3
+  ],
+  "heal_per_day": 0.03,
+  "quest_threshold": 0.12,
+  "drift_days": [
+   10,
+   25
+  ],
+  "start_wealth": [
+   3,
+   20
+  ],
+  "start_martial": [
+   0.35,
+   0.8
+  ],
+  "stop_chance": 0.15
+ },
+ "quests": {
+  "beast_bounty": {
+   "reward": [
+    12,
+    35
+   ],
+   "danger": 0.35,
+   "days": 40,
+   "takers": 2,
+   "renown": 0.04,
+   "tags": []
+  },
+  "bandit_bounty": {
+   "reward": [
+    40,
+    120
+   ],
+   "danger": 0.6,
+   "days": 120,
+   "takers": 3,
+   "renown": 0.1,
+   "tags": []
+  },
+  "war_service": {
+   "reward": [
+    15,
+    45
+   ],
+   "danger": 0.45,
+   "days": 200,
+   "takers": 4,
+   "renown": 0.06,
+   "tags": []
+  },
+  "escort": {
+   "reward": [
+    15,
+    40
+   ],
+   "danger": 0.3,
+   "days": 30,
+   "takers": 2,
+   "renown": 0.03,
+   "tags": []
+  },
+  "haunting": {
+   "reward": [
+    50,
+    150
+   ],
+   "danger": 0.7,
+   "days": 90,
+   "takers": 2,
+   "renown": 0.15,
+   "tags": [
+    "magic"
+   ]
+  }
+ },
+ "local": {
+  "beast_memory_days": 30,
+  "hunt_queue_priority": 0.85,
+  "hunt_queue_ttl": 288,
+  "visit_hunt_days": 10,
+  "levy_from_years": 16,
+  "levy_to_years": 55,
+  "raid_hurt": [
+   0.15,
+   0.55
+  ],
+  "raid_hurt_people": [
+   1,
+   2
+  ]
+ },
+ "arcs": {
+  "war": {
+   "tags": []
+  },
+  "succession": {
+   "tags": []
+  },
+  "revolt": {
+   "tags": []
+  },
+  "reclaim": {
+   "tags": []
+  },
+  "bandits": {
+   "tags": []
+  },
+  "famine": {
+   "tags": []
+  },
+  "marriage": {
+   "tags": []
+  }
+ }
+}
