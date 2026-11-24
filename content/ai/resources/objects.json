@@ -119,16 +119,19 @@
    "stock": {
     "log": 3,
     "linden_block": 2,
-    "linden_bast": 4
+    "linden_bast": 4,
+    "linden_flower": 3
    },
    "regrow": {
-    "linden_bast": 1
+    "linden_bast": 1,
+    "linden_flower": 1
    },
    "regrow_every": 432,
    "max_stock": {
     "log": 3,
     "linden_block": 2,
-    "linden_bast": 4
+    "linden_bast": 4,
+    "linden_flower": 3
    },
    "biomes": [
     "forest"
@@ -295,6 +298,159 @@
    "per_settlement": 2,
    "own_seed": true,
    "_doc": "улей-колода у домов: мёд и воск (расставляет тред поселений)"
+  },
+  {
+   "id": "wild_hemp",
+   "stand_m": 0.7,
+   "stock": {
+    "hemp_fiber": 10,
+    "fiber_raw": 6
+   },
+   "regrow": {
+    "hemp_fiber": 2,
+    "fiber_raw": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "hemp_fiber": 10,
+    "fiber_raw": 6
+   },
+   "biomes": [
+    "meadow",
+    "river"
+   ],
+   "per_km2": 6,
+   "owned": false,
+   "_doc": "дикая конопля и лён: пенька для верёвок и сетей, волокно на ткань"
+  },
+  {
+   "id": "dye_meadow",
+   "stand_m": 0.6,
+   "stock": {
+    "woad": 4,
+    "madder": 3,
+    "weld": 4
+   },
+   "regrow": {
+    "woad": 1,
+    "madder": 1,
+    "weld": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "woad": 4,
+    "madder": 3,
+    "weld": 4
+   },
+   "biomes": [
+    "meadow"
+   ],
+   "per_km2": 4,
+   "owned": false,
+   "_doc": "красильные травы: вайда (синее), марена (красное), резеда (жёлтое)"
+  },
+  {
+   "id": "poppy_patch",
+   "stand_m": 0.6,
+   "stock": {
+    "poppy": 5
+   },
+   "regrow": {
+    "poppy": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "poppy": 5
+   },
+   "biomes": [
+    "meadow"
+   ],
+   "per_km2": 3,
+   "owned": false,
+   "_doc": "мак: снотворное и боль"
+  },
+  {
+   "id": "hemlock_stand",
+   "stand_m": 0.6,
+   "stock": {
+    "hemlock": 4
+   },
+   "regrow": {
+    "hemlock": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "hemlock": 4
+   },
+   "biomes": [
+    "river",
+    "marsh"
+   ],
+   "per_km2": 2,
+   "owned": false,
+   "_doc": "болиголов у воды: яд"
+  },
+  {
+   "id": "hellebore_patch",
+   "stand_m": 0.6,
+   "stock": {
+    "hellebore": 3
+   },
+   "regrow": {
+    "hellebore": 1
+   },
+   "regrow_every": 432,
+   "max_stock": {
+    "hellebore": 3
+   },
+   "biomes": [
+    "marsh",
+    "forest"
+   ],
+   "per_km2": 1.5,
+   "owned": false,
+   "_doc": "чемерица: яд и рвотное; лекарь или отравитель, судят по поступку"
+  },
+  {
+   "id": "ramsons",
+   "stand_m": 0.6,
+   "stock": {
+    "garlic": 6
+   },
+   "regrow": {
+    "garlic": 2
+   },
+   "regrow_every": 144,
+   "max_stock": {
+    "garlic": 6
+   },
+   "biomes": [
+    "forest"
+   ],
+   "per_km2": 6,
+   "owned": false,
+   "_doc": "черемша: дикий чеснок, от заражения ран и в еду"
+  },
+  {
+   "id": "hop_vine",
+   "stand_m": 0.7,
+   "stock": {
+    "hops": 5
+   },
+   "regrow": {
+    "hops": 1
+   },
+   "regrow_every": 288,
+   "max_stock": {
+    "hops": 5
+   },
+   "biomes": [
+    "forest",
+    "river"
+   ],
+   "per_km2": 3,
+   "owned": false,
+   "_doc": "хмель на опушке: эль дольше не киснет"
   }
  ]
 }

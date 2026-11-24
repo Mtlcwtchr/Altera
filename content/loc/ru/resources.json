@@ -702,5 +702,220 @@
  },
  "interaction.craft:arrows.name": "сделать: стрелы",
  "interaction.craft:longbow.name": "сделать: длинный лук",
- "interaction.craft:tallow_candle.name": "сделать: сальная свеча"
+ "interaction.craft:tallow_candle.name": "сделать: сальная свеча",
+ "item.hemp_fiber.name": {
+  "nom": "пенька",
+  "gen": "пеньки",
+  "dat": "пеньке",
+  "acc": "пеньку",
+  "ins": "пенькой",
+  "pre": "пеньке",
+  "g": "f"
+ },
+ "item.woad.name": {
+  "nom": "вайда",
+  "gen": "вайды",
+  "dat": "вайде",
+  "acc": "вайду",
+  "ins": "вайдой",
+  "pre": "вайде",
+  "g": "f"
+ },
+ "item.madder.name": {
+  "nom": "марена",
+  "gen": "марены",
+  "dat": "марене",
+  "acc": "марену",
+  "ins": "мареной",
+  "pre": "марене",
+  "g": "f"
+ },
+ "item.weld.name": {
+  "nom": "резеда",
+  "gen": "резеды",
+  "dat": "резеде",
+  "acc": "резеду",
+  "ins": "резедой",
+  "pre": "резеде",
+  "g": "f"
+ },
+ "item.poppy.name": {
+  "nom": "мак",
+  "gen": "мака",
+  "dat": "маку",
+  "acc": "мак",
+  "ins": "маком",
+  "pre": "маке",
+  "g": "m"
+ },
+ "item.hemlock.name": {
+  "nom": "болиголов",
+  "gen": "болиголова",
+  "dat": "болиголову",
+  "acc": "болиголов",
+  "ins": "болиголовом",
+  "pre": "болиголове",
+  "g": "m"
+ },
+ "item.hellebore.name": {
+  "nom": "чемерица",
+  "gen": "чемерицы",
+  "dat": "чемерице",
+  "acc": "чемерицу",
+  "ins": "чемерицей",
+  "pre": "чемерице",
+  "g": "f"
+ },
+ "item.garlic.name": {
+  "nom": "черемша",
+  "gen": "черемши",
+  "dat": "черемше",
+  "acc": "черемшу",
+  "ins": "черемшой",
+  "pre": "черемше",
+  "g": "f"
+ },
+ "item.hops.name": {
+  "nom": "хмель",
+  "gen": "хмеля",
+  "dat": "хмелю",
+  "acc": "хмель",
+  "ins": "хмелем",
+  "pre": "хмеле",
+  "g": "m"
+ },
+ "item.linden_flower.name": {
+  "nom": "липовый цвет",
+  "gen": "липового цвета",
+  "dat": "липовому цвету",
+  "acc": "липовый цвет",
+  "ins": "липовым цветом",
+  "pre": "липовом цвете",
+  "g": "m"
+ },
+ "item.nettle.name": {
+  "nom": "крапива",
+  "gen": "крапивы",
+  "dat": "крапиве",
+  "acc": "крапиву",
+  "ins": "крапивой",
+  "pre": "крапиве",
+  "g": "f"
+ },
+ "interaction.cut_hemp.name": "Нарезать конопли",
+ "interaction.pull_wild_flax.name": "Надёргать льна",
+ "interaction.gather_woad.name": "Нарвать вайды",
+ "interaction.dig_madder.name": "Накопать марены",
+ "interaction.gather_weld.name": "Нарвать резеды",
+ "interaction.gather_poppy.name": "Собрать мак",
+ "interaction.gather_hemlock.name": "Срезать болиголов",
+ "interaction.dig_hellebore.name": "Выкопать чемерицу",
+ "interaction.gather_ramsons.name": "Нарвать черемши",
+ "interaction.pick_hops.name": "Собрать хмель",
+ "interaction.pick_linden_flowers.name": "Собрать липовый цвет",
+ "interaction.pick_nettle_leaves.name": "Нарвать крапивы",
+ "object.wild_hemp.name": {
+  "nom": "конопляник",
+  "gen": "конопляника",
+  "dat": "коноплянику",
+  "acc": "конопляник",
+  "ins": "конопляником",
+  "pre": "коноплянике",
+  "g": "m"
+ },
+ "object.dye_meadow.name": {
+  "nom": "красильный луг",
+  "gen": "красильного луга",
+  "dat": "красильному лугу",
+  "acc": "красильный луг",
+  "ins": "красильным лугом",
+  "pre": "красильном лугу",
+  "g": "m"
+ },
+ "object.poppy_patch.name": {
+  "nom": "маковая поляна",
+  "gen": "маковой поляны",
+  "dat": "маковой поляне",
+  "acc": "маковую поляну",
+  "ins": "маковой поляной",
+  "pre": "маковой поляне",
+  "g": "f"
+ },
+ "object.hemlock_stand.name": {
+  "nom": "заросли болиголова",
+  "gen": "зарослей болиголова",
+  "dat": "зарослям болиголова",
+  "acc": "заросли болиголова",
+  "ins": "зарослями болиголова",
+  "pre": "зарослях болиголова",
+  "g": "pl"
+ },
+ "object.hellebore_patch.name": {
+  "nom": "чемерица",
+  "gen": "чемерицы",
+  "dat": "чемерице",
+  "acc": "чемерицу",
+  "ins": "чемерицей",
+  "pre": "чемерице",
+  "g": "f"
+ },
+ "object.ramsons.name": {
+  "nom": "черемша",
+  "gen": "черемши",
+  "dat": "черемше",
+  "acc": "черемшу",
+  "ins": "черемшой",
+  "pre": "черемше",
+  "g": "f"
+ },
+ "object.hop_vine.name": {
+  "nom": "хмельник",
+  "gen": "хмельника",
+  "dat": "хмельнику",
+  "acc": "хмельник",
+  "ins": "хмельником",
+  "pre": "хмельнике",
+  "g": "m"
+ },
+ "interaction.craft:blue_tunic.name": "сделать: синяя рубаха",
+ "interaction.craft:red_cloak.name": "сделать: красный плащ",
+ "interaction.craft:yellow_cloth.name": "сделать: жёлтое полотно",
+ "interaction.craft:hemp_rope.name": "сделать: пеньковая верёвка",
+ "interaction.craft:hellebore_poison.name": "сделать: яд из чемерицы",
+ "interaction.craft:linden_tea.name": "сделать: липовый чай",
+ "material.hemp_fiber.name": {
+  "nom": "пенька",
+  "g": "f"
+ },
+ "material.hemp_fiber.made": "пеньков{form:g|ый|ая|ое|ые} {form}",
+ "material.woad.name": {
+  "nom": "вайда",
+  "g": "f"
+ },
+ "material.woad.made": "{form}, крашенн{form:g|ый|ая|ое|ые} вайдой",
+ "material.madder.name": {
+  "nom": "марена",
+  "g": "f"
+ },
+ "material.madder.made": "{form}, крашенн{form:g|ый|ая|ое|ые} мареной",
+ "material.weld.name": {
+  "nom": "резеда",
+  "g": "f"
+ },
+ "material.weld.made": "{form}, крашенн{form:g|ый|ая|ое|ые} резедой",
+ "material.hellebore.name": {
+  "nom": "чемерица",
+  "g": "f"
+ },
+ "material.hellebore.made": "{form} из чемерицы",
+ "material.hops.name": {
+  "nom": "хмель",
+  "g": "m"
+ },
+ "material.hops.made": "хмелев{form:g|ой|ая|ое|ые} {form}",
+ "material.linden_flower.name": {
+  "nom": "липовый цвет",
+  "g": "m"
+ },
+ "material.linden_flower.made": "{form} из липового цвета"
 }

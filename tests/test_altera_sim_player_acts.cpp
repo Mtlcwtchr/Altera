@@ -196,8 +196,14 @@ TEST(altera_sim_talk_unwilling_person_says_no) {
     r.affinity = -1.0;
     r.enmity = 1.0;
     r.fear = 1.0;
-    holdResting(w, *other);
-    const Tick t0 = talkTo(w, *me, *other, "chat", 6);
+    // the yes is a roll against a floor of the chance: a lucky yes is talked out and asked again
+    Tick t0 = 0;
+    for (int k = 0; k < 4; ++k) {
+        holdResting(w, *other);
+        t0 = talkTo(w, *me, *other, "chat", 6);
+        if (hasTrace(*me, t0, "social.refused")) break;
+        for (int i = 0; i < 40 && (me->ai.social.active() || me->ai.goal.valid()); ++i) w.step();
+    }
     CHECK(hasTrace(*me, t0, "social.refused"));
     const auto theirs = saidBy(*other, t0);
     CHECK(!theirs.empty());

@@ -200,8 +200,10 @@ TEST(altera_sim_realm_beast_bounty) {
     CHECK(q != nullptr);
     if (!q) return;
     const EntityId qid = q->id;
-    // a wanderer takes it and comes
+    // a wanderer takes it and comes (one on his way elsewhere turns back: the trip is set below)
     RealmFigure* f = aWanderer(s);
+    for (auto& ff : s.figures)
+        if (!f && ff.alive && ff.life == "road" && !ff.present && ff.captor == kNone) f = &ff;
     CHECK(f != nullptr);
     if (!f) return;
     const EntityId fid = f->id;
