@@ -492,7 +492,21 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             if (planned)
                 for (const auto& z : vplan.zones)
                     if (z.kind == "work:" + type) works = &z;
-            if (works && k == 0) p = works->rect.c;
+            // AL-84: things kept in the yards (rooms.json layout.in_yards: the hives),
+            // one to a home's yard, at its back corner
+            bool inYard = false;
+            if (planned)
+                for (const auto& y : scat.layout.value("in_yards", std::vector<std::string>{}))
+                    if (y == type) inYard = true;
+            std::vector<const VillageLot*> homeLots;
+            if (inYard)
+                for (std::size_t i = 0; i < vplan.lots.size() && i < builds.size(); ++i)
+                    if (vplan.lots[i].placed && builds[i].def && builds[i].def->home) homeLots.push_back(&vplan.lots[i]);
+            if (inYard && !homeLots.empty()) {
+                const std::size_t i = (std::size_t(k) * 3 + 1) % homeLots.size();   // spread over the village
+                const PlanRect& Y = homeLots[i]->yard;
+                p = Y.at((k % 2 ? 1.0 : -1.0) * std::max(0.0, Y.hw - 1.5), -std::max(0.0, Y.hd - 1.5));
+            } else if (works && k == 0) p = works->rect.c;
             else if (planned && type == scat.layout.value("square_centre", std::string()) && k == 0) p = vplan.square;   // AL-84: the well in the middle
             else if (planned && squareSpot < vplan.squareSpots.size()) p = vplan.squareSpots[squareSpot++];
             spawnSettlementObject(type, p, kNone);

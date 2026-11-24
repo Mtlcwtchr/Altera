@@ -161,7 +161,8 @@ TEST(altera_sim_realm_wanderer_comes_as_himself) {
     g->travelTo = s.local()->id;
     g->arrive = w.day() + 1;
     saveRealm(w, s);
-    days(w, 2);
+    // checked on the day he is in (a short stay may already be over a day later)
+    for (int i = 0; i < 3 && !w.character(id); ++i) days(w, 1);
     c = w.character(id);
     CHECK(c != nullptr);
     if (!c) return;
