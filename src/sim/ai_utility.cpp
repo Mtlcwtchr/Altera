@@ -42,6 +42,12 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
         }
         return clamp01(homeFoodDays(w, c) / (norm + lean));
     }
+    if (subj == "home_food_spare") {
+        // AL-93: food beyond what the household eats until the next harvest of
+        // its bread, in days per member, against `norm`: what can go into ale
+        // and feasts without eating next spring's bread.
+        return clamp01((homeFoodDays(w, c) - daysToStapleHarvest(w)) / norm);
+    }
     if (subj == "season") return w.season() == key ? 1.0 : 0.0;
     if (const std::string crop = cropSubjectType(w.content(), subj); !crop.empty())
         return clamp01(farmValue(w, c, nullptr, key, crop) / norm);

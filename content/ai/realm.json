@@ -211,8 +211,9 @@
   "harvest_mean": 1.0,
   "harvest_sd": 0.28,
   "harvest_local_sd": 0.12,
-  "year_yield_days": 400,
-  "food_cap_days": 420,
+  "year_yield_days": 480,
+  "food_cap_days": 540,
+  "_doc_yield": "AL-93: обычный год даёт поселению с land 1.0 запас на 480 дней при 360 съеденных, и держать можно до 540: голод - только после неурожая или двух слабых лет подряд, а не от каждого года чуть ниже среднего (было 400/420)",
   "growth_per_year": 0.025,
   "famine_death_per_day": 0.004,
   "famine_unrest_per_day": 0.012,
@@ -289,8 +290,9 @@
   "defender_bonus": 1.25,
   "reparation_share": 0.3,
   "defeat_unrest": 0.06,
-  "raid_gap_days": 15,
-  "village_raid_gap_days": 35
+  "raid_gap_days": 90,
+  "village_raid_gap_days": 90,
+  "_doc_raid_gap": "AL-93: одно поселение (любое, наше тоже) грабят не чаще раза в 90 дней: при 15/35 днях лагерь брал 8-25% всех запасов деревни каждый месяц, за год уходило полурожая, и голод был каждую зиму без всякой войны"
  },
  "succession": {
   "adult_years": 16,
@@ -320,7 +322,7 @@
   "found_unrest": 0.5,
   "outlaws_from_unrest": 0.02,
   "starve_desert": 0.02,
-  "same_target_gap_days": 40,
+  "same_target_gap_days": 90,
   "found_template": "bandit_camp"
  },
  "figures": {

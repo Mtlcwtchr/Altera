@@ -240,6 +240,45 @@ double pastSeasonYield(const World& w, const WorldObject& field, int year) {
     return cropYield(w, f);
 }
 
+// AL-93: a household works as much land as it has mouths. Worldgen and a
+// settling family size the plots by the people then; the family grows (births,
+// marriages, kin taking in), so between the harvest and the sowing - nothing
+// standing, nothing tilled - the plot is taken up (or let go) to the eaters it
+// feeds now. The seed for the new strips is put aside from the harvest by the
+// usual seed_need. Strips per person are the crop's strips_per_person (the
+// worldgen default otherwise), the same draw per plot every year.
+void fitToHousehold(World& w, WorldObject& o, const CropDef& cd) {
+    auto f = w.families().find(o.ownerFamily);
+    if (f == w.families().end()) return;
+    int people = 0;
+    for (EntityId m : f->second.members)
+        if (const Character* c = w.character(m); c && c->body.alive) ++people;
+    if (people <= 0) return;
+    int plots = 0;
+    forEachField(w, [&](const WorldObject& other, const CropDef&) {
+        if (other.ownerFamily == o.ownerFamily) ++plots;
+    }, o.type);
+    const double lo = cd.stripsLo >= 0.0 ? cd.stripsLo : 6.0;
+    const double hi = cd.stripsHi >= 0.0 ? cd.stripsHi : 8.0;
+    Rng fr(hashCombine(w.seed(), hashCombine(static_cast<std::uint64_t>(o.id), hashStr("field_fit"))));
+    const int want = std::max(1, static_cast<int>(std::round(people * fr.range(lo, hi) / std::max(1, plots))));
+    o.stock["strips"] = want;
+}
+
+int daysToStapleHarvest(const World& w) {
+    const int doy = dayOfYear(w);
+    int best = 0;
+    for (const auto& [type, def] : w.content().objects) {
+        if (!def.hasCrop || !def.crop.staple || !def.settlement) continue;
+        const CropDef& cd = def.crop;
+        const int sowLen = (cd.sowTo - cd.sowFrom + kDaysPerYear) % kDaysPerYear + 1;
+        const int harvest = (cd.sowFrom + sowLen / 2 + cd.growDays) % kDaysPerYear;
+        const int d = (harvest - doy + kDaysPerYear) % kDaysPerYear;
+        best = best == 0 ? d : std::min(best, d);
+    }
+    return best;
+}
+
 void cropsDaily(World& w) {
     const int doy = dayOfYear(w);
     const int epoch = w.startDay() + w.day();
@@ -251,6 +290,7 @@ void cropsDaily(World& w) {
         // Tilled ground nobody sowed goes back to weeds once the window closes.
         if (!window && s["tilled"] > 0) s["tilled"] = 0;
         const bool growing = s["sown"] > 0;
+        if (!growing && s["ripe"] <= 0 && s["tilled"] <= 0 && o.ownerFamily != kNone) fitToHousehold(w, o, crop);
         growDay(o, crop, sky);
         if (growing) {
             const int grown = s["grown"];

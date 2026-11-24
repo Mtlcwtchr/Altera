@@ -30,13 +30,97 @@
 
 using namespace altera::sim;
 
+namespace {
+// AL-93: one line of the village's food - stores, sacks, fields, gardens, the
+// hungry and the dead by cause - every N days of a run.
+void writeLedger(std::ostream& out, const World& w, bool header) {
+    const char* items[] = {"grain", "seed_grain", "sheaf", "vegetables", "seed_veg", "meal", "bread",
+                           "smoked_fish", "dried_meat", "meat", "fish", "cheese", "dried_berries", "hazelnuts", "roots"};
+    const char* fieldKeys[] = {"strips", "tilled", "sown", "ripe"};
+    if (header) {
+        out << "day,year,doy,alive,children,hungry,starving,families,food_days_store,food_days_carried";
+        for (const char* i : items) out << ",st_" << i;
+        for (const char* t : {"field", "garden"})
+            for (const char* k : fieldKeys) out << "," << t << "_" << k;
+        out << ",dead,acts\n";
+    }
+    const Content& ct = w.content();
+    const NeedDef* hn = ct.need("hunger");
+    const double perDay = hn ? hn->decayPerDay : 0.55;
+    int alive = 0, children = 0, hungry = 0, starving = 0;
+    double carried = 0.0;
+    std::map<std::string, int> dead;
+    for (const auto& [id, c] : w.characters()) {
+        if (c.isAnimal()) continue;
+        if (!c.body.alive) { ++dead[c.body.causeOfDeath.empty() ? "?" : c.body.causeOfDeath]; continue; }
+        ++alive;
+        if (c.body.stage() == "child" || c.body.stage() == "infant") ++children;
+        if (c.need("hunger") < 0.3) ++hungry;
+        if (c.need("hunger") < 0.1) ++starving;
+        for (const auto& [item, n] : c.inventory) {
+            auto d = ct.items.find(item);
+            if (d != ct.items.end()) carried += d->second.nutrition * n;
+        }
+    }
+    std::map<std::string, long> st;
+    double store = 0.0;
+    int families = 0;
+    for (const auto& [fid, f] : w.families()) {
+        const WorldObject* h = w.object(f.storage);
+        if (!h) continue;
+        bool any = false;
+        for (EntityId m : f.members)
+            if (const Character* c = w.character(m); c && c->body.alive) any = true;
+        if (any) ++families;
+        for (const auto& [item, n] : h->stock) {
+            st[item] += n;
+            auto d = ct.items.find(item);
+            if (d != ct.items.end()) store += d->second.nutrition * n;
+        }
+    }
+    std::map<std::string, long> fk;
+    for (const auto& [oid, o] : w.objects()) {
+        if (o.type != "field" && o.type != "garden") continue;
+        for (const char* k : fieldKeys) {
+            auto it = o.stock.find(k);
+            if (it != o.stock.end()) fk[o.type + "_" + k] += it->second;
+        }
+    }
+    const int day = w.day();
+    const int doy = (w.startDay() + day) % kDaysPerYear;
+    const double eaters = std::max(1, alive) * perDay;
+    out << day << "," << day / kDaysPerYear + 1 << "," << doy << "," << alive << "," << children << "," << hungry << ","
+        << starving << "," << families << "," << store / eaters << "," << carried / eaters;
+    for (const char* i : items) out << "," << st[i];
+    for (const char* t : {"field", "garden"})
+        for (const char* k : fieldKeys) out << "," << fk[std::string(t) + "_" + k];
+    out << ",";
+    bool first = true;
+    for (const auto& [cause, n] : dead) out << (first ? "" : ";") << cause << ":" << n, first = false;
+    // What was done with food since the last line (interactions that move grain,
+    // seed and food), as id:count.
+    static std::map<std::string, long> last;
+    out << ",";
+    first = true;
+    for (const auto& [id, n] : interactionTally()) {
+        const long d = n - last[id];
+        if (d <= 0) continue;
+        out << (first ? "" : ";") << id << ":" << d, first = false;
+    }
+    last = interactionTally();
+    out << "\n";
+    out.flush();
+}
+} // namespace
+
 int main(int argc, char** argv) {
     std::string root = ALTERA_SIM_SOURCE_DIR;
     std::string contentDir = root + "/content/ai";
     std::string worldFile = root + "/content/sim/test_world.json";
     std::string locDir = root + "/content/loc";
     std::string lang = "ru";
-    std::string saveFile, reportFile, traceFile, chronicleFile, chronicleFilter;
+    std::string saveFile, reportFile, traceFile, chronicleFile, chronicleFilter, ledgerFile;
+    int ledgerEvery = 5;
     bool realmOnly = false;
     std::uint64_t seed = 0;
     int days = 3;
@@ -63,6 +147,8 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--chronicle")) chronicleFile = next();       // AL-85: the chronicle as text
         else if (!std::strcmp(argv[i], "--chronicle-only")) chronicleFilter = next(); // a code prefix, e.g. chronicle.realm.
         else if (!std::strcmp(argv[i], "--validate")) validateOnly = true;
+        else if (!std::strcmp(argv[i], "--ledger")) ledgerFile = next();            // AL-93: the village's food, day by day (csv)
+        else if (!std::strcmp(argv[i], "--ledger-every")) ledgerEvery = std::stoi(next());
         else if (!std::strcmp(argv[i], "--loc")) locDir = next();
         else if (!std::strcmp(argv[i], "--lang")) lang = next();
         else if (!std::strcmp(argv[i], "--dialogue-corpus")) corpusCount = std::stoi(next());
@@ -143,6 +229,13 @@ int main(int argc, char** argv) {
                     if (!c.isAnimal() && c.body.alive) c.needs["hunger"] = 1.0, c.needs["thirst"] = 1.0;
                 world.run(kTicksPerDay);
                 realmDaily(world);
+            }
+        } else if (!ledgerFile.empty()) {
+            installAi(world);
+            std::ofstream led(ledgerFile);
+            for (int d = 0; d < days; ++d) {
+                world.run(kTicksPerDay);
+                if (d % std::max(1, ledgerEvery) == 0 || d + 1 == days) writeLedger(led, world, d == 0);
             }
         } else {
             installAi(world);

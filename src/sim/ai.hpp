@@ -117,8 +117,14 @@ double careValue(const World& w, const Character& carer, const std::string& key)
 double charityValue(const World& w, const Character& giver, const Character* target, const std::string& key);
 // Food left in a household store, in days per member (items' nutrition).
 double homeFoodDays(const World& w, const Character& c);
+// AL-93: days from today to the next harvest of the staple crop (the settlement
+// field's sowing window + grow_days); 0 when no staple crop is defined.
+int daysToStapleHarvest(const World& w);
 // Daily spoilage of perishable food (items' spoil_days) in packs and stores.
 void spoilFood(World& w);
+// AL-93, diagnostics for the runner's ledger: how many times each interaction
+// applied its effects in this process (all worlds). Never read by the sim.
+std::map<std::string, long>& interactionTally();
 // Applies `eff` once (a continuous interaction calls it every tick), after the
 // `chance` roll (on_fail instead of eff when it fails), then the `risk` rolls.
 // `targetChar` is the target character of character-targeted interactions
