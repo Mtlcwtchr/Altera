@@ -85,9 +85,10 @@ struct VillageLayout {
     double stripLo = 14.0, stripHi = 26.0;   // the strip's width
     int spareLots = 2;                 // empty lots left along the streets for new households
     struct Common {
-        std::string kind;              // cemetery | pasture | woodlot
-        std::string by;                // behind:<recipe> | water | wood
+        std::string kind;              // cemetery | pasture | woodlot | work:<object> (a smoky works out of the village)
+        std::string by;                // behind:<recipe> | water | wood | downwind (several: "wood,downwind")
         double w = 20, d = 20;
+        double awayFromHomes = 0;      // AL-84: metres it keeps off every house
     };
     std::vector<Common> commons;
     static VillageLayout fromJson(const Json& j);

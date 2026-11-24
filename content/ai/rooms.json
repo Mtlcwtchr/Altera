@@ -51,13 +51,15 @@
   "yard_d": 10.0,
   "fence": "fence",
   "layout": {
-   "_doc": "AL-84: how the village is laid out (src/sim/village_plan.cpp). Houses stand in rows along the streets (row_bonus: metres a lot gives up to stand by a neighbour; row_gap between them); the main road goes on out both ways (road_out; the way in faces the world); a nuisance trade keeps nuisance_r off the quiet houses and the square; fields are strips behind the yards (field_area m2, strip_w); footpaths of path_w from the doors to the street and from the yard gates to the fields; spare_lots kept free for new households; square_centre stands in the middle of the square; commons by: behind:<recipe> | water | wood. A house's site: water / wood / entrance = metres nearer the square it gives for a metre nearer that; downwind = further downwind of wind_from_deg; nuisance / quiet.",
+   "_doc": "AL-84: how the village is laid out (src/sim/village_plan.cpp). Houses stand in rows along the streets (row_bonus: metres a lot gives up to stand by a neighbour; row_gap between them); the main road goes on out both ways (road_out; the way in faces the world); a nuisance trade keeps nuisance_r off the quiet houses and the square; fields are strips behind the yards (field_area m2, strip_w); footpaths of path_w from the doors to the street and from the yard gates to the fields; spare_lots kept free for new households; square_centre stands in the middle of the square; commons by: behind:<recipe> | water | wood | downwind (or several, comma-separated); a work:<object> common is a smoky works out of the village (away_from_homes metres off every house) where that per_settlement object stands. A house's site: water / wood / entrance = metres nearer the square it gives for a metre nearer that; downwind = further downwind of wind_from_deg; nuisance / quiet.",
    "wind_from_deg": 270, "road_out": true, "row_bonus": 18, "row_gap": 3, "nuisance_r": 40, "path_w": 1.4,
    "field_area": 1200, "strip_w": [14, 26], "spare_lots": 2, "square_centre": "well",
    "commons": [
     {"kind": "cemetery", "by": "behind:chapel", "w": 14, "d": 12},
     {"kind": "pasture", "by": "water", "w": 60, "d": 40},
-    {"kind": "woodlot", "by": "wood", "w": 50, "d": 40}
+    {"kind": "woodlot", "by": "wood", "w": 50, "d": 40},
+    {"kind": "work:charcoal_clamp", "by": "wood,downwind", "w": 10, "d": 10, "away_from_homes": 45},
+    {"kind": "work:lime_kiln", "by": "downwind", "w": 8, "d": 8, "away_from_homes": 45}
    ]
   }
  },
