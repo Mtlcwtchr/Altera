@@ -21,6 +21,7 @@
 #include <ws2tcpip.h>
 #include <windows.h>
 #include <shellapi.h>
+#undef near  // minwindef.h defines near as an empty macro; the code names variables near
 using socket_t = SOCKET;
 #define CLOSESOCK closesocket
 #else
