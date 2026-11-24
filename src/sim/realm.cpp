@@ -1127,6 +1127,31 @@ void economyDaily(Ctx& x) {
     }
 }
 
+// Grain trade: once a month the hungry buy from the full, if they have the coin and are not at war.
+void grainTrade(Ctx& x) {
+    const double buyBelow = num(x.r.eco, "buy_below_days", 60), sellAbove = num(x.r.eco, "sell_above_days", 150);
+    const double price = num(x.r.eco, "grain_price", 0.05), share = num(x.r.eco, "trade_share", 0.25);
+    for (auto& b : x.s.polities) {
+        if (b.ruined || b.settlement != kNone || kindOf(x.r, b).livesByRaids) continue;
+        if ((x.day + static_cast<int>(b.id)) % 30 != 0 || b.food >= b.pop * buyBelow) continue;
+        RealmPolity* best = nullptr;
+        for (auto& s : x.s.polities) {
+            if (s.ruined || s.id == b.id || s.settlement != kNone || kindOf(x.r, s).livesByRaids) continue;
+            if (s.food <= s.pop * sellAbove || warBetween(x, b.id, s.id) || x.s.view(s.id, b.id).grudge() > 0.6) continue;
+            if (!best || s.food / heads(s) > best->food / heads(*best)) best = &s;
+        }
+        if (!best) continue;
+        const double want = b.pop * buyBelow - b.food;
+        const double spare = (best->food - best->pop * sellAbove) * share;
+        const double qty = std::min({want, spare, std::max(0.0, b.wealth) / price});
+        if (qty < b.pop * 5) continue;
+        b.food += qty, best->food -= qty;
+        b.wealth -= qty * price, best->wealth += qty * price;
+        x.s.view(b.id, best->id).opinion = std::min(1.0, x.s.view(b.id, best->id).opinion + 0.03);
+        ++x.s.stats["grain_trade"];
+    }
+}
+
 // --- figures: life and death ----------------------------------------------------------------
 
 void succession(Ctx& x, RealmPolity& p, const std::string& why);
@@ -2684,6 +2709,7 @@ void realmDaily(World& w) {
         localNeeds(x, *l);
     }
     economyDaily(x);
+    grainTrade(x);
     figuresDaily(x);
     notables(x);
     lifestyle(x);
