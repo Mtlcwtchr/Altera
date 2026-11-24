@@ -1,4 +1,5 @@
 #include "sim/craft_sim.hpp"
+#include "sim/memory_budget.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -100,6 +101,8 @@ std::string signatureOf(const Item& it) {
 void afterSuccess(World& w, Character& c, Item& made, CraftOutcome& out) {
     const CraftData& d = w.content().craft;
     if (made.form.empty()) return; // an intermediate: nothing to remember yet
+    // AL-83: a chain longer than the book holds is not written down
+    if (static_cast<int>(stepsOf(made).size()) > memoryBudget(w.content()).maxRecipeSteps) return;
     const std::string sig = signatureOf(made);
     int& tried = c.craft.tried[sig];
     const bool known = c.craft.book.find(sig) != nullptr;

@@ -1,0 +1,9 @@
+{
+ "_doc": "AL-83: memory budget. Each pool has a world total; a living person gets total / people clamped to [per_min, per_max], so the more people, the less each keeps. Trimmed daily: memories by salience (oldest first), recipes by worth (masters, breakthroughs, the player's named ones are kept), craft novelty counters by count. said = SaidMemory (what was said, for cooldowns): per person x people is the world cap, older than said_keep_days goes. A crafted chain longer than max_recipe_steps is not written to the book.",
+ "memories": {"total": 40000, "per_min": 40, "per_max": 200},
+ "recipes": {"total": 4000, "per_min": 16, "per_max": 120},
+ "tried": {"total": 8000, "per_min": 32, "per_max": 240},
+ "said": {"total": 60000, "per_min": 200, "per_max": 2000},
+ "said_keep_days": 90,
+ "max_recipe_steps": 24
+}

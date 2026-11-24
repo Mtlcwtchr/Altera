@@ -1,4 +1,5 @@
 #include "sim/world.hpp"
+#include "sim/memory_budget.hpp"
 
 #include <algorithm>
 #include <stdexcept>
@@ -455,6 +456,8 @@ Json World::toJson() const {
     for (const auto& [id, s] : settlements_) sets.push_back(s);
     Json pcs = Json::array();
     for (const auto& [id, p] : pieces_) pcs.push_back(p);
+    Json memEvents; // AL-83: what several people remember of one event is written once
+    Json sharedChars = sharedMemoryJson(std::move(chars), memEvents);
     return Json{{"format", "altera.sim.world/1"},
                 {"seed", seed_},
                 {"tick", tick_},
@@ -463,7 +466,8 @@ Json World::toJson() const {
                 {"next_cmd_seq", nextCmdSeq_},
                 {"next_id", nextId_},
                 {"map", map_},
-                {"characters", chars},
+                {"characters", sharedChars},
+                {"memory_events", memEvents},
                 {"objects", objs},
                 {"families", fams},
                 {"dynasties", dyns},
@@ -489,7 +493,9 @@ void World::loadJson(const Json& j) {
     nextId_ = j.at("next_id").get<EntityId>();
     map_ = j.at("map").get<MapGrid>();
     chars_.clear();
-    for (const auto& cj : j.at("characters")) {
+    Json charsJ = j.at("characters");
+    if (j.contains("memory_events")) expandSharedMemory(charsJ, j["memory_events"]);
+    for (const auto& cj : charsJ) {
         Character c = cj.get<Character>();
         chars_.emplace(c.id, std::move(c));
     }
