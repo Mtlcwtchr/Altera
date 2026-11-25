@@ -268,9 +268,9 @@ TEST(lr_alchemy_drinking_in_the_sim) {
     CHECK(c->craft.items.back().rune.charge < c->craft.items.back().rune.capacity);
 }
 
-TEST(altera_alchemy_runes_fire_through_magic) {
+TEST(lr_alchemy_runes_fire_through_magic) {
     const Content& ct = alcContent();
-    Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    Json cfg = loadJsonFile(std::string(LR_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
     World w = makeTestWorld(ct, cfg);
     installAi(w);
     std::vector<Character*> people;
@@ -297,9 +297,9 @@ TEST(altera_alchemy_runes_fire_through_magic) {
     // bond- on the holder drains the rune, bond+ feeds it back
     const int idx = static_cast<int>(holder.craft.items.size()) - 1;
     const double before = holder.craft.items[static_cast<size_t>(idx)].rune.charge;
-    applyAspectsTo(w, holder, {altera::sim::AspectDose{"bond", '-', 1.0}}, holder.id);
+    applyAspectsTo(w, holder, {lr::sim::AspectDose{"bond", '-', 1.0}}, holder.id);
     const double drained = holder.craft.items[static_cast<size_t>(idx)].rune.charge;
     CHECK(drained < before);
-    applyAspectsTo(w, holder, {altera::sim::AspectDose{"bond", '+', 1.0}}, holder.id);
+    applyAspectsTo(w, holder, {lr::sim::AspectDose{"bond", '+', 1.0}}, holder.id);
     CHECK(holder.craft.items[static_cast<size_t>(idx)].rune.charge > drained);
 }

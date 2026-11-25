@@ -27,13 +27,13 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-LAYER = "VK_LAYER_ALTERA_gpu_profile"
+LAYER = "VK_LAYER_LR_gpu_profile"
 
 
 def find_layer(explicit):
     if explicit:
         return Path(explicit)
-    manifests = sorted(ROOT.glob("cmake-build-*/VK_LAYER_ALTERA_gpu_profile.json"),
+    manifests = sorted(ROOT.glob("cmake-build-*/VK_LAYER_LR_gpu_profile.json"),
                        key=lambda p: p.stat().st_mtime, reverse=True)
     if not manifests:
         sys.exit("no built layer found: build the lr_gpu_layer target, or pass --layer-dir")

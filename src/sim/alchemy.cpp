@@ -77,10 +77,10 @@ AspectUse applyAspectDoses(World& w, Character& c, const std::vector<CDose>& dos
     u.doses = doses;
     // the magic core (AL-116): the doses act as a spell on self, without mana or knowledge
     if (magicRules(w.content()).loaded) {
-        std::vector<altera::sim::AspectDose> md;
+        std::vector<lr::sim::AspectDose> md;
         for (const auto& a : doses) md.push_back({a.aspect, a.vec, a.power});
         const double h0 = c.body.health, f0 = c.body.fatigue;
-        altera::sim::applyAspectsTo(w, c, md, c.id);
+        lr::sim::applyAspectsTo(w, c, md, c.id);
         u.health = c.body.health - h0;
         u.fatigue = c.body.fatigue - f0;
         return u;
@@ -232,7 +232,7 @@ AspectUse fireRune(World& w, Character& holder, int index, const CastTarget& at)
     const std::string form = at.who != kNone ? "touch" : (at.hasPos ? "area" : "aura");
     CastTarget t = at;
     if (t.who == kNone && !t.hasPos) t.who = holder.id;
-    altera::sim::castStored(w, &holder, runeSpell(u.doses, form), t, power);
+    lr::sim::castStored(w, &holder, runeSpell(u.doses, form), t, power);
     return u;
 }
 

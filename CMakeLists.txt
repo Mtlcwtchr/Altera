@@ -749,11 +749,11 @@ if(ASR_BUILD_CLIENT)
         add_library(lr_gpu_layer SHARED tools/gpu_profiler/lr_gpu_layer.cpp)
         target_include_directories(lr_gpu_layer PRIVATE "${sdl3_SOURCE_DIR}/src/video/khronos")
         set_target_properties(lr_gpu_layer PROPERTIES PREFIX "")
-        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:lr_gpu_layer>/VK_LAYER_ALTERA_gpu_profile.json" CONTENT
+        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:lr_gpu_layer>/VK_LAYER_LR_gpu_profile.json" CONTENT
 "{
     \"file_format_version\": \"1.2.0\",
     \"layer\": {
-        \"name\": \"VK_LAYER_ALTERA_gpu_profile\",
+        \"name\": \"VK_LAYER_LR_gpu_profile\",
         \"type\": \"GLOBAL\",
         \"library_path\": \"./$<TARGET_FILE_NAME:lr_gpu_layer>\",
         \"api_version\": \"1.3.0\",

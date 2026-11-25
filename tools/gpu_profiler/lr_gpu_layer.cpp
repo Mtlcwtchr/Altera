@@ -44,7 +44,7 @@
 
 namespace {
 
-constexpr const char* kLayerName = "VK_LAYER_ALTERA_gpu_profile";
+constexpr const char* kLayerName = "VK_LAYER_LR_gpu_profile";
 constexpr std::uint32_t kSliceSize = 1024;   // timestamps a command buffer can hold
 constexpr std::uint32_t kSlices = 128;       // command buffers measured at once
 
