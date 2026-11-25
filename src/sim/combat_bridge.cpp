@@ -1,4 +1,5 @@
 #include "sim/combat_bridge.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -19,14 +20,14 @@ const CombatBridge* combatBridge(const Content& c) {
     static std::map<std::string, std::unique_ptr<CombatBridge>> cache; // by content dir; null = off
     if (c.dir.empty()) return nullptr;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return it->second.get();
     std::unique_ptr<CombatBridge> b;
     const fs::path dir = fs::path(c.dir) / ".." / "combat";
-    if (fs::exists(dir / "combat_config.json") && fs::exists(dir / "sim_bridge.json")) {
+    if (data::exists(dir / "combat_config.json") && data::exists(dir / "sim_bridge.json")) {
         b = std::make_unique<CombatBridge>();
         b->data = std::make_shared<combat::CombatData>(combat::CombatData::load(dir.string()));
-        std::ifstream f(dir / "sim_bridge.json", std::ios::binary);
+        data::InFile f(dir / "sim_bridge.json", std::ios::binary);
         const Json j = Json::parse(f);
         const auto& d = *b->data;
         std::vector<std::string> err;
@@ -72,25 +73,25 @@ const CombatBridge* combatBridge(const Content& c) {
         if (!d.hasWeapon(b->animalWeapon)) err.push_back("sim_bridge.animal.weapon: unknown weapon '" + b->animalWeapon + "'");
         for (const char* o : {"win", "lose", "draw", "flee"})
             if (!b->memory.count(o)) err.push_back(std::string("sim_bridge.memory: no type for '") + o + "'");
-        if (fs::exists(dir / "recovery.json")) {
-            std::ifstream rf(dir / "recovery.json", std::ios::binary);
+        if (data::exists(dir / "recovery.json")) {
+            data::InFile rf(dir / "recovery.json", std::ios::binary);
             b->recovery = loadRecovery(Json::parse(rf), d, c, err);
         } else {
             err.push_back("recovery.json: missing next to sim_bridge.json");
         }
         for (const char* f : {"aftermath.json", "rescue.json"}) {
-            if (!fs::exists(dir / f)) {
+            if (!data::exists(dir / f)) {
                 err.push_back(std::string(f) + ": missing next to sim_bridge.json");
                 continue;
             }
-            std::ifstream af(dir / f, std::ios::binary);
+            data::InFile af(dir / f, std::ios::binary);
             const Json aj = Json::parse(af);
             if (std::string(f) == "aftermath.json") b->aftermath = loadAftermath(aj, c, err);
             else b->rescue = loadRescue(aj, c, err);
         }
         for (const char* f : {"group.json", "captivity.json"}) {
-            if (!fs::exists(dir / f)) continue; // optional: without them, duels only / no captivity follow-up
-            std::ifstream gf(dir / f, std::ios::binary);
+            if (!data::exists(dir / f)) continue; // optional: without them, duels only / no captivity follow-up
+            data::InFile gf(dir / f, std::ios::binary);
             const Json gj = Json::parse(gf);
             if (std::string(f) == "group.json") b->group = loadGroupRules(gj, c, err);
             else b->captivity = loadCaptivity(gj, c, err);
@@ -100,7 +101,7 @@ const CombatBridge* combatBridge(const Content& c) {
                 err.push_back("rescue.rescuers." + rr.id + ".treatment: unknown treatment '" + rr.treatment + "'");
         if (!err.empty()) throw combat::DataError(err);
     }
-    return (cache[c.dir] = std::move(b)).get();
+    return (cache[data::cacheKey(c.dir)] = std::move(b)).get();
 }
 
 combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const std::string& skillKey) {

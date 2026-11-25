@@ -1,6 +1,7 @@
 // The registry of truth at work: vouch, prove, the truth report (facts.hpp, AL-55).
 
 #include "sim/facts.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -113,12 +114,12 @@ const FactRules& factRules(const Content& c) {
     static const FactRules kDefaults;
     if (c.dir.empty()) return kDefaults;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<FactRules>();
     const fs::path p = fs::path(c.dir) / "consequences.json";
-    if (fs::exists(p)) {
-        std::ifstream f(p, std::ios::binary);
+    if (data::exists(p)) {
+        data::InFile f(p, std::ios::binary);
         const Json j = Json::parse(f).value("truth", Json::object());
         r->refuteMult = num(j, "refute_mult", r->refuteMult);
         r->dropBelow = num(j, "drop_below", r->dropBelow);
@@ -133,7 +134,7 @@ const FactRules& factRules(const Content& c) {
         r->proveAct = j.value("prove_act", r->proveAct);
     }
     auto* out = r.get();
-    cache[c.dir] = std::move(r);
+    cache[data::cacheKey(c.dir)] = std::move(r);
     return *out;
 }
 

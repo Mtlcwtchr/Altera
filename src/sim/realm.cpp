@@ -1,5 +1,6 @@
 // The realm (AL-85, AL-92): see realm.hpp and gdd/realm/REALM_v0.2_unified.md.
 #include "sim/realm.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -179,15 +180,15 @@ const RealmRules& realmRules(const Content& c) {
     static const RealmRules kOff;
     if (c.dir.empty()) return kOff;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<RealmRules>();
     const fs::path p = fs::path(c.dir) / "realm.json";
-    if (fs::exists(p)) {
-        std::ifstream in(p);
+    if (data::exists(p)) {
+        data::InFile in(p);
         *r = parseRules(Json::parse(in));
     }
-    return *cache.emplace(c.dir, std::move(r)).first->second;
+    return *cache.emplace(data::cacheKey(c.dir), std::move(r)).first->second;
 }
 
 void addRealmHook(RealmHook h) { hooks().push_back(std::move(h)); }
@@ -557,9 +558,15 @@ double realmStrength(const World& w, const RealmState& s, const Settlement& p) {
     const RealmRules& r = realmRules(w.content());
     Ctx x{const_cast<World&>(w), const_cast<RealmState&>(s), r, w.day()};
     const Axes a = rulerAxes(x, p);
-    double str = p.militia * (0.4 + p.morale) * (0.7 + 0.6 * a.martial);
+    // LR-142: the numbers are content (content/ai/formulas/realm.json); the code keeps the
+    // same rule as the fallback when no formula is given
+    const FormulaBook& fb = w.content().formulas;
+    double str = fb.evalArgs("realm_levy", {{"militia", p.militia}, {"morale", p.morale}, {"martial", a.martial}},
+                             p.militia * (0.4 + p.morale) * (0.7 + 0.6 * a.martial));
     for (EntityId m : mercsOf(x, p.id))
-        if (const Character* f = fig(x, m)) str += 4.0 * f->standing.martial * f->body.health;
+        if (const Character* f = fig(x, m))
+            str += fb.evalArgs("realm_mercenary", {{"martial", f->standing.martial}, {"health", f->body.health}},
+                               4.0 * f->standing.martial * f->body.health);
     // AL-114: a body worth an army (a grown dragon) counts by its kind's might
     if (w.content().peoples.loaded)
         for (const auto* pool : {&w.offstage(), &w.characters()})
@@ -571,7 +578,8 @@ double realmStrength(const World& w, const RealmState& s, const Settlement& p) {
         for (const auto& [id, f] : w.offstage())
             if (f.body.alive && f.status.settlement == p.id && f.standing.at == p.id && f.standing.role == "knight" &&
                 f.standing.captor == kNone)
-                str += 3.0 * f.standing.martial * f.body.health;
+                str += fb.evalArgs("realm_knight", {{"martial", f.standing.martial}, {"health", f.body.health}},
+                                   3.0 * f.standing.martial * f.body.health);
     return str;
 }
 

@@ -1,6 +1,7 @@
 // News and things worth telling (AL-111). See news.hpp.
 
 #include "sim/news.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -347,11 +348,11 @@ const NewsRules& newsRules(const Content& c) {
     static std::mutex mu;
     static std::map<std::string, std::unique_ptr<NewsRules>> cache;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<NewsRules>();
     if (!c.dir.empty()) {
-        std::ifstream f(std::filesystem::path(c.dir) / "news.json");
+        data::InFile f(std::filesystem::path(c.dir) / "news.json");
         if (f) {
             try {
                 *r = NewsRules::fromJson(Json::parse(f));
@@ -361,7 +362,7 @@ const NewsRules& newsRules(const Content& c) {
         }
     }
     auto* out = r.get();
-    cache[c.dir] = std::move(r);
+    cache[data::cacheKey(c.dir)] = std::move(r);
     return *out;
 }
 

@@ -2,6 +2,7 @@
 // output-time assembly of trace / report text (doc/design/LOC_FORMAT.md).
 
 #include "sim/dialogue_say.hpp"
+#include "sim/data_fs.hpp"
 #include "sim/loc.hpp"
 
 #include "sim/village_life.hpp"
@@ -83,15 +84,7 @@ void flatten(const std::string& prefix, const Json& j, std::map<std::string, Jso
     }
 }
 
-Json readJsonFile(const std::filesystem::path& p) {
-    std::ifstream f(p, std::ios::binary);
-    if (!f) throw std::runtime_error("cannot open " + p.string());
-    try {
-        return Json::parse(f);
-    } catch (const std::exception& e) {
-        throw std::runtime_error(p.string() + ": " + e.what());
-    }
-}
+Json readJsonFile(const std::filesystem::path& p) { return data::readJson(p.string()); }
 
 // --- UTF-8 <-> code points (name declension works on letters) ---------------
 std::u32string toU32(const std::string& s) {
@@ -301,14 +294,11 @@ Loc Loc::load(const std::string& dir) {
     for (const auto& lang : langs) {
         auto& t = l.tables_[lang];
         const fs::path ld = fs::path(dir) / lang;
-        if (!fs::is_directory(ld)) {
+        if (!data::isDir(ld)) {
             l.loadWarnings.push_back("loc: no directory for language '" + lang + "'");
             continue;
         }
-        std::vector<fs::path> files;
-        for (const auto& e : fs::directory_iterator(ld))
-            if (e.is_regular_file() && e.path().extension() == ".json") files.push_back(e.path());
-        std::sort(files.begin(), files.end()); // deterministic across file systems
+        std::vector<fs::path> files = data::listPaths(ld); // every layer's, sorted (deterministic)
         for (const auto& f : files) {
             const std::string fn = f.filename().string();
             if (!fn.empty() && fn[0] == '_') { // _grammar.json: rules, not keys

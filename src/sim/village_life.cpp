@@ -2,6 +2,7 @@
 
 #include "sim/gear.hpp"
 #include "sim/village_life.hpp"
+#include "sim/data_fs.hpp"
 #include "sim/world_reactions.hpp"
 
 #include <algorithm>
@@ -850,15 +851,15 @@ const VillageLifeRules& villageLifeRules(const Content& c) {
     static const VillageLifeRules kDefaults;
     if (c.dir.empty()) return kDefaults;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<VillageLifeRules>();
     const fs::path p = fs::path(c.dir) / "village_life.json";
-    if (fs::exists(p)) {
-        std::ifstream f(p, std::ios::binary);
+    if (data::exists(p)) {
+        data::InFile f(p, std::ios::binary);
         loadRules(*r, Json::parse(f));
     }
-    return *cache.emplace(c.dir, std::move(r)).first->second;
+    return *cache.emplace(data::cacheKey(c.dir), std::move(r)).first->second;
 }
 
 std::vector<std::string> checkVillageLife(const Content& c) {

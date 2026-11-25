@@ -2,6 +2,7 @@
 // criteria, content formats and their validator. See dialogue_gen.hpp.
 
 #include "sim/dialogue_gen.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -54,10 +55,9 @@ bool validKey(const std::string& k) {
 }
 
 Json readJson(const std::filesystem::path& p, std::vector<std::string>& errors) {
-    std::ifstream f(p);
-    if (!f) return Json();
+    if (!data::exists(p)) return Json();
     try {
-        return Json::parse(f);
+        return data::readJson(p.string());
     } catch (const std::exception& ex) {
         errors.push_back(p.filename().string() + ": " + ex.what());
         return Json();
@@ -426,11 +426,8 @@ DialogueGenData DialogueGenData::load(const std::string& contentDir) {
     Json noise = readJson(dir / "rumor_noise.json", errors);
     std::vector<Json> rules;
     const fs::path rdir = dir / "dialogue_rules";
-    if (fs::is_directory(rdir)) {
-        std::vector<fs::path> files;
-        for (const auto& ent : fs::directory_iterator(rdir))
-            if (ent.path().extension() == ".json") files.push_back(ent.path());
-        std::sort(files.begin(), files.end());
+    if (data::isDir(rdir)) {
+        std::vector<fs::path> files = data::listPaths(rdir);
         for (const auto& p : files) {
             Json j = readJson(p, errors);
             if (!j.is_object()) continue;
@@ -456,11 +453,11 @@ const MemoryPropMap* DialogueGenData::forMemory(const std::string& type) const {
 
 const DialogueGenData& dialogueGenData(const Content& c) {
     static std::map<std::string, std::unique_ptr<DialogueGenData>> cache;
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto d = std::make_unique<DialogueGenData>(c.dir.empty() ? DialogueGenData{} : DialogueGenData::load(c.dir));
     auto* out = d.get();
-    cache[c.dir] = std::move(d);
+    cache[data::cacheKey(c.dir)] = std::move(d);
     return *out;
 }
 

@@ -1,4 +1,5 @@
 #include "sim/memory_budget.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -49,11 +50,11 @@ const MemoryBudget& memoryBudget(const Content& c) {
     static std::mutex mu;
     static std::map<std::string, std::unique_ptr<MemoryBudget>> cache;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto b = std::make_unique<MemoryBudget>();
     if (!c.dir.empty()) {
-        std::ifstream f(std::filesystem::path(c.dir) / "memory_budget.json");
+        data::InFile f(std::filesystem::path(c.dir) / "memory_budget.json");
         if (f) {
             try {
                 *b = MemoryBudget::fromJson(Json::parse(f));
@@ -63,7 +64,7 @@ const MemoryBudget& memoryBudget(const Content& c) {
         }
     }
     auto* out = b.get();
-    cache[c.dir] = std::move(b);
+    cache[data::cacheKey(c.dir)] = std::move(b);
     return *out;
 }
 

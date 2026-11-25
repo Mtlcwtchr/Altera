@@ -2,6 +2,7 @@
 // Design: doc/design/DIALOGUE_GEN.md §4; contract: sim/dialogue_gen.hpp.
 
 #include "sim/dialogue_rules.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -211,13 +212,10 @@ std::vector<Json> readRuleFiles(const std::string& contentDir) {
     namespace fs = std::filesystem;
     std::vector<Json> files;
     const fs::path rdir = fs::path(contentDir) / "dialogue_rules";
-    if (contentDir.empty() || !fs::is_directory(rdir)) return files;
-    std::vector<fs::path> paths;
-    for (const auto& ent : fs::directory_iterator(rdir))
-        if (ent.path().extension() == ".json") paths.push_back(ent.path());
-    std::sort(paths.begin(), paths.end());
+    if (contentDir.empty() || !data::isDir(rdir)) return files;
+    std::vector<fs::path> paths = data::listPaths(rdir);
     for (const auto& p : paths) {
-        std::ifstream in(p);
+        data::InFile in(p);
         Json j = Json::parse(in, nullptr, false);
         if (j.is_discarded() || !j.is_object()) continue; // load() reports broken files
         j["_file"] = "dialogue_rules/" + p.filename().string();

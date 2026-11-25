@@ -1,4 +1,5 @@
 #include "sim/trade.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -264,18 +265,18 @@ const TradeRules* tradeRules(const Content& c) {
     static std::map<std::string, std::unique_ptr<TradeRules>> cache;
     if (c.dir.empty()) return nullptr;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return it->second.get();
     std::unique_ptr<TradeRules> r;
     const fs::path p = fs::path(c.dir) / "trade.json";
-    if (fs::exists(p)) {
-        std::ifstream f(p, std::ios::binary);
+    if (data::exists(p)) {
+        data::InFile f(p, std::ios::binary);
         r = std::make_unique<TradeRules>(parse(Json::parse(f)));
         for (const auto& [act, mode] : r->acts)
             if (!c.interactions.count(act)) throw std::runtime_error("trade.json: unknown act '" + act + "'");
     }
     const TradeRules* out = r.get();
-    cache[c.dir] = std::move(r);
+    cache[data::cacheKey(c.dir)] = std::move(r);
     return out;
 }
 

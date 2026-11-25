@@ -1,6 +1,7 @@
 // Memory -> meaning (AL-49, AL-38). See dialogue_memory.hpp.
 
 #include "sim/dialogue_memory.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -108,11 +109,11 @@ const RecallRules& recallRules(const Content& c) {
     static std::mutex mu;
     static std::map<std::string, std::unique_ptr<RecallRules>> cache;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<RecallRules>();
     if (!c.dir.empty()) {
-        std::ifstream f(std::filesystem::path(c.dir) / "dialogue_recall.json");
+        data::InFile f(std::filesystem::path(c.dir) / "dialogue_recall.json");
         if (f) {
             try {
                 *r = RecallRules::fromJson(Json::parse(f));
@@ -122,7 +123,7 @@ const RecallRules& recallRules(const Content& c) {
         }
     }
     auto* out = r.get();
-    cache[c.dir] = std::move(r);
+    cache[data::cacheKey(c.dir)] = std::move(r);
     return *out;
 }
 

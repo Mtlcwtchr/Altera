@@ -2,6 +2,7 @@
 #include <functional>
 #include "sim/gear.hpp"
 #include "sim/worldgen.hpp"
+#include "sim/data_fs.hpp"
 #include "sim/village_life.hpp"
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
@@ -17,7 +18,7 @@
 namespace lr::sim {
 
 Json loadJsonFile(const std::string& path) {
-    std::ifstream f(path, std::ios::binary);
+    data::InFile f(path, std::ios::binary);
     if (!f) throw std::runtime_error("cannot open " + path);
     return Json::parse(f);
 }

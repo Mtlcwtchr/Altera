@@ -9,12 +9,13 @@
 #include <stdexcept>
 
 #include "sim/content.hpp"
+#include "sim/data_fs.hpp"
 
 namespace lr::sim {
 namespace {
 
 Json readOpt(const std::string& path) {
-    std::ifstream f(path, std::ios::binary);
+    data::InFile f(path, std::ios::binary);
     if (!f) return Json::object();
     try {
         return Json::parse(f);
@@ -85,7 +86,7 @@ void mergeList(Json& base, const Json& overlay, const char* key, const char* wha
 ExpansionData mergeExpansion(const std::string& dir, Json& items, Json& objects, Json& needs, Json& traits,
                              Json& htn, Json& interactions, Json& config, Json& knowledge) {
     ExpansionData x;
-    if (!std::filesystem::is_directory(dir)) return x;
+    if (!data::isDir(dir)) return x;
     x.loaded = true;
     auto f = [&](const char* name) { return readOpt(dir + "/" + name); };
 

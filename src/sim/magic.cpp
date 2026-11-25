@@ -1,6 +1,7 @@
 // Magic of aspects, the undead and the paths out of grief (AL-116). See magic.hpp.
 
 #include "sim/magic.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -51,8 +52,8 @@ std::vector<MagicBodyHook>& bodyHooks() {
 
 // --- small helpers ------------------------------------------------------------
 Json readJson(const fs::path& p) {
-    if (!fs::exists(p)) return Json();
-    std::ifstream f(p, std::ios::binary);
+    if (!data::exists(p)) return Json();
+    data::InFile f(p, std::ios::binary);
     return Json::parse(f);
 }
 
@@ -290,11 +291,11 @@ const MagicRules& magicRules(const Content& c) {
     static const MagicRules kNone;
     if (c.dir.empty()) return kNone;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<MagicRules>();
     loadRules(*r, fs::path(c.dir).parent_path() / "magic");
-    return *cache.emplace(c.dir, std::move(r)).first->second;
+    return *cache.emplace(data::cacheKey(c.dir), std::move(r)).first->second;
 }
 
 std::vector<std::string> checkMagic(const Content& c) {
