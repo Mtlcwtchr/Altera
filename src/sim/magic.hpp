@@ -85,6 +85,7 @@ struct CopingStage {
     std::string id, act;
     int minDays = 1;
     double daily = 0.3;
+    bool quiet = false; // no chronicle line for this stage
     std::vector<CopingNext> next;
 };
 struct CopingTrouble {

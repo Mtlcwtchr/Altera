@@ -1,5 +1,5 @@
 {
- "_doc": "LivelyRealms §5.10 (AL-116): магия в ответах на беды. Беда (trouble) запускает путь из стадий; каждый день на стадии после min_days с шансом daily выбирается следующая по весам: w = base × Π traits[черта] × (knows|unknown по тому, знает ли человек о магии) × (1 + w_bond·сила связи) × (1 + w_honor·(честь−0.5)) × (1 + w_death·знание Смерти). do — что человек делает на стадии (словарь кода в magic.cpp: grieve, let_go, ask_around, seek_healer, speak_dead, study_forbidden, experiment, raise, keep, exposure, fall, plague, redeem, lich). Пусто в next = путь закончен. Не сценарий: только данные поверх обычных правил сима.",
+ "_doc": "LivelyRealms §5.10 (AL-116): магия в ответах на беды. Беда (trouble) запускает путь из стадий; каждый день на стадии после min_days с шансом daily выбирается следующая по весам: w = base × Π traits[черта] × (knows|unknown по тому, знает ли человек о магии) × (1 + w_bond·сила связи) × (1 + w_honor·(честь−0.5)) × (1 + w_death·знание Смерти). do — что человек делает на стадии (словарь кода в magic.cpp: grieve, let_go, ask_around, seek_healer, speak_dead, study_forbidden, experiment, raise, keep, exposure, fall, plague, redeem, lich). Пусто в next = путь закончен. Не сценарий: только данные поверх обычных правил сима. quiet: стадия не пишет в хронику (рутинные шаги вроде поиска лекаря для больного родича).",
  "troubles": {
   "kin_death": {
    "start": "grieve",
@@ -304,7 +304,8 @@
      "do": "let_go",
      "min_days": 0,
      "daily": 1.0,
-     "next": []
+     "next": [],
+     "quiet": true
     }
    }
   },
@@ -321,13 +322,15 @@
        "to": "let_go",
        "base": 1.0
       }
-     ]
+     ],
+     "quiet": true
     },
     "let_go": {
      "do": "let_go",
      "min_days": 0,
      "daily": 1.0,
-     "next": []
+     "next": [],
+     "quiet": true
     }
    }
   }

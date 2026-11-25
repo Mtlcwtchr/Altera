@@ -233,6 +233,7 @@ void loadRules(MagicRules& r, const fs::path& dir) {
                 s.act = st.value().value("do", s.id);
                 s.minDays = st.value().value("min_days", 1);
                 s.daily = st.value().value("daily", 0.3);
+                s.quiet = st.value().value("quiet", false);
                 for (const auto& n : st.value().value("next", Json::array())) {
                     CopingNext x;
                     x.to = n.value("to", "");
@@ -253,7 +254,7 @@ void loadRules(MagicRules& r, const fs::path& dir) {
         }
 }
 
-const char* kBodyKeys[] = {"health", "heal_wounds", "burn", "cold", "wet", "fire_out", "thirst", "push", "pull",
+const char* kBodyKeys[] = {"health", "cure_illness", "heal_wounds", "burn", "cold", "wet", "fire_out", "thirst", "push", "pull",
                            "fear", "calm", "charm", "confuse", "sleep", "fatigue", "wake", "mana", "dispel",
                            "poison", "cure_poison", "bleed", "undead_harm", "undead_heal", "raise", "speak_dead",
                            "lay_rest", "death_touch", "blink", "health_transfer", "strength", "breath"};
@@ -419,7 +420,10 @@ void setMagicOf(World& w, const Character& c, const MagicSelf& m) {
         for (const auto& e : m.book) b.push_back({{"spell", spellToJson(e.spell)}, {"mastery", e.mastery}, {"casts", e.casts}});
         j["book"] = b;
     }
-    state(w)["people"][idKey(c.id)] = j;
+    Json& rec = state(w)["people"][idKey(c.id)];
+    if (!rec.is_object()) rec = Json::object();
+    for (const char* k : {"aspects", "death_uses", "raised", "book"}) rec.erase(k); // written anew below when set
+    for (auto& [k, v] : j.items()) rec[k] = v; // other keys of the record (healed_day, maimed_seen) stay
 }
 
 bool isGifted(const World& w, const Character& c) { return c.hasTrait(magicRules(w.content()).giftTrait); }
@@ -520,6 +524,12 @@ bool applyBodyKey(World& w, Character& t, const std::string& key, double v, Char
         if (undead) return false; // life and death work the other way on the undead: undead_harm/undead_heal
         t.body.health = clamp01(t.body.health + v);
         if (v > 0) addMoodlet(w, t, "healed_by_magic");
+    } else if (key == "cure_illness") {
+        if (undead || v < 0.5) return false;
+        auto ill = std::find_if(t.moodlets.begin(), t.moodlets.end(),
+                                [&](const Moodlet& m) { return m.id.rfind("ill_", 0) == 0 && m.until > w.now(); });
+        if (ill == t.moodlets.end()) return false;
+        t.moodlets.erase(ill);
     } else if (key == "heal_wounds") {
         if (undead) return false;
         for (auto& wd : t.wounds) {
@@ -789,7 +799,7 @@ double learnAspect(World& w, Character& c, const std::string& aspect, double amo
         m.manaAt = w.now();
     }
     setMagicOf(w, c, m);
-    if (was < r.useMin && was + gain >= r.useMin)
+    if (was < r.useMin && was + gain >= r.useMin && how != "awaken")
         w.chronicle("magic", {c.id}, "chronicle.magic.learn", {{"who", c.id}, {"aspect", aspect}, {"how", how}});
     return gain;
 }
@@ -1035,6 +1045,10 @@ Spell simple(const std::string& aspect, char vec, const std::string& form, int p
 // A healer's cast at a distance of a day's errand: the healer goes to the patient.
 bool healOnce(World& w, Character& healer, Character& patient) {
     const MagicRules& r = magicRules(w.content());
+    Json& rec = state(w)["people"][idKey(patient.id)];
+    if (rec.is_object() && rec.value("healed_day", -1) == today(w)) return false; // one healing a day is enough
+    if (!rec.is_object()) rec = Json::object();
+    rec["healed_day"] = today(w);
     const Vec2 was = healer.pos;
     healer.pos = patient.pos; // the round: the healer comes to the patient
     CastTarget t;
@@ -1175,6 +1189,15 @@ double weightOf(const World& w, const Character& c, const CopingNext& n, double 
     return std::max(0.0, x);
 }
 
+void copingChronicle(World& w, const std::string& trouble, const std::string& stage, EntityId a, EntityId b) {
+    const MagicRules& r = magicRules(w.content());
+    auto t = r.troubles.find(trouble);
+    if (t == r.troubles.end()) return;
+    auto st = t->second.stages.find(stage);
+    if (st != t->second.stages.end() && st->second.quiet) return;
+    w.chronicle("magic", {a, b}, "chronicle.magic.coping." + trouble + "." + stage, {{"a", a}, {"b", b}});
+}
+
 void startTrouble(World& w, Character& c, const std::string& trouble, EntityId about, double bond) {
     const MagicRules& r = magicRules(w.content());
     auto t = r.troubles.find(trouble);
@@ -1184,8 +1207,7 @@ void startTrouble(World& w, Character& c, const std::string& trouble, EntityId a
     if (s["coping"].contains(key)) return; // one path at a time
     s["coping"][key] = {{"trouble", trouble}, {"about", about}, {"stage", t->second.start}, {"since", today(w)},
                         {"bond", bond}};
-    w.chronicle("magic", {c.id, about}, "chronicle.magic.coping." + trouble + "." + t->second.start,
-                {{"a", c.id}, {"b", about}});
+    copingChronicle(w, trouble, t->second.start, c.id, about);
 }
 
 Character* freshCorpseNear(World& w, const Character& c, EntityId except, double radius) {
@@ -1408,10 +1430,17 @@ void copingDaily(World& w) {
             bool ill = false;
             for (const auto& m : sick.moodlets) ill |= m.id.rfind("ill_", 0) == 0 && m.until > w.now();
             if (!ill) continue;
+            bool sought = false; // one of the kin is enough to go for a healer
+            for (auto it = s["coping"].begin(); it != s["coping"].end(); ++it)
+                sought |= it.value().value("trouble", "") == "ill_kin" && it.value().value("about", kNone) == id;
+            if (sought) continue;
             for (auto& [oid, c] : w.characters())
                 if (oid != id && c.body.alive && !c.isAnimal() && !isUndead(c) && !c.controller.isPlayer()) {
                     const double bond = bondOf(c, sick);
-                    if (bond >= r.troubles.at("ill_kin").bondMin) startTrouble(w, c, "ill_kin", id, bond);
+                    if (bond >= r.troubles.at("ill_kin").bondMin && !s["coping"].contains(idKey(oid))) {
+                        startTrouble(w, c, "ill_kin", id, bond);
+                        break;
+                    }
                 }
         }
     // walk the paths
@@ -1444,8 +1473,7 @@ void copingDaily(World& w) {
         const std::string after = s["coping"][key].value("stage", "");
         if (after != stage) {
             s["coping"][key]["since"] = today(w);
-            w.chronicle("magic", {c->id, p.value("about", kNone)}, "chronicle.magic.coping." + trouble + "." + after,
-                        {{"a", c->id}, {"b", p.value("about", kNone)}});
+            copingChronicle(w, trouble, after, c->id, p.value("about", kNone));
             continue;
         }
         if (st->second.next.empty()) {
@@ -1473,8 +1501,7 @@ void copingDaily(World& w) {
         }
         p["stage"] = to;
         p["since"] = today(w);
-        w.chronicle("magic", {c->id, p.value("about", kNone)}, "chronicle.magic.coping." + trouble + "." + to,
-                    {{"a", c->id}, {"b", p.value("about", kNone)}});
+        copingChronicle(w, trouble, to, c->id, p.value("about", kNone));
     }
     for (const auto& k : done) s["coping"].erase(k);
 }
