@@ -82,6 +82,9 @@ DayWeather weatherAt(const World& w, EntityId settlement, int epochDay) {
         const double u = hashU(key("r_amount"), epochDay);
         out.rainMm = mean * -std::log(std::max(1e-9, 1.0 - u)) * std::max(0.3, 1.0 + 0.3 * slow);
     }
+    // AL-115: the wind swings round the prevailing one over days and gusts harder on wet days.
+    out.windFromDeg = std::fmod(cl.windFromDeg + 70.0 * vnoise(key("w_dir"), d / 3.0) + 360.0, 360.0);
+    out.windMs = std::max(0.0, cl.windMs + cl.windSd * (1.2 * vnoise(key("w_ms"), d / 2.0) + (out.wet ? 0.6 : 0.0)));
     return out;
 }
 

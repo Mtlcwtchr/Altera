@@ -125,6 +125,42 @@
    "cooldown_on_fail": 12
   },
   {
+   "id": "share_news",
+   "task": "socialize_task",
+   "priority_class": "social",
+   "aggregate": "product",
+   "base": 0.9,
+   "considerations": [
+    {
+     "input": "news:fresh",
+     "curve": {
+      "type": "logistic",
+      "k": 10,
+      "x0": 0.35
+     }
+    },
+    {
+     "input": "need:social",
+     "curve": {
+      "type": "linear",
+      "m": -0.5,
+      "b": 1.0
+     }
+    },
+    {
+     "input": "time:night",
+     "curve": {
+      "type": "linear",
+      "m": -0.7,
+      "b": 1.0
+     }
+    }
+   ],
+   "min_ticks": 3,
+   "cooldown_on_fail": 12,
+   "_doc": "AL-111: свежая новость просится наружу (news:fresh = вес самой сильной новости последних дней, src/sim/news.hpp); болтовня socialize_task несёт её соседям через dialogueTopics."
+  },
+  {
    "id": "have_fun",
    "task": "have_fun_task",
    "priority_class": "idle",

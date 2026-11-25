@@ -58,6 +58,9 @@ void siteEffect(World& w, Character& c, WorldObject& site, const std::string& ke
 void buildingTick(World& w);
 // Commands: place_piece, remove_piece, grant_right, revoke_right.
 void installBuilding(World& w);
+// AL-115: a standing piece is broken (fire, a ram, a spell): it leaves the plan, the
+// pieces it held up fall with it; returns how many built pieces fell in all.
+int destroyPiece(World& w, EntityId piece, const std::string& cause);
 
 // The colony (GDD §2.2): who holds the mandate of the settlement, and who
 // would judge a captive now (the right to judge, else the eldest by custom).

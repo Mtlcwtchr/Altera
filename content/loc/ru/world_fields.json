@@ -1,0 +1,52 @@
+{
+ "_doc": "AL-115: поля клетки мира, огонь, разрушение вещей (src/sim/world_fields.cpp).",
+ "object.wreckage.name": {
+  "nom": "обломки",
+  "gen": "обломков",
+  "dat": "обломкам",
+  "acc": "обломки",
+  "ins": "обломками",
+  "pre": "обломках",
+  "g": "pl"
+ },
+ "object.rubble.name": {
+  "nom": "щебень",
+  "gen": "щебня",
+  "dat": "щебню",
+  "acc": "щебень",
+  "ins": "щебнем",
+  "pre": "щебне",
+  "g": "m"
+ },
+ "cause.fire.name": {
+  "nom": "огонь",
+  "gen": "огня",
+  "dat": "огню",
+  "acc": "огонь",
+  "ins": "огнём",
+  "pre": "огне",
+  "g": "m"
+ },
+ "cause.force.name": {
+  "nom": "удар",
+  "gen": "удара",
+  "dat": "удару",
+  "acc": "удар",
+  "ins": "ударом",
+  "pre": "ударе",
+  "g": "m"
+ },
+ "cause.rust.name": {
+  "nom": "ржавчина",
+  "gen": "ржавчины",
+  "dat": "ржавчине",
+  "acc": "ржавчину",
+  "ins": "ржавчиной",
+  "pre": "ржавчине",
+  "g": "f"
+ },
+ "chronicle.thing_burnt": "Сгорело дотла: {object}",
+ "chronicle.thing_destroyed": "Разрушено ({cause}): {object}",
+ "chronicle.build_broken": "Рухнула часть постройки: {n} {n:plural|деталь|детали|деталей}",
+ "chronicle.lightning": "В округе ударила молния"
+}

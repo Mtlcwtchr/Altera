@@ -1,0 +1,943 @@
+{
+ "_doc": "AL-111: новости, рассказы о себе, людях и местах, вопросы игрока (src/sim/news.hpp). Факты: news.* (запись хроники в args.news: kind, mood, scope, days, self, mine, about_listener), person.* (о ком спрашивают: known, kin, chief, affinity/trust/fear/enmity говорящего к нему, dead, is_listener), place.* (поселение: size, tag, war, ally, pays_us, we_pay, our_liege, grudge, opinion, ruler, km), story.* (сам говорящий: years, married, widowed, children, occupation, trade, chief). Строки: content/loc/<lang>/news.json. Акты person_remark/place_remark без запасного правила: если отношение не задано, вторая фраза не звучит.",
+ "rules": [
+  {
+   "id": "news.ask_news",
+   "when": [
+    "act=ask_news"
+   ],
+   "say": "say.news.ask_news"
+  },
+  {
+   "id": "news.ask_self",
+   "when": [
+    "act=ask_self"
+   ],
+   "say": "say.news.ask_self"
+  },
+  {
+   "id": "news.ask_person",
+   "when": [
+    "act=ask_person"
+   ],
+   "say": "say.news.ask_person"
+  },
+  {
+   "id": "news.ask_place",
+   "when": [
+    "act=ask_place"
+   ],
+   "say": "say.news.ask_place"
+  },
+  {
+   "id": "news.ask_person.kin",
+   "when": [
+    "act=ask_person",
+    "person.kin"
+   ],
+   "say": "say.news.ask_person.kin"
+  },
+  {
+   "id": "news.ask_news.vy",
+   "when": [
+    "act=ask_news",
+    "listener.trait=noble"
+   ],
+   "say": "say.news.ask_news.vy"
+  },
+  {
+   "id": "news.tell",
+   "when": [
+    "act=tell_news"
+   ],
+   "say": "say.news.tell"
+  },
+  {
+   "id": "news.tell.news",
+   "when": [
+    "act=tell_news",
+    "news"
+   ],
+   "say": "say.news.tell"
+  },
+  {
+   "id": "news.tell.sad",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mood=sad"
+   ],
+   "say": "say.news.tell.sad"
+  },
+  {
+   "id": "news.tell.glad",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mood=glad"
+   ],
+   "say": "say.news.tell.glad"
+  },
+  {
+   "id": "news.tell.alarm",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mood=alarm"
+   ],
+   "say": "say.news.tell.alarm"
+  },
+  {
+   "id": "news.tell.spicy",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mood=spicy"
+   ],
+   "say": "say.news.tell.spicy"
+  },
+  {
+   "id": "news.tell.rumor",
+   "when": [
+    "act=tell_news",
+    "news",
+    "epi.source=rumor"
+   ],
+   "say": "say.news.tell.rumor"
+  },
+  {
+   "id": "news.tell.rumor_far",
+   "when": [
+    "act=tell_news",
+    "news",
+    "epi.source=rumor",
+    "epi.hops>=2"
+   ],
+   "say": "say.news.tell.rumor_far"
+  },
+  {
+   "id": "news.tell.told",
+   "when": [
+    "act=tell_news",
+    "news",
+    "epi.source=told"
+   ],
+   "say": "say.news.tell.told"
+  },
+  {
+   "id": "news.tell.seen",
+   "when": [
+    "act=tell_news",
+    "news",
+    "epi.source=seen",
+    "news.self"
+   ],
+   "say": "say.news.tell.seen"
+  },
+  {
+   "id": "news.tell.realm",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.scope=realm",
+    "epi.source=heard"
+   ],
+   "say": "say.news.tell.realm"
+  },
+  {
+   "id": "news.tell.mine_sad",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mine",
+    "news.mood=sad"
+   ],
+   "say": "say.news.tell.mine_sad"
+  },
+  {
+   "id": "news.tell.mine_glad",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mine",
+    "news.mood=glad"
+   ],
+   "say": "say.news.tell.mine_glad"
+  },
+  {
+   "id": "news.tell.kind.death",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=death"
+   ],
+   "say": "say.news.tell.kind.death"
+  },
+  {
+   "id": "news.tell.kind.war",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=war"
+   ],
+   "say": "say.news.tell.kind.war"
+  },
+  {
+   "id": "news.tell.kind.raid",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=raid"
+   ],
+   "say": "say.news.tell.kind.raid"
+  },
+  {
+   "id": "news.tell.kind.wedding",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=wedding"
+   ],
+   "say": "say.news.tell.kind.wedding"
+  },
+  {
+   "id": "news.tell.kind.birth",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=birth"
+   ],
+   "say": "say.news.tell.kind.birth"
+  },
+  {
+   "id": "news.tell.kind.stranger",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=stranger"
+   ],
+   "say": "say.news.tell.kind.stranger"
+  },
+  {
+   "id": "news.tell.kind.famine",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=famine"
+   ],
+   "say": "say.news.tell.kind.famine"
+  },
+  {
+   "id": "news.tell.kind.court",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=court"
+   ],
+   "say": "say.news.tell.kind.court"
+  },
+  {
+   "id": "news.tell.kind.gossip",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=gossip"
+   ],
+   "say": "say.news.tell.kind.gossip"
+  },
+  {
+   "id": "news.tell.kind.outlaws",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=outlaws"
+   ],
+   "say": "say.news.tell.kind.outlaws"
+  },
+  {
+   "id": "news.tell.kind.power",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=power"
+   ],
+   "say": "say.news.tell.kind.power"
+  },
+  {
+   "id": "news.tell.gossip.secret",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=gossip",
+    "epi.source=rumor|told"
+   ],
+   "say": "say.news.tell.gossip_secret"
+  },
+  {
+   "id": "news.tell.fresh_alarm",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.mood=alarm",
+    "news.days<=1"
+   ],
+   "say": "say.news.tell.fresh_alarm"
+  },
+  {
+   "id": "news.tell.trader",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.scope=realm",
+    "speaker.trait=gossip|curious"
+   ],
+   "say": "say.news.tell.road"
+  },
+  {
+   "id": "news.no_news",
+   "when": [
+    "act=no_news"
+   ],
+   "say": "say.news.no_news"
+  },
+  {
+   "id": "news.no_news.keeper",
+   "when": [
+    "act=no_news",
+    "story.occupation=tavernkeeper"
+   ],
+   "say": "say.news.no_news.keeper"
+  },
+  {
+   "id": "news.tell_story",
+   "when": [
+    "act=tell_story"
+   ],
+   "say": "say.news.tell_story"
+  },
+  {
+   "id": "news.tell_story.news",
+   "when": [
+    "act=tell_story",
+    "news"
+   ],
+   "say": "say.news.tell_story"
+  },
+  {
+   "id": "news.tell_story.sad",
+   "when": [
+    "act=tell_story",
+    "news",
+    "news.mood=sad"
+   ],
+   "say": "say.news.tell_story.sad"
+  },
+  {
+   "id": "news.tell_story.glad",
+   "when": [
+    "act=tell_story",
+    "news",
+    "news.mood=glad"
+   ],
+   "say": "say.news.tell_story.glad"
+  },
+  {
+   "id": "news.tell_self",
+   "when": [
+    "act=tell_self"
+   ],
+   "say": "say.news.tell_self"
+  },
+  {
+   "id": "news.tell_self.married",
+   "when": [
+    "act=tell_self",
+    "story.married",
+    "story.children>=1"
+   ],
+   "say": "say.news.tell_self.married"
+  },
+  {
+   "id": "news.tell_self.married_nokids",
+   "when": [
+    "act=tell_self",
+    "story.married",
+    "story.children<1"
+   ],
+   "say": "say.news.tell_self.married_nokids"
+  },
+  {
+   "id": "news.tell_self.widowed",
+   "when": [
+    "act=tell_self",
+    "story.widowed"
+   ],
+   "say": "say.news.tell_self.widowed"
+  },
+  {
+   "id": "news.tell_self.chief",
+   "when": [
+    "act=tell_self",
+    "story.chief"
+   ],
+   "say": "say.news.tell_self.chief"
+  },
+  {
+   "id": "news.tell_self.trader",
+   "when": [
+    "act=tell_self",
+    "story.occupation=trader"
+   ],
+   "say": "say.news.tell_self.trader"
+  },
+  {
+   "id": "news.tell_self.keeper",
+   "when": [
+    "act=tell_self",
+    "story.occupation=tavernkeeper"
+   ],
+   "say": "say.news.tell_self.keeper"
+  },
+  {
+   "id": "news.tell_self.elder",
+   "when": [
+    "act=tell_self",
+    "speaker.stage=elder"
+   ],
+   "say": "say.news.tell_self.elder"
+  },
+  {
+   "id": "news.tell_self.child",
+   "when": [
+    "act=tell_self",
+    "speaker.stage=child"
+   ],
+   "say": "say.news.tell_self.child"
+  },
+  {
+   "id": "news.tell_person",
+   "when": [
+    "act=tell_person"
+   ],
+   "say": "say.news.tell_person"
+  },
+  {
+   "id": "news.tell_person.known",
+   "when": [
+    "act=tell_person",
+    "person.known"
+   ],
+   "say": "say.news.tell_person.known"
+  },
+  {
+   "id": "news.tell_person.unknown",
+   "when": [
+    "act=tell_person",
+    "!person.known"
+   ],
+   "say": "say.news.tell_person.unknown"
+  },
+  {
+   "id": "news.tell_person.listener",
+   "when": [
+    "act=tell_person",
+    "person.is_listener"
+   ],
+   "say": "say.news.tell_person.listener"
+  },
+  {
+   "id": "news.tell_person.dead",
+   "when": [
+    "act=tell_person",
+    "person.dead"
+   ],
+   "say": "say.news.tell_person.dead"
+  },
+  {
+   "id": "news.tell_person.kin.spouse",
+   "when": [
+    "act=tell_person",
+    "person.known",
+    "person.kin=spouse"
+   ],
+   "say": "say.news.tell_person.kin.spouse"
+  },
+  {
+   "id": "news.tell_person.kin.child",
+   "when": [
+    "act=tell_person",
+    "person.known",
+    "person.kin=child"
+   ],
+   "say": "say.news.tell_person.kin.child"
+  },
+  {
+   "id": "news.tell_person.kin.parent",
+   "when": [
+    "act=tell_person",
+    "person.known",
+    "person.kin=parent"
+   ],
+   "say": "say.news.tell_person.kin.parent"
+  },
+  {
+   "id": "news.tell_person.chief",
+   "when": [
+    "act=tell_person",
+    "person.known",
+    "person.chief"
+   ],
+   "say": "say.news.tell_person.chief"
+  },
+  {
+   "id": "news.person_remark",
+   "when": [
+    "act=person_remark"
+   ],
+   "say": "say.news.person_remark"
+  },
+  {
+   "id": "news.person_remark.plain",
+   "when": [
+    "act=person_remark",
+    "person.known"
+   ],
+   "say": "say.news.person_remark.plain"
+  },
+  {
+   "id": "news.person_remark.liked",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.affinity>=0.3"
+   ],
+   "say": "say.news.person_remark.liked"
+  },
+  {
+   "id": "news.person_remark.disliked",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.affinity<=-0.2"
+   ],
+   "say": "say.news.person_remark.disliked"
+  },
+  {
+   "id": "news.person_remark.feared",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.fear>=0.4"
+   ],
+   "say": "say.news.person_remark.feared"
+  },
+  {
+   "id": "news.person_remark.distrust",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.trust<=-0.3"
+   ],
+   "say": "say.news.person_remark.distrust"
+  },
+  {
+   "id": "news.person_remark.enemy",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.enmity>=0.4"
+   ],
+   "say": "say.news.person_remark.enemy"
+  },
+  {
+   "id": "news.person_remark.trusted",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.trust>=0.4",
+    "person.affinity>=0.2"
+   ],
+   "say": "say.news.person_remark.trusted"
+  },
+  {
+   "id": "news.person_remark.chief_good",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.chief",
+    "person.affinity>=0.2"
+   ],
+   "say": "say.news.person_remark.chief_good"
+  },
+  {
+   "id": "news.person_remark.chief_bad",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.chief",
+    "person.affinity<=-0.1"
+   ],
+   "say": "say.news.person_remark.chief_bad"
+  },
+  {
+   "id": "news.person_remark.kin",
+   "when": [
+    "act=person_remark",
+    "person.known",
+    "person.kin"
+   ],
+   "say": "say.news.person_remark.kin"
+  },
+  {
+   "id": "news.tell_place",
+   "when": [
+    "act=tell_place"
+   ],
+   "say": "say.news.tell_place"
+  },
+  {
+   "id": "news.tell_place.ruler",
+   "when": [
+    "act=tell_place",
+    "place",
+    "place.ruler"
+   ],
+   "say": "say.news.tell_place.ruler"
+  },
+  {
+   "id": "news.tell_place.camp",
+   "when": [
+    "act=tell_place",
+    "place",
+    "place.tag=raiders|outlaw"
+   ],
+   "say": "say.news.tell_place.camp"
+  },
+  {
+   "id": "news.place_remark.war",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.war"
+   ],
+   "say": "say.news.place_remark.war"
+  },
+  {
+   "id": "news.place_remark.ally",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.ally"
+   ],
+   "say": "say.news.place_remark.ally"
+  },
+  {
+   "id": "news.place_remark.pays_us",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.pays_us"
+   ],
+   "say": "say.news.place_remark.pays_us"
+  },
+  {
+   "id": "news.place_remark.we_pay",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.we_pay"
+   ],
+   "say": "say.news.place_remark.we_pay"
+  },
+  {
+   "id": "news.place_remark.liege",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.our_liege"
+   ],
+   "say": "say.news.place_remark.liege"
+  },
+  {
+   "id": "news.place_remark.grudge",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.grudge>=0.3"
+   ],
+   "say": "say.news.place_remark.grudge"
+  },
+  {
+   "id": "news.place_remark.friendly",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.opinion>=0.3"
+   ],
+   "say": "say.news.place_remark.friendly"
+  },
+  {
+   "id": "news.place_remark.trade",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.tag=trade"
+   ],
+   "say": "say.news.place_remark.trade"
+  },
+  {
+   "id": "news.place_remark.fortified",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.tag=fortified"
+   ],
+   "say": "say.news.place_remark.fortified"
+  },
+  {
+   "id": "news.place_remark.cult",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.tag=cult"
+   ],
+   "say": "say.news.place_remark.cult"
+  },
+  {
+   "id": "news.place_remark.farming",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.tag=farming"
+   ],
+   "say": "say.news.place_remark.farming"
+  },
+  {
+   "id": "news.place_remark.raiders",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.tag=raiders|outlaw"
+   ],
+   "say": "say.news.place_remark.raiders"
+  },
+  {
+   "id": "news.place_remark.war_raiders",
+   "when": [
+    "act=place_remark",
+    "place",
+    "place.war",
+    "place.tag=raiders|outlaw"
+   ],
+   "say": "say.news.place_remark.raiders"
+  },
+  {
+   "id": "news.place_remark",
+   "when": [
+    "act=place_remark"
+   ],
+   "say": "say.news.place_remark"
+  },
+  {
+   "id": "news.discuss",
+   "when": [
+    "act=discuss_news"
+   ],
+   "say": "say.news.discuss"
+  },
+  {
+   "id": "news.discuss.sad",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.mood=sad"
+   ],
+   "say": "say.news.discuss.sad"
+  },
+  {
+   "id": "news.discuss.glad",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.mood=glad"
+   ],
+   "say": "say.news.discuss.glad"
+  },
+  {
+   "id": "news.discuss.alarm",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.mood=alarm"
+   ],
+   "say": "say.news.discuss.alarm"
+  },
+  {
+   "id": "news.discuss.spicy",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.mood=spicy"
+   ],
+   "say": "say.news.discuss.spicy"
+  },
+  {
+   "id": "news.discuss.kind.death",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=death"
+   ],
+   "say": "say.news.discuss.kind.death"
+  },
+  {
+   "id": "news.discuss.kind.raid",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=raid"
+   ],
+   "say": "say.news.discuss.kind.raid"
+  },
+  {
+   "id": "news.discuss.kind.war",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=war"
+   ],
+   "say": "say.news.discuss.kind.war"
+  },
+  {
+   "id": "news.discuss.kind.wedding",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=wedding"
+   ],
+   "say": "say.news.discuss.kind.wedding"
+  },
+  {
+   "id": "news.discuss.kind.birth",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=birth"
+   ],
+   "say": "say.news.discuss.kind.birth"
+  },
+  {
+   "id": "news.discuss.kind.stranger",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=stranger"
+   ],
+   "say": "say.news.discuss.kind.stranger"
+  },
+  {
+   "id": "news.discuss.mine_sad",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.mine",
+    "news.mood=sad"
+   ],
+   "say": "say.news.discuss.mine_sad"
+  },
+  {
+   "id": "news.react",
+   "when": [
+    "act=react_news"
+   ],
+   "say": "say.news.react"
+  },
+  {
+   "id": "news.react.sad",
+   "when": [
+    "act=react_news",
+    "news",
+    "news.mood=sad"
+   ],
+   "say": "say.news.react.sad"
+  },
+  {
+   "id": "news.react.glad",
+   "when": [
+    "act=react_news",
+    "news",
+    "news.mood=glad"
+   ],
+   "say": "say.news.react.glad"
+  },
+  {
+   "id": "news.react.alarm",
+   "when": [
+    "act=react_news",
+    "news",
+    "news.mood=alarm"
+   ],
+   "say": "say.news.react.alarm"
+  },
+  {
+   "id": "news.react.spicy",
+   "when": [
+    "act=react_news",
+    "news",
+    "news.mood=spicy"
+   ],
+   "say": "say.news.react.spicy"
+  },
+  {
+   "id": "news.react.rumor",
+   "when": [
+    "act=react_news",
+    "news",
+    "epi.source=rumor"
+   ],
+   "say": "say.news.react.rumor"
+  },
+  {
+   "id": "news.react.mine_sad",
+   "when": [
+    "act=react_news",
+    "news",
+    "news.mine",
+    "news.mood=sad"
+   ],
+   "say": "say.news.react.mine_sad"
+  },
+  {
+   "id": "news.react.story",
+   "when": [
+    "act=react_news",
+    "intent=story"
+   ],
+   "say": "say.news.react.story"
+  },
+  {
+   "id": "news.react.story_sad",
+   "when": [
+    "act=react_news",
+    "intent=story",
+    "news.mood=sad"
+   ],
+   "say": "say.news.react.story_sad"
+  },
+  {
+   "id": "news.decline_ask",
+   "when": [
+    "act=decline_ask"
+   ],
+   "say": "say.news.decline_ask"
+  },
+  {
+   "id": "news.decline_ask.enemy",
+   "when": [
+    "act=decline_ask",
+    "rel.enmity>=0.5"
+   ],
+   "say": "say.news.decline_ask.enemy"
+  }
+ ]
+}
