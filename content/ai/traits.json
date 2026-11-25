@@ -290,6 +290,59 @@
    "weight_in_pool": 0.08,
    "_doc": "увечье: работает мало, нуждается в уходе (care.json)",
    "_part": "H"
+  },
+  {
+   "id": "gifted",
+   "weight_in_pool": 0.0,
+   "_doc": "AL-116: редкий магический дар; ставит sim/magic.cpp (шанс вида, база 0.05), даёт талант к обучению аспектам"
+  },
+  {
+   "id": "undead",
+   "weight_in_pool": 0.0,
+   "need_mult": {
+    "hunger": 0.0,
+    "energy": 0.0,
+    "warmth": 0.0,
+    "social": 0.0,
+    "thirst": 0.0,
+    "hygiene": 0.0,
+    "fun": 0.0,
+    "purpose": 0.0
+   },
+   "_doc": "AL-116: нежить (состояние тела, не вид): нужды стоят, тело держит магия хозяина"
+  },
+  {
+   "id": "mindless",
+   "weight_in_pool": 0.0,
+   "goal_mult": {
+    "socialize": 0.0,
+    "have_fun": 0.0,
+    "pray": 0.0,
+    "build_home": 0.0,
+    "offer_trade": 0.0,
+    "ask_help": 0.0
+   },
+   "_doc": "AL-116: безмозглая нежить"
+  },
+  {
+   "id": "death_touched",
+   "weight_in_pool": 0.0,
+   "_doc": "AL-116: метка Смерти у некроманта (холод, бледность, звери и дети сторонятся)"
+  },
+  {
+   "id": "lich",
+   "weight_in_pool": 0.0,
+   "need_mult": {
+    "hunger": 0.0,
+    "energy": 0.0,
+    "warmth": 0.0,
+    "social": 0.0,
+    "thirst": 0.0,
+    "hygiene": 0.0,
+    "fun": 0.0,
+    "purpose": 0.0
+   },
+   "_doc": "AL-116: лич, некромант, переживший свою смерть через филактерию"
   }
  ],
  "exclusive": [

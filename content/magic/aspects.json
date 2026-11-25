@@ -195,7 +195,8 @@
     "+": {
      "health": "+0.12*power",
      "heal_wounds": "0.5*power",
-     "undead_harm": "0.1*power"
+     "undead_harm": "0.1*power",
+     "cure_illness": "0.5*power"
     },
     "-": {
      "health": "-0.1*power"

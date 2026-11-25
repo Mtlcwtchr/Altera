@@ -18,6 +18,7 @@
 #include "sim/trade.hpp"
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
+#include "sim/magic.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -687,6 +688,7 @@ void installAi(World& w) {
             cropsDaily(world);
             villageDaily(world); // AL-39: courtship, births, illness, quarrels, strangers
             realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
+            magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
@@ -716,6 +718,7 @@ void installAi(World& w) {
     installTrade(w);
     installRealm(w);
     installFields(w);
+    installMagic(w);
 }
 
 } // namespace altera::sim

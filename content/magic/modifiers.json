@@ -1,0 +1,47 @@
+{
+ "_doc": "LivelyRealms §5.1: модификаторы. Шаг модификатора (целое 1..max) прибавляет cost_per_step к множителю цены и diff_per_step к сложности. power — сила (по умолчанию 1), radius — +1 м радиуса за шаг, duration — длительность, silent — без света и звука (свидетели не видят), condition — условие руны.",
+ "modifiers": [
+  {
+   "id": "power",
+   "cost_per_step": 0.6,
+   "diff_per_step": 0.08,
+   "max": 5
+  },
+  {
+   "id": "radius",
+   "cost_per_step": 0.4,
+   "diff_per_step": 0.05,
+   "max": 6
+  },
+  {
+   "id": "duration",
+   "cost_per_step": 0.3,
+   "diff_per_step": 0.04,
+   "max": 6
+  },
+  {
+   "id": "speed",
+   "cost_per_step": 0.3,
+   "diff_per_step": 0.05,
+   "max": 3
+  },
+  {
+   "id": "precision",
+   "cost_per_step": 0.2,
+   "diff_per_step": 0.06,
+   "max": 3
+  },
+  {
+   "id": "silent",
+   "cost_per_step": 0.8,
+   "diff_per_step": 0.1,
+   "max": 1
+  },
+  {
+   "id": "condition",
+   "cost_per_step": 0.3,
+   "diff_per_step": 0.08,
+   "max": 1
+  }
+ ]
+}
