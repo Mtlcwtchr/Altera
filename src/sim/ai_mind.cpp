@@ -21,6 +21,9 @@
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/wounds.hpp"
+#include "sim/firefight.hpp"
+#include "sim/world_fields.hpp"
+#include "sim/world_reactions.hpp"
 
 namespace lr::sim {
 
@@ -223,11 +226,14 @@ bool tickFsm(World& w, Character& c) {
             f.timer = std::max<Tick>(f.timer, 2);
         }
         const double d = dist(c.pos, f.dest);
-        if (d <= cfg.walkMPerTick || f.timer <= 1) {
+        // AL-115: mud, ice and steep ground slow the step; the walk takes the ticks it needs
+        const double step = cfg.walkMPerTick * stepMoveFactor(w, c.pos, f.dest, cfg.walkMPerTick);
+        if (d <= step || (f.timer <= 1 && step >= cfg.walkMPerTick)) {
             c.pos = f.dest;
         } else {
-            c.pos.x += (f.dest.x - c.pos.x) * cfg.walkMPerTick / d;
-            c.pos.y += (f.dest.y - c.pos.y) * cfg.walkMPerTick / d;
+            c.pos.x += (f.dest.x - c.pos.x) * step / d;
+            c.pos.y += (f.dest.y - c.pos.y) * step / d;
+            if (f.timer <= 1) f.timer = 2;
         }
         --f.timer;
         if (dist(c.pos, f.dest) < 1e-6) {
@@ -251,7 +257,7 @@ bool tickFsm(World& w, Character& c) {
         const double dd = dist(c.pos, creature->pos);
         const double keep = approachOf(w, *d);
         if (dd > workReachOf(w, *d) && dd > 1e-9) {
-            const double go = std::min(dd - keep, cfg.walkMPerTick);
+            const double go = std::min(dd - keep, cfg.walkMPerTick * stepMoveFactor(w, c.pos, creature->pos, cfg.walkMPerTick));
             c.pos.x += (creature->pos.x - c.pos.x) * go / dd;
             c.pos.y += (creature->pos.y - c.pos.y) * go / dd;
             f.dest = creature->pos;
@@ -594,6 +600,7 @@ void thinkCharacter(World& w, Character& c) {
     if (!c.body.alive) return;
     if (c.body.downUntil > w.now()) return; // knocked out or carried off after a fight
     if (undeadHeld(w, c)) return;           // AL-118: a mindless body follows its master or the living (undeadTick)
+    if (firefighting(w, c)) return;          // AL-115: the village's fire comes first
     AiState& ai = c.ai;
     // Expire modifiers and stale queued tasks.
     ai.mods.erase(std::remove_if(ai.mods.begin(), ai.mods.end(),
@@ -656,7 +663,8 @@ void faceAll(World& w) {
             if (d && t && t->body.alive && !isRanged(w, *d) && !c.captivity.held()) {
                 const double dd = dist(c.pos, t->pos), keep = approachOf(w, *d);
                 if (dd > workReachOf(w, *d) && dd > keep) {
-                    const double go = std::min(dd - keep, w.content().config.walkMPerTick);
+                    const double walk = w.content().config.walkMPerTick;
+                    const double go = std::min(dd - keep, walk * stepMoveFactor(w, c.pos, t->pos, walk));
                     c.pos.x += (t->pos.x - c.pos.x) * go / dd;
                     c.pos.y += (t->pos.y - c.pos.y) * go / dd;
                     c.seenPos = c.pos;

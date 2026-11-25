@@ -151,7 +151,8 @@ TEST(lr_sim_reactions_spells_mix_aspects) {
     CHECK(c.cancelled);
     CHECK_EQ(fieldByte(w, Field::taint, m), t0);   // neither wrote
     const auto e = applySpellToWorld(w, m, 3.0, {{"earth", "~"}}, 1.0);
-    CHECK(e.unhandled.size() == 1 && e.unhandled[0] == "raise_ground");
+    CHECK(e.unhandled.empty());                 // Earth~ heaves the ground itself now
+    CHECK(groundAt(w, m) > 0.2);
 }
 
 TEST(lr_sim_reactions_crops_burn_and_grow_by_magic) {

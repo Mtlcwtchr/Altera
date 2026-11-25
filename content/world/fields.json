@@ -93,5 +93,9 @@
   "wreckage":       {"material": "wood", "integrity": 40, "keeps_stock": true}
  },
  "_untouched_doc": "огонь и удары их не ломают; посев на field/garden сгорает отдельно (world_reactions.cpp), сам участок остаётся",
- "untouched": ["water", "riverbank", "corpse", "grave", "build_site", "roof_piece", "village_fire", "campfire", "field", "garden"]
+ "untouched": ["water", "riverbank", "corpse", "grave", "build_site", "roof_piece", "village_fire", "campfire", "field", "garden"],
+ "_ground_doc": "Земля~/Камень~ меняют рельеф (groundAdd): шаг байта step_m; яма глубже pit_water_m набирает воду; поднятая земля сохнет на drain_per_m влаги за метр; постройка теряет crack_per_m целостности за метр сдвига; ходьба по склону 1/(1+уклон·slope_slow), не медленнее min_move",
+ "ground": {"step_m": 0.25, "pit_water_m": 1.0, "drain_per_m": 25, "crack_per_m": 120, "slope_slow": 1.2, "min_move": 0.2},
+ "_firefight_doc": "пожар ближе alarm_m к центру деревни поднимает тревогу; до crew взрослых в пределах recruit_m бегут тушить, гасят douse пламени за тик в радиусе reach_m; без воды (water_objects, река, пруд) в water_m от огня — только no_water_mult",
+ "firefight": {"alarm_m": 350, "recruit_m": 900, "crew": 8, "reach_m": 2.5, "douse": 70, "water_m": 150, "no_water_mult": 0.35, "fatigue": 0.02, "water_objects": ["well"]}
 }

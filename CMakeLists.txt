@@ -315,6 +315,7 @@ add_library(lr_sim STATIC
         src/sim/world_fields.cpp
         src/sim/world_reactions.cpp
         src/sim/elementals.cpp
+        src/sim/firefight.cpp
         src/sim/rules.cpp
         src/sim/content.cpp
         src/sim/expansion.cpp
@@ -874,7 +875,8 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp
             tests/test_lr_client2d_craft.cpp
             tests/test_lr_build2d.cpp
-            tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp)
+            tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
+            tests/test_lr_sim_relief_firefight.cpp)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112

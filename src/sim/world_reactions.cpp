@@ -169,10 +169,37 @@ std::string cellStateAt(const World& w, Vec2 at) {
 }
 
 double moveFactorAt(const World& w, Vec2 at) {
+    double f = 1.0;
     const std::string s = cellStateAt(w, at);
-    if (s.empty()) return 1.0;
-    auto it = reactionsConfig(w).moveFactor.find(s);
-    return it == reactionsConfig(w).moveFactor.end() ? 1.0 : it->second;
+    if (!s.empty())
+        if (auto it = reactionsConfig(w).moveFactor.find(s); it != reactionsConfig(w).moveFactor.end()) f = it->second;
+    if (const double sl = slopeAt(w, at); sl > 0.0) {
+        const GroundRule& g = fieldsConfig(w).ground;
+        f = std::min(f, std::max(g.minMove, 1.0 / (1.0 + sl * g.slopeSlow)));
+    }
+    return f;
+}
+
+double stepMoveFactor(const World& w, Vec2 from, Vec2 to, double step) {
+    if (w.fields().chunks.empty()) return 1.0;
+    const double d = std::min(step, dist(from, to));
+    if (d < 1e-9) return fieldsStoredAt(w, from) ? std::max(0.1, moveFactorAt(w, from)) : 1.0;
+    // the way's first `step` metres in up to 24 samples: time = sum of dx / factor
+    const int k = std::clamp(static_cast<int>(std::ceil(d)), 1, 24);
+    const double dx = (to.x - from.x) / dist(from, to), dy = (to.y - from.y) / dist(from, to);
+    double time = 0.0;
+    bool any = false;
+    for (int i = 0; i < k; ++i) {
+        const double t = d * (i + 0.5) / k;
+        const Vec2 p{from.x + dx * t, from.y + dy * t};
+        double f = 1.0;
+        if (fieldsStoredAt(w, p)) {
+            f = std::max(0.1, moveFactorAt(w, p));   // molten rock: one wades round it, not through
+            any = true;
+        }
+        time += 1.0 / f;
+    }
+    return any ? k / time : 1.0;
 }
 
 namespace {
@@ -236,7 +263,7 @@ bool drinksTaintedWater(const World& w, const Character& c) {
 
 // --- spells -------------------------------------------------------------------------------
 
-SpellWorldResult applySpellToWorld(World& w, Vec2 at, double radiusM, const std::vector<SpellPart>& parts, double power) {
+SpellWorldResult applySpellToWorld(World& w, Vec2 at, double radiusM, const std::vector<WorldSpellPart>& parts, double power) {
     SpellWorldResult out;
     const ReactionsConfig& rc = reactionsConfig(w);
     std::vector<bool> dropped(parts.size(), false);

@@ -12,6 +12,7 @@
 #include "sim/building.hpp"
 #include "sim/elementals.hpp"
 #include "sim/world_reactions.hpp"
+#include "sim/firefight.hpp"
 #include "sim/world.hpp"
 
 namespace lr::sim {
@@ -165,6 +166,26 @@ FieldsConfig FieldsConfig::fromJson(const Json& j, std::vector<std::string>* war
         }
     if (j.contains("untouched")) c.untouched = j["untouched"].get<std::vector<std::string>>();
     c.regrowMinDays = j.value("regrow_min_days", c.regrowMinDays);
+    if (const Json g = j.value("ground", Json::object()); g.is_object()) {
+        c.ground.stepM = std::max(0.01, g.value("step_m", c.ground.stepM));
+        c.ground.pitWaterM = g.value("pit_water_m", c.ground.pitWaterM);
+        c.ground.drainPerM = g.value("drain_per_m", c.ground.drainPerM);
+        c.ground.crackPerM = g.value("crack_per_m", c.ground.crackPerM);
+        c.ground.slopeSlow = g.value("slope_slow", c.ground.slopeSlow);
+        c.ground.minMove = g.value("min_move", c.ground.minMove);
+    }
+    if (const Json ff = j.value("firefight", Json::object()); ff.is_object()) {
+        FirefightRule& f = c.firefight;
+        f.alarmM = ff.value("alarm_m", f.alarmM);
+        f.recruitM = ff.value("recruit_m", f.recruitM);
+        f.crew = ff.value("crew", f.crew);
+        f.reachM = ff.value("reach_m", f.reachM);
+        f.douse = ff.value("douse", f.douse);
+        f.waterM = ff.value("water_m", f.waterM);
+        f.noWaterMult = ff.value("no_water_mult", f.noWaterMult);
+        f.fatigue = ff.value("fatigue", f.fatigue);
+        if (ff.contains("water_objects")) f.waterObjects = ff["water_objects"].get<std::vector<std::string>>();
+    }
     for (const auto& [k, t] : c.things)
         if (!t.material.empty() && !c.materials.count(t.material)) warn("thing " + k + ": unknown material " + t.material);
     for (const auto& [k, m] : c.pieceMaterials)
@@ -243,6 +264,7 @@ Json WorldFields::toJson() const {
         cj["fuel"] = rle(c.fuel);
         cj["fire"] = rle(c.fire);
         cj["burnt"] = rle(c.burnt);
+        if (!c.ground.empty()) cj["ground"] = rle(c.ground);
         cs.push_back(std::move(cj));
     }
     out["chunks"] = std::move(cs);
@@ -266,6 +288,12 @@ Json WorldFields::toJson() const {
     Json rg = Json::array();
     for (const auto& r : regrow) rg.push_back({r.type, r.pos.x, r.pos.y, r.day});
     out["regrow"] = std::move(rg);
+    if (!firefighters.empty()) {
+        Json ff = Json::object();
+        for (const auto& [p, s] : firefighters) ff[std::to_string(p)] = s;
+        out["firefighters"] = std::move(ff);
+    }
+    if (!fireAlarm.empty()) out["fire_alarm"] = fireAlarm;
     return out;
 }
 
@@ -284,6 +312,7 @@ void WorldFields::fromJson(const Json& j) {
         c.fuel = unrle(cj.value("fuel", Json::array()), n);
         c.fire = unrle(cj.value("fire", Json::array()), n);
         c.burnt = unrle(cj.value("burnt", Json::array()), n);
+        if (cj.contains("ground")) c.ground = unrle(cj["ground"], n);
         chunks[chunkKey(c.cx, c.cy)] = std::move(c);
     }
     auto fires = [](const Json& a, std::map<EntityId, ThingFire>& m) {
@@ -303,6 +332,9 @@ void WorldFields::fromJson(const Json& j) {
             weather[static_cast<EntityId>(std::stoul(k))] = {v[0].get<double>(), v[1].get<double>(), v[2].get<double>()};
     for (const auto& r : j.value("regrow", Json::array()))
         regrow.push_back({r[0].get<std::string>(), {r[1].get<double>(), r[2].get<double>()}, r[3].get<int>()});
+    if (const Json ff = j.value("firefighters", Json::object()); ff.is_object())
+        for (const auto& [k, v] : ff.items()) firefighters[static_cast<EntityId>(std::stoul(k))] = v.get<EntityId>();
+    for (const auto& s : j.value("fire_alarm", Json::array())) fireAlarm.insert(s.get<EntityId>());
 }
 
 // --- the baseline -------------------------------------------------------------------------
@@ -371,6 +403,30 @@ Base baseAt(const World& w, const FieldsConfig& cfg, const Ambient& amb, int x, 
     return out;
 }
 
+// AL-115: the lie of the land changes the cell's baseline: a pit holds water, raised land drains.
+void groundBase(Base& out, const FieldsConfig& cfg, std::uint8_t g, bool water) {
+    if (g == 128) return;
+    const double m = (g - 128) * cfg.ground.stepM;
+    if (m <= -cfg.ground.pitWaterM && !water) {
+        out.v[kMoist] = std::max(out.v[kMoist], cfg.waterMoisture - 20);
+        out.fuel = 0;
+    } else if (m > 0) {
+        out.v[kMoist] = clampByte(out.v[kMoist] - cfg.ground.drainPerM * m);
+        if (water && m >= cfg.ground.pitWaterM) out.v[kMoist] = std::min(out.v[kMoist], 200);   // a bank out of the water
+        out.v[kFert] = clampByte(out.v[kFert] - 10.0 * m);
+    }
+}
+
+Base baseOf(const World& w, const FieldsConfig& cfg, const Ambient& amb, const FieldChunk& c, int x, int y) {
+    Base b = baseAt(w, cfg, amb, x, y);
+    if (!c.ground.empty()) {
+        const int n = cfg.chunk;
+        const bool water = w.map().w > 0 && w.map().waterAt({x + 0.5, y + 0.5});
+        groundBase(b, cfg, c.ground[(y - c.cy * n) * n + (x - c.cx * n)], water);
+    }
+    return b;
+}
+
 FieldChunk* chunkOf(World& w, int x, int y, bool make) {
     const FieldsConfig& cfg = fieldsConfig(w);
     const int n = cfg.chunk;
@@ -384,7 +440,7 @@ FieldChunk* chunkOf(World& w, int x, int y, bool make) {
             const Ambient amb = ambient(w);
             for (int j = 0; j < n; ++j)
                 for (int i = 0; i < n; ++i) {
-                    const Base b = baseAt(w, cfg, amb, cx * n + i, cy * n + j);
+                    const Base b = baseOf(w, cfg, amb, c, cx * n + i, cy * n + j);
                     for (int fi = 0; fi < kFieldCount; ++fi)
                         if (kFast[fi]) c.v[fi][j * n + i] = static_cast<std::uint8_t>(b.v[fi]);
                 }
@@ -430,7 +486,10 @@ int fieldByte(const World& w, Field f, Vec2 at) {
     const FieldsConfig& cfg = fieldsConfig(w);
     const int x = cellOf(at.x), y = cellOf(at.y);
     const int fi = static_cast<int>(f);
-    if (const FieldChunk* c = chunkAt(w, x, y); c && (c->active || !kFast[fi])) return c->v[fi][cellIndexIn(cfg, *c, x, y)];
+    if (const FieldChunk* c = chunkAt(w, x, y)) {
+        if (c->active || !kFast[fi]) return c->v[fi][cellIndexIn(cfg, *c, x, y)];
+        return baseOf(w, cfg, ambient(w), *c, x, y).v[fi];
+    }
     return baseAt(w, cfg, ambient(w), x, y).v[fi];
 }
 
@@ -678,6 +737,117 @@ void fieldAdd(World& w, Field f, Vec2 at, double radiusM, double amount) {
     }
 }
 
+bool fieldsStoredAt(const World& w, Vec2 at) { return chunkAt(w, cellOf(at.x), cellOf(at.y)) != nullptr; }
+
+namespace {
+int groundByte(const World& w, int x, int y) {
+    const FieldChunk* c = chunkAt(w, x, y);
+    if (!c || c->ground.empty()) return 128;
+    return c->ground[cellIndexIn(fieldsConfig(w), *c, x, y)];
+}
+} // namespace
+
+double groundAt(const World& w, Vec2 at) {
+    if (w.fields().chunks.empty()) return 0.0;
+    return (groundByte(w, cellOf(at.x), cellOf(at.y)) - 128) * fieldsConfig(w).ground.stepM;
+}
+
+double slopeAt(const World& w, Vec2 at) {
+    if (w.fields().chunks.empty()) return 0.0;
+    const int x = cellOf(at.x), y = cellOf(at.y);
+    const int g = groundByte(w, x, y);
+    int d = 0;
+    static const int dx[4] = {-1, 1, 0, 0}, dy[4] = {0, 0, -1, 1};
+    for (int k = 0; k < 4; ++k) d = std::max(d, std::abs(groundByte(w, x + dx[k], y + dy[k]) - g));
+    return d * fieldsConfig(w).ground.stepM;
+}
+
+void groundAdd(World& w, Vec2 at, double radiusM, double metres, bool sharp) {
+    if (std::abs(metres) < 1e-9) return;
+    const FieldsConfig& cfg = fieldsConfig(w);
+    const double step = cfg.ground.stepM;
+    radiusM = std::max(0.5, radiusM);
+    double moved = 0.0;   // the most the ground moved anywhere, metres
+    const int x0 = cellOf(at.x - radiusM), x1 = cellOf(at.x + radiusM), y0 = cellOf(at.y - radiusM), y1 = cellOf(at.y + radiusM);
+    for (int y = y0; y <= y1; ++y)
+        for (int x = x0; x <= x1; ++x) {
+            const double d = std::hypot(x + 0.5 - at.x, y + 0.5 - at.y);
+            if (d > radiusM + 0.5) continue;
+            // a mound (cosine) or a wall with steep sides
+            const double t = std::min(1.0, d / radiusM);
+            const double k = sharp ? (t < 0.8 ? 1.0 : std::max(0.0, (1.0 - t) * 5.0)) : 0.5 * (1.0 + std::cos(t * 3.14159265358979));
+            const int dv = static_cast<int>(std::lround(metres * k / step));
+            if (dv == 0) continue;
+            FieldChunk* c = chunkOf(w, x, y, true);
+            if (c->ground.empty()) c->ground.assign(c->fuel.size(), 128);
+            const int i = cellIndexIn(cfg, *c, x, y);
+            const int before = c->ground[i];
+            const int now = std::clamp(before + dv, 0, 255);
+            c->ground[i] = static_cast<std::uint8_t>(now);
+            moved = std::max(moved, std::abs(now - before) * step);
+            const double m = (now - 128) * step;
+            const bool water = w.map().w > 0 && w.map().waterAt({x + 0.5, y + 0.5});
+            if (m <= -cfg.ground.pitWaterM && !water) {
+                // the pit fills from the ground water: nothing burns in it
+                c->fuel[i] = 0;
+                c->fire[i] = 0;
+                c->v[kMoist][i] = static_cast<std::uint8_t>(std::max<int>(c->v[kMoist][i], cfg.waterMoisture - 20));
+            } else if (now > before) {
+                c->v[kMoist][i] = static_cast<std::uint8_t>(clampByte(c->v[kMoist][i] - cfg.ground.drainPerM * (now - before) * step));
+            }
+        }
+    if (moved < step * 0.99) return;
+    // what stands on moving ground cracks: a built piece's supports fail, a tree may topple
+    thingsInDisc(w, at, radiusM, [&](EntityId id, bool piece) {
+        Vec2 p = at;
+        if (piece) {
+            if (auto it = w.pieces().find(id); it != w.pieces().end()) p = piecePos(w, it->second);
+        } else if (const WorldObject* o = w.object(id)) p = o->pos;
+        const double t = std::min(1.0, dist(p, at) / radiusM);
+        const double k = sharp ? (t < 0.8 ? 1.0 : std::max(0.0, (1.0 - t) * 5.0)) : 0.5 * (1.0 + std::cos(t * 3.14159265358979));
+        const int dmg = static_cast<int>(std::lround(cfg.ground.crackPerM * std::abs(metres) * k));
+        if (dmg <= 0) return;
+        if (piece) damagePiece(w, id, dmg, "quake");
+        else damageObject(w, id, dmg / 2, "quake");
+    });
+}
+
+int douse(World& w, Vec2 at, double radiusM, int flame) {
+    const FieldsConfig& cfg = fieldsConfig(w);
+    int before = 0;
+    forDisc(at, radiusM, [&](int x, int y, double k) {
+        FieldChunk* c = chunkOf(w, x, y, false);
+        if (!c) return;
+        const int i = cellIndexIn(cfg, *c, x, y);
+        if (c->fire[i] == 0) return;
+        before += c->fire[i];
+        c->fire[i] = static_cast<std::uint8_t>(std::max(0, c->fire[i] - static_cast<int>(std::lround(flame * k))));
+        c->v[kMoist][i] = static_cast<std::uint8_t>(clampByte(c->v[kMoist][i] + flame * k * 0.8));
+        c->v[kHeat][i] = static_cast<std::uint8_t>(clampByte(c->v[kHeat][i] - flame * k * 0.5));
+    });
+    auto cool = [&](std::map<EntityId, ThingFire>& m, bool piece) {
+        for (auto it = m.begin(); it != m.end();) {
+            Vec2 p;
+            if (piece) {
+                auto bp = w.pieces().find(it->first);
+                if (bp == w.pieces().end()) { ++it; continue; }
+                p = piecePos(w, bp->second);
+            } else {
+                const WorldObject* o = w.object(it->first);
+                if (!o) { ++it; continue; }
+                p = o->pos;
+            }
+            if (dist(p, at) > radiusM + 1.0) { ++it; continue; }
+            before += it->second.flame;
+            it->second.flame -= flame;
+            it = it->second.flame <= 0 ? m.erase(it) : std::next(it);
+        }
+    };
+    cool(w.fields().burningObjects, false);
+    cool(w.fields().burningPieces, true);
+    return before;
+}
+
 bool ignite(World& w, Vec2 at, int flame) {
     const FieldsConfig& cfg = fieldsConfig(w);
     const int x = cellOf(at.x), y = cellOf(at.y);
@@ -824,6 +994,11 @@ std::vector<std::string> applyChannels(World& w, Vec2 at, double radiusM, const 
                 const FieldMaterial* m = o ? cfg.materialOfObject(o->type) : nullptr;
                 if (m && m->rustable > 0) damageObject(w, id, static_cast<int>(dmg * m->rustable), "rust");
             });
+        } else if (key == "raise_ground" || key == "lower_ground" || key == "shape_stone") {
+            // Earth~ heaves a mound (or, with a negative power, sinks a hollow); Stone~ a wall
+            const double v = channelValue(expr, power);
+            const double m = (key == "lower_ground" ? -std::abs(v) : v) * (key == "shape_stone" ? 0.6 : 0.5);
+            groundAdd(w, at, radiusM, m, key == "shape_stone");
         } else other.push_back(key);
     }
     return applyLifeChannels(w, at, radiusM, channels, power, other);
@@ -914,7 +1089,7 @@ void stepChunks(World& w, bool daily) {
             for (int i = 0; i < n; ++i) {
                 const int idx = j * n + i;
                 const int x = c.cx * n + i, y = c.cy * n + j;
-                const Base b = baseAt(w, cfg, amb, x, y);
+                const Base b = baseOf(w, cfg, amb, c, x, y);
                 const bool rim = i == 0 || j == 0 || i == n - 1 || j == n - 1;
                 for (int fi = 0; fi < kFieldCount; ++fi) {
                     const FieldRule& r = cfg.rules[fi];
@@ -1003,6 +1178,7 @@ void stepChunks(World& w, bool daily) {
         if (edge[1]) wake.push_back(chunkKey(c.cx + 1, c.cy));
         if (edge[2]) wake.push_back(chunkKey(c.cx, c.cy - 1));
         if (edge[3]) wake.push_back(chunkKey(c.cx, c.cy + 1));
+        if (!scarred && std::any_of(c.ground.begin(), c.ground.end(), [](std::uint8_t g) { return g != 128; })) scarred = true;
         if (!c.active && !scarred) c.quiet = -1;   // nothing left: drop
     }
     for (auto& [key, arr] : next) {
@@ -1170,6 +1346,7 @@ void fieldsTick(World& w) {
     const bool live = anyActiveChunk(w);
     if (live || daily) reactionsTick(w, daily);   // M4: steam, ice, mud, melt, tainted water; crops in flames
     if (!wf.burningObjects.empty() || !wf.burningPieces.empty() || live) stepThings(w);
+    firefightTick(w);   // AL-115: the village runs to put it out
     if (live) stepBodies(w);
 }
 
@@ -1272,8 +1449,15 @@ Json fieldsViewJson(const World& w, const Vec2* near, double r) {
             fx.push_back({{"x", at.x}, {"y", at.y}, {"kind", "flame"}, {"strength", k}});
         }
     }
+    // AL-115: people throwing water (a splash fx over each one at work)
+    Json crew = Json::array();
+    for (const auto& [pid, sid] : w.fields().firefighters)
+        if (const Character* p = w.character(pid); p && p->body.alive) {
+            crew.push_back(pid);
+            if (inView(p->pos.x, p->pos.y)) fx.push_back({{"x", p->pos.x}, {"y", p->pos.y}, {"kind", "splash"}, {"strength", 0.6}});
+        }
     const Ambient amb = ambient(w);
-    return {{"lights", lights}, {"fx", fx}, {"fires", fires}, {"wind", {{"from_deg", amb.windFromDeg}, {"ms", amb.windMs}}}};
+    return {{"lights", lights}, {"fx", fx}, {"fires", fires}, {"firefighters", crew}, {"wind", {{"from_deg", amb.windFromDeg}, {"ms", amb.windMs}}}};
 }
 
 Json fieldRasterJson(const World& w, Field f, int x0, int y0, int wCells, int hCells) {
