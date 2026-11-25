@@ -260,6 +260,22 @@ Json toJson(const Grid2d& g) {
     for (const auto& x : g.things)
         t.push_back({x.id, x.type, std::round(x.x * 100) / 100, std::round(x.y * 100) / 100, x.storey, x.owner});
     j["things"] = t;
+    // AL-112: fields and gardens: one char per cell, '.' none, '0' + k the tile k of crop_tiles
+    if (!g.crop.empty()) {
+        std::string cs(g.crop.size(), '.');
+        for (std::size_t i = 0; i < g.crop.size(); ++i)
+            if (g.crop[i] > 0 && g.crop[i] <= 79) cs[i] = char('0' + g.crop[i] - 1);
+        j["crop"] = cs;
+        Json ct = Json::array();
+        for (const auto& x : g.cropTiles) ct.push_back({x.sprite, x.rot});
+        j["crop_tiles"] = ct;
+    }
+    Json pl = Json::array();
+    for (const auto& x : g.plots)
+        pl.push_back({{"id", x.id}, {"type", x.type}, {"x", std::round(x.x * 10) / 10}, {"y", std::round(x.y * 10) / 10},
+                      {"strips", x.strips}, {"tilled", x.tilled}, {"sown", x.sown}, {"ripe", x.ripe},
+                      {"grown", x.grown}, {"grow_days", x.growDays}, {"stage", x.stage}});
+    j["plots"] = pl;
     return j;
 }
 

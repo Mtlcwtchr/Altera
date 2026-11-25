@@ -53,6 +53,7 @@ using socket_t = int;
 #include "native/window2d.hpp"
 #endif
 #include "client2d/craft2d.hpp"
+#include "client2d/farm2d.hpp"
 #include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
@@ -75,6 +76,7 @@ struct App {
     World* world = nullptr;
     c2::ViewText text;
     c2::GroundRules ground = c2::GroundRules::defaults();
+    c2::CropRules crops;   // AL-112: fields and gardens (content/sprites_2d/crops2d.json)
     bool paused = false;
     double tps = 2.0;   // sim ticks per real second (1 tick = 10 game minutes)
     double lastStepMs = 0.0;
@@ -410,7 +412,9 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
         } else if (path.rfind("/api/grid", 0) == 0) {
             const int x = intParam(path, "x", 0), y = intParam(path, "y", 0);
             const int w = std::clamp(intParam(path, "w", 64), 1, 256), h = std::clamp(intParam(path, "h", 64), 1, 256);
-            respond(s, 200, "application/json", c2::toJson(c2::buildGrid(*a.world, a.ground, x, y, w, h)).dump());
+            c2::Grid2d grid = c2::buildGrid(*a.world, a.ground, x, y, w, h);
+            c2::paintCrops(*a.world, a.crops, grid);   // AL-112
+            respond(s, 200, "application/json", c2::toJson(grid).dump());
         } else if (path.rfind("/api/state", 0) == 0) {
             const std::string sel = queryParam(path, "sel");
             EntityId id = kNone;
@@ -593,6 +597,9 @@ int main(int argc, char** argv) {
         bool haveRules = false;
         const std::string rulesText = readFile(app.spritesDir + "/map2d.json", &haveRules);
         if (haveRules) app.ground = c2::GroundRules::fromJson(Json::parse(rulesText).value("ground", Json::object()));
+        bool haveCrops = false;
+        const std::string cropsText = readFile(app.spritesDir + "/crops2d.json", &haveCrops);
+        if (haveCrops) app.crops = c2::CropRules::fromJson(Json::parse(cropsText).value("plots", Json::object()));
         app.content = &content;
         app.baseCfg = loadJsonFile(worldFile);
         app.saveDir = c2::saveDir2d();

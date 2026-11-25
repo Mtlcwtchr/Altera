@@ -60,6 +60,15 @@
     for (const [m, c] of Object.entries(WALL)) if (piece.includes(m)) return c;
     return ['n', 'N'];
   }
+  // AL-112: the symbol of a field / garden tile in the glyph mode
+  function cropGlyph(name) {
+    if (name.includes('path')) return null;
+    if (name.includes('over')) return [',', 'T'];
+    if (name.includes('ripe')) return ['"', 'y'];
+    if (name.includes('tilled') || name.includes('sown')) return ['=', 'n'];
+    if (name.includes('fallow') || name.includes('bare') || name.includes('stubble')) return [',', 't'];
+    return ['"', 'l'];
+  }
   function paintChunk(c) {
     const j = c.json, cvs = document.createElement('canvas');
     cvs.width = j.w * T; cvs.height = j.h * T;
@@ -84,6 +93,26 @@
           else g.drawImage(sp, x * T, y * T);
         }
       }
+    }
+    // AL-112: fields and gardens over the ground (one char per cell, '.' none)
+    if (j.crop && j.crop_tiles) for (let y = 0; y < j.h; y++) for (let x = 0; x < j.w; x++) {
+      const ch = j.crop.charCodeAt(y * j.w + x);
+      if (ch === 46) continue;
+      const [name, rot] = j.crop_tiles[ch - 48] || [];
+      if (!name) continue;
+      if (glyphs) {
+        const gl = cropGlyph(name);
+        if (!gl) continue;
+        g.fillStyle = '#100c08'; g.fillRect(x * T, y * T, T, T);
+        g.fillStyle = Sprites.colour(gl[1]); g.globalAlpha = 0.7;
+        g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(gl[0], x * T + 8, y * T + 9); g.globalAlpha = 1;
+        continue;
+      }
+      const sp = Sprites.get(name);
+      if (!sp) continue;
+      if (rot) { g.save(); g.translate(x * T + 8, y * T + 8); g.rotate(rot * Math.PI / 2); g.drawImage(sp, -8, -8); g.restore(); }
+      else g.drawImage(sp, x * T, y * T);
     }
     // walls, doors, windows of the ground storey on the cell lines (4 px strips)
     for (const e of j.edges) {
@@ -694,9 +723,10 @@
 
   // --- start ---------------------------------------------------------------------------------
   Promise.all([getJson('/api/static'), getJson('/sprites/sprites.json'), getJson('/sprites/map2d.json'),
-    getJson('/sprites/resources.json').catch(() => null)]).then(([st, sprites, map2d, res]) => {
+    getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops]) => {
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
     Sprites.load(sprites);
+    Sprites.merge(crops);   // AL-112: fields and gardens
     MAP.actsRe = (MAP.acts || []).map(([re, sp]) => [new RegExp(re), sp]);
     for (const h of MAP.hidden || []) hidden.add(h);
     document.title = L('ui2d.title');
