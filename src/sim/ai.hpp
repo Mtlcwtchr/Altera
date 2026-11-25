@@ -229,6 +229,11 @@ void aiThink(World& w, Character& c);
 void playerThink(World& w, Character& c);
 // Hands `player`'s control to `to` (releasing the one held before); false + why when it cannot.
 bool switchControl(World& w, int player, EntityId to, std::string& why);
+// LR-138: whether `player` may lead `c` - alive, a person, free, and of the
+// player's house (their own kin) unless that house has died out.
+bool mayLead(const World& w, int player, const Character& c, std::string* why = nullptr);
+// A new game's choice of whom to be: the player's house is chosen anew.
+void forgetHouse(World& w, int player);
 void executePlan(World& w, Character& c);
 bool adoptGoal(World& w, Character& c, const GoalScore& gs, const std::string& source);
 void installControl(World& w);

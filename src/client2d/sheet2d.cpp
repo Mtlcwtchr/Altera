@@ -5,6 +5,7 @@
 #include <cstdio>
 #include <set>
 
+#include "sim/ai.hpp"
 #include "sim/gear.hpp"
 #include "sim/trade.hpp"
 
@@ -133,7 +134,8 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
               {"life", textOr(t, "ui2d.sheet.life." + c.standing.life, c.standing.life)},
               {"occ", c.occupation.empty() ? "" : textOr(t, "ui2d.sheet.occ." + c.occupation, c.occupation)},
               {"backstory", c.backstory.empty() ? "" : t.name("backstory", c.backstory)},
-              {"pl", c.controller.isPlayer()}};
+              {"pl", c.controller.isPlayer()},
+              {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
 
     // --- overview -----------------------------------------------------------------
     Json ov;

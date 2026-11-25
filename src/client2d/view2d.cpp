@@ -222,7 +222,8 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
               {"mood", r2(c.mood(w.now()))},
               {"role", c.status.role},
               {"occ", c.occupation},
-              {"pl", c.controller.isPlayer()}};
+              {"pl", c.controller.isPlayer()},
+              {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
     Json needs = Json::array();
     for (const auto& nd : w.content().needs) {
         auto it = c.needs.find(nd.id);

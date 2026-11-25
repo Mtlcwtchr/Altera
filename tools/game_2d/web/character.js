@@ -88,7 +88,7 @@
       (d.overview.captive ? `<div class="sub bad">${esc(L('captive'))}</div>` : '') + '</div>' +
       `<button class="btn sq" id="cs-next" title="${esc(L('next'))} (.)">▶</button><div class="cs-btns">` +
       `<button class="btn wide" id="cs-map">${esc(L('to_map'))}</button>`;
-    if (d.alive) h += `<button class="btn wide" id="cs-lead">${esc(L(me ? 'release' : 'lead'))}</button>`;
+    if (d.alive && (me || d.lead !== false)) h += `<button class="btn wide" id="cs-lead">${esc(L(me ? 'release' : 'lead'))}</button>`;
     if (d.alive && G.me != null && !me && G.screens.talk) h += `<button class="btn wide" id="cs-talk">${esc(L('talk'))}</button>`;
     return h + '</div></div>';
   }

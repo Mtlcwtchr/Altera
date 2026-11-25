@@ -118,17 +118,89 @@ void handToPlayer(World& w, Character& c, int player) {
     trace(w, c, 'C', "control.to_player", {{"player", player}});
 }
 
+// --- LR-138: one plays one dynasty -------------------------------------------
+// As in an RPG, a player leads one house: the person they lead, and when they
+// switch, only their own kin (household, dynasty, spouse, parents, children -
+// the same circle an heir comes from). The house is the last person the player
+// led, kept in the world (module "player_house") so a release (watching, the
+// colony mode) does not open the door to anyone. Only when no one of the house
+// is left alive (or the player never led anyone) may the player pick freely.
+namespace {
+
+constexpr const char* kHouseKey = "player_house";
+
+bool kinOfHouse(const Character& a, const Character& b) {
+    if (a.id == b.id) return true;
+    if (a.status.family != kNone && a.status.family == b.status.family) return true;
+    if (a.status.dynasty != kNone && a.status.dynasty == b.status.dynasty) return true;
+    if (a.status.spouse == b.id || b.status.spouse == a.id) return true;
+    return a.status.mother == b.id || a.status.father == b.id || b.status.mother == a.id || b.status.father == a.id;
+}
+
+const Json* houseOf(const World& w, int player) {
+    const Json* h = w.moduleState(kHouseKey);
+    if (!h || !h->is_object()) return nullptr;
+    const auto it = h->find(std::to_string(player));
+    return it == h->end() || !it->is_object() ? nullptr : &*it;
+}
+
+void rememberHouse(World& w, int player, const Character& c) {
+    Json& h = w.moduleState(kHouseKey);
+    if (!h.is_object()) h = Json::object();
+    h[std::to_string(player)] = {{"who", c.id}, {"family", c.status.family}, {"dynasty", c.status.dynasty}};
+}
+
+// Whether `c` belongs to the house `h` (the anchor person, else its ids).
+bool inHouse(const World& w, const Json& h, const Character& c) {
+    if (const Character* a = w.character(h.value("who", kNone))) return kinOfHouse(*a, c);
+    const EntityId fam = h.value("family", kNone), dyn = h.value("dynasty", kNone);
+    return (fam != kNone && c.status.family == fam) || (dyn != kNone && c.status.dynasty == dyn);
+}
+
+} // namespace
+
+bool mayLead(const World& w, int player, const Character& c, std::string* why) {
+    auto no = [&](const char* r) {
+        if (why) *why = r;
+        return false;
+    };
+    if (!c.body.alive) return no("dead");
+    if (c.isAnimal()) return no("animal"); // AL-25: people only
+    if (c.controller.isPlayer() && c.controller.playerId != player) return no("controlled_by_other");
+    const Json* h = houseOf(w, player);
+    if (!h) {
+        // a world from before LR-138: the person the player leads is the house
+        for (const auto& [id, o] : w.characters())
+            if (o.controller.isPlayer() && o.controller.playerId == player && o.body.alive && !kinOfHouse(o, c))
+                return no("not_your_dynasty");
+        return true;
+    }
+    if (h->value("free", false) || inHouse(w, *h, c)) return true;
+    // The house died out: the player may go on with anyone (GDD: or end the game).
+    for (const auto& [id, o] : w.characters())
+        if (o.body.alive && !o.isAnimal() && inHouse(w, *h, o)) return no("not_your_dynasty");
+    return true;
+}
+
+void forgetHouse(World& w, int player) {
+    Json& h = w.moduleState(kHouseKey);
+    if (!h.is_object()) h = Json::object();
+    h[std::to_string(player)] = {{"free", true}}; // the next one led is the house
+}
+
 bool switchControl(World& w, int player, EntityId to, std::string& why) {
     Character* next = w.character(to);
     if (!next) return why = "no_such_character", false;
-    if (!next->body.alive) return why = "dead", false;
-    if (next->isAnimal()) return why = "animal", false; // AL-25: people only
-    if (next->controller.isPlayer() && next->controller.playerId != player) return why = "controlled_by_other", false;
+    if (!mayLead(w, player, *next, &why)) return false;
     Character* prev = controlledBy(w, player);
-    if (prev == next) return true;
+    if (prev == next) {
+        rememberHouse(w, player, *next);
+        return true;
+    }
     // Atomic within the command: release first, then take.
     if (prev) handToAi(w, *prev);
     handToPlayer(w, *next, player);
+    rememberHouse(w, player, *next);
     return true;
 }
 
@@ -232,10 +304,20 @@ bool handle(World& w, Command& cmd) {
                 throw std::runtime_error("unknown task");
             c->ai.queue.push_back(q);
             trace(w, *c, 'C', "control.queued", {{"task", q.task}});
+            // LR-138: nothing running - the queued task is taken up now
+            if (!c->ai.goal.valid() && !c->ai.social.active() && c->body.alive && c->body.downUntil <= w.now()) {
+                playerThink(w, *c);
+                if (c->ai.goal.valid()) executePlan(w, *c);
+            }
             return true;
         }
         if (!adoptGoal(w, *c, gs, "player")) cmd.result = "rejected:plan_failed:" + c->ai.lastFailReason;
-        else trace(w, *c, 'C', "control.order", {{"goal", gs.goal}, {"task", gs.task}});
+        else {
+            trace(w, *c, 'C', "control.order", {{"goal", gs.goal}, {"task", gs.task}});
+            // LR-138: the order is set about at once (the first act starts now,
+            // the walk goes on from the next tick), not a tick later.
+            if (c->body.alive && c->body.downUntil <= w.now() && !c->ai.social.active()) executePlan(w, *c);
+        }
         c->controller.idleSince = w.now();
         return true;
     }

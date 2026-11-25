@@ -1933,7 +1933,8 @@ struct Window::Impl : Ctx {
             if (!str(d, "cause").empty()) dead += ": " + str(d, "cause");
             y += parchLines(x, y, w, {dead}, 14 * U) + 6 * U;
         }
-        if (str(d, "sp").empty() && flag(d, "alive")) {
+        // LR-138: one leads only one's own kin
+        if (str(d, "sp").empty() && flag(d, "alive") && (ident(d, "id") == me || !d.contains("lead") || flag(d, "lead"))) {
             const long long id = ident(d, "id");
             if (ui.button(ui::widgetId("card.lead"), {x, y, w, 30 * U}, L(id == me ? "ui2d.release" : "ui2d.lead"))) {
                 if (id == me) cmdToast({{"op", "cmd"}, {"type", "release_control"}, {"args", Json::object()}});
