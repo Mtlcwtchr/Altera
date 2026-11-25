@@ -552,8 +552,14 @@ struct Window::Impl : Ctx {
         if (p.contains("worn") && p["worn"].is_array())
             for (const auto& it : p["worn"]) {
                 if (!it.is_string() || !W.contains(it.get<std::string>())) continue;
-                const Json& w = W[it.get<std::string>()];
-                const std::string layer = str(w, "layer"), c = str(w, "colour");
+                const std::string id = it.get<std::string>();
+                const Json& w = W[id];
+                // AL-109: a woman's tunic is a gown, "family" is the household's colour, a dyed thing its dye's
+                const std::string layer = f && w.contains("layer_f") ? str(w, "layer_f") : str(w, "layer");
+                std::string c = str(w, "colour");
+                if (c == "family") c = famColour(p);
+                if (p.contains("dye") && p["dye"].is_object() && p["dye"].contains(id) && MAP.contains("dyes"))
+                    c = MAP["dyes"].value(p["dye"][id].get<std::string>(), c);
                 kinds.insert(layer);
                 if (layer == "cloak") spec.cloak = c;
                 else if (layer == "cap" || layer == "helmet" || layer == "hood") spec.hat = {layer, c};
@@ -570,7 +576,7 @@ struct Window::Impl : Ctx {
             // unshift one by one: the last of the outfit ends first
             for (const auto& b : base) wear.insert(wear.begin(), b);
         }
-        static const std::vector<std::string> order = {"shirt", "robe", "mail", "pants", "tabard", "apron", "belt"};
+        static const std::vector<std::string> order = {"shirt", "robe", "mail", "pants", "boots", "tabard", "apron", "belt", "bag", "pack"};
         auto rank = [&](const std::string& k) {
             const auto it = std::find(order.begin(), order.end(), k);
             return it == order.end() ? -1 : int(it - order.begin());
@@ -578,17 +584,14 @@ struct Window::Impl : Ctx {
         std::stable_sort(wear.begin(), wear.end(), [&](const auto& a, const auto& b) { return rank(a.first) < rank(b.first); });
         spec.wear = wear;
         if (spec.hat.first.empty() && f && !child && ((h >> 15) % 5) < 2) spec.hat = {"kerchief", "#e8e0d0"};
-        if (MAP.contains("tools") && p.contains("inv") && p["inv"].is_array())
-            for (const auto& pt : MAP["tools"]) {
-                const std::string pat = pt[0].get<std::string>();
-                bool has = false;
-                for (const auto& i : p["inv"])
-                    if (i.is_string() && i.get<std::string>().find(pat) != std::string::npos) has = true;
-                if (has) {
+        // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
+        const std::string held = str(p, "held");
+        if (MAP.contains("tools") && !held.empty())
+            for (const auto& pt : MAP["tools"])
+                if (held.find(pt[0].get<std::string>()) != std::string::npos) {
                     spec.tool = pt[1].get<std::string>();
                     break;
                 }
-            }
         return spec;
     }
     std::string actIcon(const Json& p) const {
@@ -688,6 +691,7 @@ struct Window::Impl : Ctx {
         LOOK = parseOr(readText(dir / "craft2d.json"), Json::object());
         atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
         sprites.merge(LOOK);
+        sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
         for (const auto& a : MAP.value("acts", Json::array()))
             if (a.is_array() && a.size() >= 2) try {
                     actsRe.push_back({std::regex(a[0].get<std::string>(), std::regex::ECMAScript), a[1].get<std::string>()});
@@ -746,6 +750,32 @@ struct Window::Impl : Ctx {
                 const int rot = turn ? (v >> 4) & 3 : 0;
                 blit(sp, float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
             }
+        // AL-112: fields and gardens over the ground (one char per cell, '.' none)
+        const std::string crop = str(j, "crop");
+        const Json cropTiles = j.value("crop_tiles", Json::array());
+        if (!crop.empty())
+            for (int y = 0; y < h; ++y)
+                for (int x = 0; x < w; ++x) {
+                    const std::size_t i = std::size_t(y * w + x);
+                    if (i >= crop.size() || crop[i] == '.') continue;
+                    const std::size_t k = std::size_t(crop[i] - '0');
+                    if (k >= cropTiles.size() || !cropTiles[k].is_array() || cropTiles[k].size() < 2) continue;
+                    const std::string name = cropTiles[k][0].get<std::string>();
+                    const int rot = cropTiles[k][1].get<int>();
+                    if (glyphs) {
+                        if (name.find("path") != std::string::npos) continue;
+                        char cl = 'l';
+                        if (name.find("over") != std::string::npos) cl = 'T';
+                        else if (name.find("ripe") != std::string::npos) cl = 'y';
+                        else if (name.find("tilled") != std::string::npos || name.find("sown") != std::string::npos) cl = 'n';
+                        else if (name.find("fallow") != std::string::npos || name.find("bare") != std::string::npos ||
+                                 name.find("stubble") != std::string::npos) cl = 't';
+                        fill(float(x * T), float(y * T), T, T, hexc("#100c08"));
+                        fill(float(x * T + 5), float(y * T + 5), 6, 6, col(sprites.colour(cl), 0.7f));
+                        continue;
+                    }
+                    blit(sprite(name), float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
+                }
         // walls, doors, windows of the ground storey on the cell lines (4 px strips)
         auto pc = [&](char l) { return col(sprites.colour(l)); };
         for (const auto& e : arr(j, "edges")) {
@@ -1431,6 +1461,7 @@ struct Window::Impl : Ctx {
     std::vector<RoomBox> roomBoxes;
     std::vector<std::array<float, 5>> panes;          // lit windows: screen x, y, w, h, strength
     std::vector<std::array<double, 3>> torches;        // world x, y, key
+    std::vector<std::array<double, 3>> fxFlames;       // the sim's fires: world x, y, strength
     double atmosLast = 0;
 
     int roomAt(double x, double y) const {
@@ -1474,7 +1505,7 @@ struct Window::Impl : Ctx {
         const double frac = paused ? 0.0 : std::clamp((t - lastPoll) / 1000.0 * tps, 0.0, 1.0);
         atmos.update(clock.value("sky", Json()), clock.value("sky_next", Json()), frac, dt, t / 1000);
         atmos.frame(mapW(), mapH(), camX, camY, tilePx(), float(sc));
-        wlights.clear(), panes.clear(), torches.clear(), roomBoxes.clear();
+        wlights.clear(), panes.clear(), torches.clear(), roomBoxes.clear(), fxFlames.clear();
         if (!atmos.enabled) return;
         const SkyNow& k = atmos.sky();
         const double tp = tilePx(), hour = num(clock.value("sky", Json::object()), "hour", 12);
@@ -1596,7 +1627,25 @@ struct Window::Impl : Ctx {
                 torches.push_back({v->second.x, v->second.y, double(ident(p, "id"))});
             }
         // lights the sim gives (fire, magic: [{x, y, r, rgb, i, flicker}]) when it does
-        for (const auto& sl : clock.value("lights", Json::array())) {
+        // AL-115: the sim's own fire, magic, steam (/api/state world_fx, metres of the world)
+        const Json wfx = clock.value("world_fx", Json::object());
+        fxFlames.clear();
+        for (const auto& f : wfx.value("fx", Json::array())) {
+            if (!f.is_object()) continue;
+            const std::string kind = str(f, "kind");
+            const double x = num(f, "x"), y = num(f, "y"), st = std::clamp(num(f, "strength", 1), 0.0, 1.5);
+            const std::uint64_t key = std::uint64_t(x * 977 + y * 31) ^ 0x5bd1e995u;
+            if (kind == "flame") {
+                WLight l;
+                l.x = x, l.y = y, l.r = 3 + 4 * st, l.i = std::min(1.0, 0.6 + 0.4 * st), l.flicker = 0.45, l.key = key;
+                l.rgb[0] = 1.0, l.rgb[1] = 0.55, l.rgb[2] = 0.2;
+                wlights.push_back(l);
+                fxFlames.push_back({x, y, st});
+                atmos.addSmoke(x, y - 0.3, key, st, 2);
+            } else if (kind == "steam") atmos.addSmoke(x, y, key, st, 1);
+            else if (kind == "smoke") atmos.addSmoke(x, y, key, st, 0);
+        }
+        for (const auto& sl : wfx.value("lights", clock.value("lights", Json::array()))) {
             if (!sl.is_object()) continue;
             WLight l;
             l.x = num(sl, "x"), l.y = num(sl, "y"), l.r = num(sl, "r", 4), l.i = num(sl, "i", 1), l.flicker = num(sl, "flicker", 0.2);
@@ -1691,6 +1740,17 @@ struct Window::Impl : Ctx {
             atmos.glow(sx + 5 * s, sy - 13 * s, 1.5f * s, 1 * s, 0.45, 0.3, 0.18, 1.0);              // the stick
             atmos.glow(sx + 5 * s, sy - float(15 + f) * s, 1.5f * s, float(2 + f) * s, 1.0, 0.62, 0.2, 0.95);   // the flame
             atmos.glow(sx + 5.25f * s, sy - 14.5f * s, 1 * s, 1 * s, 1.0, 0.95, 0.6, 1.0);
+        }
+        for (const auto& f : fxFlames) {   // tongues of the sim's fires
+            float sx, sy;
+            toScreen(f[0], f[1], sx, sy);
+            const std::uint64_t key = std::uint64_t(f[0] * 977 + f[1] * 31);
+            for (int k = 0; k < 3; ++k) {
+                const double fl = atmos.flick(key + k * 131, 0.8);
+                const float w = float((2.5 + f[2] * 2) * s), hgt = float((4 + f[2] * 5) * fl * s), ox = float((k - 1) * 3) * s;
+                atmos.glow(sx + ox - w / 2, sy - hgt, w, hgt, 1.0, 0.45 + 0.15 * k, 0.12, 0.85);
+                atmos.glow(sx + ox - w / 4, sy - hgt * 0.6f, w / 2, hgt * 0.6f, 1.0, 0.9, 0.5, 0.9);
+            }
         }
         atmos.drawPrecip();
     }

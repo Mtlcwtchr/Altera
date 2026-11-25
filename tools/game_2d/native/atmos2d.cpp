@@ -315,8 +315,8 @@ void Atmos::snowOn(float x, float y, float w, float h) {
     SDL_RenderFillRect(ren_, &r);
 }
 
-void Atmos::addSmoke(double wx, double wy, std::uint64_t key, double strength) {
-    if (enabled && strength > 0.01) smoke_.push_back({wx, wy, strength, key});
+void Atmos::addSmoke(double wx, double wy, std::uint64_t key, double strength, int kind) {
+    if (enabled && strength > 0.01) smoke_.push_back({wx, wy, strength, key, kind});
 }
 
 void Atmos::drawAir() {
@@ -325,15 +325,17 @@ void Atmos::drawAir() {
     if (puff_ && !smoke_.empty()) {
         const double lean = 0.6 + now_.wind * 0.35;
         for (const Smoke& s : smoke_) {
-            for (int k = 0; k < 7; ++k) {
-                const double p = fracPos(t_ / 7.0 + h01(s.key, k));
+            const bool steam = s.kind == 1, thick = s.kind == 2;
+            const int puffs = thick ? 12 : 7;
+            for (int k = 0; k < puffs; ++k) {
+                const double p = fracPos(t_ / (steam ? 3.5 : 7.0) + h01(s.key, k));
                 const double wx = s.x + now_.windX * p * lean * 4.0 + std::sin(t_ * 0.7 + k) * 0.25 * p;
                 const double wy = s.y + now_.windY * p * lean * 4.0 - p * 2.2;
                 float sx, sy;
                 toScreen(wx, wy, sx, sy);
-                const float r = float((0.35 + p * 1.5) * tile_);
-                const float a = float(s.s * 0.42 * (1 - p) * std::min(1.0, p * 6.0) * (1.0 - 0.6 * now_.intensity));
-                const float g = float(0.55 + 0.25 * p);
+                const float r = float((0.35 + p * (thick ? 2.6 : 1.5)) * tile_);
+                const float a = float(std::min(1.0, s.s) * (thick ? 0.55 : 0.42) * (1 - p) * std::min(1.0, p * 6.0) * (1.0 - 0.6 * now_.intensity));
+                const float g = steam ? 0.92f : thick ? float(0.28 + 0.3 * p) : float(0.55 + 0.25 * p);
                 SDL_SetTextureColorModFloat(puff_, g, g, g * 1.02f);
                 SDL_SetTextureAlphaModFloat(puff_, a);
                 const SDL_FRect d{sx - r, sy - r, 2 * r, 2 * r};

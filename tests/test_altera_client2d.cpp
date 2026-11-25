@@ -219,3 +219,29 @@ TEST(altera_client2d_acts) {
     CHECK(c2::resultText(t, "").empty());
     CHECK(!c2::resultText(t, "rejected:cannot:no_method").empty());
 }
+
+// AL-109: the pawn holds the tool of the act (the axe to chop), a weapon he carries
+// otherwise, nothing asleep.
+TEST(altera_client2d_held_tool) {
+    World w = village2d();
+    Character* c = nullptr;
+    for (auto& [id, ch] : w.characters())
+        if (!ch.isAnimal() && ch.body.alive && ch.body.stage() == "adult") c = &ch;
+    if (!c || !w.content().interaction("chop_tree")) return;
+    c2::ViewText t;
+    auto held = [&] {
+        for (const auto& p : c2::peopleJson(w, t))
+            if (p["id"].get<EntityId>() == c->id) return p.value("held", std::string());
+        return std::string("?");
+    };
+    c->inventory = {{"axe", 1}, {"spear", 1}, {"bread", 1}};
+    c->ai.plan.actions.clear();
+    c->ai.fsm.state = "Work";
+    c->ai.fsm.interaction = "chop_tree";
+    CHECK_EQ(held(), std::string("axe"));
+    c->ai.fsm.interaction = "";
+    c->ai.fsm.state = "Idle";
+    CHECK_EQ(held(), std::string("spear"));
+    c->ai.fsm.state = "Sleep";
+    CHECK_EQ(held(), std::string(""));
+}

@@ -272,6 +272,19 @@ void wearAll(const GearRules& R, Character& c) {
             }
 }
 
+void dressTick(World& w) {
+    constexpr Tick kHour = kTicksPerDay / 24;
+    if (w.now() % kHour != 0) return;
+    const GearRules* R = gearRules(w.content());
+    if (!R) return;
+    const bool start = w.now() == 0;
+    for (auto& [id, c] : w.characters()) {
+        if (!c.body.alive || c.isAnimal() || c.inventory.empty()) continue;
+        if (c.controller.isPlayer() && !start) continue;   // the player dresses his person himself
+        wearAll(*R, c);
+    }
+}
+
 namespace {
 
 bool handle(World& w, Command& cmd) {

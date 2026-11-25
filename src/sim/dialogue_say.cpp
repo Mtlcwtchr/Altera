@@ -10,6 +10,7 @@
 #include "sim/dialogue_rules.hpp"
 #include "sim/loc.hpp"
 #include "sim/loc_gen.hpp"
+#include "sim/news.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -84,13 +85,14 @@ SaidLine say(World& w, Character& speaker, Character& listener, const std::strin
     };
     part({"noise.open"}, out.pre);
     part({"tone.open", "voice.open"}, out.pre);
-    part({"voice.tail", "tone.tail"}, out.post);
+    if (act.rfind("ask_", 0) != 0) part({"voice.tail", "tone.tail"}, out.post); // AL-111: a question ends on its "?"
     Json params = {{"speaker", speaker.id}, {"listener", listener.id}, {"key", out.key},
                    {"rule", out.rule},      {"act", act},              {"utt", toJson(u)}};
     if (!out.pre.empty()) params["pre"] = out.pre;
     if (!out.post.empty()) params["post"] = out.post;
     trace(w, speaker, 'S', "say.line", params);
     if (listener.id != speaker.id) trace(w, listener, 'S', "say.line", params);
+    noteSaid(w, u, out.rule); // AL-111: told news is known now
     return out;
 }
 
@@ -132,6 +134,9 @@ std::vector<MenuTopic> dialogueTopics(const World& w, const Character& speaker, 
         out.push_back(std::move(t));
         if (out.size() >= max) break;
     }
+    // AL-111: then the news, as many as fit
+    if (out.size() < max)
+        for (auto& t : newsTopics(w, speaker, listener, max - out.size())) out.push_back(std::move(t));
     return out;
 }
 
@@ -141,8 +146,9 @@ std::string menuLabel(const Loc& loc, const std::string& lang, const World& w, c
     u.speaker = speaker.id;
     u.listener = listener.id;
     u.act = t.act;
-    u.content = t.prop;
+    if (!t.prop.pred.empty()) u.content = t.prop;
     u.epi = t.epi;
+    u.args = t.args;
     return utteranceText(loc, lang, w, u, "dialogue.menu." + t.act);
 }
 
@@ -261,6 +267,7 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
         }
         args[k] = refNoun(r);
     }
+    addNewsArgs(loc, lang, w, u, args); // AL-111: {news}, {person_trade}, {place}...
     // what a v0.1 line may still ask for, from the moment itself, so no "{action}" is left raw
     const Json something = loc.noun(lang, "thing.something", "");
     if (!args.contains("topic")) {

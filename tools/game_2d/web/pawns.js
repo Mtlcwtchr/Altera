@@ -83,6 +83,22 @@ const Pawns = (() => {
         const fx = d === 'S' ? x => Math.abs(x + 0.5 - bcx) <= 2.2 : x => x + 0.5 >= bcx + brx - 2;
         c.layer(filter(body, x => fx(x)), col);
       }
+      // AL-109: boots at the bottom of the body, a satchel on the hip, a pack on the back
+      if (kind === 'boots') c.layer(filter(body, (x, y) => y + 0.5 >= bcy + bry - 1.6), col, null, false);
+      const bx = Math.trunc(bcx), by = Math.trunc(bcy), P = pts => new Set(pts.map(([x, y]) => key(x, y)));
+      if (kind === 'bag') {
+        if (d === 'S') {
+          c.layer(P([[bx - 2, by - 4], [bx - 1, by - 3], [bx, by - 2], [bx + 1, by - 1]]), mul(col, 0.7), null, false);
+          c.layer(P([[bx + 2, by], [bx + 3, by], [bx + 2, by + 1], [bx + 3, by + 1]]), col);
+        } else if (d === 'E') c.layer(P([[bx - 1, by], [bx, by], [bx - 1, by + 1], [bx, by + 1]]), col);
+        else c.layer(P([[bx - 3, by], [bx - 2, by], [bx - 3, by + 1], [bx - 2, by + 1]]), col);
+      }
+      if (kind === 'pack') {
+        const m = [];
+        if (d === 'N') { for (let y = by - 3; y <= by + 1; y++) for (let x = bx - 2; x <= bx + 1; x++) m.push([x, y]); c.layer(P(m), col); }
+        else if (d === 'E') { const x0 = Math.trunc(bcx - brx); for (let y = by - 3; y <= by + 1; y++) m.push([x0, y], [x0 + 1, y]); c.layer(P(m), col); }
+        else c.layer(P([[bx - 2, by - 4], [bx - 2, by - 3], [bx + 1, by - 4], [bx + 1, by - 3]]), mul(col, 0.7), null, false);
+      }
     }
     if (cloak && d === 'N') c.layer(ell(bcx, bcy - 0.3, brx + 1.2, bry + 0.6), cloak);
     if (cloak && d === 'S') { c.px(Math.trunc(bcx) - 1, Math.trunc(bcy - bry) + 1, '#e8c040'); c.px(Math.trunc(bcx), Math.trunc(bcy - bry) + 1, '#e8c040'); }
@@ -109,6 +125,30 @@ const Pawns = (() => {
     }
     if (tool === 'bread') c.layer(S([[tx - 1, ty - 1], [tx, ty - 1], [tx + 1, ty - 1], [tx - 1, ty], [tx, ty], [tx + 1, ty]]), '#d89848');
     if (tool === 'sickle') { c.layer(S([[tx, ty], [tx, ty + 1]]), '#7a4a28'); c.layer(S([[tx, ty - 1], [tx + 1, ty - 2], [tx + 1, ty - 3], [tx, ty - 4]]), '#c8ccd0'); }
+    // AL-109: the tool of the act in hand (pixels2d.cpp draws the same)
+    const WOOD = '#7a4a28', STEEL = '#c8ccd0', IRON = '#8a8e94';
+    const stick = (y0, y1, col) => { const p = []; for (let y = y0; y <= y1; y++) p.push([tx, y]); c.layer(S(p), col); };
+    if (tool === 'axe') { stick(ty - 2, ty + 1, WOOD); c.layer(S([[tx + 1, ty - 3], [tx + 1, ty - 2], [tx + 1, ty - 1], [tx + 2, ty - 2]]), STEEL); }
+    if (tool === 'knife') { c.layer(S([[tx, ty]]), WOOD); c.layer(S([[tx, ty - 1], [tx, ty - 2]]), STEEL, null, false); }
+    if (tool === 'sword') { stick(ty - 7, ty - 1, STEEL); c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty]]), '#b89040', null, false); c.layer(S([[tx, ty + 1]]), WOOD, null, false); }
+    if (tool === 'bow') {
+      c.layer(S([[tx, ty - 4], [tx + 1, ty - 3], [tx + 1, ty - 2], [tx + 1, ty - 1], [tx + 1, ty], [tx + 1, ty + 1], [tx, ty + 2]]), WOOD);
+      const p = []; for (let y = ty - 3; y <= ty + 1; y++) p.push([tx, y]); c.layer(S(p), '#e8e0c8', null, false);
+    }
+    if (tool === 'stick') stick(ty - 3, ty + 3, WOOD);
+    if (tool === 'pick') { stick(ty - 3, ty + 1, WOOD); c.layer(S([[tx - 1, ty - 3], [tx, ty - 4], [tx + 1, ty - 3]]), IRON); }
+    if (tool === 'spade') { stick(ty - 4, ty + 1, WOOD); c.layer(S([[tx - 1, ty + 2], [tx, ty + 2], [tx + 1, ty + 2], [tx - 1, ty + 3], [tx, ty + 3], [tx + 1, ty + 3]]), IRON); }
+    if (tool === 'fork') { stick(ty - 4, ty + 3, WOOD); c.layer(S([[tx - 1, ty - 5], [tx + 1, ty - 5], [tx - 1, ty - 6], [tx + 1, ty - 6], [tx, ty - 5]]), IRON, null, false); }
+    if (tool === 'rod') {
+      c.layer(S([[tx, ty + 1], [tx, ty], [tx, ty - 1], [tx, ty - 2], [tx + 1, ty - 3], [tx + 1, ty - 4], [tx + 1, ty - 5], [tx + 2, ty - 6], [tx + 2, ty - 7]]), WOOD, null, false);
+      c.layer(S([[tx + 3, ty - 6], [tx + 3, ty - 5], [tx + 3, ty - 4], [tx + 3, ty - 3]]), '#d8e0e8', null, false);
+    }
+    if (tool === 'needle') c.layer(S([[tx, ty - 1], [tx, ty - 2]]), STEEL, null, false);
+    if (tool === 'spindle') { stick(ty - 2, ty + 1, WOOD); c.layer(S([[tx - 1, ty + 1], [tx + 1, ty + 1]]), '#a06a38', null, false); c.layer(S([[tx, ty - 3]]), '#e8e0d0', null, false); }
+    if (tool === 'saw') { c.layer(S([[tx, ty]]), WOOD); c.layer(S([[tx, ty - 1], [tx, ty - 2], [tx, ty - 3], [tx, ty - 4], [tx + 1, ty - 2], [tx + 1, ty - 4]]), STEEL); }
+    if (tool === 'torch') { stick(ty - 1, ty + 1, WOOD); c.layer(S([[tx, ty - 2]]), '#e87828', null, false); c.layer(S([[tx, ty - 3]]), '#f8d848', null, false); }
+    if (tool === 'basket') c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty], [tx - 1, ty + 1], [tx, ty + 1], [tx + 1, ty + 1]]), '#c8a050', (x, y, cc) => ((x + y) % 2 ? mul(cc, 0.8) : null));
+    if (tool === 'bucket') { c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty], [tx - 1, ty + 1], [tx, ty + 1], [tx + 1, ty + 1]]), WOOD); c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty]]), IRON, null, false); }
     // head
     const head = ell(hcx, hcy, d !== 'E' ? hr : hr * 0.95, hr);
     const [hair, hc] = spec.hair || ['short', '#5a3a20'];

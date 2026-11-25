@@ -71,6 +71,21 @@ struct Thing2d {
     EntityId owner = sim::kNone;
 };
 
+// AL-112: a tile of a field / garden cell: the sprite and quarter turns (1: rows run along y).
+struct CropTile {
+    std::string sprite;
+    int rot = 0;
+};
+
+// AL-112: a crop object painted in this window (farm2d.cpp).
+struct Plot2d {
+    EntityId id = sim::kNone;
+    std::string type;
+    double x = 0, y = 0;
+    int strips = 0, tilled = 0, sown = 0, ripe = 0, grown = 0, growDays = 0;
+    std::string stage;   // the stage most of its strips are in
+};
+
 struct Grid2d {
     int x0 = 0, y0 = 0, w = 0, h = 0;      // cells (= metres) of the window
     std::vector<std::uint8_t> ground;       // w*h, Ground
@@ -79,6 +94,11 @@ struct Grid2d {
     std::vector<Room2d> rooms;
     std::vector<Roof2d> roofs;
     std::vector<Thing2d> things;
+    // AL-112 (farm2d.cpp, paintCrops): fields and gardens over the ground; crop is w*h
+    // indices into cropTiles + 1 (0: none), empty when no plot reaches the window
+    std::vector<std::uint16_t> crop;
+    std::vector<CropTile> cropTiles;
+    std::vector<Plot2d> plots;
     Ground at(int x, int y) const { return Ground(ground[std::size_t(y - y0) * std::size_t(w) + std::size_t(x - x0)]); }
 };
 

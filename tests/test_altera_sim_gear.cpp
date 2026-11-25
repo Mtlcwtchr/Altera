@@ -3,10 +3,12 @@
 // of the hands and the worn bags (Diablo-like room), the load a body bears
 // and how it tires.
 
+#include <algorithm>
 #include <cmath>
 
 #include "framework.hpp"
 #include "sim/ai.hpp"
+#include "sim/combat_bridge.hpp"
 #include "sim/gear.hpp"
 #include "sim/worldgen.hpp"
 
@@ -171,4 +173,46 @@ TEST(altera_sim_gear_player_refuses_heavy_act) {
     why.clear();
     canPerform(w, *c, *d, bank, &why, false, nullptr);
     CHECK(why.rfind("gear:", 0) != 0);
+}
+
+// AL-109: people dress themselves (once an hour, what they carry and can wear into a
+// free layer); the player's person only at the world's start. Armour counts in a
+// fight only on the body.
+TEST(altera_sim_gear_people_dress_themselves) {
+    World w = gearWorld();
+    Character* c = adult(w);
+    if (!c) return;
+    c->worn.clear();
+    c->inventory = {{"tunic", 1}, {"trousers", 1}, {"leather_armour", 1}, {"helmet", 1}, {"boots", 1}, {"bread", 2}};
+    for (int i = 0; i < kTicksPerDay / 24 + 1; ++i) w.step();
+    CHECK_EQ(c->worn["torso:under"], std::string("tunic"));
+    CHECK_EQ(c->worn["torso:armour"], std::string("leather_armour"));
+    CHECK_EQ(c->worn["head:helm"], std::string("helmet"));
+    CHECK_EQ(c->worn["feet:shoes"], std::string("boots"));
+    CHECK(wornCount(*c, "bread") == 0);
+    // a person led by the player is left as he dressed
+    Command take = gearCmd("take_control", {{"id", c->id}, {"player", 1}});
+    w.applyNow(take);
+    Command off = gearCmd("take_off", {{"id", c->id}, {"item", "helmet"}});
+    w.applyNow(off);
+    for (int i = 0; i < kTicksPerDay / 24 + 1; ++i) w.step();
+    CHECK(wornCount(*c, "helmet") == 0);
+}
+
+TEST(altera_sim_gear_armour_counts_only_worn) {
+    World w = gearWorld();
+    Character* c = adult(w);
+    const CombatBridge* b = combatBridge(w.content());
+    if (!c || !b) return;
+    c->worn.clear();
+    c->craft.items.clear();
+    c->inventory = {{"leather_armour", 1}, {"helmet", 1}};
+    auto has = [](const auto& s, const std::string& a) {
+        return std::find(s.armor.begin(), s.armor.end(), a) != s.armor.end();
+    };
+    auto s = fighterOf(*b, *c, "fighting");
+    CHECK(!has(s, "hide") && !has(s, "helmet"));   // in the bag
+    wearAll(*gearRules(w.content()), *c);
+    s = fighterOf(*b, *c, "fighting");
+    CHECK(has(s, "hide") && has(s, "helmet"));
 }

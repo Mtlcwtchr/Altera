@@ -6,6 +6,8 @@ const Sprites = (() => {
   let PAL = {}, GRIDS = {};
   const cache = new Map();
   function load(json) { PAL = json.pal; GRIDS = json.sprites; cache.clear(); }
+  // AL-112: more grids in the same palette (crops2d.json)
+  function merge(json) { if (json && json.sprites) Object.assign(GRIDS, json.sprites); cache.clear(); }
   function has(name) { return !!GRIDS[name]; }
   function colour(letter) { return PAL[letter] || '#ff00ff'; }
   // A canvas of the sprite (null when there is no such sprite).
@@ -32,5 +34,5 @@ const Sprites = (() => {
     cache.set(k, cv);
     return cv;
   }
-  return { load, get, has, colour };
+  return { load, merge, get, has, colour };
 })();
