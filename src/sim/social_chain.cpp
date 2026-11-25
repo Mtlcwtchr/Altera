@@ -11,6 +11,7 @@
 #include <stdexcept>
 
 #include "sim/dialogue_say.hpp"
+#include "sim/news.hpp"
 #include "sim/ai.hpp"
 #include "sim/character.hpp"
 #include "sim/content.hpp"
@@ -149,7 +150,13 @@ void talkLine(World& w, Character& speaker, Character& listener, const SocialCha
     if (sc.talk.empty()) return;
     std::map<std::string, Ref> args;
     args["action"] = Ref{"text", kNone, "interaction." + sc.id + ".name", 0.0, {}};
-    if (topic && say(w, speaker, listener, topic->act, topic->prop, topic->epi, "", "", args).ok()) return;
+    if (topic) { // AL-111: a deed has its Prop, news its entry in the args
+        std::map<std::string, Ref> targs = args;
+        for (const auto& [k, r] : topic->args) targs[k] = r;
+        std::optional<Prop> content;
+        if (!topic->prop.pred.empty()) content = topic->prop;
+        if (say(w, speaker, listener, topic->act, content, topic->epi, "", "", targs).ok()) return;
+    }
     if (say(w, speaker, listener, act, std::nullopt, Epistemic{}, "", beat + "." + sc.talk, args).ok()) return;
     say(w, speaker, listener, act, std::nullopt, Epistemic{}, "", beat, args);
 }
@@ -164,8 +171,17 @@ void talkBeat(World& w, Character& a, Character& t, const SocialChainDef& sc, in
     const bool hearerBusy = !turn && t.ai.social.aside;
     std::vector<MenuTopic> topics;
     if (sc.talk == "chat" || sc.talk == "gossip") topics = dialogueTopics(w, teller, hearer, 4);
+    else if (sc.talk == "plain" && beat == 0) topics = newsTopics(w, teller, hearer, 1); // AL-111: fresh news first
     const MenuTopic* topic = beat / 2 < static_cast<int>(topics.size()) ? &topics[static_cast<size_t>(beat / 2)] : nullptr;
+    // AL-111: told news is known now, so the next new thing to tell is the first one left
+    if (!topic && !topics.empty() && topics.front().act == "tell_news") topic = &topics.front();
+    // AL-111: nothing new to tell: the news both know is talked over, a story is one's own past
+    if (!topic && !hearerBusy && talkOverNews(w, teller, hearer, sc.talk, beat / 2)) return;
     talkLine(w, teller, hearer, sc, "inform", "talk_body", topic);
+    if (topic && topic->act == "tell_news" && !hearerBusy) { // AL-111: the other takes the news in
+        const auto known = newsKnown(w, hearer, newsIndex(w, topic->args.at("news")).value_or(0));
+        if (say(w, hearer, teller, "react_news", std::nullopt, known.value_or(topic->epi), "", sc.talk, topic->args).ok()) return;
+    }
     talkLine(w, hearer, teller, sc, "inform", hearerBusy ? "talk_reply_busy" : "talk_reply");
 }
 

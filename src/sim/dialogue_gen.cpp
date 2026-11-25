@@ -16,7 +16,7 @@ namespace altera::sim {
 
 namespace {
 
-const std::set<std::string> kRefKinds = {"char", "item", "object", "family", "place", "text", "num", "prop"};
+const std::set<std::string> kRefKinds = {"char", "item", "object", "family", "place", "text", "num", "prop", "news"};
 const std::set<std::string> kSources = {"seen", "heard", "rumor", "told", "inferred", "invented"};
 const std::set<std::string> kModalities = {"fact", "plan", "wish", "must", "can", "guess"};
 const std::set<std::string> kTenses = {"past", "present", "future"};

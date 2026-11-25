@@ -9,6 +9,7 @@
 
 #include "framework.hpp"
 #include "sim/loc.hpp"
+#include "sim/news.hpp"
 #include "sim/loc_gen.hpp"
 
 using namespace altera::sim;
@@ -94,9 +95,13 @@ TEST(altera_dialogue_lines_render_all) {
             const Json args = {{"speaker", c.oleg}, {"listener", listener}, {"src", c.miller}, {"prop", prop},
                                {"reason", c.theft}, {"item", c.item}, {"price", 12},
                                {"give", c.item}, {"get", c.item}}; // AL-75: the two sides of a deal
+            Json argsN = args;
+            argsN["self"] = c.oleg;
+            argsN["person"] = c.yarik;
+            sampleNewsArgs(loc, lang, argsN); // AL-111: news, people, places
             for (std::uint64_t seed = 0; seed < 4; ++seed) {
                 std::vector<std::string> errs;
-                const std::string t = sayLoc(loc, lang, key, args, seed, &errs);
+                const std::string t = sayLoc(loc, lang, key, key.rfind("say.news.", 0) == 0 ? argsN : args, seed, &errs);
                 CHECK_MSG(errs.empty(), lang + " " + key + ": " + (errs.empty() ? "" : errs.front()));
                 CHECK_MSG(clean(t), lang + " " + key + ": " + t);
                 if (dump) dump << lang << " " << key << " #" << seed << ": " << t << "\n";

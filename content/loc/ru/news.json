@@ -1,0 +1,533 @@
+{
+ "_doc": "AL-111: новости, рассказы о себе, людях и местах, вопросы игрока (content/ai/dialogue_rules/news.json, src/sim/news.hpp). {news} — запись хроники, {news_lc} — она же со строчной буквы для середины фразы. {person}/{person_trade}, {place}/{place_size}/{place_dir}/{place_km}/{ruler}, {self_trade}/{years}/{children}/{spouse}.",
+ "dialogue.menu.tell_news": "новость: {news_lc}",
+ "dialogue.menu.ask_news": "что нового?",
+ "dialogue.menu.ask_self": "как живёт, кто так{listener:g|ой|ая}",
+ "dialogue.menu.ask_person": "про {person:acc}",
+ "dialogue.menu.ask_place": "про {place:acc}",
+ "hud.talk.act.tell_news": "рассказать",
+ "hud.talk.act.ask_news": "спросить",
+ "hud.talk.act.ask_self": "спросить",
+ "hud.talk.act.ask_person": "спросить",
+ "hud.talk.act.ask_place": "спросить",
+ "say.news.ask_news": [
+  "Что нового слышно, {listener}?",
+  "Ну, рассказывай, какие новости?",
+  "Что люди говорят, {listener}?",
+  "Слыхал{self:g||а} что-нибудь новое?"
+ ],
+ "say.news.ask_news.vy": [
+  "Какие новости, {listener}?",
+  "Что слышно в округе, {listener}?"
+ ],
+ "say.news.ask_self": [
+  "Расскажи о себе, {listener}.",
+  "Как живёшь-то, {listener}?",
+  "А ты сам{listener:g||а} кто будешь, чем живёшь?"
+ ],
+ "say.news.ask_person": [
+  "А что скажешь про {person:acc}?",
+  "{person} — что он{person:g||а} за человек?",
+  "Знаешь {person:acc}?"
+ ],
+ "say.news.ask_person.kin": [
+  "А как там {person}?",
+  "Как {person} поживает?"
+ ],
+ "say.news.ask_place": [
+  "А что знаешь про {place:acc}?",
+  "{place} — что там за место?",
+  "Расскажи про {place:acc}, бывал{listener:g||а} там?"
+ ],
+ "say.news.tell": [
+  "Слыхал{listener:g||а}? {news}.",
+  "Новость-то какая: {news_lc}.",
+  "А ты знаешь? {news}."
+ ],
+ "say.news.tell.sad": [
+  "Горе-то какое: {news_lc}.",
+  "Худая весть, {listener}. {news}.",
+  "Слыхал{listener:g||а}? {news}. Вот так живёшь, живёшь…"
+ ],
+ "say.news.tell.glad": [
+  "Радость-то у нас: {news_lc}!",
+  "Добрая весть, {listener}: {news_lc}.",
+  "Слыхал{listener:g||а}? {news}. Вот славно!"
+ ],
+ "say.news.tell.alarm": [
+  "Беда, {listener}! {news}.",
+  "Неспокойно нынче: {news_lc}.",
+  "Слышь, {listener}, держи ухо востро. {news}."
+ ],
+ "say.news.tell.spicy": [
+  "Только между нами, {listener}: {news_lc}.",
+  "Ой, что расскажу! {news}.",
+  "Ты не поверишь: {news_lc}."
+ ],
+ "say.news.tell.rumor": [
+  "Не знаю, правда ли, но говорят, {news_lc}.",
+  "Слух ходит: {news_lc}. А там кто их знает.",
+  "Болтают, будто {news_lc}."
+ ],
+ "say.news.tell.rumor_far": [
+  "Мне пересказали, а тем ещё кто-то: {news_lc}. Может, и врут.",
+  "Через третьи руки слышал{self:g||а}: {news_lc}."
+ ],
+ "say.news.tell.told": [
+  "Мне {src} рассказал{src:g||а}: {news_lc}.",
+  "{src} говорит, {news_lc}.",
+  "От {src:gen} слышал{self:g||а}: {news_lc}."
+ ],
+ "say.news.tell.seen": [
+  "Сам{self:g||а} там был{self:g||а}: {news_lc}.",
+  "Своими глазами видел{self:g||а}. {news}."
+ ],
+ "say.news.tell.realm": [
+  "С дороги весть принесли: {news_lc}.",
+  "Путники сказывают, {news_lc}.",
+  "В округе говорят: {news_lc}."
+ ],
+ "say.news.tell.road": [
+  "Люди с дороги всякое несут. Вот, к примеру: {news_lc}."
+ ],
+ "say.news.tell.mine_sad": [
+  "У нас в доме горе, {listener}. {news}.",
+  "Тяжко нам: {news_lc}."
+ ],
+ "say.news.tell.mine_glad": [
+  "У нас радость, {listener}! {news}.",
+  "Порадуйся за нас: {news_lc}!"
+ ],
+ "say.news.tell.kind.death": [
+  "Слыхал{listener:g||а}? {news}. Пусть земля будет пухом.",
+  "Горе у нас: {news_lc}.",
+  "{news}. Не думал{self:g||а}, что так скоро."
+ ],
+ "say.news.tell.kind.war": [
+  "Война, {listener}! {news}.",
+  "Слыхал{listener:g||а} про войну? {news}.",
+  "Плохо дело: {news_lc}. Как бы и до нас не дошло."
+ ],
+ "say.news.tell.kind.raid": [
+  "Набег, {listener}! {news}.",
+  "Слыхал{listener:g||а}? {news}. Запирай амбары.",
+  "Лихие люди балуют: {news_lc}."
+ ],
+ "say.news.tell.kind.wedding": [
+  "Свадьба будет, а то и была уже! {news}.",
+  "Слыхал{listener:g||а}? {news}. Вот и славно, пора было.",
+  "Радость у людей: {news_lc}."
+ ],
+ "say.news.tell.kind.birth": [
+  "Прибавление у нас: {news_lc}.",
+  "Слыхал{listener:g||а}? {news}. Крепким бы рос."
+ ],
+ "say.news.tell.kind.stranger": [
+  "Чужие у нас, {listener}. {news}.",
+  "Слыхал{listener:g||а}? {news}. Поглядим ещё, что за люди."
+ ],
+ "say.news.tell.kind.famine": [
+  "Голодно в краю, {listener}. {news}.",
+  "Слыхал{listener:g||а}? {news}. Береги зерно."
+ ],
+ "say.news.tell.kind.court": [
+  "Суд был, {listener}. {news}.",
+  "Слыхал{listener:g||а}, чем дело кончилось? {news}."
+ ],
+ "say.news.tell.kind.gossip": [
+  "А знаешь, что люди говорят? {news}.",
+  "Ой, что делается: {news_lc}."
+ ],
+ "say.news.tell.gossip_secret": [
+  "Только никому, ладно? {news}.",
+  "Я тебе ничего не говорил{self:g||а}, но {news_lc}."
+ ],
+ "say.news.tell.kind.outlaws": [
+  "Опять разбойники, {listener}. {news}.",
+  "На дорогах неспокойно: {news_lc}."
+ ],
+ "say.news.tell.kind.power": [
+  "Наверху перемены, {listener}: {news_lc}.",
+  "Слыхал{listener:g||а}? {news}. Поглядим, что из этого выйдет."
+ ],
+ "say.news.tell.fresh_alarm": [
+  "{listener}, только что весть пришла! {news}!",
+  "Ты слышал{listener:g||а}?! {news}!"
+ ],
+ "say.news.no_news": [
+  "Да всё по-старому, {listener}. Ничего не слыхал{self:g||а}.",
+  "Тихо у нас. Работа да сон.",
+  "Новостей нет, и слава богам.",
+  "Ничего нового. Ты-то что слыхал{listener:g||а}?"
+ ],
+ "say.news.no_news.keeper": [
+  "Странное дело: даже в корчме нынче тихо.",
+  "Ничего, {listener}. Будто весь край уснул."
+ ],
+ "say.news.tell_story": [
+  "Было дело…",
+  "Помню я одно…"
+ ],
+ "say.news.tell_story.news": [
+  "Помню, {news_lc}.",
+  "Было дело: {news_lc}.",
+  "Расскажу тебе: {news_lc}."
+ ],
+ "say.news.tell_story.sad": [
+  "Тяжело вспоминать: {news_lc}.",
+  "Было у нас горе: {news_lc}. До сих пор помню."
+ ],
+ "say.news.tell_story.glad": [
+  "А хорошее тоже было: {news_lc}.",
+  "Помню тот день: {news_lc}. Вот радость была."
+ ],
+ "say.news.tell_self": [
+  "Я {self_trade}, мне {years} {years:plural|год|года|лет}. Так и живу.",
+  "Что про меня сказать? Я {self_trade}, {years} {years:plural|год|года|лет}. Живу, работаю.",
+  "Живу помаленьку, я {self_trade}."
+ ],
+ "say.news.tell_self.married": [
+  "Я {self_trade}. Живём с {spouse:ins}, у нас {children} {children:plural|ребёнок|ребёнка|детей}. Не жалуюсь.",
+  "Дом, {spouse}, {children} {children:plural|ребёнок|ребёнка|детей}. Работаю, как {self_trade}, чтоб всех прокормить."
+ ],
+ "say.news.tell_self.married_nokids": [
+  "Я {self_trade}. Живём с {spouse:ins}, детей пока боги не дали.",
+  "С {spouse:ins} живём душа в душу, а детей пока нет."
+ ],
+ "say.news.tell_self.widowed": [
+  "Вдов{self:g|ец|а} я. Одна память и осталась.",
+  "Один{self:g||а} я теперь. Живу, как {self_trade}, работа отвлекает."
+ ],
+ "say.news.tell_self.chief": [
+  "Я тут за старшего. За всех и отвечаю.",
+  "На мне деревня, {listener}. И спрос с меня."
+ ],
+ "say.news.tell_self.trader": [
+  "Торгую понемногу: что привезут, то и продаю. Заодно и новости слышу.",
+  "Торговец я. Где купить, где продать — это ко мне."
+ ],
+ "say.news.tell_self.keeper": [
+  "Корчму держу. Все новости у меня первыми и оседают.",
+  "Наливаю да слушаю, {listener}. Корчмар{self:g|ь|ка} я."
+ ],
+ "say.news.tell_self.elder": [
+  "Стар{self:g||а} я уже, {years} {years:plural|год|года|лет}. Всякого повидал{self:g||а}.",
+  "Пожил{self:g||а} я, {listener}. Многое помню, чего вы, молодые, и не слыхали."
+ ],
+ "say.news.tell_self.child": [
+  "Я ещё маленьк{self:g|ий|ая}! Мне {years}.",
+  "Мне {years}, я уже большая помощь по дому!"
+ ],
+ "say.news.tell_person": [
+  "{person}? Это {person_trade}."
+ ],
+ "say.news.tell_person.known": [
+  "{person} — {person_trade}.",
+  "{person}? Знаю, {person_trade}.",
+  "А, {person}. Это {person_trade}, живёт тут."
+ ],
+ "say.news.tell_person.unknown": [
+  "{person}? Не знаю тако{person:g|го|й}.",
+  "Не слыхал{self:g||а} я про {person:acc}."
+ ],
+ "say.news.tell_person.listener": [
+  "Про тебя-то? Сам{listener:g||а} про себя знаешь.",
+  "Ха! Про тебя тебе и рассказывать?"
+ ],
+ "say.news.tell_person.dead": [
+  "{person}… Нет уж {person:gen} с нами."
+ ],
+ "say.news.tell_person.kin.spouse": [
+  "{person}? Так это ж мо{person:g|й муж|я жена}!",
+  "Мо{person:g|й|я} {person}? Живы-здоровы, спасибо."
+ ],
+ "say.news.tell_person.kin.child": [
+  "{person}? Мо{person:g|й сын|я дочь}! Растёт не по дням."
+ ],
+ "say.news.tell_person.kin.parent": [
+  "{person}? Так это ж мо{person:g|й отец|я мать}."
+ ],
+ "say.news.tell_person.chief": [
+  "{person} у нас за старшего.",
+  "{person}? Глава наш."
+ ],
+ "say.news.person_remark.plain": [
+  "Ничего худого не скажу.",
+  "Человек как человек.",
+  "Живёт себе, никого не трогает."
+ ],
+ "say.news.person_remark.liked": [
+  "Хорош{person:g|ий|ая} человек, я {person:acc} уважаю.",
+  "Душевн{person:g|ый|ая}, таких поискать.",
+  "С {person:ins} я дружу. Слова дурного не скажу."
+ ],
+ "say.news.person_remark.disliked": [
+  "Не люблю я {person:acc}, скажу прямо.",
+  "Мне с {person:ins} не по пути.",
+  "Сам{self:g||а} решай, а я б с {person:ins} не водил{self:g|ся|ась}."
+ ],
+ "say.news.person_remark.feared": [
+  "Лучше с {person:ins} не связываться.",
+  "Побаиваюсь я {person:gen}, честно сказать."
+ ],
+ "say.news.person_remark.distrust": [
+  "Только веры {person:dat} нет. Смотри в оба.",
+  "Я б {person:dat} и медяка не доверил{self:g||а}."
+ ],
+ "say.news.person_remark.enemy": [
+  "Враг он{person:g||а} мне. Больше и сказать нечего.",
+  "Не поминай при мне {person:acc}."
+ ],
+ "say.news.person_remark.trusted": [
+  "На {person:acc} можно положиться, проверено.",
+  "{person} не подведёт."
+ ],
+ "say.news.person_remark.chief_good": [
+  "Дельный глава, при {person:pre} жить можно."
+ ],
+ "say.news.person_remark.chief_bad": [
+  "Только толку от {person:gen} мало, между нами."
+ ],
+ "say.news.person_remark.kin": [
+  "Своих не хаят.",
+  "Родная кровь, что тут скажешь."
+ ],
+ "say.news.tell_place": [
+  "{place} — {place_size}, {place_km} {place_km:plural|верста|версты|вёрст} {place_dir}.",
+  "{place}? Это {place_dir}, {place_km} {place_km:plural|верста|версты|вёрст} отсюда, {place_size}."
+ ],
+ "say.news.tell_place.ruler": [
+  "{place} — {place_size}, {place_km} {place_km:plural|верста|версты|вёрст} {place_dir}. Правит там {ruler}.",
+  "{place}? Это {place_size} {place_dir}, {place_km} {place_km:plural|верста|версты|вёрст} пути. Хозяин там {ruler}."
+ ],
+ "say.news.tell_place.camp": [
+  "{place}? Разбойничье гнездо {place_dir}, {place_km} {place_km:plural|верста|версты|вёрст} отсюда. Без нужды туда не суйся.",
+  "{place} — лагерь лихих людей {place_dir}. Там верховодит {ruler}."
+ ],
+ "say.news.place_remark.war": [
+  "С ними у нас война. Туда сейчас ни ногой.",
+  "Воюем мы с ними, {listener}. Гляди в оба."
+ ],
+ "say.news.place_remark.ally": [
+  "С ними у нас союз, люди надёжные.",
+  "Друзья нам, в беде не бросят."
+ ],
+ "say.news.place_remark.pays_us": [
+  "Они нам дань платят.",
+  "Под нашей рукой они, дань носят."
+ ],
+ "say.news.place_remark.we_pay": [
+  "Мы им дань платим, чтоб им пусто было.",
+  "Дань им несём каждый месяц. Обидно, а что поделать."
+ ],
+ "say.news.place_remark.liege": [
+  "Наш господин оттуда. Им и кланяемся."
+ ],
+ "say.news.place_remark.grudge": [
+  "Не любят у нас тамошних: обид много.",
+  "От них нам одни беды были."
+ ],
+ "say.news.place_remark.friendly": [
+  "Хорошие там люди, с ними ладим.",
+  "Соседи добрые."
+ ],
+ "say.news.place_remark.trade": [
+  "Там торг большой, всё купить можно.",
+  "Купцы оттуда к нам заглядывают."
+ ],
+ "say.news.place_remark.fortified": [
+  "За стенами сидят, крепко.",
+  "Стены у них высокие, не взять."
+ ],
+ "say.news.place_remark.cult": [
+  "Странные там люди, молятся чему-то своему.",
+  "Тамошним богам я б не кланял{self:g|ся|ась}."
+ ],
+ "say.news.place_remark.farming": [
+  "Пахари там, хлебом живут.",
+  "Земля у них хорошая, урожаи знатные."
+ ],
+ "say.news.place_remark.raiders": [
+  "Оттуда к нам набегами ходят.",
+  "Лихие там люди. Береги добро."
+ ],
+ "say.news.decline_ask": [
+  "Не твоего ума дело.",
+  "Иди своей дорогой, {listener}.",
+  "С тобой мне говорить не о чем."
+ ],
+ "say.news.decline_ask.enemy": [
+  "После всего ещё и спрашиваешь? Проваливай.",
+  "Тебе я ничего не скажу."
+ ],
+ "news.dir.n": "к северу",
+ "news.dir.ne": "к северо-востоку",
+ "news.dir.e": "к востоку",
+ "news.dir.se": "к юго-востоку",
+ "news.dir.s": "к югу",
+ "news.dir.sw": "к юго-западу",
+ "news.dir.w": "к западу",
+ "news.dir.nw": "к северо-западу",
+ "news.dir.here": "рядом",
+ "news.size.hamlet": "хутор",
+ "news.size.village": "деревня",
+ "news.size.town": "город",
+ "news.size.city": "большой город",
+ "news.nobody": "никто",
+ "news.trade.none.m": "крестьянин",
+ "news.trade.none.f": "крестьянка",
+ "news.trade.child.m": "мальчонка",
+ "news.trade.child.f": "девчушка",
+ "news.trade.elder.m": "старик",
+ "news.trade.elder.f": "старуха",
+ "news.trade.trader.m": "торговец",
+ "news.trade.trader.f": "торговка",
+ "news.trade.tavernkeeper.m": "корчмарь",
+ "news.trade.tavernkeeper.f": "корчмарка",
+ "news.trade.smithing.m": "кузнец",
+ "news.trade.smithing.f": "кузнечиха",
+ "news.trade.carpentry.m": "плотник",
+ "news.trade.carpentry.f": "плотничиха",
+ "news.trade.building.m": "строитель",
+ "news.trade.building.f": "строительница",
+ "news.trade.hunting.m": "охотник",
+ "news.trade.hunting.f": "охотница",
+ "news.trade.trapping.m": "охотник",
+ "news.trade.trapping.f": "охотница",
+ "news.trade.fishing.m": "рыбак",
+ "news.trade.fishing.f": "рыбачка",
+ "news.trade.farming.m": "пахарь",
+ "news.trade.farming.f": "пахарка",
+ "news.trade.cooking.m": "повар",
+ "news.trade.cooking.f": "стряпуха",
+ "news.trade.brewing.m": "пивовар",
+ "news.trade.brewing.f": "пивоварка",
+ "news.trade.sewing.m": "портной",
+ "news.trade.sewing.f": "швея",
+ "news.trade.weaving.m": "ткач",
+ "news.trade.weaving.f": "ткачиха",
+ "news.trade.spinning.m": "прядильщик",
+ "news.trade.spinning.f": "пряха",
+ "news.trade.pottery.m": "гончар",
+ "news.trade.pottery.f": "гончариха",
+ "news.trade.tanning.m": "кожевник",
+ "news.trade.tanning.f": "кожевница",
+ "news.trade.medicine.m": "лекарь",
+ "news.trade.medicine.f": "знахарка",
+ "news.trade.herbalism.m": "травник",
+ "news.trade.herbalism.f": "травница",
+ "news.trade.toolmaking.m": "мастеровой",
+ "news.trade.toolmaking.f": "мастерица",
+ "news.trade.storytelling.m": "сказитель",
+ "news.trade.storytelling.f": "сказительница",
+ "news.trade.singing.m": "певец",
+ "news.trade.singing.f": "певунья",
+ "news.trade.combat.m": "воин",
+ "news.trade.combat.f": "воительница",
+ "news.sample_place": {
+  "nom": "Заречье",
+  "gen": "Заречья",
+  "dat": "Заречью",
+  "acc": "Заречье",
+  "ins": "Заречьем",
+  "pre": "Заречье",
+  "g": "n"
+ },
+ "say.news.person_remark": [
+  "Вот и всё, что знаю.",
+  "Больше и сказать нечего."
+ ],
+ "say.news.place_remark": [
+  "Больше про них ничего не знаю.",
+  "Сам{self:g||а} я там давно не бывал{self:g||а}."
+ ],
+ "say.news.discuss": [
+  "Слыхал{listener:g||а} небось: {news_lc}?",
+  "Все только и говорят: {news_lc}.",
+  "Ну и дела: {news_lc}."
+ ],
+ "say.news.discuss.sad": [
+  "До сих пор в себя не приду: {news_lc}.",
+  "Тяжко на душе, {listener}. {news}."
+ ],
+ "say.news.discuss.glad": [
+  "А хорошо всё-таки: {news_lc}.",
+  "Хоть что-то доброе: {news_lc}."
+ ],
+ "say.news.discuss.alarm": [
+  "Что ж теперь будет, {listener}? {news}.",
+  "Не по себе мне: {news_lc}."
+ ],
+ "say.news.discuss.spicy": [
+  "Ну и дела: {news_lc}. Кто бы мог подумать!",
+  "Всё думаю: {news_lc}. Вот люди, а?"
+ ],
+ "say.news.discuss.kind.death": [
+  "Жалко-то как: {news_lc}.",
+  "Всё не верится: {news_lc}."
+ ],
+ "say.news.discuss.kind.raid": [
+  "Как вспомню набег, так сердце и ёкнет. {news}.",
+  "После набега и спится плохо. {news}."
+ ],
+ "say.news.discuss.kind.war": [
+  "Война эта… {news}. Как бы и нас не забрали.",
+  "Про войну слыхал{listener:g||а}? {news}. Неспокойно."
+ ],
+ "say.news.discuss.kind.wedding": [
+  "Свадьбу-то помнишь? {news}. Хорошая пара.",
+  "{news}. Дай им боги счастья."
+ ],
+ "say.news.discuss.kind.birth": [
+  "{news}. Пусть растёт здоровым.",
+  "Ребёночек-то, а? {news}."
+ ],
+ "say.news.discuss.kind.stranger": [
+  "Чужаки эти… {news}. Что думаешь о них?",
+  "{news}. Приживутся ли?"
+ ],
+ "say.news.discuss.mine_sad": [
+  "Не могу забыть: {news_lc}.",
+  "Всё думаю о нашем горе: {news_lc}."
+ ],
+ "say.news.react": [
+  "Да уж…",
+  "Вот-вот.",
+  "И не говори."
+ ],
+ "say.news.react.sad": [
+  "Беда, да. Жалко.",
+  "Тяжко, что тут скажешь."
+ ],
+ "say.news.react.glad": [
+  "Вот и славно!",
+  "Хорошее дело."
+ ],
+ "say.news.react.alarm": [
+  "Только этого не хватало.",
+  "Береги себя, {listener}."
+ ],
+ "say.news.react.spicy": [
+  "Да ну! Не может быть.",
+  "Ох, люди, люди…"
+ ],
+ "say.news.react.rumor": [
+  "Брешут, небось.",
+  "Не верю я этим слухам."
+ ],
+ "say.news.react.mine_sad": [
+  "У меня самого сердце не на месте.",
+  "Не трави душу, {listener}."
+ ],
+ "say.news.react.story": [
+  "Вот это жизнь…",
+  "Надо же, не знал{self:g||а}.",
+  "Да, помню и я те времена."
+ ],
+ "say.news.react.story_sad": [
+  "Держись, {listener}. Что было, то было.",
+  "Ох… Прости, что напомнил{self:g||а}."
+ ],
+ "goal.share_news.name": "Поделиться новостью",
+ "goal.share_news.thought": "Надо кому-то рассказать, что слыхал{self:g||а}."
+}
