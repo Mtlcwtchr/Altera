@@ -11,7 +11,7 @@
 #include "sim/world_fields.hpp"
 #include "sim/world_reactions.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -145,4 +145,4 @@ bool firefighting(World& w, Character& c) {
     return true;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

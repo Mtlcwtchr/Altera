@@ -11,7 +11,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -158,4 +158,4 @@ double careValue(const World& w, const Character& carer, const std::string& key)
     return deficit(w.content().care, *ward, key);
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

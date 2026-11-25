@@ -1,6 +1,6 @@
-// altera_craft_report: outcome tables of the starter designs by skill, and a
+// lr_craft_report: outcome tables of the starter designs by skill, and a
 // 30-day village smith (gdd crafting v0.2 §15, K2 readiness). Markdown on stdout.
-//   altera_craft_report [--n 60] [--seed 1]
+//   lr_craft_report [--n 60] [--seed 1]
 
 #include <cstdio>
 #include <cstdlib>
@@ -11,7 +11,7 @@
 
 #include "sim/craft/craft_chain.hpp"
 
-using namespace altera::sim::craft;
+using namespace lr::sim::craft;
 
 namespace {
 
@@ -53,7 +53,7 @@ int main(int argc, char** argv) {
         if (!std::strcmp(argv[i], "--n")) n = std::atoi(argv[++i]);
         else if (!std::strcmp(argv[i], "--seed")) seed = std::strtoull(argv[++i], nullptr, 10);
     }
-    const CraftData d = CraftData::load(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/ai/craft");
+    const CraftData d = CraftData::load(std::string(LR_SIM_SOURCE_DIR) + "/content/ai/craft");
     if (!d.loaded || !d.errors.empty()) {
         std::fprintf(stderr, "craft content did not load (%zu errors)\n", d.errors.size());
         return 1;

@@ -8,7 +8,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -18,4 +18,4 @@ void firefightTick(World& w);
 // One person's tick at the fire; true while the fire holds them (the mind waits).
 bool firefighting(World& w, Character& c);
 
-} // namespace altera::sim
+} // namespace lr::sim

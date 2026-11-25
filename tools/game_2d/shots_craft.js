@@ -1,4 +1,4 @@
-// AL-97: frames of the 2D client's workshop for the user. Start altera_game_2d
+// AL-97: frames of the 2D client's workshop for the user. Start lr_game_2d
 // first (a fresh world: the trial kit goes to the player's person), then
 //   node tools/game_2d/shots_craft.js [out_dir] [port]
 // Frames: the bench with a draft laid by the helper, the helper, the outcome,

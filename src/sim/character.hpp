@@ -12,7 +12,7 @@
 #include "sim/core.hpp"
 #include "sim/craft/craft_state.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct Body {
     double health = 1.0;
@@ -379,4 +379,4 @@ struct Character {
 void to_json(Json& j, const Character& c);
 void from_json(const Json& j, Character& c);
 
-} // namespace altera::sim
+} // namespace lr::sim

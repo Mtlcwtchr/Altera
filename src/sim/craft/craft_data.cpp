@@ -5,7 +5,7 @@
 #include <set>
 #include <sstream>
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 namespace {
 
@@ -673,4 +673,4 @@ std::vector<std::string> craftLocKeys(const CraftData& d) {
     return k;
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

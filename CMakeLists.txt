@@ -1,15 +1,15 @@
 cmake_minimum_required(VERSION 3.24)
 project(altera LANGUAGES CXX)
 
-# ALTERA_SIM_ONLY - configure only the headless life-sim: altera_sim,
-# altera_combat, altera_sim_runner, altera_combat_tables and their tests. No
+# LR_SIM_ONLY - configure only the headless life-sim: lr_sim,
+# lr_combat, lr_sim_runner, lr_combat_tables and their tests. No
 # fetches, no engine, no SDL/D3D12, no shaders or assets, so a configure takes
 # seconds and a build needs nothing but a C++20 compiler (Linux included).
 # Used by the "sim" presets (CMakePresets.json, build dir cmake-build-sim) and
 # tools/check_fast.bat. The shared cmake-build-windows stays the full build.
-option(ALTERA_SIM_ONLY "Configure only the headless life-sim and its tests" OFF)
+option(LR_SIM_ONLY "Configure only the headless life-sim and its tests" OFF)
 
-if(NOT ALTERA_SIM_ONLY)
+if(NOT LR_SIM_ONLY)
 include(FetchContent)
 
 # EnTT is header-only. Keep it as a fetched, pinned dependency so the
@@ -65,7 +65,7 @@ FetchContent_Declare(meshoptimizer
         GIT_SHALLOW TRUE
         EXCLUDE_FROM_ALL)
 FetchContent_MakeAvailable(meshoptimizer)
-endif() # NOT ALTERA_SIM_ONLY
+endif() # NOT LR_SIM_ONLY
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -135,7 +135,7 @@ target_compile_options(asr_warnings INTERFACE
 add_library(nlohmann_json INTERFACE)
 target_include_directories(nlohmann_json INTERFACE ${CMAKE_SOURCE_DIR}/third_party)
 
-if(NOT ALTERA_SIM_ONLY)
+if(NOT LR_SIM_ONLY)
 # ---------------------------------------------------------------------------
 # engine/core - fixed point, deterministic RNG, ids, calendar. No game concepts.
 # ---------------------------------------------------------------------------
@@ -304,14 +304,14 @@ target_link_libraries(asr_simulation PUBLIC asr_core asr_content asr_generation 
 # ---------------------------------------------------------------------------
 add_executable(sim_runner sim_runner/main.cpp)
 target_link_libraries(sim_runner PRIVATE asr_simulation asr_warnings)
-endif() # NOT ALTERA_SIM_ONLY
+endif() # NOT LR_SIM_ONLY
 
 # ---------------------------------------------------------------------------
-# altera_sim - the Altera life-sim core (doc/design/ALTERA_CORE_SPEC_v0.1.md):
+# lr_sim - the LivelyRealms life-sim core (doc/design/LR_CORE_SPEC_v0.1.md):
 # characters, 4-layer AI (Utility -> HTN -> GOAP -> FSM), controllers. Headless,
 # deterministic from seed + command log; depends on nothing but the JSON header.
 # ---------------------------------------------------------------------------
-add_library(altera_sim STATIC
+add_library(lr_sim STATIC
         src/sim/world_fields.cpp
         src/sim/world_reactions.cpp
         src/sim/elementals.cpp
@@ -377,58 +377,58 @@ add_library(altera_sim STATIC
         src/sim/craft_sim.cpp
         src/sim/alchemy.cpp
         src/sim/building.cpp)
-target_include_directories(altera_sim PUBLIC src)
-target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_warnings)
+target_include_directories(lr_sim PUBLIC src)
+target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat PRIVATE asr_warnings)
 
-# altera_combat - combat core (gdd/combat/COMBAT_CORE_SPEC_v0.1.md): a port of
+# lr_combat - combat core (gdd/combat/COMBAT_CORE_SPEC_v0.1.md): a port of
 # the combat_sim.py prototype, numbers from content/combat/*.json, deterministic
 # per seed, output is an event stream (no rendering).
-add_library(altera_combat STATIC
+add_library(lr_combat STATIC
         src/sim/combat/combat_data.cpp
         src/sim/combat/combat.cpp
         src/sim/combat/combat_anim.cpp
         src/sim/combat/combat_lod.cpp)
-target_include_directories(altera_combat PUBLIC src)
-target_link_libraries(altera_combat PUBLIC nlohmann_json PRIVATE asr_warnings)
+target_include_directories(lr_combat PUBLIC src)
+target_link_libraries(lr_combat PUBLIC nlohmann_json PRIVATE asr_warnings)
 
-add_executable(altera_combat_tables src/sim/combat/tool/combat_tables.cpp)
-target_link_libraries(altera_combat_tables PRIVATE altera_combat asr_warnings)
-target_compile_definitions(altera_combat_tables PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+add_executable(lr_combat_tables src/sim/combat/tool/combat_tables.cpp)
+target_link_libraries(lr_combat_tables PRIVATE lr_combat asr_warnings)
+target_compile_definitions(lr_combat_tables PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
-add_executable(altera_craft_report src/sim/craft/tool/craft_report.cpp)
-target_link_libraries(altera_craft_report PRIVATE altera_sim asr_warnings)
-target_compile_definitions(altera_craft_report PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+add_executable(lr_craft_report src/sim/craft/tool/craft_report.cpp)
+target_link_libraries(lr_craft_report PRIVATE lr_sim asr_warnings)
+target_compile_definitions(lr_craft_report PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
-add_executable(altera_sim_runner src/sim/runner/main.cpp)
-target_link_libraries(altera_sim_runner PRIVATE altera_sim asr_warnings)
-target_compile_definitions(altera_sim_runner PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+add_executable(lr_sim_runner src/sim/runner/main.cpp)
+target_link_libraries(lr_sim_runner PRIVATE lr_sim asr_warnings)
+target_compile_definitions(lr_sim_runner PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
-# altera_sim_view - watch and play the life-sim in a browser (local HTTP page,
+# lr_sim_view - watch and play the life-sim in a browser (local HTTP page,
 # placeholder visuals until the sim moves into the game client).
 if(WIN32)
-    add_executable(altera_sim_view tools/sim_view/main.cpp)
-    target_link_libraries(altera_sim_view PRIVATE altera_sim ws2_32 asr_warnings)
-    target_compile_definitions(altera_sim_view PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    add_executable(lr_sim_view tools/sim_view/main.cpp)
+    target_link_libraries(lr_sim_view PRIVATE lr_sim ws2_32 asr_warnings)
+    target_compile_definitions(lr_sim_view PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 endif()
 
 # AL-95: the 2D client (gdd/ui/client_2d): src/client2d reads the sim (snapshot ->
-# 1 m cells, people), altera_game_2d serves the page tools/game_2d/web. Windows and Linux.
-add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp src/client2d/acts2d.cpp src/client2d/talk2d.cpp
+# 1 m cells, people), lr_game_2d serves the page tools/game_2d/web. Windows and Linux.
+add_library(lr_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp src/client2d/acts2d.cpp src/client2d/talk2d.cpp
             src/client2d/session2d.cpp src/client2d/craft2d.cpp
             src/client2d/build2d.cpp)
-target_include_directories(altera_client2d PUBLIC src)
-target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
-target_sources(altera_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
-target_sources(altera_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
-target_sources(altera_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
-add_executable(altera_game_2d tools/game_2d/main.cpp)
-target_link_libraries(altera_game_2d PRIVATE altera_client2d asr_warnings)
+target_include_directories(lr_client2d PUBLIC src)
+target_link_libraries(lr_client2d PUBLIC lr_sim PRIVATE asr_warnings)
+target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
+target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
+target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
+add_executable(lr_game_2d tools/game_2d/main.cpp)
+target_link_libraries(lr_game_2d PRIVATE lr_client2d asr_warnings)
 if(WIN32)
-    target_link_libraries(altera_game_2d PRIVATE ws2_32)
+    target_link_libraries(lr_game_2d PRIVATE ws2_32)
 endif()
-target_compile_definitions(altera_game_2d PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_compile_definitions(lr_game_2d PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
 
-if(NOT ALTERA_SIM_ONLY)
+if(NOT LR_SIM_ONLY)
 # ---------------------------------------------------------------------------
 # tools - content validator.
 # ---------------------------------------------------------------------------
@@ -556,30 +556,30 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     target_include_directories(asr_engine_gui PRIVATE ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(asr_engine_gui PUBLIC asr_core asr_representation asr_terrain_generator
             asr_virtual_geometry SDL3::SDL3-static PRIVATE asr_warnings)
-    add_library(Campfire::Gui ALIAS asr_engine_gui)
+    add_library(RealSimEngine::Gui ALIAS asr_engine_gui)
     # AL-94: the 2D client in its own window (tools/game_2d/native): SDL3's GPU renderer (D3D12)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
-    target_sources(altera_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
+    target_sources(lr_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp
             tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
-    target_include_directories(altera_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
-    target_link_libraries(altera_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
-    target_compile_definitions(altera_game_2d PRIVATE ALTERA_GAME2D_NATIVE=1)
+    target_include_directories(lr_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
+    target_link_libraries(lr_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
+    target_compile_definitions(lr_game_2d PRIVATE LR_GAME2D_NATIVE=1)
     if(WIN32)
-        set_target_properties(altera_game_2d PROPERTIES WIN32_EXECUTABLE ON)   # no console window
-        target_link_options(altera_game_2d PRIVATE /ENTRY:mainCRTStartup)
+        set_target_properties(lr_game_2d PROPERTIES WIN32_EXECUTABLE ON)   # no console window
+        target_link_options(lr_game_2d PRIVATE /ENTRY:mainCRTStartup)
     endif()
     if(ASR_BUILD_CLIENT OR (ASR_BUILD_ENGINE_EDITOR AND ASR_ENGINE_EDITOR_GPU))
         include(src/engine/gpu_modules.cmake)
     endif()
     if(ASR_BUILD_ENGINE_EDITOR)
-        add_executable(campfire_engine_editor src/engine/editor/main.cpp)
-        target_link_libraries(campfire_engine_editor PRIVATE asr_engine_gui
+        add_executable(realsim_editor src/engine/editor/main.cpp)
+        target_link_libraries(realsim_editor PRIVATE asr_engine_gui
                 SDL3_image::SDL3_image-static nlohmann_json asr_warnings)
-        target_compile_definitions(campfire_engine_editor PRIVATE ASR_ENGINE_EDITOR_GPU=$<BOOL:${ASR_ENGINE_EDITOR_GPU}>)
+        target_compile_definitions(realsim_editor PRIVATE ASR_ENGINE_EDITOR_GPU=$<BOOL:${ASR_ENGINE_EDITOR_GPU}>)
         if(ASR_ENGINE_EDITOR_GPU)
-            target_link_libraries(campfire_engine_editor PRIVATE asr_engine_viewport)
+            target_link_libraries(realsim_editor PRIVATE asr_engine_viewport)
         endif()
     endif()
 endif()
@@ -587,10 +587,10 @@ endif()
 if(ASR_BUILD_CLIENT)
     # The editor is its own program: it opens no world and ticks nothing, so it
     # starts in a second rather than after a continent has been generated.
-    add_executable(altera_editor
+    add_executable(lr_editor
             src/game/editor/main.cpp
             src/game/ui/editor.cpp)
-    target_link_libraries(altera_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
+    target_link_libraries(lr_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
             SDL3_image::SDL3_image-static asr_warnings)
 
     # This game's passes. They know what ground is made of and what grass is; the
@@ -634,7 +634,7 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(asr_game_render PUBLIC asr_engine_render asr_world asr_camera asr_animation asr_virtual_geometry_gpu
             asr_impostors_gpu asr_world_source PRIVATE nlohmann_json asr_warnings)
 
-    add_executable(altera_client
+    add_executable(lr_client
             src/game/client/main.cpp
             src/engine/core/profiler_alloc.cpp
             src/game/client/renderer.cpp
@@ -653,11 +653,11 @@ if(ASR_BUILD_CLIENT)
             src/game/ui/editor.cpp
             src/game/ui/overlay.cpp
             src/game/ui/info_panel.cpp)
-    target_link_libraries(altera_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
+    target_link_libraries(lr_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
             SDL3::SDL3-static SDL3_image::SDL3_image-static
             SDL3_shadercross::SDL3_shadercross-static nlohmann_json asr_warnings)
     if(ASR_ENABLE_PROFILING)
-        target_sources(altera_client PRIVATE src/game/client/explore_diagnostics.cpp)
+        target_sources(lr_client PRIVATE src/game/client/explore_diagnostics.cpp)
     endif()
 
     # asr_mesh_lab - UE Nanite's bake against our cluster DAG on the same meshes,
@@ -669,7 +669,7 @@ if(ASR_BUILD_CLIENT)
 
     # The terrain core (doc/rework/TERRAIN_REWORK_PLAN.md): macro map, GPU
     # clipmap, CDLOD patches. Depends on the device and nothing of the game.
-    add_library(altera_terrain_core STATIC
+    add_library(lr_terrain_core STATIC
             src/terrain_core/macro_map.cpp
             src/terrain_core/biomes.cpp
             src/terrain_core/erosion.cpp
@@ -693,45 +693,45 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/relief.cpp
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
-    target_include_directories(altera_terrain_core PUBLIC src)
-    target_link_libraries(altera_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
+    target_include_directories(lr_terrain_core PUBLIC src)
+    target_link_libraries(lr_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
 
     # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
-    # altera_game_view - the life-sim drawn into the world view: its people,
+    # lr_game_view - the life-sim drawn into the world view: its people,
     # beasts and buildings as a scene layer, the HUD, the player's orders
     # (src/game_view, doc engine_merge/MERGE_PLAN.md stage 4-6 fast path).
-    add_library(altera_game_view STATIC src/game_view/sim_game.cpp src/game_view/loading_screen.cpp
+    add_library(lr_game_view STATIC src/game_view/sim_game.cpp src/game_view/loading_screen.cpp
                                        src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
                                        src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
                                        src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_bar.cpp src/game_view/hud_edge_social.cpp
                                        src/game_view/hud_edge_screens.cpp src/game_view/hud_edge_trade.cpp src/game_view/hud_world.cpp
                                        src/game_view/saves.cpp)
-    target_include_directories(altera_game_view PUBLIC src)
-    target_link_libraries(altera_game_view PUBLIC altera_terrain_core altera_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
+    target_include_directories(lr_game_view PUBLIC src)
+    target_link_libraries(lr_game_view PUBLIC lr_terrain_core lr_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
 
     add_executable(terrain_lab tools/terrain_lab/main.cpp)
-    target_link_libraries(terrain_lab PRIVATE altera_terrain_core altera_game_view asr_warnings)
-    target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS ALTERA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
-    altera_configure_dlss(altera_terrain_core terrain_lab)
+    target_link_libraries(terrain_lab PRIVATE lr_terrain_core lr_game_view asr_warnings)
+    target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS LR_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    lr_configure_dlss(lr_terrain_core terrain_lab)
 
-    # altera_game - the game on the lab's world view: the life-sim with the
+    # lr_game - the game on the lab's world view: the life-sim with the
     # player's HUD from the start (terrain_lab --game, under its own name).
-    # altera_world_gen - a procedural world (AL-69) into its folder, with its
-    # picture and checks, without the game: altera_world_gen --spec '{...}' --out DIR
-    add_executable(altera_world_gen tools/world_gen_cli.cpp)
-    target_link_libraries(altera_world_gen PRIVATE altera_terrain_core asr_warnings)
+    # lr_world_gen - a procedural world (AL-69) into its folder, with its
+    # picture and checks, without the game: lr_world_gen --spec '{...}' --out DIR
+    add_executable(lr_world_gen tools/world_gen_cli.cpp)
+    target_link_libraries(lr_world_gen PRIVATE lr_terrain_core asr_warnings)
 
-    add_executable(altera_game tools/terrain_lab/main.cpp)
-    target_link_libraries(altera_game PRIVATE altera_terrain_core altera_game_view asr_warnings)
-    target_compile_definitions(altera_game PRIVATE _CRT_SECURE_NO_WARNINGS ALTERA_GAME_DEFAULT=1
-            ALTERA_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    add_executable(lr_game tools/terrain_lab/main.cpp)
+    target_link_libraries(lr_game PRIVATE lr_terrain_core lr_game_view asr_warnings)
+    target_compile_definitions(lr_game PRIVATE _CRT_SECURE_NO_WARNINGS LR_GAME_DEFAULT=1
+            LR_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     if(ASR_DLSS_AVAILABLE)
-        altera_copy_dlss_runtime(altera_game)
+        lr_copy_dlss_runtime(lr_game)
     endif()
     if(ASR_BUILD_TESTS AND ASR_DLSS_AVAILABLE)
         add_executable(asr_dlss_gpu_check tests/test_dlss_gpu.cpp)
-        target_link_libraries(asr_dlss_gpu_check PRIVATE altera_terrain_core asr_warnings)
-        altera_copy_dlss_runtime(asr_dlss_gpu_check)
+        target_link_libraries(asr_dlss_gpu_check PRIVATE lr_terrain_core asr_warnings)
+        lr_copy_dlss_runtime(asr_dlss_gpu_check)
     endif()
 
     add_executable(asr_shader_check tools/shader_check.cpp)
@@ -747,27 +747,27 @@ if(ASR_BUILD_CLIENT)
     # Vulkan program from outside it. Nothing in the engine knows it exists.
     # Vulkan headers come with SDL; Metal has Instruments instead.
     if(NOT APPLE)
-        add_library(altera_gpu_layer SHARED tools/gpu_profiler/altera_gpu_layer.cpp)
-        target_include_directories(altera_gpu_layer PRIVATE "${sdl3_SOURCE_DIR}/src/video/khronos")
-        set_target_properties(altera_gpu_layer PROPERTIES PREFIX "")
-        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:altera_gpu_layer>/VK_LAYER_ALTERA_gpu_profile.json" CONTENT
+        add_library(lr_gpu_layer SHARED tools/gpu_profiler/lr_gpu_layer.cpp)
+        target_include_directories(lr_gpu_layer PRIVATE "${sdl3_SOURCE_DIR}/src/video/khronos")
+        set_target_properties(lr_gpu_layer PROPERTIES PREFIX "")
+        file(GENERATE OUTPUT "$<TARGET_FILE_DIR:lr_gpu_layer>/VK_LAYER_LR_gpu_profile.json" CONTENT
 "{
     \"file_format_version\": \"1.2.0\",
     \"layer\": {
-        \"name\": \"VK_LAYER_ALTERA_gpu_profile\",
+        \"name\": \"VK_LAYER_LR_gpu_profile\",
         \"type\": \"GLOBAL\",
-        \"library_path\": \"./$<TARGET_FILE_NAME:altera_gpu_layer>\",
+        \"library_path\": \"./$<TARGET_FILE_NAME:lr_gpu_layer>\",
         \"api_version\": \"1.3.0\",
         \"implementation_version\": \"1\",
-        \"description\": \"Altera GPU profile: timestamps around every piece of GPU work, named after its shaders\"
+        \"description\": \"LivelyRealms GPU profile: timestamps around every piece of GPU work, named after its shaders\"
     }
 }
 ")
     endif()
 
-    # Public altera_* target names, with backward-compatible asr_* executable
+    # Public lr_* target names, with backward-compatible asr_* executable
     # shims for older scripts and local habits.
-    function(altera_binary target legacy)
+    function(lr_binary target legacy)
         if(UNIX)
             add_custom_command(TARGET ${target} POST_BUILD
                     COMMAND "${CMAKE_COMMAND}" -E rm -f "$<TARGET_FILE_DIR:${target}>/${legacy}"
@@ -781,17 +781,17 @@ if(ASR_BUILD_CLIENT)
                     VERBATIM)
         endif()
     endfunction()
-    altera_binary(altera_client asr_client)
-    altera_binary(altera_editor asr_editor)
+    lr_binary(lr_client asr_client)
+    lr_binary(lr_editor asr_editor)
 
     # Windows has no rpath: the vendored shader compiler's DLLs must sit next to
     # the exe. dxil.dll is not linked, DXC loads it at runtime to sign DXIL.
     if(WIN32)
-        add_custom_command(TARGET altera_client POST_BUILD
+        add_custom_command(TARGET lr_client POST_BUILD
                 COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                        $<TARGET_RUNTIME_DLLS:altera_client> "$<TARGET_FILE_DIR:altera_client>"
+                        $<TARGET_RUNTIME_DLLS:lr_client> "$<TARGET_FILE_DIR:lr_client>"
                 COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                        "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:altera_client>"
+                        "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:lr_client>"
                 COMMAND_EXPAND_LISTS
                 VERBATIM)
     endif()
@@ -838,63 +838,63 @@ if(ASR_BUILD_CLIENT)
                 COMMENT "Building per-model geometry DAGs and instance canopy sidecars"
                 VERBATIM)
         add_custom_target(asr_scene_geometry DEPENDS "${SCENE_CLUSTER_STAMP}")
-        add_dependencies(altera_client asr_scene_geometry)
+        add_dependencies(lr_client asr_scene_geometry)
     endif()
 endif()
-endif() # NOT ALTERA_SIM_ONLY
+endif() # NOT LR_SIM_ONLY
 
 # ---------------------------------------------------------------------------
 # tests
 # ---------------------------------------------------------------------------
 if(ASR_BUILD_TESTS)
     enable_testing()
-    add_executable(altera_sim_tests tests/main.cpp tests/test_altera_sim.cpp tests/test_altera_sim_control.cpp
-            tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
-            tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
-            tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
-            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp tests/test_altera_sim_worth.cpp tests/test_altera_sim_resources.cpp tests/test_altera_sim_alchemy.cpp
-            tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
-            tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp tests/test_altera_sim_reach.cpp
-            tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp tests/test_altera_sim_structures.cpp tests/test_altera_sim_rooms.cpp
-            tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
-            tests/test_altera_sim_dialogue_rules.cpp
-            tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp tests/test_altera_sim_dialogue_say.cpp
-            tests/test_altera_sim_justice.cpp tests/test_altera_sim_facts.cpp
-            tests/test_altera_sim_speech_feed.cpp tests/test_altera_sim_news.cpp
-            tests/test_altera_sim_village_life.cpp tests/test_altera_sim_memory_budget.cpp
-            tests/test_altera_sim_realm.cpp
-            tests/test_altera_sim_magic.cpp
-            tests/test_altera_sim_ecology.cpp
-            tests/test_altera_sim_social.cpp
-            tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_sim_trade.cpp tests/test_altera_sim_species.cpp
-            tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp tests/test_altera_hotbar.cpp
-            tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp
-            tests/test_altera_client2d_talk.cpp tests/test_altera_client2d_session.cpp
-            tests/test_altera_client2d_craft.cpp
-            tests/test_altera_build2d.cpp
-            tests/test_altera_sim_fields.cpp tests/test_altera_sim_reactions.cpp tests/test_altera_sim_elementals.cpp
-            tests/test_altera_sim_relief_firefight.cpp)
-    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sheet.cpp)   # AL-100
-    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sky.cpp)     # AL-110
-    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_crops.cpp)   # AL-112
-    target_include_directories(altera_sim_tests PRIVATE src tests)
-    target_link_libraries(altera_sim_tests PRIVATE altera_sim altera_client2d asr_warnings)
-    target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    add_executable(lr_sim_tests tests/main.cpp tests/test_lr_sim.cpp tests/test_lr_sim_control.cpp
+            tests/test_lr_sim_loc.cpp tests/test_lr_sim_loc_gen.cpp tests/test_lr_sim_content.cpp
+            tests/test_lr_sim_farming.cpp tests/test_lr_sim_crafts.cpp
+            tests/test_lr_sim_combat.cpp tests/test_lr_sim_captivity.cpp
+            tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
+            tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp
+            tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
+            tests/test_lr_sim_gear.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
+            tests/test_lr_sim_consequences.cpp tests/test_lr_sim_dialogue_gen.cpp
+            tests/test_lr_sim_dialogue_rules.cpp
+            tests/test_lr_sim_rumor_noise.cpp tests/test_lr_sim_rumor_spread.cpp tests/test_lr_sim_dialogue_say.cpp
+            tests/test_lr_sim_justice.cpp tests/test_lr_sim_facts.cpp
+            tests/test_lr_sim_speech_feed.cpp tests/test_lr_sim_news.cpp
+            tests/test_lr_sim_village_life.cpp tests/test_lr_sim_memory_budget.cpp
+            tests/test_lr_sim_realm.cpp
+            tests/test_lr_sim_magic.cpp
+            tests/test_lr_sim_ecology.cpp
+            tests/test_lr_sim_social.cpp
+            tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp
+            tests/test_lr_sim_trade.cpp tests/test_lr_sim_species.cpp
+            tests/test_lr_cutaway.cpp tests/test_lr_ui_theme.cpp tests/test_lr_locomotion.cpp tests/test_lr_hotbar.cpp
+            tests/test_lr_sim_dialogue_corpus.cpp tests/test_lr_client2d.cpp
+            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp
+            tests/test_lr_client2d_craft.cpp
+            tests/test_lr_build2d.cpp
+            tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
+            tests/test_lr_sim_relief_firefight.cpp)
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
+    target_include_directories(lr_sim_tests PRIVATE src tests)
+    target_link_libraries(lr_sim_tests PRIVATE lr_sim lr_client2d asr_warnings)
+    target_compile_definitions(lr_sim_tests PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     # The suite is split by test name: the long multi-year worlds (cmake/test_labels.cmake)
-    # run as altera_sim_slow, label "full"; the rest is altera_sim, label "fast".
+    # run as lr_sim_slow, label "full"; the rest is lr_sim, label "fast".
     include(cmake/test_labels.cmake)
-    altera_add_sim_tests(altera_sim_tests)
-    add_executable(altera_combat_tests tests/main.cpp tests/test_altera_combat.cpp)
-    target_include_directories(altera_combat_tests PRIVATE src tests)
-    target_link_libraries(altera_combat_tests PRIVATE altera_combat asr_warnings)
-    target_compile_definitions(altera_combat_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
-    add_test(NAME altera_combat COMMAND altera_combat_tests)
+    lr_add_sim_tests(lr_sim_tests)
+    add_executable(lr_combat_tests tests/main.cpp tests/test_lr_combat.cpp)
+    target_include_directories(lr_combat_tests PRIVATE src tests)
+    target_link_libraries(lr_combat_tests PRIVATE lr_combat asr_warnings)
+    target_compile_definitions(lr_combat_tests PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+    add_test(NAME lr_combat COMMAND lr_combat_tests)
     # C++ core vs the Python prototype's tables (n=3000, seed 1), +-5 pp per cell
-    add_test(NAME altera_combat_golden COMMAND altera_combat_tables --n 3000 --seed 1
+    add_test(NAME lr_combat_golden COMMAND lr_combat_tables --n 3000 --seed 1
             --golden ${CMAKE_SOURCE_DIR}/tests/data/combat/golden_combat_sim_n3000_seed1.md --tol 5)
-    if(ALTERA_SIM_ONLY)
-        altera_label_tests()
+    if(LR_SIM_ONLY)
+        lr_label_tests()
         return()
     endif()
     add_executable(asr_dlss_math_tests tests/main.cpp tests/test_dlss_math.cpp)
@@ -1094,11 +1094,11 @@ if(ASR_BUILD_TESTS)
     target_sources(asr_terrain_tests PRIVATE tests/test_natural_basins.cpp)
     target_sources(asr_terrain_tests PRIVATE tests/test_world_scale.cpp tests/test_land_coverage.cpp
             tests/test_terrain_source.cpp)
-    if(TARGET altera_terrain_core)
-        add_executable(altera_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp
+    if(TARGET lr_terrain_core)
+        add_executable(lr_terrain_core_tests tests/main.cpp tests/test_terrain_core.cpp tests/test_world_gen.cpp
                 tests/test_terrain_core_enb.cpp)
-        target_link_libraries(altera_terrain_core_tests PRIVATE altera_terrain_core asr_warnings)
-        add_test(NAME terrain_core_unit COMMAND altera_terrain_core_tests)
+        target_link_libraries(lr_terrain_core_tests PRIVATE lr_terrain_core asr_warnings)
+        add_test(NAME terrain_core_unit COMMAND lr_terrain_core_tests)
     endif()
     add_test(NAME terrain_unit COMMAND asr_terrain_tests)
     set_tests_properties(terrain_unit PROPERTIES TIMEOUT 120)
@@ -1129,5 +1129,5 @@ endif()
 # Every test gets a ctest label: "fast" (the sim's quick checks, the default
 # layer) or "full" (everything else). See cmake/test_labels.cmake.
 if(ASR_BUILD_TESTS)
-    altera_label_tests()
+    lr_label_tests()
 endif()

@@ -7,7 +7,7 @@
 #include "sim/loc.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 std::vector<SpeechEvent> SpeechFeed::poll(const World& w, const Loc& loc, const std::string& lang) {
     std::vector<SpeechEvent> out;
@@ -92,4 +92,4 @@ std::vector<SpeechEvent> SpeechFeed::barks(const World& w, const Loc& loc, const
     return out;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

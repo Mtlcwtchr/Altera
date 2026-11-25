@@ -1,4 +1,4 @@
-// AL-100: frames of the character sheet's five pages. Start altera_game_2d, then
+// AL-100: frames of the character sheet's five pages. Start lr_game_2d, then
 //   node tools/game_2d/shots_sheet.js [out_dir] [port] [person index]
 // Frames go to terrain_lab_out/shots_for_user/ by default (2d_sheet_*.png).
 const { chromium } = require('playwright');

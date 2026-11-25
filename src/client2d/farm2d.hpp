@@ -19,7 +19,7 @@
 
 #include "client2d/grid2d.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 struct PlotRule {
     std::string layout = "strips";   // strips | beds
@@ -50,4 +50,4 @@ std::vector<PlotPart> plotParts(const sim::World& w, const sim::WorldObject& o, 
 // Paints the plots that reach into the window: Grid2d::crop / cropTiles / plots.
 void paintCrops(const sim::World& w, const CropRules& rules, Grid2d& g);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

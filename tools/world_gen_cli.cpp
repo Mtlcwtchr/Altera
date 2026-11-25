@@ -1,6 +1,6 @@
-// altera_world_gen - a procedural world (AL-69) into its folder without the game:
+// lr_world_gen - a procedural world (AL-69) into its folder without the game:
 //
-//   altera_world_gen [--spec JSON] [--out DIR] [--fresh]
+//   lr_world_gen [--spec JSON] [--out DIR] [--fresh]
 //
 // The folder DIR/<spec key>/ gets height.r16, biomes.png, preview.png,
 // report.json (the numbers and the checks) and spec.json - the files the game
@@ -28,7 +28,7 @@ int main(int argc, char** argv) {
         else if (a == "--out" && i + 1 < argc) out = argv[++i];
         else if (a == "--fresh") fresh = true;
         else {
-            std::fprintf(stderr, "usage: altera_world_gen [--spec JSON] [--out DIR] [--fresh]\n");
+            std::fprintf(stderr, "usage: lr_world_gen [--spec JSON] [--out DIR] [--fresh]\n");
             return 2;
         }
     }

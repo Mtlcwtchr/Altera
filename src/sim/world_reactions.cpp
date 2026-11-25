@@ -13,7 +13,7 @@
 #include "sim/building.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -431,4 +431,4 @@ void reactionsTick(World& w, bool daily) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -9,7 +9,7 @@
 
 #include "sim/craft/craft.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 // A recipe step = a design step + what the owner knows of it.
 struct RecipeStep {
@@ -96,4 +96,4 @@ ChainPlan planChain(const CraftData& d, const std::vector<RecipeStep>& steps, co
 // Breakthrough (§18): chance for an attempt that matches no known recipe.
 double breakthroughChance(const CraftData& d, const Actor& a, double skill, double novelty);
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

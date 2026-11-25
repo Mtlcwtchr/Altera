@@ -2,7 +2,7 @@
 
 Uses Asset Registry tags ("Dimensions"), so nothing is loaded or saved:
     UnrealEditor-Cmd AncientSettlement.uproject -run=pythonscript -script=<this> -unattended -nullrhi
-Writes AS_UE_OUT/terrain_sources.json (default /tmp/altera_ue_terrain).
+Writes AS_UE_OUT/terrain_sources.json (default /tmp/lr_ue_terrain).
 """
 import json
 import os
@@ -10,7 +10,7 @@ from pathlib import Path
 
 import unreal
 
-OUT = Path(os.environ.get("AS_UE_OUT", "/tmp/altera_ue_terrain"))
+OUT = Path(os.environ.get("AS_UE_OUT", "/tmp/lr_ue_terrain"))
 WORDS = ("grass", "soil", "dirt", "mud", "sand", "rock", "stone", "gravel", "snow", "ground", "moss", "forest",
          "earth", "cliff", "pebble", "clay", "leaves", "floor")
 

@@ -13,7 +13,7 @@
 #include "sim/core.hpp"
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -82,4 +82,4 @@ std::string finishFight(World& w, Character& winner, Character& loser, const Int
 // Off-screen rescue of a defeated player. Returns the rescuer id.
 std::string rescuePlayer(World& w, Character& player, Character* winner);
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -11,8 +11,8 @@
 #include "sim/building.hpp"
 #include "sim/worldgen.hpp"
 
-namespace altera::client2d {
-using namespace altera::sim;
+namespace lr::client2d {
+using namespace lr::sim;
 namespace fs = std::filesystem;
 
 namespace {
@@ -226,12 +226,12 @@ std::string beginAs(World& w, const Json& args) {
 
 // --- saves -------------------------------------------------------------------
 fs::path saveDir2d() {
-    if (const char* d = std::getenv("ALTERA_SAVE_DIR"); d && *d) return utf8Path(d) / "saves_2d";
+    if (const char* d = std::getenv("LR_SAVE_DIR"); d && *d) return utf8Path(d) / "saves_2d";
 #ifdef _WIN32
-    if (const char* a = std::getenv("APPDATA"); a && *a) return fs::path(a) / "Altera" / "Altera" / "saves_2d";
+    if (const char* a = std::getenv("APPDATA"); a && *a) return fs::path(a) / "LivelyRealms" / "LivelyRealms" / "saves_2d";
 #else
-    if (const char* x = std::getenv("XDG_DATA_HOME"); x && *x) return utf8Path(x) / "Altera" / "Altera" / "saves_2d";
-    if (const char* h = std::getenv("HOME"); h && *h) return utf8Path(h) / ".local" / "share" / "Altera" / "Altera" / "saves_2d";
+    if (const char* x = std::getenv("XDG_DATA_HOME"); x && *x) return utf8Path(x) / "LivelyRealms" / "LivelyRealms" / "saves_2d";
+    if (const char* h = std::getenv("HOME"); h && *h) return utf8Path(h) / ".local" / "share" / "LivelyRealms" / "LivelyRealms" / "saves_2d";
 #endif
     return fs::current_path() / "saves_2d";
 }
@@ -309,4 +309,4 @@ bool deleteSave2d(const fs::path& dir, int slot) {
     return a;
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

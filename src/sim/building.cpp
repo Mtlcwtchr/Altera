@@ -7,7 +7,7 @@
 #include <cmath>
 #include <stdexcept>
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -639,4 +639,4 @@ void grantStartMandate(World& w, EntityId settlement, EntityId chief) {
     for (const auto& r : w.content().config.rights) c->status.rights.insert(r);
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

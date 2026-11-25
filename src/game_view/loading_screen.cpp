@@ -17,7 +17,7 @@
 #include "game_view/saves.hpp"
 #include "game_view/ui_theme.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
@@ -250,4 +250,4 @@ void LoadingScreen::draw() {
     SDL_SubmitGPUCommandBuffer(commands);
 }
 
-} // namespace altera::game
+} // namespace lr::game

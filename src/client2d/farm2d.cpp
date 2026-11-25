@@ -5,9 +5,9 @@
 
 #include "sim/village_plan.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 
@@ -275,4 +275,4 @@ void paintCrops(const World& w, const CropRules& rules, Grid2d& g) {
     }
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

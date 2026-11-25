@@ -41,7 +41,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -253,4 +253,4 @@ void magicDaily(World& w);
 // magic_teach {id, pupil, aspect}, magic_learn {id, aspect, amount} (scenario/debug).
 void installMagic(World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -13,7 +13,7 @@
 #include "sim/dialogue_rules.hpp"
 #include "sim/world_fields.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct WorldObject {
     EntityId id = kNone;
@@ -401,4 +401,4 @@ void from_json(const Json& j, Event& e);
 void to_json(Json& j, const BuildPiece& p);
 void from_json(const Json& j, BuildPiece& p);
 
-} // namespace altera::sim
+} // namespace lr::sim

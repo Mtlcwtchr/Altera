@@ -15,7 +15,7 @@
 #include "sim/loc_gen.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -1380,4 +1380,4 @@ std::string reportText(const CorpusReport& r, size_t maxIssues) {
     return o.str();
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

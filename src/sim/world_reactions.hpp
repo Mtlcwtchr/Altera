@@ -20,7 +20,7 @@
 
 #include "sim/world_fields.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct Character;
 
@@ -91,4 +91,4 @@ std::vector<std::string> applyLifeChannels(World& w, Vec2 at, double radiusM, co
 // people stepping out of fire.
 void reactionsTick(World& w, bool daily);
 
-} // namespace altera::sim
+} // namespace lr::sim

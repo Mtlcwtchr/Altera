@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 using ui::Colour;
@@ -267,4 +267,4 @@ void Hud::settingsPanel(float W, float H) {
         host_->menuAction("back", sim::Json::object());
 }
 
-} // namespace altera::game
+} // namespace lr::game

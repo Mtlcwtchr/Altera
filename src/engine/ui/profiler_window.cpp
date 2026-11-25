@@ -58,7 +58,7 @@ ProfilerWindow::~ProfilerWindow() { close(); }
 
 void ProfilerWindow::open() {
     if (window_) return;
-    window_ = SDL_CreateWindow("Campfire profiler (sampling)", int(kWide), int(kHigh), SDL_WINDOW_RESIZABLE);
+    window_ = SDL_CreateWindow("RealSimEngine profiler (sampling)", int(kWide), int(kHigh), SDL_WINDOW_RESIZABLE);
     if (!window_) return;
     renderer_ = SDL_CreateRenderer(window_, nullptr);
     if (!renderer_) {

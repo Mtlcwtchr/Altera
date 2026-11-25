@@ -19,7 +19,7 @@
 #include "sim/world.hpp"
 #include "sim/world_reactions.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -801,4 +801,4 @@ bool handle(World& w, Command& cmd) {
 
 void installSocial(World& w) { w.addCommandHandler(handle); }
 
-} // namespace altera::sim
+} // namespace lr::sim

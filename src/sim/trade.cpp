@@ -17,7 +17,7 @@
 #include "sim/social_chain.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -1147,4 +1147,4 @@ bool handle(World& w, Command& cmd) {
 
 void installTrade(World& w) { w.addCommandHandler(handle); }
 
-} // namespace altera::sim
+} // namespace lr::sim

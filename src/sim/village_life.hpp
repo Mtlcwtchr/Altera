@@ -30,7 +30,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -142,4 +142,4 @@ bool kinOrHousehold(const World& w, const Character& a, const Character& b);
 // The one `c` courts now (kNone: nobody), as the daily pass picks them.
 EntityId courtshipTarget(const World& w, const Character& c);
 
-} // namespace altera::sim
+} // namespace lr::sim

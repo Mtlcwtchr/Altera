@@ -1,4 +1,4 @@
-// AL-112: frames of fields and kitchen gardens. Start altera_game_2d first
+// AL-112: frames of fields and kitchen gardens. Start lr_game_2d first
 // (e.g. --no-browser --season summer --paused), then
 //   node tools/game_2d/shots_crops.js [out_dir] [port] [prefix]
 // Frames: the village from above, a field, a garden up close.

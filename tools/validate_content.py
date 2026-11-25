@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Единый валидатор контента Altera (облако и ПК, только stdlib).
+"""Единый валидатор контента LivelyRealms (облако и ПК, только stdlib).
 
   python tools/validate_content.py [--root ПУТЬ] [--quiet] [--log файл] [подкоманда ...]
 
@@ -164,8 +164,8 @@ def check_ai(L):
     if not d or not (d / "tools" / "validate_ai.py").exists():
         r = Report("ai"); r.warn("нет content_ai/tools/validate_ai.py, пропуск"); return r
     r = run_ext("ai", [str(d / "tools" / "validate_ai.py"), str(d)])
-    if L["expansion"] is None and r.errs:   # раскладка репо: Python-образец отстал от схемы C++ (species, care, build...), авторитетен altera::sim::validate
-        r.warn(f"эталонный validate_ai.py отстал от схемы репо: {len(r.errs)} замечаний только информативно; авторитет — тесты altera_sim")
+    if L["expansion"] is None and r.errs:   # раскладка репо: Python-образец отстал от схемы C++ (species, care, build...), авторитетен lr::sim::validate
+        r.warn(f"эталонный validate_ai.py отстал от схемы репо: {len(r.errs)} замечаний только информативно; авторитет — тесты lr_sim")
         r.errs = []
     return r
 
@@ -212,7 +212,7 @@ def check_backstory(L):
             if isinstance(p, list) and len(p) == 2]
     starts = set(d.get("config", {}).get("starts", {"home": {}}))
     repo = L["root"].parent
-    icons = set(J(repo / "assets" / "altera_game" / "ui" / "icons.json").get("icons", {}))
+    icons = set(J(repo / "assets" / "lr_game" / "ui" / "icons.json").get("icons", {}))
     ui = J(L["root"] / "ui" / "backstory.json")
     lang = {}
     for loc in L["loc"]:

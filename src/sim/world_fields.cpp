@@ -15,7 +15,7 @@
 #include "sim/firefight.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -1469,4 +1469,4 @@ Json fieldRasterJson(const World& w, Field f, int x0, int y0, int wCells, int hC
     return {{"x", x0}, {"y", y0}, {"w", wCells}, {"h", hCells}, {"field", fieldName(f)}, {"data", data}};
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

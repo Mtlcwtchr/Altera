@@ -1,7 +1,7 @@
-// The life-sim in the world: altera_sim steps on a thread of its own, the
+// The life-sim in the world: lr_sim steps on a thread of its own, the
 // world view draws its people, beasts and buildings as placeholder shapes on
 // the real ground, and an immediate-mode HUD (engine ui, style G of the design
-// canvas "Altera UI и HUD") shows the selected character, the clock, the
+// canvas "LivelyRealms UI и HUD") shows the selected character, the clock, the
 // chronicle and the player's orders.
 //
 // Every text on screen comes from content/loc (game.* keys in game_ui.json and
@@ -64,11 +64,11 @@
 #include "terrain_core/params.hpp"
 #include "terrain_core/relief.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 namespace fs = std::filesystem;
-using namespace altera::sim;
+using namespace lr::sim;
 using Clock = std::chrono::steady_clock;
 constexpr double kPi = 3.14159265358979;
 
@@ -404,7 +404,7 @@ public:
 
     // ---- AL-69: the world -------------------------------------------------
     // New game opens the world's making: size, seed, water, mountains,
-    // climate, rivers, or the imported world of Altera. The same world again
+    // climate, rivers, or the imported world of LivelyRealms. The same world again
     // starts at once; another one is made by the game started afresh on it
     // (the view's terrain, water and plants are built for one world).
     void openWorldPanel() {
@@ -451,15 +451,15 @@ public:
         args.push_back("--size");
         args.push_back(size.c_str());
         args.push_back(nullptr);
-        SDL_Log("altera_game: restarting on world %s (%s)", spec.key().c_str(), begin.c_str());
+        SDL_Log("lr_game: restarting on world %s (%s)", spec.key().c_str(), begin.c_str());
         // a tour goes on in the new game with its next script, or none
         // (SDL's environment calls only: on Windows they and the C library's keep separate copies)
-        if (SDL_getenv_unsafe("ALTERA_GAME_SCRIPT")) {
-            const char* next = SDL_getenv_unsafe("ALTERA_GAME_SCRIPT_NEXT");
+        if (SDL_getenv_unsafe("LR_GAME_SCRIPT")) {
+            const char* next = SDL_getenv_unsafe("LR_GAME_SCRIPT_NEXT");
             const std::string nextScript = next ? next : "";
-            if (nextScript.empty()) SDL_unsetenv_unsafe("ALTERA_GAME_SCRIPT");
-            else SDL_setenv_unsafe("ALTERA_GAME_SCRIPT", nextScript.c_str(), 1);
-            SDL_unsetenv_unsafe("ALTERA_GAME_SCRIPT_NEXT");
+            if (nextScript.empty()) SDL_unsetenv_unsafe("LR_GAME_SCRIPT");
+            else SDL_setenv_unsafe("LR_GAME_SCRIPT", nextScript.c_str(), 1);
+            SDL_unsetenv_unsafe("LR_GAME_SCRIPT_NEXT");
         }
         SDL_Process* child = opts_.exe.empty() ? nullptr : SDL_CreateProcess(args.data(), false);
         if (!child) {
@@ -481,7 +481,7 @@ public:
                 w->run(7 * kTicksPerDay / 24);
                 world_ = std::move(w);
             } catch (const std::exception& e) {
-                SDL_Log("altera_game: new game: %s", e.what());
+                SDL_Log("lr_game: new game: %s", e.what());
                 hud_.menuNote = text("menu.failed", {{"why", std::string(e.what())}});
                 startSim();
                 return;
@@ -522,11 +522,11 @@ public:
         startSim();
         std::string why;
         if (!writeSave(slot, save, m, &why)) {
-            SDL_Log("altera_game: save %d: %s", slot, why.c_str());
+            SDL_Log("lr_game: save %d: %s", slot, why.c_str());
             hud_.menuNote = text("menu.failed", {{"why", why}});
             return false;
         }
-        SDL_Log("altera_game: saved slot %d (%s)", slot, slotPath(slot).string().c_str());
+        SDL_Log("lr_game: saved slot %d (%s)", slot, slotPath(slot).string().c_str());
         return true;
     }
 
@@ -535,13 +535,13 @@ public:
         try {
             save = readSave(slot);
         } catch (const std::exception& e) {
-            SDL_Log("altera_game: load %d: %s", slot, e.what());
+            SDL_Log("lr_game: load %d: %s", slot, e.what());
             hud_.menuNote = text("menu.failed", {{"why", std::string(e.what())}});
             return false;
         }
         {
             // AL-69: a save made on another world opens that world first
-            // (saves from before worlds were chosen are of Altera's)
+            // (saves from before worlds were chosen are of LivelyRealms's)
             terrain_core::WorldSpec saved;
             saved.kind = "lore";
             const Json g = save.value("game", Json::object());
@@ -556,7 +556,7 @@ public:
             world_->loadJson(save.at("world"));
         } catch (const std::exception& e) {
             // a half-read world is no world: start a new one
-            SDL_Log("altera_game: load %d: %s", slot, e.what());
+            SDL_Log("lr_game: load %d: %s", slot, e.what());
             world_ = std::make_unique<World>(makeTestWorld(*content_, worldCfg_, opts_.seed));
             installAi(*world_);
             world_->run(7 * kTicksPerDay / 24);
@@ -584,7 +584,7 @@ public:
         startSim();
         hud_.menuNote.clear();
         hud_.panel = "none";
-        SDL_Log("altera_game: loaded slot %d", slot);
+        SDL_Log("lr_game: loaded slot %d", slot);
         return true;
     }
 
@@ -612,7 +612,7 @@ public:
             hud_.themeId = style;
             hud_.shutdown();
             std::string whyHud;
-            if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("altera_game: %s", whyHud.c_str());
+            if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("lr_game: %s", whyHud.c_str());
             loadFonts();
             styleTheme();
         }
@@ -677,7 +677,7 @@ public:
             for (const auto& b : list)
                 if (b.is_object() && b.contains("id") && b.contains("name")) names[b["id"].get<int>()] = b["name"].get<std::string>();
         } catch (const std::exception& e) {
-            SDL_Log("altera_game: biome names: %s", e.what());
+            SDL_Log("lr_game: biome names: %s", e.what());
         }
         const auto& ids = bm.ids();
         const double bs = double(bm.size());
@@ -805,7 +805,7 @@ public:
                                        {"h_dm", std::move(hs)}, {"wet", std::move(ws)}};
             cfg["village_centre"] = Json::array({centreX - ox, centreY - oy});
         }
-        SDL_Log("altera_game: village site %.0f, %.0f (%s), score %.2f, %d wet cells of %d", centreX, centreY,
+        SDL_Log("lr_game: village site %.0f, %.0f (%s), score %.2f, %d wet cells of %d", centreX, centreY,
                 biomeName(centreX, centreY).c_str(), bestScore, wetCells, n * n);
     }
 
@@ -1653,7 +1653,7 @@ public:
             ui_.init(canvas_.renderer());
             uiScale_ = 0;   // the fonts are set again below, at the scale
             std::string whyHud;
-            if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("altera_game: %s", whyHud.c_str());
+            if (!hud_.init(canvas_.renderer(), fs::path(opts_.root), &whyHud)) SDL_Log("lr_game: %s", whyHud.c_str());
             loadFonts();   // the theme init() read names them
             styleTheme();
             uiTexture_ = {};
@@ -1746,18 +1746,18 @@ public:
 
 private:
     // ---- pictures of the game window (F9, and the scripted run) -------------
-    // ALTERA_GAME_SCRIPT names a JSON list of steps, each at `at` seconds after
+    // LR_GAME_SCRIPT names a JSON list of steps, each at `at` seconds after
     // the world opened: camera (zoom, pitch, yawDeg), `select` (a person by
     // index among the living people), `speed`, `panel` (none|sheet|wheel|kin|annals),
     // `menu`, `save`, `load` (the menus and the save slots),
     // `shot` (file under terrain_lab_out/shots_for_user), `quit`.
     void loadScript() {
-        const char* path = std::getenv("ALTERA_GAME_SCRIPT");
+        const char* path = std::getenv("LR_GAME_SCRIPT");
         if (!path || !*path) return;
         try {
             script_ = loadJsonFile(path);
         } catch (const std::exception& e) {
-            SDL_Log("altera_game: script %s: %s", path, e.what());
+            SDL_Log("lr_game: script %s: %s", path, e.what());
         }
     }
     void runScript(double dt) {
@@ -1898,7 +1898,7 @@ private:
                         const double d = std::hypot(a.x - me->x, a.y - me->y);
                         if (d < bd) bd = d, best = &a;
                     }
-                    SDL_Log("altera_game: trade_with %s: %s (%.0f m)", role.c_str(), best ? best->name.c_str() : "none", best ? bd : 0.0);
+                    SDL_Log("lr_game: trade_with %s: %s (%.0f m)", role.c_str(), best ? best->name.c_str() : "none", best ? bd : 0.0);
                     if (best) {
                         select(best->id);
                         wheelWanted_ = best->id;
@@ -1922,7 +1922,7 @@ private:
                         const double d = std::hypot(t.x - me->x, t.y - me->y);
                         if (d < bd) bd = d, best = &t;
                     }
-                    SDL_Log("altera_game: act_thing %s: %s (%.0f m)", ty.c_str(), best ? "found" : "none near", best ? bd : 0.0);
+                    SDL_Log("lr_game: act_thing %s: %s (%.0f m)", ty.c_str(), best ? "found" : "none near", best ? bd : 0.0);
                     if (best)
                         command("perform", {{"id", me->id}, {"interaction", st["act_thing"][1].get<std::string>()}, {"target", best->id}});
                     else   // none in sight: the person finds the nearest one themselves (the sim's own search)
@@ -1954,7 +1954,7 @@ private:
             }
             // AL-69: world_panel {spec}: the making of a world open on that
             // spec; world {spec}: create it (the game restarts on it, with
-            // ALTERA_GAME_SCRIPT_NEXT as its script)
+            // LR_GAME_SCRIPT_NEXT as its script)
             if (st.contains("world_panel")) {
                 openWorldPanel();
                 if (st["world_panel"].is_object()) {
@@ -1962,7 +1962,7 @@ private:
                     hud_.worldSeedText = std::to_string(hud_.worldDraft.seed);
                 }
             }
-            if (st.contains("next_script")) SDL_setenv_unsafe("ALTERA_GAME_SCRIPT_NEXT", st["next_script"].get<std::string>().c_str(), 1);
+            if (st.contains("next_script")) SDL_setenv_unsafe("LR_GAME_SCRIPT_NEXT", st["next_script"].get<std::string>().c_str(), 1);
             if (st.contains("world") && st["world"].is_object()) menuAction("world_create", st["world"]);
             if (st.contains("save")) saveSlot(st["save"].get<int>());
             if (st.contains("load")) loadSlot(st["load"].get<int>());
@@ -2017,7 +2017,7 @@ private:
                                b->y + g.at(3).get<double>());
                     int bad = 0;
                     for (const auto& w : batchWhy_) bad += !w.empty();
-                    SDL_Log("altera_game: script drag %s: %zu pieces, %d refused, %zu removed", hud_.buildMode.c_str(),
+                    SDL_Log("lr_game: script drag %s: %zu pieces, %d refused, %zu removed", hud_.buildMode.c_str(),
                             laid_.size(), bad, batchRemove_.size());
                     commitBatch();
                 }
@@ -2105,7 +2105,7 @@ private:
                         if (!near || std::hypot(sp.x - rx, sp.y - ry) < std::hypot(near->x - rx, near->y - ry)) near = &sp;
                     if (near && !st.contains("yawDeg")) orbitYaw_ = std::atan2(near->y - near->doorY, near->x - near->doorX);
                 }
-                SDL_Log("altera_game: script look_room %s: %s", want.c_str(), hit ? "found" : "none");
+                SDL_Log("lr_game: script look_room %s: %s", want.c_str(), hit ? "found" : "none");
             }
             if (st.contains("look_at_build") && !shown_.pieces.empty()) {
                 const BuildPiece& p0 = shown_.pieces.begin()->second;
@@ -2136,7 +2136,7 @@ private:
                 for (const auto& [id, p] : shown_.pieces) builtN += p.built;
                 counts += "pieces=" + std::to_string(shown_.pieces.size()) + " built=" + std::to_string(builtN) + " result=" +
                           shown_.result + " ";
-                SDL_Log("altera_game: step %zu people=%zu %s", scriptStep_, figures_.size(), counts.c_str());
+                SDL_Log("lr_game: step %zu people=%zu %s", scriptStep_, figures_.size(), counts.c_str());
             }
             if (st.contains("shot"))
                 shotWanted_ = (fs::path(opts_.root) / "terrain_lab_out/shots_for_user" / st["shot"].get<std::string>()).string();
@@ -2195,8 +2195,8 @@ private:
             std::error_code ec;
             fs::create_directories(fs::path(shotPending_).parent_path(), ec);
             std::string why;
-            if (!engine::world_source::writePng(shotPending_, img, &why)) SDL_Log("altera_game: shot: %s", why.c_str());
-            else SDL_Log("altera_game: saved %s", shotPending_.c_str());
+            if (!engine::world_source::writePng(shotPending_, img, &why)) SDL_Log("lr_game: shot: %s", why.c_str());
+            else SDL_Log("lr_game: saved %s", shotPending_.c_str());
         }
         shotPending_.clear();
     }
@@ -2245,7 +2245,7 @@ private:
                 } else if (c.op == "steer") {
                     // direct control: no result line for each step, and no slide
                     // back between ticks (the step is where the person stands now)
-                    altera::sim::Command cmd;
+                    lr::sim::Command cmd;
                     cmd.source = "player:1";
                     cmd.type = "steer";
                     cmd.args = c.args;
@@ -2275,7 +2275,7 @@ private:
                 } else if (c.op == "craft_kit") {
                     if (Character* b = world_->character(c.args.value("id", kNone))) craftKit(*b);
                 } else if (c.op == "cmd") {
-                    altera::sim::Command cmd;
+                    lr::sim::Command cmd;
                     cmd.source = "player:1";
                     cmd.type = c.type;
                     cmd.args = c.args;
@@ -2289,7 +2289,7 @@ private:
                 }
             } catch (const std::exception& e) {
                 // a bad command is reported, not fatal
-                SDL_Log("altera_game: command %s/%s failed: %s", c.op.c_str(), c.type.c_str(), e.what());
+                SDL_Log("lr_game: command %s/%s failed: %s", c.op.c_str(), c.type.c_str(), e.what());
                 result_ = std::string("rejected:") + e.what();
             }
             const auto now = Clock::now();
@@ -2305,7 +2305,7 @@ private:
                     world_->step();
                 } catch (const std::exception& e) {
                     // a broken tick must not take the game down: say what and stop the clock
-                    SDL_Log("altera_game: sim tick %lld failed: %s", (long long)world_->now(), e.what());
+                    SDL_Log("lr_game: sim tick %lld failed: %s", (long long)world_->now(), e.what());
                     result_ = std::string("sim_error:") + e.what();
                     paused_ = true;
                     owed = 0;
@@ -2321,7 +2321,7 @@ private:
                 try {
                     snapshotLocked();
                 } catch (const std::exception& e) {
-                    SDL_Log("altera_game: snapshot failed: %s", e.what());
+                    SDL_Log("lr_game: snapshot failed: %s", e.what());
                 }
                 lastSnap = Clock::now();
             }
@@ -2335,7 +2335,7 @@ private:
         try {
             ui = loadJsonFile(opts_.root + "/content/ui/backstory.json");
         } catch (const std::exception& e) {
-            SDL_Log("altera_game: backstory ui: %s", e.what());
+            SDL_Log("lr_game: backstory ui: %s", e.what());
         }
         const Json itemIcons = ui.value("item_icons", Json::object());
         const std::string itemDefault = ui.value("item_icon_default", std::string("things"));
@@ -3126,7 +3126,7 @@ private:
         ++fh.version;
         terrain_core::Foliage* f = fh.foliage;
         if (!f || !opts_.biomes || !opts_.biomes->size() || !world_) {
-            SDL_Log("altera_game: no held forest (%s)", !f ? "no foliage" : "no biome map");
+            SDL_Log("lr_game: no held forest (%s)", !f ? "no foliage" : "no biome map");
             return;
         }
         setClearings();   // the village's yards: no tree grows there
@@ -3193,7 +3193,7 @@ private:
             // the people know the woods round their village
             for (auto& [id, c] : w.characters())
                 if (!c.isAnimal()) c.knownObjects.insert(fresh.begin(), fresh.end());
-            SDL_Log("altera_game: forest: %zu generated trees gave way to %zu drawn ones", old.size(), fresh.size());
+            SDL_Log("lr_game: forest: %zu generated trees gave way to %zu drawn ones", old.size(), fresh.size());
         }
         // which sim tree each drawn one is (the same place, to the centimetre)
         std::map<std::pair<long long, long long>, EntityId> at;
@@ -3212,7 +3212,7 @@ private:
         fh.trees = heldTrees_;
         fh.active = true;
         ++fh.version;
-        SDL_Log("altera_game: forest held: %zu trees over %.0f m round the village", heldTrees_.size(), 2 * half);
+        SDL_Log("lr_game: forest held: %zu trees over %.0f m round the village", heldTrees_.size(), 2 * half);
     }
     // The drawn forest without the felled trees (main thread, from the snapshot).
     void forestFelled(const std::vector<int>& felled) {
@@ -4251,18 +4251,18 @@ private:
             }
         }
         if (!relief_->setPads(pads, spacing_)) {
-            SDL_Log("altera_game: pads: the world's relief is too big to lay pads beside it");
+            SDL_Log("lr_game: pads: the world's relief is too big to lay pads beside it");
             return;
         }
         std::string why;
         if (!relief_->open(device_, &why)) {
-            SDL_Log("altera_game: pads: %s", why.c_str());
+            SDL_Log("lr_game: pads: %s", why.c_str());
             return;
         }
         padsOn_ = true;
         terrainChanged_ = true;
         obstacleSig_ = std::size_t(-1);   // the slopes changed
-        SDL_Log("altera_game: %zu building and field pads laid on the ground", pads.size());
+        SDL_Log("lr_game: %zu building and field pads laid on the ground", pads.size());
     }
     // AL-77: the village fires as warm lights for the frame chain (a hearth
     // inside a house would shine through its walls: not those).
@@ -4448,7 +4448,7 @@ private:
         try {
             if (fs::exists(file)) loco::readConfig(loco_, sim::loadJsonFile(file.string()));
         } catch (const std::exception& e) {
-            SDL_Log("altera_game: %s: %s (defaults kept)", file.string().c_str(), e.what());
+            SDL_Log("lr_game: %s: %s (defaults kept)", file.string().c_str(), e.what());
         }
         applyLoco();
     }
@@ -4471,14 +4471,14 @@ private:
             if (!n.gait.ok) n.gait.cycle = float(people_.clipSeconds(c)), n.gait.offset = 0;
             // the nodes must rise in speed: a measure out of order falls back to the config's
             if (n.speed <= locoNodes_.back().speed + 0.2f) n.speed = std::max(fallback, locoNodes_.back().speed + 0.5f);
-            SDL_Log("altera_game: loco %s: cycle %.2fs, left heel at %.2f, %.2f m/s%s", name, double(n.gait.cycle),
+            SDL_Log("lr_game: loco %s: cycle %.2fs, left heel at %.2f, %.2f m/s%s", name, double(n.gait.cycle),
                     double(n.gait.offset), double(n.speed), n.gait.ok ? " (measured)" : "");
             locoNodes_.push_back(n);
         }
         turnLeft_ = people_.stateClip("turn_l");
         turnRight_ = people_.stateClip("turn_r");
         animators_.clear();   // set up again on the next frame
-        SDL_Log("altera_game: loco rig %s, turn clips %d/%d", people_.locoRig() ? "found" : "missing (no procedural layers)",
+        SDL_Log("lr_game: loco rig %s, turn clips %d/%d", people_.locoRig() ? "found" : "missing (no procedural layers)",
                 turnLeft_, turnRight_);
     }
 
@@ -5229,7 +5229,7 @@ private:
         instTransfer_ = SDL_CreateGPUTransferBuffer(device_.handle(), &t);
 
         engine::PipelineWanted wanted;
-        wanted.shaderFile = "altera_game/actors.hlsl";
+        wanted.shaderFile = "lr_game/actors.hlsl";
         wanted.vertexEntry = "actorsVs";
         wanted.fragmentEntry = "actorsPs";
         wanted.depthClip = true;
@@ -5246,7 +5246,7 @@ private:
         actorsPipe_ = device_.makePipeline(wanted);
 
         engine::PipelineWanted over;
-        over.shaderFile = "altera_game/overlay.hlsl";
+        over.shaderFile = "lr_game/overlay.hlsl";
         over.vertexEntry = "overlayVs";
         over.fragmentEntry = "overlayPs";
         over.depthTest = over.depthWrite = false;
@@ -5266,34 +5266,34 @@ private:
             std::string whyPeople;
             // AL-11: the Skyrim stand-ins on the same rig (tools/game_assets/skyrim/actors.py), when baked.
             // AL-70: they are on Skyrim's own skeleton now, with Skyrim's clips (skyrim/people_native.py).
-            const fs::path peopleSky = root / "assets/altera_game/people/people_sky.askin";
-            const fs::path animSky = root / "assets/altera_game/people/people_sky.aanim";
+            const fs::path peopleSky = root / "assets/lr_game/people/people_sky.askin";
+            const fs::path animSky = root / "assets/lr_game/people/people_sky.aanim";
             const bool sky = fs::exists(peopleSky) && fs::exists(animSky);
-            if (!people_.load(device_, sky ? peopleSky : root / "assets/altera_game/people/people.askin",
+            if (!people_.load(device_, sky ? peopleSky : root / "assets/lr_game/people/people.askin",
                               sky ? animSky : root / "content/animations/humanoid_ual/baked/people.aanim",
-                              sky ? root / "assets/altera_game/people/people_sky_anim.json"
+                              sky ? root / "assets/lr_game/people/people_sky_anim.json"
                                   : root / "content/animations/humanoid_ual/baked/people_anim.json",
                               &whyPeople))
-                SDL_Log("altera_game: people stay placeholders: %s", whyPeople.c_str());
+                SDL_Log("lr_game: people stay placeholders: %s", whyPeople.c_str());
             for (int i = 0; i < people_.lookCount(); ++i)
                 (people_.lookName(i)[0] == 'f' ? femaleLooks_ : maleLooks_).push_back(i);
             if (people_.loaded()) setupLoco();
             std::string whyVillage;
             // AL-11: the kit with Skyrim textures (tools/game_assets/skyrim/world_tex.py), when baked.
-            const fs::path villageSky = root / "assets/altera_game/buildings/buildings_sky.astm";
-            if (!village_.load(device_, fs::exists(villageSky) ? villageSky : root / "assets/altera_game/buildings/buildings.astm",
+            const fs::path villageSky = root / "assets/lr_game/buildings/buildings_sky.astm";
+            if (!village_.load(device_, fs::exists(villageSky) ? villageSky : root / "assets/lr_game/buildings/buildings.astm",
                                &whyVillage))
-                SDL_Log("altera_game: buildings stay placeholders: %s", whyVillage.c_str());
+                SDL_Log("lr_game: buildings stay placeholders: %s", whyVillage.c_str());
             // AL-11: dev-only stand-ins from the local Skyrim (tools/game_assets/skyrim/convert.py):
             // buildings and every sim object get a real model; absent, the kit and the blocks stay.
-            const fs::path propsFile = root / "assets/altera_game/props/props.astm";
+            const fs::path propsFile = root / "assets/lr_game/props/props.astm";
             if (fs::exists(propsFile)) {
                 std::string whyProps;
-                if (!props_.load(device_, propsFile, &whyProps)) SDL_Log("altera_game: no props: %s", whyProps.c_str());
+                if (!props_.load(device_, propsFile, &whyProps)) SDL_Log("lr_game: no props: %s", whyProps.c_str());
             }
             // Beasts with a bake of their own (hens and fish: tools/game_assets/proc_beasts.py).
             for (const char* sp : {"deer", "wolf", "hare", "boar", "pig", "goats", "hens", "fish_shoal"}) {
-                const fs::path base = root / "assets/altera_game/beasts" / sp;
+                const fs::path base = root / "assets/lr_game/beasts" / sp;
                 auto set = std::make_unique<SkinnedSet>();
                 std::string whyBeast;
                 const fs::path sky(base.string() + "_sky.askin");
@@ -5302,7 +5302,7 @@ private:
                               fs::path(base.string() + "_anim.json"), &whyBeast))
                     beasts_[sp] = std::move(set);
                 else
-                    SDL_Log("altera_game: %s stays a placeholder: %s", sp, whyBeast.c_str());
+                    SDL_Log("lr_game: %s stays a placeholder: %s", sp, whyBeast.c_str());
             }
         }
         loadFonts();
@@ -5834,4 +5834,4 @@ std::unique_ptr<GameLayer> makeSimGame(engine::Device& device, SDL_Window* windo
     return game;
 }
 
-} // namespace altera::game
+} // namespace lr::game

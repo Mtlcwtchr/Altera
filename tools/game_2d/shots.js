@@ -1,5 +1,5 @@
 // AL-95: frames of the 2D client for the user (gdd/ui/client_2d): start
-// altera_game_2d first, then
+// lr_game_2d first, then
 //   node tools/game_2d/shots.js [out_dir] [port]
 // (needs Node with playwright: npm i -g playwright && npx playwright install chromium).
 // Frames go to terrain_lab_out/shots_for_user/ by default.

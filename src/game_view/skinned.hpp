@@ -4,7 +4,7 @@
 // retargeted clips. A set is one bake: its looks share one joint list and one
 // texture atlas; its clips are per-joint basis rotations and offsets
 // (Blender's pose basis), turned into joint matrices here on the CPU each frame
-// and skinned on the GPU (assets/shaders/altera_game/skinned.hlsl).
+// and skinned on the GPU (assets/shaders/lr_game/skinned.hlsl).
 
 #include <array>
 #include <cstdint>
@@ -17,7 +17,7 @@
 #include "game_view/locomotion.hpp"
 #include "terrain_core/lighting.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 struct Figure {
     int look = 0;
@@ -132,4 +132,4 @@ public:
 engine::Texture uploadRgba(engine::Device& device, const std::uint8_t* rgba, std::uint32_t width,
                            std::uint32_t height);
 
-} // namespace altera::game
+} // namespace lr::game

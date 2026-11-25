@@ -22,4 +22,4 @@ How it loads (`src/sim/expansion.cpp`, called from `Content::load`):
 
 Loc: `content/loc/{ru,en}/expansion.json` (keys already present in other loc files were dropped there).
 
-Check: `altera_sim_runner --content content/ai --loc content/loc --validate` prints an `expansion:` line.
+Check: `lr_sim_runner --content content/ai --loc content/loc --validate` prints an `expansion:` line.

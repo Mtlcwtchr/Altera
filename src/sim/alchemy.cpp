@@ -4,13 +4,14 @@
 #include <cmath>
 
 #include "sim/ai.hpp"
+#include "sim/magic.hpp"
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
-using craft::AspectDose;
+using CDose = craft::AspectDose;
 using craft::Item;
 
 
@@ -60,7 +61,7 @@ void dropMade(Character& c, int index, const craft::CraftData& d) {
 }
 
 // the self vectors: what a rune of touch/word does to its holder
-bool selfVector(const AspectDose& a) {
+bool selfVector(const CDose& a) {
     static const char* good[] = {"life+", "essence+", "earth+", "metal+", "blood+", "sleep-", "mind+", "shadow+", "poison-"};
     const std::string k = a.aspect + a.vec;
     for (const char* g : good)
@@ -70,10 +71,21 @@ bool selfVector(const AspectDose& a) {
 
 } // namespace
 
-AspectUse applyAspectDoses(World& w, Character& c, const std::vector<AspectDose>& doses) {
+AspectUse applyAspectDoses(World& w, Character& c, const std::vector<CDose>& doses) {
     AspectUse u;
     u.ok = true;
     u.doses = doses;
+    // the magic core (AL-116): the doses act as a spell on self, without mana or knowledge
+    if (magicRules(w.content()).loaded) {
+        std::vector<lr::sim::AspectDose> md;
+        for (const auto& a : doses) md.push_back({a.aspect, a.vec, a.power});
+        const double h0 = c.body.health, f0 = c.body.fatigue;
+        lr::sim::applyAspectsTo(w, c, md, c.id);
+        u.health = c.body.health - h0;
+        u.fatigue = c.body.fatigue - f0;
+        return u;
+    }
+    // without content/magic: the body fields the life-sim has
     const craft::CraftData& d = w.content().craft;
     for (const auto& a : doses) {
         const craft::AspectInfo* ai = d.aspect(a.aspect);
@@ -105,7 +117,7 @@ AspectUse drinkPotion(World& w, Character& c, int index) {
     const craft::CraftData& d = w.content().craft;
     Item it = c.craft.items[static_cast<size_t>(index)];
     const bool liquid = it.shape == "liquid";
-    std::vector<AspectDose> doses = craft::aspectDoses(it);
+    std::vector<CDose> doses = craft::aspectDoses(it);
     const double heal = it.derived.count("heal") ? it.derived.at("heal") : 0.0;
     if (!liquid || (doses.empty() && heal <= 0.0 && it.kind != "consumable")) {
         u.reason = "not_a_potion";
@@ -149,7 +161,7 @@ AspectUse useRune(World& w, Character& c, int index, bool onSelf) {
         return u;
     }
     const bool scroll = it.tags.count("scroll") || it.form == "scroll";
-    std::vector<AspectDose> doses = scroll ? craft::runeDoses(d, it) : craft::spendRune(d, it);
+    std::vector<CDose> doses = scroll ? craft::runeDoses(d, it) : craft::spendRune(d, it);
     if (doses.empty()) {
         u.reason = "no_charge";
         return u;
@@ -160,8 +172,13 @@ AspectUse useRune(World& w, Character& c, int index, bool onSelf) {
     } else {
         craft::recognize(d, it);
     }
-    if (onSelf) {
-        std::vector<AspectDose> self;
+    if (!onSelf) {
+        u.ok = true;
+        u.doses = doses;
+        return u;
+    }
+    {
+        std::vector<CDose> self;
         for (const auto& a : doses)
             if (selfVector(a)) self.push_back(a);
         AspectUse a = applyAspectDoses(w, c, self);
@@ -197,7 +214,70 @@ void noteWeaponDeed(World& w, Character& c, const std::string& what) {
     craft::recognize(d, *best);
 }
 
+static Spell runeSpell(const std::vector<CDose>& doses, const std::string& form) {
+    Spell s;
+    s.form = form;
+    for (const auto& a : doses) {
+        if (s.parts.size() >= 3) break;
+        s.parts.push_back({a.aspect, a.vec});
+    }
+    return s;
+}
+
+AspectUse fireRune(World& w, Character& holder, int index, const CastTarget& at) {
+    AspectUse u = useRune(w, holder, index, false);
+    if (!u.ok || !magicRules(w.content()).loaded) return u;
+    double power = 0.0;
+    for (const auto& a : u.doses) power += a.power;
+    const std::string form = at.who != kNone ? "touch" : (at.hasPos ? "area" : "aura");
+    CastTarget t = at;
+    if (t.who == kNone && !t.hasPos) t.who = holder.id;
+    lr::sim::castStored(w, &holder, runeSpell(u.doses, form), t, power);
+    return u;
+}
+
+void fireHitRunes(World& w, Character& holder, Character& foe) {
+    if (!holder.body.alive) return;
+    int best = -1;
+    double bestDmg = 0.0;
+    for (size_t i = 0; i < holder.craft.items.size(); ++i) { // the same pick as wearMadeWeapon
+        const Item& it = holder.craft.items[i];
+        if (it.kind != "weapon" || it.wear >= 1.0) continue;
+        auto dm = it.derived.find("damage_mult");
+        double dmg = dm == it.derived.end() ? 1.0 : dm->second;
+        if (best < 0 || dmg > bestDmg) {
+            best = static_cast<int>(i);
+            bestDmg = dmg;
+        }
+    }
+    if (best < 0) return;
+    const Item& it = holder.craft.items[static_cast<size_t>(best)];
+    if (!it.rune.bound() || (it.rune.trigger != "on_hit" && it.rune.trigger != "constant")) return;
+    CastTarget t;
+    t.who = foe.id;
+    fireRune(w, holder, best, t);
+}
+
 namespace {
+
+// bond+ on a person feeds the runes they carry, bond- drains them (aspects.json body bind/unbind)
+void installBondHook() {
+    static bool done = false;
+    if (done) return;
+    done = true;
+    addMagicBodyHook([](World&, Character& target, const std::string& key, double amount, EntityId) {
+        if (key == "bind") {
+            rechargeRunes(target, 0.25 * std::max(0.0, amount));
+            return true;
+        }
+        if (key == "unbind") {
+            for (auto& it : target.craft.items)
+                if (it.rune.bound()) it.rune.charge = std::max(0.0, it.rune.charge - 0.5 * std::max(0.0, amount) * it.rune.capacity);
+            return true;
+        }
+        return false;
+    });
+}
 
 bool handleAlchemy(World& w, Command& cmd) {
     const std::string& t = cmd.type;
@@ -208,7 +288,17 @@ bool handleAlchemy(World& w, Command& cmd) {
         return true;
     }
     const int index = cmd.args.value("item", -1);
-    AspectUse u = t == "alchemy_drink" ? drinkPotion(w, *c, index) : useRune(w, *c, index, cmd.args.value("self", true));
+    AspectUse u;
+    if (t == "alchemy_drink") u = drinkPotion(w, *c, index);
+    else if (cmd.args.contains("target") || cmd.args.contains("at")) { // at a creature or a place: through the magic core
+        CastTarget at;
+        if (cmd.args.contains("target")) at.who = cmd.args.at("target").get<EntityId>();
+        if (cmd.args.contains("at") && cmd.args["at"].is_array() && cmd.args["at"].size() == 2) {
+            at.hasPos = true;
+            at.at = Vec2{cmd.args["at"][0].get<double>(), cmd.args["at"][1].get<double>()};
+        }
+        u = fireRune(w, *c, index, at);
+    } else u = useRune(w, *c, index, cmd.args.value("self", true));
     if (!u.ok) {
         cmd.result = "rejected:" + u.reason;
         return true;
@@ -221,6 +311,9 @@ bool handleAlchemy(World& w, Command& cmd) {
 
 } // namespace
 
-void installAlchemy(World& w) { w.addCommandHandler(handleAlchemy); }
+void installAlchemy(World& w) {
+    w.addCommandHandler(handleAlchemy);
+    installBondHook();
+}
 
-} // namespace altera::sim
+} // namespace lr::sim

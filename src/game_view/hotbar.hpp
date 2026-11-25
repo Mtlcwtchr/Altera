@@ -15,7 +15,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace altera::game {
+namespace lr::game {
 
 struct BarRef {
     std::string kind;   // "" empty | act (an interaction) | goal | item
@@ -177,4 +177,4 @@ inline BarUse barUse(const BarRef& r, const std::string& actTarget, const std::s
     return u;
 }
 
-} // namespace altera::game
+} // namespace lr::game

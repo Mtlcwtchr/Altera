@@ -4,7 +4,7 @@
 
 Writes (all git-ignored, read in place of ours when present, so deleting them
 brings our own art back):
-  assets/altera_game/buildings/buildings_sky.astm   our kit's geometry with Skyrim's
+  assets/lr_game/buildings/buildings_sky.astm   our kit's geometry with Skyrim's
                                                      farmhouse/landscape textures per layer
   assets/terrain_core/materials/skyrim/<name>.png    every ground material from a Skyrim
                                                      landscape texture, colour-matched to ours
@@ -13,7 +13,7 @@ brings our own art back):
                                                      upper and horizon clouds on a day gradient,
                                                      stars, the galaxy, Masser and Secunda at night
 Every entry is a stand-in (replace_before_prod), listed in
-assets/altera_game/props/registry_world.json.
+assets/lr_game/props/registry_world.json.
 """
 import argparse, io, json, os, struct, sys
 import numpy as np
@@ -78,7 +78,7 @@ def fit(img, size):
 
 
 def kit(lib, repo, report):
-    src = os.path.join(repo, 'assets/altera_game/buildings/buildings.astm')
+    src = os.path.join(repo, 'assets/lr_game/buildings/buildings.astm')
     b = bytearray(open(src, 'rb').read())
     v, nm, nv, ni, nl, ls = struct.unpack_from('<6I', b, 4)
     off = 28 + nm * 64 + nv * 36 + ni * 4
@@ -93,7 +93,7 @@ def kit(lib, repo, report):
         at = off + L * ls * ls * 4
         b[at:at + ls * ls * 4] = (a * 255 + 0.5).astype(np.uint8).tobytes()
         report.append({'kit_layer': L, 'texture': tex, 'replace_before_prod': True})
-    out = os.path.join(repo, 'assets/altera_game/buildings/buildings_sky.astm')
+    out = os.path.join(repo, 'assets/lr_game/buildings/buildings_sky.astm')
     open(out, 'wb').write(bytes(b))
     print('wrote', out)
 
@@ -227,7 +227,7 @@ def main():
     ap.add_argument('--only', default='kit,ground,sky', help='comma list of kit, ground, sky')
     a = ap.parse_args()
     lib = Library(a.data)
-    reg = os.path.join(a.repo, 'assets/altera_game/props/registry_world.json')
+    reg = os.path.join(a.repo, 'assets/lr_game/props/registry_world.json')
     try:
         report = json.load(open(reg, encoding='utf-8'))['world']
     except Exception:

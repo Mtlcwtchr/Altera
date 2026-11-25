@@ -24,7 +24,7 @@
 #include <string>
 #include <vector>
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 // What an expression can ask. Names are resolved by the evaluator's context
 // (an item, a step); an unknown name reads 0.
@@ -71,4 +71,4 @@ struct Constraint {
     double closeness(double x, double falloff) const;
 };
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

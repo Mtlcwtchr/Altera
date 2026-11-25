@@ -7,7 +7,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -140,4 +140,4 @@ bool decompose(const World& w, const Character& c, const std::string& task, Plan
     return expand(w, c, task, 0, out, why, log);
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

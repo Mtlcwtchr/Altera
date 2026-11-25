@@ -13,7 +13,7 @@
 #include "sim/combat/combat_data.hpp"
 #include "sim/combat/combat_rng.hpp"
 
-namespace altera::combat {
+namespace lr::combat {
 
 enum class State : std::uint8_t { Fight, Ko, Dead, Yield, Flee };
 const char* stateId(State s);
@@ -157,4 +157,4 @@ private:
     int clock_ = 0;
 };
 
-} // namespace altera::combat
+} // namespace lr::combat

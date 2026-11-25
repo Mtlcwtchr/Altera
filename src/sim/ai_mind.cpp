@@ -24,7 +24,7 @@
 #include "sim/world_fields.hpp"
 #include "sim/world_reactions.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -729,4 +729,4 @@ void installAi(World& w) {
     installMagic(w);
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -621,7 +621,7 @@ struct Window::Impl : Ctx {
             err = SDL_GetError();
             return false;
         }
-        win = SDL_CreateWindow("Altera", 1600, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+        win = SDL_CreateWindow("Lively Realms", 1600, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
         if (!win) {
             err = SDL_GetError();
             return false;
@@ -660,7 +660,7 @@ struct Window::Impl : Ctx {
             SDL_RenderClear(ren);
             ui::Input none;
             ui.begin(none, W, H);
-            textC(W / 2.0f, H / 2.0f - 60 * U, "Altera", kGold, 40 * U, true);
+            textC(W / 2.0f, H / 2.0f - 60 * U, "LivelyRealms", kGold, 40 * U, true);
             if (why.empty()) textC(W / 2.0f, H / 2.0f + 10 * U, "…", kText, 22 * U, true);
             else ui.paragraph(W / 2.0f - 300 * U, H / 2.0f, 600 * U, why, kBad, fs(16 * U));
             ui.end();
@@ -2500,16 +2500,16 @@ struct Window::Impl : Ctx {
         host = &h;
         loadingFrame("");
         loadStatic();
-        if (const char* s = SDL_getenv("ALTERA_2D_SHOT")) shotPath = s;
-        if (const char* s = SDL_getenv("ALTERA_2D_SHOT_AFTER")) shotAfter = std::atof(s);
-        if (const char* s = SDL_getenv("ALTERA_2D_SELECT")) selectIndex = std::atoi(s);
-        if (const char* s = SDL_getenv("ALTERA_2D_ZOOM")) zoom = std::clamp(std::atoi(s), 1, 3);
+        if (const char* s = SDL_getenv("LR_2D_SHOT")) shotPath = s;
+        if (const char* s = SDL_getenv("LR_2D_SHOT_AFTER")) shotAfter = std::atof(s);
+        if (const char* s = SDL_getenv("LR_2D_SELECT")) selectIndex = std::atoi(s);
+        if (const char* s = SDL_getenv("LR_2D_ZOOM")) zoom = std::clamp(std::atoi(s), 1, 3);
         SDL_StartTextInput(win);
         screens = std::make_unique<Screens>(*this);
         poll();
-        if (!SDL_getenv("ALTERA_2D_SHOT")) screens->start();
-        if (const char* o = SDL_getenv("ALTERA_2D_OPEN")) {   // a shot of a screen: ALTERA_2D_OPEN=menu|new|pick|saves|chronicle|...
-            const char* arg = SDL_getenv("ALTERA_2D_OPEN_ARG");
+        if (!SDL_getenv("LR_2D_SHOT")) screens->start();
+        if (const char* o = SDL_getenv("LR_2D_OPEN")) {   // a shot of a screen: LR_2D_OPEN=menu|new|pick|saves|chronicle|...
+            const char* arg = SDL_getenv("LR_2D_OPEN_ARG");
             Json a = arg ? Json(std::string(arg)) : Json();
             if (arg && std::string(arg) == "near" && person(me)) {   // the nearest person to one's own
                 double best = 1e18;
@@ -2521,7 +2521,7 @@ struct Window::Impl : Ctx {
                     }
             }
             screens->open(o, a);
-            if (const char* t = SDL_getenv("ALTERA_2D_TAB"); t && screens->top()) screens->top()->tab = t;
+            if (const char* t = SDL_getenv("LR_2D_TAB"); t && screens->top()) screens->top()->tab = t;
         }
         const double start = nowMs();
         lastFrame = start;
@@ -2557,7 +2557,7 @@ struct Window::Impl : Ctx {
                     SDL_DestroySurface(s);
                 }
                 shotPath.clear();
-                if (const char* q = SDL_getenv("ALTERA_2D_SHOT_QUIT"); q && *q == '1') {
+                if (const char* q = SDL_getenv("LR_2D_SHOT_QUIT"); q && *q == '1') {
                     post("/api/quit", {{"autosave", false}});
                 }
             }

@@ -14,7 +14,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -92,4 +92,4 @@ DayWeather weatherToday(const World& w, EntityId settlement) {
     return weatherAt(w, settlement, w.startDay() + w.day());
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

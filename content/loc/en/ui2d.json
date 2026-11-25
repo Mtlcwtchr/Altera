@@ -1,6 +1,6 @@
 {
  "_doc": "AL-95: strings of the 2D client (tools/game_2d/web).",
- "ui2d.title": "Altera — top-down view",
+ "ui2d.title": "Lively Realms — top-down view",
  "ui2d.loading": "Loading the world…",
  "ui2d.house": "Households",
  "ui2d.nobody": "Nobody selected. Click a person on the map.",

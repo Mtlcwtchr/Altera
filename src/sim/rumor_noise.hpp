@@ -17,7 +17,7 @@
 
 #include "sim/dialogue_gen.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct NoiseParams {
     struct Op {
@@ -72,4 +72,4 @@ bool reconcile(const NoiseParams& p, const Prop& heard, const Prop& own, const E
 // (different predicate). Roles weigh by importance (doer/victim most).
 double drift(const Prop& truth, const Prop& rumour);
 
-} // namespace altera::sim
+} // namespace lr::sim

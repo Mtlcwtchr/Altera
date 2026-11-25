@@ -6,7 +6,7 @@
 #include <map>
 #include <set>
 
-namespace altera::combat {
+namespace lr::combat {
 
 namespace {
 
@@ -762,4 +762,4 @@ BattleResult Engine::battle(std::vector<Fighter>& A, std::vector<Fighter>& B, bo
     return res;
 }
 
-} // namespace altera::combat
+} // namespace lr::combat

@@ -10,7 +10,7 @@
 
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -45,4 +45,4 @@ std::vector<std::string> actsOnObject(const Content& content, const std::string&
 // True for a precondition worth showing a player (not a bookkeeping flag).
 bool shownCondition(const Condition& k);
 
-} // namespace altera::sim
+} // namespace lr::sim

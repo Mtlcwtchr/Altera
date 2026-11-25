@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Collect downloadable CC0 / CC-BY Sketchfab models for Altera -> doc/sketchfab_candidates.{json,md}"""
+"""Collect downloadable CC0 / CC-BY Sketchfab models for Lively Realms -> doc/sketchfab_candidates.{json,md}"""
 import json, urllib.request, urllib.parse, time
 UA = {"User-Agent": "Mozilla/5.0 altera-asset-search"}
 Q = {
