@@ -843,7 +843,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
             tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp tests/test_altera_sim_worth.cpp tests/test_altera_sim_resources.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
-            tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp
+            tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp tests/test_altera_sim_reach.cpp
             tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp tests/test_altera_sim_structures.cpp tests/test_altera_sim_rooms.cpp
             tests/test_altera_sim_consequences.cpp tests/test_altera_sim_dialogue_gen.cpp
             tests/test_altera_sim_dialogue_rules.cpp

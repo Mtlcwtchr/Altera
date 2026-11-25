@@ -894,7 +894,16 @@ struct Window::Impl : Ctx {
                 v.x = px;
                 v.y = py;
             }
-            if (v.driven) continue;
+            // AL-108: standing still, one looks where the sim turned one (at the act's target)
+            const bool faced = p.contains("fx");
+            const double fx = num(p, "fx"), fy = num(p, "fy");
+            auto lookSim = [&] {
+                if (faced && (fx || fy)) v.face = std::abs(fx) > std::abs(fy) ? (fx > 0 ? 'E' : 'W') : (fy > 0 ? 'S' : 'N');
+            };
+            if (v.driven) {
+                if (!v.moving) lookSim();
+                continue;
+            }
             const double dx = px - v.x, dy = py - v.y, d = std::hypot(dx, dy);
             if (d > 80) {
                 v.x = px, v.y = py, v.moving = false;
@@ -902,6 +911,7 @@ struct Window::Impl : Ctx {
             }
             if (d < 0.02) {
                 v.moving = false;
+                lookSim();
                 continue;
             }
             const double speed = std::max(3.5, d * 1.6), s = std::min(d, speed * dt);
