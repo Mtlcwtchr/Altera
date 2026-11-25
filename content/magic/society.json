@@ -1,0 +1,46 @@
+{
+ "_doc": "LivelyRealms §5.9, §5.10 (AL-118): магия в обществе. Читает src/sim/magic_society.cpp. norms: класс магии (magic, witchcraft, necromancy) по тегам аспекта; уровень класса в поселении берётся из культуры правителя (content/species/cultures: norms {necromancy, witchcraft, magic}, forbid_aspects -> crime), сдвигается чертами судьи, институтом и даром судьи. trial: свидетельства (память saw_*) против нормы -> суд главы, исходы оцениваются данными. guild: тег mage_guild. service: плата за лечение и работу. work: заклинания в обычной работе (каталожные акты cast_*). undead: безмозглая нежить следует за хозяином, без хозяина бродит. realm: задания про нежить, некроманта, дракона, артефакт.",
+ "norms": {
+  "levels": {"allowed": 0.0, "honored": 0.0, "frowned": 0.3, "suspect": 0.55, "crime": 1.0},
+  "default": "allowed",
+  "class_by_tag": {"forbidden": "necromancy", "dark": "witchcraft"},
+  "class_default": "magic",
+  "judge_traits": {"pious": 0.2, "proud": 0.1, "stubborn": 0.1, "generous": -0.1, "curious": -0.15, "unscrupulous": -0.15},
+  "institution": {"abbot": 0.25, "ataman": -0.3, "lair": -1.0},
+  "gifted_judge": -0.3
+ },
+ "trial": {
+  "memory_class": {"saw_magic": "magic", "saw_dark_magic": "witchcraft", "saw_necromancy": "necromancy", "necromancy": "necromancy"},
+  "memory_weight": {"saw_magic": 0.25, "saw_dark_magic": 0.6, "saw_necromancy": 1.0, "necromancy": 0.8},
+  "accuse_at": 1.2,
+  "memory_days": 60,
+  "retrial_days": 120,
+  "fear_mult": 0.6,
+  "flee_at": 0.55,
+  "noise": 0.12,
+  "fine_coin": 6,
+  "exile_m": 500,
+  "options": [
+   {"id": "tolerate", "base": 0.9, "terms": [{"kind": "norm", "mul": -1.6}, {"kind": "useful", "mul": 0.8}, {"kind": "affinity", "mul": 0.5}, {"kind": "kin", "add": 0.5}, {"kind": "gifted_judge", "add": 0.4}]},
+   {"id": "fine", "base": 0.55, "terms": [{"kind": "norm", "mul": -0.4}, {"kind": "useful", "mul": 0.3}, {"kind": "trait", "key": "unscrupulous", "add": 0.3}]},
+   {"id": "shame", "base": 0.35, "terms": [{"kind": "norm", "mul": 0.3}, {"kind": "evidence", "mul": 0.1}]},
+   {"id": "exile", "base": 0.0, "terms": [{"kind": "norm", "mul": 0.9}, {"kind": "evidence", "mul": 0.15}, {"kind": "dark", "add": 0.2}, {"kind": "kin", "add": -0.3}]},
+   {"id": "burn", "base": -0.6, "terms": [{"kind": "norm", "mul": 1.1}, {"kind": "evidence", "mul": 0.2}, {"kind": "dark", "add": 0.3}, {"kind": "trait", "key": "pious", "add": 0.3}, {"kind": "trait", "key": "proud", "add": 0.15}, {"kind": "trait", "key": "generous", "add": -0.4}, {"kind": "kin", "add": -0.8}, {"kind": "useful", "mul": -0.4}]}
+  ]
+ },
+ "guild": {"mages": 3, "knowledge": 0.5, "sizes": ["town", "city"], "km": 40, "heal_fee": 6, "heal_daily": 0.25},
+ "service": {"heal_fee": 2, "work_fee": 3},
+ "work": {
+  "_doc": "when: hungry_field (поле засеяно, fertility < below permille), dry_field (moisture < below × capacity), cracked (integrityAt < below), tainted (taint поля клетки > below). value — польза при полной нужде; решение: польза × нужда − цена маны × cost_weight − риск срыва × risk_weight − закон × law_weight > min.",
+  "daily": 0.5, "mana_reserve": 0.25, "risk_weight": 1.0, "law_weight": 1.2, "cost_weight": 0.6, "min": 0.15,
+  "priority": 0.62, "ttl_ticks": 144,
+  "spells": [
+   {"id": "cast_grow", "object": "field", "aspect": "life", "vector": "+", "form": "area", "when": "hungry_field", "below": 650, "value": 0.9},
+   {"id": "cast_rain", "object": "field", "aspect": "water", "vector": "+", "form": "area", "when": "dry_field", "below": 0.45, "value": 0.9},
+   {"id": "cast_mend", "object": "house", "aspect": "stone", "vector": "+", "form": "touch", "when": "cracked", "below": 0.7, "value": 0.8},
+   {"id": "cast_cleanse", "object": "well", "aspect": "life", "vector": "+", "form": "area", "when": "tainted", "below": 0.15, "value": 1.0}
+  ]
+ },
+ "undead": {"follow_m": 2.5, "wander_m": 60, "wander_speed": 0.6, "bite_m": 1.6, "bite_health": 0.02, "bite_fear": 0.15},
+ "realm": {"quest_every_days": 10, "necropolis_share": 0.5}
+}

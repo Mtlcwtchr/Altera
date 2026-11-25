@@ -126,5 +126,71 @@
  "moodlet.spoke_with_dead.name": "Поговорил с умершим",
  "moodlet.dread_dark_magic.name": "Ужас перед тёмной магией",
  "moodlet.healed_by_magic.name": "Исцелён магией",
- "moodlet.obsessed_with_return.name": "Одержим мыслью вернуть умершего"
+ "moodlet.obsessed_with_return.name": "Одержим мыслью вернуть умершего",
+ "chronicle.magic.trial.tolerate": "Суд {judge:gen} над {who:ins} за {class:acc}: стерпели, пусть живёт как жил{who:g||а}",
+ "chronicle.magic.trial.fine": "Суд {judge:gen} над {who:ins} за {class:acc}: пеня в казну",
+ "chronicle.magic.trial.shame": "Суд {judge:gen} над {who:ins} за {class:acc}: позор на всю деревню",
+ "chronicle.magic.trial.exile": "Суд {judge:gen} над {who:ins} за {class:acc}: изгнан{who:g||а} прочь",
+ "chronicle.magic.trial.burn": "Суд {judge:gen} над {who:ins} за {class:acc}: сожжен{who:g||а} на костре",
+ "chronicle.magic.trial.ruler": "О {who:pre} шепчутся: колдует, а судить некому, сам{who:g||а} правит",
+ "chronicle.magic.trial.fled": "{who} бежал{who:g||а}, не дожидаясь суда за {class:acc}",
+ "chronicle.magic.society.guild_founded": "В {pol:pre} собралась гильдия магов",
+ "chronicle.magic.society.guild_heal": "Целитель гильдии из {pol:gen} пришёл к {b:dat} по просьбе {a:gen}",
+ "chronicle.magic.society.necropolis": "Мёртвых в {pol:pre} теперь больше, чем живых",
+ "chronicle.magic.society.paid": "{b} заплатил{b:g||а} {a:dat} за колдовство: {n}",
+ "magic.class.magic.name": {
+  "nom": "магия",
+  "gen": "магии",
+  "dat": "магии",
+  "acc": "магию",
+  "ins": "магией",
+  "pre": "магии",
+  "g": "f"
+ },
+ "magic.class.witchcraft.name": {
+  "nom": "ведовство",
+  "gen": "ведовства",
+  "dat": "ведовству",
+  "acc": "ведовство",
+  "ins": "ведовством",
+  "pre": "ведовстве",
+  "g": "n"
+ },
+ "magic.class.necromancy.name": {
+  "nom": "некромантия",
+  "gen": "некромантии",
+  "dat": "некромантии",
+  "acc": "некромантию",
+  "ins": "некромантией",
+  "pre": "некромантии",
+  "g": "f"
+ },
+ "interaction.cast_grow.name": "Наговорить поле",
+ "interaction.cast_rain.name": "Напоить поле",
+ "interaction.cast_mend.name": "Укрепить стены",
+ "interaction.cast_cleanse.name": "Очистить колодец",
+ "interaction.cast_grow.phrase": "наговорить поле на урожай",
+ "interaction.cast_rain.phrase": "напоить поле водой",
+ "interaction.cast_mend.phrase": "укрепить стены землёй",
+ "interaction.cast_cleanse.phrase": "очистить колодец",
+ "memory.saw_necromancy.text": "Видел{self:g||а}, как {who} творил{who:g||а} некромантию.",
+ "memory.attacked_by_undead.text": "На меня напала нежить.",
+ "cause.burned_as_witch.name": {
+  "nom": "костёр",
+  "gen": "костра",
+  "dat": "костру",
+  "acc": "костёр",
+  "ins": "костром",
+  "pre": "костре",
+  "g": "m"
+ },
+ "cause.undead.name": {
+  "nom": "нежить",
+  "gen": "нежити",
+  "dat": "нежити",
+  "acc": "нежить",
+  "ins": "нежитью",
+  "pre": "нежити",
+  "g": "f"
+ }
 }

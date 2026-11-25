@@ -40,6 +40,10 @@ MagicGiftChance& giftChanceFn() {
     static MagicGiftChance f;
     return f;
 }
+MagicServiceHook& serviceFn() {
+    static MagicServiceHook f;
+    return f;
+}
 std::vector<MagicBodyHook>& bodyHooks() {
     static std::vector<MagicBodyHook> h;
     return h;
@@ -491,8 +495,12 @@ void witness(World& w, const Character& caster, const AspectDef* main, bool sile
     const bool dark = main && (main->hasTag("dark") || main->hasTag("forbidden"));
     for (Character* o : peopleNear(w, caster.pos, radius, caster.id)) {
         if (!isPerson(*o) || isUndead(*o)) continue;
-        w.remember(*o, MemoryEntry{0, dark ? "saw_dark_magic" : "saw_magic", {caster.id}, kNone, dark ? -0.4 : 0.1, 0.0,
-                                   "seen", 1.0});
+        // AL-118: what was seen (the aspect) goes with the memory: the law judges by it
+        const bool forbidden = main && main->hasTag("forbidden");
+        MemoryEntry seen{0, forbidden ? "saw_necromancy" : dark ? "saw_dark_magic" : "saw_magic", {caster.id}, kNone,
+                         dark ? -0.4 : 0.1, 0.0, "seen", 1.0};
+        if (main) seen.goods["aspect:" + main->id] = 1;
+        w.remember(*o, std::move(seen));
         MagicSelf om = magicOf(w, *o);
         if (!om.aware) {
             om.aware = true;
@@ -1031,6 +1039,7 @@ double magicFieldAt(const World& w, const std::string& field, Vec2 at) {
 void setMagicAffinity(MagicAffinity f) { affinityFn() = std::move(f); }
 void setMagicGiftChance(MagicGiftChance f) { giftChanceFn() = std::move(f); }
 void addMagicBodyHook(MagicBodyHook h) { bodyHooks().push_back(std::move(h)); }
+void setMagicServiceHook(MagicServiceHook f) { serviceFn() = std::move(f); }
 
 // --- the daily pass ------------------------------------------------------------------
 namespace {
@@ -1058,6 +1067,7 @@ bool healOnce(World& w, Character& healer, Character& patient) {
     healer.pos = was;
     if (o.cast && o.power > 0.0 && !o.backfire) {
         w.chronicle("magic", {healer.id, patient.id}, "chronicle.magic.heal", {{"a", healer.id}, {"b", patient.id}});
+        if (serviceFn()) serviceFn()(w, healer, patient, "heal"); // AL-118: a healer's work is paid
         return true;
     }
     return false;

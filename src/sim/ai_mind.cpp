@@ -19,6 +19,7 @@
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
 #include "sim/magic.hpp"
+#include "sim/magic_society.hpp"
 #include "sim/wounds.hpp"
 
 namespace altera::sim {
@@ -592,6 +593,7 @@ void aiThink(World& w, Character& c) {
 void thinkCharacter(World& w, Character& c) {
     if (!c.body.alive) return;
     if (c.body.downUntil > w.now()) return; // knocked out or carried off after a fight
+    if (undeadHeld(w, c)) return;           // AL-118: a mindless body follows its master or the living (undeadTick)
     AiState& ai = c.ai;
     // Expire modifiers and stale queued tasks.
     ai.mods.erase(std::remove_if(ai.mods.begin(), ai.mods.end(),
@@ -689,12 +691,14 @@ void installAi(World& w) {
             villageDaily(world); // AL-39: courtship, births, illness, quarrels, strangers
             realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
             magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
+            societyDaily(world); // AL-118: laws and witch trials, guilds, magic at work
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
+        undeadTick(world);    // AL-118: mindless undead follow their master, the unbound go for the living
         tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
         dressTick(world);     // AL-109: people put on what they carry and can wear
         AnimalTick tick;
@@ -719,6 +723,7 @@ void installAi(World& w) {
     installRealm(w);
     installFields(w);
     installMagic(w);
+    installMagicSociety(w);
 }
 
 } // namespace altera::sim
