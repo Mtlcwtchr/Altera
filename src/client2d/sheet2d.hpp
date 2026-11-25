@@ -21,6 +21,12 @@
 
 namespace lr::client2d {
 
+// LR-145: /api/dynasty: the viewer's dynasty {name, founder, households:[{id, name, where}],
+// members:[{id, name, alive, age, sex, child, house, occ, act, goal, hp, pl, spouse, mother,
+// father, kin:[...]}], alive, dead, grown, kids, purse, renown, heir, log:[{day, t, text}]};
+// null without a viewer or a household.
+sim::Json dynastyJson(const sim::World& w, const ViewText& t, sim::EntityId viewer);
+
 // null when there is no such character
 sim::Json sheetJson(const sim::World& w, const ViewText& t, sim::EntityId id);
 

@@ -5,6 +5,7 @@
 #include <algorithm>
 #include <cmath>
 #include <regex>
+#include <set>
 
 #include "native/ctx2d.hpp"
 
@@ -140,7 +141,7 @@ std::string memLine(Ctx& c, const Json& m) {
 // LR-137: the character page in the spirit of WoW's: the paper doll with the worn things
 // on both sides and the hands below, then attributes and condition, then skills, traits
 // and what the person is up to. Needs and thoughts are in the column next to the map.
-constexpr float kPageH = 420;   // the page's height (in U): the window hugs it
+constexpr float kPageH = 560;   // the page's height (in U): the window hugs it
 
 // a thing's picture: craft2d.json items, resources.json items, else the first letter
 void thingIcon(Ctx& c, const std::string& item, const std::string& name, float x, float y, float size) {
@@ -171,77 +172,112 @@ void pageOverview(Ctx& c, Win& w, const Json& d, const ui::Rect& r) {
     const Json sk = d.value("skills", Json::object());
     const Json& hud = c.hud();
 
-    // --- the doll ---------------------------------------------------------------------------
-    const float slotW = 170 * U, slotH = 64 * U, gap = 10 * U, figW = 150 * U;
-    const float dw = 2 * slotW + figW + 4 * gap;
+    // --- clothing by layers (LR-145): the figure, then a row per body place and a column per
+    // layer (hud2d.json layer_cols); a place whose layers are no clothes (belt, satchel, pack)
+    // is a carry slot below, with the hands and what is hauled ---------------------------------
+    const float dw = 600 * U;
     const ui::Rect dr{r.x, r.y, dw, r.h};
     c.well(dr);
-    c.text(dr.x + 10 * U, dr.y + 8 * U, S(c, "worn"), pal::gold, 16 * U);
-    static const struct {
-        const char* slot;
-        int col, row;
-    } PLACES[] = {{"head", 0, 0}, {"shoulder", 0, 1}, {"back", 0, 2}, {"torso", 0, 3}, {"hands", 1, 0}, {"waist", 1, 1}, {"legs", 1, 2}, {"feet", 1, 3}};
-    const float top = dr.y + 34 * U;
-    for (const auto& pl : PLACES) {
-        std::vector<const Json*> items;
-        for (const auto& x : jarr(th, "worn"))
-            if (jstr(x, "slot") == pl.slot) items.push_back(&x);
-        std::string slotName = pl.slot;
-        for (const auto& sd : jarr(th, "slots"))
-            if (jstr(sd, "id") == pl.slot) slotName = jstr(sd, "name");
-        const bool left = pl.col == 0;
-        const ui::Rect sr{left ? dr.x + gap : dr.right() - gap - slotW, top + pl.row * (slotH + gap), slotW, slotH};
-        c.plate(sr, !items.empty());
-        const float ws = slotH - 4 * p;
-        const ui::Rect wr{left ? sr.x + 2 * p : sr.right() - 2 * p - ws, sr.y + 2 * p, ws, ws};
-        c.well(wr);
-        // the outermost layer shows; the rest is counted
-        const Json* shown = items.empty() ? nullptr : items.back();
-        if (shown) thingIcon(c, jstr(*shown, "id"), jstr(*shown, "name"), wr.x + 2 * p, wr.y + 2 * p, ws - 4 * p);
-        const float tx = left ? wr.right() + 6 * U : sr.x + 6 * U, tw = sr.w - ws - 2 * p - 12 * U;
-        auto line = [&](float y, const std::string& s, const ui::Colour& col) {
-            const std::string f = c.fit(s, tw, 16 * U);
-            c.text(left ? tx : wr.x - 6 * U - c.textW(f, 16 * U), y, f, col, 16 * U);
-        };
-        line(sr.y + slotH / 2 - 20 * U, slotName, pal::dim);
-        std::string what = shown ? jstr(*shown, "name") : S(c, "layer_empty");
-        if (items.size() > 1) what += " +" + std::to_string(items.size() - 1);
-        line(sr.y + slotH / 2 + 2 * U, what, shown ? pal::text : pal::dim.withAlpha(0.6f));
-    }
-    // the figure between the columns
-    const float fx = dr.x + slotW + 2 * gap, fy = top, fh = 4 * slotH + 3 * gap;
-    c.well({fx, fy, figW, fh});
-    const float fig = std::min(figW - 8 * p, fh - 8 * p);
-    c.face(jid(d, "id"), jstr(d, "name"), fx + (figW - fig) / 2, fy + (fh - fig) / 2, fig);
-    // the hands below: a weapon and a tool from what is carried
-    const Json& carried = jarr(th, "carried");
-    const Json* weapon = inHand(carried, "sword|knife|blade|dagger|spear|bow|mace|club");
-    const Json* tool = inHand(carried, "hammer|axe|pick|saw|sickle|scythe|hoe|tongs|chisel|rod|net");
-    const float hy = top + fh + gap;
-    auto hand = [&](float x, const char* lbl, const Json* t) {
-        const ui::Rect hr{x, hy, slotW, slotH};
-        c.plate(hr, t != nullptr);
-        const float ws = slotH - 4 * p;
-        const ui::Rect wr{hr.x + 2 * p, hr.y + 2 * p, ws, ws};
-        c.well(wr);
-        if (t) thingIcon(c, jstr(*t, "id"), jstr(*t, "name"), wr.x + 2 * p, wr.y + 2 * p, ws - 4 * p);
-        c.text(wr.right() + 6 * U, hr.y + slotH / 2 - 20 * U, S(c, lbl), pal::dim, 16 * U);
-        c.text(wr.right() + 6 * U, hr.y + slotH / 2 + 2 * U, c.fit(t ? jstr(*t, "name") : S(c, "empty_hand"), hr.right() - wr.right() - 12 * U, 16 * U),
-               t ? pal::text : pal::dim.withAlpha(0.6f), 16 * U);
+    const Json cols = hud.value("layer_cols", Json::object());
+    const float pad = 8 * U, cell = 44 * U, cg = 4 * U, placeW = 64 * U, figW = 128 * U;
+    float y = dr.y + 6 * U;
+    auto heading = [&](const std::string& h, const std::string& note) {
+        c.text(dr.x + pad, y, h, pal::gold, 16 * U);
+        if (!note.empty()) c.text(dr.right() - pad - c.textW(note, 16 * U), y, note, pal::dim, 16 * U);
+        y += 24 * U;
     };
-    hand(dr.x + gap, "weapon", weapon);
-    hand(dr.right() - gap - slotW, "tool", tool);
-    // the load and the purse under the figure
+    heading(S(c, "worn_layers"), "");
+    std::vector<const Json*> rows;
+    for (const auto& sd : jarr(th, "slots")) {
+        bool clothes = false;
+        for (const auto& l : jarr(sd, "layers")) clothes = clothes || cols.contains(jstr(l, "id"));
+        if (clothes) rows.push_back(&sd);
+    }
+    const float gx = dr.x + pad + figW + 8 * U, gridH = 18 * U + float(rows.size()) * (cell + cg);
+    c.well({dr.x + pad, y, figW, gridH});
     {
-        const double kg = jnum(th, "kg"), maxKg = jnum(th, "maxKg"), ld = maxKg > 0 ? kg / maxKg : 0;
-        char a[16], b[16];
-        std::snprintf(a, sizeof a, "%.1f", kg);
-        std::snprintf(b, sizeof b, "%.0f", maxKg);
-        const float y = hy + 4 * U;
-        c.icon("hud_bag", fx, y);
-        c.pips(fx + is + 4 * U, y + (is - 5 * p) / 2, 10, ld, ld > 0.8 ? pal::bad : ld > 0.45 ? pal::mid : pal::good);
-        const std::string kgs = std::string(a) + "/" + b;
-        c.textC(fx + figW / 2, y + is + 4 * U, kgs, pal::dim, 16 * U);
+        const float fig = std::min(figW, gridH) - 8 * p;
+        c.face(jid(d, "id"), jstr(d, "name"), dr.x + pad + (figW - fig) / 2, y + (gridH - fig) / 2, fig);
+    }
+    for (int k = 0; k < 4; ++k) {
+        const std::string cn = S(c, "layer_col." + std::to_string(k));
+        const float cx0 = gx + placeW + float(k) * (cell + cg);
+        c.textC(cx0 + cell / 2, y, c.fit(cn, cell + cg, 16 * U), pal::dim, 16 * U);
+    }
+    float ry = y + 18 * U;
+    for (const Json* sd : rows) {
+        c.text(gx, ry + (cell - c.textH(16 * U)) / 2, c.fit(jstr(*sd, "name"), placeW - 4 * U, 16 * U), pal::dim, 16 * U);
+        std::set<int> has;
+        for (const auto& l : jarr(*sd, "layers"))
+            if (cols.contains(jstr(l, "id"))) has.insert(cols[jstr(l, "id")].get<int>());
+        std::string top;
+        int topCol = -1;
+        for (int k = 0; k < 4; ++k) {
+            const ui::Rect cr{gx + placeW + float(k) * (cell + cg), ry, cell, cell};
+            if (!has.count(k)) {   // this place has no such layer
+                c.fill(cr.x + 2 * p, cr.y + 2 * p, cr.w - 4 * p, cr.h - 4 * p, pal::hex("#1c130b").withAlpha(0.5f));
+                continue;
+            }
+            const Json* it = nullptr;
+            for (const auto& x : jarr(th, "worn"))
+                if (jstr(x, "slot") == jstr(*sd, "id") && cols.contains(jstr(x, "layer")) && cols[jstr(x, "layer")].get<int>() == k) it = &x;
+            c.plate(cr, it != nullptr);
+            if (it) {
+                thingIcon(c, jstr(*it, "id"), jstr(*it, "name"), cr.x + 3 * p, cr.y + 3 * p, cr.w - 6 * p);
+                if (k > topCol) topCol = k, top = jstr(*it, "name");
+            }
+        }
+        const float tx = gx + placeW + 4 * (cell + cg) + 2 * U;
+        c.text(tx, ry + (cell - c.textH(16 * U)) / 2, c.fit(top.empty() ? S(c, "layer_empty") : top, dr.right() - pad - tx, 16 * U),
+               top.empty() ? pal::dim.withAlpha(0.6f) : pal::text, 16 * U);
+        ry += cell + cg;
+    }
+    y += gridH + 10 * U;
+    // carrying: the hands, the worn containers, the shoulder
+    {
+        const double kg = jnum(th, "kg"), maxKg = jnum(th, "maxKg");
+        char b[48];
+        std::snprintf(b, sizeof b, "%.1f / %.0f", kg, maxKg);
+        heading(S(c, "carry"), S(c, "load_kg", {{"kg", b}}));
+    }
+    const Json& carry = jarr(th, "carry");
+    const float kw = (dw - 2 * pad - 8 * U) / 2, kh = 70 * U, kc = 40 * U;
+    int ki = 0;
+    for (const auto& k : carry) {
+        const ui::Rect kr{dr.x + pad + float(ki % 2) * (kw + 8 * U), y + float(ki / 2) * (kh + 6 * U), kw, kh};
+        if (kr.bottom() > dr.bottom() - 26 * U) break;
+        c.plate(kr, !jarr(k, "items").empty());
+        const bool over = jstr(k, "slot") == "overflow";
+        c.text(kr.x + 6 * U, kr.y + 4 * U, c.fit(jstr(k, "name"), kw / 2, 16 * U), over ? pal::bad : pal::gold, 16 * U);
+        std::string cap;
+        if (jnum(k, "cells") > 0) cap = S(c, "cells", {{"used", jstr(k, "used")}, {"n", jstr(k, "cells")}});
+        if (jnum(k, "kg") > 0) {
+            char b[24];
+            std::snprintf(b, sizeof b, "%.1f", jnum(k, "kg"));
+            cap += (cap.empty() ? "" : " · ") + S(c, "kg", {{"kg", b}});
+        }
+        c.text(kr.right() - 6 * U - c.textW(cap, 16 * U), kr.y + 4 * U, cap, pal::dim, 16 * U);
+        float ix = kr.x + 6 * U;
+        const float iy = kr.y + 24 * U;
+        const Json& items = jarr(k, "items");
+        if (items.empty()) c.text(ix, iy + 10 * U, S(c, "layer_empty"), pal::dim.withAlpha(0.6f), 16 * U);
+        for (const auto& it : items) {
+            if (ix + kc > kr.right() - 6 * U) break;
+            c.well({ix, iy, kc, kc});
+            thingIcon(c, jstr(it, "id"), jstr(it, "name"), ix + 2 * p, iy + 2 * p, kc - 4 * p);
+            if (jnum(it, "n") > 1) {
+                const std::string n = jstr(it, "n");
+                c.text(ix + kc - 2 * p - c.textW(n, 16 * U), iy + kc - c.textH(16 * U), n, pal::gold, 16 * U, true);
+            }
+            ix += kc + 3 * U;
+        }
+        ++ki;
+    }
+    // the purse
+    {
+        const std::string pv = std::to_string(int(std::lround(jnum(sk, "purse"))));
+        c.icon("hud_coin", dr.x + pad, dr.bottom() - 22 * U);
+        c.text(dr.x + pad + is + 6 * U, dr.bottom() - 22 * U, S(c, "purse_n", {{"n", pv}}), pal::gold, 16 * U);
     }
 
     // --- attributes and condition ----------------------------------------------------------
@@ -257,11 +293,10 @@ void pageOverview(Ctx& c, Win& w, const Json& d, const ui::Rect& r) {
         }
         f.head(S(c, "state"));
         const Json& wounds = jarr(o, "wounds");
-        const double hp = jnum(o, "hp", 1), st = 1 - jnum(o, "fatigue"), bl = jnum(o, "blood", 1), mood = jnum(o, "mood");
+        const double hp = jnum(o, "hp", 1), st = 1 - jnum(o, "fatigue"), mood = jnum(o, "mood");
         const Json vit = hud.value("vitals", Json::object());
         f.stat(jstr(vit, "health"), S(c, "health"), hp, pal::bad, std::to_string(pct(hp)));
         f.stat(jstr(vit, "strength"), S(c, "strength"), st, pal::mid, std::to_string(pct(st)));
-        f.stat(jstr(vit, "blood"), S(c, "blood"), bl, pal::hex("#a0282a"), std::to_string(pct(bl)));
         f.stat(jstr(vit, mood < -0.1 ? "mood_low" : "mood"), S(c, "mood"), (mood + 1) / 2, mood >= 0 ? pal::good : pal::bad,
                (mood >= 0 ? "+" : "") + std::to_string(int(std::lround(mood * 100))));
         if (!wounds.empty() || !jarr(o, "injuries").empty()) {
@@ -701,8 +736,7 @@ void openSheet(Ctx& c, Screens& s, long long id) {
     w->tab = "overview";
     w->width = 0.9f;
     w->height = 0.9f;
-    w->wantW = 1180 * c.u();
-    w->fitH = (80 + 8 + kPageH) * c.u();   // the head and the page: every tab has the doll's height
+    w->big(c.u());   // LR-145: the sheet, the dynasty and the colony are one size
     w->data = {{"id", -1}, {"relFilter", "all"}};
     setPerson(c, *w, id);
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) { render(c, s, w, body); };

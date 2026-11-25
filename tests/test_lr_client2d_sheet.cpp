@@ -87,3 +87,33 @@ TEST(lr_client2d_sheet_loc) {
     CHECK(ru.size() > 40);
     CHECK(ru == en);
 }
+
+// LR-145: the sheet's carry slots (the hands, the worn containers) and the dynasty window.
+TEST(lr_client2d_sheet_carry_dynasty) {
+    World& w = sheetVillage();
+    c2::ViewText t;
+    t.loc = &sheetLoc();
+    int withHands = 0, withLayers = 0, dyn = 0;
+    for (const auto& [id, c] : w.characters()) {
+        if (c.isAnimal() || !c.body.alive) continue;
+        const Json d = c2::sheetJson(w, t, id);
+        for (const auto& s : d["things"]["slots"])
+            if (!s["layers"].empty()) ++withLayers;
+        for (const auto& k : d["things"]["carry"]) {
+            CHECK(!k["name"].get<std::string>().empty());
+            CHECK(k["used"].get<int>() <= k["cells"].get<int>() || k["cells"].get<int>() == 0);
+            if (k["id"] == "hands") ++withHands;
+        }
+        const Json y = c2::dynastyJson(w, t, id);
+        if (!y.is_object()) continue;
+        ++dyn;
+        CHECK(!y["name"].get<std::string>().empty());
+        bool self = false;
+        for (const auto& m : y["members"]) self = self || m["id"].get<EntityId>() == id;
+        CHECK(self);
+        CHECK(y["alive"].get<int>() >= 1);
+    }
+    CHECK(withHands > 0);
+    CHECK(withLayers > 0);
+    CHECK(dyn > 0);
+}

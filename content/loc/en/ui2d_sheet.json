@@ -144,5 +144,14 @@
  "ui2d.sheet.weapon": "Weapon",
  "ui2d.sheet.tool": "Tool",
  "ui2d.sheet.empty_hand": "empty",
- "ui2d.sheet.more": "{n} more"
+ "ui2d.sheet.more": "{n} more",
+ "ui2d.sheet.worn_layers": "Clothes by layer",
+ "ui2d.sheet.layer_col.0": "under",
+ "ui2d.sheet.layer_col.1": "clothes",
+ "ui2d.sheet.layer_col.2": "armour",
+ "ui2d.sheet.layer_col.3": "over",
+ "ui2d.sheet.carry": "Carrying",
+ "ui2d.sheet.load_kg": "load {kg} kg",
+ "ui2d.sheet.cells": "{used}/{n} cells",
+ "ui2d.sheet.purse_n": "{n} coins"
 }

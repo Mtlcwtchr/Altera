@@ -452,6 +452,39 @@
    ".........",
    "........."
   ],
+  "hud_map": [
+   ".........",
+   "ntttntttn",
+   "ntGGtuutn",
+   "ntGttuttn",
+   "ntttrttun",
+   "ntGtttuun",
+   "ntttntttn",
+   "nnnn.nnnn",
+   "........."
+  ],
+  "hud_scroll": [
+   ".nnnnnnn.",
+   "ntttttttn",
+   ".tNNNNNt.",
+   ".ttttttt.",
+   ".tNNNNt..",
+   ".ttttttt.",
+   ".tNNNNNt.",
+   "ntttttttn",
+   ".nnnnnnn."
+  ],
+  "hud_anvil": [
+   ".........",
+   ".........",
+   "WWWWWWW..",
+   ".WWWWWWWW",
+   "...WWW...",
+   "...WWW...",
+   "..WWWWW..",
+   ".WWWWWWW.",
+   "........."
+  ],
   "hud_hammer": [
    ".........",
    ".WWWWW...",
@@ -598,6 +631,25 @@
   }
  ],
  "other_need": "hud_star",
+ "layer_cols": {
+  "under": 0,
+  "padding": 1,
+  "cap": 1,
+  "shoes": 1,
+  "gloves": 1,
+  "armour": 2,
+  "helm": 2,
+  "over": 3
+ },
+ "screens": {
+  "sheet": "hud_book",
+  "dynasty": "hud_crown",
+  "colony": "hud_house",
+  "build": "hud_hammer",
+  "map": "hud_map",
+  "workshop": "hud_anvil",
+  "chronicle": "hud_scroll"
+ },
  "moodlets": [
   [
    "ate|meal|bread|feast|food|catch",

@@ -275,6 +275,7 @@ public:
     std::map<EntityId, Family>& families() { return families_; }
     const std::map<EntityId, Family>& families() const { return families_; }
     std::map<EntityId, Dynasty>& dynasties() { return dynasties_; }
+    const std::map<EntityId, Dynasty>& dynasties() const { return dynasties_; }
     std::map<EntityId, Settlement>& settlements() { return settlements_; }
     const std::map<EntityId, Settlement>& settlements() const { return settlements_; }
     std::map<EntityId, BuildPiece>& pieces() { return pieces_; }

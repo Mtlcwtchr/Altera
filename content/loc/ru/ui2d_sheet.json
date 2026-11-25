@@ -144,5 +144,14 @@
  "ui2d.sheet.weapon": "Оружие",
  "ui2d.sheet.tool": "Инструмент",
  "ui2d.sheet.empty_hand": "пусто",
- "ui2d.sheet.more": "ещё {n}"
+ "ui2d.sheet.more": "ещё {n}",
+ "ui2d.sheet.worn_layers": "Одежда по слоям",
+ "ui2d.sheet.layer_col.0": "нижнее",
+ "ui2d.sheet.layer_col.1": "одежда",
+ "ui2d.sheet.layer_col.2": "броня",
+ "ui2d.sheet.layer_col.3": "поверх",
+ "ui2d.sheet.carry": "Переноска",
+ "ui2d.sheet.load_kg": "груз {kg} кг",
+ "ui2d.sheet.cells": "{used}/{n} кл.",
+ "ui2d.sheet.purse_n": "{n} монет"
 }

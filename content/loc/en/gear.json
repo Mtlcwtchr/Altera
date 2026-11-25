@@ -43,5 +43,7 @@
  "hud.gear.layer.gloves": "gloves",
  "hud.gear.layer.belt": "belt",
  "hud.gear.layer.bag": "bag",
- "hud.gear.layer.pack": "pack"
+ "hud.gear.layer.pack": "pack",
+ "hud.gear.haul": "On the shoulder",
+ "hud.gear.overflow": "No room"
 }

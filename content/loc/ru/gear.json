@@ -120,5 +120,7 @@
  "hud.gear.layer.gloves": "перчатки",
  "hud.gear.layer.belt": "пояс",
  "hud.gear.layer.bag": "сума",
- "hud.gear.layer.pack": "мешок"
+ "hud.gear.layer.pack": "мешок",
+ "hud.gear.haul": "На плече",
+ "hud.gear.overflow": "Не влезло"
 }

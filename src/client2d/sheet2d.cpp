@@ -6,6 +6,7 @@
 #include <set>
 
 #include "sim/ai.hpp"
+#include "sim/captivity.hpp"
 #include "sim/gear.hpp"
 #include "sim/trade.hpp"
 
@@ -258,7 +259,11 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
     th["worn"] = worn;
     Json slots = Json::array();   // every body place, worn or not (the doll)
     if (G)
-        for (const GearSlot& gs : G->slots) slots.push_back({{"id", gs.id}, {"name", textOr(t, "hud.gear.slot." + gs.id, gs.id)}});
+        for (const GearSlot& gs : G->slots) {
+            Json layers = Json::array();   // LR-145: inner to outer, for the sheet's layer grid
+            for (const auto& l : gs.layers) layers.push_back({{"id", l}, {"name", textOr(t, "hud.gear.layer." + l, l)}});
+            slots.push_back({{"id", gs.id}, {"name", textOr(t, "hud.gear.slot." + gs.id, gs.id)}, {"layers", layers}});
+        }
     th["slots"] = slots;
     Json carried = Json::array();
     for (const auto& [item, n] : c.inventory) {
@@ -271,6 +276,55 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
                            {"worth", r2(baseValue(ct, item) * itemWorthMult(ct, c, item))}});
     }
     th["carried"] = carried;
+    // LR-145: what is carried where: the hands' grid, each worn container's (belt, satchel,
+    // pack) and what is hauled on the shoulder, as sim/gear arrange() lays them out
+    Json carry = Json::array();
+    if (G) {
+        const GearLayout L = arrange(*G, c);
+        for (const GearGrid& g : L.grids) {
+            const bool hands = g.id == "hands";
+            const std::string slot = hands ? "hands" : G->item(g.id).slot;
+            Json items = Json::array();
+            int used = 0;
+            double kg = 0;
+            std::map<std::string, int> n;
+            std::vector<std::string> order;
+            for (const GearSpot& sp : L.spots)
+                if (sp.grid == g.id) {
+                    used += sp.w * sp.h;
+                    if (!n.count(sp.item)) order.push_back(sp.item);
+                    n[sp.item] += sp.count;
+                }
+            for (const auto& it : order) {
+                kg += G->item(it).kg * n[it];
+                items.push_back({{"id", it}, {"name", t.name("item", it)}, {"n", n[it]}});
+            }
+            carry.push_back({{"id", g.id},
+                             {"slot", slot},
+                             {"name", hands ? textOr(t, "hud.gear.hands", "hands") : t.name("item", g.id)},
+                             {"cells", g.w * g.h},
+                             {"used", used},
+                             {"kg", r2(kg)},
+                             {"items", items}});
+        }
+        if (!L.hauled.empty()) {
+            Json items = Json::array();
+            double kg = 0;
+            for (const auto& [it, k] : L.hauled) {
+                kg += G->item(it).kg * k;
+                items.push_back({{"id", it}, {"name", t.name("item", it)}, {"n", k}});
+            }
+            carry.push_back({{"id", "haul"}, {"slot", "haul"}, {"name", textOr(t, "hud.gear.haul", "on the shoulder")}, {"cells", 0}, {"used", 0},
+                             {"kg", r2(kg)}, {"items", items}});
+        }
+        if (!L.overflow.empty()) {
+            Json items = Json::array();
+            for (const auto& [it, k] : L.overflow) items.push_back({{"id", it}, {"name", t.name("item", it)}, {"n", k}});
+            carry.push_back({{"id", "overflow"}, {"slot", "overflow"}, {"name", textOr(t, "hud.gear.overflow", "no room")}, {"cells", 0},
+                             {"used", 0}, {"kg", 0.0}, {"items", items}});
+        }
+    }
+    th["carry"] = carry;
     th["kg"] = G ? r2(loadKg(*G, c)) : 0.0;
     th["maxKg"] = G ? r2(maxLoadKg(*G, c)) : 0.0;
     d["things"] = th;
@@ -337,6 +391,92 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
     }
     ch["log"] = log;
     d["chronicle"] = ch;
+    return d;
+}
+
+
+// LR-145: the dynasty window: the viewer's dynasty, its households, every member (alive and
+// dead) with how they are kin to the viewer, the heir (sim heirOf) and the house's chronicle.
+Json dynastyJson(const World& w, const ViewText& t, EntityId viewer) {
+    const Character* me = w.character(viewer);
+    if (!me) return nullptr;
+    const Family* mf = w.familyOf(*me);
+    if (!mf) return nullptr;
+    const EntityId dyn = mf->dynasty;
+    std::set<EntityId> fams;
+    for (const auto& [fid, f] : w.families())
+        if (fid == mf->id || (dyn != kNone && f.dynasty == dyn)) fams.insert(fid);
+    Json d = {{"me", viewer}, {"name", mf->name}};
+    if (dyn != kNone)
+        if (auto it = w.dynasties().find(dyn); it != w.dynasties().end()) {
+            if (!it->second.name.empty()) d["name"] = it->second.name;
+            if (const Character* fo = w.character(it->second.founder)) d["founder"] = nameOf(t, *fo);
+        }
+    Json households = Json::array();
+    for (EntityId fid : fams) {
+        const Family& f = w.families().at(fid);
+        auto st = w.settlements().find(f.settlement);
+        households.push_back({{"id", fid}, {"name", f.name}, {"where", st == w.settlements().end() ? "" : st->second.name}});
+    }
+    d["households"] = households;
+    Json members = Json::array();
+    int alive = 0, dead = 0, grown = 0, kids = 0;
+    double purse = 0, renown = 0;
+    std::set<EntityId> ids;
+    for (const auto& [id, c] : w.characters())
+        if (!c.isAnimal() && fams.count(c.status.family)) ids.insert(id);
+    for (EntityId id : ids) {
+        const Character& c = *w.character(id);
+        const bool child = c.body.stage() == "child";
+        if (c.body.alive) {
+            ++alive;
+            (child ? kids : grown)++;
+            purse += c.standing.purse;
+            renown = std::max(renown, c.standing.renown);
+        } else ++dead;
+        Json kin = Json::array();
+        if (id != viewer)
+            for (const auto& k : kinOf(w, *me, c)) kin.push_back(textOr(t, "ui2d.sheet.kin." + k + "." + std::string(1, c.body.sex), k));
+        const Family* f = w.familyOf(c);
+        members.push_back({{"id", id},
+                           {"name", nameOf(t, c)},
+                           {"alive", c.body.alive},
+                           {"age", r2(c.body.ageDays / kDaysPerYear)},
+                           {"sex", std::string(1, c.body.sex)},
+                           {"child", child},
+                           {"house", f ? f->name : ""},
+                           {"occ", c.occupation.empty() ? "" : textOr(t, "ui2d.sheet.occ." + c.occupation, c.occupation)},
+                           {"act", actName(t, c)},
+                           {"goal", goalName(t, c)},
+                           {"hp", r2(c.body.health)},
+                           {"pl", c.controller.isPlayer()},
+                           {"spouse", c.status.spouse},
+                           {"mother", c.status.mother},
+                           {"father", c.status.father},
+                           {"kin", kin}});
+    }
+    d["members"] = members;
+    d["alive"] = alive;
+    d["dead"] = dead;
+    d["grown"] = grown;
+    d["kids"] = kids;
+    d["purse"] = r2(purse);
+    d["renown"] = r2(renown);
+    const EntityId heir = heirOf(w, *me);
+    d["heir"] = heir;
+    // the house's chronicle: what the village saw of its people
+    Json log = Json::array();
+    const auto& L = w.chronicleLog();
+    for (std::size_t i = L.size(); i-- > 0 && log.size() < 60;) {
+        const ChronicleEntry& e = L[i];
+        bool ours = false;
+        for (EntityId x : e.who) ours = ours || ids.count(x);
+        if (!ours) continue;
+        std::string text = e.code;
+        if (t.loc && t.loc->has(t.lang, e.code)) text = t.loc->text(t.lang, e.code, locArgs(*t.loc, t.lang, w, e.params));
+        log.push_back({{"day", e.tick / kTicksPerDay}, {"t", hhmm(e.tick)}, {"text", text}});
+    }
+    d["log"] = log;
     return d;
 }
 

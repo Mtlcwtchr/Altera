@@ -121,6 +121,11 @@ struct Win {
     // LR-143: the frame hugs what the window drew last frame (it is laid out at full height,
     // so the measure does not feed back); a long list still gets the full height
     bool autoFit = false;
+    // LR-145: the big screens (sheet, dynasty, colony) are one size: this width and body height
+    void big(float U) {
+        wantW = 1180 * U;
+        fitH = 648 * U;
+    }
     std::function<void(Ctx&, Win&, const ui::Rect& body)> render;
     std::function<void(Ctx&, Win&)> onClose;
     std::function<void(Ctx&, Win&)> onPoll;   // with the state's poll
@@ -181,6 +186,7 @@ void openTalk(Ctx& c, Screens& s, long long target, bool trade);                
 void openSheet(Ctx& c, Screens& s, long long id);                                  // sheet2d_view.cpp
 void openWorkshop(Ctx& c, Screens& s);                                             // craft2d_view.cpp
 void openColony(Ctx& c, Screens& s);                                               // build2d_view.cpp
+void openDynasty(Ctx& c, Screens& s);                                              // dynasty2d_view.cpp (LR-145)
 void openBuild(Ctx& c, Screens& s);                                                // build2d_view.cpp
 bool buildActive(const Screens& s);
 void buildDrawWorld(Ctx& c, Screens& s);

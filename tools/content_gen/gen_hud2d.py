@@ -10,6 +10,7 @@ Writes content/sprites_2d/hud2d.json:
                purpose, spirit) -> the need ids in each and their icons. A need the
                sim does not have yet (the derived ones) is skipped by the window, so
                the tier shows what the sim sends;
+  "screens"  - the column's screen buttons -> icon (LR-145);
   "moodlets" - [regex on the moodlet id, icon]: the first match draws a thought.
 Idempotent: rerun after a change here.  python tools/content_gen/gen_hud2d.py
 """
@@ -65,6 +66,9 @@ ICONS = {
     "snow": ["....c....", ".c..c..c.", "..c.c.c..", "...ccc...", "ccccccccc", "...ccc...", "..c.c.c..", ".c..c..c.", "....c...."],
     "coin": [".........", "...yyy...", "..yYYYy..", ".yYyyyYy.", ".yYyyyYy.", ".yYyyyYy.", "..yYYYy..", "...yyy...", "........."],
     "kiss": [".........", ".........", ".rr...rr.", "rrrr.rrrr", ".rrrrrrr.", "..rrrrr..", "...rrr...", ".........", "........."],
+    "map": [".........", "mpppmpppm", "mpGGpuupm", "mpGppuppm", "mppprppum", "mpGpppuum", "mpppmpppm", "mmmm.mmmm", "........."],
+    "scroll": [".mmmmmmm.", "mpppppppm", ".pkkkkkp.", ".ppppppp.", ".pkkkkp..", ".ppppppp.", ".pkkkkkp.", "mpppppppm", ".mmmmmmm."],
+    "anvil": [".........", ".........", "SSSSSSS..", ".SSSSSSSS", "...SSS...", "...SSS...", "..SSSSS..", ".SSSSSSS.", "........."],
     "hammer": [".........", ".SSSSS...", ".SSSSS...", "...m.....", "...m.....", "...m.....", "...m.....", "...m.....", "........."],
 }
 
@@ -98,6 +102,12 @@ def main():
             {"id": "spirit", "needs": [["grace", "hud_sun"]]},
         ],
         "other_need": "hud_star",
+        # LR-145: the sheet's clothing grid: a worn layer (gear.json) -> its column
+        # (0 under, 1 clothes, 2 armour, 3 over); a slot without such layers is a carry slot
+        "layer_cols": {"under": 0, "padding": 1, "cap": 1, "shoes": 1, "gloves": 1, "armour": 2, "helm": 2, "over": 3},
+        # LR-145: the column's screen buttons (Screens::columnScreens ids) -> icon
+        "screens": {"sheet": "hud_book", "dynasty": "hud_crown", "colony": "hud_house", "build": "hud_hammer",
+                    "map": "hud_map", "workshop": "hud_anvil", "chronicle": "hud_scroll"},
         "moodlets": [
             ["ate|meal|bread|feast|food|catch", "hud_bread"], ["hungry|starving|fasted", "hud_bread"],
             ["thirst|drink|tipsy|hungover|merry", "hud_cup"], ["rest|slept|sleep|exhaust|refresh", "hud_moon"],

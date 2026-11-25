@@ -339,61 +339,122 @@ void renderColony(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
         g.endScroll(yy);
         return;
     }
-    // overview: the settlement | buildings and rooms | the plan
-    const float cw = (body.w - 20 * U) / 3;
+    // LR-145: the overview fills the big window: the settlement and its measures | who does
+    // what, the buildings and rooms | the plan and the households
+    const float gap = 10 * U, cw = (body.w - 2 * gap) / 3;
+    auto section = [&](float x, float y, float h, const std::string& title, const std::string& note) {
+        c.well({x, y, cw, h});
+        c.text(x + 8 * U, y + 6 * U, title, pal::gold, 16 * U);
+        if (!note.empty()) c.text(x + cw - 8 * U - c.textW(note, 16 * U), y + 6 * U, note, pal::dim, 16 * U);
+        return ui::Rect{x + 6 * U, y + 30 * U, cw - 12 * U, h - 36 * U};
+    };
+    auto stat = [&](const ui::Rect& in, float& y, const char* key, const std::string& val, double bar, bool goodHigh) {
+        c.text(in.x + 2 * U, y, c.L(std::string("ui2d.colony.stat.") + key), pal::text, 16 * U);
+        if (bar >= 0) {
+            const double v = std::clamp(bar, 0.0, 1.0);
+            c.pips(in.x + in.w * 0.5f, y + (c.textH(16 * U) - 5 * c.pixel()) / 2, 10, v, pal::tone(goodHigh ? v : 1 - v));
+        }
+        c.text(in.right() - 2 * U - c.textW(val, 16 * U), y, val, pal::gold, 16 * U);
+        y += 22 * U;
+    };
     {
-        std::vector<std::string> ls = {jstr(d, "name"),
-                                       c.L("ui2d.colony.chief") + ": " + (jid(d, "chief") > 0 ? nameOf(c, jid(d, "chief")) : c.L("ui2d.colony.nobody")),
+        const float x = body.x;
+        const ui::Rect in = section(x, body.y, body.h, c.L("ui2d.colony.settlement"), "");
+        std::vector<std::string> ls = {c.L("ui2d.colony.chief") + ": " + (jid(d, "chief") > 0 ? nameOf(c, jid(d, "chief")) : c.L("ui2d.colony.nobody")),
                                        c.L("ui2d.colony.people", {{"n", jstr(d, "people")}, {"grown", jstr(d, "grown")}, {"kids", jstr(d, "kids")}}),
                                        c.L("ui2d.colony.households", {{"n", std::to_string(jarr(d, "families").size())}})};
         std::string rights;
         for (const auto& r : jarr(d, "my_rights")) rights += (rights.empty() ? "" : ", ") + c.L("ui2d.right." + r.get<std::string>());
         if (!rights.empty()) ls.push_back(c.L("ui2d.colony.my_rights") + ": " + rights);
-        float y = body.y + c.parchLines(body.x, body.y, cw, ls, 14 * U) + 8 * U;
+        float y = in.y + c.parchLines(in.x, in.y, in.w, ls, 16 * U) + 10 * U;
+        const Json st = d.value("stats", Json::object());
+        if (st.is_object() && jnum(st, "pop") > 0) {   // read from the map at the first day's end
+            const double pop = std::max(1.0, jnum(st, "pop", 1));
+            stat(in, y, "food", c.L("ui2d.colony.days", {{"n", std::to_string(int(jnum(st, "food") / pop))}}), jnum(st, "food") / pop / 60.0, true);
+            stat(in, y, "wealth", std::to_string(int(std::lround(jnum(st, "wealth")))), -1, true);
+            stat(in, y, "militia", std::to_string(int(std::lround(jnum(st, "militia")))), -1, true);
+            stat(in, y, "morale", std::to_string(int(std::lround(jnum(st, "morale") * 100))), jnum(st, "morale"), true);
+            stat(in, y, "unrest", std::to_string(int(std::lround(jnum(st, "unrest") * 100))), jnum(st, "unrest"), false);
+            stat(in, y, "fort", std::to_string(int(std::lround(jnum(st, "fort") * 100))), jnum(st, "fort"), true);
+            stat(in, y, "crafts", std::to_string(int(std::lround(jnum(st, "crafts") * 100))), jnum(st, "crafts"), true);
+            y += 8 * U;
+        }
         const bool mode = jflag(d, "colony_mode");
-        if (g.toggle(ui::widgetId("col.mode"), {body.x, y, cw, 34 * U}, c.L(mode ? "ui2d.colony.mode_on" : "ui2d.colony.mode_off"), mode)) {
+        if (g.toggle(ui::widgetId("col.mode"), {in.x, y, in.w, 34 * U}, c.L(mode ? "ui2d.colony.mode_on" : "ui2d.colony.mode_off"), mode)) {
             w.data["d"] = c.post("/api/colony/mode", {{"on", !mode}});
             c.setFollow(false);
             c.refresh();
         }
         y += 40 * U;
-        if (g.button(ui::widgetId("col.build"), {body.x, y, cw, 34 * U}, c.L("ui2d.screen.build"))) {
+        if (g.button(ui::widgetId("col.build"), {in.x, y, in.w, 34 * U}, c.L("ui2d.screen.build"))) {
             w.closing = true;
             s.open("build");
         }
         y += 42 * U;
-        for (const auto& row : c.wrap(c.L("ui2d.colony.mode_tip"), cw, 12 * U)) {
-            c.text(body.x, y, row, pal::dim, 12 * U);
-            y += 17 * U;
+        for (const auto& row : c.wrap(c.L("ui2d.colony.mode_tip"), in.w, 16 * U)) {
+            if (y > in.bottom() - 18 * U) break;
+            c.text(in.x, y, row, pal::dim, 16 * U);
+            y += 18 * U;
         }
     }
     {
-        const float x = body.x + cw + 10 * U;
-        float y = body.y;
-        c.text(x, y, c.L("ui2d.colony.buildings"), pal::gold, 15 * U, true);
-        y += 22 * U;
+        const float x = body.x + cw + gap;
+        // who does what now
+        std::map<std::string, int> by;
+        int n = 0;
+        for (const auto& f : jarr(d, "families"))
+            for (const auto& m : jarr(f, "members")) {
+                const Json* p = c.person(m.get<long long>());
+                if (!p) continue;
+                ++n;
+                by[!jstr(*p, "act").empty() ? jstr(*p, "act") : !jstr(*p, "goal").empty() ? jstr(*p, "goal") : c.L("ui2d.colony.idle")]++;
+            }
+        std::vector<std::pair<std::string, int>> acts(by.begin(), by.end());
+        std::stable_sort(acts.begin(), acts.end(), [](const auto& a, const auto& b) { return a.second > b.second; });
+        const float h1 = std::round(body.h * 0.5f);
+        const ui::Rect in = section(x, body.y, h1, c.L("ui2d.colony.doing"), c.L("ui2d.colony.of_n", {{"n", std::to_string(n)}}));
+        float y = in.y;
+        for (const auto& [k, v] : acts) {
+            if (y > in.bottom() - 20 * U) break;
+            c.text(in.x + 2 * U, y, c.fit(k, in.w * 0.5f, 16 * U), pal::text, 16 * U);
+            c.pips(in.x + in.w * 0.55f, y + (c.textH(16 * U) - 5 * c.pixel()) / 2, 8, n > 0 ? double(v) / n : 0, pal::bronzeL);
+            const std::string vs = std::to_string(v);
+            c.text(in.right() - 2 * U - c.textW(vs, 16 * U), y, vs, pal::gold, 16 * U);
+            y += 21 * U;
+        }
+        const float y2 = body.y + h1 + gap;
+        const ui::Rect in2 = section(x, y2, body.bottom() - y2, c.L("ui2d.colony.buildings"), "");
         std::vector<std::string> bs, rs;
         for (const auto& b : jarr(d, "buildings")) bs.push_back(jstr(b, "name") + " x" + jstr(b, "n"));
         for (const auto& b : jarr(d, "rooms")) rs.push_back(jstr(b, "name") + " x" + jstr(b, "n"));
         if (bs.empty()) bs.push_back(c.L("ui2d.colony.none"));
         if (rs.empty()) rs.push_back(c.L("ui2d.colony.none"));
-        y += c.chips(x, y, cw, bs) + 12 * U;
-        c.text(x, y, c.L("ui2d.colony.rooms"), pal::gold, 15 * U, true);
-        y += 22 * U;
-        y += c.chips(x, y, cw, rs) + 10 * U;
-        for (const auto& row : c.wrap(c.L("ui2d.colony.rooms_tip"), cw, 12 * U)) {
-            c.text(x, y, row, pal::dim, 12 * U);
-            y += 17 * U;
-        }
+        float yy = in2.y + c.chips(in2.x, in2.y, in2.w, bs) + 10 * U;
+        c.text(in2.x + 2 * U, yy, c.L("ui2d.colony.rooms"), pal::gold, 16 * U);
+        yy += 24 * U;
+        c.chips(in2.x, yy, in2.w, rs);
     }
     {
-        const float x = body.x + 2 * (cw + 10 * U);
-        std::vector<std::string> ls = {c.L("ui2d.colony.plan"), c.L("ui2d.colony.sites", {{"n", jstr(d, "planned")}, {"ready", jstr(d, "ready")}})};
+        const float x = body.x + 2 * (cw + gap);
+        const float h1 = std::round(body.h * 0.4f);
+        const ui::Rect in = section(x, body.y, h1, c.L("ui2d.colony.plan"), "");
+        std::vector<std::string> ls = {c.L("ui2d.colony.sites", {{"n", jstr(d, "planned")}, {"ready", jstr(d, "ready")}})};
         std::string lack;
         for (const auto& l : jarr(d, "lack")) lack += (lack.empty() ? "" : ", ") + jstr(l, "name") + " " + jstr(l, "n");
         if (!lack.empty()) ls.push_back(c.L("ui2d.build.lack") + ": " + lack);
         ls.push_back(c.L("ui2d.build.free"));
-        c.parchLines(x, body.y, cw, ls, 13 * U);
+        c.parchLines(in.x, in.y, in.w, ls, 16 * U);
+        const float y2 = body.y + h1 + gap;
+        const ui::Rect in2 = section(x, y2, body.bottom() - y2, c.L("ui2d.colony.tab.families"), "");
+        const ui::Rect sc = g.beginScroll(ui::widgetId("col.ov.fams"), in2);
+        float yy = sc.y;
+        for (const auto& f : jarr(d, "families")) {
+            std::string t = jstr(f, "name") + " · " + c.L("ui2d.colony.fam_n", {{"n", std::to_string(jarr(f, "members").size())}});
+            if (jnum(f, "planned") > 0) t += " · " + c.L("ui2d.colony.fam_sites", {{"n", jstr(f, "planned")}, {"ready", jstr(f, "ready")}});
+            c.text(sc.x + 2 * U, yy, c.fit(t, sc.w - 4 * U, 16 * U), pal::text, 16 * U);
+            yy += 21 * U;
+        }
+        g.endScroll(yy);
     }
 }
 
@@ -690,9 +751,7 @@ void openColony(Ctx& c, Screens& s) {
     w->title = c.L("ui2d.screen.colony");
     for (const char* t : {"overview", "families", "people", "sites", "offices"}) w->tabs.push_back({t, c.L(std::string("ui2d.colony.tab.") + t)});
     w->tab = "overview";
-    w->width = 0.84f;
-    w->height = 0.84f;
-    w->autoFit = true;   // LR-143
+    w->big(c.u());   // LR-145: one size with the sheet and the dynasty
     loadCatalog(c);
     w->data = {{"d", c.get("/api/colony")}, {"at", now()}};
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) { renderColony(c, s, w, body); };
