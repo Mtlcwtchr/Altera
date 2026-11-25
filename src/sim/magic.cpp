@@ -13,6 +13,7 @@
 #include "sim/content.hpp"
 #include "sim/world.hpp"
 #include "sim/world_fields.hpp"
+#include "sim/species.hpp"
 
 namespace altera::sim {
 
@@ -1611,6 +1612,28 @@ void installMagic(World& w) {
         worldSink() = [](World& world, Vec2 at, double radiusM, const Json& channels, double power) {
             applyChannels(world, at, radiusM, channels, power);
         };
+    // AL-114's kinds: talent by aspect, the gift's chance, the troll's sun-sleep
+    if (!affinityFn())
+        affinityFn() = [](const World& world, const Character& c, const std::string& aspect) {
+            const auto& aff = raceOf(world.content(), c).affinity;
+            auto it = aff.find(aspect);
+            return it == aff.end() ? 1.0 : it->second;
+        };
+    if (!giftChanceFn())
+        giftChanceFn() = [](const World& world, const Character& c) { return raceOf(world.content(), c).giftedChance; };
+    static const bool trollHook = [] {
+        addMagicBodyHook([](World& world, Character& t, const std::string& key, double amount, EntityId) {
+            if (amount <= 0.0) return false;
+            if ((key == "troll_sun" || key == "troll_wake") && !raceOf(world.content(), t).sunSleep.on)
+                return true; // only the kinds that sleep in stone
+            if (key == "troll_sun") forcePetrify(world, t);
+            else if (key == "troll_wake") wakePetrified(world, t);
+            else return false;
+            return true;
+        });
+        return true;
+    }();
+    (void)trollHook;
     if (!fieldReader())
         fieldReader() = [](const World& world, const std::string& field, Vec2 at) {
             Field f;
