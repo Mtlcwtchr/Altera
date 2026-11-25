@@ -153,13 +153,10 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
     }
     std::sort(moodlets.begin(), moodlets.end(), [](const Json& a, const Json& b) { return a["v"].get<double>() > b["v"].get<double>(); });
     ov["moodlets"] = moodlets;
-    Json needs = Json::array();
-    for (const auto& nd : ct.needs) {
-        auto it = c.needs.find(nd.id);
-        if (it == c.needs.end()) continue;
-        needs.push_back({{"id", nd.id}, {"name", t.name("need", nd.id)}, {"v", r2(it->second)}, {"crit", r2(nd.critical)}});
-    }
+    Json needs, tiers;
+    needsJson(w, t, c, needs, tiers, true); // LR-140: all needs with their tier
     ov["needs"] = needs;
+    ov["tiers"] = tiers;
     ov["goal"] = goalName(t, c);
     ov["act"] = actName(t, c);
     Json plan = Json::array();

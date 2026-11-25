@@ -428,5 +428,239 @@
    "_doc": "AL-116: ищет способ вернуть умершего",
    "_part": "magic"
   }
- ]
+ ],
+ "_doc_lr140": "LR-140: derived — нужды без собственного падения (gdd/motivation/motivation.json derived_needs): считаются из мира (взвешенное среднее входов) и плавно идут к расчётному значению (tier_gate.rate_per_day разрыва за сутки, пересчёт раз в step_ticks). Входы: body:health, has_shelter, threat_near (norm = радиус, м), home_food_days, home:<предмет>, household_avg:rel.<ось>, has_household, community_avg:rel_back.<ось>, reputation:<ось>, wealth_rank, has_office, has_heir, built_count, moodlet:<id>, need:<id>, trait:<id>; inv: = 1 − значение. season_norm умножает норму счётных входов по сезону (к зиме хочется больше). care — насколько персонажу это важно (base + 0.5·reputation:<ось>, не меньше traits[t]); тянет 1 − care·(1 − value). Благодати-запаса в симе пока нет: grace считается из молитвы и благословения. tiers — пирамида (order 1… снизу; 0 — дух сбоку, не гейтится и не гейтит), gate — по чему меряется ярус (минимум). tier_gate: балл цели яруса k × Π(floor + (1−floor)·logistic(sat_j)) по ярусам ниже.",
+ "derived": [
+  {
+   "id": "safety",
+   "inputs": [
+    {
+     "input": "body:health",
+     "w": 0.3
+    },
+    {
+     "input": "has_shelter",
+     "w": 0.3
+    },
+    {
+     "input": "inv:threat_near",
+     "w": 0.4,
+     "norm": 40
+    }
+   ]
+  },
+  {
+   "id": "provision",
+   "inputs": [
+    {
+     "input": "home_food_days",
+     "norm": 14,
+     "w": 0.7
+    },
+    {
+     "input": "home:firewood",
+     "norm": 10,
+     "w": 0.3
+    }
+   ],
+   "season_norm": {
+    "autumn": 1.4,
+    "winter": 1.8
+   }
+  },
+  {
+   "id": "kinship",
+   "inputs": [
+    {
+     "input": "household_avg:rel.affinity",
+     "w": 0.7
+    },
+    {
+     "input": "has_household",
+     "w": 0.3
+    }
+   ]
+  },
+  {
+   "id": "acceptance",
+   "inputs": [
+    {
+     "input": "community_avg:rel_back.affinity",
+     "w": 0.5
+    },
+    {
+     "input": "reputation:honesty",
+     "w": 0.25
+    },
+    {
+     "input": "inv:reputation:notoriety",
+     "w": 0.25
+    }
+   ]
+  },
+  {
+   "id": "standing",
+   "inputs": [
+    {
+     "input": "wealth_rank",
+     "w": 0.35
+    },
+    {
+     "input": "community_avg:rel_back.respect",
+     "w": 0.35
+    },
+    {
+     "input": "has_office",
+     "w": 0.3
+    }
+   ],
+   "care": {
+    "base": 0.5,
+    "traits": {
+     "proud": 0.95
+    }
+   }
+  },
+  {
+   "id": "legacy",
+   "inputs": [
+    {
+     "input": "has_heir",
+     "w": 0.5
+    },
+    {
+     "input": "built_count",
+     "norm": 3,
+     "w": 0.5
+    }
+   ],
+   "adult_only": true
+  },
+  {
+   "id": "grace",
+   "inputs": [
+    {
+     "input": "moodlet:prayed",
+     "w": 0.45
+    },
+    {
+     "input": "moodlet:blessed",
+     "w": 0.25
+    },
+    {
+     "input": "reputation:piety",
+     "w": 0.3
+    }
+   ],
+   "care": {
+    "base": 0.35,
+    "reputation": "piety",
+    "traits": {
+     "pious": 0.95
+    }
+   }
+  }
+ ],
+ "tiers": [
+  {
+   "id": "body",
+   "order": 1,
+   "needs": [
+    "hunger",
+    "thirst",
+    "energy",
+    "warmth",
+    "hygiene"
+   ],
+   "gate": [
+    "hunger",
+    "thirst",
+    "energy",
+    "warmth",
+    "body:health"
+   ]
+  },
+  {
+   "id": "safety",
+   "order": 2,
+   "needs": [
+    "safety",
+    "provision"
+   ]
+  },
+  {
+   "id": "belonging",
+   "order": 3,
+   "needs": [
+    "social",
+    "kinship",
+    "acceptance"
+   ]
+  },
+  {
+   "id": "esteem",
+   "order": 4,
+   "needs": [
+    "standing",
+    "fun"
+   ],
+   "gate": [
+    "standing"
+   ]
+  },
+  {
+   "id": "purpose",
+   "order": 5,
+   "needs": [
+    "purpose",
+    "legacy"
+   ]
+  },
+  {
+   "id": "spirit",
+   "order": 0,
+   "needs": [
+    "grace"
+   ]
+  }
+ ],
+ "tier_gate": {
+  "on": true,
+  "curve": {
+   "k": 10,
+   "x0": 0.35
+  },
+  "floor": 0.15,
+  "rate_per_day": 0.05,
+  "step_ticks": 12,
+  "goal_tier": {
+   "eat": "body",
+   "drink": "body",
+   "sleep": "body",
+   "get_warm": "body",
+   "rest": "body",
+   "wash": "body",
+   "care": "body",
+   "ask_help": "body",
+   "idle": "body",
+   "stock_food": "safety",
+   "stock_firewood": "safety",
+   "build_home": "safety",
+   "make_axe": "safety",
+   "make_clothes": "safety",
+   "offer_trade": "safety",
+   "tend_fields": "safety",
+   "tend_garden": "safety",
+   "tend_livestock": "safety",
+   "stock_herbs": "safety",
+   "build": "safety",
+   "socialize": "belonging",
+   "share_news": "belonging",
+   "share_food": "belonging",
+   "help_neighbours": "belonging",
+   "brew": "belonging",
+   "have_fun": "esteem",
+   "pray": "spirit"
+  }
+ }
 }

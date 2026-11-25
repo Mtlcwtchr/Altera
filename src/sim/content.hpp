@@ -186,6 +186,45 @@ struct NeedDef {
     std::map<std::string, double> clothingMult; // item -> decay multiplier while carried
 };
 
+// LR-140: needs that do not fall by themselves - each is worked out from the
+// state of the world (the inputs, a weighted mean) and goes there smoothly
+// (ratePerDay of the gap a day). They live in Character::needs like the
+// others, so `need:<id>` reads them in Utility (motivation.json derived_needs).
+struct DerivedInput {
+    std::string input;   // subject[:key], "inv:" in front = 1 - value
+    double w = 1.0;
+    double norm = 0.0;   // count inputs: value / norm (0 = the input's own scale)
+};
+struct DerivedNeedDef {
+    std::string id;
+    std::vector<DerivedInput> inputs;
+    std::map<std::string, double> seasonNorm; // season -> the counts' norm times this (want more for winter)
+    bool adultOnly = false;
+    // How much the person cares (0..1): base, plus 0.5 * reputation:<axis>, at least
+    // traits[t] for a trait it has. The need's pull is 1 - care * (1 - value).
+    bool weighted = false;
+    double careBase = 1.0;
+    std::string careReputation;
+    std::map<std::string, double> careTraits;
+};
+// The pyramid (motivation.json tiers): needs grouped by tier, `gate` = what the
+// tier's satisfaction is (the least of them; "body:health" = health).
+struct NeedTierDef {
+    std::string id;
+    int order = 0; // 1.. the pyramid from the bottom; 0 = beside it (not gated, gates nothing)
+    std::vector<std::string> needs;
+    std::vector<std::string> gate;
+};
+// A goal of tier k is scored times prod gate(sat_j) of tiers j < k:
+// floor + (1 - floor) * logistic(k, x0). Goals not listed are not gated.
+struct TierGateDef {
+    bool on = true;
+    double k = 10.0, x0 = 0.35, floor = 0.15;
+    std::map<std::string, std::string> goalTier;
+    double ratePerDay = 0.05; // derived needs: share of the gap a day
+    int stepTicks = 12;       // how often they are worked out
+};
+
 struct MoodletDef {
     std::string id;
     double value = 0.0;
@@ -579,6 +618,11 @@ struct Content {
     std::map<std::string, ItemDef> items;
     std::map<std::string, ObjectDef> objects;
     std::vector<NeedDef> needs; // ordered as in the file
+    std::vector<DerivedNeedDef> derivedNeeds; // LR-140, ordered as in the file
+    std::vector<NeedTierDef> needTiers;       // LR-140, ordered as in the file
+    TierGateDef tierGate;
+    const DerivedNeedDef* derivedNeed(const std::string& id) const;
+    const NeedTierDef* tierOfNeed(const std::string& need) const;
     std::map<std::string, MoodletDef> moodlets;
     std::map<std::string, TraitDef> traits;
     std::vector<std::pair<std::string, std::string>> exclusiveTraits;

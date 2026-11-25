@@ -1,4 +1,5 @@
 #include "sim/world.hpp"
+#include "sim/need_tiers.hpp"
 #include "sim/memory_budget.hpp"
 
 #include <algorithm>
@@ -338,6 +339,8 @@ void World::step() {
     processEvents();
     // 3. Bodies and needs.
     updateBodies();
+    // LR-140: derived needs (safety, provision, kinship, ...) toward what the world says.
+    if (tick_ % content_->tierGate.stepTicks == 0) derivedNeedsTick(*this);
     // 4. Minds (Utility -> HTN -> GOAP -> FSM), installed by the AI layer.
     if (think_) think_(*this);
     ++tick_;

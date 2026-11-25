@@ -449,6 +449,8 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const auto& [id, d] : c.items) k.insert("item." + id + ".name");
     for (const auto& [id, d] : c.objects) k.insert("object." + id + ".name");
     for (const auto& n : c.needs) k.insert("need." + n.id + ".name");
+    for (const auto& n : c.derivedNeeds) k.insert("need." + n.id + ".name"); // LR-140
+    for (const auto& t : c.needTiers) k.insert("need_tier." + t.id + ".name");
     for (const auto& [id, t] : c.traits) {
         k.insert("trait." + id + ".name");
         k.insert("trait." + id + ".desc");
