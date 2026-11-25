@@ -70,7 +70,7 @@ TEST(lr_sim_realm_rules_and_loc) {
     for (const auto& e : err) std::printf("  %s\n", e.c_str());
     CHECK(err.empty());
     CHECK(realmQuestOn(c, "beast_bounty"));
-    CHECK(!realmQuestOn(c, "haunting")); // tagged magic: off until magic comes
+    CHECK(realmQuestOn(c, "haunting")); // AL-118: magic is on, its quests too
     const Loc loc = Loc::load(std::string(LR_SIM_SOURCE_DIR) + "/content/loc");
     for (const auto& k : realmLocKeys())
         for (const char* lang : {"ru", "en"}) {

@@ -134,6 +134,9 @@ void installRealm(World& w);
 // A later module's part of the daily pass (magic, cults...): called after the realm's own.
 using RealmHook = std::function<void(World&, RealmState&)>;
 void addRealmHook(RealmHook h);
+// A quest posted from outside the realm's own pass (AL-118: magic); reward < 0 = rolled from realm.json.
+RealmQuest* realmPostQuest(World& w, RealmState& s, const std::string& kind, EntityId polity, EntityId giver,
+                           EntityId target, double reward);
 
 // For output: a figure's or polity's display noun ({nom, gen, ..., g}), null when `id` is neither.
 Json realmNoun(const Loc& loc, const std::string& lang, const World& w, EntityId id);

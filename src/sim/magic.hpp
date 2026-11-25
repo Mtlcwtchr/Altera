@@ -244,6 +244,9 @@ void setMagicGiftChance(MagicGiftChance f);
 // Body keys this module does not know (troll_sun, troll_wake, bind ...): true = handled.
 using MagicBodyHook = std::function<bool(World&, Character& target, const std::string& key, double amount, EntityId source)>;
 void addMagicBodyHook(MagicBodyHook h);
+// A service done for another (a healer's round): AL-118 charges for it; unset = free.
+using MagicServiceHook = std::function<void(World&, Character& provider, Character& client, const std::string& what)>;
+void setMagicServiceHook(MagicServiceHook f);
 
 // --- the daily pass --------------------------------------------------------
 // Gift rolls for new people, mana, awakening of the gifted, healers' rounds,

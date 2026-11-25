@@ -529,5 +529,40 @@
   "Ох… Прости, что напомнил{self:g||а}."
  ],
  "goal.share_news.name": "Поделиться новостью",
- "goal.share_news.thought": "Надо кому-то рассказать, что слыхал{self:g||а}."
+ "goal.share_news.thought": "Надо кому-то рассказать, что слыхал{self:g||а}.",
+ "say.news.tell.kind.magic": [
+  "Слыхал{listener:g||а}, {listener}? {news}. Чудеса, да и только.",
+  "Колдовство у нас, не иначе: {news_lc}.",
+  "{news}. Я сам{self:g||а} не видел{self:g||а}, но люди говорят."
+ ],
+ "say.news.discuss.kind.magic": [
+  "Всё думаю про это колдовство: {news_lc}. Добро это или к беде?",
+  "{news}. Дар — он ведь не всякому даётся."
+ ],
+ "say.news.tell.kind.dark_magic": [
+  "Тише, {listener}… {news}. Нечистое дело.",
+  "Слыхал{listener:g||а}? {news}. Двери на ночь запирай.",
+  "Страшное говорят: {news_lc}. Упаси нас."
+ ],
+ "say.news.discuss.kind.dark_magic": [
+  "Не идёт из головы: {news_lc}. Мёртвым лежать положено.",
+  "{news}. Как подумаю, так мороз по коже."
+ ],
+ "say.news.tell.kind.witch_trial": [
+  "Судили колдуна, {listener}! {news}.",
+  "Слыхал{listener:g||а}, чем кончилось? {news}.",
+  "Вот и до нас дошло: {news_lc}."
+ ],
+ "say.news.discuss.kind.witch_trial": [
+  "Про суд всё думаю: {news_lc}. По правде ли рассудили?",
+  "{news}. Строго, а может, и надо так."
+ ],
+ "say.news.tell.kind.dragon": [
+  "Радость, {listener}! {news}.",
+  "Слыхал{listener:g||а}? {news}. Песни теперь сложат."
+ ],
+ "say.news.discuss.kind.dragon": [
+  "Дракона-то одолели: {news_lc}. Вздохнём теперь.",
+  "{news}. Вот это был подвиг."
+ ]
 }

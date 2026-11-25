@@ -405,5 +405,33 @@
  "realm.place.emberpeak.name": "Угольный Пик",
  "realm.place.wyrmcrag.name": "Змеиный Утёс",
  "realm.place.ashen_spire.name": "Пепельный Шпиль",
+ "realm.quest.necromancer_hunt.name": {
+  "nom": "охота на некроманта",
+  "gen": "охоты на некроманта",
+  "dat": "охоте на некроманта",
+  "acc": "охоту на некроманта",
+  "ins": "охотой на некроманта",
+  "pre": "охоте на некроманта",
+  "g": "f"
+ },
+ "realm.quest.dragon_slay.name": {
+  "nom": "убийство дракона",
+  "gen": "убийства дракона",
+  "dat": "убийству дракона",
+  "acc": "убийство дракона",
+  "ins": "убийством дракона",
+  "pre": "убийстве дракона",
+  "g": "n"
+ },
+ "realm.quest.artifact_hunt.name": {
+  "nom": "поиск реликвии",
+  "gen": "поиска реликвии",
+  "dat": "поиску реликвии",
+  "acc": "поиск реликвии",
+  "ins": "поиском реликвии",
+  "pre": "поиске реликвии",
+  "g": "m"
+ },
+ "chronicle.realm.dragon_slain": "{fig} сразил{fig:g||а} дракона {fig2:acc} у логова {pol:gen}",
  "chronicle.realm.dragon_breath": "{fig} из {pol:gen} дохнул огнём на {pol2:acc}"
 }

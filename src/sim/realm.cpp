@@ -47,6 +47,9 @@ struct RealmQuestKind {
     double danger = 0.3, renown = 0.05;
     int days = 40, takers = 2;
     std::vector<std::string> tags;
+    // AL-118: `hunt` - the target is a creature on the map to be killed (a pack, the walking dead,
+    // a necromancer); `at_target` - the takers go to the target settlement (a camp, a lair)
+    bool hunt = false, atTarget = false;
 };
 
 struct RealmRules {
@@ -138,6 +141,8 @@ RealmRules parseRules(const Json& j) {
         d.days = inum(q, "days", d.days);
         d.takers = inum(q, "takers", d.takers);
         d.tags = q.value("tags", std::vector<std::string>{});
+        d.hunt = q.value("hunt", it.key() == "beast_bounty");
+        d.atTarget = q.value("at_target", it.key() == "bandit_bounty");
         r.quests[it.key()] = d;
     }
     const Json arcs = j.value("arcs", Json::object());
@@ -1202,6 +1207,15 @@ bool hasOpenQuest(const Ctx& x, const std::string& kind, EntityId polity, Entity
     for (const auto& q : x.s.quests)
         if (q.status == "open" && q.kind == kind && q.polity == polity && (target == kNone || q.target == target)) return true;
     return false;
+}
+
+bool huntKind(const Ctx& x, const std::string& kind) {
+    auto it = x.r.quests.find(kind);
+    return it != x.r.quests.end() && it->second.hunt;
+}
+EntityId questWhere(const Ctx& x, const RealmQuest& q) {
+    auto it = x.r.quests.find(q.kind);
+    return it != x.r.quests.end() && it->second.atTarget ? q.target : q.polity;
 }
 
 RealmQuest* postQuest(Ctx& x, const std::string& kind, EntityId polity, EntityId giver, EntityId target, double reward) {
@@ -3042,6 +3056,26 @@ void resolveAway(Ctx& x, RealmQuest& q) {
     } else {
         const double p = std::clamp(0.35 + 0.9 * (party / men.size() - qk.danger) + 0.08 * (men.size() - 1), 0.05, 0.95);
         ok = rng.chance(p);
+        // AL-118: a slain dragon leaves its lair and its hoard
+        if (ok && q.kind == "dragon_slay")
+            if (Settlement* lair = pol(x, q.target); lair && !lair->ruined) {
+                if (Character* d = fig(x, lair->chief); d && d->body.alive) {
+                    log(x, "dragon_slain", {{"fig", men[0]->id}, {"fig2", d->id}, {"pol", lair->id}});
+                    figureDies(x, *d, "slain");
+                }
+                const double hoard = std::max(0.0, lair->wealth) * 0.5;
+                for (Character* m : men) earn(x, *m, hoard / men.size());
+                lair->wealth = 0.0;
+                lair->ruined = true;
+                for (Settlement& o : polities(x))
+                    if (o.tributeTo == lair->id) o.tributeTo = kNone, o.tribute = 0.0;
+            }
+        // a hunted one met far from the village
+        if (ok && qk.hunt)
+            if (Character* t = fig(x, q.target); t && t->body.alive && !t->isAnimal()) {
+                t->body.alive = false;
+                t->body.causeOfDeath = "quest";
+            }
         if (q.kind == "escort" && ok) {
             // the road was clear or the ambush beaten
             for (Settlement& c : polities(x))
@@ -3067,7 +3101,7 @@ void resolveAway(Ctx& x, RealmQuest& q) {
 void villageQuest(Ctx& x, RealmQuest& q, Character& f) {
     Character* c = x.w.character(f.id);
     if (!c || !c->body.alive) return;
-    if (q.kind == "beast_bounty") {
+    if (huntKind(x, q.kind)) {
         Character* pack = x.w.character(q.target);
         if (!pack || !pack->body.alive || pack->group <= 0) return; // done: checked in questsDaily
         if (c->controller.isPlayer()) return;
@@ -3106,7 +3140,7 @@ void questsDaily(Ctx& x) {
             q.status = "expired", q.closed = x.day;
             continue;
         }
-        if (q.kind == "beast_bounty" && p->full()) {
+        if (huntKind(x, q.kind) && p->full() && (q.kind == "beast_bounty" || q.target != kNone)) {
             const Character* pack = x.w.character(q.target);
             if (!pack || !pack->body.alive || pack->group <= 0) {
                 // the pack is gone: credit those who were here hunting it
@@ -3153,7 +3187,7 @@ void arriveAt(Ctx& x, Character& f) {
         const auto sd = pair2(x.r.wan, "stay_days", {1, 3});
         int stay = rng.irange(static_cast<int>(sd[0]), static_cast<int>(sd[1]));
         RealmQuest* q = questById(x, f.standing.quest);
-        if (q && q->kind == "beast_bounty" && q->polity == p->id) stay = inum(x.r.loc, "visit_hunt_days", 10);
+        if (q && huntKind(x, q->kind) && q->polity == p->id) stay = inum(x.r.loc, "visit_hunt_days", 10);
         for (const auto& o : x.s.offers)
             if (o.status == "pending" && o.envoy == f.id) stay = std::max(stay, o.deadline - x.day + 1);
         if (Character* c = materialize(x, f, *p, stay, came)) {
@@ -3176,7 +3210,7 @@ void arriveAt(Ctx& x, Character& f) {
     }
     if (q->kind == "war_service") return; // serves until the peace
     // the destination of the quest: the camp for a bounty, the polity otherwise
-    const EntityId where = q->kind == "bandit_bounty" ? q->target : q->polity;
+    const EntityId where = questWhere(x, *q);
     if (to != where) {
         travel(x, f, where);
         return;
@@ -3254,7 +3288,7 @@ void wanderersDaily(Ctx& x) {
             best->takers.push_back(f.id);
             f.standing.quest = best->id;
             log(x, "quest_taken", {{"fig", f.id}, {"quest", best->kind}, {"pol", best->polity}});
-            const EntityId where = best->kind == "bandit_bounty" ? best->target : best->polity;
+            const EntityId where = questWhere(x, *best);
             if (where != f.standing.at) travel(x, f, where);
             continue;
         }
@@ -3450,9 +3484,11 @@ std::vector<std::string> realmLocKeys() {
           "ruler_died", "succession", "succession_crisis", "usurped", "claim_failed", "heir_to_monastery", "exiled",
           "reclaim_start", "reclaimed", "reclaim_failed", "revolt", "revolt_won", "revolt_crushed", "quest_posted",
           "quest_taken", "quest_done", "quest_failed", "quest_expired", "hero_died", "ambush_beaten", "punitive", "resettled",
-          "arrives_village", "envoy_arrives", "leaves_village", "died_in_village", "wanderer_settles", "hoard_grows", "dragon_breath"})
+          "arrives_village", "envoy_arrives", "leaves_village", "died_in_village", "wanderer_settles", "hoard_grows",
+          "dragon_slain", "dragon_breath"})
         k.push_back(std::string("chronicle.realm.") + c);
-    for (const char* q : {"beast_bounty", "bandit_bounty", "war_service", "escort", "haunting"})
+    for (const char* q : {"beast_bounty", "bandit_bounty", "war_service", "escort", "haunting", "necromancer_hunt",
+                          "dragon_slay", "artifact_hunt"})
         k.push_back(std::string("realm.quest.") + q + ".name");
     for (const char* o : {"tribute", "alliance", "marriage", "peace"}) k.push_back(std::string("realm.offer.") + o + ".name");
     for (const char* c : {"grievance", "conquest", "bandits", "refused_tribute", "chief"})
@@ -3461,6 +3497,19 @@ std::vector<std::string> realmLocKeys() {
         k.push_back(std::string("cause.") + c + ".name");
     for (const char* m : {"raided", "fought_war", "paid_tribute"}) k.push_back(std::string("memory.") + m + ".text");
     return k;
+}
+
+RealmQuest* realmPostQuest(World& w, RealmState& s, const std::string& kind, EntityId polity, EntityId giver,
+                           EntityId target, double reward) {
+    const RealmRules& r = realmRules(w.content());
+    if (!r.loaded || !r.questOn(kind)) return nullptr;
+    Ctx x{w, s, r, w.day()};
+    if (reward < 0.0) {
+        const auto& rw = r.quests.at(kind).reward;
+        Rng rng = rngOf(x, polity, "realm:post:" + kind);
+        reward = rng.range(rw[0], rw[1]);
+    }
+    return postQuest(x, kind, polity, giver, target, reward);
 }
 
 Json realmNoun(const Loc& loc, const std::string& lang, const World& w, EntityId id) {
