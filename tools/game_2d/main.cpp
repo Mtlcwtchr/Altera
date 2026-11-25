@@ -604,7 +604,8 @@ void reloadData(App& app, const std::vector<std::string>& why) {
         auto fresh = std::make_unique<Content>(Content::load(app.contentDir));
         auto loc = std::make_unique<Loc>(Loc::load(app.locDir));
         loadClientData(app);
-        for (const auto& w : fresh->warnings) std::cerr << "content: " << w << "\n";
+        if (!fresh->warnings.empty())
+            std::cout << "data: " << fresh->warnings.size() << " content warning(s), as at the start" << std::endl;
         if (app.world) app.world->rebindContent(*fresh);
         app.content = fresh.get();
         app.text.loc = loc.get();
@@ -612,7 +613,8 @@ void reloadData(App& app, const std::vector<std::string>& why) {
         app.reloadedContent.push_back(std::move(fresh));
         app.reloadedLoc.push_back(std::move(loc));
         if (app.world) app.acts = c2::ActCatalog::make(*app.world, app.wheel);
-        std::cout << "data: reloaded (generation " << data::generation() << ")" << std::endl;
+        std::cout << "data: reloaded (generation " << data::generation() << ", " << data::layers().size()
+                  << " mod layer(s))" << std::endl;
     } catch (const std::exception& e) {
         data::restoreGeneration(gen);
         std::cerr << "data: reload failed, the old data stays: " << e.what() << std::endl;

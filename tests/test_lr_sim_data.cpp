@@ -110,6 +110,22 @@ TEST(lr_data_load_order_and_content_root) {
     CHECK_EQ(data::findContentRoot("", "/nowhere/content"), std::string("/nowhere/content"));
 }
 
+// A mod folder dropped in while the game runs joins the layers on the next check.
+TEST(lr_data_new_mod_joins_while_running) {
+    Unmount um;
+    const fs::path d = scratch("newmod");
+    writeFile(d / "bin/content/ai/a.json", R"J({"v":1})J");
+    fs::create_directories(d / "bin/mods");
+    data::mountDefault((d / "bin/game.exe").string(), "/nowhere/content");
+    CHECK(data::layers().empty());
+    (void)data::readJson((d / "bin/content/ai/a.json").string());
+    CHECK(data::changed().empty());
+    writeFile(d / "bin/mods/late/ai/a.json", R"J({"_merge":true,"w":2})J");
+    CHECK(!data::changed().empty());
+    CHECK_EQ(data::layers().size(), size_t(1));
+    CHECK_EQ(data::readJson((d / "bin/content/ai/a.json").string())["w"].get<int>(), 2);
+}
+
 TEST(lr_formulas_params_constants_mixes) {
     std::vector<std::string> err;
     FormulaBook b;
