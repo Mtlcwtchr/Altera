@@ -106,6 +106,7 @@ void Screens::closeTop() {
 void Screens::open(const std::string& id, const Json& args) {
     if (id == "menu" || id == "new" || id == "pick" || id == "saves") openMenu(c_, *this, id, args);
     else if (id == "chronicle") openChronicle(c_, *this);
+    else if (id == "talk" || id == "trade") openTalk(c_, *this, args.is_number() ? args.get<long long>() : c_.selected(), id == "trade");
     else c_.toast(c_.L("ui2d.soon", {{"what", c_.L("ui2d.screen." + id)}}));
 }
 
@@ -132,6 +133,10 @@ bool Screens::key(SDL_Scancode sc, SDL_Keymod mod) {
         }
         if (c_.selected() >= 0 && c_.selected() != c_.meId()) return false;   // the first Esc lets go of someone else
         open("menu");
+        return true;
+    }
+    if (sc == SDL_SCANCODE_T && !any()) {   // talk to the selected one
+        open("talk");
         return true;
     }
     for (const auto& [id, k] : columnScreens())

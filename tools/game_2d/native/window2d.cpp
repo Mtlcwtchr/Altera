@@ -1740,7 +1740,9 @@ struct Window::Impl : Ctx {
         if (!menuOpen) return;
         const float w = 340 * U, rowH = 40 * U, pad = 8 * U;
         std::size_t n = menuActs.size();
-        float h = 34 * U + std::max<std::size_t>(n, 1) * (rowH + 2 * U) + pad;
+        const bool withPerson = menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty();
+        const float extra = withPerson ? 38 * U : 0;   // talk / trade over the acts
+        float h = 34 * U + extra + std::max<std::size_t>(n, 1) * (rowH + 2 * U) + pad;
         h = std::min(h, mapH() - 20 * U);
         float x = std::min(menuX + 14 * U, mapW() - w - 10 * U), y = std::max(10 * U, std::min(menuY - 20 * U, mapH() - h - 10 * U));
         const ui::Rect box{x, y, w, h};
@@ -1748,7 +1750,20 @@ struct Window::Impl : Ctx {
         frame(box.x, box.y, box.w, box.h, kBronze, std::max(1.0f, 2 * U));
         ui.claim(box);
         text(x + pad, y + 6 * U, ui.fit(menuTitle, w - 2 * pad, fs(16 * U)), kGold, 16 * U, true);
-        const ui::Rect listR{x + pad, y + 32 * U, w - 2 * pad, h - 36 * U};
+        if (withPerson) {
+            const float bw = (w - 2 * pad - 6 * U) / 2;
+            if (ui.button(ui::widgetId("menu.talk"), {x + pad, y + 32 * U, bw, 30 * U}, L("ui2d.talk.open"))) {
+                menuOpen = false;
+                screens->open("talk", Json(menuTarget));
+                return;
+            }
+            if (ui.button(ui::widgetId("menu.trade"), {x + pad + bw + 6 * U, y + 32 * U, bw, 30 * U}, L("ui2d.talk.trade"))) {
+                menuOpen = false;
+                screens->open("trade", Json(menuTarget));
+                return;
+            }
+        }
+        const ui::Rect listR{x + pad, y + 32 * U + extra, w - 2 * pad, h - 36 * U - extra};
         const ui::Rect c = ui.beginScroll(ui::widgetId("menu.acts"), listR);
         float yy = c.y;
         if (menuActs.empty()) {
@@ -2094,7 +2109,17 @@ struct Window::Impl : Ctx {
         if (!SDL_getenv("ALTERA_2D_SHOT")) screens->start();
         if (const char* o = SDL_getenv("ALTERA_2D_OPEN")) {   // a shot of a screen: ALTERA_2D_OPEN=menu|new|pick|saves|chronicle|...
             const char* arg = SDL_getenv("ALTERA_2D_OPEN_ARG");
-            screens->open(o, arg ? Json(std::string(arg)) : Json());
+            Json a = arg ? Json(std::string(arg)) : Json();
+            if (arg && std::string(arg) == "near" && person(me)) {   // the nearest person to one's own
+                double best = 1e18;
+                const double mx = num(*person(me), "x"), my = num(*person(me), "y");
+                for (const Json& p : people)
+                    if (str(p, "sp").empty() && flag(p, "alive") && ident(p, "id") != me) {
+                        const double d = std::hypot(num(p, "x") - mx, num(p, "y") - my);
+                        if (d < best) best = d, a = ident(p, "id");
+                    }
+            }
+            screens->open(o, a);
         }
         const double start = nowMs();
         lastFrame = start;
