@@ -2035,67 +2035,39 @@ struct Window::Impl : Ctx {
     void tip(const ui::Rect& r, const std::string& t) {
         if (r.contains(in.mouseX, in.mouseY)) tipText = t;
     }
-    // the led person's frame (WoW's player frame): portrait, health / strength / blood in pips
-    // with why, the mood and the thoughts as buffs. Its height.
-    float heroW() const { return 380 * U; }   // the hero frame's width
+    // the led person's frame (WoW's player frame): the portrait, the name and health / strength
+    // in pips, no taller than the portrait (LR-145: what ails them is in the column, the rest in the sheet)
+    float heroW() const { return 250 * U; }   // the hero frame's width
     float drawHero(float x, float y) {
         const Json& d = selId == me ? selCard : meCard;
         const Json* pp = person(me);
         if (!pp || !d.is_object()) return 0;
-        const float p = px(), r0 = rim() + 3 * U, w = heroW(), port = 60 * U, rowH = 20 * U;
-        const Json& moods = arr(d, "moodlets");
-        const float h = 2 * r0 + std::max(port, 22 * U + 3 * rowH) + 4 * U + 20 * U;
+        const float p = px(), r0 = rim() + 2 * U, w = heroW(), port = 56 * U, rowH = 18 * U;
+        const float h = 2 * r0 + port;
         carved({x, y, w, h});
         const float ix = x + r0, iy = y + r0;
         well({ix, iy, port, port});
         portrait(*pp, ix + p, iy + p, port - 2 * p);
         const float tx = ix + port + 8 * U, tw = x + w - r0 - tx;
-        std::string sub = L("ui2d.age", {{"n", std::to_string(int(num(d, "age")))}});
-        if (!str(d, "occn").empty()) sub = str(d, "occn") + " · " + sub;
-        text(x + w - r0 - textW(sub, 11 * U), iy + 3 * U, sub, kDim, 11 * U);
-        text(tx, iy, ui.fit(str(d, "name"), tw - textW(sub, 11 * U) - 8 * U, fs(16 * U)), kGold, 16 * U, true);
-        std::string woundNote;
-        bool bleeding = false;
-        for (const auto& wd : arr(d, "wounds")) {
-            if (woundNote.empty()) woundNote = str(wd, "sev") + ", " + str(wd, "zone");
-            bleeding = bleeding || flag(wd, "bleeding");
-        }
-        const double hp = num(d, "hp", 1), st = 1 - num(d, "fatigue"), bl = num(d, "blood", 1);
+        text(tx, iy, ui.fit(str(d, "name"), tw, fs(16 * U)), kGold, 16 * U, true);
+        const double hp = num(d, "hp", 1), st = 1 - num(d, "fatigue");
         struct Row {
             const char* key;
             double v;
             ui::Colour c;
-            std::string note;
         };
-        const Row rows[] = {{"health", hp, kBad, woundNote},
-                            {"strength", st, kMid, st < 0.3 ? L("ui2d.hud.tired") : ""},
-                            {"blood", bl, hexc("#a0282a"), bleeding ? L("ui2d.hud.bleeding") : ""}};
-        float ry = iy + 22 * U;
+        const Row rows[] = {{"health", hp, kBad}, {"strength", st, kMid}};
+        float ry = iy + port - 2 * rowH;
         for (const Row& r : rows) {
             const std::string ic = HUD["vitals"].value(r.key, "");
             icon(ic, tx, ry + (rowH - iconSize()) / 2);
             const float gw = pips(tx + iconSize() + 4 * U, ry + (rowH - 5 * p) / 2, 10, r.v, r.c);
             const std::string n = std::to_string(int(std::lround(r.v * 100)));
-            const float nx = tx + iconSize() + 8 * U + gw;
-            text(nx, ry + 3 * U, n, kText, 13 * U);
-            if (!r.note.empty()) {
-                const float ox = nx + 30 * U;
-                text(ox, ry + 4 * U, ui.fit(r.note, x + w - r0 - ox, fs(11 * U)), kDim, 11 * U);
-            }
-            tip({tx, ry, tw, rowH}, L(std::string("ui2d.hud.") + r.key) + ": " + n + (r.note.empty() ? "" : " · " + r.note));
+            text(tx + iconSize() + 8 * U + gw, ry + 2 * U, n, kText, 13 * U);
+            tip({tx, ry, tw, rowH}, L(std::string("ui2d.hud.") + r.key) + ": " + n);
             ry += rowH;
         }
-        // the mood (the thoughts behind it are in the column)
-        const double mood = num(d, "mood");
-        const float my = iy + std::max(port, 22 * U + 3 * rowH) + 4 * U;
-        icon(HUD["vitals"].value(mood < -0.1 ? "mood_low" : "mood", ""), ix, my + (20 * U - iconSize()) / 2);
-        const std::string mv = signedPct(mood);
-        text(ix + iconSize() + 4 * U, my + 3 * U, mv, mood >= 0 ? kGood : kBad, 14 * U, true);
-        int good = 0, bad = 0;
-        for (const auto& m : moods) (num(m, "v") >= 0 ? good : bad) += 1;
-        const std::string mn = L("ui2d.hud.thoughts_n", {{"good", std::to_string(good)}, {"bad", std::to_string(bad)}});
-        text(ix + iconSize() + 44 * U, my + 4 * U, mn, kDim, 11 * U);
-        tip({ix, my, w - 2 * r0, 20 * U}, L("ui2d.hud.mood") + " " + mv + " · " + mn);
+        ui.claim({x, y, w, h});
         return h;
     }
     // the selected other person (WoW's target frame)
@@ -2127,7 +2099,7 @@ struct Window::Impl : Ctx {
         const std::string famn = card.is_object() && !str(card, "famn").empty() ? str(card, "famn") : fam;
         text(x + 2 * U, y, L("ui2d.hud.dynasty", {{"name", famn}}), kGold, 12 * U, true);
         y += 18 * U;
-        const float p = px(), w = 230 * U, h = 42 * U, port = 30 * U;
+        const float p = px(), w = heroW(), h = 38 * U, port = 28 * U;
         int i = 0;
         for (const Json* k : kin) {
             if (i++ >= 7 || y + h > mapH() - 80 * U) break;
@@ -2138,8 +2110,8 @@ struct Window::Impl : Ctx {
             portrait(*k, x + 3 * p + 2 * U, y + (h - port) / 2 + p, port - 2 * p);
             const float tx = x + 2 * p + port + 7 * U, tw = x + w - 2 * p - tx;
             text(tx, y + 3 * U, ui.fit(str(*k, "name"), tw, fs(12 * U)), kText, 12 * U);
-            const float gw = pips(tx, y + 25 * U, 8, num(*k, "hp", 1), kBad);
-            text(tx + gw + 5 * U, y + 22 * U, ui.fit(actOf(*k), tw - gw - 5 * U, fs(10 * U)), kDim, 10 * U);
+            const float gw = pips(tx, y + 22 * U, 8, num(*k, "hp", 1), kBad);
+            text(tx + gw + 5 * U, y + 19 * U, ui.fit(actOf(*k), tw - gw - 5 * U, fs(10 * U)), kDim, 10 * U);
             if (r.contains(in.mouseX, in.mouseY)) {
                 tipText = str(*k, "name") + " · " + actOf(*k);
                 if (in.pressed && !screens->any()) {
@@ -2187,17 +2159,35 @@ struct Window::Impl : Ctx {
         const ui::Rect side{mapW(), 0, sideW(), mapH()};
         carved(side);
         const float r0 = rim() + 3 * U, x = side.x + r0, w = side.w - 2 * r0;
-        // the screens: two rows of four
-        const float bh = 22 * U, bw = (w - 3 * 3 * U) / 4;
-        int bi = 0;
-        for (const auto& [id, k] : screens->columnScreens()) {
-            const ui::Rect r{x + (bi % 4) * (bw + 3 * U), r0 + (bi / 4) * (bh + 3 * U), bw, bh};
-            if (ui.toggle(ui::widgetId("side.screen", bi), r, fit(L("ui2d.screen." + id), bw - 6 * U, 12 * U), screens->isOpen(id)))
-                screens->openScreen(id);
+        // LR-145: the screens as icon buttons (hud2d.json "screens", the key letter in the corner,
+        // the name in the hint), the menu apart on the right with its own label
+        const float bh = 42 * U, gap = 3 * U, mw = 58 * U;
+        std::vector<std::pair<std::string, std::string>> tabs;
+        std::string menuKey;
+        for (const auto& sk : screens->columnScreens())
+            if (sk.first == "menu") menuKey = sk.second;
+            else tabs.push_back(sk);
+        const float bw = std::floor((w - mw - 8 * U - gap * float(tabs.size() - 1)) / float(tabs.size()));
+        const Json scrIcons = HUD.value("screens", Json::object());
+        for (size_t i = 0; i < tabs.size(); ++i) {
+            const auto& [id, k] = tabs[i];
+            const ui::Rect r{x + float(i) * (bw + gap), r0, bw, bh};
+            if (ui.toggle(ui::widgetId("side.screen", int(i)), r, "", screens->isOpen(id))) screens->openScreen(id);
+            const float is = 2 * iconSize();
+            icon(scrIcons.value(id, ""), r.x + (r.w - is) / 2, r.y + (r.h - is) / 2 + 5 * U, is);
+            text(r.x + 3 * U, r.y + 1 * U, k, kInk, 10 * U);
             tip(r, L("ui2d.screen." + id) + " (" + k + ")");
-            ++bi;
         }
-        const float cy = r0 + 2 * (bh + 3 * U) + 5 * U;
+        {
+            const ui::Rect r{x + w - mw, r0, mw, bh};
+            if (ui.button(ui::widgetId("side.menu"), r, "", hexc("#b8683a"), kInk)) screens->openScreen("menu");
+            const float p = px(), lw = 11 * p, lx = r.x + (r.w - lw) / 2;
+            for (int i = 0; i < 3; ++i) fill(lx, r.y + 7 * U + float(i) * 3 * p, lw, p, kInk);
+            const std::string ml = L("ui2d.screen.menu");
+            text(r.x + (r.w - textW(ml, 11 * U)) / 2, r.y + r.h - textH(11 * U) - 3 * U, ml, kInk, 11 * U);
+            tip(r, ml + " (" + menuKey + ")");
+        }
+        const float cy = r0 + bh + 8 * U;
         drawCard({x, cy, w, side.bottom() - cy - r0});
     }
     // words over as many lines as they need inside `width`
@@ -2255,11 +2245,8 @@ struct Window::Impl : Ctx {
         float y = c.y;
         const float w = c.w - 2 * U, x = c.x, pp = px();
         const bool human = str(*p, "sp").empty();
-        // who
-        const float port = 44 * U;
-        well({x, y, port, port});
-        if (human) portrait(*p, x + pp, y + pp, port - 2 * pp);
-        const float tx = x + port + 6 * U;
+        // who: one line, the name and lead / release (the portrait and the rest are in the
+        // frames over the map and in the sheet, LR-145)
         float bw = 0;
         // LR-138: one leads only one's own kin
         if (human && flag(d, "alive") && (ident(d, "id") == me || !d.contains("lead") || flag(d, "lead"))) {
@@ -2272,12 +2259,8 @@ struct Window::Impl : Ctx {
                 poll();
             }
         }
-        text(tx, y + 1 * U, ui.fit(str(d, "name"), x + w - tx - bw - 4 * U, fs(15 * U)), kGold, 15 * U, true);
-        std::string sub = str(d, "famn").empty() ? str(d, "spn") : str(d, "famn");
-        if (!str(d, "occn").empty()) sub += (sub.empty() ? "" : " · ") + str(d, "occn");
-        if (d.contains("age") && d["age"].is_number()) sub += (sub.empty() ? "" : " · ") + L("ui2d.age", {{"n", std::to_string(int(num(d, "age")))}});
-        text(tx, y + 22 * U, ui.fit(sub, x + w - tx, fs(11 * U)), kDim, 11 * U);
-        y += port + 5 * U;
+        text(x + 2 * U, y + 2 * U, ui.fit(str(d, "name"), w - bw - 8 * U, fs(14 * U)), kGold, 14 * U, true);
+        y += 24 * U;
         if (!flag(d, "alive")) {
             std::string dead = L("ui2d.dead");
             if (!str(d, "cause").empty()) dead += ": " + str(d, "cause");
@@ -2291,7 +2274,30 @@ struct Window::Impl : Ctx {
             parchBox({x, y, w, h});
             text(x + 5 * U, y + (h - textH(12 * U)) / 2, ui.fit(now, w - 10 * U, fs(12 * U)), kInk, 12 * U);
             tip({x, y, w, h}, now);
-            y += h + 6 * U;
+            y += h + 5 * U;
+        }
+        // LR-145: the condition as chips: wounds, bleeding, worn out (was in the hero frame)
+        {
+            std::vector<std::pair<std::string, ui::Colour>> cond;
+            bool bleeding = false;
+            for (const auto& wd : arr(d, "wounds")) {
+                std::string t = str(wd, "sev");
+                if (!str(wd, "zone").empty()) t += (t.empty() ? "" : ", ") + str(wd, "zone");
+                if (!t.empty()) cond.push_back({t, hexc("#e06048")});
+                bleeding = bleeding || flag(wd, "bleeding");
+            }
+            if (bleeding) cond.push_back({L("ui2d.hud.bleeding"), hexc("#e06048")});
+            if (num(d, "fatigue") > 0.7) cond.push_back({L("ui2d.hud.tired"), kGold});
+            float cx = x;
+            const float px = 11 * U, ch = textH(px) + 6 * U;
+            for (const auto& [t, col] : cond) {
+                const float cw = std::min(w, textW(t, px) + 10 * U);
+                if (cx + cw > x + w && cx > x) cx = x, y += ch + 3 * U;
+                well({cx, y, cw, ch});
+                text(cx + 5 * U, y + 3 * U, ui.fit(t, cw - 10 * U, fs(px)), col, px);
+                cx += cw + 3 * U;
+            }
+            if (!cond.empty()) y += ch + 6 * U;
         }
         // needs by tier: the tier's row shows its worst need, opened it lists them
         const Json& needs = arr(d, "needs");
@@ -2510,7 +2516,7 @@ struct Window::Impl : Ctx {
             const float px0 = x0 + (hh > 0 ? heroW() + 8 * U : 0);
             const float ph = drawPlace(px0, y0);
             drawTarget(px0, y0 + ph + 6 * U);
-            drawParty(x0, y0 + (hh > 0 ? hh + 10 * U : ph + 10 * U));
+            drawParty(x0, y0 + (hh > 0 ? hh + 8 * U : ph + 8 * U));
         }
         // the dock: the act going on and the quick bar (icons of map2d.json acts, names in the hint)
         if (me >= 0) {
