@@ -10,7 +10,7 @@
 #include "sim/craft/craft_chain.hpp"
 #include "sim/craft_sim.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -284,4 +284,4 @@ bool handleBackstoryCommand(World& w, Command& cmd, int player) {
     return true;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

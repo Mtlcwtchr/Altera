@@ -13,7 +13,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace altera::combat {
+namespace lr::combat {
 
 using OJson = nlohmann::ordered_json; // key order matters (ties, first type)
 
@@ -202,4 +202,4 @@ private:
     static int find(const std::map<std::string, int>& m, const std::string& id, const char* what);
 };
 
-} // namespace altera::combat
+} // namespace lr::combat

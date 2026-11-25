@@ -1,5 +1,5 @@
 #pragma once
-// The game's interface, style G of the design canvas "Altera UI и HUD"
+// The game's interface, style G of the design canvas "LivelyRealms UI и HUD"
 // (boards HudG, Wheel, Sheet, Kin, Annals): leather and paper panels with gold
 // rings and a wax seal, Kurale for titles and Nunito for the rest, portraits
 // of the people as the bake renders them, rings for vitals and needs.
@@ -26,7 +26,7 @@
 #include "sim/core.hpp"
 #include "terrain_core/world_gen.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 // What the HUD asks of the game that owns it.
 class HudHost {
@@ -574,4 +574,4 @@ private:
     std::uint64_t idSeed_ = 0;
 };
 
-} // namespace altera::game
+} // namespace lr::game

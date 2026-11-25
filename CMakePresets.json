@@ -11,7 +11,7 @@
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
         "CMAKE_CXX_COMPILER": "C:/Program Files/Microsoft Visual Studio/2022/Community/VC/Tools/Llvm/x64/bin/clang-cl.exe",
-        "ALTERA_SIM_ONLY": "ON",
+        "LR_SIM_ONLY": "ON",
         "ASR_BUILD_TESTS": "ON"
       }
     },
@@ -24,7 +24,7 @@
       "condition": { "type": "notEquals", "lhs": "${hostSystemName}", "rhs": "Windows" },
       "cacheVariables": {
         "CMAKE_BUILD_TYPE": "RelWithDebInfo",
-        "ALTERA_SIM_ONLY": "ON",
+        "LR_SIM_ONLY": "ON",
         "ASR_BUILD_TESTS": "ON"
       }
     }

@@ -4,7 +4,7 @@
 #include <cmath>
 #include <cstdio>
 
-namespace altera::combat {
+namespace lr::combat {
 
 namespace {
 
@@ -127,4 +127,4 @@ void DuelTable::apply(const DuelSample& s, Fighter& a, Fighter& b) const {
     one(b, s.b, s.woundsB, s.zoneB, s.dmgB, s.bloodB);
 }
 
-} // namespace altera::combat
+} // namespace lr::combat

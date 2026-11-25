@@ -1,4 +1,4 @@
-// AL-98: frames of the talk and trade windows (start altera_game_2d first):
+// AL-98: frames of the talk and trade windows (start lr_game_2d first):
 //   node tools/game_2d/shots_talk.js [out_dir] [port]
 // Picks the nearest grown person of another household, has the player's person
 // chat with them for a while, then shoots the talk window and the trade window

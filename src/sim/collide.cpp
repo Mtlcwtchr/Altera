@@ -5,7 +5,7 @@
 #include <cstdint>
 #include <queue>
 
-namespace altera::sim::collide {
+namespace lr::sim::collide {
 
 namespace {
 
@@ -309,4 +309,4 @@ bool Obstacles::path(double fx, double fy, double tx, double ty, double r, std::
     return !out.empty();
 }
 
-} // namespace altera::sim::collide
+} // namespace lr::sim::collide

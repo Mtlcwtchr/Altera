@@ -24,7 +24,7 @@
 
 #include "sim/dialogue_gen.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 class Loc;
@@ -101,4 +101,4 @@ Json propParams(const World& w, const Prop& p);
 std::string renderUtterance(const Loc& loc, const std::string& lang, const World& w, const Utterance& u,
                             const std::string& sayKey);
 
-} // namespace altera::sim
+} // namespace lr::sim

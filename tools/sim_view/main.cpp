@@ -1,5 +1,5 @@
-// altera_sim_view - watch and play the Altera life-sim in a browser.
-//   altera_sim_view [--seed N] [--season spring|summer|autumn|winter] [--world FILE]
+// lr_sim_view - watch and play the LivelyRealms life-sim in a browser.
+//   lr_sim_view [--seed N] [--season spring|summer|autumn|winter] [--world FILE]
 //                   [--content DIR] [--loc DIR] [--lang ru|en] [--port 8765] [--no-browser]
 // One process: the simulation steps on the main thread between HTTP requests
 // (no locks needed); the page (tools/sim_view/index.html, read from disk on
@@ -26,7 +26,7 @@
 #include "sim/loc.hpp"
 #include "sim/worldgen.hpp"
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 
@@ -363,7 +363,7 @@ void serveClient(App& a, SOCKET s) {
 } // namespace
 
 int main(int argc, char** argv) {
-    std::string root = ALTERA_SIM_SOURCE_DIR;
+    std::string root = LR_SIM_SOURCE_DIR;
     std::string contentDir = root + "/content/ai";
     std::string worldFile = root + "/content/sim/test_world.json";
     std::string locDir = root + "/content/loc";
@@ -423,7 +423,7 @@ int main(int argc, char** argv) {
         if (bind(ls, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || listen(ls, 16) != 0)
             throw std::runtime_error("cannot listen on 127.0.0.1:" + std::to_string(port) + " (already running?)");
         const std::string url = "http://127.0.0.1:" + std::to_string(port) + "/";
-        std::cout << "Altera sim view: " << url << "  (" << world.characters().size()
+        std::cout << "LivelyRealms sim view: " << url << "  (" << world.characters().size()
                   << " characters; Ctrl+C to quit)" << std::endl;
         if (openBrowser) ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 

@@ -13,7 +13,7 @@
 #include "sim/rules.hpp"
 #include "sim/wounds.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -75,4 +75,4 @@ void applyGroupResult(World& w, const Sides& s, const InteractionDef& d, const G
 // the duel table for one on one, a sample of battles for a group.
 double winChance(World& w, Character& actor, const InteractionDef& d, Character& target);
 
-} // namespace altera::sim
+} // namespace lr::sim

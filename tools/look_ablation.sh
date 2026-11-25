@@ -11,7 +11,7 @@ cd "$(dirname "$0")/.."
 out="${1:?output directory}"; at="${2:-219904,21760}"; world="${3:-average}"; seed="${4:-11}"
 frames="${ABL_FRAMES:-90}"
 size="${ABL_SIZE:-1920x1080}"
-bin="${ALTERA_BUILD_DIR:-${CAMPFIRE_BUILD_DIR:-cmake-build-relwithdebinfo}}/altera_client"
+bin="${LR_BUILD_DIR:-${REALSIM_BUILD_DIR:-cmake-build-relwithdebinfo}}/lr_client"
 export ASR_TERRAIN_CACHE_DIR="${ASR_TERRAIN_CACHE_DIR:-/tmp/altera-look-cache}"
 mkdir -p "$out"
 variant() {   # variant NAME JSON-OVERRIDES [ENV=...]

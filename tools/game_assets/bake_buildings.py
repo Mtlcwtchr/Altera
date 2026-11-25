@@ -4,7 +4,7 @@ thatch roofs) and a few procedural pieces (hearths, fire, shrine stones, beds, f
 
 blender -b --factory-startup -P bake_buildings.py -- --repo D:/AlteraGame/altera
 
-Writes assets/altera_game/buildings/buildings.astm and a preview of every piece.
+Writes assets/lr_game/buildings/buildings.astm and a preview of every piece.
 ASTM v1 (little endian), read by src/game_view/statics.cpp:
   u32 meshes, vertices, indices, layers, layerSize
   meshes x {char name[32], u32 firstIndex, u32 indexCount, f32 min[3], f32 max[3]}
@@ -20,7 +20,7 @@ import kit_fe as K
 
 a = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 REPO = a[a.index('--repo') + 1] if '--repo' in a else 'D:/AlteraGame/altera'
-OUT = REPO + '/assets/altera_game/buildings'
+OUT = REPO + '/assets/lr_game/buildings'
 os.makedirs(OUT, exist_ok=True)
 LS = 128
 

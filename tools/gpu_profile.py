@@ -1,18 +1,18 @@
 #!/usr/bin/env python3
 """gpu_profile - where the GPU spends a frame, for any Vulkan program, from outside it.
 
-Runs the program with the altera_gpu_layer Vulkan layer switched on through
+Runs the program with the lr_gpu_layer Vulkan layer switched on through
 the loader's environment (nothing in the program changes, nothing is
 instrumented) and reports GPU time per shader pair, render pass load/store,
 compute, copy and blit, averaged over the frames asked for:
 
-    python tools/gpu_profile.py -- cmake-build-windows/altera_client.exe --explore
+    python tools/gpu_profile.py -- cmake-build-windows/lr_client.exe --explore
     python tools/gpu_profile.py --skip 600 --frames 300 -- <program> <args...>
-    python tools/gpu_profile.py --report altera_gpu_profile.json    # read a saved one
+    python tools/gpu_profile.py --report lr_gpu_profile.json    # read a saved one
 
 --live prints a summary every second while the program runs. The layer is built
-with the client (target altera_gpu_layer); --layer-dir points elsewhere.
-Windows and Linux (Vulkan); on macOS use Instruments (tools/altera_profiler.py).
+with the client (target lr_gpu_layer); --layer-dir points elsewhere.
+Windows and Linux (Vulkan); on macOS use Instruments (tools/lr_profiler.py).
 
 Timestamps sit at the bottom of the pipe: each segment runs from the previous
 piece of work finishing to this one finishing. Frame totals are exact; the split
@@ -36,7 +36,7 @@ def find_layer(explicit):
     manifests = sorted(ROOT.glob("cmake-build-*/VK_LAYER_ALTERA_gpu_profile.json"),
                        key=lambda p: p.stat().st_mtime, reverse=True)
     if not manifests:
-        sys.exit("no built layer found: build the altera_gpu_layer target, or pass --layer-dir")
+        sys.exit("no built layer found: build the lr_gpu_layer target, or pass --layer-dir")
     return manifests[0].parent
 
 
@@ -90,9 +90,9 @@ def main():
     env = dict(os.environ)
     env["VK_ADD_LAYER_PATH"] = str(layer) + (os.pathsep + env["VK_ADD_LAYER_PATH"] if env.get("VK_ADD_LAYER_PATH") else "")
     env["VK_INSTANCE_LAYERS"] = LAYER + (os.pathsep + env["VK_INSTANCE_LAYERS"] if env.get("VK_INSTANCE_LAYERS") else "")
-    env["ALTERA_GPU_PROFILE_OUT"] = str(out)
+    env["LR_GPU_PROFILE_OUT"] = str(out)
     if args.live:
-        env["ALTERA_GPU_PROFILE_LIVE"] = "1"
+        env["LR_GPU_PROFILE_LIVE"] = "1"
     print("profiling with %s from %s" % (LAYER, layer), flush=True)
     code = subprocess.call(program, env=env, cwd=os.getcwd())
     if not out.exists():

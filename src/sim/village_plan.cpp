@@ -5,7 +5,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 namespace {
 constexpr double kPi = 3.14159265358979323846;
 
@@ -912,4 +912,4 @@ std::vector<std::string> checkVillage(const VillagePlan& plan, const VillageSite
     return bad;
 }
 
-}  // namespace altera::sim
+}  // namespace lr::sim

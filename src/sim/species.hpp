@@ -24,7 +24,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -148,4 +148,4 @@ double lightOn(const World& w, const Character& c, bool underRoof);
 // regeneration. Returns false while the body is stone (its needs stay as they are).
 bool raceBodyTick(World& w, Character& c, bool underRoof);
 
-} // namespace altera::sim
+} // namespace lr::sim

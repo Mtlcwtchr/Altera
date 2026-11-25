@@ -1,5 +1,5 @@
-// altera_sim_runner - headless runs of the Altera life-sim core.
-//   altera_sim_runner [--content DIR] [--world FILE] [--seed N] [--days N]
+// lr_sim_runner - headless runs of the LivelyRealms life-sim core.
+//   lr_sim_runner [--content DIR] [--world FILE] [--seed N] [--days N]
 //                     [--save FILE] [--report FILE] [--trace FILE] [--validate]
 //                     [--loc DIR] [--lang ru|en]
 //                     [--dialogue-corpus N [--corpus-out FILE(.txt|.json)] [--corpus-report FILE.json]
@@ -28,7 +28,7 @@
 #include "sim/realm.hpp"
 #include "sim/worldgen.hpp"
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 // AL-93: one line of the village's food - stores, sacks, fields, gardens, the
@@ -114,7 +114,7 @@ void writeLedger(std::ostream& out, const World& w, bool header) {
 } // namespace
 
 int main(int argc, char** argv) {
-    std::string root = ALTERA_SIM_SOURCE_DIR;
+    std::string root = LR_SIM_SOURCE_DIR;
     std::string contentDir = root + "/content/ai";
     std::string worldFile = root + "/content/sim/test_world.json";
     std::string locDir = root + "/content/loc";

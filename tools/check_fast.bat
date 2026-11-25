@@ -1,12 +1,12 @@
 @echo off
 rem check_fast.bat - the quick check layer: build the sim-only tree (cmake-build-sim,
-rem ALTERA_SIM_ONLY) and run the ctest label "fast". Prints only the outcome; the
+rem LR_SIM_ONLY) and run the ctest label "fast". Prints only the outcome; the
 rem full logs stay in cmake-build-sim\check_build.log and check_test.log.
 rem
 rem   tools\check_fast.bat                 build + fast tests
 rem   tools\check_fast.bat full            build + all sim tests (fast + full)
 rem   tools\check_fast.bat build           build only
-rem   tools\check_fast.bat -R altera_sim   extra args go to ctest (rerun one test by name)
+rem   tools\check_fast.bat -R lr_sim   extra args go to ctest (rerun one test by name)
 rem   tools\check_fast.bat rerun           rerun only the tests that failed last time
 setlocal enabledelayedexpansion
 cd /d "%~dp0.."

@@ -13,7 +13,7 @@
 #include "sim/core.hpp"
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -84,4 +84,4 @@ void captivityTick(World& w);
 // the eldest grown child, the spouse, the eldest grown kin, any kin.
 EntityId heirOf(const World& w, const Character& dead);
 
-} // namespace altera::sim
+} // namespace lr::sim

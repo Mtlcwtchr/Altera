@@ -12,7 +12,7 @@
 
 #include "sim/craft/craft_data.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 struct ItemFlaw {
     std::string id;
@@ -179,4 +179,4 @@ Preview previewStep(const CraftData& d, const StepInput& in, const Actor& a, con
 // Inspection (§6): reveals hidden flaws with a chance from the skill.
 int inspectItem(const CraftData& d, Item& it, double skill, std::uint64_t seed, std::uint64_t tick, std::uint64_t actor);
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

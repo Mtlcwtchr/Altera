@@ -13,7 +13,7 @@
 #include "sim/news.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 void installDialogueFacts() {
     // AL-49's memory facts (memory.deed*, memory.kind*, listener.reputation.*) for every line
@@ -337,4 +337,4 @@ std::string lineText(const Loc& loc, const std::string& lang, const World& w, co
     return loc.text(lang, "trace.say.line", args);
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

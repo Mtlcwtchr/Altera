@@ -8,7 +8,7 @@
 #include "sim/ai.hpp"
 #include "sim/consequences.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 double r3(double v) { return std::round(v * 1000.0) / 1000.0; }
@@ -105,4 +105,4 @@ Json aiReport(const World& w) {
                 {"characters", chars}};
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

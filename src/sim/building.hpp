@@ -1,6 +1,6 @@
 #pragma once
 // Building from modules (content/ai/build.json, gdd/blueprints/
-// ALTERA_BLUEPRINTS_SPEC_v0.2 §1-2, §4.7) and the colony's mandate (GDD §2.2).
+// LR_BLUEPRINTS_SPEC_v0.2 §1-2, §4.7) and the colony's mandate (GDD §2.2).
 //
 // A household plans pieces on a 3D grid (cells of cell_m, storeys of
 // storey_m). A planned piece is a build_site object in the world: its stock is
@@ -19,7 +19,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 // A slot of the grid: layer f (cell floor: foundation, floor), r (a cell's
 // volume: roof), h / v (an edge along x / along y, at its lower-left grid
@@ -70,4 +70,4 @@ EntityId judgeNow(const World& w, EntityId settlement);
 // with every right of config.rights ("lore start with rights", GDD §2.2).
 void grantStartMandate(World& w, EntityId settlement, EntityId chief);
 
-} // namespace altera::sim
+} // namespace lr::sim

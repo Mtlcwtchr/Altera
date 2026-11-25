@@ -29,13 +29,13 @@ add_library(asr_engine_render STATIC
 target_include_directories(asr_engine_render PUBLIC src)
 target_link_libraries(asr_engine_render PUBLIC asr_core SDL3::SDL3-static SDL3_image::SDL3_image-static
         SDL3_shadercross::SDL3_shadercross-static PRIVATE asr_warnings)
-add_library(Campfire::Render ALIAS asr_engine_render)
+add_library(RealSimEngine::Render ALIAS asr_engine_render)
 include("${CMAKE_SOURCE_DIR}/cmake/dlss.cmake")
 
 add_library(asr_impostors_gpu STATIC src/engine/render/impostor_gpu_cache.cpp)
 target_include_directories(asr_impostors_gpu PUBLIC src)
 target_link_libraries(asr_impostors_gpu PUBLIC asr_engine_render asr_impostors PRIVATE asr_warnings)
-add_library(Campfire::ImpostorsGPU ALIAS asr_impostors_gpu)
+add_library(RealSimEngine::ImpostorsGPU ALIAS asr_impostors_gpu)
 
 add_library(asr_virtual_geometry_gpu STATIC
         src/engine/render/geometry/cluster_cull.cpp
@@ -46,10 +46,10 @@ add_library(asr_virtual_geometry_gpu STATIC
 target_include_directories(asr_virtual_geometry_gpu PUBLIC src)
 target_link_libraries(asr_virtual_geometry_gpu PUBLIC asr_engine_render asr_virtual_geometry
         asr_representation PRIVATE asr_warnings)
-add_library(Campfire::VirtualGeometryGPU ALIAS asr_virtual_geometry_gpu)
+add_library(RealSimEngine::VirtualGeometryGPU ALIAS asr_virtual_geometry_gpu)
 
 add_library(asr_engine_viewport STATIC src/engine/render/dag_viewport.cpp)
 target_include_directories(asr_engine_viewport PUBLIC src)
 target_link_libraries(asr_engine_viewport PUBLIC asr_engine_render asr_camera asr_virtual_geometry
         PRIVATE asr_warnings)
-add_library(Campfire::Viewport ALIAS asr_engine_viewport)
+add_library(RealSimEngine::Viewport ALIAS asr_engine_viewport)

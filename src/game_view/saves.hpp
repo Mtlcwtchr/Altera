@@ -5,8 +5,8 @@
 // World::toJson has it, plus the game's own state: where the sim's map sits in
 // the world, the camera, the speed) and slot_<n>.meta.json (a few lines for
 // the slot list, so the list does not parse the worlds). Slot 0 is the
-// autosave. The folder is ALTERA_SAVE_DIR when set, else the user's
-// SDL pref path (%APPDATA%/Altera/Altera/saves on Windows); settings.json
+// autosave. The folder is LR_SAVE_DIR when set, else the user's
+// SDL pref path (%APPDATA%/LivelyRealms/LivelyRealms/saves on Windows); settings.json
 // sits next to the saves folder.
 
 #include <cstdint>
@@ -16,7 +16,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 constexpr int kSaveSlots = 6;   // manual slots 1..6; slot 0 is the autosave
 
@@ -62,4 +62,4 @@ sim::Json readSave(int slot);
 GameSettings loadSettings();
 void storeSettings(const GameSettings& s);
 
-} // namespace altera::game
+} // namespace lr::game

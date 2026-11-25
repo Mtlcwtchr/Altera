@@ -1,5 +1,5 @@
 
-# Altera
+# LivelyRealms
 
 Campfire — собственный движок и работающий на нём клиент симуляционной RTS
 об автономной общине бронзового века. Источник истины по
@@ -63,14 +63,14 @@ Windows: стеки через SuspendThread/RtlVirtualUnwind, имена из P
 
 ### GPU-профайлер (Windows, Linux)
 
-`tools/gpu_profile.py` — **отдельная тулза**: Vulkan-слой `altera_gpu_layer` (цель CMake,
+`tools/gpu_profile.py` — **отдельная тулза**: Vulkan-слой `lr_gpu_layer` (цель CMake,
 собирается с клиентом) включается через окружение загрузчика Vulkan, в коде игры о нём
 ничего нет. Слой ставит timestamp-запросы вокруг каждой работы GPU — серии draw с одним
 пайплайном, dispatch, копии, загрузки/сохранения render pass — и называет её по точкам
 входа шейдеров (`AdaptiveTerrainVS / TerrainPagePS`). Права на счётчики и Nsight не нужны.
 
 ```bat
-python tools\gpu_profile.py --skip 600 -- cmake-build-windows\altera_client.exe --explore
+python tools\gpu_profile.py --skip 600 -- cmake-build-windows\lr_client.exe --explore
 python tools\gpu_profile.py --live -- <любая Vulkan-программа и её аргументы>
 python tools\gpu_profile.py --report .cache\profiles\gpu_profile.json --skip 300
 ```
@@ -78,7 +78,7 @@ python tools\gpu_profile.py --report .cache\profiles\gpu_profile.json --skip 300
 Отчёт: среднее/медиана/p95 GPU-кадра и мс на кадр по каждой работе; JSON по кадрам в
 `.cache/profiles/gpu_profile.json`. Метки стоят в конце конвейера: итог кадра точный,
 раскладка между соседями, перекрывающимися на GPU, — атрибуция, как у любого
-timestamp-профайлера. На macOS — Instruments (`tools/altera_profiler.py --mode gpu`).
+timestamp-профайлера. На macOS — Instruments (`tools/lr_profiler.py --mode gpu`).
 
 ## Запуск
 
@@ -94,7 +94,7 @@ world)**, **Headless (1 year)**, **Headless (10 years)**, **Explain decisions**,
 ./run.sh                 # игра
 ./run.sh game 42 180     # seed 42, карта 180
 ./run.sh client          # клиент мира: главное меню, сохранённые миры, Explore и Edit
-./run.sh explore         # 3D-эксплорер Altera
+./run.sh explore         # 3D-эксплорер LivelyRealms
 ./run.sh engine-editor   # GUI модулей движка с GPU-viewport, без игры
 ./run.sh headless 200    # 200 суток без графики, с отчётом
 ./run.sh explain 5000    # таблица спроса и все жители на тике 5000
@@ -104,7 +104,7 @@ world)**, **Headless (1 year)**, **Headless (10 years)**, **Explain decisions**,
 
 ### Клиент мира
 
-`./run.sh client` (в CLion — **Altera client**) — полноценный клиент:
+`./run.sh client` (в CLion — **LivelyRealms client**) — полноценный клиент:
 главное меню → экран **Worlds** (список сохранений из `worlds/`: открыть в
 Explore или Edit, создать новый мир — имя, тип, размер, сид — или удалить) →
 загрузка → сам мир в одном из двух режимов, переключение — `Tab` или
@@ -137,8 +137,8 @@ Explore или Edit, создать новый мир — имя, тип, раз
 проверкой раскладки (наложения и вылеты текста за край):
 
 ```bash
-altera_client --client --client-tour /tmp/tour --headless 1600x1000
-ALTERA_UI_SCALE=2 altera_client --client --client-tour /tmp/tour2x --headless 2880x1800
+lr_client --client --client-tour /tmp/tour --headless 1600x1000
+LR_UI_SCALE=2 lr_client --client --client-tour /tmp/tour2x --headless 2880x1800
 ```
 
 Сколько стоит открыть мир, по проходам (генерация, граф стока, климат,
@@ -147,14 +147,14 @@ ALTERA_UI_SCALE=2 altera_client --client --client-tour /tmp/tour2x --headless 28
 ```bash
 ./cmake-build-relwithdebinfo/world_load_probe --regions 1
 ./cmake-build-relwithdebinfo/world_load_probe --grow     # мир растёт: остаётся ли старое как было
-ALTERA_LOAD_TRACE=1 altera_client --client   # кадр за кадром, пока грузится земля
+LR_LOAD_TRACE=1 lr_client --client   # кадр за кадром, пока грузится земля
 ```
 
 Или напрямую:
 
 ```bash
 # посмотреть
-./cmake-build-relwithdebinfo/altera_client --seed 11 --map 140
+./cmake-build-relwithdebinfo/lr_client --seed 11 --map 140
 
 # прогнать без графики и получить отчёт
 ./cmake-build-relwithdebinfo/sim_runner --days 200 --seed 11 --status-every 2400
@@ -166,11 +166,11 @@ ALTERA_LOAD_TRACE=1 altera_client --client   # кадр за кадром, по�
 ./cmake-build-relwithdebinfo/content_validator
 
 # редактор данных и интерфейса - отдельный клиент, мир не создаётся
-./cmake-build-relwithdebinfo/altera_editor --settings editor.json
+./cmake-build-relwithdebinfo/lr_editor --settings editor.json
 
 # посмотреть на мир без игры: бесшовный террейн от метра до континента
-./cmake-build-relwithdebinfo/altera_client --explore
-./cmake-build-relwithdebinfo/altera_client --explore --at mountains --zoom 0.6 --shot /tmp/hills.png
+./cmake-build-relwithdebinfo/lr_client --explore
+./cmake-build-relwithdebinfo/lr_client --explore --at mountains --zoom 0.6 --shot /tmp/hills.png
 
 # выписка «этнос → контент» (после правок в content/)
 python3 tools/ethnos_table.py
@@ -181,12 +181,12 @@ python3 tools/ethnos_table.py
 
 Внутренние CMake-цели `asr_client`/`asr_editor` и старые имена исполняемых файлов
 оставлены как aliases для совместимости с инструментами и CLion. Новые имена —
-`altera_client` и `altera_editor`. `run.sh` использует `ALTERA_BUILD_DIR`
+`lr_client` и `lr_editor`. `run.sh` использует `LR_BUILD_DIR`
 (старый `ASR_BUILD_DIR` также поддерживается).
 
 ## Модули и GUI движка
 
-`campfire_engine_editor` — отдельный workspace камеры, terrain generation и
+`realsim_editor` — отдельный workspace камеры, terrain generation и
 виртуальной геометрии. В нём работают Orbit/Free/Map, FOV, seed/relief,
 фоновая генерация preview, выбор среза cluster DAG по экранной ошибке и wireframe.
 Viewport рисует резидентную геометрию на GPU с depth buffer, аппаратным clipping и
@@ -194,18 +194,18 @@ Viewport рисует резидентную геометрию на GPU с dept
 Виджеты пока растеризуются программно в кэшируемый прозрачный слой и композятся на GPU;
 движение камеры не перерисовывает неизменный интерфейс. Чтения GPU→CPU внутри кадра нет.
 Запуск: `./run.sh engine-editor`; каталог сборки переопределяется через
-`CAMPFIRE_ENGINE_EDITOR_BUILD_DIR`. Для снимка поддерживается `--shot FILE.png`.
+`REALSIM_EDITOR_BUILD_DIR`. Для снимка поддерживается `--shot FILE.png`.
 Существующая GPU-сборка переиспользуется; новая GPU-сборка требует SDL_shadercross/DXC.
 `--cpu-preview` выбирает прежний путь отрисовки. Для сборки вообще без DXC:
-`CAMPFIRE_ENGINE_EDITOR_GPU=OFF ./run.sh engine-editor`.
+`REALSIM_EDITOR_GPU=OFF ./run.sh engine-editor`.
 
-Воспроизводимый orbit benchmark: `campfire_engine_editor --bench 240 --profile result.json`.
+Воспроизводимый orbit benchmark: `realsim_editor --bench 240 --profile result.json`.
 30 прогревочных кадров исключены; GPU-режим ожидает завершения каждого кадра.
 Время включает CPU, GPU и ожидание, а не является чистым GPU timestamp.
 
-Публичные CMake-цели: `Campfire::Camera`, `Campfire::Representation`,
-`Campfire::Terrain`, `Campfire::VirtualGeometry`, `Campfire::VirtualGeometryGPU`,
-`Campfire::Gui`, `Campfire::Render`, `Campfire::Viewport`, `Campfire::WorldStore`.
+Публичные CMake-цели: `RealSimEngine::Camera`, `RealSimEngine::Representation`,
+`RealSimEngine::Terrain`, `RealSimEngine::VirtualGeometry`, `RealSimEngine::VirtualGeometryGPU`,
+`RealSimEngine::Gui`, `RealSimEngine::Render`, `RealSimEngine::Viewport`, `RealSimEngine::WorldStore`.
 Первые четыре и `WorldStore` не требуют SDL или игровой симуляции. GPU-модули определены в
 `src/engine/gpu_modules.cmake` и доступны с `ASR_BUILD_CLIENT=OFF`.
 Перенесённые реализации находятся в `src/engine/`, игровые заголовки камеры и
@@ -256,8 +256,8 @@ Depth-aware shader репроецирует UV и записывает восс�
 
 ### Runtime forest proxies
 
-`Campfire::Impostors` — CPU baker и bounded residency cache без SDL/игры.
-`Campfire::ImpostorsGPU` — фиксированный GPU-atlas и порционная публикация.
+`RealSimEngine::Impostors` — CPU baker и bounded residency cache без SDL/игры.
+`RealSimEngine::ImpostorsGPU` — фиксированный GPU-atlas и порционная публикация.
 Кластеры 32 м собираются из реальных размещений растений и их hemisphere
 color/normal/depth кадров: небольшие группы запекаются в промежуточные proxy,
 затем в корень, без повторного обхода исходных мешей.
@@ -276,7 +276,7 @@ Packed depth PNG читаются байтово-точно, минуя плат
 
 ### Дальняя иерархия леса и туман дальности
 
-Над 32 m proxy работает постоянная иерархия `Campfire::Impostors`
+Над 32 m proxy работает постоянная иерархия `RealSimEngine::Impostors`
 (`impostor_hierarchy.hpp`): 128 → 512 → 2048 m узлы, 4×4 детей на узел.
 128 m узлы пекутся из детерминированного scatter региона (не из того, что сейчас
 резидентно в placement), 512/2048 m — из запечённых детей в bounded CPU store
@@ -326,7 +326,7 @@ placement, тени) замораживается, живая камера ст�
 посаженное, вырубленные целиком страницы, клетки экологии. Одни и те же записи
 делают редактор до игры и игра (`world::delta::WorldDelta`,
 `src/game/world/world_delta.hpp`). Файлы чанков - блоки zstd с заголовком и
-хешами (`src/engine/world_store`, `Campfire::WorldStore`); манифест заменяется
+хешами (`src/engine/world_store`, `RealSimEngine::WorldStore`); манифест заменяется
 последним и атомарно, поэтому сбой при сохранении оставляет предыдущее
 состояние целым. Сохранение идёт на своём потоке раз в 20 секунд и на выходе.
 
@@ -343,7 +343,7 @@ placement, тени) замораживается, живая камера ст�
 сохранения:
 
 ```bash
-altera_client --explore --world 64 --at "open country" --zoom 1 \
+lr_client --explore --world 64 --at "open country" --zoom 1 \
     --dig 28504,20736,120,-30 --headless 1280x800 --shot /tmp/dig.png
 ```
 
@@ -353,16 +353,16 @@ D150 в `doc/DECISIONS.md`.
 
 ## Внешний профайлер
 
-`tools/altera_profiler.py` — **отдельная тулза**, не библиотека движка.
+`tools/lr_profiler.py` — **отдельная тулза**, не библиотека движка.
 Она подключается к PID или запускает исполняемый файл через macOS Instruments.
 В коде движка не нужны Tracy-зоны, `printf`, reflection или compiler hooks.
 Нужны macOS и Xcode; debug symbols улучшают имена стеков, но не являются инструментацией.
 
 ```sh
-python3 tools/altera_profiler.py processes
-python3 tools/altera_profiler.py record --pid 12345 --mode cpu --seconds 10
-python3 tools/altera_profiler.py record --mode memory --seconds 10 --debug-copy \
-  --launch ./cmake-build-relwithdebinfo/altera_client -- --explore
+python3 tools/lr_profiler.py processes
+python3 tools/lr_profiler.py record --pid 12345 --mode cpu --seconds 10
+python3 tools/lr_profiler.py record --mode memory --seconds 10 --debug-copy \
+  --launch ./cmake-build-relwithdebinfo/lr_client -- --explore
 ```
 
 Режимы: `cpu` (семплирование стеков), `memory` (аллокации), `gpu` (Metal),

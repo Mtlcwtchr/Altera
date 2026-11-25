@@ -5,7 +5,7 @@
 #include <algorithm>
 #include <cmath>
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -261,4 +261,4 @@ double drift(const Prop& truth, const Prop& rumour) {
     return truth.pred == rumour.pred ? roles : 0.5 + 0.5 * roles;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

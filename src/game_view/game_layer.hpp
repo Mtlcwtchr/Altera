@@ -1,5 +1,5 @@
 #pragma once
-// What the world view (terrain_lab's Lab today, altera_world_view after the
+// What the world view (terrain_lab's Lab today, lr_world_view after the
 // merge, doc engine_merge/MERGE_PLAN.md) asks of the game drawn into it: the
 // SceneLayer of the plan, plus input and the camera. The view keeps its frame
 // order; the game adds its things to the shared depth and fog, and its
@@ -19,7 +19,7 @@
 namespace engine { class Device; }
 namespace terrain_core { class MacroMap; class BiomeMap; struct Params; struct RiverSegment; class Relief; }
 
-namespace altera::game {
+namespace lr::game {
 
 struct CameraRig {
     double eye[3] = {0, 0, 0};
@@ -65,7 +65,7 @@ struct GameOptions {
     // The view's fine relief (terrain_core/relief.hpp): the game lays its
     // pads on it (building sites, fields). None: the ground stays as it is.
     terrain_core::Relief* relief = nullptr;
-    // AL-69: the world the view is on (kind "lore": the imported Altera), the
+    // AL-69: the world the view is on (kind "lore": the imported LivelyRealms), the
     // folder the worlds are kept in, and what to do once open: "new" (a new
     // game on this world), "load:N" (slot N), empty (the main menu)
     terrain_core::WorldSpec world;
@@ -74,10 +74,10 @@ struct GameOptions {
     std::string exe;             // this program, to start it again on another world
 };
 
-// The life-sim (altera_sim) on a region of the world centred on (x, y) metres.
+// The life-sim (lr_sim) on a region of the world centred on (x, y) metres.
 std::unique_ptr<GameLayer> makeSimGame(engine::Device& device, SDL_Window* window,
                                        const terrain_core::MacroMap& macro, const terrain_core::Params& params,
                                        double centreX, double centreY, const GameOptions& options,
                                        std::string* why);
 
-} // namespace altera::game
+} // namespace lr::game

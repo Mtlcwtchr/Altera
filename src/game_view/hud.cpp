@@ -9,7 +9,7 @@
 #include "engine/world_source/png_io.hpp"
 #include "sim/worldgen.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 namespace fs = std::filesystem;
@@ -102,7 +102,7 @@ bool Hud::init(SDL_Renderer* renderer, const fs::path& root, std::string* why) {
         themeList.clear();
         for (const auto& id : UiTheme::list(themes)) themeList.push_back({id, UiTheme::load(themes / (id + ".json")).nameKey});
     }
-    const fs::path ui = root / "assets/altera_game/ui";
+    const fs::path ui = root / "assets/lr_game/ui";
     if (!loadImage(ui / "leather.png", leather_.w, leather_.h, leather_.rgba) ||
         !loadImage(ui / "paper.png", paper_.w, paper_.h, paper_.rgba)) {
         if (why) *why = "hud: cannot read the leather/paper tiles in " + ui.string();
@@ -493,7 +493,7 @@ SDL_Texture* Hud::portraitOf(const ActorSnap& a) {
     const std::string look = host_->lookOf(a);
     PortraitBase& base = portraitBases_[look];
     if (base.picture.w == 0 && !look.empty()) {
-        const fs::path dir = root_ / "assets/altera_game/people";
+        const fs::path dir = root_ / "assets/lr_game/people";
         // AL-68: the Skyrim stand-ins' faces (tools/game_assets/skyrim/portraits.py) when baked
         const std::string stem = fs::exists(dir / ("portrait_" + look + "_sky.png")) ? look + "_sky" : look;
         loadImage(dir / ("portrait_" + stem + ".png"), base.picture.w, base.picture.h, base.picture.rgba);
@@ -3855,4 +3855,4 @@ void Hud::backstory(float W, float H) {
     drawTip(W, H);
 }
 
-} // namespace altera::game
+} // namespace lr::game

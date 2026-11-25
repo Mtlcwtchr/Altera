@@ -24,7 +24,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -106,4 +106,4 @@ struct CaseCtx {
 };
 double caseScore(const CaseOption& o, const Character& chooser, const Character& other, const CaseCtx& x);
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="utf-8">
-<title>Altera: симуляция</title>
+<title>LivelyRealms: симуляция</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <style>
 :root{--bg:#15110d;--panel:#1f1914;--panel2:#2a221b;--line:#3d3227;--text:#e8dcc4;--muted:#a3937a;--accent:#d8893a;--red:#c8483a;--green:#7fa65a;--blue:#5f8fb0}
@@ -235,7 +235,7 @@ async function poll(force){
     S=s;chron.push(...s.chron);chronN=s.chron_n;
     renderHeader();renderLists();renderSel();if(s.chron.length)renderChron();
     if(s.last_result&&s.last_result.includes("rejected"))$('msg').textContent=s.last_result;
-  }catch(e){$('clock').textContent="нет связи с симуляцией (altera_sim_view.exe закрыт?)"}
+  }catch(e){$('clock').textContent="нет связи с симуляцией (lr_sim_view.exe закрыт?)"}
   busy=false}
 async function init(){
   resize();window.addEventListener('resize',resize);

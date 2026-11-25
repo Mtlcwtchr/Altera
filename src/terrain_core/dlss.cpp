@@ -80,7 +80,7 @@ bool Dlss::open(engine::Device& device) {
         }, D3D12_MESSAGE_CALLBACK_FLAG_NONE, nullptr, &s.debugCookie);
     }
     // Writable per-user NGX logs, never the installation directory.
-    char* pref = SDL_GetPrefPath("Altera", "TerrainLab");
+    char* pref = SDL_GetPrefPath("LivelyRealms", "TerrainLab");
     if (!pref) { s.message = "DLSS unavailable: cannot create NGX log directory"; return false; }
     const auto logs = std::filesystem::path(pref).wstring();
     SDL_free(pref);

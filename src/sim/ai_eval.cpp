@@ -18,7 +18,7 @@
 #include "sim/tones.hpp"
 #include "sim/village_life.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -983,4 +983,4 @@ EntityId findTarget(const World& w, const Character& c, const InteractionDef& d,
     return best;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

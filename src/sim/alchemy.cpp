@@ -6,7 +6,7 @@
 #include "sim/ai.hpp"
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -223,4 +223,4 @@ bool handleAlchemy(World& w, Command& cmd) {
 
 void installAlchemy(World& w) { w.addCommandHandler(handleAlchemy); }
 
-} // namespace altera::sim
+} // namespace lr::sim

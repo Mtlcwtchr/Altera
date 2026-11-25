@@ -22,7 +22,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -449,4 +449,4 @@ void openFields(World& w, EntityId family, Vec2 at, std::uint64_t seed) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

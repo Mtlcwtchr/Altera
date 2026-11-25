@@ -4,7 +4,7 @@
 #include <algorithm>
 #include <stdexcept>
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 bool laterEvent(const Event& a, const Event& b) { return a.tick != b.tick ? a.tick > b.tick : a.seq > b.seq; }
@@ -541,7 +541,7 @@ Json World::toJson() const {
                 {"command_log", commandLog_},
                 {"chronicle", chronicle_},
                 {"facts", facts_},
-                {"said", altera::sim::toJson(said_)},
+                {"said", lr::sim::toJson(said_)},
                 {"modules", modules_}};
     if (!offstage_.empty()) { // AL-92
         Json off = Json::array();
@@ -607,7 +607,7 @@ void World::loadJson(const Json& j) {
     chronicle_ = j.at("chronicle").get<std::vector<ChronicleEntry>>();
     facts_ = j.value("facts", std::vector<Fact>{});
     said_ = SaidMemory{};
-    if (j.contains("said")) altera::sim::fromJson(j["said"], said_);
+    if (j.contains("said")) lr::sim::fromJson(j["said"], said_);
     offstage_.clear();
     for (const auto& cj : j.value("offstage", Json::array())) {
         Character c = cj.get<Character>();
@@ -630,4 +630,4 @@ Fact& World::addFact(Fact f) {
 
 std::uint64_t World::stateHash() const { return hashStr(toJson().dump()); }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -9,7 +9,7 @@
 #include <sstream>
 #include <stdexcept>
 
-namespace altera::sim {
+namespace lr::sim {
 
 double Curve::eval(double x) const {
     double r = 0.0;
@@ -945,4 +945,4 @@ Content Content::load(const std::string& dir) {
     return c;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

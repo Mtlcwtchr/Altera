@@ -9,7 +9,7 @@
 #include "sim/content.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -512,4 +512,4 @@ bool raceBodyTick(World& w, Character& c, bool underRoof) {
     return true;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

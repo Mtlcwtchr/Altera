@@ -6,14 +6,14 @@
 // others out of the houses they would cut through between two ticks.
 //
 // Pure geometry in metres on the ground plane, standard library only, so it
-// builds with the headless sim and its tests (tests/test_altera_sim_collide.cpp).
+// builds with the headless sim and its tests (tests/test_lr_sim_collide.cpp).
 
 #include <functional>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-namespace altera::sim::collide {
+namespace lr::sim::collide {
 
 struct Circle {
     double x = 0, y = 0, r = 0;
@@ -73,4 +73,4 @@ private:
     std::unordered_map<long long, std::vector<std::pair<int, int>>> grid_;   // bucket -> (kind, index)
 };
 
-} // namespace altera::sim::collide
+} // namespace lr::sim::collide

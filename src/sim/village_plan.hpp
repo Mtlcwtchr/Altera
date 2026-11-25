@@ -11,7 +11,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct MapGrid;
 
@@ -149,4 +149,4 @@ void addPath(VillagePlan& plan, Vec2 from, const Vec2* to, double width, bool an
 std::vector<std::string> checkVillage(const VillagePlan& plan, const VillageSite& site, const MapGrid& map,
                                       const VillageWanted& want);
 
-}  // namespace altera::sim
+}  // namespace lr::sim

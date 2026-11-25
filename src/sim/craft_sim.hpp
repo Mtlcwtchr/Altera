@@ -17,7 +17,7 @@
 #include "sim/loc.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 craft::Actor craftActor(const World& w, const Character& c);
 // Stations of the objects within `radiusM` (objects.json `station`), tools
@@ -78,4 +78,4 @@ void installCrafting(World& w);
 // thing, or material + shape for an intermediate.
 std::string craftItemName(const Loc& loc, const std::string& lang, const craft::CraftData& d, const craft::Item& it);
 
-} // namespace altera::sim
+} // namespace lr::sim

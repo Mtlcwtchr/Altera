@@ -19,7 +19,7 @@
 #include "sim/content.hpp"
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct StructureSlotDef {
     std::string what;                  // object type
@@ -152,4 +152,4 @@ struct StructureFrame {
 // The footprint centre in the house's frame (metres).
 Vec2 footprintCentre(const StructurePlan& s, double cellM);
 
-}  // namespace altera::sim
+}  // namespace lr::sim

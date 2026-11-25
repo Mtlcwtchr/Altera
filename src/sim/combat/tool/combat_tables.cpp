@@ -1,10 +1,10 @@
-// altera_combat_tables: runs the same tables as gdd/combat/tools/combat_sim.py
+// lr_combat_tables: runs the same tables as gdd/combat/tools/combat_sim.py
 // (report sections 1, 2, 3, 3b, 3c, 3d, 4, 5, 6) on the C++ core and, with
 // --golden, compares every percentage against a report of the prototype.
 //
-//   altera_combat_tables [--n 300] [--seed 1] [--data content/combat]
+//   lr_combat_tables [--n 300] [--seed 1] [--data content/combat]
 //                        [--out report.md] [--golden COMBAT_SIM_REPORT.md] [--tol 5]
-//   altera_combat_tables --log <seed> [--a sword:50] [--b sword:50:gambeson]   one duel's event log
+//   lr_combat_tables --log <seed> [--a sword:50] [--b sword:50:gambeson]   one duel's event log
 //
 // Exit code: 0, or 2 when --golden finds a cell outside the tolerance.
 
@@ -22,7 +22,7 @@
 
 #include "sim/combat/combat.hpp"
 
-using namespace altera::combat;
+using namespace lr::combat;
 
 namespace {
 
@@ -272,7 +272,7 @@ Spec parseSpec(const std::string& s) { // weapon:skill[:armor+armor]
 int main(int argc, char** argv) {
     int n = 300;
     std::uint64_t seed = 1;
-    std::string dataDir = std::string(ALTERA_SIM_SOURCE_DIR) + "/content/combat", out, golden;
+    std::string dataDir = std::string(LR_SIM_SOURCE_DIR) + "/content/combat", out, golden;
     double tol = 5.0;
     long long logSeed = -1;
     std::string sa = "sword:50", sb = "sword:50";

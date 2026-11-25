@@ -13,7 +13,7 @@
 #include "game_view/hud.hpp"
 #include "game_view/hud_style.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 using ui::Colour;
 using ui::Rect;
@@ -162,4 +162,4 @@ void Hud::caseCard(const Snapshot& s, float x, float y, float w) {
     ui_->claim(r);
 }
 
-} // namespace altera::game
+} // namespace lr::game

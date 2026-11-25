@@ -9,7 +9,7 @@
 #include "sim/content.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -366,4 +366,4 @@ std::string rescuePlayer(World& w, Character& player, Character* winner) {
     return d.id;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

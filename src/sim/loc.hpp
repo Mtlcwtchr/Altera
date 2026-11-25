@@ -16,7 +16,7 @@
 
 #include "sim/content.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -113,4 +113,4 @@ std::string traceText(const Loc& loc, const std::string& lang, const World& w, c
 // Adds "text" fields to aiReport() output (why_idle, plan_failures, why_hunger, deaths).
 void localizeReport(Json& report, const Loc& loc, const std::string& lang, const World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

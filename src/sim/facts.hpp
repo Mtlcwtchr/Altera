@@ -13,7 +13,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -62,4 +62,4 @@ void factsAfterAct(World& w, Character& doer, const InteractionDef& d, Character
 // QA: per fact, who believes what of it (truth vs rumour), and beliefs with no fact.
 Json truthReport(const World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

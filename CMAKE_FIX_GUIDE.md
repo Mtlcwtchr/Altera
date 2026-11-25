@@ -26,7 +26,7 @@ D:\AlteraGame\altera\build_msvc_final.bat
 Этот скрипт:
 1. Настроит Visual Studio 2022 окружение
 2. Сконфигурирует CMake с Visual Studio 17 2022 генератором
-3. Соберет altera_client
+3. Соберет lr_client
 4. Покажет путь к готовому бинарику
 
 ---
@@ -46,7 +46,7 @@ D:\AlteraGame\altera\build_msvc_final.bat
    - ИЛИ: Ctrl+F9
 
 4. **Или собери конкретный таргет:**
-   - Меню: Build → Build → altera_client
+   - Меню: Build → Build → lr_client
    - ИЛИ: Кликни правой кнопкой на target в CMake проекте и выбери "Build"
 
 ---
@@ -55,12 +55,12 @@ D:\AlteraGame\altera\build_msvc_final.bat
 
 После успешной сборки бинарник будет здесь:
 ```
-D:\AlteraGame\altera\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\altera_client.exe
+D:\AlteraGame\altera\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\lr_client.exe
 ```
 
 Тест:
 ```powershell
-D:\AlteraGame\altera\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\altera_client.exe --help
+D:\AlteraGame\altera\cmake-build-msvc-relwithdebinfo\RelWithDebInfo\lr_client.exe --help
 ```
 
 ---

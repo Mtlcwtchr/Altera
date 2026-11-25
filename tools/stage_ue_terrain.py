@@ -2,7 +2,7 @@
 """Stage the UE terrain exports as ordinary material sources.
 
 tools/export_ue_terrain.py writes the UE project's source art to a staging
-directory (default /tmp/altera_ue_terrain_maps/<id>/<channel>.png). This
+directory (default /tmp/lr_ue_terrain_maps/<id>/<channel>.png). This
 turns each set into assets/terrain/<group>/src/<id>_{diffuse,normal,ao,rough,
 displacement}.png - the layout tools/pack_terrain.py already packs - and adds
 the set to content/config/terrain_materials.json.
@@ -14,7 +14,7 @@ the set to content/config/terrain_materials.json.
   * everything is resampled to --size (default 2048) once, here, so the repo
     does not carry 8K sources the runtime never reads.
 
-    python3 tools/stage_ue_terrain.py [--source /tmp/altera_ue_terrain_maps]
+    python3 tools/stage_ue_terrain.py [--source /tmp/lr_ue_terrain_maps]
     python3 tools/pack_terrain.py --only sand_dune sand_shore ...
 """
 import argparse
@@ -125,7 +125,7 @@ def stage(ident, source, size):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--source", type=Path, default=Path("/tmp/altera_ue_terrain_maps"))
+    parser.add_argument("--source", type=Path, default=Path("/tmp/lr_ue_terrain_maps"))
     parser.add_argument("--size", type=int, default=2048)
     args = parser.parse_args()
     catalogue = json.loads(CATALOGUE.read_text())

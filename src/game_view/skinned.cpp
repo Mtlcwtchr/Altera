@@ -8,7 +8,7 @@
 #include "sim/core.hpp"
 #include "sim/worldgen.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 namespace fs = std::filesystem;
@@ -241,7 +241,7 @@ bool SkinnedSet::load(engine::Device& device, const fs::path& mesh, const fs::pa
     sampler_ = device.makeSampler(s);
 
     engine::PipelineWanted w;
-    w.shaderFile = "altera_game/skinned.hlsl";
+    w.shaderFile = "lr_game/skinned.hlsl";
     w.vertexEntry = "skinnedVs";
     w.fragmentEntry = "skinnedPs";
     w.depthClip = true;
@@ -501,4 +501,4 @@ void SkinnedSet::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, c
     }
 }
 
-} // namespace altera::game
+} // namespace lr::game

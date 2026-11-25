@@ -29,7 +29,7 @@
 #include "sim/combat_bridge.hpp"
 #include "sim/group_combat.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -796,4 +796,4 @@ void spawnAnimals(World& w, std::uint64_t seed) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

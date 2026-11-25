@@ -24,7 +24,7 @@
 namespace terrain_core {
 
 struct WorldSpec {
-    std::string kind = "procedural";   // procedural | lore (the imported world of Altera)
+    std::string kind = "procedural";   // procedural | lore (the imported world of LivelyRealms)
     std::uint32_t seed = 1;
     int sizeKm = 12;     // 8 | 12 | 16 | 24
     int water = 1;       // 0 inland (lakes, rivers), 1 a coast, 2 islands

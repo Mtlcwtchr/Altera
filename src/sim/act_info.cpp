@@ -2,7 +2,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 bool shownCondition(const Condition& k) {
     // the owner rule and the household's own bookkeeping are not a player's worry
@@ -43,4 +43,4 @@ std::vector<std::string> actsOnObject(const Content& content, const std::string&
     return out;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

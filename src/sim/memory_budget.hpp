@@ -17,7 +17,7 @@
 #include "sim/core.hpp"
 #include "sim/craft/craft_data.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Content;
@@ -57,4 +57,4 @@ Json sharedMemoryJson(Json characters, Json& eventsOut);
 // Back: puts the shared parts into each memory (no-op without a table).
 void expandSharedMemory(Json& characters, const Json& events);
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -7,7 +7,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 using sim::Json;
 
@@ -284,4 +284,4 @@ Json skyJson(const Sky2d& s) {
     return j;
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

@@ -10,7 +10,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 struct Sky2d {
     double hour = 12;              // 0..24
@@ -44,7 +44,7 @@ sim::Json skyJson(const Sky2d& s);
 void lightHour(Sky2d& s, const sim::Json& cfg);
 // For frames and trying the look: the weather of `s` replaced by one of clear |
 // cloudy | rain | storm | snow | sleet | fog | snowy (snow lying, none falling);
-// anything else leaves it as it is. (altera_game_2d: ALTERA_2D_WEATHER.)
+// anything else leaves it as it is. (lr_game_2d: LR_2D_WEATHER.)
 Sky2d withWeather(Sky2d s, const sim::Json& cfg, const std::string& kind);
 
-} // namespace altera::client2d
+} // namespace lr::client2d
