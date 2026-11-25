@@ -17,6 +17,7 @@
     },
     "fsm": {
       "abort": "Aborted \"{action}\": {why}",
+      "approach": "Walks up close for \"{action}\"",
       "arrived": "{self} reached the {target}",
       "done": "Done: \"{action}\"",
       "enter": "State \"{state}\" for {ticks} {ticks:plural|tick|ticks}",

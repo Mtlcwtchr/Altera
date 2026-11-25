@@ -45,6 +45,17 @@ double consentChance(const World& w, const Character& actor, const Character& ta
 void runConversation(World& w, Character& c, Character& other, const Json& params);
 // The reach of an act: its range_m, else config.interaction_range_m.
 double reachOf(const World& w, const InteractionDef& d);
+// AL-108: an act with range_m >= config.ranged_from_m (a hunt, watching deer)
+// is done from afar; every other act is done up close.
+bool isRanged(const World& w, const InteractionDef& d);
+// How far from the target one stops to do the act: the range for a ranged act,
+// else config.contact_m (a thing: its stand_m when it has one).
+double approachOf(const World& w, const InteractionDef& d, const WorldObject* target = nullptr);
+// How far the target may be while the act runs: the range for a ranged act,
+// else contact_m + contact_slack_m (a thing: at least its stand_m + 0.25).
+double workReachOf(const World& w, const InteractionDef& d, const WorldObject* target = nullptr);
+// AL-108: turn everyone to what they do (the act's target) or where they walk.
+void faceAll(World& w);
 // The nearest live group of a species within the tracking radius of `from`.
 // Livestock (domestic species) is found only among `family`'s own herds.
 EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius, EntityId family = kNone);

@@ -211,6 +211,8 @@ TEST(altera_sim_social_player_order_and_player_answer) {
     CHECK(!w.character(A)->ai.goal.valid());
     // Now B (an NPC) asks the player's person: the player answers no.
     w.character(A)->moodlets.clear();
+    // a neighbour who came up to talk to A meanwhile (AL-108: one walks up close) is sent off
+    if (w.character(A)->ai.social.active()) endSocial(w, *w.character(A), "test");
     w.character(B)->ai.fsm = FsmState{};
     w.character(A)->ai.fsm = FsmState{};
     std::string why;

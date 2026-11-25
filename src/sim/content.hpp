@@ -461,6 +461,12 @@ struct AiConfig {
     Tick reserveTicks = 36;
     double walkMPerTick = 800.0;
     double interactionRangeM = 15.0;
+    // AL-108: acts are done up close. One walks to contactM of a person or a
+    // herd and works only within contactM + contactSlackM of it; an act whose
+    // range_m is rangedFromM or more (a spear throw, watching deer) is ranged.
+    double contactM = 1.2;
+    double contactSlackM = 1.3;
+    double rangedFromM = 10.0;
     double legalBase = 4.0;
     double perceptionRadiusM = 40.0; // witnesses of public acts
     double noticeChance = 0.25;      // a bystander notices a secret act

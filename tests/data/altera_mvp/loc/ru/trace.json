@@ -18,6 +18,7 @@
     },
     "fsm": {
       "abort": "Прервано «{action}»: {why}",
+      "approach": "Подходит ближе для «{action}»",
       "arrived": "{self} дош{self:g|ёл|ла} до {target:gen}",
       "done": "Выполнено: «{action}»",
       "enter": "Состояние «{state}» на {ticks} {ticks:plural|тик|тика|тиков}",

@@ -193,11 +193,11 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
     for (const auto& [type, p] : typePos) {
         // AL-78: "there already" by the act's own reach when it is the act at the end
         // (a drink at the well wants one by its rim, not fifteen metres off)
-        double near = cfg.interactionRangeM;
-        if (finalAction && finalAction->targetType == type) {
-            const auto od = w.content().objects.find(type);
-            near = std::max(reachOf(w, *finalAction), od != w.content().objects.end() ? od->second.standM + 0.25 : 0.0);
-        }
+        // AL-108: every other act is done up close too (a thing by its stand_m)
+        double near = cfg.contactM + cfg.contactSlackM;
+        if (finalAction && finalAction->targetType == type) near = workReachOf(w, *finalAction);
+        if (const auto od = w.content().objects.find(type); od != w.content().objects.end())
+            near = std::max(near, od->second.standM + 0.25);
         if (dist(p, c.pos) <= near) {
             start.at = type;
             start.pos = p;
