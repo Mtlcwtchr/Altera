@@ -125,6 +125,12 @@ TEST(lr_sim_charcreate_rules_and_cost) {
         CHECK(r["look"]["m"]["skin"].size() >= 1);
         CHECK(r["look"]["f"].contains("hair"));
         CHECK(!r["look"]["f"].contains("beard"));
+        // LR-139: each kind its own cuts and beards
+        const Json& mb = r["look"]["m"]["beard"];
+        auto has = [](const Json& a, const char* v) { return std::find(a.begin(), a.end(), v) != a.end(); };
+        if (r["id"] == "elf") CHECK(mb == Json::array({"no"}));
+        if (r["id"] == "dwarf") CHECK(!has(mb, "no") && has(mb, "braided"));
+        if (r["id"] == "human") CHECK(has(mb, "stubble") && has(r["look"]["f"]["hair"], "ponytail"));
     }
     CHECK(giftHuman > 0);
     CHECK(giftElf <= giftHuman); // elves are gifted more often: the gift costs them less

@@ -69,6 +69,11 @@ const GearRules* gearRules(const Content& c) {
             g.warmth = v.value("warmth", 0.0);
         };
         readItem(j.value("default", Json::object()), r->fallback);
+        const Json base = j.value("base_clothes", Json::object());
+        for (const auto& [who, set] : base.items())
+            if (set.is_object())
+                for (const auto& [item, n] : set.items())
+                    if (n.is_number_integer()) r->baseClothes[who][item] = n.get<int>();
         // stack sizes from items.json (how many small things share a cell)
         if (const fs::path ip = fs::path(c.dir) / "items.json"; data::exists(ip)) {
             data::InFile fi(ip, std::ios::binary);
@@ -280,10 +285,30 @@ void dressTick(World& w) {
     if (!R) return;
     const bool start = w.now() == 0;
     for (auto& [id, c] : w.characters()) {
+        if (start && c.body.alive && !c.isAnimal()) giveBaseClothes(w, c);   // LR-139: nobody starts naked
         if (!c.body.alive || c.isAnimal() || c.inventory.empty()) continue;
         if (c.controller.isPlayer() && !start) continue;   // the player dresses his person himself
         wearAll(*R, c);
     }
+}
+
+void giveBaseClothes(World& w, Character& c) {
+    if (c.isAnimal()) return;
+    const GearRules* R = gearRules(w.content());
+    if (!R || R->baseClothes.empty()) return;
+    const std::string who = c.body.stage() == "child" ? "child" : (c.body.sex == 'f' ? "f" : "m");
+    const auto set = R->baseClothes.find(who);
+    if (set == R->baseClothes.end()) return;
+    for (const auto& [item, n] : set->second) {
+        const GearItem& g = R->item(item);
+        if (g.slot.empty() || n <= 0) continue;
+        if (c.worn.count(g.slot + ":" + g.layer)) continue;   // already dressed there
+        bool has = false;                                      // or carries something for that layer
+        for (const auto& [k, m] : c.inventory)
+            if (m > 0 && R->item(k).slot == g.slot && R->item(k).layer == g.layer) has = true;
+        if (!has) c.inventory[item] += n;
+    }
+    wearAll(*R, c);
 }
 
 namespace {

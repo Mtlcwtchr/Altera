@@ -75,6 +75,16 @@ const NeedDef* Content::need(const std::string& id) const {
         if (n.id == id) return &n;
     return nullptr;
 }
+const DerivedNeedDef* Content::derivedNeed(const std::string& id) const {
+    for (const auto& n : derivedNeeds)
+        if (n.id == id) return &n;
+    return nullptr;
+}
+const NeedTierDef* Content::tierOfNeed(const std::string& need) const {
+    for (const auto& t : needTiers)
+        if (std::find(t.needs.begin(), t.needs.end(), need) != t.needs.end()) return &t;
+    return nullptr;
+}
 const GoalDef* Content::goal(const std::string& id) const {
     for (const auto& g : goals)
         if (g.id == id) return &g;
@@ -300,6 +310,54 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.value = opt(j, "value", 0.0);
         d.ttl = opt<Tick>(j, "ttl", 72);
         c.moodlets[d.id] = d;
+    }
+
+    // LR-140: derived needs, the tiers and their gate.
+    for (const auto& j : needs.value("derived", Json::array())) {
+        warnUnknown(j, {"id", "inputs", "season_norm", "adult_only", "care"}, "needs.derived", W);
+        DerivedNeedDef d;
+        d.id = j.at("id").get<std::string>();
+        for (const auto& x : j.value("inputs", Json::array())) {
+            warnUnknown(x, {"input", "w", "norm"}, "needs.derived.inputs", W);
+            d.inputs.push_back({x.at("input").get<std::string>(), opt(x, "w", 1.0), opt(x, "norm", 0.0)});
+        }
+        d.seasonNorm = opt(j, "season_norm", std::map<std::string, double>{});
+        d.adultOnly = opt(j, "adult_only", false);
+        if (j.contains("care")) {
+            const Json& k = j["care"];
+            warnUnknown(k, {"base", "reputation", "traits"}, "needs.derived.care", W);
+            d.weighted = true;
+            d.careBase = opt(k, "base", 0.5);
+            d.careReputation = opt(k, "reputation", std::string());
+            d.careTraits = opt(k, "traits", std::map<std::string, double>{});
+        }
+        if (c.need(d.id) || c.derivedNeed(d.id)) err.add("needs.derived: duplicate id " + d.id);
+        c.derivedNeeds.push_back(d);
+    }
+    for (const auto& j : needs.value("tiers", Json::array())) {
+        warnUnknown(j, {"id", "order", "needs", "gate"}, "needs.tiers", W);
+        NeedTierDef t;
+        t.id = j.at("id").get<std::string>();
+        t.order = opt(j, "order", 0);
+        t.needs = opt(j, "needs", std::vector<std::string>{});
+        t.gate = opt(j, "gate", t.needs);
+        for (const auto& n : t.needs)
+            if (!c.need(n) && !c.derivedNeed(n)) err.add("needs.tiers." + t.id + ": unknown need " + n);
+        c.needTiers.push_back(t);
+    }
+    if (needs.contains("tier_gate")) {
+        const Json& g = needs["tier_gate"];
+        warnUnknown(g, {"on", "curve", "floor", "goal_tier", "rate_per_day", "step_ticks"}, "needs.tier_gate", W);
+        TierGateDef& d = c.tierGate;
+        d.on = opt(g, "on", true);
+        if (g.contains("curve")) {
+            d.k = opt(g["curve"], "k", d.k);
+            d.x0 = opt(g["curve"], "x0", d.x0);
+        }
+        d.floor = opt(g, "floor", d.floor);
+        d.goalTier = opt(g, "goal_tier", std::map<std::string, std::string>{});
+        d.ratePerDay = opt(g, "rate_per_day", d.ratePerDay);
+        d.stepTicks = std::max(1, opt(g, "step_ticks", d.stepTicks));
     }
 
     for (const auto& j : traits.value("traits", Json::array())) {

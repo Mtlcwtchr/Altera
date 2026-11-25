@@ -9,6 +9,7 @@
 #include "sim/ai.hpp"
 #include "sim/news.hpp"
 #include "sim/building.hpp"
+#include "sim/need_tiers.hpp"
 
 namespace lr::sim {
 
@@ -19,7 +20,7 @@ double inputValue(const World& w, const Character& c, const Consideration& k) {
     const std::string subj = k.input.substr(0, colon);
     const std::string key = colon == std::string::npos ? "" : k.input.substr(colon + 1);
     const double norm = k.norm > 0.0 ? k.norm : 1.0;
-    if (subj == "need") return c.need(key);
+    if (subj == "need") return needPull(w.content(), c, key); // LR-140: a derived need weighs by care
     if (subj == "time") return (key == "night") == w.isNight() ? 1.0 : 0.0;
     if (subj == "body") return key == "health" ? c.body.health : c.body.fatigue;
     if (subj == "has") return clamp01(c.has(key) / norm);
@@ -107,6 +108,11 @@ std::vector<GoalScore> scoreGoals(const World& w, const Character& c) {
             score += (1.0 - score) * mod * score;
         }
         score *= g.base;
+        // LR-140: the tiers below the goal's own (Maslow, not strict: a floor).
+        if (const double gate = tierGate(w, c, g.id); gate < 1.0) {
+            score *= gate;
+            gs.why["tier"] = round3(gate);
+        }
         // Traits.
         double tm = 1.0;
         for (const auto& t : c.traits) {

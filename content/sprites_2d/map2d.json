@@ -1,5 +1,5 @@
 {
- "_doc": "AL-95: how the 2D client draws the sim (gdd/ui/client_2d/CLIENT_2D.md). ground: what the cells of a biome, a village zone (kind or its prefix before ':') and a road kind are (src/client2d/grid2d.cpp reads it). tiles: ground -> sprite (variants by the cell's hash). objects: object type -> sprite and recolour (palette letters of sprites.json; content/sprites_2d/resources.json adds the resource pack's, these win), glyph and colour for the symbol mode; hidden: types not drawn (the map shows them otherwise). wear: worn item -> pawn layer (layer_f for women) and colour (family: the household's colour; a dyed made thing takes its colour from dyes, AL-109); outfit: what a person wears when the sim gives nothing (by sex, child); tools: the held item (people's `held`, AL-109: the act's tool or a carried weapon) -> the hand drawing of the pawn, first substring match wins. acts: interaction id regex -> the icon over the head.",
+ "_doc": "AL-95: how the 2D client draws the sim (gdd/ui/client_2d/CLIENT_2D.md). ground: what the cells of a biome, a village zone (kind or its prefix before ':') and a road kind are (src/client2d/grid2d.cpp reads it). tiles: ground -> sprite (variants by the cell's hash). objects: object type -> sprite and recolour (palette letters of sprites.json; content/sprites_2d/resources.json adds the resource pack's, these win), glyph and colour for the symbol mode; hidden: types not drawn (the map shows them otherwise). wear: worn item -> pawn layer (layer_f for women) and colour (family: the household's colour; a dyed made thing takes its colour from dyes, AL-109); Nothing worn on the torso: the pawn is drawn bare (LR-139; the sim dresses everyone at the start, content/ai/gear.json base_clothes); tools: the held item (people's `held`, AL-109: the act's tool or a carried weapon) -> the hand drawing of the pawn, first substring match wins. acts: interaction id regex -> the icon over the head.",
  "ground": {
   "biome": {"meadow": "meadow", "forest": "forest", "marsh": "marsh", "steppe": "grass", "desert": "sand", "mountains": "dirt"},
   "zone": {"field": "field", "work": "dirt", "cemetery": "grass", "pasture": "meadow"},
@@ -94,11 +94,6 @@
   "pack_basket": {"layer": "pack", "colour": "#b08a48"}
  },
  "dyes": {"blue": "#3a5aa0", "red": "#a8382a", "yellow": "#c8a030"},
- "outfit": {
-  "m": [["shirt", "family"], ["pants", "#5a4630"], ["belt", "#4a2c18"]],
-  "f": [["robe", "family"], ["apron", "#e8e0d0"], ["belt", "#7a4a28"]],
-  "child": [["robe", "family"]]
- },
  "family_colours": ["#a8402c", "#3a6aa8", "#3c6a34", "#c08030", "#5a3a78", "#6a6a68", "#a85a30", "#2a4a98"],
  "tools": [["pitchfork", "fork"], ["fishing_rod", "rod"], ["digging_stick", "stick"], ["hammer", "hammer"], ["tongs", "hammer"],
   ["sickle", "sickle"], ["spear", "spear"], ["sword", "sword"], ["dagger", "knife"], ["knife", "knife"], ["stone_blade", "knife"],

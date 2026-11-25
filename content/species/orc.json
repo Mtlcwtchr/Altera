@@ -9,11 +9,23 @@
  "body": {
   "height_m": 1.85,
   "mass_kg": 95,
-  "sprite_px": 20,
+  "sprite_px": 21,
   "night_vision": 0.5,
   "speed_mult": 1.0,
   "reach_mult": 1.08,
-  "skin": "#7a9a4a"
+  "skin": "#7a9a4a",
+  "pawn": {
+   "head": "wide",
+   "build": "broad",
+   "tusks": "yes",
+   "brow": "heavy",
+   "ears": "half",
+   "eyes": "#c83a20",
+   "beard": "rare",
+   "hair_m": "mohawk topknot cropped bald ponytail",
+   "hair_f": "braids ponytail mohawk long topknot",
+   "beards": "stubble goatee moustache"
+  }
  },
  "life": {
   "adult_years": 11,

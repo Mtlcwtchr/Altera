@@ -16,6 +16,16 @@
   }
  },
  "body": {
-  "skin": "#a8a868"
+  "skin": "#a8a868",
+  "pawn": {
+   "tusks": "small",
+   "brow": "heavy",
+   "ears": "",
+   "eyes": "",
+   "beard": "rare",
+   "hair_m": "mohawk cropped short topknot ponytail",
+   "hair_f": "braids ponytail long curly",
+   "beards": "stubble goatee full moustache"
+  }
  }
 }

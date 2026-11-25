@@ -750,6 +750,7 @@ void openWorkshop(Ctx& c, Screens& s) {
     w->tab = "bench";
     w->width = 0.92f;
     w->height = 0.9f;
+    w->autoFit = true;   // LR-143
     w->data = {{"draft", Json::object()}, {"wish", ""}, {"heat", -1}, {"tx", Json::object()}, {"holdAt", 0.0}};
     Craft{c, *w}.load(SDL_getenv("LR_2D_KIT") ? Json{{"kit", true}} : Json::object());
     w->render = [](Ctx& c, Win& w, const ui::Rect& body) {

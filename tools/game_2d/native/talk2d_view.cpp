@@ -618,6 +618,7 @@ void openTalk(Ctx& c, Screens& s, long long target, bool trade) {
     auto w = std::make_unique<Win>();
     w->width = 0.84f;
     w->height = 0.86f;
+    w->autoFit = true;   // LR-143
     if (!trade) {
         w->id = "talk";
         w->data = {{"id", target}, {"tone", ""}, {"sphere", ""}};

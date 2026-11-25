@@ -72,6 +72,8 @@ RaceDef blendOf(const RaceDef& a, const RaceDef& b) {
     r.reachMult = avg(a.reachMult, b.reachMult);
     r.spritePx = std::max(a.spritePx, b.spritePx);
     r.skin = b.skin.empty() ? a.skin : b.skin;
+    r.pawn = a.pawn;
+    for (const auto& [k, v] : b.pawn) r.pawn[k] = v;
     r.adultYears = static_cast<int>(std::lround(avg(a.adultYears, b.adultYears)));
     r.elderYears = static_cast<int>(std::lround(avg(a.elderYears, b.elderYears)));
     r.lifespanYears = static_cast<int>(std::lround(avg(a.lifespanYears, b.lifespanYears)));
@@ -104,6 +106,10 @@ void readRace(const Json& j, RaceDef& r) {
     r.massKg = num(b, "mass_kg", r.massKg);
     r.spritePx = inum(b, "sprite_px", r.spritePx);
     r.skin = b.value("skin", r.skin);
+    const Json pawn = b.value("pawn", Json::object());   // a local: items() of a temporary dangles
+    for (const auto& [k, v] : pawn.items())
+        if (v.is_string()) r.pawn[k] = v.get<std::string>();
+        else if (v.is_boolean()) r.pawn[k] = v.get<bool>() ? "yes" : "";
     r.nightVision = num(b, "night_vision", r.nightVision);
     r.speedMult = num(b, "speed_mult", r.speedMult);
     r.reachMult = num(b, "reach_mult", r.reachMult);

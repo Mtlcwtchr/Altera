@@ -9,11 +9,20 @@
  "body": {
   "height_m": 1.78,
   "mass_kg": 58,
-  "sprite_px": 20,
+  "sprite_px": 21,
   "night_vision": 0.2,
   "speed_mult": 1.08,
   "reach_mult": 1.0,
-  "skin": "#f2d6b8"
+  "skin": "#f2d6b8",
+  "pawn": {
+   "ears": "pointed",
+   "head": "long",
+   "build": "slim",
+   "beard": "never",
+   "eyes": "#3a6a9a",
+   "hair_m": "long long ponytail topknot short",
+   "hair_f": "long long braids bun ponytail"
+  }
  },
  "life": {
   "adult_years": 50,

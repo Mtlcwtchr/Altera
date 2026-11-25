@@ -382,7 +382,8 @@ add_library(lr_sim STATIC
         src/sim/craft/craft_magic.cpp
         src/sim/craft_sim.cpp
         src/sim/alchemy.cpp
-        src/sim/building.cpp)
+        src/sim/building.cpp
+        src/sim/need_tiers.cpp)
 target_include_directories(lr_sim PUBLIC src)
 target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat PRIVATE asr_warnings)
 
@@ -886,6 +887,7 @@ if(ASR_BUILD_TESTS)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_need_tiers.cpp)       # LR-140
     target_include_directories(lr_sim_tests PRIVATE src tests)
     target_link_libraries(lr_sim_tests PRIVATE lr_sim lr_client2d asr_warnings)
     target_compile_definitions(lr_sim_tests PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

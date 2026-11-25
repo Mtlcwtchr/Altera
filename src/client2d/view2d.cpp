@@ -9,6 +9,7 @@
 
 #include "client2d/grid2d.hpp"
 #include "sim/ai.hpp"
+#include "sim/need_tiers.hpp"
 #include "sim/combat_bridge.hpp"
 
 namespace lr::client2d {
@@ -119,12 +120,17 @@ std::string heldOf(const World& w, const Character& c) {
 
 // AL-114: the kind as the 2D client draws it: sprite size, skin, glyph, stone in the sun.
 static void raceJson(const World& w, const Character& c, Json& p) {
-    if (c.race.empty()) return;
+    if (c.race.empty()) {   // LR-139: a human (the default kind) still has its hair and beard sets
+        if (w.content().peoples.loaded && !c.isAnimal())
+            if (const sim::RaceDef& r = sim::raceOf(w.content(), c); !r.pawn.empty()) p["rlook"] = r.pawn;
+        return;
+    }
     const sim::RaceDef& r = sim::raceOf(w.content(), c);
     p["race"] = c.race;
     p["rpx"] = r.spritePx;
     if (!r.skin.empty()) p["rskin"] = r.skin;
     if (!r.glyph.empty()) p["rg"] = r.glyph;
+    if (!r.pawn.empty()) p["rlook"] = r.pawn;   // LR-139: ears, head, tusks, build...
     if (c.body.petrified) p["stone"] = true;
 }
 
@@ -230,13 +236,10 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
         const std::string k = "news.trade." + c.occupation + (c.body.sex == 'f' ? ".f" : ".m");
         d["occn"] = t.loc->has(t.lang, k) ? t.loc->text(t.lang, k) : c.occupation;
     }
-    Json needs = Json::array();
-    for (const auto& nd : w.content().needs) {
-        auto it = c.needs.find(nd.id);
-        if (it == c.needs.end()) continue;
-        needs.push_back({{"id", nd.id}, {"name", t.name("need", nd.id)}, {"v", r2(it->second)}, {"crit", r2(nd.critical)}});
-    }
+    Json needs, tiers;
+    needsJson(w, t, c, needs, tiers, true);
     d["needs"] = needs;
+    d["tiers"] = tiers; // LR-140
     // LR-137: what the pixel HUD shows of a person at a glance (the hero frame, the column)
     d["blood"] = r2(c.body.blood / 100.0);
     Json attrs = Json::array();
@@ -347,6 +350,29 @@ Json clockJson(const World& w) {
         j["weather"] = {{"t", std::round(dw.tempC * 10) / 10}, {"rain", std::round(dw.rainMm * 10) / 10}, {"wet", dw.wet}};
     }
     return j;
+}
+
+void needsJson(const World& w, const ViewText& t, const Character& c, Json& needs, Json& tiers, bool withCrit) {
+    const Content& ct = w.content();
+    needs = Json::array();
+    tiers = Json::array();
+    auto add = [&](const std::string& id, const NeedDef* nd) {
+        auto it = c.needs.find(id);
+        if (it == c.needs.end()) return;
+        Json n = {{"id", id}, {"name", t.name("need", id)}, {"v", r2(it->second)}, {"tier", needTier(ct, id)},
+                  {"derived", nd == nullptr}, {"care", r2(needCare(ct, c, id))}};
+        if (withCrit && nd) n["crit"] = r2(nd->critical);
+        needs.push_back(n);
+    };
+    for (const auto& nd : ct.needs) add(nd.id, &nd);
+    if (!c.isAnimal())
+        for (const auto& dn : ct.derivedNeeds) add(dn.id, nullptr);
+    if (c.isAnimal()) return;
+    for (const TierView& tv : needTiersOf(w, c)) {
+        Json ids = Json::array();
+        for (const auto& n : tv.needs) ids.push_back(n.id);
+        tiers.push_back({{"id", tv.id}, {"name", t.name("need_tier", tv.id)}, {"order", tv.order}, {"sat", r2(tv.sat)}, {"needs", ids}});
+    }
 }
 
 } // namespace lr::client2d

@@ -53,6 +53,8 @@ struct GearRules {
     std::vector<GearSlot> slots;
     std::map<std::string, GearItem> items;
     std::map<std::string, int> stacks;   // items.json stack: small things a cell holds
+    // LR-139: the plain clothes everyone starts in, by "m" | "f" | "child" (gear.json base_clothes)
+    std::map<std::string, std::map<std::string, int>> baseClothes;
     GearItem fallback;
     const GearItem& item(const std::string& id) const {
         auto it = items.find(id);
@@ -107,6 +109,11 @@ void wearAll(const GearRules& R, Character& c);
 // player puts on what carried thing can be worn in a free layer (a new tunic, a
 // helmet picked up); at the world's first tick the player's person too (its start).
 void dressTick(World& w);
+
+// LR-139: a person made by the world (worldgen, a birth, a newcomer) gets the plain
+// clothes of gear.json base_clothes for its sex/age, unless it already carries a thing
+// for that slot, and puts them on. Without a shirt a pawn is drawn naked.
+void giveBaseClothes(World& w, Character& c);
 
 // Commands: wear {id, item}, take_off {id, item}, gear_pin {id, item, grid, x, y, turned?} | {id, item, clear: true}.
 void installGear(World& w);

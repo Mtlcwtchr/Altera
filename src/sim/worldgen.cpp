@@ -1,5 +1,6 @@
 #include <set>
 #include <functional>
+#include "sim/gear.hpp"
 #include "sim/worldgen.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/village_life.hpp"
@@ -677,6 +678,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             c.home = fam.storage;
             Character& placed = w.addCharacter(std::move(c));
             raceAtBirth(w, placed);
+            giveBaseClothes(w, placed);   // LR-139: everyone starts in plain clothes
             members.push_back(placed.id);
             return placed;
         };

@@ -457,7 +457,7 @@ ValidationReport validate(const Content& c) {
             const auto colon = k.input.find(':');
             const std::string subj = k.input.substr(0, colon);
             const std::string key = colon == std::string::npos ? "" : k.input.substr(colon + 1);
-            if (subj == "need" && !c.need(key)) v.err(where + ": unknown need input '" + k.input + "'");
+            if (subj == "need" && !c.need(key) && !c.derivedNeed(key)) v.err(where + ": unknown need input '" + k.input + "'");
             else if ((subj == "has" || subj == "home") && !c.items.count(key))
                 v.err(where + ": unknown item input '" + k.input + "'");
             else if (subj != "need" && subj != "has" && subj != "home" && subj != "time" && subj != "body" &&

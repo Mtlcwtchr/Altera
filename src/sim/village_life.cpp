@@ -1,5 +1,6 @@
 // Village life (village_life.hpp, AL-39).
 
+#include "sim/gear.hpp"
 #include "sim/village_life.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/world_reactions.hpp"
@@ -468,6 +469,7 @@ EntityId bear(World& w, Character& mother, Character* father, Rng& rng, const Vi
     k.knownObjects = mother.knownObjects;
     Character& child = w.addCharacter(std::move(k));
     raceAtBirth(w, child); // AL-114: the gift (trait gifted) by the kind's chance
+    giveBaseClothes(w, child); // LR-139: a newborn is swaddled
     const EntityId cid = child.id;
     if (fam != w.families().end()) fam->second.members.push_back(cid);
     // (pointers into the map stay valid: std::map nodes do not move)

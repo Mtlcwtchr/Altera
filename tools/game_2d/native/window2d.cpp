@@ -202,6 +202,7 @@ struct Vis {
     char face = 'S';
     int bob = 0;
     bool moving = false, driven = false;
+    double walked = 0;   // LR-139: metres walked, the step of the walk cycle
 };
 
 struct Bubble {
@@ -457,6 +458,7 @@ struct Window::Impl : Ctx {
         SDL_SetRenderDrawColorFloat(ren, c.r, c.g, c.b, c.a);
         const SDL_FRect r{x, y, w, h};
         SDL_RenderFillRect(ren, &r);
+        ui.ink({x, y, w, h});
     }
     void frame(float x, float y, float w, float h, const ui::Colour& c, float t) override {
         fill(x, y, w, t, c);
@@ -602,9 +604,23 @@ struct Window::Impl : Ctx {
         return atlas.put(k, sprites.get(name, rc));
     }
     Sprite pawnSprite(const PawnSpec& spec, char side, int bob) {
-        const std::string k = "p:" + spec.key() + side + char('0' + bob);
+        PawnPose pose;
+        pose.bob = bob;
+        return pawnSprite(spec, side, pose);
+    }
+    Sprite pawnSprite(const PawnSpec& spec, char side, const PawnPose& pose) {
+        const std::string k = "p:" + spec.key() + side + pose.key();
         if (const Sprite* s = atlas.find(k)) return *s;
-        return atlas.put(k, pawnPixels(spec, side, bob));
+        return atlas.put(k, pawnPixels(spec, side, pose));
+    }
+    // LR-139: the frame of the pawn's walk, work or idle breath now
+    PawnPose poseOf(const Json& p, const Vis& v) const {
+        return pawnPose(v.moving, v.walked, str(p, "st") == "Work", nowMs(), ident(p, "id"));
+    }
+    // LR-139: a person's height against the kind's: each one a little taller or shorter
+    static float heightK(const Json& p) {
+        const std::uint32_t h = idHash(num(p, "id"), 11);
+        return 0.94f + float(h % 13) * 0.01f;
     }
     Sprite beastSprite(const std::string& sp, char face) {
         const std::string k = std::string("b:") + sp + face;
@@ -614,6 +630,7 @@ struct Window::Impl : Ctx {
     void blit(const Sprite& s, float x, float y, float w, float h, float alpha = 1.0f, double angle = 0) {
         if (!s) return;
         SDL_SetTextureAlphaModFloat(s.tex, alpha);
+        ui.ink({x, y, w, h});
         const SDL_FRect d{x, y, w, h};
         if (angle != 0) SDL_RenderTextureRotated(ren, s.tex, &s.src, &d, angle, nullptr, SDL_FLIP_NONE);
         else SDL_RenderTexture(ren, s.tex, &s.src, &d);
@@ -627,24 +644,71 @@ struct Window::Impl : Ctx {
         if (!list.is_array() || list.empty()) return "#8a6a48";
         return list[idHash(std::max(0.0, num(p, "famId")), 3) % list.size()].get<std::string>();
     }
+    // LR-139: an entry of a list in pawns2d.json npc (the fallback when the data has none)
+    static std::string npcPick(const char* key, std::uint32_t k, const char* fallback) {
+        const Json& npc = pawnParts().contains("npc") ? pawnParts()["npc"] : Json::object();
+        if (!npc.contains(key) || !npc[key].is_array() || npc[key].empty()) return fallback;
+        const Json& v = npc[key][k % npc[key].size()];
+        return v.is_string() ? v.get<std::string>() : fallback;
+    }
+    static double npcNum(const char* key, double fallback) {
+        const Json& P = pawnParts();
+        if (!P.contains("npc") || !P["npc"].contains(key) || !P["npc"][key].is_number()) return fallback;
+        return P["npc"][key].get<double>();
+    }
     PawnSpec pawnSpec(const Json& p) const {
-        static const char* HAIR[] = {"#5a3a20", "#2a1a10", "#7a5030", "#d8a848", "#a85a30", "#3a2818"};
+        // how the people one meets look (pawns2d.json npc: bodies, skins, hair colours, beards, kerchiefs)
         const std::uint32_t h = idHash(num(p, "id"), 1);
         const double age = num(p, "age", 30);
-        const bool child = age < 13, f = str(p, "sex") == "f";
+        const bool child = age < npcNum("child_age", 13), f = str(p, "sex") == "f";
         PawnSpec spec;
         spec.child = child;
-        static const char* BODY[] = {"norm", "norm", "thin", "fat"};
-        spec.body = f ? "fem" : BODY[h % 4];
-        static const char* SKIN[] = {"light", "light", "light", "mid", "light", "mid", "light", "dark"};
-        spec.skin = SKIN[(h >> 3) % 8];
+        spec.body = f ? npcPick("bodies_f", h, "fem") : npcPick("bodies_m", h, "norm");
+        spec.skin = npcPick("skins", h >> 3, "light");
         if (!str(p, "rskin").empty()) spec.skin = str(p, "rskin");   // AL-114: the kind's skin
-        if (flag(p, "stone")) spec.skin = "#8c8c86";                 // a troll asleep as stone
-        std::string hc = HAIR[(h >> 6) % 6];
-        if (age >= 55) hc = "#b0b0a8";
-        static const char* FH[] = {"long", "bun", "braids", "long"};
-        spec.hair = {f ? FH[(h >> 9) % 4] : "short", hc};
-        if (!f && !child && age >= 18 && ((h >> 12) % 3)) spec.beard = true;
+        if (flag(p, "stone")) spec.skin = npcPick("stone", 0, "#8c8c86");   // a troll asleep as stone
+        // LR-139: the kind's look (species body.pawn): ears, head, nose, brow, eyes, tusks, build
+        std::string beardRule, hairRule, hairSet, beardSet;
+        if (p.contains("rlook") && p["rlook"].is_object()) {
+            const Json& rl = p["rlook"];
+            spec.ears = str(rl, "ears");
+            spec.head = str(rl, "head");
+            spec.nose = str(rl, "nose");
+            spec.brow = str(rl, "brow");
+            spec.eyes = str(rl, "eyes");
+            spec.tusks = str(rl, "tusks");
+            spec.build = child ? "" : str(rl, "build");
+            spec.skinPat = str(rl, "skin_pattern");
+            beardRule = str(rl, "beard");
+            hairRule = str(rl, "hair");
+            hairSet = str(rl, f ? "hair_f" : "hair_m");   // LR-139: the kind's cuts and beards
+            beardSet = str(rl, "beards");
+            if (child && spec.tusks == "yes") spec.tusks = "small";
+        }
+        std::string hc = npcPick("hair_colours", h >> 6, "#5a3a20");
+        if (age >= npcNum("grey_age", 55)) hc = npcPick("grey", 0, "#b0b0a8");
+        spec.hair = {f ? npcPick("hair_f", h >> 9, "long") : npcPick("hair_m", h >> 9, "short"), hc};
+        const int beardIn = std::max(1, int(npcNum("beard_one_in", 3)));   // all but one in N grown men
+        if (!f && !child && age >= npcNum("beard_age", 18) && ((h >> 12) % beardIn)) spec.beard = true;
+        if (beardRule == "never") spec.beard = false;
+        if (beardRule == "rare") spec.beard = spec.beard && (h >> 18) % std::max(1, int(npcNum("rare_one_in", 4))) == 0;
+        if (beardRule == "long" && !f && !child) spec.beard = spec.longBeard = true;   // a dwarf's pride
+        if (hairRule == "none") spec.hair.first = "none";
+        if (hairRule == "tuft") spec.hair.first = "tuft";
+        auto pick = [](const std::string& set, std::uint32_t k) {
+            std::vector<std::string> v;
+            std::istringstream in(set);
+            for (std::string w; in >> w;) v.push_back(w);
+            return v.empty() ? std::string() : v[k % v.size()];
+        };
+        const std::uint32_t h2 = idHash(num(p, "id"), 5);
+        if (!child)
+            if (const std::string cut = pick(hairSet, h2); !cut.empty()) spec.hair.first = cut;
+        if (spec.beard) {
+            const std::string bs = pick(beardSet, h2 >> 8);
+            if (bs.empty() && beardRule != "long") spec.beard = false;   // a kind without beards
+            else spec.beardStyle = bs;
+        }
         // AL-136: the look chosen at the character's creation
         if (p.contains("look") && p["look"].is_object()) {
             const Json& lk = p["look"];
@@ -652,7 +716,12 @@ struct Window::Impl : Ctx {
             if (!str(lk, "skin").empty() && !flag(p, "stone")) spec.skin = str(lk, "skin");
             if (!str(lk, "hair").empty()) spec.hair.first = str(lk, "hair");
             if (!str(lk, "hair_colour").empty()) spec.hair.second = str(lk, "hair_colour");
-            if (!str(lk, "beard").empty()) spec.beard = !f && !child && str(lk, "beard") == "yes";
+            if (const std::string b = str(lk, "beard"); !b.empty()) {
+                spec.beard = !f && !child && b != "no";
+                spec.beardStyle = b == "yes" || b == "no" ? "" : b;   // LR-139: a style, or the old yes = full
+                if (spec.beardStyle == "long") spec.longBeard = true;
+                else spec.longBeard = false;
+            }
         }
         std::vector<std::pair<std::string, std::string>> wear;
         std::set<std::string> kinds;
@@ -673,17 +742,8 @@ struct Window::Impl : Ctx {
                 else if (layer == "cap" || layer == "helmet" || layer == "hood") spec.hat = {layer, c};
                 else wear.push_back({layer, c});
             }
-        if (!kinds.count("shirt") && !kinds.count("robe") && !kinds.count("mail") && !kinds.count("tabard")) {
-            const Json of = MAP.value("outfit", Json::object()).value(child ? "child" : (f ? "f" : "m"), Json::array());
-            std::vector<std::pair<std::string, std::string>> base;
-            for (const auto& kc : of)
-                if (kc.is_array() && kc.size() >= 2) {
-                    std::string c = kc[1].get<std::string>();
-                    base.push_back({kc[0].get<std::string>(), c == "family" ? famColour(p) : c});
-                }
-            // unshift one by one: the last of the outfit ends first
-            for (const auto& b : base) wear.insert(wear.begin(), b);
-        }
+        // LR-139: what the sim says is worn, nothing more: without a torso thing the pawn is bare
+        spec.naked = !kinds.count("shirt") && !kinds.count("robe") && !kinds.count("mail") && !kinds.count("tabard");
         static const std::vector<std::string> order = {"shirt", "robe", "mail", "pants", "boots", "tabard", "apron", "belt", "bag", "pack"};
         auto rank = [&](const std::string& k) {
             const auto it = std::find(order.begin(), order.end(), k);
@@ -691,7 +751,8 @@ struct Window::Impl : Ctx {
         };
         std::stable_sort(wear.begin(), wear.end(), [&](const auto& a, const auto& b) { return rank(a.first) < rank(b.first); });
         spec.wear = wear;
-        if (spec.hat.first.empty() && f && !child && ((h >> 15) % 5) < 2) spec.hat = {"kerchief", "#e8e0d0"};
+        if (spec.hat.first.empty() && f && !child && !spec.naked && ((h >> 15) % 100) < npcNum("kerchief_pct", 40))
+            spec.hat = {"kerchief", npcPick("kerchief", 0, "#e8e0d0")};
         // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
         const std::string held = str(p, "held");
         if (MAP.contains("tools") && !held.empty())
@@ -822,6 +883,7 @@ struct Window::Impl : Ctx {
         const auto dir = root / "content/sprites_2d";
         sprites.load(parseOr(readText(dir / "sprites.json"), Json::object()));
         MAP = parseOr(readText(dir / "map2d.json"), Json::object());
+        loadPawnParts();   // LR-139: hair, beards, ears, builds... as data
         RES = parseOr(readText(dir / "resources.json"), Json());
         LOOK = parseOr(readText(dir / "craft2d.json"), Json::object());
         atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
@@ -1108,6 +1170,7 @@ struct Window::Impl : Ctx {
             const int before = int(std::floor(v.x)) + int(std::floor(v.y));
             v.x += dx / d * s;
             v.y += dy / d * s;
+            v.walked += s;
             v.moving = true;
             if (int(std::floor(v.x)) + int(std::floor(v.y)) != before) v.bob ^= 1;
             v.face = std::abs(dx) > std::abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
@@ -1256,10 +1319,12 @@ struct Window::Impl : Ctx {
             if (!path.empty()) s = std::min(sp, std::hypot(path.front().first - v.x, path.front().second - v.y));
             const double nx = v.x + dx / len * s, ny = v.y + dy / len * s;
             const int before = int(std::floor(v.x)) + int(std::floor(v.y));
+            const double wx = v.x, wy = v.y;
             if (moveOk(v.x, v.y, nx, ny)) v.x = nx, v.y = ny;
             else if (moveOk(v.x, v.y, nx, v.y)) v.x = nx;
             else if (moveOk(v.x, v.y, v.x, ny)) v.y = ny;
             else path.clear();
+            v.walked += std::hypot(v.x - wx, v.y - wy);
             if (int(std::floor(v.x)) + int(std::floor(v.y)) != before) v.bob ^= 1;
             v.face = std::abs(dx) > std::abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
             v.moving = true;
@@ -1440,11 +1505,9 @@ struct Window::Impl : Ctx {
             blit(beastSprite(sp, v.face == 'W' ? 'W' : 'E'), sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
             return;
         }
-        int bob = v.moving ? v.bob : 0;
-        if (!v.moving && st == "Work") bob = int((long long)(nowMs() / 350) + id) % 2;
-        const Sprite img = pawnSprite(pawnSpec(p), lying ? 'S' : v.face, lying ? 0 : bob);
-        // AL-114: a kind's size (a goblin 16, an ogre or a troll 32 px against the 20 of a man)
-        const float k = num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f;
+        const Sprite img = lying ? pawnSprite(pawnSpec(p), 'S', 0) : pawnSprite(pawnSpec(p), v.face, poseOf(p, v));
+        // AL-114: a kind's size (a goblin 16, an ogre or a troll 32 px against the 20 of a man); LR-139: and one's own
+        const float k = (num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f) * heightK(p);
         if (lying) {
             const float cx = sx, cy = sy - 3 * sc;
             blit(img, cx - 10 * sc * k, cy - 10 * sc * k, kPawn * sc * k, kPawn * sc * k, alive ? 1.0f : 0.6f, -90);
@@ -1645,10 +1708,9 @@ struct Window::Impl : Ctx {
             dst = {sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc};
             foot = sy + 4 * sc;
         } else {
-            int bob = v.moving ? v.bob : 0;
-            if (!v.moving && st == "Work") bob = int((long long)(nowMs() / 350) + ident(p, "id")) % 2;
-            img = pawnSprite(pawnSpec(p), v.face, bob);
-            dst = {sx - 10 * sc, sy - 18 * sc, kPawn * sc, kPawn * sc};
+            img = pawnSprite(pawnSpec(p), v.face, poseOf(p, v));
+            const float k = (num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f) * heightK(p);
+            dst = {sx - 10 * sc * k, sy - 18 * sc * k, kPawn * sc * k, kPawn * sc * k};
             foot = sy + 1 * sc;
         }
         return bool(img);
@@ -2266,10 +2328,15 @@ struct Window::Impl : Ctx {
             text(x + 2 * U, y, L("ui2d.needs"), kGold, 13 * U, true);
             y += 19 * U;
             std::set<std::string> placed;
-            auto tierRows = [&](const std::string& tid, const std::vector<std::pair<const Json*, std::string>>& list) {
+            // a need that matters little to this person (care, LR-140: grace of a non-believer) is dimmed
+            auto careless = [](const Json& n) { return n.contains("care") && n["care"].is_number() && n["care"].get<double>() < 0.3; };
+            auto tierRows = [&](const std::string& tid, const std::string& title, double sat,
+                                const std::vector<std::pair<const Json*, std::string>>& list) {
                 if (list.empty()) return;
                 double worst = 1;
-                for (const auto& [n, ic] : list) worst = std::min(worst, num(*n, "v"));
+                for (const auto& [n, ic] : list)
+                    if (!careless(*n)) worst = std::min(worst, num(*n, "v"));
+                if (sat >= 0) worst = sat;   // the sim's own measure of the tier
                 // a fold row with the worst need's pips inside
                 const float h = 20 * U;
                 const bool open = !folded.count("tier." + tid);
@@ -2277,10 +2344,10 @@ struct Window::Impl : Ctx {
                 well(rr);
                 const bool over = rr.contains(in.mouseX, in.mouseY);
                 text(x + 5 * U, y + 3 * U, open ? "v" : ">", kGold, 12 * U);
-                text(x + 18 * U, y + 3 * U, L("ui2d.tier." + tid), over ? kText : kGold, 13 * U);
+                text(x + 18 * U, y + 3 * U, title, over ? kText : kGold, 13 * U);
                 const std::string wn = std::to_string(int(std::lround(worst * 100)));
                 text(x + w - 5 * U - textW(wn, 11 * U), y + 4 * U, wn, kDim, 11 * U);
-                pips(x + w - 34 * U - 5 * 4 * pp, y + (h - 4 * pp) / 2, 5, worst, tone(worst));
+                pips(x + w - 40 * U - 5 * 4 * pp, y + (h - 4 * pp) / 2, 5, worst, tone(worst));
                 if (over && in.pressed && !screens->any()) {
                     if (open) folded.insert("tier." + tid);
                     else folded.erase("tier." + tid);
@@ -2292,28 +2359,49 @@ struct Window::Impl : Ctx {
                     const float rh = 19 * U;
                     icon(ic, x + 12 * U, y + (rh - iconSize()) / 2);
                     const std::string vn = std::to_string(int(std::lround(v * 100)));
-                    text(x + 12 * U + iconSize() + 5 * U, y + 3 * U, ui.fit(str(*n, "name"), w - 120 * U, fs(12 * U)), v < 0.6 ? kGold : kText, 12 * U);
-                    pips(x + w - 34 * U - 5 * 4 * pp, y + (rh - 4 * pp) / 2, 5, v, tone(v));
+                    const ui::Colour nc = careless(*n) ? kDim : v < 0.6 ? kGold : kText;
+                    text(x + 12 * U + iconSize() + 5 * U, y + 3 * U, ui.fit(str(*n, "name"), w - 120 * U, fs(12 * U)), nc, 12 * U);
+                    pips(x + w - 40 * U - 5 * 4 * pp, y + (rh - 4 * pp) / 2, 5, v, tone(v));
                     text(x + w - 5 * U - textW(vn, 11 * U), y + 4 * U, vn, kDim, 11 * U);
                     y += rh;
                 }
                 y += 3 * U;
             };
-            for (const auto& t : HUD.value("tiers", Json::array())) {
-                std::vector<std::pair<const Json*, std::string>> list;
+            // the icons by need id (hud2d.json)
+            std::map<std::string, std::string> needIcon;
+            for (const auto& t : HUD.value("tiers", Json::array()))
                 for (const auto& e : arr(t, "needs"))
-                    if (e.is_array() && e.size() >= 2)
-                        for (const auto& n : needs)
-                            if (str(n, "id") == e[0].get<std::string>()) {
-                                list.push_back({&n, e[1].get<std::string>()});
-                                placed.insert(str(n, "id"));
-                            }
-                tierRows(str(t, "id"), list);
-            }
+                    if (e.is_array() && e.size() >= 2) needIcon[e[0].get<std::string>()] = e[1].get<std::string>();
+            auto iconOf = [&](const std::string& id) {
+                const auto it = needIcon.find(id);
+                return it != needIcon.end() ? it->second : HUD.value("other_need", "");
+            };
+            auto take = [&](const std::string& id, std::vector<std::pair<const Json*, std::string>>& list) {
+                for (const auto& n : needs)
+                    if (str(n, "id") == id && !placed.count(id)) {
+                        list.push_back({&n, iconOf(id)});
+                        placed.insert(id);
+                    }
+            };
+            if (const Json& tiers = arr(d, "tiers"); !tiers.empty()) {
+                // LR-140: the sim's tiers, in the pyramid's order, with their names and fill
+                for (const auto& t : tiers) {
+                    std::vector<std::pair<const Json*, std::string>> list;
+                    for (const auto& id : arr(t, "needs"))
+                        if (id.is_string()) take(id.get<std::string>(), list);
+                    tierRows(str(t, "id"), str(t, "name"), t.contains("sat") && t["sat"].is_number() ? t["sat"].get<double>() : -1, list);
+                }
+            } else
+                for (const auto& t : HUD.value("tiers", Json::array())) {   // an older sim: the tiers of hud2d.json
+                    std::vector<std::pair<const Json*, std::string>> list;
+                    for (const auto& e : arr(t, "needs"))
+                        if (e.is_array() && !e.empty()) take(e[0].get<std::string>(), list);
+                    tierRows(str(t, "id"), L("ui2d.tier." + str(t, "id")), -1, list);
+                }
             std::vector<std::pair<const Json*, std::string>> rest;
             for (const auto& n : needs)
-                if (!placed.count(str(n, "id"))) rest.push_back({&n, HUD.value("other_need", "")});
-            tierRows("other", rest);
+                if (!placed.count(str(n, "id"))) rest.push_back({&n, iconOf(str(n, "id"))});
+            tierRows("other", L("ui2d.tier.other"), -1, rest);
             y += 3 * U;
         }
         // thoughts
@@ -2680,8 +2768,29 @@ struct Window::Impl : Ctx {
         }
     }
 
+    // LR-139: pawns2d.json is read at the start and again whenever it changes on disk, so
+    // a new cut or a kind's ears show at once, without a rebuild or a restart.
+    std::filesystem::file_time_type partsTime{};
+    double partsChecked = 0;
+    void loadPawnParts() {
+        const auto path = root / "content/sprites_2d/pawns2d.json";
+        std::error_code ec;
+        partsTime = std::filesystem::last_write_time(path, ec);
+        setPawnParts(parseOr(readText(path), Json::object()));
+    }
+    void watchPawnParts() {
+        if (nowMs() - partsChecked < 1000) return;
+        partsChecked = nowMs();
+        std::error_code ec;
+        const auto t = std::filesystem::last_write_time(root / "content/sprites_2d/pawns2d.json", ec);
+        if (ec || t == partsTime) return;
+        loadPawnParts();
+        atlas.clear();   // every sprite is drawn again on demand
+    }
+
     // --- one frame -------------------------------------------------------------------------
     bool events() {
+        watchPawnParts();
         in.pressed = in.released = in.rightPressed = in.doubleClick = false;
         in.wheel = 0;
         in.text.clear();

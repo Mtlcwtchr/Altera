@@ -285,6 +285,12 @@ public:
     const std::vector<Room>& rooms() const { return rooms_; }
     std::vector<RoomBuilding>& roomBuildings() { return roomBuildings_; }
     const std::vector<RoomBuilding>& roomBuildings() const { return roomBuildings_; }
+    // LR-140 (need_tiers.cpp): who finished how many builds, counted from the
+    // chronicle as it grows (not saved: worked out again after a load).
+    struct NeedCache {
+        std::size_t scanned = 0;
+        std::map<EntityId, int> built;
+    } needCache;
     bool roomsDirty = true;          // set when pieces or the things in rooms change
     std::uint64_t roomsSig = 0;      // what the rooms were read from last
     bool removeObject(EntityId id);

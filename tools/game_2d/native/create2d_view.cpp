@@ -131,6 +131,8 @@ Json previewPerson(const Win& w) {
     Json p = {{"id", -1}, {"age", jnum(w.data, "age", 24)}, {"sex", jstr(w.data, "sex")}, {"famId", 0}, {"worn", worn}, {"look", w.data["look"]}, {"alive", true}};
     if (const Json* r = raceRule(w))
         if (!jstr(*r, "skin").empty()) p["rskin"] = jstr(*r, "skin");
+    if (const Json* r = raceRule(w))
+        if (r->contains("pawn")) p["rlook"] = (*r)["pawn"];   // LR-139: the kind's ears, head, tusks...
     return p;
 }
 
