@@ -267,3 +267,39 @@ TEST(altera_alchemy_drinking_in_the_sim) {
     CHECK(c->body.health > 0.5);
     CHECK(c->craft.items.back().rune.charge < c->craft.items.back().rune.capacity);
 }
+
+TEST(altera_alchemy_runes_fire_through_magic) {
+    const Content& ct = alcContent();
+    Json cfg = loadJsonFile(std::string(ALTERA_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    World w = makeTestWorld(ct, cfg);
+    installAi(w);
+    std::vector<Character*> people;
+    for (auto& [id, x] : w.characters())
+        if (!x.isAnimal() && x.body.alive && x.body.ageDays >= 16 * 360) people.push_back(&x);
+    CHECK(people.size() >= 2);
+    if (people.size() < 2) return;
+    Character& holder = *people[0];
+    Character& other = *people[1];
+    // a rune of life on silver, fired at another through the magic core, heals them
+    ChainRun pot = goodRun("healing_potion", "healing_potion");
+    CHECK(pot.done);
+    StepResult ins = step("inscribe", {{"work", {silverPlate()}}});
+    StepResult b = step("bind", {{"work", {ins.out}}, {"reagent", {pot.out}}}, "on_touch");
+    CHECK(b.hasOut);
+    holder.craft.items.push_back(b.out);
+    other.body.health = 0.4;
+    Command use;
+    use.source = "player:1";
+    use.type = "alchemy_use_rune";
+    use.args = {{"id", holder.id}, {"item", static_cast<int>(holder.craft.items.size()) - 1}, {"target", other.id}};
+    CHECK(w.applyNow(use).result.rfind("ok", 0) == 0);
+    CHECK(other.body.health > 0.4);
+    // bond- on the holder drains the rune, bond+ feeds it back
+    const int idx = static_cast<int>(holder.craft.items.size()) - 1;
+    const double before = holder.craft.items[static_cast<size_t>(idx)].rune.charge;
+    applyAspectsTo(w, holder, {altera::sim::AspectDose{"bond", '-', 1.0}}, holder.id);
+    const double drained = holder.craft.items[static_cast<size_t>(idx)].rune.charge;
+    CHECK(drained < before);
+    applyAspectsTo(w, holder, {altera::sim::AspectDose{"bond", '+', 1.0}}, holder.id);
+    CHECK(holder.craft.items[static_cast<size_t>(idx)].rune.charge > drained);
+}
