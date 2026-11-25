@@ -41,6 +41,7 @@
 
 #include "engine/ui/font.hpp"
 #include "engine/ui/ui.hpp"
+#include "native/ctx2d.hpp"
 #include "native/pixels2d.hpp"
 
 namespace game2d {
@@ -212,13 +213,13 @@ std::string utf8Cut(const std::string& s, std::size_t maxCodepoints) {
 
 } // namespace
 
-struct Window::Impl {
+struct Window::Impl : Ctx {
     std::filesystem::path root;
     std::string err;
     SDL_Window* win = nullptr;
     SDL_Renderer* ren = nullptr;
     ui::Ui ui;
-    std::shared_ptr<ui::FontFace> face;
+    std::shared_ptr<ui::FontFace> fontFace;
     Atlas atlas;
     Host* host = nullptr;
     float U = 1.0f;          // the interface's scale (the display's)
@@ -273,6 +274,7 @@ struct Window::Impl {
     long long menuTarget = -1;
     Json menuActs = Json::array();
     ui::Input in;
+    std::unique_ptr<Screens> screens;
     bool dragging = false;
     float dragX = 0, dragY = 0;
     double dragCamX = 0, dragCamY = 0;
@@ -286,7 +288,7 @@ struct Window::Impl {
     int selectIndex = -1;
 
     // ======================================================================
-    std::string L(const std::string& k, const std::map<std::string, std::string>& args = {}) const {
+    std::string L(const std::string& k, const std::map<std::string, std::string>& args = {}) const override {
         const auto it = UI.find(k);
         std::string s = it == UI.end() ? k : it->second;
         for (const auto& [a, v] : args) {
@@ -295,56 +297,131 @@ struct Window::Impl {
         }
         return s;
     }
-    Json get(const std::string& path) {
+    Json get(const std::string& path) override {
         int code = 0;
         const std::string b = host->call("GET", path, "", &code);
         return code == 200 ? parseOr(b, Json()) : Json();
     }
-    Json post(const std::string& path, const Json& body) {
+    Json post(const std::string& path, const Json& body) override {
         int code = 0;
         const std::string b = host->call("POST", path, body.dump(), &code);
         return code == 200 ? parseOr(b, Json()) : Json();
     }
-    Json cmd(const Json& body) { return post("/api/cmd", body); }
-    void toast(const std::string& t) {
+    Json cmd(const Json& body) override { return post("/api/cmd", body); }
+    void toast(const std::string& t) override {
         if (t.empty()) return;
         toastText = t;
         toastUntil = nowMs() + 3200;
     }
-    void cmdToast(const Json& body) {
+    void cmdToast(const Json& body) override {
         const Json r = cmd(body);
         const std::string res = str(r, "result");
         if (!res.empty() && res != "ok") toast(str(r, "text").empty() ? res : str(r, "text"));
     }
 
+    // --- what the screens use (ctx2d.hpp) ----------------------------------------------
+    ui::Ui& gui() override { return ui; }
+    ui::Input& input() override { return in; }
+    float u() const override { return U; }
+    float screenW() const override { return float(W); }
+    float screenH() const override { return float(H); }
+    std::string fit(const std::string& s, float width, float px) const override { return ui.fit(s, width, fs(px)); }
+    bool spriteAt(const std::string& name, const Json& recolour, float x, float y, float size, float alpha) override {
+        const Sprite sp = sprite(name, recolour);
+        if (!sp) return false;
+        blit(sp, x, y, size, size, alpha);
+        return true;
+    }
+    void face(long long id, const std::string& name, float x, float y, float size) override {
+        if (const Json* p = person(id)) {
+            portrait(*p, x, y, size);
+            return;
+        }
+        fill(x, y, size, size, kLeatherD);
+        frame(x, y, size, size, kBronze, 1);
+        std::size_t at = 0;
+        ui::nextCodepoint(name, at);
+        textC(x + size / 2, y + size / 2 - textH(size * 0.5f) / 2, name.substr(0, at), kGold, size * 0.5f);
+    }
+    const Json& statics() const override { return ST; }
+    const Json& map2d() const override { return MAP; }
+    const std::vector<Json>& peopleList() const override { return people; }
+    long long meId() const override { return me; }
+    long long selected() const override { return selId; }
+    void lookAt(double x, double y) override {
+        camX = x;
+        camY = y;
+        follow = false;
+    }
+    void setFollow(bool on) override { follow = on; }
+    void refresh() override { poll(); }
+    bool isPaused() const override { return paused; }
+    void setPaused(bool on) override {
+        paused = on;
+        cmd({{"op", "pause"}, {"on", on}});
+    }
+    double camAtX() const override { return camX; }
+    double camAtY() const override { return camY; }
+    int zoomLevel() const override { return zoom; }
+    void quitGame() override { post("/api/quit", {{"autosave", true}}); }
+    // a new world in play: the map, the people, the camera start over
+    void worldChanged(const Json& view) override {
+        for (auto& [k, c] : chunks)
+            if (c.tex) SDL_DestroyTexture(c.tex);
+        chunks.clear();
+        ++chunkVersion;
+        people.clear();
+        byId.clear();
+        vis.clear();
+        bubbles.clear();
+        lines.clear();
+        path.clear();
+        selId = me = -1;
+        selCard = Json();
+        selectedMe = false;
+        menuOpen = false;
+        barFor = -2;
+        UI.clear();
+        actsRe.clear();
+        hidden.clear();
+        camX = camY = 0;
+        loadStatic();
+        if (view.is_object() && view.contains("x") && view["x"].is_number()) {
+            camX = view["x"].get<double>();
+            camY = view.value("y", camY);
+        }
+        if (view.is_object() && view.contains("zoom") && view["zoom"].is_number()) zoom = std::clamp(view["zoom"].get<int>(), 1, 3);
+        poll();
+    }
+
     // --- view math ---------------------------------------------------------------------
-    float mapW() const { return float(W) - sideW(); }
-    float mapH() const { return float(H) - barH(); }
+    float mapW() const override { return float(W) - sideW(); }
+    float mapH() const override { return float(H) - barH(); }
     float sideW() const { return std::round(340 * U); }
     float barH() const { return std::round(44 * U); }
     double dpr() const { return std::max(1.0, std::round(double(U))); }
     double scale() const { return zoom * dpr(); }
-    double tilePx() const { return T * scale(); }
-    void toScreen(double wx, double wy, float& sx, float& sy) const {
+    double tilePx() const override { return T * scale(); }
+    void toScreen(double wx, double wy, float& sx, float& sy) const override {
         sx = float(std::round((wx - camX) * tilePx() + mapW() / 2));
         sy = float(std::round((wy - camY) * tilePx() + mapH() / 2));
     }
-    void toWorld(double sx, double sy, double& wx, double& wy) const {
+    void toWorld(double sx, double sy, double& wx, double& wy) const override {
         wx = (sx - mapW() / 2) / tilePx() + camX;
         wy = (sy - mapH() / 2) / tilePx() + camY;
     }
-    const Json* person(long long id) const {
+    const Json* person(long long id) const override {
         const auto it = byId.find(id);
         return it == byId.end() ? nullptr : &people[it->second];
     }
 
     // --- drawing primitives --------------------------------------------------------------
-    void fill(float x, float y, float w, float h, const ui::Colour& c) {
+    void fill(float x, float y, float w, float h, const ui::Colour& c) override {
         SDL_SetRenderDrawColorFloat(ren, c.r, c.g, c.b, c.a);
         const SDL_FRect r{x, y, w, h};
         SDL_RenderFillRect(ren, &r);
     }
-    void frame(float x, float y, float w, float h, const ui::Colour& c, float t) {
+    void frame(float x, float y, float w, float h, const ui::Colour& c, float t) override {
         fill(x, y, w, t, c);
         fill(x, y + h - t, w, t, c);
         fill(x, y, t, h, c);
@@ -370,29 +447,29 @@ struct Window::Impl {
         }
     }
     // a carved frame: walnut, a bronze bevel lit from the top left
-    void carved(const ui::Rect& r) {
+    void carved(const ui::Rect& r) override {
         fill(r.x, r.y, r.w, r.h, kWalnut);
         frame(r.x, r.y, r.w, r.h, kWalnutD, std::max(1.0f, U));
         frame(r.x + U, r.y + U, r.w - 2 * U, r.h - 2 * U, kBronze, std::max(1.0f, U));
         fill(r.x + U, r.y + U, r.w - 2 * U, std::max(1.0f, U), kBronzeL);
         ui.claim(r);
     }
-    void parchBox(const ui::Rect& r) {
+    void parchBox(const ui::Rect& r) override {
         fill(r.x - U, r.y - U, r.w + 2 * U, r.h + 2 * U, kOut);
         fill(r.x, r.y, r.w, r.h, kParch);
     }
     float fs(float px) const { return px / (15.0f * U); }   // a text scale for a size in pixels
-    void text(float x, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) {
+    void text(float x, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) override {
         if (shadow) ui.text(x + std::max(1.0f, U), y + std::max(1.0f, U), s, ui::Colour(0, 0, 0, c.a), fs(px));
         ui.text(x, y, s, c, fs(px));
     }
-    float textW(const std::string& s, float px) const { return ui.textWidth(s, fs(px)); }
-    float textH(float px) const { return ui.textHeight(fs(px)); }
-    void textC(float cx, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) {
+    float textW(const std::string& s, float px) const override { return ui.textWidth(s, fs(px)); }
+    float textH(float px) const override { return ui.textHeight(fs(px)); }
+    void textC(float cx, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) override {
         text(cx - textW(s, px) / 2, y, s, c, px, shadow);
     }
     // a gauge: a dark track, a filled part
-    void gauge(const ui::Rect& r, double v, const ui::Colour& c) {
+    void gauge(const ui::Rect& r, double v, const ui::Colour& c) override {
         fill(r.x, r.y, r.w, r.h, kLeatherD);
         fill(r.x, r.y, float(r.w * std::clamp(v, 0.0, 1.0)), r.h, c);
         frame(r.x, r.y, r.w, r.h, kOut, 1);
@@ -536,9 +613,9 @@ struct Window::Impl {
         std::cout << "renderer: " << SDL_GetRendererName(ren) << std::endl;
         atlas.attach(ren);
         ui.init(ren);
-        face = ui::FontFace::load(root / "assets/fonts/Kurale-Regular.ttf");
+        fontFace = ui::FontFace::load(root / "assets/fonts/Kurale-Regular.ttf");
         measure();
-        if (face) ui.setFont(face, face, 15.0f * U, 1.0f);
+        if (fontFace) ui.setFont(fontFace, fontFace, 15.0f * U, 1.0f);
         SDL_MaximizeWindow(win);
         SDL_ShowWindow(win);
         loadingFrame("");
@@ -550,7 +627,7 @@ struct Window::Impl {
         SDL_GetWindowSize(win, &ww, &wh);
         mouseK = ww > 0 ? float(W) / float(ww) : 1.0f;
         U = std::clamp(SDL_GetWindowDisplayScale(win), 1.0f, 3.0f);
-        if (face) ui.setFont(face, face, 15.0f * U, 1.0f);
+        if (fontFace) ui.setFont(fontFace, fontFace, 15.0f * U, 1.0f);
     }
     void loadingFrame(const std::string& why) {
         for (int i = 0; i < 2; ++i) {
@@ -756,6 +833,7 @@ struct Window::Impl {
             if (!byId.count(it->first)) it = vis.erase(it);
             else ++it;
         selCard = s.contains("sel") ? s["sel"] : Json();
+        if (screens) screens->polled();
         if (selId >= 0 && !byId.count(selId)) selId = -1;
         if (me != barFor) {
             barFor = me;
@@ -775,7 +853,7 @@ struct Window::Impl {
             }
         }
     }
-    void select(long long id) {
+    void select(long long id) override {
         selId = id;
         selCard = Json();
         poll();
@@ -1380,14 +1458,23 @@ struct Window::Impl {
             }
         }
         ui.endScroll(y);
+        // the screens: two rows of four
+        const float by = hy + hh + 8 * U, bh = 28 * U, bw = (w - 3 * 4 * U) / 4;
+        int bi = 0;
+        for (const auto& [id, k] : screens->columnScreens()) {
+            const ui::Rect r{x + (bi % 4) * (bw + 4 * U), by + (bi / 4) * (bh + 4 * U), bw, bh};
+            if (ui.toggle(ui::widgetId("side.screen", bi), r, fit(L("ui2d.screen." + id), bw - 6 * U, 13 * U), screens->isOpen(id)))
+                screens->openScreen(id);
+            ++bi;
+        }
         // the card
-        const float cy = hy + hh + 10 * U;
+        const float cy = by + 2 * (bh + 4 * U) + 6 * U;
         const ui::Rect cardR{x - 2 * U, cy, w + 4 * U, side.bottom() - cy - pad};
         fill(cardR.x, cardR.y, cardR.w, cardR.h, kLeather);
         drawCard({cardR.x + 6 * U, cardR.y + 6 * U, cardR.w - 12 * U, cardR.h - 12 * U});
     }
     // words over as many lines as they need inside `width`
-    std::vector<std::string> wrap(const std::string& s, float width, float px) const {
+    std::vector<std::string> wrap(const std::string& s, float width, float px) const override {
         std::vector<std::string> out;
         std::string line, word;
         std::istringstream ws(s);
@@ -1402,7 +1489,7 @@ struct Window::Impl {
         for (auto& l : out) l = ui.fit(l, width, fs(px));
         return out;
     }
-    float parchLines(float x, float y, float w, const std::vector<std::string>& ls, float px) {
+    float parchLines(float x, float y, float w, const std::vector<std::string>& ls, float px) override {
         std::vector<std::string> rows;
         for (const auto& l : ls)
             for (auto& r : wrap(l, w - 16 * U, px)) rows.push_back(r);
@@ -1415,7 +1502,7 @@ struct Window::Impl {
         }
         return h;
     }
-    float chips(float x, float y, float w, const std::vector<std::string>& items) {
+    float chips(float x, float y, float w, const std::vector<std::string>& items) override {
         float cx = x, cy = y;
         const float px = 13 * U, h = textH(px) + 8 * U;
         for (const auto& it : items) {
@@ -1532,7 +1619,7 @@ struct Window::Impl {
             x -= 4 * U;
         }
         if (btn("bar.slower", "−", 32 * U, false)) setSpeed(-1);
-        if (btn("bar.pause", paused ? "▶" : "||", 40 * U, paused)) togglePause();
+        if (btn("bar.pause", paused ? ">" : "||", 40 * U, paused)) togglePause();
         // the clock and the hint on parchment
         std::string clk;
         if (clock.contains("day")) {
@@ -1638,7 +1725,7 @@ struct Window::Impl {
                     for (std::size_t k = 0; k < rows.size() && k < 2; ++k)
                         text(r.x + 6 * U, r.y + 14 * U + k * (textH(12 * U) + 2 * U), rows[k], off ? kDim : kText, 12 * U);
                 }
-                if (r.contains(in.mouseX, in.mouseY)) {
+                if (r.contains(in.mouseX, in.mouseY) && !screens->any()) {
                     if (in.pressed) useSlot(i);
                     if (in.rightPressed) {
                         slots[std::size_t(i)] = Slot{};
@@ -1768,6 +1855,18 @@ struct Window::Impl {
     }
     bool key(SDL_Scancode sc) {
         if (ui.typing()) return false;
+        if (sc == SDL_SCANCODE_ESCAPE && menuOpen) {
+            menuOpen = false;
+            return true;
+        }
+        if (sc == SDL_SCANCODE_F11) {
+            toggleFullscreen();
+            return true;
+        }
+        if (screens && screens->key(sc, SDL_GetModState())) {
+            menuOpen = false;
+            return true;
+        }
         const bool leading = me >= 0;
         if (leading && sc >= SDL_SCANCODE_1 && sc <= SDL_SCANCODE_8 && !altDown) {
             useSlot(int(sc - SDL_SCANCODE_1));
@@ -1990,7 +2089,13 @@ struct Window::Impl {
         if (const char* s = SDL_getenv("ALTERA_2D_SELECT")) selectIndex = std::atoi(s);
         if (const char* s = SDL_getenv("ALTERA_2D_ZOOM")) zoom = std::clamp(std::atoi(s), 1, 3);
         SDL_StartTextInput(win);
+        screens = std::make_unique<Screens>(*this);
         poll();
+        if (!SDL_getenv("ALTERA_2D_SHOT")) screens->start();
+        if (const char* o = SDL_getenv("ALTERA_2D_OPEN")) {   // a shot of a screen: ALTERA_2D_OPEN=menu|new|pick|saves|chronicle|...
+            const char* arg = SDL_getenv("ALTERA_2D_OPEN_ARG");
+            screens->open(o, arg ? Json(std::string(arg)) : Json());
+        }
         const double start = nowMs();
         lastFrame = start;
         while (!host->quitting()) {
@@ -2015,6 +2120,7 @@ struct Window::Impl {
             guard("overlay", [&] { drawOverlay(); });
             guard("side", [&] { drawSide(); });
             guard("bar", [&] { drawBar(); });
+            guard("screens", [&] { screens->draw(); });
             ui.end();
             guard("input", [&] { worldInput(); });
             if (!shotPath.empty() && (t - start) / 1000 > shotAfter) {

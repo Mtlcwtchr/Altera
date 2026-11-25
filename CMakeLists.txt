@@ -549,6 +549,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     # AL-94: the 2D client in its own window (tools/game_2d/native): SDL3's GPU renderer (D3D12)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
     target_sources(altera_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
+            tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
     target_include_directories(altera_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(altera_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
