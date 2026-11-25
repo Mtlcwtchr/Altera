@@ -33,6 +33,8 @@ struct AspectUse {
 // Applies doses to `c` as a self-spell (magic core; a fallback without content/magic).
 AspectUse applyAspectDoses(World& w, Character& c, const std::vector<craft::AspectDose>& doses);
 
+// A thing one can drink: a liquid with aspects, a heal or of the consumable kind (the client's button).
+bool isDrinkable(const craft::Item& it);
 // Drinks the n-th made thing (a potion, a draught): its aspects and its heal.
 AspectUse drinkPotion(World& w, Character& c, int index);
 // Spends a use of the rune of the n-th made thing; a scroll burns away when read.

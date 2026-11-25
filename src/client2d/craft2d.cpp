@@ -7,6 +7,7 @@
 #include <cmath>
 #include <cstdlib>
 
+#include "sim/alchemy.hpp"
 #include "sim/craft_sim.hpp"
 
 using namespace lr::sim;
@@ -140,6 +141,15 @@ Json madeJson(const World& w, const ViewText& t, const Character& c) {
                        {"hidden_flaws", int(std::count_if(it.flaws.begin(), it.flaws.end(),
                                                           [](const craft::ItemFlaw& f) { return !f.revealed; })) > 0},
                        {"steps", it.trace.size()}});
+        Json& o = out.back();
+        o["drinkable"] = isDrinkable(it); // AL-117: the buttons «drink» and «use the rune»
+        if (it.rune.bound()) {
+            const double cap = std::max(1e-6, it.rune.capacity);
+            o["rune"] = {{"trigger", it.rune.trigger},
+                         {"trigger_name", tx(t, "ui2d.craft.trigger." + it.rune.trigger)},
+                         {"charge", r3(std::clamp(it.rune.charge / cap, 0.0, 1.0))},
+                         {"scroll", it.tags.count("scroll") > 0 || it.form == "scroll"}};
+        }
     }
     return out;
 }

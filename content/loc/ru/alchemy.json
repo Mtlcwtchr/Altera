@@ -63,6 +63,8 @@
  "interaction.craft:shadow_draught.name": "сделать: теневое зелье",
  "interaction.craft:sleeping_draught.name": "сделать: сонное зелье",
  "interaction.craft:volatile_flask.name": "сделать: гремучая склянка",
+ "interaction.gather_moon_moss.name": "собрать лунный мох",
+ "interaction.gather_night_moss.name": "собрать ночной мох",
  "item.alembic.name": {
   "nom": "перегонный куб",
   "gen": "перегонного куба",
@@ -236,6 +238,16 @@
  },
  "knowledge.alchemy.name": "Алхимия",
  "knowledge.runecraft.name": "Руническое дело",
+ "material.basilisk_eye.made": "{form} с глазом василиска",
+ "material.basilisk_eye.name": {
+  "nom": "глаз василиска",
+  "gen": "глаза василиска",
+  "dat": "глазу василиска",
+  "acc": "глаз василиска",
+  "ins": "глазом василиска",
+  "pre": "глазе василиска",
+  "g": "m"
+ },
  "material.dragon_blood.made": "{form} на драконьей крови",
  "material.dragon_blood.name": {
   "nom": "драконья кровь",
@@ -255,6 +267,26 @@
   "ins": "драконьей костью",
   "pre": "драконьей кости",
   "g": "f"
+ },
+ "material.drowner_brain.made": "{form} из мозга утопца",
+ "material.drowner_brain.name": {
+  "nom": "мозг утопца",
+  "gen": "мозга утопца",
+  "dat": "мозгу утопца",
+  "acc": "мозг утопца",
+  "ins": "мозгом утопца",
+  "pre": "мозге утопца",
+  "g": "m"
+ },
+ "material.griffin_feather.made": "{form} из пера грифона",
+ "material.griffin_feather.name": {
+  "nom": "перо грифона",
+  "gen": "пера грифона",
+  "dat": "перу грифона",
+  "acc": "перо грифона",
+  "ins": "пером грифона",
+  "pre": "пере грифона",
+  "g": "n"
  },
  "material.mithril.made": "мифрилов{form:g|ый|ая|ое|ые} {form}",
  "material.mithril.name": {
@@ -315,6 +347,16 @@
   "ins": "ртутью",
   "pre": "ртути",
   "g": "f"
+ },
+ "material.spider_venom.made": "{form} на паучьем яде",
+ "material.spider_venom.name": {
+  "nom": "паучий яд",
+  "gen": "паучьего яда",
+  "dat": "паучьему яду",
+  "acc": "паучий яд",
+  "ins": "паучьим ядом",
+  "pre": "паучьем яде",
+  "g": "m"
  },
  "material.spirit.made": "{form} на спирту",
  "material.spirit.name": {
@@ -402,5 +444,17 @@
  "station.crucible.name": {
   "nom": "тигель",
   "g": "m"
- }
+ },
+ "ui2d.craft.drink": "Выпить",
+ "ui2d.craft.rune": "руна: {trigger}, заряд {charge}%",
+ "ui2d.craft.trigger.constant": "постоянно",
+ "ui2d.craft.trigger.on_hit": "при ударе",
+ "ui2d.craft.trigger.on_threat": "при угрозе",
+ "ui2d.craft.trigger.on_touch": "касанием",
+ "ui2d.craft.trigger.on_word": "по слову",
+ "ui2d.craft.use_rune": "Применить руну",
+ "ui2d.refused.blast": "Склянка взорвалась",
+ "ui2d.refused.no_charge": "Руна выдохлась",
+ "ui2d.refused.not_a_potion": "Это нельзя выпить",
+ "ui2d.refused.not_enchanted": "В вещи нет зачарования"
 }

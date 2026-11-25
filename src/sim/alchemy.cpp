@@ -108,6 +108,12 @@ AspectUse applyAspectDoses(World& w, Character& c, const std::vector<CDose>& dos
     return u;
 }
 
+bool isDrinkable(const Item& it) {
+    if (it.shape != "liquid") return false;
+    const auto h = it.derived.find("heal");
+    return !craft::aspectDoses(it).empty() || (h != it.derived.end() && h->second > 0.0) || it.kind == "consumable";
+}
+
 AspectUse drinkPotion(World& w, Character& c, int index) {
     AspectUse u;
     if (index < 0 || index >= static_cast<int>(c.craft.items.size())) {
@@ -116,10 +122,9 @@ AspectUse drinkPotion(World& w, Character& c, int index) {
     }
     const craft::CraftData& d = w.content().craft;
     Item it = c.craft.items[static_cast<size_t>(index)];
-    const bool liquid = it.shape == "liquid";
     std::vector<CDose> doses = craft::aspectDoses(it);
     const double heal = it.derived.count("heal") ? it.derived.at("heal") : 0.0;
-    if (!liquid || (doses.empty() && heal <= 0.0 && it.kind != "consumable")) {
+    if (!isDrinkable(it)) {
         u.reason = "not_a_potion";
         return u;
     }

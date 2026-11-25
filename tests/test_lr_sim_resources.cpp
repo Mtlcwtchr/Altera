@@ -23,11 +23,8 @@ const Content& resContent() {
 // Materials still waiting for their source: the later stages of AL-86 shrink this list.
 const std::set<std::string>& pendingMaterials() {
     static const std::set<std::string> s{"wheat_grain", // the split of the field into crops: farming
-                                         "tin_ore", "silver", "gold", // from afar: the caravans of AL-85
-                                         // AL-117: monster parts come with the monsters (LivelyRealms M5),
-                                         "troll_liver", "dragon_blood", "dragon_bone",
-                                         // rare minerals with the caravans, the mosses with their forage places
-                                         "moonstone", "mithril", "sulfur", "quicksilver", "night_moss", "moon_moss"};
+                                         "tin_ore", "silver", "gold"}; // from afar: the caravans of AL-85
+    // (AL-117's rare reagents: the trader's stock, the monster loot of AL-114, moss gathering)
     return s;
 }
 

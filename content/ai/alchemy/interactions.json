@@ -1,0 +1,53 @@
+{
+ "_doc": "AL-117: where an alchemist finds the mosses (at existing places: no new world objects).",
+ "interactions": [
+  {
+   "id": "gather_night_moss",
+   "category": "work",
+   "target": "object:mushroom_glade",
+   "pre": [
+    "knows:alchemy",
+    "target_stock:mushrooms>=2"
+   ],
+   "eff": [
+    "has:night_moss+1",
+    "target_stock:mushrooms-2",
+    "skill:herbalism+0.01",
+    "skill:alchemy+0.005",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true,
+   "_part": "AL-117"
+  },
+  {
+   "id": "gather_moon_moss",
+   "category": "work",
+   "target": "object:limestone_outcrop",
+   "pre": [
+    "knows:alchemy",
+    "target_stock:limestone>=2"
+   ],
+   "eff": [
+    "has:moon_moss+1",
+    "target_stock:limestone-2",
+    "skill:herbalism+0.01",
+    "skill:alchemy+0.005",
+    "body:fatigue+0.03"
+   ],
+   "from_target": true,
+   "duration": 4,
+   "cost": 4,
+   "fsm": "Work",
+   "legal": [],
+   "visibility": "public",
+   "reserve": true,
+   "_part": "AL-117"
+  }
+ ]
+}

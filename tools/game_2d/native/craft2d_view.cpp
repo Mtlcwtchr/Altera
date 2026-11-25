@@ -8,7 +8,7 @@
 //   D: the helper - a wish, the designs that answer it, their chain, the step that
 //      can start now laid on the bench.
 // One main button: "Make" held (E or the mouse). Reads POST /api/workshop
-// {draft, wish, texts}; acts with craft_attempt / craft_fast / craft_inspect / craft_repair.
+// {draft, wish, texts}; acts with craft_attempt / craft_fast / craft_inspect / craft_repair, alchemy_drink / alchemy_use_rune.
 #include <algorithm>
 #include <cmath>
 
@@ -625,12 +625,17 @@ struct Craft {
                 if (f.is_string()) flaws += (flaws.empty() ? "" : ", ") + f.get<std::string>();
             if (!flaws.empty()) notes.push_back(flaws);
             if (jflag(t, "hidden_flaws")) notes.push_back(L("ui2d.craft.hidden"));
+            const bool rune = t.contains("rune") && t["rune"].is_object();
+            if (rune)
+                notes.push_back(L("ui2d.craft.rune", {{"trigger", jstr(t["rune"], "trigger_name")},
+                                                       {"charge", std::to_string(pct(jnum(t["rune"], "charge")))}}));
             std::string nt;
             for (const auto& n : notes) nt += (nt.empty() ? "" : " · ") + n;
             c.text(row.x + 58 * U, row.y + 26 * U, c.fit(nt, row.w - 220 * U, 12 * U), flaws.empty() ? pal::ink.withAlpha(0.7f) : pal::bad, 12 * U);
             c.gauge({row.x + 58 * U, row.y + 44 * U, std::min(240 * U, row.w - 220 * U), 8 * U}, 1 - jnum(t, "wear"), pal::good);
             const float bw = 40 * U;   // AL-109: icons, the names in the tooltip
-            float bx = row.right() - 3 * (bw + 6 * U);
+            const bool drink = jflag(t, "drinkable");
+            float bx = row.right() - float(3 + (drink ? 1 : 0) + (rune ? 1 : 0)) * (bw + 6 * U);
             if (iconButton(ui::widgetId("ws.inspect", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("inspect"), L("ui2d.craft.inspect")))
                 act("craft_inspect", {{"item", t["i"]}});
             bx += bw + 6 * U;
@@ -638,6 +643,18 @@ struct Craft {
             if (iconButton(ui::widgetId("ws.repair", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("repair"), L("ui2d.craft.repair"), rep))
                 act("craft_repair", {{"item", t["i"]}});
             bx += bw + 6 * U;
+            // AL-117: a potion is drunk, a rune is used (on oneself; a scroll burns away)
+            if (drink) {
+                if (iconButton(ui::widgetId("ws.drink", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("drink"), L("ui2d.craft.drink")))
+                    act("alchemy_drink", {{"item", t["i"]}});
+                bx += bw + 6 * U;
+            }
+            if (rune) {
+                const bool live = jflag(t["rune"], "scroll") || jnum(t["rune"], "charge") > 0;
+                if (iconButton(ui::widgetId("ws.rune", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("rune"), L("ui2d.craft.use_rune"), live))
+                    act("alchemy_use_rune", {{"item", t["i"]}});
+                bx += bw + 6 * U;
+            }
             if (iconButton(ui::widgetId("ws.tobench", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("to_bench"), L("ui2d.craft.to_bench"))) {
                 w.tab = "bench";
                 g.endScroll(y + 66 * U);

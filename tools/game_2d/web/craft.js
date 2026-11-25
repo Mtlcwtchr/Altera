@@ -505,6 +505,7 @@
       if (t.wear > 0.05) notes.push(T('hud.craft.worn', { n: pct(t.wear) }));
       if (t.flaws.length) notes.push('<span class="bad">' + esc(t.flaws.join(', ')) + '</span>');
       if (t.hidden_flaws) notes.push(esc(L('ui2d.craft.hidden')));
+      if (t.rune) notes.push(esc(L('ui2d.craft.rune', { trigger: t.rune.trigger_name, charge: pct(t.rune.charge) })));
       mid.appendChild(el('div', 'sub', notes.join(' · ')));
       const wear = el('div', 'qbar wear'); const i = el('i'); i.style.width = pct(1 - t.wear) + '%'; wear.appendChild(i);
       mid.appendChild(wear);
@@ -517,6 +518,18 @@
       const bench = iconBtn(el('button', 'btn sq', '⇧'), actIcon('to_bench'), 24); bench.title = L('ui2d.craft.to_bench');
       bench.onclick = () => { putRef(t.ref); const w = G.win.get('workshop'); if (w) { w.tab = 'bench'; w.refresh(); } };
       btns.appendChild(ins); btns.appendChild(rep); btns.appendChild(bench);
+      // AL-117: a potion is drunk, a rune is used (on oneself; a scroll burns away)
+      if (t.drinkable) {
+        const dr = iconBtn(el('button', 'btn sq', '⚱'), actIcon('drink'), 24); dr.title = L('ui2d.craft.drink');
+        dr.onclick = () => act('alchemy_drink', { item: t.i });
+        btns.appendChild(dr);
+      }
+      if (t.rune) {
+        const spent = !t.rune.scroll && t.rune.charge <= 0;
+        const ru = iconBtn(el('button', 'btn sq' + (spent ? ' off' : ''), 'ᚱ'), actIcon('rune'), 24); ru.title = L('ui2d.craft.use_rune');
+        ru.onclick = () => { if (!spent) act('alchemy_use_rune', { item: t.i }); };
+        btns.appendChild(ru);
+      }
       row.appendChild(btns);
       box.appendChild(row);
     }
