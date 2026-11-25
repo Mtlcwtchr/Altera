@@ -675,6 +675,9 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.reserveTicks = opt(config, "reserve_ticks", a.reserveTicks);
     a.walkMPerTick = opt(config, "walk_m_per_tick", a.walkMPerTick);
     a.interactionRangeM = opt(config, "interaction_range_m", a.interactionRangeM);
+    a.contactM = opt(config, "contact_m", a.contactM);
+    a.contactSlackM = opt(config, "contact_slack_m", a.contactSlackM);
+    a.rangedFromM = opt(config, "ranged_from_m", a.rangedFromM);
     a.legalBase = opt(config, "legal_base", a.legalBase);
     a.perceptionRadiusM = opt(config, "perception_radius_m", a.perceptionRadiusM);
     a.noticeChance = opt(config, "notice_chance", a.noticeChance);

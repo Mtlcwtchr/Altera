@@ -17,6 +17,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <cmath>
 #include <cstdio>
 #include <deque>
@@ -41,6 +42,7 @@
 
 #include "engine/ui/font.hpp"
 #include "engine/ui/ui.hpp"
+#include "native/atmos2d.hpp"
 #include "native/ctx2d.hpp"
 #include "native/pixels2d.hpp"
 
@@ -221,6 +223,7 @@ struct Window::Impl : Ctx {
     ui::Ui ui;
     std::shared_ptr<ui::FontFace> fontFace;
     Atlas atlas;
+    Atmos atmos;             // AL-110: light, shadows, weather
     Host* host = nullptr;
     float U = 1.0f;          // the interface's scale (the display's)
     int W = 1280, H = 720;   // the output in pixels
@@ -626,6 +629,7 @@ struct Window::Impl : Ctx {
         SDL_SetRenderVSync(ren, 1);
         std::cout << "renderer: " << SDL_GetRendererName(ren) << std::endl;
         atlas.attach(ren);
+        atmos.attach(ren);
         ui.init(ren);
         fontFace = ui::FontFace::load(root / "assets/fonts/Kurale-Regular.ttf");
         measure();
@@ -682,6 +686,7 @@ struct Window::Impl : Ctx {
         MAP = parseOr(readText(dir / "map2d.json"), Json::object());
         RES = parseOr(readText(dir / "resources.json"), Json());
         LOOK = parseOr(readText(dir / "craft2d.json"), Json::object());
+        atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
         sprites.merge(LOOK);
         sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
         for (const auto& a : MAP.value("acts", Json::array()))
@@ -921,7 +926,16 @@ struct Window::Impl : Ctx {
                 v.x = px;
                 v.y = py;
             }
-            if (v.driven) continue;
+            // AL-108: standing still, one looks where the sim turned one (at the act's target)
+            const bool faced = p.contains("fx");
+            const double fx = num(p, "fx"), fy = num(p, "fy");
+            auto lookSim = [&] {
+                if (faced && (fx || fy)) v.face = std::abs(fx) > std::abs(fy) ? (fx > 0 ? 'E' : 'W') : (fy > 0 ? 'S' : 'N');
+            };
+            if (v.driven) {
+                if (!v.moving) lookSim();
+                continue;
+            }
             const double dx = px - v.x, dy = py - v.y, d = std::hypot(dx, dy);
             if (d > 80) {
                 v.x = px, v.y = py, v.moving = false;
@@ -929,6 +943,7 @@ struct Window::Impl : Ctx {
             }
             if (d < 0.02) {
                 v.moving = false;
+                lookSim();
                 continue;
             }
             const double speed = std::max(3.5, d * 1.6), s = std::min(d, speed * dt);
@@ -1203,17 +1218,23 @@ struct Window::Impl : Ctx {
             items.push_back({it->second.y, nullptr, &p});
         }
         std::stable_sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.y < b.y; });
+        // AL-110: the ground's weather, the shadows, what shines (before the drawables cover the ground)
+        std::vector<const Json*> things;
+        std::vector<const Json*> folk;
+        for (const Item& it : items) (it.thing ? things : folk).push_back(it.thing ? it.thing : it.person);
+        guard("atmos", [&] { atmosBegin(things, folk, sc); });
         for (const Item& it : items)
             if (it.thing) guard("thing", [&] { drawThing(*it.thing, sc); });
             else guard("pawn", [&] { drawPawn(*it.person, vis[ident(*it.person, "id")], sc); });
         guard("drawRoofs", [&] { drawRoofs(tp); });
+        guard("atmosLight", [&] { atmosEnd(sc); });
         guard("build", [&] { screens->drawWorld(); });
         guard("drawRoomLabels", [&] { drawRoomLabels(); });
         guard("drawPlay", [&] { drawPlay(sc); });
         guard("drawSelection", [&] { drawSelection(sc); });
         guard("drawOverheads", [&] { drawOverheads(sc); });
         guard("drawBubbles", [&] { drawBubbles(sc); });
-        guard("drawNight", [&] { drawNight(); });
+        if (!atmos.enabled) guard("drawNight", [&] { drawNight(); });
     }
     void drawThing(const Json& th, double sc) {
         const std::string type = th[1].get<std::string>();
@@ -1290,6 +1311,7 @@ struct Window::Impl : Ctx {
                 }
                 for (int dy = 0; dy < int(len); ++dy)
                     for (int dx = 0; dx < int(len); ++dx) blit(roof, sx + dx * t, sy + dy * t, t, t);
+                atmos.snowOn(sx, sy, len * t, len * t);   // AL-110
             }
     }
     void drawRoomLabels() {
@@ -1420,6 +1442,286 @@ struct Window::Impl : Ctx {
             ring(sx, sy + sc, 7 * sc, 3 * sc, std::max(1.0f, sc * 0.75f), kPlayer);
         }
     }
+    // ======================================================================
+    // AL-110: light, shadows and weather (native/atmos2d): what casts, what shines
+    struct WLight {
+        double x = 0, y = 0, r = 4, rgb[3] = {1, 0.7, 0.4}, i = 1, flicker = 0;
+        std::uint64_t key = 0;
+        bool smoke = false;
+    };
+    struct RoomBox {
+        double x0, y0, x1, y1;
+        long long building;
+        int awake = 0, all = 0;
+    };
+    std::vector<WLight> wlights;
+    std::vector<RoomBox> roomBoxes;
+    std::vector<std::array<float, 5>> panes;          // lit windows: screen x, y, w, h, strength
+    std::vector<std::array<double, 3>> torches;        // world x, y, key
+    double atmosLast = 0;
+
+    int roomAt(double x, double y) const {
+        for (std::size_t i = 0; i < roomBoxes.size(); ++i)
+            if (x >= roomBoxes[i].x0 && x < roomBoxes[i].x1 && y >= roomBoxes[i].y0 && y < roomBoxes[i].y1) return int(i);
+        return -1;
+    }
+    static void rgbOf(const Json& l, double out[3]) {
+        const Json c = l.value("rgb", Json::array());
+        if (c.is_array() && c.size() >= 3)
+            for (int k = 0; k < 3; ++k) out[k] = c[k].get<double>();
+    }
+    // The pawn as drawPawn draws it standing (false: lying, a glyph).
+    bool pawnLook(const Json& p, const Vis& v, double scd, Sprite& img, SDL_FRect& dst, float& foot, bool& beast) {
+        const std::string st = str(p, "st");
+        if (glyphs || !flag(p, "alive") || flag(p, "down") || st == "Sleep" || st == "Incapacitated") return false;
+        float sx, sy;
+        toScreen(v.x, v.y, sx, sy);
+        const float sc = float(scd);
+        const std::string sp = str(p, "sp");
+        beast = !sp.empty();
+        if (beast) {
+            img = beastSprite(sp, v.face == 'W' ? 'W' : 'E');
+            dst = {sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc};
+            foot = sy + 4 * sc;
+        } else {
+            int bob = v.moving ? v.bob : 0;
+            if (!v.moving && st == "Work") bob = int((long long)(nowMs() / 350) + ident(p, "id")) % 2;
+            img = pawnSprite(pawnSpec(p), v.face, bob);
+            dst = {sx - 10 * sc, sy - 18 * sc, kPawn * sc, kPawn * sc};
+            foot = sy + 1 * sc;
+        }
+        return bool(img);
+    }
+
+    void atmosBegin(const std::vector<const Json*>& things, const std::vector<const Json*>& folk, double sc) {
+        atmos.enabled = !glyphs;
+        const double t = nowMs();
+        const double dt = atmosLast > 0 ? std::min(0.25, (t - atmosLast) / 1000) : 0.0;
+        atmosLast = t;
+        const double frac = paused ? 0.0 : std::clamp((t - lastPoll) / 1000.0 * tps, 0.0, 1.0);
+        atmos.update(clock.value("sky", Json()), clock.value("sky_next", Json()), frac, dt, t / 1000);
+        atmos.frame(mapW(), mapH(), camX, camY, tilePx(), float(sc));
+        wlights.clear(), panes.clear(), torches.clear(), roomBoxes.clear();
+        if (!atmos.enabled) return;
+        const SkyNow& k = atmos.sky();
+        const double tp = tilePx(), hour = num(clock.value("sky", Json::object()), "hour", 12);
+
+        // the ground storey's rooms and who is in them
+        std::unordered_set<int> seenRoom;
+        for (const auto& [key, c] : chunks)
+            for (const auto& r : arr(c.j, "rooms"))
+                if (num(r, "z") == 0 && seenRoom.insert(int(ident(r, "id"))).second)
+                    roomBoxes.push_back({num(r, "x0"), num(r, "y0"), num(r, "x1"), num(r, "y1"), ident(r, "building")});
+        std::vector<int> where(folk.size(), -1);
+        for (std::size_t i = 0; i < folk.size(); ++i) {
+            const Json& p = *folk[i];
+            if (!str(p, "sp").empty() || !flag(p, "alive")) continue;
+            const auto v = vis.find(ident(p, "id"));
+            if (v == vis.end()) continue;
+            where[i] = roomAt(v->second.x, v->second.y);
+            if (where[i] < 0) continue;
+            RoomBox& rb = roomBoxes[std::size_t(where[i])];
+            ++rb.all;
+            if (str(p, "st") != "Sleep") ++rb.awake;
+        }
+        std::unordered_map<long long, std::pair<int, int>> houses;   // building -> awake, all
+        for (const RoomBox& rb : roomBoxes) {
+            auto& hh = houses[rb.building];
+            hh.first += rb.awake, hh.second += rb.all;
+        }
+        const auto open = roofMode == "auto" ? openBuildings() : std::vector<long long>{};
+        auto roofed = [&](long long b) {   // its roof drawn: what is inside does not shine out
+            return b >= 0 && roofMode != "none" && std::find(open.begin(), open.end(), b) == open.end();
+        };
+        auto workerNear = [&](double x, double y, double r, bool working) {
+            for (const Json* p : folk) {
+                if (!str(*p, "sp").empty() || !flag(*p, "alive")) continue;
+                const auto v = vis.find(ident(*p, "id"));
+                if (v == vis.end() || std::hypot(v->second.x - x, v->second.y - y) > r) continue;
+                if (!working || str(*p, "st") == "Work") return true;
+            }
+            return false;
+        };
+
+        // fires, ovens, forges, shrines
+        for (const Json* th : things) {
+            const std::string type = (*th)[1].get<std::string>();
+            const Json* L = atmos.lightOf(type);
+            if (!L) continue;
+            const double x = (*th)[2].get<double>(), y = (*th)[3].get<double>();
+            const std::string when = str(*L, "when");
+            double on = 1;
+            if (when == "hearth") {
+                const bool meal = (hour >= 5 && hour < 9) || (hour >= 11.5 && hour < 13.5) || (hour >= 17 && hour < 23.5);
+                on = meal || workerNear(x, y, 2.5, true) ? 1.0 : 0.3;   // embers between meals
+            } else if (when == "evening") on = hour >= 17.5 || hour < 1 || workerNear(x, y, 3, false) ? 1.0 : 0.0;
+            else if (when == "worked") on = workerNear(x, y, 2.5, true) ? 1.0 : 0.15;
+            if (on <= 0) continue;
+            const int room = roomAt(x, y);
+            const bool hidden = room >= 0 && roofed(roomBoxes[std::size_t(room)].building);
+            WLight l;
+            l.x = x, l.y = y, l.r = num(*L, "r", 5), l.i = hidden ? 0.0 : num(*L, "i", 1) * on, l.flicker = num(*L, "flicker", 0.2);
+            rgbOf(*L, l.rgb);
+            l.key = std::uint64_t((*th)[0].get<long long>());
+            l.smoke = on >= 0.9 && atmos.smokes(type);   // under a roof: out of the chimney
+            wlights.push_back(l);
+        }
+        // the windows of a house someone is in: lit while they are up, and in the evening
+        if (const Json* W = atmos.lightOf("window"); W && k.lights > 0.05) {
+            std::unordered_set<long long> done;
+            for (const auto& [key, c] : chunks)
+                for (const auto& e : arr(c.j, "edges")) {
+                    if (num(e, "z") != 0 || str(e, "kind") != "window" || !flag(e, "built")) continue;
+                    const double x = num(e, "x"), y = num(e, "y"), len = num(e, "len");
+                    const bool hz = str(e, "axis") == "h";
+                    if (!done.insert((long long)(x * 2) * 1000003 + (long long)(y * 2) * 7 + hz).second) continue;
+                    const double cx = hz ? x + len / 2 : x, cy = hz ? y : y + len / 2;
+                    // the room behind it; the light falls out the other way
+                    int room = roomAt(hz ? cx : cx - 0.5, hz ? cy - 0.5 : cy);
+                    double out = 1.0;
+                    if (room < 0) room = roomAt(hz ? cx : cx + 0.5, hz ? cy + 0.5 : cy), out = -1.0;
+                    if (room < 0) continue;
+                    if (roomAt(hz ? cx : cx + 0.5 * out, hz ? cy + 0.5 * out : cy) >= 0) out = 0;   // between two rooms
+                    const auto hh = houses[roomBoxes[std::size_t(room)].building];
+                    const bool lit = hh.first > 0 || (hh.second > 0 && hour >= 16 && hour < 22.5);
+                    if (!lit) continue;
+                    WLight l;
+                    l.x = cx + (hz ? 0 : out * 1.2), l.y = cy + (hz ? out * 1.2 : 0);
+                    l.r = num(*W, "r", 3.8), l.i = num(*W, "i", 0.7), l.flicker = num(*W, "flicker", 0.08);
+                    rgbOf(*W, l.rgb);
+                    l.key = std::uint64_t(x * 131 + y * 7919);
+                    wlights.push_back(l);
+                    float sx, sy;
+                    const double m = 10.0 / T, th = 2.0 / T;
+                    toScreen(hz ? x + m : x - th / 2, hz ? y - th / 2 : y + m, sx, sy);
+                    panes.push_back({sx, sy, float((hz ? len - 2 * m : th) * tp), float((hz ? th : len - 2 * m) * tp), float(l.i)});
+                }
+            // a candle in the rooms one sees into
+            for (const RoomBox& rb : roomBoxes)
+                if (rb.awake > 0 && !roofed(rb.building)) {
+                    WLight l;
+                    l.x = (rb.x0 + rb.x1) / 2, l.y = (rb.y0 + rb.y1) / 2;
+                    l.r = 1.5 + 0.6 * std::max(rb.x1 - rb.x0, rb.y1 - rb.y0), l.i = 0.55, l.flicker = 0.12;
+                    rgbOf(*W, l.rgb);
+                    l.key = std::uint64_t(l.x * 31 + l.y * 17);
+                    wlights.push_back(l);
+                }
+        }
+        // a torch in the hand of whoever is out at night
+        if (const Json* Tl = atmos.lightOf("torch"); Tl && k.lights > 0.45)
+            for (std::size_t i = 0; i < folk.size(); ++i) {
+                const Json& p = *folk[i];
+                if (where[i] >= 0 || !str(p, "sp").empty() || !flag(p, "alive") || flag(p, "down") || str(p, "st") == "Sleep") continue;
+                const auto v = vis.find(ident(p, "id"));
+                if (v == vis.end()) continue;
+                WLight l;
+                l.x = v->second.x + 0.35, l.y = v->second.y - 0.4;
+                l.r = num(*Tl, "r", 5), l.i = num(*Tl, "i", 0.85) * std::min(1.0, (k.lights - 0.45) * 4), l.flicker = num(*Tl, "flicker", 0.3);
+                rgbOf(*Tl, l.rgb);
+                l.key = std::uint64_t(ident(p, "id"));
+                wlights.push_back(l);
+                torches.push_back({v->second.x, v->second.y, double(ident(p, "id"))});
+            }
+        // lights the sim gives (fire, magic: [{x, y, r, rgb, i, flicker}]) when it does
+        for (const auto& sl : clock.value("lights", Json::array())) {
+            if (!sl.is_object()) continue;
+            WLight l;
+            l.x = num(sl, "x"), l.y = num(sl, "y"), l.r = num(sl, "r", 4), l.i = num(sl, "i", 1), l.flicker = num(sl, "flicker", 0.2);
+            rgbOf(sl, l.rgb);
+            l.key = std::uint64_t(l.x * 977 + l.y * 31);
+            wlights.push_back(l);
+        }
+
+        // the ground: wet, snow; then the sun's shadows of things, people and houses
+        atmos.drawGround();
+        atmos.beginShadows();
+        const float s = float(sc);
+        static const std::regex treeRe("tree|grove|pine");
+        for (const Json* th : things) {
+            const std::string type = (*th)[1].get<std::string>();
+            const Json& look = thingLook(type);
+            const std::string sn = str(look, "sprite");
+            const bool isTree = std::regex_search(type, treeRe) || sn == "ob_tree" || sn == "ob_pine";
+            const double hgt = atmos.heightOf(type, atmos.heightOf(isTree ? "tree" : "thing", 1.0));
+            if (hgt <= 0.05) continue;
+            const Sprite sp = sprite(sn, look.value("recolour", Json()));
+            if (!sp) continue;
+            float sx, sy;
+            toScreen((*th)[2].get<double>(), (*th)[3].get<double>(), sx, sy);
+            const SDL_FRect d = isTree ? SDL_FRect{sx - 8 * s, sy - 15 * s, 16 * s, 16 * s} : SDL_FRect{sx - 8 * s, sy - 8 * s, 16 * s, 16 * s};
+            atmos.shadowSprite(sp.tex, sp.src, d, isTree ? sy : sy + 6 * s, float(k.shadowX * hgt * tp), float(k.shadowY * hgt * tp));
+        }
+        for (const Json* p : folk) {
+            const auto v = vis.find(ident(*p, "id"));
+            if (v == vis.end()) continue;
+            Sprite img;
+            SDL_FRect d;
+            float foot;
+            bool beast;
+            if (!pawnLook(*p, v->second, sc, img, d, foot, beast)) continue;
+            const double hgt = atmos.heightOf(beast ? "beast" : "pawn", beast ? 1.0 : 1.7);
+            atmos.shadowSprite(img.tex, img.src, d, foot, float(k.shadowX * hgt * tp), float(k.shadowY * hgt * tp));
+        }
+        {
+            std::unordered_set<long long> seen;
+            const double hgt = atmos.heightOf("roof", 3.2);
+            for (const auto& [key, c] : chunks)
+                for (const auto& r : arr(c.j, "roofs")) {   // z: the roof's step up to the ridge
+                    const long long rk = (long long)num(r, "x") * 100003 + (long long)num(r, "y");
+                    if (!seen.insert(rk).second) continue;
+                    atmos.shadowBox(num(r, "x"), num(r, "y"), num(r, "x") + num(r, "len"), num(r, "y") + num(r, "len"),
+                                    hgt + 0.9 * std::max(0.0, num(r, "z") - 1));
+                }
+        }
+        atmos.endShadows();
+        // at night the people by a fire cast a shadow away from it
+        if (k.lights > 0.3)
+            for (const Json* p : folk) {
+                const auto v = vis.find(ident(*p, "id"));
+                if (v == vis.end()) continue;
+                const WLight* best = nullptr;
+                double bd = 1e9;
+                for (const WLight& l : wlights) {
+                    if (l.i < 0.3 || l.key == std::uint64_t(ident(*p, "id"))) continue;
+                    const double d = std::hypot(v->second.x - l.x, v->second.y - l.y);
+                    if (d < l.r * 0.9 && d > 0.3 && d < bd) bd = d, best = &l;
+                }
+                if (!best) continue;
+                Sprite img;
+                SDL_FRect d;
+                float foot;
+                bool beast;
+                if (!pawnLook(*p, v->second, sc, img, d, foot, beast)) continue;
+                const double dx = (v->second.x - best->x) / bd, dy = (v->second.y - best->y) / bd;
+                const double len = (beast ? 1.0 : 1.7) * tp * (0.35 + 0.9 * bd / best->r);
+                const float a = float(0.5 * k.lights * best->i * (1 - bd / (best->r * 0.9)));
+                atmos.fireShadow(img.tex, img.src, d, foot, float(dx * len), float(dy * len), a);
+            }
+    }
+
+    void atmosEnd(double sc) {
+        if (!atmos.enabled) return;
+        const SkyNow& k = atmos.sky();
+        for (const WLight& l : wlights) {
+            if (l.smoke) atmos.addSmoke(l.x, l.y - 0.3, l.key, 1.0);
+            if (l.i > 0.01) atmos.addLight(l.x, l.y, l.r, l.rgb, l.i, l.flicker, l.key);
+        }
+        atmos.drawAir();
+        atmos.drawLight();
+        // what shines by itself: the panes of lit windows, the flames of torches
+        for (const auto& p : panes) atmos.glow(p[0], p[1], p[2], p[3], 1.0, 0.8, 0.45, p[4] * k.lights);
+        const float s = float(sc);
+        for (const auto& tch : torches) {
+            float sx, sy;
+            toScreen(tch[0], tch[1], sx, sy);
+            const double f = atmos.flick(std::uint64_t(tch[2]), 0.5);
+            atmos.glow(sx + 5 * s, sy - 13 * s, 1.5f * s, 1 * s, 0.45, 0.3, 0.18, 1.0);              // the stick
+            atmos.glow(sx + 5 * s, sy - float(15 + f) * s, 1.5f * s, float(2 + f) * s, 1.0, 0.62, 0.2, 0.95);   // the flame
+            atmos.glow(sx + 5.25f * s, sy - 14.5f * s, 1 * s, 1 * s, 1.0, 0.95, 0.6, 1.0);
+        }
+        atmos.drawPrecip();
+    }
+
     void drawNight() {
         const std::string tm = str(clock, "time");
         int hh = 12, mm = 0;
@@ -1974,6 +2276,7 @@ struct Window::Impl : Ctx {
                 if (e.type == SDL_EVENT_RENDER_DEVICE_RESET) {
                     for (auto& [k, c] : chunks) c.tex = nullptr;
                     atlas.clear();
+                    atmos.release();
                     ui.shutdown();
                     ui.init(ren);
                 }
@@ -2230,6 +2533,7 @@ struct Window::Impl : Ctx {
         for (auto& [k, c] : chunks)
             if (c.tex) SDL_DestroyTexture(c.tex);
         atlas.clear();
+        atmos.release();
         ui.shutdown();
         if (ren) SDL_DestroyRenderer(ren);
         if (win) SDL_DestroyWindow(win);

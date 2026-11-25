@@ -1,0 +1,769 @@
+{
+ "_doc": "LivelyRealms §5.2, §10 (AL-116). Аспекты магии. Заклинание = аспекты (1..3) с вектором '+' (усилить/создать), '-' (ослабить/забрать), '~' (преобразовать/перенести) + форма + модификаторы. world_channels[вектор]: что аспект пишет в поля клетки мира (sim/world_fields, AL-115): heat, moisture, fertility, integrity, light, aether, taint и спец-ключи (wind, rain, growth, transfer, ...), которые понимает applyChannels; выражения от power. body[вектор]: прямое действие на существо в цели/области (sim/magic.cpp): health, fatigue, fear, sleep, mana, burn, poison, bleed, undead_harm, raise (поднять труп), troll_sun и т.д.; незнакомые ключи игнорируются с предупреждением валидатора. opposes: противоположные аспекты (в одном заклинании дороже и рискованнее, в мире гасят друг друга), feeds: соседние аспекты (прорыв знания §5.4). enabled:false = аспект заготовлен, но в мире не встречается.",
+ "aspects": [
+  {
+   "id": "fire",
+   "group": "element",
+   "tags": [
+    "element",
+    "physical"
+   ],
+   "opposes": [
+    "water"
+   ],
+   "feeds": [
+    "air"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.3,
+   "world_channels": {
+    "+": {
+     "heat": "+2*power",
+     "light": "+1*power",
+     "moisture": "-0.3*power"
+    },
+    "-": {
+     "heat": "-2*power",
+     "light": "-0.3*power"
+    },
+    "~": {
+     "transfer": "heat"
+    }
+   },
+   "body": {
+    "+": {
+     "health": "-0.08*power",
+     "burn": "0.5*power"
+    },
+    "-": {
+     "health": "-0.03*power",
+     "cold": "0.5*power"
+    },
+    "~": {}
+   }
+  },
+  {
+   "id": "water",
+   "group": "element",
+   "tags": [
+    "element",
+    "physical"
+   ],
+   "opposes": [
+    "fire"
+   ],
+   "feeds": [
+    "plants",
+    "life"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.3,
+   "world_channels": {
+    "+": {
+     "moisture": "+2*power",
+     "heat": "-0.5*power"
+    },
+    "-": {
+     "moisture": "-2*power"
+    },
+    "~": {
+     "transfer": "moisture"
+    }
+   },
+   "body": {
+    "+": {
+     "wet": "1*power",
+     "fire_out": "1"
+    },
+    "-": {
+     "health": "-0.06*power",
+     "thirst": "0.3*power"
+    },
+    "~": {}
+   }
+  },
+  {
+   "id": "air",
+   "group": "element",
+   "tags": [
+    "element",
+    "physical"
+   ],
+   "opposes": [
+    "earth"
+   ],
+   "feeds": [
+    "fire",
+    "weather"
+   ],
+   "base_cost": 0.9,
+   "difficulty": 0.3,
+   "world_channels": {
+    "+": {
+     "wind": "+2*power",
+     "moisture": "-0.2*power"
+    },
+    "-": {
+     "wind": "-2*power"
+    },
+    "~": {
+     "push": "power"
+    }
+   },
+   "body": {
+    "+": {
+     "push": "1*power"
+    },
+    "-": {
+     "breath": "-0.1*power",
+     "health": "-0.03*power"
+    },
+    "~": {
+     "push": "1*power"
+    }
+   }
+  },
+  {
+   "id": "earth",
+   "group": "element",
+   "tags": [
+    "element",
+    "physical"
+   ],
+   "opposes": [
+    "air"
+   ],
+   "feeds": [
+    "stone",
+    "plants",
+    "metal"
+   ],
+   "base_cost": 1.1,
+   "difficulty": 0.35,
+   "world_channels": {
+    "+": {
+     "integrity": "+1.5*power",
+     "fertility": "+0.3*power"
+    },
+    "-": {
+     "integrity": "-2*power"
+    },
+    "~": {
+     "raise_ground": "power"
+    }
+   },
+   "body": {
+    "+": {
+     "armor": "0.2*power"
+    },
+    "-": {
+     "health": "-0.07*power",
+     "stagger": "1"
+    },
+    "~": {}
+   }
+  },
+  {
+   "id": "life",
+   "group": "nature",
+   "tags": [
+    "nature",
+    "living"
+   ],
+   "opposes": [
+    "death"
+   ],
+   "feeds": [
+    "plants",
+    "beasts"
+   ],
+   "base_cost": 1.2,
+   "difficulty": 0.4,
+   "world_channels": {
+    "+": {
+     "fertility": "+1.5*power",
+     "taint": "-1*power"
+    },
+    "-": {
+     "fertility": "-1.5*power"
+    },
+    "~": {
+     "transfer": "fertility"
+    }
+   },
+   "body": {
+    "+": {
+     "health": "+0.12*power",
+     "heal_wounds": "0.5*power",
+     "undead_harm": "0.1*power"
+    },
+    "-": {
+     "health": "-0.1*power"
+    },
+    "~": {
+     "health_transfer": "0.08*power"
+    }
+   }
+  },
+  {
+   "id": "plants",
+   "group": "nature",
+   "tags": [
+    "nature"
+   ],
+   "opposes": [
+    "fire"
+   ],
+   "feeds": [
+    "life"
+   ],
+   "base_cost": 0.9,
+   "difficulty": 0.3,
+   "world_channels": {
+    "+": {
+     "fertility": "+0.5*power",
+     "growth": "+2*power"
+    },
+    "-": {
+     "growth": "-2*power"
+    },
+    "~": {
+     "shape_plants": "power"
+    }
+   },
+   "body": {
+    "+": {
+     "entangle": "1*power"
+    },
+    "-": {},
+    "~": {}
+   }
+  },
+  {
+   "id": "beasts",
+   "group": "nature",
+   "tags": [
+    "nature",
+    "mind"
+   ],
+   "opposes": [
+    "mind"
+   ],
+   "feeds": [
+    "life"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.35,
+   "world_channels": {
+    "+": {
+     "lure": "+1*power"
+    },
+    "-": {
+     "lure": "-1*power"
+    },
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "tame": "0.3*power"
+    },
+    "-": {
+     "fear": "0.4*power"
+    },
+    "~": {
+     "beast_sense": "1"
+    }
+   }
+  },
+  {
+   "id": "weather",
+   "group": "nature",
+   "tags": [
+    "nature",
+    "sky"
+   ],
+   "opposes": [],
+   "feeds": [
+    "water",
+    "air"
+   ],
+   "base_cost": 1.6,
+   "difficulty": 0.55,
+   "world_channels": {
+    "+": {
+     "rain": "+1*power",
+     "moisture": "+0.5*power"
+    },
+    "-": {
+     "rain": "-1*power",
+     "sun": "+0.5*power"
+    },
+    "~": {
+     "storm": "power"
+    }
+   },
+   "body": {
+    "+": {},
+    "-": {},
+    "~": {
+     "lightning": "0.15*power"
+    }
+   }
+  },
+  {
+   "id": "metal",
+   "group": "matter",
+   "tags": [
+    "matter"
+   ],
+   "opposes": [
+    "life"
+   ],
+   "feeds": [
+    "earth"
+   ],
+   "base_cost": 1.1,
+   "difficulty": 0.4,
+   "world_channels": {
+    "+": {
+     "integrity": "+1*power"
+    },
+    "-": {
+     "rust": "+1*power",
+     "integrity": "-1*power"
+    },
+    "~": {
+     "shape_metal": "power"
+    }
+   },
+   "body": {
+    "+": {
+     "armor": "0.25*power"
+    },
+    "-": {
+     "disarm": "0.5*power"
+    },
+    "~": {}
+   }
+  },
+  {
+   "id": "stone",
+   "group": "matter",
+   "tags": [
+    "matter"
+   ],
+   "opposes": [],
+   "feeds": [
+    "earth"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.4,
+   "world_channels": {
+    "+": {
+     "integrity": "+2*power"
+    },
+    "-": {
+     "integrity": "-2.5*power"
+    },
+    "~": {
+     "shape_stone": "power"
+    }
+   },
+   "body": {
+    "+": {
+     "petrify": "0.2*power"
+    },
+    "-": {},
+    "~": {}
+   }
+  },
+  {
+   "id": "poison",
+   "group": "matter",
+   "tags": [
+    "matter",
+    "dark"
+   ],
+   "opposes": [
+    "life"
+   ],
+   "feeds": [
+    "death"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.35,
+   "world_channels": {
+    "+": {
+     "taint": "+2*power",
+     "fertility": "-0.5*power"
+    },
+    "-": {
+     "taint": "-2*power"
+    },
+    "~": {
+     "transfer": "taint"
+    }
+   },
+   "body": {
+    "+": {
+     "poison": "0.5*power",
+     "health": "-0.04*power"
+    },
+    "-": {
+     "cure_poison": "1*power"
+    },
+    "~": {}
+   }
+  },
+  {
+   "id": "blood",
+   "group": "body",
+   "tags": [
+    "body",
+    "dark"
+   ],
+   "opposes": [
+    "life"
+   ],
+   "feeds": [
+    "death"
+   ],
+   "base_cost": 1.3,
+   "difficulty": 0.5,
+   "world_channels": {
+    "+": {},
+    "-": {
+     "taint": "+0.3*power"
+    },
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "health": "+0.05*power",
+     "strength": "0.3*power"
+    },
+    "-": {
+     "bleed": "0.6*power",
+     "health": "-0.08*power"
+    },
+    "~": {
+     "health_transfer": "0.1*power"
+    }
+   }
+  },
+  {
+   "id": "mind",
+   "group": "body",
+   "tags": [
+    "body",
+    "mind"
+   ],
+   "opposes": [
+    "beasts"
+   ],
+   "feeds": [
+    "sleep"
+   ],
+   "base_cost": 1.3,
+   "difficulty": 0.55,
+   "world_channels": {
+    "+": {},
+    "-": {},
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "calm": "0.4*power",
+     "charm": "0.3*power"
+    },
+    "-": {
+     "fear": "0.5*power",
+     "confuse": "0.4*power"
+    },
+    "~": {
+     "read_mind": "1"
+    }
+   }
+  },
+  {
+   "id": "sleep",
+   "group": "body",
+   "tags": [
+    "body",
+    "mind"
+   ],
+   "opposes": [],
+   "feeds": [
+    "mind"
+   ],
+   "base_cost": 0.9,
+   "difficulty": 0.35,
+   "world_channels": {
+    "+": {},
+    "-": {},
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "sleep": "0.5*power",
+     "fatigue": "+0.3*power"
+    },
+    "-": {
+     "fatigue": "-0.3*power",
+     "wake": "1"
+    },
+    "~": {
+     "dream": "1"
+    }
+   }
+  },
+  {
+   "id": "light",
+   "group": "force",
+   "tags": [
+    "force",
+    "holy"
+   ],
+   "opposes": [
+    "shadow"
+   ],
+   "feeds": [
+    "fire",
+    "life"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.35,
+   "world_channels": {
+    "+": {
+     "light": "+3*power"
+    },
+    "-": {
+     "light": "-2*power"
+    },
+    "~": {
+     "transfer": "light"
+    }
+   },
+   "body": {
+    "+": {
+     "undead_harm": "0.12*power",
+     "troll_sun": "1*power",
+     "blind": "0.3*power"
+    },
+    "-": {},
+    "~": {}
+   }
+  },
+  {
+   "id": "shadow",
+   "group": "force",
+   "tags": [
+    "force",
+    "dark"
+   ],
+   "opposes": [
+    "light"
+   ],
+   "feeds": [
+    "death",
+    "mind"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.4,
+   "world_channels": {
+    "+": {
+     "light": "-3*power"
+    },
+    "-": {
+     "light": "+1*power"
+    },
+    "~": {
+     "transfer": "light"
+    }
+   },
+   "body": {
+    "+": {
+     "hide": "0.6*power",
+     "fear": "0.2*power",
+     "troll_wake": "1"
+    },
+    "-": {},
+    "~": {}
+   }
+  },
+  {
+   "id": "death",
+   "group": "force",
+   "tags": [
+    "force",
+    "dark",
+    "forbidden"
+   ],
+   "opposes": [
+    "life"
+   ],
+   "feeds": [
+    "poison",
+    "blood"
+   ],
+   "base_cost": 1.6,
+   "difficulty": 0.65,
+   "world_channels": {
+    "+": {
+     "taint": "+1*power",
+     "fertility": "-1*power"
+    },
+    "-": {
+     "taint": "-1*power"
+    },
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "health": "-0.12*power",
+     "death_touch": "1",
+     "undead_heal": "0.12*power"
+    },
+    "-": {
+     "undead_harm": "0.15*power",
+     "lay_rest": "1"
+    },
+    "~": {
+     "raise": "1*power",
+     "speak_dead": "1"
+    }
+   }
+  },
+  {
+   "id": "space",
+   "group": "force",
+   "tags": [
+    "force"
+   ],
+   "opposes": [],
+   "feeds": [
+    "air"
+   ],
+   "base_cost": 1.7,
+   "difficulty": 0.7,
+   "world_channels": {
+    "+": {},
+    "-": {},
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "push": "2*power"
+    },
+    "-": {
+     "pull": "2*power"
+    },
+    "~": {
+     "blink": "6*power"
+    }
+   }
+  },
+  {
+   "id": "time",
+   "group": "force",
+   "tags": [
+    "force"
+   ],
+   "opposes": [],
+   "feeds": [],
+   "base_cost": 2.5,
+   "difficulty": 0.9,
+   "world_channels": {
+    "+": {
+     "growth": "+3*power"
+    },
+    "-": {
+     "growth": "-3*power"
+    },
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "age": "+30*power",
+     "haste": "0.5*power"
+    },
+    "-": {
+     "age": "-10*power",
+     "slow": "0.5*power"
+    },
+    "~": {}
+   },
+   "enabled": false
+  },
+  {
+   "id": "bond",
+   "group": "special",
+   "tags": [
+    "special",
+    "craft"
+   ],
+   "opposes": [],
+   "feeds": [
+    "essence"
+   ],
+   "base_cost": 1.2,
+   "difficulty": 0.5,
+   "world_channels": {
+    "+": {
+     "aether": "+0.5*power"
+    },
+    "-": {
+     "aether": "-1*power"
+    },
+    "~": {}
+   },
+   "body": {
+    "+": {
+     "bind": "1"
+    },
+    "-": {
+     "unbind": "1"
+    },
+    "~": {
+     "link": "1"
+    }
+   }
+  },
+  {
+   "id": "essence",
+   "group": "special",
+   "tags": [
+    "special"
+   ],
+   "opposes": [],
+   "feeds": [
+    "bond"
+   ],
+   "base_cost": 1.0,
+   "difficulty": 0.45,
+   "world_channels": {
+    "+": {
+     "aether": "+1*power"
+    },
+    "-": {
+     "aether": "-2*power"
+    },
+    "~": {
+     "transfer": "aether"
+    }
+   },
+   "body": {
+    "+": {
+     "mana": "+0.15*power"
+    },
+    "-": {
+     "mana": "-0.25*power",
+     "dispel": "1*power"
+    },
+    "~": {
+     "sense_magic": "1"
+    }
+   }
+  }
+ ]
+}
