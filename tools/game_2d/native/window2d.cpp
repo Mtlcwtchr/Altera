@@ -688,6 +688,7 @@ struct Window::Impl : Ctx {
         LOOK = parseOr(readText(dir / "craft2d.json"), Json::object());
         atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
         sprites.merge(LOOK);
+        sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
         for (const auto& a : MAP.value("acts", Json::array()))
             if (a.is_array() && a.size() >= 2) try {
                     actsRe.push_back({std::regex(a[0].get<std::string>(), std::regex::ECMAScript), a[1].get<std::string>()});
@@ -746,6 +747,32 @@ struct Window::Impl : Ctx {
                 const int rot = turn ? (v >> 4) & 3 : 0;
                 blit(sp, float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
             }
+        // AL-112: fields and gardens over the ground (one char per cell, '.' none)
+        const std::string crop = str(j, "crop");
+        const Json cropTiles = j.value("crop_tiles", Json::array());
+        if (!crop.empty())
+            for (int y = 0; y < h; ++y)
+                for (int x = 0; x < w; ++x) {
+                    const std::size_t i = std::size_t(y * w + x);
+                    if (i >= crop.size() || crop[i] == '.') continue;
+                    const std::size_t k = std::size_t(crop[i] - '0');
+                    if (k >= cropTiles.size() || !cropTiles[k].is_array() || cropTiles[k].size() < 2) continue;
+                    const std::string name = cropTiles[k][0].get<std::string>();
+                    const int rot = cropTiles[k][1].get<int>();
+                    if (glyphs) {
+                        if (name.find("path") != std::string::npos) continue;
+                        char cl = 'l';
+                        if (name.find("over") != std::string::npos) cl = 'T';
+                        else if (name.find("ripe") != std::string::npos) cl = 'y';
+                        else if (name.find("tilled") != std::string::npos || name.find("sown") != std::string::npos) cl = 'n';
+                        else if (name.find("fallow") != std::string::npos || name.find("bare") != std::string::npos ||
+                                 name.find("stubble") != std::string::npos) cl = 't';
+                        fill(float(x * T), float(y * T), T, T, hexc("#100c08"));
+                        fill(float(x * T + 5), float(y * T + 5), 6, 6, col(sprites.colour(cl), 0.7f));
+                        continue;
+                    }
+                    blit(sprite(name), float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
+                }
         // walls, doors, windows of the ground storey on the cell lines (4 px strips)
         auto pc = [&](char l) { return col(sprites.colour(l)); };
         for (const auto& e : arr(j, "edges")) {
