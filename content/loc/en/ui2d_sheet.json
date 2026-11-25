@@ -1,5 +1,5 @@
 {
- "ui2d.sheet.tab.overview": "Overview",
+ "ui2d.sheet.tab.overview": "Character",
  "ui2d.sheet.tab.relations": "Relations",
  "ui2d.sheet.tab.things": "Things",
  "ui2d.sheet.tab.skills": "Skills & traits",
@@ -138,5 +138,11 @@
  "ui2d.sheet.who.known": "acquaintance",
  "ui2d.sheet.who.family": "kin",
  "ui2d.sheet.role.spouse.f": "wife",
- "ui2d.sheet.role.spouse.m": "husband"
+ "ui2d.sheet.role.spouse.m": "husband",
+ "ui2d.sheet.attrs_title": "Attributes",
+ "ui2d.sheet.state": "Condition",
+ "ui2d.sheet.weapon": "Weapon",
+ "ui2d.sheet.tool": "Tool",
+ "ui2d.sheet.empty_hand": "empty",
+ "ui2d.sheet.more": "{n} more"
 }

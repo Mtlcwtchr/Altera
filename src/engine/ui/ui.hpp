@@ -97,6 +97,13 @@ struct Theme {
     Colour selection = Colour::rgb(255, 246, 214);
 
     float radius = 5.0f;          // how round a panel's corners are
+    // LR-137: a pixel-art skin. pixel > 0: square corners, outlines `pixel` thick and
+    // buttons with a stepped bevel (bevelLight along the top and left, bevelDark along
+    // the bottom and right) in whole pixels of that size; 0 keeps the round look.
+    float pixel = 0.0f;
+    int fontGrid = 0;         // a pixel font: its em in font pixels (8 for Tiny5); text snaps to whole multiples
+    Colour bevelLight = Colour::rgb(224, 192, 128);
+    Colour bevelDark = Colour::rgb(26, 20, 16);
     float rowHeight = 22.0f;
     float pad = 8.0f;
     float textScale = 1.0f;       // the base size of a line of writing
@@ -202,6 +209,8 @@ public:
     void rect(const Rect& r, const Colour& c);
     void roundRect(const Rect& r, const Colour& c, float radius = -1.0f);
     void border(const Rect& r, const Colour& c, float thickness = 1.0f, float radius = -1.0f);
+    // LR-137: the stepped pixel bevel of a raised (or, raised false, pressed) part; nothing when theme().pixel is 0
+    void bevel(const Rect& r, bool raised = true);
     void line(float x0, float y0, float x1, float y1, const Colour& c);
     void text(float x, float y, const std::string& s, const Colour& c, float scale = 1.0f);
     void text(float x, float y, const std::string& s, const Colour& c, float scale, bool bold);

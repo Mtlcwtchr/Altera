@@ -4,6 +4,7 @@
 // Data: /api/sheet?id= (src/client2d/sheet2d.cpp), refreshed while open.
 #include <algorithm>
 #include <cmath>
+#include <regex>
 
 #include "native/ctx2d.hpp"
 
@@ -72,8 +73,20 @@ struct Flow {
     float U;
     void head(const std::string& h) {
         y += 4 * U;
-        c.text(x, y, h, pal::gold, 15 * U, true);
-        y += 22 * U;
+        c.text(x, y, h, pal::gold, 16 * U, true);
+        c.fill(x, y + 19 * U, w, c.pixel(), pal::bronze.withAlpha(0.6f));
+        y += 26 * U;
+    }
+    // LR-137: an icon, the name, ten pips, the number on the right
+    void stat(const std::string& icon, const std::string& name, double v, const ui::Colour& col, const std::string& right) {
+        const float is = c.iconSize(), rowH = std::max(is, 20 * U), p = c.pixel();
+        const float pw = 10 * 4 * p + 2 * p, nw = 34 * U;
+        if (!icon.empty()) c.icon(icon, x, y + (rowH - is) / 2);
+        const float tx = x + is + 6 * U;
+        c.text(tx, y + (rowH - c.textH(16 * U)) / 2, c.fit(name, w - (tx - x) - pw - nw - 6 * U, 16 * U), pal::text, 16 * U);
+        c.pips(x + w - nw - pw, y + (rowH - 5 * p) / 2, 10, v, col);
+        c.text(x + w - c.textW(right, 16 * U), y + (rowH - c.textH(16 * U)) / 2, right, pal::dim, 16 * U);
+        y += rowH + 4 * U;
     }
     void bar(const std::string& name, double v, const ui::Colour& col, const std::string& right, bool signedBar = false) {
         const float px = 13 * U, lw = std::min(140 * U, w * 0.42f);
@@ -98,8 +111,7 @@ struct Flow {
 template <class F>
 void box(Ctx& c, const ui::Rect& r, const char* id, int index, F&& draw) {
     const float U = c.u();
-    c.fill(r.x, r.y, r.w, r.h, pal::leatherD.withAlpha(0.85f));
-    c.frame(r.x, r.y, r.w, r.h, pal::bronze.withAlpha(0.6f), U);
+    c.well(r);
     ui::Ui& g = c.gui();
     const ui::Rect in = g.beginScroll(ui::widgetId(id, index), r.inset(8 * U));
     Flow f{c, in.x, in.y, in.w, U};
@@ -125,47 +137,133 @@ std::string memLine(Ctx& c, const Json& m) {
 }
 
 // --- the pages ------------------------------------------------------------------------------
-void pageOverview(Ctx& c, Win& w, const Json& d, const ui::Rect& r) {
-    const float U = c.u();
-    const Json o = d.value("overview", Json::object());
-    const Json& moodlets = jarr(o, "moodlets");
-    int good = 0, bad = 0;
-    for (const auto& m : moodlets) (jnum(m, "v") > 0 ? good : bad) += jnum(m, "v") != 0 ? 1 : 0;
-    const Json& wounds = jarr(o, "wounds");
-    // four meters
-    const float mh = 70 * U, mw = (r.w - 3 * 8 * U) / 4;
-    auto meter = [&](int i, const std::string& name, double v, const ui::Colour& col, const std::string& txt, const std::string& sub) {
-        const ui::Rect m{r.x + i * (mw + 8 * U), r.y, mw, mh};
-        c.fill(m.x, m.y, m.w, m.h, pal::leatherD.withAlpha(0.85f));
-        c.frame(m.x, m.y, m.w, m.h, pal::bronze.withAlpha(0.6f), U);
-        c.text(m.x + 8 * U, m.y + 6 * U, name, pal::gold, 14 * U, true);
-        c.text(m.right() - 8 * U - c.textW(txt, 14 * U), m.y + 6 * U, txt, pal::text, 14 * U);
-        c.gauge({m.x + 8 * U, m.y + 30 * U, m.w - 16 * U, 12 * U}, v, col);
-        if (!sub.empty()) c.text(m.x + 8 * U, m.y + 48 * U, c.fit(sub, m.w - 16 * U, 12 * U), pal::dim, 12 * U);
-    };
-    const double hp = jnum(o, "hp", 1), fat = jnum(o, "fatigue"), blood = jnum(o, "blood", 1), mood = jnum(o, "mood");
-    std::string ww = wounds.empty() ? "" : jstr(wounds[0], "sev") + ": " + jstr(wounds[0], "zone");
-    bool bleeding = false;
-    for (const auto& x : wounds) bleeding = bleeding || jflag(x, "bleeding");
-    meter(0, S(c, "health"), hp, pal::tone(hp), std::to_string(pct(hp)) + " / 100", ww);
-    meter(1, S(c, "strength"), 1 - fat, pal::tone(1 - fat), std::to_string(pct(1 - fat)) + " / 100", jstr(o, "act"));
-    meter(2, S(c, "blood"), blood, blood < 0.6 ? pal::bad : pal::hex("#a0282a"), std::to_string(pct(blood)) + " / 100", bleeding ? S(c, "bleeding") : "");
-    meter(3, S(c, "mood"), (mood + 1) / 2, pal::tone((mood + 1) / 2), (mood >= 0 ? "+" : "") + std::to_string(int(std::lround(mood * 100))),
-          "+" + std::to_string(good) + " / -" + std::to_string(bad));
-    const float top = r.y + mh + 10 * U, cw = (r.w - 2 * 10 * U) / 3, ch = r.bottom() - top;
-    box(c, {r.x, top, cw, ch}, "cs.ov", 0, [&](Flow& f) {
-        f.head(S(c, "doing"));
-        std::vector<std::string> doing = {jstr(o, "act").empty() ? c.L("ui2d.idle") : jstr(o, "act")};
-        if (!jstr(o, "goal").empty()) doing.push_back(S(c, "wants") + ": " + jstr(o, "goal"));
-        f.lines(doing);
-        if (!jarr(o, "plan").empty()) {
-            f.head(S(c, "plan"));
-            int i = 1;
-            for (const auto& a : jarr(o, "plan")) {
-                c.text(f.x, f.y, std::to_string(i++) + ". " + c.fit(jstr(a, "name"), f.w - 24 * U, 13 * U), jflag(a, "now") ? pal::gold : pal::text, 13 * U);
-                f.y += 19 * U;
-            }
+// LR-137: the character page in the spirit of WoW's: the paper doll with the worn things
+// on both sides and the hands below, then attributes and condition, then skills, traits
+// and what the person is up to. Needs and thoughts are in the column next to the map.
+constexpr float kPageH = 420;   // the page's height (in U): the window hugs it
+
+// a thing's picture: craft2d.json items, resources.json items, else the first letter
+void thingIcon(Ctx& c, const std::string& item, const std::string& name, float x, float y, float size) {
+    for (const Json* look : {&c.craftLook(), &c.resources()})
+        if (look->is_object() && look->contains("items") && (*look)["items"].contains(item)) {
+            const Json& r = (*look)["items"][item];
+            if (r.is_object() && c.spriteAt(jstr(r, "sprite"), r.value("recolour", Json()), x, y, size)) return;
         }
+    if (name.empty()) return;
+    std::size_t n = 1;
+    while (n < name.size() && (static_cast<unsigned char>(name[n]) & 0xC0) == 0x80) ++n;
+    c.textC(x + size / 2, y + (size - c.textH(16 * c.u())) / 2, name.substr(0, n), pal::gold, 16 * c.u());
+}
+
+// a carried thing for a hand: the first whose id matches
+const Json* inHand(const Json& carried, const char* re) {
+    const std::regex rx(re);
+    for (const auto& x : carried)
+        if (std::regex_search(jstr(x, "id"), rx)) return &x;
+    return nullptr;
+}
+
+void pageOverview(Ctx& c, Win& w, const Json& d, const ui::Rect& r) {
+    (void)w;
+    const float U = c.u(), p = c.pixel(), is = c.iconSize();
+    const Json o = d.value("overview", Json::object());
+    const Json th = d.value("things", Json::object());
+    const Json sk = d.value("skills", Json::object());
+    const Json& hud = c.hud();
+
+    // --- the doll ---------------------------------------------------------------------------
+    const float slotW = 170 * U, slotH = 64 * U, gap = 10 * U, figW = 150 * U;
+    const float dw = 2 * slotW + figW + 4 * gap;
+    const ui::Rect dr{r.x, r.y, dw, r.h};
+    c.well(dr);
+    c.text(dr.x + 10 * U, dr.y + 8 * U, S(c, "worn"), pal::gold, 16 * U);
+    static const struct {
+        const char* slot;
+        int col, row;
+    } PLACES[] = {{"head", 0, 0}, {"shoulder", 0, 1}, {"back", 0, 2}, {"torso", 0, 3}, {"hands", 1, 0}, {"waist", 1, 1}, {"legs", 1, 2}, {"feet", 1, 3}};
+    const float top = dr.y + 34 * U;
+    for (const auto& pl : PLACES) {
+        std::vector<const Json*> items;
+        for (const auto& x : jarr(th, "worn"))
+            if (jstr(x, "slot") == pl.slot) items.push_back(&x);
+        std::string slotName = pl.slot;
+        for (const auto& sd : jarr(th, "slots"))
+            if (jstr(sd, "id") == pl.slot) slotName = jstr(sd, "name");
+        const bool left = pl.col == 0;
+        const ui::Rect sr{left ? dr.x + gap : dr.right() - gap - slotW, top + pl.row * (slotH + gap), slotW, slotH};
+        c.plate(sr, !items.empty());
+        const float ws = slotH - 4 * p;
+        const ui::Rect wr{left ? sr.x + 2 * p : sr.right() - 2 * p - ws, sr.y + 2 * p, ws, ws};
+        c.well(wr);
+        // the outermost layer shows; the rest is counted
+        const Json* shown = items.empty() ? nullptr : items.back();
+        if (shown) thingIcon(c, jstr(*shown, "id"), jstr(*shown, "name"), wr.x + 2 * p, wr.y + 2 * p, ws - 4 * p);
+        const float tx = left ? wr.right() + 6 * U : sr.x + 6 * U, tw = sr.w - ws - 2 * p - 12 * U;
+        auto line = [&](float y, const std::string& s, const ui::Colour& col) {
+            const std::string f = c.fit(s, tw, 16 * U);
+            c.text(left ? tx : wr.x - 6 * U - c.textW(f, 16 * U), y, f, col, 16 * U);
+        };
+        line(sr.y + slotH / 2 - 20 * U, slotName, pal::dim);
+        std::string what = shown ? jstr(*shown, "name") : S(c, "layer_empty");
+        if (items.size() > 1) what += " +" + std::to_string(items.size() - 1);
+        line(sr.y + slotH / 2 + 2 * U, what, shown ? pal::text : pal::dim.withAlpha(0.6f));
+    }
+    // the figure between the columns
+    const float fx = dr.x + slotW + 2 * gap, fy = top, fh = 4 * slotH + 3 * gap;
+    c.well({fx, fy, figW, fh});
+    const float fig = std::min(figW - 8 * p, fh - 8 * p);
+    c.face(jid(d, "id"), jstr(d, "name"), fx + (figW - fig) / 2, fy + (fh - fig) / 2, fig);
+    // the hands below: a weapon and a tool from what is carried
+    const Json& carried = jarr(th, "carried");
+    const Json* weapon = inHand(carried, "sword|knife|blade|dagger|spear|bow|mace|club");
+    const Json* tool = inHand(carried, "hammer|axe|pick|saw|sickle|scythe|hoe|tongs|chisel|rod|net");
+    const float hy = top + fh + gap;
+    auto hand = [&](float x, const char* lbl, const Json* t) {
+        const ui::Rect hr{x, hy, slotW, slotH};
+        c.plate(hr, t != nullptr);
+        const float ws = slotH - 4 * p;
+        const ui::Rect wr{hr.x + 2 * p, hr.y + 2 * p, ws, ws};
+        c.well(wr);
+        if (t) thingIcon(c, jstr(*t, "id"), jstr(*t, "name"), wr.x + 2 * p, wr.y + 2 * p, ws - 4 * p);
+        c.text(wr.right() + 6 * U, hr.y + slotH / 2 - 20 * U, S(c, lbl), pal::dim, 16 * U);
+        c.text(wr.right() + 6 * U, hr.y + slotH / 2 + 2 * U, c.fit(t ? jstr(*t, "name") : S(c, "empty_hand"), hr.right() - wr.right() - 12 * U, 16 * U),
+               t ? pal::text : pal::dim.withAlpha(0.6f), 16 * U);
+    };
+    hand(dr.x + gap, "weapon", weapon);
+    hand(dr.right() - gap - slotW, "tool", tool);
+    // the load and the purse under the figure
+    {
+        const double kg = jnum(th, "kg"), maxKg = jnum(th, "maxKg"), ld = maxKg > 0 ? kg / maxKg : 0;
+        char a[16], b[16];
+        std::snprintf(a, sizeof a, "%.1f", kg);
+        std::snprintf(b, sizeof b, "%.0f", maxKg);
+        const float y = hy + 4 * U;
+        c.icon("hud_bag", fx, y);
+        c.pips(fx + is + 4 * U, y + (is - 5 * p) / 2, 10, ld, ld > 0.8 ? pal::bad : ld > 0.45 ? pal::mid : pal::good);
+        const std::string kgs = std::string(a) + "/" + b;
+        c.textC(fx + figW / 2, y + is + 4 * U, kgs, pal::dim, 16 * U);
+    }
+
+    // --- attributes and condition ----------------------------------------------------------
+    const float cx = dr.right() + 10 * U, cw = (r.right() - cx - 10 * U) / 2;
+    box(c, {cx, r.y, cw, r.h}, "cs.ov", 0, [&](Flow& f) {
+        f.head(S(c, "attrs_title"));
+        std::map<std::string, std::string> attrIcon;
+        for (const auto& a : jarr(hud, "attrs")) attrIcon[jstr(a, "id")] = jstr(a, "icon");
+        for (const auto& a : jarr(sk, "attrs")) {
+            const double v = jnum(a, "v");
+            const int lvl = std::clamp(int(std::lround(v * 10)), 1, 10);
+            f.stat(attrIcon[jstr(a, "id")], jstr(a, "name"), lvl / 10.0, pal::gold, std::to_string(lvl));
+        }
+        f.head(S(c, "state"));
+        const Json& wounds = jarr(o, "wounds");
+        const double hp = jnum(o, "hp", 1), st = 1 - jnum(o, "fatigue"), bl = jnum(o, "blood", 1), mood = jnum(o, "mood");
+        const Json vit = hud.value("vitals", Json::object());
+        f.stat(jstr(vit, "health"), S(c, "health"), hp, pal::bad, std::to_string(pct(hp)));
+        f.stat(jstr(vit, "strength"), S(c, "strength"), st, pal::mid, std::to_string(pct(st)));
+        f.stat(jstr(vit, "blood"), S(c, "blood"), bl, pal::hex("#a0282a"), std::to_string(pct(bl)));
+        f.stat(jstr(vit, mood < -0.1 ? "mood_low" : "mood"), S(c, "mood"), (mood + 1) / 2, mood >= 0 ? pal::good : pal::bad,
+               (mood >= 0 ? "+" : "") + std::to_string(int(std::lround(mood * 100))));
         if (!wounds.empty() || !jarr(o, "injuries").empty()) {
             f.head(S(c, "wounds"));
             std::vector<std::string> ls;
@@ -177,32 +275,37 @@ void pageOverview(Ctx& c, Win& w, const Json& d, const ui::Rect& r) {
                 ls.push_back(s);
             }
             for (const auto& x : jarr(o, "injuries")) ls.push_back(jstr(x, "kind") + " (" + jstr(x, "zone") + ")");
-            f.lines(ls);
+            f.lines(ls, 16);
         }
     });
-    box(c, {r.x + cw + 10 * U, top, cw, ch}, "cs.ov", 1, [&](Flow& f) {
-        f.head(S(c, "thoughts"));
-        if (moodlets.empty()) f.lines({S(c, "none")});
-        for (const auto& m : moodlets) {
-            const double v = jnum(m, "v");
-            const std::string n = (v >= 0 ? "+" : "-") + std::to_string(int(std::lround(std::abs(v) * 100)));
-            c.text(f.x, f.y, n, v >= 0 ? pal::good : pal::bad, 13 * U, true);
-            const std::string tail = jnum(m, "h") < 0 ? S(c, "lasting") : S(c, "hours", {{"n", jstr(m, "h")}});
-            c.text(f.x + 40 * U, f.y, c.fit(jstr(m, "name"), f.w - 110 * U, 13 * U), pal::text, 13 * U);
-            c.text(f.x + f.w - c.textW(tail, 12 * U), f.y + 1 * U, tail, pal::dim, 12 * U);
+
+    // --- skills, traits, what now ------------------------------------------------------------
+    box(c, {cx + cw + 10 * U, r.y, cw, r.h}, "cs.ov", 1, [&](Flow& f) {
+        f.head(S(c, "skills"));
+        const Json& skills = jarr(sk, "skills");
+        if (skills.empty()) f.lines({S(c, "none")}, 16);
+        int n = 0;
+        for (const auto& k : skills) {
+            if (n++ >= 8) break;
+            f.stat("hud_skill", jstr(k, "name"), jnum(k, "v"), pal::bronzeL, std::to_string(pct(jnum(k, "v"))));
+        }
+        if (skills.size() > 8) {
+            c.text(f.x, f.y, S(c, "more", {{"n", std::to_string(skills.size() - 8)}}) + "  (" + S(c, "tab.skills") + ")", pal::dim, 16 * U);
             f.y += 20 * U;
         }
-    });
-    box(c, {r.x + 2 * (cw + 10 * U), top, cw, ch}, "cs.ov", 2, [&](Flow& f) {
-        f.head(S(c, "needs"));
-        Json needs = jarr(o, "needs");
-        std::sort(needs.begin(), needs.end(), [](const Json& a, const Json& b) { return jnum(a, "v") < jnum(b, "v"); });
-        const Json trend = w.data.value("trend", Json::object());
-        for (const auto& n : needs) {
-            const int tr = trend.contains(jstr(n, "id")) ? trend[jstr(n, "id")].get<int>() : 0;
-            const std::string right = std::to_string(pct(jnum(n, "v"))) + (tr > 0 ? " ^" : tr < 0 ? " v" : "  ");
-            f.bar(jstr(n, "name"), jnum(n, "v"), pal::tone(jnum(n, "v")), right);
+        if (!jarr(sk, "traits").empty()) {
+            f.head(S(c, "traits"));
+            std::vector<std::string> ts;
+            for (const auto& t : jarr(sk, "traits")) ts.push_back(jstr(t, "name"));
+            f.chips(ts);
         }
+        f.head(S(c, "doing"));
+        std::vector<std::string> doing = {jstr(o, "act").empty() ? c.L("ui2d.idle") : jstr(o, "act")};
+        if (!jstr(o, "goal").empty()) doing.push_back(S(c, "wants") + ": " + jstr(o, "goal"));
+        int i = 1;
+        for (const auto& a : jarr(o, "plan"))
+            if (i <= 4) doing.push_back(std::to_string(i++) + ". " + jstr(a, "name"));
+        f.lines(doing, 16);
     });
 }
 
@@ -598,6 +701,8 @@ void openSheet(Ctx& c, Screens& s, long long id) {
     w->tab = "overview";
     w->width = 0.9f;
     w->height = 0.9f;
+    w->wantW = 1180 * c.u();
+    w->fitH = (80 + 8 + kPageH) * c.u();   // the head and the page: every tab has the doll's height
     w->data = {{"id", -1}, {"relFilter", "all"}};
     setPerson(c, *w, id);
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) { render(c, s, w, body); };

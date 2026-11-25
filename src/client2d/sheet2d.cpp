@@ -126,7 +126,7 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
               {"sex", std::string(1, c.body.sex)},
               {"age", c.body.ageDays / kDaysPerYear},
               {"stage", textOr(t, "life_stage." + c.body.stage() + ".name", c.body.stage())},
-              {"fam", fam ? fam->name : ""},
+              {"fam", !fam ? "" : t.loc ? t.loc->personNoun(t.lang, fam->name, 'm').value("nom", fam->name) : fam->name},   // LR-137: shown
               {"house", c.standing.house},
               {"role", textOr(t, "ui2d.sheet.role." + c.status.role + "." + std::string(1, c.body.sex),
                               textOr(t, "household_role." + c.status.role + ".name", c.status.role))},
@@ -300,6 +300,10 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
     Json attrs = Json::array();
     for (const auto& [aid, v] : c.attrs)
         attrs.push_back({{"id", aid}, {"name", t.name("attr", aid)}, {"desc", textOr(t, "attr." + aid + ".desc", "")}, {"v", r2(v)}});
+    // LR-137: the ones never rolled (the first villagers) at the mean the sim reads for them
+    for (const auto& aid : ct.expansion.attributes)
+        if (!c.attrs.count(aid))
+            attrs.push_back({{"id", aid}, {"name", t.name("attr", aid)}, {"desc", textOr(t, "attr." + aid + ".desc", "")}, {"v", 0.5}, {"base", true}});
     sk["attrs"] = attrs;
     Json knows = Json::array();
     for (const auto& k : c.knowledge)

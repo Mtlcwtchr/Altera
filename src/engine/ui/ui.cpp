@@ -90,7 +90,10 @@ void Ui::setFont(std::shared_ptr<FontFace> regular, std::shared_ptr<FontFace> bo
 
 const FontAtlas* Ui::atlas(float scale, bool bold) const {
     if (!regular_ || !sdl_) return nullptr;
-    const int pixels = std::max(4, int(std::lround(fontPoints_ * scale * theme_.textScale * pixelsPerPoint_)));
+    int pixels = std::max(4, int(std::lround(fontPoints_ * scale * theme_.textScale * pixelsPerPoint_)));
+    // A pixel font is crisp only at whole multiples of its grid: snap to the nearest one, and
+    // never below two screen pixels per font pixel: one is too small to read.
+    if (const int g = theme_.fontGrid; g > 0) pixels = std::max(2 * g, int(std::lround(float(pixels) / float(g))) * g);
     const bool heavy = bold && bold_ != nullptr;
     auto& slot = atlases_[{heavy, pixels}];
     if (!slot) slot = std::make_unique<FontAtlas>(heavy ? bold_ : regular_, sdl_, pixels);
@@ -375,7 +378,7 @@ void Ui::rect(const Rect& r, const Colour& c) {
 
 void Ui::roundRect(const Rect& r, const Colour& c, float radius) {
     if (!record(r, Hash().add(std::uint64_t(2)).add(r).add(c).add(radius).h)) return;
-    const float rad = std::min({radius < 0 ? theme_.radius : radius, r.w * 0.5f, r.h * 0.5f});
+    const float rad = theme_.pixel > 0 ? 0.0f : std::min({radius < 0 ? theme_.radius : radius, r.w * 0.5f, r.h * 0.5f});
     setColour(c);
     if (rad <= 0.5f) {
         const SDL_FRect box = r.sdl();
@@ -414,6 +417,7 @@ void Ui::border(const Rect& r, const Colour& c, float thickness, float radius) {
     if (!record(r, Hash().add(std::uint64_t(3)).add(r).add(c).add(thickness).h)) return;
     (void)radius;
     setColour(c);
+    if (theme_.pixel > 0) thickness = std::max(thickness, theme_.pixel);
     // Whole pixels: a one-point line on a two-pixel-per-point surface is two
     // pixels, drawn as two rings rather than one smeared across both.
     const float step = 1.0f / std::max(1.0f, std::round(pixelsPerPoint_));
@@ -421,6 +425,17 @@ void Ui::border(const Rect& r, const Colour& c, float thickness, float radius) {
         const SDL_FRect box{r.x + i, r.y + i, r.w - i * 2, r.h - i * 2};
         SDL_RenderRect(sdl_, &box);
     }
+}
+
+void Ui::bevel(const Rect& r, bool raised) {
+    const float p = theme_.pixel;
+    if (p <= 0 || r.w < 4 * p || r.h < 4 * p) return;
+    const Colour& lit = raised ? theme_.bevelLight : theme_.bevelDark;
+    const Colour& dark = raised ? theme_.bevelDark : theme_.bevelLight;
+    rect({r.x + p, r.y + p, r.w - 2 * p, p}, lit);
+    rect({r.x + p, r.y + p, p, r.h - 2 * p}, lit);
+    rect({r.x + p, r.bottom() - 2 * p, r.w - 2 * p, p}, dark.withAlpha(dark.a * 0.7f));
+    rect({r.right() - 2 * p, r.y + 2 * p, p, r.h - 3 * p}, dark.withAlpha(dark.a * 0.7f));
 }
 
 void Ui::line(float x0, float y0, float x1, float y1, const Colour& c) {
@@ -651,8 +666,9 @@ bool Ui::button(std::uint64_t id, const Rect& r, const std::string& label, bool 
                        : over ? theme_.slotHot
                               : theme_.slot;
     roundRect(r, face, 4.0f);
-    border(r, over ? theme_.accent.withAlpha(0.8f) : theme_.slotEdge);
-    textCentred(r, fit(label, r.w - 8), enabled ? theme_.label : theme_.labelSoft);
+    bevel(r, !(active_ == id && over));
+    border(r, over && theme_.pixel <= 0 ? theme_.accent.withAlpha(0.8f) : theme_.slotEdge);
+    textCentred(r, fit(label, r.w - 8), enabled ? (over && theme_.pixel > 0 ? theme_.accent : theme_.label) : theme_.labelSoft);
     claim(r);
     return clicked;
 }
@@ -696,6 +712,7 @@ bool Ui::toggle(std::uint64_t id, const Rect& r, const std::string& label, bool 
                        : over ? theme_.slotHot
                               : theme_.slot;
     roundRect(r, face, 4.0f);
+    bevel(r, !active);
     border(r, active ? theme_.accent : over ? theme_.accent.withAlpha(0.6f) : theme_.slotEdge);
     textCentred(r, fit(label, r.w - 8), !enabled ? theme_.labelSoft : active ? theme_.accent : theme_.label, 1.0f,
                 active);
@@ -708,6 +725,7 @@ bool Ui::iconButton(std::uint64_t id, const Rect& r, SDL_Texture* icon, const st
     const bool over = hovered(r);
     const bool clicked = pressedOn(id, over);
     roundRect(r, active ? theme_.slotDown : over ? theme_.slotHot : theme_.slot, 4.0f);
+    bevel(r, !active);
     border(r, active ? theme_.accent : theme_.slotEdge);
     if (icon) image(r.inset(3), icon);
     else textCentred(r, fallback, theme_.label);

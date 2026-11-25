@@ -221,7 +221,8 @@ struct Window::Impl : Ctx {
     SDL_Window* win = nullptr;
     SDL_Renderer* ren = nullptr;
     ui::Ui ui;
-    std::shared_ptr<ui::FontFace> fontFace;
+    std::shared_ptr<ui::FontFace> fontFace, fontBold;
+    bool pixelFont = false;
     Atlas atlas;
     Atmos atmos;             // AL-110: light, shadows, weather
     Host* host = nullptr;
@@ -245,6 +246,10 @@ struct Window::Impl : Ctx {
     double tps = 2;
     long long selId = -1, hoverId = -1, me = -1;
     Json selCard;
+    Json meCard;                       // LR-137: the led person while another is selected
+    Json HUD;                          // content/sprites_2d/hud2d.json
+    std::set<std::string> folded{"tier.safety", "tier.esteem", "tier.purpose", "tier.spirit", "tier.other"};
+    std::string tipText;               // what the pointer is over in the HUD (shown in the bar)
     bool haveHover = false;
     double hoverX = 0, hoverY = 0;
     double camX = 0, camY = 0;
@@ -417,8 +422,8 @@ struct Window::Impl : Ctx {
     // --- view math ---------------------------------------------------------------------
     float mapW() const override { return float(W) - sideW(); }
     float mapH() const override { return float(H) - barH(); }
-    float sideW() const { return std::round(340 * U); }
-    float barH() const { return std::round(44 * U); }
+    float sideW() const { return std::round(300 * U); }
+    float barH() const { return std::round(32 * U); }
     double dpr() const { return std::max(1.0, std::round(double(U))); }
     double scale() const { return zoom * dpr(); }
     double tilePx() const override { return T * scale(); }
@@ -466,17 +471,63 @@ struct Window::Impl : Ctx {
             SDL_RenderFillRect(ren, &r);
         }
     }
-    // a carved frame: walnut, a bronze bevel lit from the top left
+    // LR-137: the pixel skin. One art pixel is px() screen pixels (2 at 1080p): frames,
+    // bevels, gauges and the 9x9 icons of hud2d.json are drawn on that grid.
+    float px() const { return std::max(1.0f, std::round(2 * U)); }
+    // specks of darker and lighter wood, fixed to the screen grid so they do not crawl
+    void grain(const ui::Rect& r) {
+        const float p = px(), cell = 8 * p;
+        static const ui::Colour dark = hexc("#2c1a0f"), light = hexc("#46301e");
+        for (float y = std::floor(r.y / cell) * cell; y < r.bottom(); y += cell)
+            for (float x = std::floor(r.x / cell) * cell; x < r.right(); x += cell) {
+                unsigned h = unsigned(int(x / p)) * 73856093u ^ unsigned(int(y / p)) * 19349663u;
+                h ^= h >> 13;
+                h *= 0x5bd1e995u;
+                h ^= h >> 15;
+                const float gx = x + float(h % 7) * p, gy = y + float((h >> 4) % 7) * p, gw = float(1 + (h >> 8) % 3) * p;
+                if (gx < r.x || gy < r.y || gx + gw > r.right() || gy + p > r.bottom()) continue;
+                fill(gx, gy, gw, p, (h >> 11) & 1 ? dark : light);
+            }
+    }
+    // a carved frame: an outline, a bronze bevel lit from the top left, a dark seam, grained walnut
     void carved(const ui::Rect& r) override {
-        fill(r.x, r.y, r.w, r.h, kWalnut);
-        frame(r.x, r.y, r.w, r.h, kWalnutD, std::max(1.0f, U));
-        frame(r.x + U, r.y + U, r.w - 2 * U, r.h - 2 * U, kBronze, std::max(1.0f, U));
-        fill(r.x + U, r.y + U, r.w - 2 * U, std::max(1.0f, U), kBronzeL);
+        const float p = px();
+        fill(r.x, r.y, r.w, r.h, kOut);
+        fill(r.x + p, r.y + p, r.w - 2 * p, r.h - 2 * p, kBronze);
+        fill(r.x + p, r.y + p, r.w - 2 * p, p, kBronzeL);
+        fill(r.x + p, r.y + p, p, r.h - 2 * p, kBronzeL);
+        fill(r.x + 2 * p, r.y + 2 * p, r.w - 4 * p, r.h - 4 * p, kOut);
+        fill(r.x + 3 * p, r.y + 3 * p, r.w - 6 * p, r.h - 6 * p, kWalnut);
+        grain({r.x + 3 * p, r.y + 3 * p, r.w - 6 * p, r.h - 6 * p});
         ui.claim(r);
     }
+    float rim() const { return 3 * px(); }   // how thick carved() is
+    // a small plate (party frames, slots): an outline, leather with a one-pixel bevel
+    float pixel() const override { return px(); }
+    const Json& hud() const override { return HUD; }
+    void plate(const ui::Rect& r, bool lit = false) override {
+        const float p = px();
+        fill(r.x, r.y, r.w, r.h, lit ? kGold : kOut);
+        fill(r.x + p, r.y + p, r.w - 2 * p, r.h - 2 * p, kLeather);
+        fill(r.x + p, r.y + p, r.w - 2 * p, p, kBronze.withAlpha(0.7f));
+        fill(r.x + p, r.y + p, p, r.h - 2 * p, kBronze.withAlpha(0.7f));
+        fill(r.x + 2 * p, r.y + 2 * p, r.w - 3 * p, r.h - 3 * p, kLeather);
+        ui.claim(r);
+    }
+    // a sunk well (portraits, icon slots, fold rows): dark, shadowed at the top left
+    void well(const ui::Rect& r) override {
+        const float p = px();
+        fill(r.x, r.y, r.w, r.h, kOut);
+        fill(r.x + p, r.y + p, r.w - 2 * p, r.h - 2 * p, kLeatherD);
+        fill(r.x + p, r.y + r.h - 2 * p, r.w - 2 * p, p, kLeather);
+        fill(r.x + r.w - 2 * p, r.y + p, p, r.h - 2 * p, kLeather);
+    }
     void parchBox(const ui::Rect& r) override {
-        fill(r.x - U, r.y - U, r.w + 2 * U, r.h + 2 * U, kOut);
-        fill(r.x, r.y, r.w, r.h, kParch);
+        const float p = px();
+        static const ui::Colour rimC = hexc("#c8b488");
+        fill(r.x - p, r.y - p, r.w + 2 * p, r.h + 2 * p, kOut);
+        fill(r.x, r.y, r.w, r.h, rimC);
+        fill(r.x + p, r.y + p, r.w - 2 * p, r.h - 2 * p, kParch);
     }
     float fs(float px) const { return px / (15.0f * U); }   // a text scale for a size in pixels
     void text(float x, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) override {
@@ -488,11 +539,41 @@ struct Window::Impl : Ctx {
     void textC(float cx, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) override {
         text(cx - textW(s, px) / 2, y, s, c, px, shadow);
     }
-    // a gauge: a dark track, a filled part
+    // a gauge in pips: an outline, segments of four art pixels, the filled ones with a
+    // darker lower edge. A gauge narrower than two pips is one plain bar.
     void gauge(const ui::Rect& r, double v, const ui::Colour& c) override {
-        fill(r.x, r.y, r.w, r.h, kLeatherD);
-        fill(r.x, r.y, float(r.w * std::clamp(v, 0.0, 1.0)), r.h, c);
-        frame(r.x, r.y, r.w, r.h, kOut, 1);
+        const float p = px();
+        const float h = std::max(r.h, 4 * p);
+        const ui::Rect b{std::round(r.x), std::round(r.y + (r.h - h) / 2), std::round(r.w), std::round(h)};
+        fill(b.x, b.y, b.w, b.h, kOut);
+        const float iw = b.w - 2 * p, ih = b.h - 2 * p;
+        if (iw <= 0 || ih <= 0) return;
+        fill(b.x + p, b.y + p, iw, ih, kLeatherD);
+        const int n = std::max(1, int(std::lround(iw / (4 * p))));
+        const float seg = iw / float(n);
+        const double vv = std::clamp(v, 0.0, 1.0);
+        const int on = n >= 2 ? int(std::lround(vv * n)) : 0;
+        const float fw = n >= 2 ? seg * float(on) : float(iw * vv);
+        if (fw > 0) {
+            fill(b.x + p, b.y + p, fw, ih, c);
+            fill(b.x + p, b.y + p + ih - p, fw, p, ui::Colour(c.r * 0.6f, c.g * 0.6f, c.b * 0.6f, c.a));
+            fill(b.x + p, b.y + p, fw, p, ui::Colour(std::min(1.0f, c.r * 1.25f), std::min(1.0f, c.g * 1.25f), std::min(1.0f, c.b * 1.25f), c.a));
+        }
+        if (n >= 2)
+            for (int i = 1; i < n; ++i) fill(std::round(b.x + p + seg * float(i)) - p / 2, b.y + p, p, ih, kOut);
+    }
+    // a gauge of `n` pips at (x, y); its width
+    float pips(float x, float y, int n, double v, const ui::Colour& c) override {
+        const float p = px(), w = float(n) * 4 * p + 2 * p;
+        gauge({x, y, w, 5 * p}, v, c);   // 5 art pixels: the bevels leave a lit middle
+        return w;
+    }
+    // a hud2d.json icon (9x9 art pixels) at (x, y)
+    float iconSize() const override { return 9 * px(); }
+    void icon(const std::string& name, float x, float y, float size = 0) override {
+        if (name.empty()) return;
+        const float s = size > 0 ? size : iconSize();
+        blit(sprite(name), std::round(x), std::round(y), s, s);
     }
 
     // --- pictures ------------------------------------------------------------------------
@@ -649,9 +730,17 @@ struct Window::Impl : Ctx {
         atlas.attach(ren);
         atmos.attach(ren);
         ui.init(ren);
-        fontFace = ui::FontFace::load(root / "assets/fonts/Kurale-Regular.ttf");
+        // LR-137: a pixel font (Tiny5, OFL, full Cyrillic) to go with the pixel frames; Kurale when it is missing.
+        // One weight: the pixel face reads bold already, titles differ by colour and size.
+        fontFace = ui::FontFace::load(root / "assets/fonts/Tiny5-Regular.ttf");
+        pixelFont = fontFace != nullptr;
+        if (!fontFace) fontFace = ui::FontFace::load(root / "assets/fonts/Kurale-Regular.ttf");
+        fontBold = fontFace;
+        if (const char* sz = SDL_getenv("LR_2D_SIZE")) {   // shots: the window's size, "1920x1080"
+            int ww = 0, wh = 0;
+            if (std::sscanf(sz, "%dx%d", &ww, &wh) == 2 && ww > 0 && wh > 0) SDL_SetWindowSize(win, ww, wh);
+        }
         measure();
-        if (fontFace) ui.setFont(fontFace, fontFace, 15.0f * U, 1.0f);
         SDL_MaximizeWindow(win);
         SDL_ShowWindow(win);
         loadingFrame("");
@@ -663,7 +752,26 @@ struct Window::Impl : Ctx {
         SDL_GetWindowSize(win, &ww, &wh);
         mouseK = ww > 0 ? float(W) / float(ww) : 1.0f;
         U = std::clamp(SDL_GetWindowDisplayScale(win), 1.0f, 3.0f);
-        if (fontFace) ui.setFont(fontFace, fontFace, 15.0f * U, 1.0f);
+        if (fontFace) ui.setFont(fontFace, fontBold ? fontBold : fontFace, 15.0f * U, 1.0f);
+        skin();
+    }
+    // LR-137: the engine's buttons, toggles and scroll bars in the pixel frame's colours
+    void skin() {
+        ui::Theme& t = ui.theme();
+        t.pixel = px();
+        t.fontGrid = pixelFont ? 8 : 0;   // Tiny5: an 8-pixel em
+        t.bevelLight = kBronzeL.withAlpha(0.55f);
+        t.bevelDark = kOut;
+        t.slot = kLeather;
+        t.slotHot = hexc("#5a3a24");
+        t.slotDown = kLeatherD;
+        t.slotEdge = kOut;
+        t.accent = kGold;
+        t.label = kText;
+        t.labelSoft = kDim;
+        t.paper = kParch;
+        t.paperEdge = kOut;
+        t.ink = kInk;
     }
     void loadingFrame(const std::string& why) {
         for (int i = 0; i < 2; ++i) {
@@ -707,6 +815,8 @@ struct Window::Impl : Ctx {
         atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
         sprites.merge(LOOK);
         sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
+        HUD = parseOr(readText(dir / "hud2d.json"), Json::object());   // LR-137: the pixel HUD
+        sprites.merge(HUD);
         for (const auto& a : MAP.value("acts", Json::array()))
             if (a.is_array() && a.size() >= 2) try {
                     actsRe.push_back({std::regex(a[0].get<std::string>(), std::regex::ECMAScript), a[1].get<std::string>()});
@@ -899,6 +1009,7 @@ struct Window::Impl : Ctx {
             if (!byId.count(it->first)) it = vis.erase(it);
             else ++it;
         selCard = s.contains("sel") ? s["sel"] : Json();
+        meCard = s.contains("me_card") ? s["me_card"] : Json();
         if (screens) screens->polled();
         if (selId >= 0 && !byId.count(selId)) selId = -1;
         if (me != barFor) {
@@ -1247,7 +1358,7 @@ struct Window::Impl : Ctx {
         guard("drawRoofs", [&] { drawRoofs(tp); });
         guard("atmosLight", [&] { atmosEnd(sc); });
         guard("build", [&] { screens->drawWorld(); });
-        guard("drawRoomLabels", [&] { drawRoomLabels(); });
+        // LR-137: the room names are in the place plate (drawPlace), not over the map
         guard("drawPlay", [&] { drawPlay(sc); });
         guard("drawSelection", [&] { drawSelection(sc); });
         guard("drawOverheads", [&] { drawOverheads(sc); });
@@ -1810,64 +1921,222 @@ struct Window::Impl : Ctx {
         if (!str(p, "goal").empty()) return str(p, "goal");
         return L("ui2d.idle");
     }
-    void drawSide() {
-        const ui::Rect side{mapW(), 0, sideW(), mapH()};
-        carved(side);
-        const float pad = 10 * U, x = side.x + pad, w = side.w - 2 * pad;
-        // households
-        const float hy = pad, hh = std::round(side.h * 0.38f);
-        fill(x - 2 * U, hy - 2 * U, w + 4 * U, hh + 4 * U, kLeather);
-        text(x + 4 * U, hy + 2 * U, L("ui2d.house"), kGold, 19 * U, true);
-        const ui::Rect listR{x, hy + 30 * U, w, hh - 32 * U};
-        const ui::Rect content = ui.beginScroll(ui::widgetId("side.houses"), listR);
-        std::map<std::string, std::vector<const Json*>> fams;
-        std::vector<std::string> order;
-        for (const Json& p : people) {
-            if (!str(p, "sp").empty()) continue;
-            std::string f = str(p, "fam");
-            if (f.empty()) f = "—";
-            if (!fams.count(f)) order.push_back(f);
-            fams[f].push_back(&p);
+    // --- LR-137: the pixel HUD ---------------------------------------------------------------
+    // where (wx, wy) is: the settlement near it, then the room there or the ground
+    std::string placeOf(double wx, double wy) const {
+        std::string town;
+        double bd = 350.0 * 350.0;
+        for (const auto& s : ST.value("settlements", Json::array())) {
+            const double dx = num(s, "x") - wx, dy = num(s, "y") - wy, d2 = dx * dx + dy * dy;
+            if (d2 < bd) bd = d2, town = str(s, "name");
         }
-        float y = content.y;
-        const float row = 44 * U;
-        int index = 0;
-        for (const std::string& f : order) {
-            text(x + 2 * U, y + 2 * U, f, kDim, 14 * U);
-            y += 22 * U;
-            auto& list = fams[f];
-            std::stable_sort(list.begin(), list.end(), [](const Json* a, const Json* b) { return num(*a, "age") > num(*b, "age"); });
-            for (const Json* p : list) {
-                const long long id = ident(*p, "id");
-                const ui::Rect r{x, y, content.w, row - 4 * U};
-                if (ui.selectable(ui::widgetId("side.who", index++), r, id == selId)) {
+        const int cx = int(std::floor(wx)), cy = int(std::floor(wy));
+        std::string where;
+        const Json rooms = ST.value("rooms", Json::object());
+        for (const auto& [k, c] : chunks) {
+            const int x0 = int(num(c.j, "x0")), y0 = int(num(c.j, "y0")), w = int(num(c.j, "w")), h = int(num(c.j, "h"));
+            if (cx < x0 || cy < y0 || cx >= x0 + w || cy >= y0 + h) continue;
+            for (const auto& r : arr(c.j, "rooms"))
+                if (num(r, "z") == 0 && cx >= num(r, "x0") && cx < num(r, "x1") && cy >= num(r, "y0") && cy < num(r, "y1")) {
+                    const std::string ty = str(r, "type");
+                    where = rooms.contains(ty) && rooms[ty].is_string() ? rooms[ty].get<std::string>() : ty;
+                }
+            if (where.empty()) {
+                const std::string g = str(c.j, "ground");
+                const std::size_t i = std::size_t(cy - y0) * std::size_t(w) + std::size_t(cx - x0);
+                const Json names = ST.value("ground", Json::array());
+                if (i < g.size()) {
+                    const int gi = g[i] - 'a';
+                    if (gi >= 0 && gi < int(names.size()) && names[std::size_t(gi)].is_string())
+                        where = L("ui2d.place." + names[std::size_t(gi)].get<std::string>());
+                }
+            }
+            break;
+        }
+        if (town.empty()) town = L("ui2d.place.wild");
+        return where.empty() ? town : town + "  >  " + where;
+    }
+    std::string moodletIcon(const Json& m) const {
+        const std::string id = str(m, "id");
+        for (const auto& e : HUD.value("moodlets", Json::array()))
+            if (e.is_array() && e.size() >= 2) try {
+                    if (std::regex_search(id, std::regex(e[0].get<std::string>()))) return e[1].get<std::string>();
+                } catch (...) {
+                }
+        return HUD.value(num(m, "v") >= 0 ? "moodlet_good" : "moodlet_bad", "");
+    }
+    std::string hoursText(double h) const {
+        if (h < 0) return L("ui2d.hud.lasting");
+        return L("ui2d.hud.hours", {{"n", std::to_string(int(std::ceil(h)))}});
+    }
+    std::string signedPct(double v) const { return (v >= 0 ? "+" : "-") + std::to_string(int(std::lround(std::abs(v) * 100))); }
+    void tip(const ui::Rect& r, const std::string& t) {
+        if (r.contains(in.mouseX, in.mouseY)) tipText = t;
+    }
+    // the led person's frame (WoW's player frame): portrait, health / strength / blood in pips
+    // with why, the mood and the thoughts as buffs. Its height.
+    float heroW() const { return 380 * U; }   // the hero frame's width
+    float drawHero(float x, float y) {
+        const Json& d = selId == me ? selCard : meCard;
+        const Json* pp = person(me);
+        if (!pp || !d.is_object()) return 0;
+        const float p = px(), r0 = rim() + 3 * U, w = heroW(), port = 60 * U, rowH = 20 * U;
+        const Json& moods = arr(d, "moodlets");
+        const float h = 2 * r0 + std::max(port, 22 * U + 3 * rowH) + 4 * U + 20 * U;
+        carved({x, y, w, h});
+        const float ix = x + r0, iy = y + r0;
+        well({ix, iy, port, port});
+        portrait(*pp, ix + p, iy + p, port - 2 * p);
+        const float tx = ix + port + 8 * U, tw = x + w - r0 - tx;
+        std::string sub = L("ui2d.age", {{"n", std::to_string(int(num(d, "age")))}});
+        if (!str(d, "occn").empty()) sub = str(d, "occn") + " · " + sub;
+        text(x + w - r0 - textW(sub, 11 * U), iy + 3 * U, sub, kDim, 11 * U);
+        text(tx, iy, ui.fit(str(d, "name"), tw - textW(sub, 11 * U) - 8 * U, fs(16 * U)), kGold, 16 * U, true);
+        std::string woundNote;
+        bool bleeding = false;
+        for (const auto& wd : arr(d, "wounds")) {
+            if (woundNote.empty()) woundNote = str(wd, "sev") + ", " + str(wd, "zone");
+            bleeding = bleeding || flag(wd, "bleeding");
+        }
+        const double hp = num(d, "hp", 1), st = 1 - num(d, "fatigue"), bl = num(d, "blood", 1);
+        struct Row {
+            const char* key;
+            double v;
+            ui::Colour c;
+            std::string note;
+        };
+        const Row rows[] = {{"health", hp, kBad, woundNote},
+                            {"strength", st, kMid, st < 0.3 ? L("ui2d.hud.tired") : ""},
+                            {"blood", bl, hexc("#a0282a"), bleeding ? L("ui2d.hud.bleeding") : ""}};
+        float ry = iy + 22 * U;
+        for (const Row& r : rows) {
+            const std::string ic = HUD["vitals"].value(r.key, "");
+            icon(ic, tx, ry + (rowH - iconSize()) / 2);
+            const float gw = pips(tx + iconSize() + 4 * U, ry + (rowH - 5 * p) / 2, 10, r.v, r.c);
+            const std::string n = std::to_string(int(std::lround(r.v * 100)));
+            const float nx = tx + iconSize() + 8 * U + gw;
+            text(nx, ry + 3 * U, n, kText, 13 * U);
+            if (!r.note.empty()) {
+                const float ox = nx + 30 * U;
+                text(ox, ry + 4 * U, ui.fit(r.note, x + w - r0 - ox, fs(11 * U)), kDim, 11 * U);
+            }
+            tip({tx, ry, tw, rowH}, L(std::string("ui2d.hud.") + r.key) + ": " + n + (r.note.empty() ? "" : " · " + r.note));
+            ry += rowH;
+        }
+        // the mood (the thoughts behind it are in the column)
+        const double mood = num(d, "mood");
+        const float my = iy + std::max(port, 22 * U + 3 * rowH) + 4 * U;
+        icon(HUD["vitals"].value(mood < -0.1 ? "mood_low" : "mood", ""), ix, my + (20 * U - iconSize()) / 2);
+        const std::string mv = signedPct(mood);
+        text(ix + iconSize() + 4 * U, my + 3 * U, mv, mood >= 0 ? kGood : kBad, 14 * U, true);
+        int good = 0, bad = 0;
+        for (const auto& m : moods) (num(m, "v") >= 0 ? good : bad) += 1;
+        const std::string mn = L("ui2d.hud.thoughts_n", {{"good", std::to_string(good)}, {"bad", std::to_string(bad)}});
+        text(ix + iconSize() + 44 * U, my + 4 * U, mn, kDim, 11 * U);
+        tip({ix, my, w - 2 * r0, 20 * U}, L("ui2d.hud.mood") + " " + mv + " · " + mn);
+        return h;
+    }
+    // the selected other person (WoW's target frame)
+    void drawTarget(float x, float y) {
+        if (selId < 0 || selId == me || !selCard.is_object()) return;
+        const Json* pp = person(selId);
+        if (!pp) return;
+        const float p = px(), r0 = rim() + 2 * U, w = 250 * U, port = 40 * U, h = 2 * r0 + port;
+        carved({x, y, w, h});
+        well({x + r0, y + r0, port, port});
+        portrait(*pp, x + r0 + p, y + r0 + p, port - 2 * p);
+        const float tx = x + r0 + port + 6 * U, tw = x + w - r0 - tx;
+        text(tx, y + r0, ui.fit(str(selCard, "name"), tw, fs(13 * U)), kText, 13 * U, true);
+        icon(HUD["vitals"].value("health", ""), tx, y + r0 + 16 * U);
+        pips(tx + iconSize() + 3 * U, y + r0 + 16 * U + (iconSize() - 5 * p) / 2, 10, num(selCard, "hp", 1), kBad);
+        text(tx, y + r0 + 30 * U, ui.fit(actOf(selCard), tw, fs(11 * U)), kDim, 11 * U);
+    }
+    // the led person's dynasty as party frames; a click selects and looks
+    void drawParty(float x, float y) {
+        const Json* mp = person(me);
+        if (!mp) return;
+        const std::string fam = str(*mp, "fam");
+        std::vector<const Json*> kin;
+        for (const Json& p : people)
+            if (ident(p, "id") != me && str(p, "sp").empty() && flag(p, "alive") && !fam.empty() && str(p, "fam") == fam) kin.push_back(&p);
+        if (kin.empty()) return;
+        std::stable_sort(kin.begin(), kin.end(), [](const Json* a, const Json* b) { return num(*a, "age") > num(*b, "age"); });
+        const Json& card = selId == me ? selCard : meCard;
+        const std::string famn = card.is_object() && !str(card, "famn").empty() ? str(card, "famn") : fam;
+        text(x + 2 * U, y, L("ui2d.hud.dynasty", {{"name", famn}}), kGold, 12 * U, true);
+        y += 18 * U;
+        const float p = px(), w = 230 * U, h = 42 * U, port = 30 * U;
+        int i = 0;
+        for (const Json* k : kin) {
+            if (i++ >= 7 || y + h > mapH() - 80 * U) break;
+            const long long id = ident(*k, "id");
+            const ui::Rect r{x, y, w, h};
+            plate(r, id == selId);
+            well({x + 2 * p + 2 * U, y + (h - port) / 2, port, port});
+            portrait(*k, x + 3 * p + 2 * U, y + (h - port) / 2 + p, port - 2 * p);
+            const float tx = x + 2 * p + port + 7 * U, tw = x + w - 2 * p - tx;
+            text(tx, y + 3 * U, ui.fit(str(*k, "name"), tw, fs(12 * U)), kText, 12 * U);
+            const float gw = pips(tx, y + 25 * U, 8, num(*k, "hp", 1), kBad);
+            text(tx + gw + 5 * U, y + 22 * U, ui.fit(actOf(*k), tw - gw - 5 * U, fs(10 * U)), kDim, 10 * U);
+            if (r.contains(in.mouseX, in.mouseY)) {
+                tipText = str(*k, "name") + " · " + actOf(*k);
+                if (in.pressed && !screens->any()) {
                     select(id);
                     if (vis.count(id)) camX = vis[id].x, camY = vis[id].y;
                 }
-                if (id == selId) frame(r.x, r.y, r.w, r.h, kGold, std::max(1.0f, U));
-                portrait(*p, r.x + 2 * U, r.y + 1 * U, r.h - 2 * U);
-                const float tx = r.x + r.h + 6 * U, tw = r.w - r.h - 40 * U;
-                text(tx, r.y + 3 * U, ui.fit(str(*p, "name"), tw, fs(14 * U)), flag(*p, "alive") ? kText : kDim, 14 * U);
-                text(tx, r.y + 21 * U, ui.fit(actOf(*p), tw, fs(12 * U)), kDim, 12 * U);
-                gauge({r.right() - 30 * U, r.y + r.h / 2 - 3 * U, 26 * U, 6 * U}, num(*p, "hp", 1), tone(num(*p, "hp", 1)));
-                y += row;
             }
+            y += h + 3 * U;
         }
-        ui.endScroll(y);
+    }
+    // where the led person (or the camera) is: settlement > room or ground
+    float drawPlace(float x, float y) {
+        double wx = camX, wy = camY;
+        if (const Json* mp = person(me)) {
+            wx = num(*mp, "x"), wy = num(*mp, "y");
+            if (vis.count(me)) wx = vis[me].x, wy = vis[me].y;
+        }
+        const std::string s = placeOf(wx, wy);
+        const float h = 24 * U, w = textW(s, 13 * U) + iconSize() + 20 * U;
+        parchBox({x, y, w, h});
+        icon("hud_pin", x + 5 * U, y + (h - iconSize()) / 2);
+        text(x + iconSize() + 11 * U, y + (h - textH(13 * U)) / 2, s, kInk, 13 * U);
+        ui.claim({x, y, w, h});
+        return h;
+    }
+
+    // a fold row of the column: an arrow, a gold label, a note on the right; a click opens / shuts it
+    bool foldRow(const std::string& id, float x, float& y, float w, const std::string& label, const std::string& note) {
+        const float h = 20 * U;
+        const bool open = !folded.count(id);
+        const ui::Rect r{x, y, w, h};
+        well(r);
+        const bool over = r.contains(in.mouseX, in.mouseY);
+        text(x + 5 * U, y + 3 * U, open ? "v" : ">", kGold, 12 * U);
+        text(x + 18 * U, y + 3 * U, label, over ? kText : kGold, 13 * U);
+        if (!note.empty()) text(x + w - 5 * U - textW(note, 11 * U), y + 4 * U, note, kDim, 11 * U);
+        if (over && in.pressed && !screens->any()) {
+            if (open) folded.insert(id);
+            else folded.erase(id);
+        }
+        y += h + 3 * U;
+        return open;
+    }
+    void drawSide() {
+        const ui::Rect side{mapW(), 0, sideW(), mapH()};
+        carved(side);
+        const float r0 = rim() + 3 * U, x = side.x + r0, w = side.w - 2 * r0;
         // the screens: two rows of four
-        const float by = hy + hh + 8 * U, bh = 28 * U, bw = (w - 3 * 4 * U) / 4;
+        const float bh = 22 * U, bw = (w - 3 * 3 * U) / 4;
         int bi = 0;
         for (const auto& [id, k] : screens->columnScreens()) {
-            const ui::Rect r{x + (bi % 4) * (bw + 4 * U), by + (bi / 4) * (bh + 4 * U), bw, bh};
-            if (ui.toggle(ui::widgetId("side.screen", bi), r, fit(L("ui2d.screen." + id), bw - 6 * U, 13 * U), screens->isOpen(id)))
+            const ui::Rect r{x + (bi % 4) * (bw + 3 * U), r0 + (bi / 4) * (bh + 3 * U), bw, bh};
+            if (ui.toggle(ui::widgetId("side.screen", bi), r, fit(L("ui2d.screen." + id), bw - 6 * U, 12 * U), screens->isOpen(id)))
                 screens->openScreen(id);
+            tip(r, L("ui2d.screen." + id) + " (" + k + ")");
             ++bi;
         }
-        // the card
-        const float cy = by + 2 * (bh + 4 * U) + 6 * U;
-        const ui::Rect cardR{x - 2 * U, cy, w + 4 * U, side.bottom() - cy - pad};
-        fill(cardR.x, cardR.y, cardR.w, cardR.h, kLeather);
-        drawCard({cardR.x + 6 * U, cardR.y + 6 * U, cardR.w - 12 * U, cardR.h - 12 * U});
+        const float cy = r0 + 2 * (bh + 3 * U) + 5 * U;
+        drawCard({x, cy, w, side.bottom() - cy - r0});
     }
     // words over as many lines as they need inside `width`
     std::vector<std::string> wrap(const std::string& s, float width, float px) const override {
@@ -1911,112 +2180,160 @@ struct Window::Impl : Ctx {
         }
         return cy + h - y;
     }
+    // the column's card of the selected person: who and what now, the needs by tier
+    // (hud2d.json tiers, each folds) and the thoughts. The rest is in the sheet (C).
     void drawCard(const ui::Rect& r) {
         const Json& d = selCard;
         const Json* p = person(selId);
         if (!d.is_object() || !p) {
-            parchLines(r.x, r.y, r.w, {L("ui2d.nobody")}, 14 * U);
+            parchLines(r.x, r.y, r.w, {L("ui2d.nobody")}, 13 * U);
             return;
         }
         const ui::Rect c = ui.beginScroll(ui::widgetId("side.card"), r);
         float y = c.y;
-        const float w = c.w, x = c.x;
-        if (str(*p, "sp").empty()) portrait(*p, x, y, 72 * U);
-        const float tx = x + 80 * U;
-        text(tx, y + 4 * U, ui.fit(str(d, "name"), w - 80 * U, fs(20 * U)), kGold, 20 * U, true);
-        std::string sub = str(d, "fam").empty() ? str(d, "spn") : str(d, "fam");
-        if (d.contains("age") && d["age"].is_number()) sub += (sub.empty() ? "" : " · ") + L("ui2d.age", {{"n", std::to_string(int(num(d, "age")))}});
-        text(tx, y + 32 * U, ui.fit(sub, w - 80 * U, fs(14 * U)), kDim, 14 * U);
-        y += 78 * U;
-        if (!flag(d, "alive")) {
-            std::string dead = L("ui2d.dead");
-            if (!str(d, "cause").empty()) dead += ": " + str(d, "cause");
-            y += parchLines(x, y, w, {dead}, 14 * U) + 6 * U;
-        }
+        const float w = c.w - 2 * U, x = c.x, pp = px();
+        const bool human = str(*p, "sp").empty();
+        // who
+        const float port = 44 * U;
+        well({x, y, port, port});
+        if (human) portrait(*p, x + pp, y + pp, port - 2 * pp);
+        const float tx = x + port + 6 * U;
+        float bw = 0;
         // LR-138: one leads only one's own kin
-        if (str(d, "sp").empty() && flag(d, "alive") && (ident(d, "id") == me || !d.contains("lead") || flag(d, "lead"))) {
+        if (human && flag(d, "alive") && (ident(d, "id") == me || !d.contains("lead") || flag(d, "lead"))) {
             const long long id = ident(d, "id");
-            if (ui.button(ui::widgetId("card.lead"), {x, y, w, 30 * U}, L(id == me ? "ui2d.release" : "ui2d.lead"))) {
+            const std::string lbl = L(id == me ? "ui2d.release" : "ui2d.lead");
+            bw = textW(lbl, 12 * U) + 16 * U;
+            if (ui.button(ui::widgetId("card.lead"), {x + w - bw, y, bw, 20 * U}, lbl)) {
                 if (id == me) cmdToast({{"op", "cmd"}, {"type", "release_control"}, {"args", Json::object()}});
                 else cmdToast({{"op", "cmd"}, {"type", "take_control"}, {"args", {{"id", id}}}});
                 poll();
             }
-            y += 36 * U;
         }
-        std::vector<std::string> doing = {L("ui2d.doing") + ": " + (str(d, "act").empty() ? L("ui2d.idle") : str(d, "act"))};
-        if (!str(d, "goal").empty()) doing.push_back(L("ui2d.wants") + ": " + str(d, "goal"));
-        y += parchLines(x, y, w, doing, 14 * U) + 8 * U;
-        auto bar = [&](const std::string& label, double v, double shown, const ui::Colour& c) {
-            const float px = 13 * U, lw = 110 * U;
-            text(x, y, ui.fit(label, lw - 4 * U, fs(px)), kText, px);
-            gauge({x + lw, y + 3 * U, w - lw - 40 * U, 10 * U}, v, c);
-            const std::string n = std::to_string(int(std::lround(shown * 100)));
-            text(x + w - textW(n, px), y, n, kDim, px);
-            y += 20 * U;
-        };
-        const double hp = num(d, "hp", 1), mood = (num(d, "mood") + 1) / 2, fat = num(d, "fatigue");
-        bar(L("ui2d.health"), hp, hp, tone(hp));
-        bar(L("ui2d.mood"), mood, num(d, "mood"), tone(mood));
-        bar(L("ui2d.fatigue"), fat, fat, tone(1 - fat));
-        auto head = [&](const std::string& h) {
-            y += 6 * U;
-            text(x, y, h, kGold, 15 * U, true);
-            y += 22 * U;
-        };
-        if (d.contains("needs") && !d["needs"].empty()) {
-            head(L("ui2d.needs"));
-            for (const auto& n : d["needs"]) bar(str(n, "name"), num(n, "v"), num(n, "v"), tone(num(n, "v")));
+        text(tx, y + 1 * U, ui.fit(str(d, "name"), x + w - tx - bw - 4 * U, fs(15 * U)), kGold, 15 * U, true);
+        std::string sub = str(d, "famn").empty() ? str(d, "spn") : str(d, "famn");
+        if (!str(d, "occn").empty()) sub += (sub.empty() ? "" : " · ") + str(d, "occn");
+        if (d.contains("age") && d["age"].is_number()) sub += (sub.empty() ? "" : " · ") + L("ui2d.age", {{"n", std::to_string(int(num(d, "age")))}});
+        text(tx, y + 22 * U, ui.fit(sub, x + w - tx, fs(11 * U)), kDim, 11 * U);
+        y += port + 5 * U;
+        if (!flag(d, "alive")) {
+            std::string dead = L("ui2d.dead");
+            if (!str(d, "cause").empty()) dead += ": " + str(d, "cause");
+            y += parchLines(x, y, w, {dead}, 12 * U) + 5 * U;
         }
-        auto list = [&](const char* key, const std::string& h, bool counted) {
-            if (!d.contains(key) || !d[key].is_array() || d[key].empty()) return;
-            head(h);
-            std::vector<std::string> items;
-            for (const auto& i : d[key]) {
-                if (i.is_string()) items.push_back(i.get<std::string>());
-                else {
-                    std::string s = str(i, "name");
-                    if (counted && num(i, "n") > 1) s += " ×" + std::to_string(int(num(i, "n")));
-                    items.push_back(s);
+        // now: the act and what it is for, one parchment line
+        {
+            std::string now = L("ui2d.doing") + ": " + (str(d, "act").empty() ? L("ui2d.idle") : str(d, "act"));
+            if (!str(d, "goal").empty()) now += "  >  " + str(d, "goal");
+            const float h = 20 * U;
+            parchBox({x, y, w, h});
+            text(x + 5 * U, y + (h - textH(12 * U)) / 2, ui.fit(now, w - 10 * U, fs(12 * U)), kInk, 12 * U);
+            tip({x, y, w, h}, now);
+            y += h + 6 * U;
+        }
+        // needs by tier: the tier's row shows its worst need, opened it lists them
+        const Json& needs = arr(d, "needs");
+        if (!needs.empty()) {
+            text(x + 2 * U, y, L("ui2d.needs"), kGold, 13 * U, true);
+            y += 19 * U;
+            std::set<std::string> placed;
+            auto tierRows = [&](const std::string& tid, const std::vector<std::pair<const Json*, std::string>>& list) {
+                if (list.empty()) return;
+                double worst = 1;
+                for (const auto& [n, ic] : list) worst = std::min(worst, num(*n, "v"));
+                // a fold row with the worst need's pips inside
+                const float h = 20 * U;
+                const bool open = !folded.count("tier." + tid);
+                const ui::Rect rr{x, y, w, h};
+                well(rr);
+                const bool over = rr.contains(in.mouseX, in.mouseY);
+                text(x + 5 * U, y + 3 * U, open ? "v" : ">", kGold, 12 * U);
+                text(x + 18 * U, y + 3 * U, L("ui2d.tier." + tid), over ? kText : kGold, 13 * U);
+                const std::string wn = std::to_string(int(std::lround(worst * 100)));
+                text(x + w - 5 * U - textW(wn, 11 * U), y + 4 * U, wn, kDim, 11 * U);
+                pips(x + w - 34 * U - 5 * 4 * pp, y + (h - 4 * pp) / 2, 5, worst, tone(worst));
+                if (over && in.pressed && !screens->any()) {
+                    if (open) folded.insert("tier." + tid);
+                    else folded.erase("tier." + tid);
                 }
+                y += h + 2 * U;
+                if (!open) return;
+                for (const auto& [n, ic] : list) {
+                    const double v = num(*n, "v");
+                    const float rh = 19 * U;
+                    icon(ic, x + 12 * U, y + (rh - iconSize()) / 2);
+                    const std::string vn = std::to_string(int(std::lround(v * 100)));
+                    text(x + 12 * U + iconSize() + 5 * U, y + 3 * U, ui.fit(str(*n, "name"), w - 120 * U, fs(12 * U)), v < 0.6 ? kGold : kText, 12 * U);
+                    pips(x + w - 34 * U - 5 * 4 * pp, y + (rh - 4 * pp) / 2, 5, v, tone(v));
+                    text(x + w - 5 * U - textW(vn, 11 * U), y + 4 * U, vn, kDim, 11 * U);
+                    y += rh;
+                }
+                y += 3 * U;
+            };
+            for (const auto& t : HUD.value("tiers", Json::array())) {
+                std::vector<std::pair<const Json*, std::string>> list;
+                for (const auto& e : arr(t, "needs"))
+                    if (e.is_array() && e.size() >= 2)
+                        for (const auto& n : needs)
+                            if (str(n, "id") == e[0].get<std::string>()) {
+                                list.push_back({&n, e[1].get<std::string>()});
+                                placed.insert(str(n, "id"));
+                            }
+                tierRows(str(t, "id"), list);
             }
-            y += chips(x, y, w, items) + 4 * U;
-        };
-        list("worn", L("ui2d.wears"), false);
-        list("inv", L("ui2d.carries"), true);
-        list("traits", L("ui2d.traits"), false);
-        if (d.contains("trace") && d["trace"].is_array() && !d["trace"].empty()) {
-            head(L("ui2d.thoughts"));
-            std::vector<std::string> ls;
-            for (const auto& t : d["trace"]) ls.push_back(str(t, "t") + "  " + str(t, "text"));
-            y += parchLines(x, y, w, ls, 12 * U) + 4 * U;
+            std::vector<std::pair<const Json*, std::string>> rest;
+            for (const auto& n : needs)
+                if (!placed.count(str(n, "id"))) rest.push_back({&n, HUD.value("other_need", "")});
+            tierRows("other", rest);
+            y += 3 * U;
+        }
+        // thoughts
+        const Json& moods = arr(d, "moodlets");
+        if (!moods.empty()) {
+            double sum = 0;
+            for (const auto& m : moods) sum += num(m, "v");
+            if (foldRow("thoughts", x, y, w, L("ui2d.hud.thoughts"), signedPct(sum))) {
+                for (const auto& m : moods) {
+                    const float rh = 19 * U;
+                    const double v = num(m, "v");
+                    icon(moodletIcon(m), x + 4 * U, y + (rh - iconSize()) / 2);
+                    const std::string vs = signedPct(v);
+                    text(x + iconSize() + 8 * U, y + 3 * U, vs, v >= 0 ? hexc("#8ac85a") : hexc("#e06048"), 12 * U);
+                    const std::string hrs = hoursText(num(m, "h", -1));
+                    text(x + iconSize() + 40 * U, y + 3 * U, ui.fit(str(m, "name"), w - iconSize() - 48 * U - textW(hrs, 11 * U), fs(12 * U)), kText, 12 * U);
+                    text(x + w - textW(hrs, 11 * U), y + 4 * U, hrs, kDim, 11 * U);
+                    y += rh;
+                }
+                y += 3 * U;
+            }
         }
         ui.endScroll(y);
     }
     void drawBar() {
         const ui::Rect b{0, mapH(), float(W), barH()};
         carved(b);
-        const float pad = 8 * U, h = b.h - 2 * pad, y = b.y + pad;
+        const float pad = rim() + 2 * U, h = b.h - 2 * pad, y = b.y + pad;
         float x = b.right() - pad;
         auto btn = [&](const char* id, const std::string& label, float w, bool on) {
             x -= w;
             const bool hit = ui.toggle(ui::widgetId(id), {x, y, w, h}, label, on);
-            x -= 4 * U;
+            x -= 3 * U;
             return hit;
         };
-        if (btn("bar.follow", L("ui2d.follow"), 100 * U, follow)) follow = !follow && (selId >= 0 || me >= 0);
-        if (btn("bar.mode", L(glyphs ? "ui2d.mode.glyphs" : "ui2d.mode.sprites"), 110 * U, false)) glyphs = !glyphs;
-        if (btn("bar.roofs", L("ui2d.roofs." + roofMode), 120 * U, false)) cycleRoofs();
-        if (btn("bar.zoom", L("ui2d.zoom", {{"n", std::to_string(zoom)}}), 80 * U, false)) zoom = zoom % 3 + 1;
-        if (btn("bar.faster", "+", 32 * U, false)) setSpeed(1);
+        if (btn("bar.follow", L("ui2d.follow"), 84 * U, follow)) follow = !follow && (selId >= 0 || me >= 0);
+        if (btn("bar.mode", L(glyphs ? "ui2d.mode.glyphs" : "ui2d.mode.sprites"), 84 * U, false)) glyphs = !glyphs;
+        if (btn("bar.roofs", L("ui2d.roofs." + roofMode), 104 * U, false)) cycleRoofs();
+        if (btn("bar.zoom", L("ui2d.zoom", {{"n", std::to_string(zoom)}}), 64 * U, false)) zoom = zoom % 3 + 1;
+        if (btn("bar.faster", "+", 24 * U, false)) setSpeed(1);
         {
             const std::string sp = paused ? L("ui2d.paused") : L("ui2d.speed", {{"n", tpsText()}});
-            const float w = 90 * U;
+            const float w = textW(sp, 12 * U) + 12 * U;
             x -= w;
-            ui.textCentred({x, y, w, h}, sp, kText, fs(14 * U));
-            x -= 4 * U;
+            ui.textCentred({x, y, w, h}, sp, kText, fs(12 * U));
+            x -= 3 * U;
         }
-        if (btn("bar.slower", "−", 32 * U, false)) setSpeed(-1);
-        if (btn("bar.pause", paused ? ">" : "||", 40 * U, paused)) togglePause();
+        if (btn("bar.slower", "-", 24 * U, false)) setSpeed(-1);
+        if (btn("bar.pause", paused ? ">" : "||", 30 * U, paused)) togglePause();
         // the clock and the hint on parchment
         std::string clk;
         if (clock.contains("day")) {
@@ -2026,14 +2343,13 @@ struct Window::Impl : Ctx {
             if (w.is_object() && w.contains("t"))
                 clk += " · " + std::to_string(int(std::lround(num(w, "t")))) + "° " + (num(w, "rain") > 0.5 ? L("ui2d.rain") : L("ui2d.dry"));
         }
-        const float cw = textW(clk, 14 * U) + 20 * U;
-        x -= cw;
+        const float cw = textW(clk, 12 * U) + 16 * U;
+        x -= cw + 2 * U;
         parchBox({x, y, cw, h});
-        text(x + 10 * U, y + (h - textH(14 * U)) / 2, clk, kInk, 14 * U);
+        text(x + 8 * U, y + (h - textH(12 * U)) / 2, clk, kInk, 12 * U);
         x -= 8 * U;
-        const ui::Rect hr{b.x + pad, y, x - b.x - pad, h};
-        parchBox(hr);
-        text(hr.x + 10 * U, y + (h - textH(13 * U)) / 2, ui.fit(hintText(), hr.w - 20 * U, fs(13 * U)), kInk, 13 * U);
+        const ui::Rect hr{b.x + pad + 2 * U, y, x - b.x - pad - 2 * U, h};
+        text(hr.x, y + (h - textH(12 * U)) / 2, ui.fit(hintText(), hr.w, fs(12 * U)), kText, 12 * U);
     }
     std::string tpsText() const {
         char b[32];
@@ -2041,6 +2357,7 @@ struct Window::Impl : Ctx {
         return b;
     }
     std::string hintText() const {
+        if (!tipText.empty()) return tipText;
         if (const Json* p = person(hoverId)) {
             std::string s = L("ui2d.hint.person", {{"name", str(*p, "name")}, {"act", actOf(*p)}});
             if (p->contains("dest") && (*p)["dest"].is_array() && (*p)["dest"].size() >= 2)
@@ -2075,6 +2392,7 @@ struct Window::Impl : Ctx {
         return L("ui2d.hint.keys");
     }
     void drawOverlay() {
+        tipText.clear();
         const double t = nowMs();
         // toast
         if (t < toastUntil && !toastText.empty()) {
@@ -2097,31 +2415,53 @@ struct Window::Impl : Ctx {
                 text(20 * U, y, s, kText.withAlpha(a), px, true);
             }
         }
-        // the dock: the act going on and the quick bar
+        // LR-137: the hero's frame, the target, where, the dynasty (top left of the map)
+        {
+            const float x0 = 8 * U, y0 = 8 * U;
+            const float hh = drawHero(x0, y0);
+            const float px0 = x0 + (hh > 0 ? heroW() + 8 * U : 0);
+            const float ph = drawPlace(px0, y0);
+            drawTarget(px0, y0 + ph + 6 * U);
+            drawParty(x0, y0 + (hh > 0 ? hh + 10 * U : ph + 10 * U));
+        }
+        // the dock: the act going on and the quick bar (icons of map2d.json acts, names in the hint)
         if (me >= 0) {
-            const float sw = 92 * U, sh = 42 * U, gap = 4 * U, total = 8 * sw + 7 * gap;
-            const float x0 = mapW() / 2 - total / 2, y0 = mapH() - sh - 12 * U;
+            const float p = px(), sw = 44 * U, gap = 2 * U, total = 8 * sw + 7 * gap, r0 = rim();
+            const float x0 = std::round(mapW() / 2 - total / 2), y0 = std::round(mapH() - sh_dock() - 8 * U + r0);
+            carved({x0 - r0 - 2 * U, y0 - r0 - 2 * U, total + 2 * r0 + 4 * U, sw + 2 * r0 + 4 * U});
             const Json* mp = person(me);
             if (mp && mp->contains("prog") && (*mp)["prog"].is_number() && !str(*mp, "act").empty()) {
-                const float cw = 320 * U, ch = 16 * U, cx = mapW() / 2 - cw / 2, cy = y0 - ch - 26 * U;
-                textC(mapW() / 2, cy - textH(14 * U) - 3 * U, str(*mp, "act"), kGold, 14 * U, true);
-                gauge({cx, cy, cw, ch}, num(*mp, "prog"), kGold);
+                const float gw = 50 * 4 * p / 2;
+                const float cy = y0 - r0 - 12 * U - 4 * p;
+                const std::string act = str(*mp, "act");
+                text(mapW() / 2 - gw / 2 - textW(act, 13 * U) - 8 * U, cy - 4 * U, act, kGold, 13 * U, true);
+                gauge({mapW() / 2 - gw / 2, cy, gw, 4 * p}, num(*mp, "prog"), kGold);
             }
             for (int i = 0; i < 8; ++i) {
-                const ui::Rect r{x0 + i * (sw + gap), y0, sw, sh};
+                const ui::Rect r{x0 + i * (sw + gap), y0, sw, sw};
                 const Slot& s = slots[std::size_t(i)];
                 const Json c = i < int(checked.size()) ? checked[std::size_t(i)] : Json();
                 const bool off = !s.id.empty() && c.is_object() && !flag(c, "can");
-                fill(r.x, r.y, r.w, r.h, kLeatherD.withAlpha(0.92f));
-                frame(r.x, r.y, r.w, r.h, off ? kBad.withAlpha(0.6f) : kBronze, std::max(1.0f, U));
+                well(r);
+                if (off) frame(r.x, r.y, r.w, r.h, kBad.withAlpha(0.7f), p);
                 ui.claim(r);
-                text(r.x + 4 * U, r.y + 2 * U, std::to_string(i + 1), kGold, 12 * U);
                 if (!s.id.empty()) {
                     const std::string name = c.is_object() && !str(c, "name").empty() ? str(c, "name") : s.id;
-                    auto rows = wrap(name, r.w - 10 * U, 12 * U);
-                    for (std::size_t k = 0; k < rows.size() && k < 2; ++k)
-                        text(r.x + 6 * U, r.y + 14 * U + k * (textH(12 * U) + 2 * U), rows[k], off ? kDim : kText, 12 * U);
+                    std::string ic;
+                    for (const auto& [re, sp] : actsRe)
+                        if (std::regex_search(s.id, re)) {
+                            ic = sp;
+                            break;
+                        }
+                    if (!ic.empty()) blit(sprite(ic), r.x + (sw - 32 * U) / 2, r.y + (sw - 32 * U) / 2 + 2 * U, 32 * U, 32 * U, off ? 0.45f : 1.0f);
+                    else {
+                        auto rows = wrap(name, r.w - 8 * U, 10 * U);
+                        for (std::size_t k = 0; k < rows.size() && k < 2; ++k)
+                            text(r.x + 4 * U, r.y + 14 * U + k * (textH(10 * U) + 1 * U), rows[k], off ? kDim : kText, 10 * U);
+                    }
+                    tip(r, std::to_string(i + 1) + ": " + name + (off && !str(c, "why").empty() ? " (" + str(c, "why") + ")" : ""));
                 }
+                text(r.x + 3 * U, r.y + 1 * U, std::to_string(i + 1), kGold, 11 * U, true);
                 if (r.contains(in.mouseX, in.mouseY) && !screens->any()) {
                     if (in.pressed) useSlot(i);
                     if (in.rightPressed) {
@@ -2133,6 +2473,7 @@ struct Window::Impl : Ctx {
         }
         drawMenu();
     }
+    float sh_dock() const { return 44 * U; }
     void drawMenu() {
         if (!menuOpen) return;
         const float w = 340 * U, rowH = 40 * U, pad = 8 * U;

@@ -196,13 +196,14 @@ void Screens::draw() {
     Win& w = *stack_.back();
     // the darkened map; a click on it closes the window
     c_.fill(0, 0, W, H, ui::Colour(0, 0, 0, 0.45f));
-    const float fw = std::min(W - 40 * U, std::max(420 * U, W * w.width)), fh = std::min(H - 40 * U, std::max(300 * U, H * w.height));
+    const float pad = 12 * U, headH = 40 * U;
+    const float fw = std::min(W - 40 * U, w.wantW > 0 ? w.wantW : std::max(420 * U, W * w.width));
+    const float fh = std::min(H - 40 * U, w.fitH > 0 ? std::max(160 * U, w.fitH + headH + 10 * U + pad) : std::max(300 * U, H * w.height));
     const ui::Rect box{std::round((W - fw) / 2), std::round((H - fh) / 2), std::round(fw), std::round(fh)};
     const bool outside = in.pressed && !box.contains(in.mouseX, in.mouseY);
     g.claim({0, 0, W, H});
     c_.carved(box);
     // the head: title, tabs, close
-    const float pad = 12 * U, headH = 40 * U;
     c_.text(box.x + pad, box.y + 10 * U, w.title, pal::gold, 20 * U, true);
     float tx = box.x + pad + c_.textW(w.title, 20 * U) + 20 * U;
     int ti = 0;
