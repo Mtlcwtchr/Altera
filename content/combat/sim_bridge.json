@@ -4,7 +4,7 @@
   "default_skill": 0.2,
   "weapon_items": ["spear", "axe", "stone_blade"],
   "weapon_of_item": { "spear": "spear", "axe": "axe", "stone_blade": "dagger" },
-  "armor_of_item": {},
+  "armor_of_item": { "gambeson": "gambeson", "leather_armour": "hide", "mail_shirt": "mail", "helmet": "helmet" },
   "animal": { "weapon": "fangs", "skill_key": "fighting", "default_skill": 0.4 },
   "health_min_after": 0.05,
   "memory": { "win": "won_fight", "lose": "lost_fight", "draw": "fought_draw", "flee": "fled_fight" },

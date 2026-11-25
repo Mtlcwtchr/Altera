@@ -167,21 +167,26 @@
     for (const it of p.worn || []) {
       const w = MAP.wear && MAP.wear[it];
       if (!w) continue;
-      wornKinds.add(w.layer);
-      if (w.layer === 'cloak') spec.cloak = w.colour;
-      else if (w.layer === 'cap' || w.layer === 'helmet' || w.layer === 'hood') spec.hat = [w.layer, w.colour];
-      else wear.push([w.layer, w.colour]);
+      // AL-109: a woman's tunic is a gown, "family" is the household's colour, a dyed thing its dye's
+      const layer = f && w.layer_f ? w.layer_f : w.layer;
+      let col = w.colour === 'family' ? famColour(p) : w.colour;
+      if (p.dye && p.dye[it] && MAP.dyes && MAP.dyes[p.dye[it]]) col = MAP.dyes[p.dye[it]];
+      wornKinds.add(layer);
+      if (layer === 'cloak') spec.cloak = col;
+      else if (layer === 'cap' || layer === 'helmet' || layer === 'hood') spec.hat = [layer, col];
+      else wear.push([layer, col]);
     }
-    // the sim gives nobody clothes yet at the start: homespun by sex and age, in the household's colour
+    // nothing on the body from the sim (no tunic yet): homespun by sex and age, in the household's colour
     if (!['shirt', 'robe', 'mail', 'tabard'].some(k => wornKinds.has(k))) {
       const of = (MAP.outfit && MAP.outfit[child ? 'child' : (f ? 'f' : 'm')]) || [];
       for (const [kind, col] of of) wear.unshift([kind, col === 'family' ? famColour(p) : col]);
     }
-    const order = ['shirt', 'robe', 'mail', 'pants', 'tabard', 'apron', 'belt'];
+    const order = ['shirt', 'robe', 'mail', 'pants', 'boots', 'tabard', 'apron', 'belt', 'bag', 'pack'];
     wear.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
     spec.wear = wear;
     if (!spec.hat && f && !child && ((h >>> 15) % 5) < 2) spec.hat = ['kerchief', '#e8e0d0'];
-    for (const [pat, tool] of MAP.tools || []) if ((p.inv || []).some(i => i.includes(pat))) { spec.tool = tool; break; }
+    // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
+    for (const [pat, tool] of MAP.tools || []) if (p.held && p.held.includes(pat)) { spec.tool = tool; break; }
     return spec;
   }
   // beasts: a small blob in the colour of the kind
@@ -677,7 +682,7 @@
       me = s.me || null;
       people = s.people;
       byId = new Map(people.map(p => [p.id, p]));
-      for (const p of people) p._lookKey = (p.worn || []).join() + '|' + (p.inv || []).join() + p.age;
+      for (const p of people) p._lookKey = (p.worn || []).join() + '|' + (p.held || '') + '|' + JSON.stringify(p.dye || {}) + p.age;
       for (const [id, p] of byId) { const old = oldSpecs.get(id); if (old && old.k === p._lookKey) { p._spec = old.s; p._specKey = old.k; } }
       oldSpecs.clear();
       for (const p of people) if (p._spec) oldSpecs.set(p.id, { k: p._specKey, s: p._spec });

@@ -3,11 +3,13 @@
 #include <algorithm>
 #include <cmath>
 #include <cstdio>
+#include <functional>
 #include <map>
 #include <set>
 
 #include "client2d/grid2d.hpp"
 #include "sim/ai.hpp"
+#include "sim/combat_bridge.hpp"
 
 namespace altera::client2d {
 
@@ -66,6 +68,53 @@ std::string goalOf(const ViewText& t, const Character& c) {
     return t.name("goal", c.ai.goal.id);
 }
 
+bool carries(const Character& c, const std::string& item) {
+    const auto it = c.inventory.find(item);
+    return it != c.inventory.end() && it->second > 0;
+}
+
+// AL-109: what the person holds in hand now: the tool of the act he is busy with (or
+// walks to) — an item the act asks to have and does not use up (an axe to chop, a
+// needle to sew), a tool its crafting processes ask for, the weapon of a fight —
+// else a carried weapon (one with a spear walks with it). "" for empty hands.
+std::string heldOf(const World& w, const Character& c) {
+    if (!c.body.alive || c.ai.fsm.state == "Sleep") return "";
+    const Content& ct = w.content();
+    const CombatBridge* cb = combatBridge(ct);
+    auto weapon = [&]() -> std::string {
+        if (cb)
+            for (const auto& item : cb->weaponItems)
+                if (carries(c, item)) return item;
+        for (const auto& it : c.craft.items)
+            if (it.kind == "weapon" && it.wear < 1.0)
+                if (const auto* f = ct.craft.form(it.form); f && !f->item.empty() && carries(c, f->item)) return f->item;
+        return "";
+    };
+    const std::string id = actId(c);
+    if (const InteractionDef* d = id.empty() ? nullptr : ct.interaction(id)) {
+        if (d->combat.set) return weapon();
+        for (const auto& k : d->pre) {
+            if (k.negate || k.onTarget || k.subject != "has" || k.isParam()) continue;
+            if (k.op != Condition::Op::Truthy && !(k.op == Condition::Op::Ge && k.value <= 1)) continue;
+            bool used = false;
+            for (const auto& e : d->eff)
+                used |= e.subject == "has" && !e.onTarget && e.key == k.key && e.op == '-';
+            if (!used && carries(c, k.key)) return k.key;
+        }
+        if (d->craft.rfind("design:", 0) == 0)
+            if (const auto* ds = ct.craft.design(d->craft.substr(7)))
+                for (const auto& st : ds->steps)
+                    if (const auto* pr = ct.craft.process(st.process))
+                        for (const auto& tag : pr->tools)
+                            for (const auto& f : ct.craft.forms) {
+                                if (f.item.empty() || !carries(c, f.item)) continue;
+                                if (std::find(f.deriveTags.begin(), f.deriveTags.end(), tag) != f.deriveTags.end())
+                                    return f.item;
+                            }
+    }
+    return weapon();
+}
+
 } // namespace
 
 Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beastsR) {
@@ -102,6 +151,23 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
             Json worn = Json::array();
             for (const auto& [slot, item] : c.worn) worn.push_back(item);
             p["worn"] = worn;
+            p["held"] = heldOf(w, c);
+            // AL-109: the colour of a dyed made thing worn (a blue tunic): item -> colour_* tag's colour
+            Json dye = Json::object();
+            for (const auto& [slot, item] : c.worn)
+                for (const auto& it : c.craft.items) {
+                    const auto* f = w.content().craft.form(it.form);
+                    if (!f || f->item != item) continue;
+                    std::function<void(const craft::Item&)> parts = [&](const craft::Item& x) {
+                        for (const auto& tag : x.tags)
+                            if (tag.rfind("colour_", 0) == 0) dye[item] = tag.substr(7);
+                        for (const auto& pt : x.parts)
+                            if (!pt.item.empty()) parts(pt.item[0]);
+                    };
+                    parts(it);
+                    if (dye.contains(item)) break;
+                }
+            if (!dye.empty()) p["dye"] = dye;
             Json inv = Json::array();
             for (const auto& [item, n] : c.inventory)
                 if (n > 0) inv.push_back(item);

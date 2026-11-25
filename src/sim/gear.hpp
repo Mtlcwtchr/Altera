@@ -103,6 +103,11 @@ void pruneGear(Character& c);
 // Puts on whatever carried thing can be worn, inner layers first.
 void wearAll(const GearRules& R, Character& c);
 
+// AL-109: people dress themselves. Once an hour every living person not led by a
+// player puts on what carried thing can be worn in a free layer (a new tunic, a
+// helmet picked up); at the world's first tick the player's person too (its start).
+void dressTick(World& w);
+
 // Commands: wear {id, item}, take_off {id, item}, gear_pin {id, item, grid, x, y, turned?} | {id, item, clear: true}.
 void installGear(World& w);
 
