@@ -2120,6 +2120,7 @@ struct Window::Impl : Ctx {
                     }
             }
             screens->open(o, a);
+            if (const char* t = SDL_getenv("ALTERA_2D_TAB"); t && screens->top()) screens->top()->tab = t;
         }
         const double start = nowMs();
         lastFrame = start;
