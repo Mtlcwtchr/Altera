@@ -882,6 +882,42 @@
    "...kuukkHkuuk...",
    "....kuuuHuuk....",
    ".....kkkkkk....."
+  ],
+  "ac_drink": [
+   ".......kkk......",
+   "......knnnk.....",
+   "......knnnk.....",
+   "......kWWWk.....",
+   "......kWWWk.....",
+   ".....kkWWWk.....",
+   "....kWWWWWWk....",
+   "...kWWrrrrWWk...",
+   "...kWrrrrrrWk...",
+   "...kWrwrrrrWk...",
+   "...kWrrrrrrWk...",
+   "...kWrrrrrrWk...",
+   "...kWrrrrrrWk...",
+   "....kWrrrrWk....",
+   ".....kkkkkk.....",
+   "................"
+  ],
+  "ac_rune": [
+   "................",
+   ".....kkkkkk.....",
+   "...kkzzzzzzkk...",
+   "..kzzxyxxxxzzk..",
+   "..kzxxyyyxxxzk..",
+   ".kzxxxyxxyxxxzk.",
+   ".kzxxxyxxxyxxzk.",
+   ".kzxxxyxxxxxxzk.",
+   ".kzxxxyxxxxxxzk.",
+   ".kzxxxyyxxxxxzk.",
+   ".kzxxxyxyxxxxzk.",
+   "..kzxxyxxyxxzk..",
+   "..kzzxyxxxyzzk..",
+   "...kkzyzzzzkk...",
+   ".....kkkkkk.....",
+   "................"
   ]
  },
  "stations": {
@@ -1362,6 +1398,8 @@
   "repair": "ac_repair",
   "to_bench": "ac_to_bench",
   "memory": "ac_memory",
-  "lay": "ac_lay"
+  "lay": "ac_lay",
+  "drink": "ac_drink",
+  "rune": "ac_rune"
  }
 }

@@ -34,7 +34,8 @@
    ],
    "stack": 10,
    "value": 8,
-   "_doc": "AL-114: яд пещерного паука — алхимия (AL-117)"
+   "_doc": "AL-114: яд пещерного паука — алхимия (AL-117)",
+   "material": "spider_venom"
   },
   {
    "id": "spider_silk",
@@ -53,7 +54,8 @@
     "alchemy"
    ],
    "stack": 6,
-   "value": 6
+   "value": 6,
+   "material": "drowner_brain"
   },
   {
    "id": "harpy_feather",
@@ -75,7 +77,8 @@
     "rare"
    ],
    "stack": 2,
-   "value": 60
+   "value": 60,
+   "material": "basilisk_eye"
   },
   {
    "id": "basilisk_scale",
@@ -101,7 +104,7 @@
   },
   {
    "id": "griffin_feather",
-   "material": "feather",
+   "material": "griffin_feather",
    "tags": [
     "monster_part",
     "enchant",

@@ -2614,6 +2614,116 @@
     "mana_capacity": 0.3
    },
    "worth": 1.5
+  },
+  {
+   "id": "spider_venom",
+   "tags": [
+    "reagent",
+    "monster_part",
+    "liquid",
+    "poisonous"
+   ],
+   "item": "spider_venom",
+   "shape": "liquid",
+   "p": {
+    "density": 0.5,
+    "moisture": 0.8,
+    "toxic": 0.7
+   },
+   "effects": [
+    {
+     "id": "aspect.poison",
+     "k": 0.6
+    },
+    {
+     "id": "poison",
+     "k": 0.5
+    }
+   ],
+   "worth": 6.0
+  },
+  {
+   "id": "drowner_brain",
+   "tags": [
+    "reagent",
+    "monster_part",
+    "perishable"
+   ],
+   "item": "drowner_brain",
+   "p": {
+    "density": 0.5,
+    "moisture": 0.8,
+    "toxic": 0.2,
+    "conductivity": 0.3,
+    "mana_capacity": 0.3
+   },
+   "effects": [
+    {
+     "id": "aspect.mind",
+     "k": 0.4
+    },
+    {
+     "id": "aspect.water",
+     "k": 0.2
+    }
+   ],
+   "worth": 5.0
+  },
+  {
+   "id": "basilisk_eye",
+   "tags": [
+    "gem",
+    "monster_part",
+    "reagent",
+    "rune_stone"
+   ],
+   "item": "basilisk_eye",
+   "p": {
+    "hardness": 0.6,
+    "toughness": 0.3,
+    "density": 0.6,
+    "purity": 0.8,
+    "conductivity": 0.8,
+    "mana_capacity": 0.9
+   },
+   "effects": [
+    {
+     "id": "aspect.stone",
+     "k": 0.5
+    },
+    {
+     "id": "aspect.death.shift",
+     "k": 0.2
+    }
+   ],
+   "worth": 40.0
+  },
+  {
+   "id": "griffin_feather",
+   "tags": [
+    "feather",
+    "monster_part",
+    "reagent"
+   ],
+   "item": "griffin_feather",
+   "p": {
+    "density": 0.1,
+    "flex": 0.6,
+    "flammable": 0.5,
+    "conductivity": 0.45,
+    "mana_capacity": 0.35
+   },
+   "effects": [
+    {
+     "id": "aspect.air",
+     "k": 0.4
+    },
+    {
+     "id": "aspect.beasts",
+     "k": 0.15
+    }
+   ],
+   "worth": 4.0
   }
  ]
 }

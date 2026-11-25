@@ -320,6 +320,18 @@ def _(c):
     c.line(10, 8, 14, 8, "y"); c.line(12, 6, 14, 8, "y"); c.line(12, 10, 14, 8, "y")
 
 
+@icon("ac_drink")
+def _(c):
+    c.rect(7, 1, 9, 2, "n"); c.rect(7, 3, 9, 5, "W")
+    c.disc(8, 10, 4.5, "W"); c.disc(8, 10.5, 3.4, "r"); c.px(6, 9, "w")
+
+
+@icon("ac_rune")
+def _(c):
+    c.disc(8, 8, 6.5, "z"); c.disc(8, 8, 5.5, "x")
+    c.line(6, 3, 6, 13, "y"); c.line(6, 3, 10, 6, "y"); c.line(6, 8, 10, 12, "y")
+
+
 def main():
     with open(PATH, encoding="utf-8") as f:
         data = json.load(f)

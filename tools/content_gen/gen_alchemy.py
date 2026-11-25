@@ -133,6 +133,42 @@ NEW_MATERIALS = [
 NEW_MATERIAL_REFINE = {"alcohol": [{"process": "distill", "to": "spirit"}],
                        "fruit_wine": [{"process": "distill", "to": "spirit"}]}
 
+# AL-117 tail: the monster parts of AL-114 (content/creatures/_items.json) become materials
+MONSTER_MATERIALS = [
+    {"id": "spider_venom", "tags": ["reagent", "monster_part", "liquid", "poisonous"], "item": "spider_venom", "shape": "liquid",
+     "p": {"density": 0.5, "moisture": 0.8, "toxic": 0.7}, "effects": [A("poison", 0.6), {"id": "poison", "k": 0.5}], "worth": 6.0},
+    {"id": "drowner_brain", "tags": ["reagent", "monster_part", "perishable"], "item": "drowner_brain",
+     "p": {"density": 0.5, "moisture": 0.8, "toxic": 0.2, "conductivity": 0.3, "mana_capacity": 0.3},
+     "effects": [A("mind", 0.4), A("water", 0.2)], "worth": 5.0},
+    {"id": "basilisk_eye", "tags": ["gem", "monster_part", "reagent", "rune_stone"], "item": "basilisk_eye",
+     "p": {"hardness": 0.6, "toughness": 0.3, "density": 0.6, "purity": 0.8, "conductivity": 0.8, "mana_capacity": 0.9},
+     "effects": [A("stone", 0.5), A("death", 0.2, "~")], "worth": 40.0},
+    {"id": "griffin_feather", "tags": ["feather", "monster_part", "reagent"], "item": "griffin_feather",
+     "p": {"density": 0.1, "flex": 0.6, "flammable": 0.5, "conductivity": 0.45, "mana_capacity": 0.35},
+     "effects": [A("air", 0.4), A("beasts", 0.15)], "worth": 4.0},
+]
+MONSTER_ITEMS = {m["id"]: m["id"] for m in MONSTER_MATERIALS}  # item id -> material
+NEW_MATERIALS += MONSTER_MATERIALS
+
+# the rare reagents from afar: the travelling trader carries a few (trade.json roles.trader.stock)
+TRADER_STOCK = {"moonstone": 1, "mithril": 1, "sulfur": 2, "quicksilver": 1, "dragon_blood": 1, "dragon_bone": 1,
+                "troll_liver": 1}
+
+# the mosses: an alchemist looks for them where other things grow (no new world objects:
+# new objects shift the ids the world hashes by)
+INTERACTIONS = [
+    {"id": "gather_night_moss", "category": "work", "target": "object:mushroom_glade",
+     "pre": ["knows:alchemy", "target_stock:mushrooms>=2"],
+     "eff": ["has:night_moss+1", "target_stock:mushrooms-2", "skill:herbalism+0.01", "skill:alchemy+0.005", "body:fatigue+0.03"],
+     "from_target": True, "duration": 4, "cost": 4, "fsm": "Work", "legal": [], "visibility": "public", "reserve": True,
+     "_part": "AL-117"},
+    {"id": "gather_moon_moss", "category": "work", "target": "object:limestone_outcrop",
+     "pre": ["knows:alchemy", "target_stock:limestone>=2"],
+     "eff": ["has:moon_moss+1", "target_stock:limestone-2", "skill:herbalism+0.01", "skill:alchemy+0.005", "body:fatigue+0.03"],
+     "from_target": True, "duration": 4, "cost": 4, "fsm": "Work", "legal": [], "visibility": "public", "reserve": True,
+     "_part": "AL-117"},
+]
+
 # ----------------------------------------------------------------- shapes
 NEW_SHAPES = {
     "crucible_raw": '{"id": "crucible_raw", "stage": "finished", "role": "body", "len": [1, 2, 1], "v": {"capacity": 0.3}}',
@@ -334,6 +370,26 @@ LOC_RU = {
     "material.night_moss.made": "{form} из ночного мха",
     "material.moon_moss.name": ru("лунный мох", "лунного мха", "лунному мху", "лунный мох", "лунным мхом", "лунном мхе", "m"),
     "material.moon_moss.made": "{form} из лунного мха",
+    "material.spider_venom.name": ru("паучий яд", "паучьего яда", "паучьему яду", "паучий яд", "паучьим ядом", "паучьем яде", "m"),
+    "material.spider_venom.made": "{form} на паучьем яде",
+    "material.drowner_brain.name": ru("мозг утопца", "мозга утопца", "мозгу утопца", "мозг утопца", "мозгом утопца", "мозге утопца", "m"),
+    "material.drowner_brain.made": "{form} из мозга утопца",
+    "material.basilisk_eye.name": ru("глаз василиска", "глаза василиска", "глазу василиска", "глаз василиска", "глазом василиска", "глазе василиска", "m"),
+    "material.basilisk_eye.made": "{form} с глазом василиска",
+    "material.griffin_feather.name": ru("перо грифона", "пера грифона", "перу грифона", "перо грифона", "пером грифона", "пере грифона", "n"),
+    "material.griffin_feather.made": "{form} из пера грифона",
+    "interaction.gather_night_moss.name": "собрать ночной мох",
+    "interaction.gather_moon_moss.name": "собрать лунный мох",
+    "ui2d.craft.drink": "Выпить",
+    "ui2d.craft.use_rune": "Применить руну",
+    "ui2d.craft.trigger.constant": "постоянно", "ui2d.craft.trigger.on_hit": "при ударе",
+    "ui2d.craft.trigger.on_touch": "касанием", "ui2d.craft.trigger.on_word": "по слову",
+    "ui2d.craft.trigger.on_threat": "при угрозе",
+    "ui2d.craft.rune": "руна: {trigger}, заряд {charge}%",
+    "ui2d.refused.not_a_potion": "Это нельзя выпить",
+    "ui2d.refused.no_charge": "Руна выдохлась",
+    "ui2d.refused.not_enchanted": "В вещи нет зачарования",
+    "ui2d.refused.blast": "Склянка взорвалась",
     "material.spirit.name": ru("спирт", "спирта", "спирту", "спирт", "спиртом", "спирте", "m"),
     "material.spirit.made": "{form} на спирту",
     "material.parchment.name": ru("пергамент", "пергамента", "пергаменту", "пергамент", "пергаментом", "пергаменте", "m"),
@@ -390,6 +446,17 @@ LOC_EN = {
     "material.quicksilver.name": "quicksilver", "material.quicksilver.made": "quicksilver {form}",
     "material.night_moss.name": "night moss", "material.night_moss.made": "night moss {form}",
     "material.moon_moss.name": "moon moss", "material.moon_moss.made": "moon moss {form}",
+    "material.spider_venom.name": "spider venom", "material.spider_venom.made": "spider venom {form}",
+    "material.drowner_brain.name": "drowner brain", "material.drowner_brain.made": "drowner brain {form}",
+    "material.basilisk_eye.name": "basilisk eye", "material.basilisk_eye.made": "basilisk eye {form}",
+    "material.griffin_feather.name": "griffin feather", "material.griffin_feather.made": "griffin feather {form}",
+    "interaction.gather_night_moss.name": "gather night moss", "interaction.gather_moon_moss.name": "gather moon moss",
+    "ui2d.craft.trigger.constant": "constant", "ui2d.craft.trigger.on_hit": "on hit",
+    "ui2d.craft.trigger.on_touch": "by touch", "ui2d.craft.trigger.on_word": "on a word",
+    "ui2d.craft.trigger.on_threat": "on a threat",
+    "ui2d.craft.drink": "Drink", "ui2d.craft.use_rune": "Use the rune", "ui2d.craft.rune": "rune: {trigger}, charge {charge}%",
+    "ui2d.refused.not_a_potion": "That cannot be drunk", "ui2d.refused.no_charge": "The rune is spent",
+    "ui2d.refused.not_enchanted": "There is no enchantment in it", "ui2d.refused.blast": "The flask burst",
     "material.spirit.name": "spirit", "material.spirit.made": "spirit {form}",
     "material.parchment.name": "parchment", "material.parchment.made": "parchment {form}",
     "shape.crucible_raw.name": "crucible", "shape.alembic_raw.name": "alembic",
@@ -560,6 +627,27 @@ def main():
     for (mid, _v, _t, mr, me) in MOODLETS:
         loc_ru["moodlet.%s.name" % mid] = mr
         loc_en["moodlet.%s.name" % mid] = me
+    save(pack("interactions.json"), {"_doc": "AL-117: where an alchemist finds the mosses (at existing places: no new world objects).", "interactions": INTERACTIONS})
+    # the monster parts of AL-114 carry their materials
+    ip = P("content/creatures/_items.json")
+    cit = load(ip)
+    for e in cit["items"]:
+        if e["id"] in MONSTER_ITEMS:
+            e["material"] = MONSTER_ITEMS[e["id"]]
+    save(ip, cit)
+    # the travelling trader carries the rare reagents from afar
+    # (a text edit of the one stock line: trade.json keeps its hand layout)
+    tp = P("content/ai/trade.json")
+    with open(tp, encoding="utf-8") as f:
+        txt = f.read()
+    st = load(tp)["roles"]["trader"]["stock"]
+    add = ", ".join('"%s": %d' % (k, v) for k, v in TRADER_STOCK.items() if k not in st)
+    if add:
+        line = '"stock": ' + json.dumps(st, ensure_ascii=False)
+        assert txt.count(line) == 1, "trade.json: the trader stock line moved"
+        txt = txt.replace(line, line[:-1] + ", " + add + "}")
+        with open(tp, "w", encoding="utf-8", newline="\n") as f:
+            f.write(txt)
     save(pack("knowledge.json"), {"_doc": "AL-117: alchemy (distil, calcine, dissolve) and runecraft (inscribe, bind). Nobody starts with them (no world roll): learnt by doing or from a teacher.", "knowledge": KNOWLEDGE})
     # the craft acts of the starter designs (craft:<design>)
     for ds in NEW_DESIGNS:
