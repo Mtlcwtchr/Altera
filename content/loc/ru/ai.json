@@ -426,7 +426,7 @@
  "knowledge.medicine.name": "Врачевание",
  "knowledge.sewing.name": "Шитьё",
  "knowledge.spinning.name": "Прядение",
- "knowledge.storytelling.name": "Сказительство",
+ "knowledge.eloquence.name": "Красноречие",
  "knowledge.toolmaking.name": "Изготовление орудий",
  "knowledge.weaving.name": "Ткачество",
  "knowledge.woodcutting.name": "Рубка леса",
@@ -788,5 +788,7 @@
  "trait.stubborn.desc": "Взявшись за дело, не бросает.",
  "trait.stubborn.name": "Упрямый",
  "trait.unscrupulous.desc": "Чужое для него не святое.",
- "trait.unscrupulous.name": "Беспринципный"
+ "trait.unscrupulous.name": "Беспринципный",
+ "moodlet.bored.name": "Заскучал",
+ "moodlet.spellbound.name": "Заслушался"
 }

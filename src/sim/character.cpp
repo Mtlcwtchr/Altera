@@ -130,6 +130,7 @@ void to_json(Json& j, const Character& c) {
     if (c.captivity.held()) j["captivity"] = c.captivity;
     if (!c.craft.empty()) j["craft"] = c.craft;
     if (!c.attrs.empty()) j["attrs"] = c.attrs;
+    if (!c.skillDay.empty()) j["skill_day"] = c.skillDay;
     if (!c.backstory.empty()) j["backstory"] = c.backstory;
     if (!c.look.empty()) j["look"] = c.look;
     if (!c.occupation.empty()) j["occupation"] = c.occupation;
@@ -155,6 +156,7 @@ void from_json(const Json& j, Character& c) {
     c.traits = j.value("traits", std::vector<std::string>{});
     c.skills = j.value("skills", std::map<std::string, double>{});
     c.attrs = j.value("attrs", std::map<std::string, double>{});
+    c.skillDay = j.value("skill_day", std::map<std::string, int>{});
     c.backstory = j.value("backstory", std::string());
     c.look = j.value("look", std::map<std::string, std::string>{});
     c.occupation = j.value("occupation", std::string());

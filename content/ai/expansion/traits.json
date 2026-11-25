@@ -60,7 +60,7 @@
    "inherit": 0.25,
    "weight_in_pool": 0.5,
    "skill_mult": {
-    "storytelling": 1.5,
+    "eloquence": 1.5,
     "poetry": 1.2
    },
    "goal_mult": {
@@ -624,8 +624,7 @@
    "weight_in_pool": 0.5,
    "skill_mult": {
     "persuasion": 1.4,
-    "deception": 1.2,
-    "diplomacy": 1.2,
+    "guile": 1.2,
     "trade": 1.15
    },
    "goal_mult": {

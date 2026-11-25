@@ -384,6 +384,26 @@ struct ChanceDef {
     double min = 0.0, max = 1.0;
 };
 
+// LR-141 (gdd/stats/STATS_SKILLS_v0.3.md §6): what an act depends on, in data.
+// Factors are named weighted mixes of any ids (stats, skills, traits, needs,
+// relations, repute); the quality combines them (fx.<name>); every target (the
+// act's character, or the audience around the actor) gets quality + noise(spread)
+// against its own need, and the first outcome the margin clears applies.
+struct ActOutcome {
+    std::string id;
+    bool isElse = false;
+    double over = 0.0;
+    std::vector<Effect> eff; // t. = this target
+};
+struct ActCheck {
+    bool set = false;
+    std::vector<std::pair<std::string, Expr>> factors; // in order; later ones may read earlier fx.
+    Expr quality, spread, need;
+    std::vector<ActOutcome> outcomes;
+    double audienceRadius = 0.0; // > 0: every awake person within it is a target
+    int audienceMax = 12;
+};
+
 // Conditional law (schema v0.3 §2). `anyOf[i]` is one list entry; its
 // alternatives are the `|`-separated parts. All entries must hold.
 struct LegalRule {
@@ -446,6 +466,7 @@ struct InteractionDef {
     Condition until;
     std::vector<ParamDef> params;
     ChanceDef chance;
+    ActCheck check; // LR-141
     std::vector<Effect> onFail; // applied instead of eff when the chance roll fails
     std::vector<RiskDef> risk;
     CombatDef combat;

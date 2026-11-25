@@ -230,6 +230,7 @@ TEST(lr_sim_player_chop_takes_what_fits) {
     CHECK(tree != nullptr);
     if (!tree) return;
     me->inventory["axe"] = std::max(me->inventory["axe"], 1);
+    me->attrs["strength"] = 0.5; // LR-141: an average back (the stats are rolled for everyone now)
     CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", me->id}})).result, kOk);
     const Tick t0 = w.now();
     const int logs0 = me->inventory["log"], stock0 = tree->stock.at("log");

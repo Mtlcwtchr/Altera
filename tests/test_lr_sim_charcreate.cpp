@@ -117,7 +117,7 @@ TEST(lr_sim_charcreate_rules_and_cost) {
     const Json R = creationRules(c, "fantasy_european");
     CHECK(R["races"].size() >= 8);
     CHECK(R["talents"].size() >= 10);
-    CHECK_EQ(R["attrs"]["ids"].size(), std::size_t(8));
+    CHECK_EQ(R["attrs"]["ids"].size(), std::size_t(16)); // LR-141
     int giftHuman = 0, giftElf = 0;
     for (const auto& r : R["races"]) {
         if (r["id"] == "human") giftHuman = r["gift_cost"];

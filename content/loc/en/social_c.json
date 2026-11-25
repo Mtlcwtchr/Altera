@@ -43,5 +43,6 @@
  "moodlet.insulted.name": "Insulted",
  "moodlet.injured.name": "Injured",
  "moodlet.sick.name": "Sick",
- "moodlet.cursed.name": "Cursed"
+ "moodlet.cursed.name": "Cursed",
+ "reputation.entertainer.name": "entertainer"
 }

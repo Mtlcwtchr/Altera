@@ -70,7 +70,7 @@ TEST(lr_sim_backstory_start) {
         }
         for (const auto& t : b.traitsAlways) CHECK(c.hasTrait(t));
         CHECK_EQ(c.traits.size(), b.traitsAlways.size() + std::size_t(b.traitPick));
-        CHECK_EQ(c.attrs.size(), std::size_t(8));
+        CHECK_EQ(c.attrs.size(), std::size_t(16)); // LR-141
         for (const auto& [it, n] : b.items) CHECK(c.has(it) >= n);
         CHECK_EQ(c.has("coin"), b.coins);
         CHECK_EQ(c.craft.items.size(), b.made.size());

@@ -5,6 +5,8 @@
 #include <algorithm>
 #include <cmath>
 
+#include "sim/act_check.hpp"
+#include "sim/stats.hpp"
 #include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
 #include "sim/alchemy.hpp"
@@ -682,19 +684,36 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             int& n = h->stock[e.key];
             n = std::max(0, e.op == '=' ? static_cast<int>(e.value) : n + static_cast<int>(dv));
         } else if (s == "skill") {
-            double& v = c.skills[e.key];
-            double gain = dv;
-            if (e.op != '=' && gain > 0.0) { // AL-30: diminishing practice, none for the small
+            if (e.op == '=') {
+                c.skills[e.key] = std::max(0.0, e.value);
+            } else if (statRules(w.content())) {
+                // LR-141: growth by divisions past soft start, the person's talent, the kind's knack
                 const AiConfig& cf = w.content().config;
-                gain = c.body.ageDays < cf.skillMinAgeYears * kDaysPerYear
-                           ? 0.0
-                           : gain * cf.skillGainMult * std::pow(std::max(0.0, 1.0 - v), cf.skillGainCurve);
-                if (c.body.ageDays < cf.skillChildUntilYears * kDaysPerYear) gain *= cf.skillChildMult;
-                gain *= raceLearnMult(w.content(), c, e.key); // AL-114: the kind's aptitude
-                const double talent = std::min(1.0, skillTalent(cf, c.id, e.key) * raceCapMult(w.content(), c, e.key));
-                if (v > talent) gain *= std::exp(-(v - talent) * cf.skillOverTalentFalloff);
+                double gain = dv;
+                if (gain > 0.0) {
+                    if (c.body.ageDays < cf.skillMinAgeYears * kDaysPerYear) gain = 0.0;
+                    else if (c.body.ageDays < cf.skillChildUntilYears * kDaysPerYear) gain *= cf.skillChildMult;
+                    gain *= cf.skillGainMult;
+                }
+                practiceSkill(w, c, e.key, gain);
+            } else {
+                double& v = c.skills[e.key];
+                double gain = dv;
+                if (gain > 0.0) { // AL-30: diminishing practice, none for the small
+                    const AiConfig& cf = w.content().config;
+                    gain = c.body.ageDays < cf.skillMinAgeYears * kDaysPerYear
+                               ? 0.0
+                               : gain * cf.skillGainMult * std::pow(std::max(0.0, 1.0 - v), cf.skillGainCurve);
+                    if (c.body.ageDays < cf.skillChildUntilYears * kDaysPerYear) gain *= cf.skillChildMult;
+                    gain *= raceLearnMult(w.content(), c, e.key); // AL-114: the kind's aptitude
+                    const double talent = std::min(1.0, skillTalent(cf, c.id, e.key) * raceCapMult(w.content(), c, e.key));
+                    if (v > talent) gain *= std::exp(-(v - talent) * cf.skillOverTalentFalloff);
+                }
+                v = clamp01(v + gain);
             }
-            v = clamp01(e.op == '=' ? e.value : v + gain);
+        } else if (s == "attr") { // LR-141: training a stat's base (the lumberjack grows strong)
+            if (e.op == '=') c.attrs[e.key] = e.value;
+            else trainStat(w, c, e.key, dv);
         } else if (s == "body") {
             double& v = e.key == "health" ? c.body.health : c.body.fatigue;
             // a heavy load makes every tiring act tire more (gear.json)
@@ -876,6 +895,8 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     // a crafting act's eff is what the planner expects; the resolver decides
     // what really comes of it (craftAct, called by the FSM with the step's params)
     if (d.craft.empty()) applyEffectList(w, c, success ? takeWhatFits(w, c, d, d.eff) : d.onFail, target, targetChar, &wit);
+    // LR-141: the act's check in data (factors -> quality -> each target's outcome)
+    if (success && d.check.set) success = resolveActCheck(w, c, d, target, targetChar, &wit);
     if (!tone.empty() && tr) {
         const ToneDef& td = tr->tones.at(tone);
         applyEffectList(w, c, success ? td.eff : td.onFail, target, targetChar, &wit);

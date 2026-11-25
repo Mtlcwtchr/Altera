@@ -10,6 +10,7 @@
 
 #include "sim/content.hpp"
 #include "sim/data_fs.hpp"
+#include "sim/stats.hpp"
 
 namespace lr::sim {
 namespace {
@@ -180,6 +181,7 @@ ExpansionData mergeExpansion(const std::string& dir, Json& items, Json& objects,
     // Reference books.
     const Json attrs = f("attributes.json");
     x.attributes = strings(attrs.value("attributes", Json::array()));
+    if (auto ids = statIdsOf(dir + "/.."); !ids.empty()) x.attributes = ids; // LR-141: content/ai/stats/stats.json
     x.attributeModel = attrs.value("model", Json::object());
     const Json ints = f("interests.json");
     x.interestCategories = strings(ints.value("categories", Json::array()));

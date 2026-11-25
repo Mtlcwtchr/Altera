@@ -38,5 +38,6 @@
  "commitment.fealty.name": "присяга",
  "commitment.keep_secret.name": "хранить тайну",
  "risk.caught_illness.name": "заразиться",
- "risk.hunting_injury.name": "пострадать на охоте"
+ "risk.hunting_injury.name": "пострадать на охоте",
+ "reputation.entertainer.name": "слава рассказчика"
 }

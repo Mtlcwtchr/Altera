@@ -6,6 +6,8 @@
 
 #include "sim/charcreate.hpp"
 #include "sim/content.hpp"
+#include "sim/act_check.hpp"
+#include "sim/stats.hpp"
 #include "sim/craft/craft_validate.hpp"
 
 namespace lr::sim {
@@ -21,7 +23,7 @@ const std::set<std::string> kTargetCondSubjects = {"need", "skill", "body", "age
 // w.<subject>: effects on every witness of the actor (schema v0.3 §1).
 const std::set<std::string> kWitnessEffSubjects = {"memory", "moodlet", "rel"};
 const std::set<std::string> kEffSubjects = {"has",        "need",           "target_stock",   "home",
-                                            "skill",      "body",           "moodlet",        "memory",
+                                            "skill",      "attr",           "body",           "moodlet",        "memory",
                                             "rel",        "rel_back",       "spawn",          "target_need",
                                             "reputation", "status_pair",    "household_join", "household_adopt",
                                             "household_leave", "household_found", "commitment", "death", "captivity", "site"};
@@ -230,6 +232,12 @@ struct V {
             }
         if (!d.onFail.empty() && !d.chance.set) warn(where + ": on_fail without chance never applies");
         for (const auto& e : d.onFail) eff(e, where + " on_fail", sc);
+        if (d.check.set) { // LR-141: outcomes act on each target (a character, also the audience's)
+            Scope tsc = sc;
+            tsc.charTarget = true;
+            for (const auto& o : d.check.outcomes)
+                for (const auto& e : o.eff) eff(e, where + " check." + o.id, tsc);
+        }
         std::set<std::string> riskIds;
         for (const auto& rk : d.risk) {
             if (rk.id.empty()) err(where + ": risk without id");
@@ -298,6 +306,8 @@ ValidationReport validate(const Content& c) {
     ValidationReport r;
     V v{c, r};
     validateSpecies(c, r); // AL-114
+    validateStats(c, r);   // LR-141
+    validateActChecks(c, r);
 
     // Needs / traits.
     for (const auto& n : c.needs) {

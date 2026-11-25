@@ -1,0 +1,266 @@
+{
+ "_doc": "LR-141 (gdd/stats/STATS_SKILLS_v0.3.md). Статы — состояние тела, чувств, ума и духа, 0..1 плавно (0.5 — средний взрослый человек, выше 1 — сверхчеловеческое). Навыки идут параллельно и из статов не следуют. База хранится у персонажа (attrs), текущее = база + вид + черты + состояние (states.json) × возраст; формулы читают текущее как attr.<id>, базу как attr_base.<id>.",
+ "version": 2,
+ "groups": [
+  "body",
+  "senses",
+  "mind",
+  "spirit",
+  "presence",
+  "magic"
+ ],
+ "stats": [
+  {
+   "id": "strength",
+   "group": "body",
+   "name_key": "attr.strength.name",
+   "desc_key": "attr.strength.desc"
+  },
+  {
+   "id": "agility",
+   "group": "body",
+   "name_key": "attr.agility.name",
+   "desc_key": "attr.agility.desc"
+  },
+  {
+   "id": "dexterity",
+   "group": "body",
+   "name_key": "attr.dexterity.name",
+   "desc_key": "attr.dexterity.desc"
+  },
+  {
+   "id": "endurance",
+   "group": "body",
+   "name_key": "attr.endurance.name",
+   "desc_key": "attr.endurance.desc"
+  },
+  {
+   "id": "vitality",
+   "group": "body",
+   "name_key": "attr.vitality.name",
+   "desc_key": "attr.vitality.desc"
+  },
+  {
+   "id": "voice",
+   "group": "body",
+   "name_key": "attr.voice.name",
+   "desc_key": "attr.voice.desc"
+  },
+  {
+   "id": "perception",
+   "group": "senses",
+   "name_key": "attr.perception.name",
+   "desc_key": "attr.perception.desc"
+  },
+  {
+   "id": "intellect",
+   "group": "mind",
+   "name_key": "attr.intellect.name",
+   "desc_key": "attr.intellect.desc"
+  },
+  {
+   "id": "memory",
+   "group": "mind",
+   "name_key": "attr.memory.name",
+   "desc_key": "attr.memory.desc"
+  },
+  {
+   "id": "wisdom",
+   "group": "mind",
+   "name_key": "attr.wisdom.name",
+   "desc_key": "attr.wisdom.desc"
+  },
+  {
+   "id": "creativity",
+   "group": "mind",
+   "name_key": "attr.creativity.name",
+   "desc_key": "attr.creativity.desc"
+  },
+  {
+   "id": "composure",
+   "group": "spirit",
+   "name_key": "attr.composure.name",
+   "desc_key": "attr.composure.desc"
+  },
+  {
+   "id": "willpower",
+   "group": "spirit",
+   "name_key": "attr.willpower.name",
+   "desc_key": "attr.willpower.desc"
+  },
+  {
+   "id": "charisma",
+   "group": "presence",
+   "name_key": "attr.charisma.name",
+   "desc_key": "attr.charisma.desc"
+  },
+  {
+   "id": "appearance",
+   "group": "presence",
+   "name_key": "attr.appearance.name",
+   "desc_key": "attr.appearance.desc"
+  },
+  {
+   "id": "attunement",
+   "group": "magic",
+   "name_key": "attr.attunement.name",
+   "desc_key": "attr.attunement.desc"
+  }
+ ],
+ "growth": {
+  "_doc": "Рост по делениям: до soft_start полный, дальше каждое деление step растёт в per_step_mult раз медленнее предыдущего (плавно внутри деления). Жёсткого потолка нет.",
+  "stats": {
+   "soft_start": 0.8,
+   "step": 0.1,
+   "per_step_mult": 0.5
+  },
+  "skills": {
+   "soft_start": 0.8,
+   "step": 0.1,
+   "per_step_mult": 0.5
+  }
+ },
+ "skill_decay": {
+  "_doc": "Забывание без практики: в год per_year от уровня выше floor, выше soft_start быстрее в over_soft_mult раз за каждое деление. Практика за последние grace_days дней защищает навык.",
+  "per_year": 0.01,
+  "floor": 0.15,
+  "over_soft_mult": 1.6,
+  "grace_days": 60
+ },
+ "talents": {
+  "_doc": "Личные таланты: множитель скорости обучения по категориям навыков (не потолок). Бросается от сида персонажа, логнормально.",
+  "sd": 0.3,
+  "lo": 0.35,
+  "hi": 2.2
+ },
+ "fill": {
+  "_doc": "Как заполнить стат, которого у персонажа ещё нет (новый персонаж без значения, старый сейв). Формула на языке выражений; noise(mean, sd) — нормальная выборка от сида персонажа.",
+  "default": "noise(0.5, 0.12)",
+  "vitality": "attr_base.endurance + noise(0, 0.07)",
+  "memory": "attr_base.intellect + noise(0, 0.08)",
+  "wisdom": "0.5*attr_base.perception + 0.5*attr_base.intellect + noise(0, 0.08)",
+  "composure": "attr_base.willpower + noise(0, 0.08)",
+  "attunement": "noise(0.2, 0.08)"
+ },
+ "clamp": {
+  "lo": 0.02,
+  "start_hi": 0.95
+ },
+ "age_curve": {
+  "_doc": "Множитель текущего значения по возрасту (годы в человеческой мере: Body::lifeYears, у эльфа по стадиям его жизни). Нет стата в точке — 1.",
+  "points": [
+   {
+    "age": 0,
+    "mult": {
+     "strength": 0.2,
+     "agility": 0.45,
+     "dexterity": 0.3,
+     "endurance": 0.4,
+     "vitality": 0.6,
+     "voice": 0.4,
+     "intellect": 0.3,
+     "memory": 0.5,
+     "wisdom": 0.2,
+     "creativity": 0.8,
+     "composure": 0.25,
+     "willpower": 0.3,
+     "charisma": 0.7,
+     "appearance": 0.9,
+     "perception": 0.8
+    }
+   },
+   {
+    "age": 14,
+    "mult": {
+     "strength": 0.75,
+     "agility": 0.95,
+     "dexterity": 0.85,
+     "endurance": 0.8,
+     "vitality": 0.95,
+     "voice": 0.85,
+     "intellect": 0.85,
+     "memory": 1.0,
+     "wisdom": 0.6,
+     "creativity": 1.05,
+     "composure": 0.7,
+     "willpower": 0.75,
+     "charisma": 0.9,
+     "appearance": 1.05,
+     "perception": 1.0
+    }
+   },
+   {
+    "age": 25,
+    "mult": {}
+   },
+   {
+    "age": 45,
+    "mult": {
+     "strength": 0.92,
+     "agility": 0.88,
+     "dexterity": 0.95,
+     "endurance": 0.92,
+     "vitality": 0.9,
+     "voice": 0.98,
+     "intellect": 1.05,
+     "memory": 0.97,
+     "wisdom": 1.12,
+     "creativity": 0.97,
+     "composure": 1.1,
+     "willpower": 1.1,
+     "charisma": 1.05,
+     "appearance": 0.88,
+     "perception": 0.95
+    }
+   },
+   {
+    "age": 65,
+    "mult": {
+     "strength": 0.7,
+     "agility": 0.65,
+     "dexterity": 0.75,
+     "endurance": 0.7,
+     "vitality": 0.7,
+     "voice": 0.85,
+     "intellect": 1.0,
+     "memory": 0.85,
+     "wisdom": 1.2,
+     "creativity": 0.9,
+     "composure": 1.12,
+     "willpower": 1.05,
+     "charisma": 1.0,
+     "appearance": 0.7,
+     "perception": 0.8
+    }
+   },
+   {
+    "age": 85,
+    "mult": {
+     "strength": 0.45,
+     "agility": 0.4,
+     "dexterity": 0.55,
+     "endurance": 0.45,
+     "vitality": 0.45,
+     "voice": 0.65,
+     "intellect": 0.85,
+     "memory": 0.65,
+     "wisdom": 1.1,
+     "creativity": 0.8,
+     "composure": 1.0,
+     "willpower": 0.95,
+     "charisma": 0.9,
+     "appearance": 0.55,
+     "perception": 0.65
+    }
+   }
+  ]
+ },
+ "refresh_ticks": 10,
+ "rename_skills": {
+  "_doc": "Старые id навыков → новые (сейвы, LR-141).",
+  "storytelling": "eloquence",
+  "deception": "guile",
+  "intimidation": "menace",
+  "diplomacy": "persuasion"
+ }
+}

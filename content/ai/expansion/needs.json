@@ -139,6 +139,16 @@
    "id": "homesick",
    "value": -0.1,
    "ttl": 144
+  },
+  {
+   "id": "spellbound",
+   "value": 0.12,
+   "ttl": 36
+  },
+  {
+   "id": "bored",
+   "value": -0.03,
+   "ttl": 12
   }
  ]
 }

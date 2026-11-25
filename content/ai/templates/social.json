@@ -1,0 +1,250 @@
+{
+ "_doc": "LR-141: шаблоны социальных дел (gdd/stats/STATS_SKILLS_v0.3.md §6.5). Наследник: \"extends\": \"<id>\", \"args\": {...}; outcomes переопределяются целиком.",
+ "templates": [
+  {
+   "id": "tpl.performance",
+   "abstract": true,
+   "params": [
+    "skill",
+    "need"
+   ],
+   "defaults": {
+    "skill": "eloquence",
+    "need": "listener_need"
+   },
+   "category": "social",
+   "fsm": "Talk",
+   "visibility": "public",
+   "check": {
+    "factors": {
+     "hold": {
+      "attr.charisma": 0.5,
+      "attr.voice": 0.25,
+      "attr.appearance": 0.1,
+      "attr.composure": 0.15
+     },
+     "craft": {
+      "skill.$skill": 0.55,
+      "attr.creativity": 0.25,
+      "attr.memory": 0.2
+     }
+    },
+    "quality": "sqrt(max(0, fx.hold) * max(0, fx.craft))",
+    "spread": "max(0.04, 0.2 - 0.12*min(1, skill.$skill))",
+    "audience": {
+     "radius_m": 8,
+     "max": 12
+    },
+    "need": "f.$need",
+    "outcomes": [
+     {
+      "id": "spellbound",
+      "over": 0.25,
+      "eff": [
+       "t.need:fun+0.35",
+       "t.moodlet:spellbound",
+       "rel_back:affinity+0.04",
+       "rel_back:respect+0.02",
+       "reputation:entertainer+0.03"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.need:fun+0.15",
+       "t.moodlet:had_fun",
+       "rel_back:affinity+0.01",
+       "reputation:entertainer+0.01"
+      ]
+     },
+     {
+      "id": "meh",
+      "over": -0.15,
+      "eff": [
+       "t.need:fun+0.03"
+      ]
+     },
+     {
+      "id": "bored",
+      "else": true,
+      "eff": [
+       "t.moodlet:bored",
+       "t.need:fun-0.05",
+       "reputation:entertainer-0.01"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "tpl.talk",
+   "abstract": true,
+   "params": [
+    "skill",
+    "need"
+   ],
+   "defaults": {
+    "skill": "eloquence",
+    "need": "listener_need"
+   },
+   "category": "social",
+   "target": "character",
+   "fsm": "Talk",
+   "goap": false,
+   "visibility": "public",
+   "check": {
+    "factors": {
+     "presence": {
+      "attr.charisma": 0.6,
+      "attr.voice": 0.15,
+      "attr.composure": 0.25
+     },
+     "craft": {
+      "skill.$skill": 0.7,
+      "attr.creativity": 0.3
+     }
+    },
+    "quality": "sqrt(max(0, fx.presence) * max(0, fx.craft))",
+    "spread": "max(0.04, 0.2 - 0.12*min(1, skill.$skill))",
+    "need": "f.$need",
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "rel_back:affinity+0.04"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "rel_back:affinity+0.02"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": []
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "rel_back:affinity-0.02"
+      ]
+     }
+    ]
+   }
+  },
+  {
+   "id": "tpl.charm",
+   "abstract": true,
+   "params": [
+    "skill",
+    "need"
+   ],
+   "defaults": {
+    "need": "charm_need"
+   },
+   "category": "social",
+   "target": "character",
+   "fsm": "Talk",
+   "goap": false,
+   "visibility": "public",
+   "check": {
+    "factors": {
+     "presence": {
+      "attr.charisma": 0.45,
+      "attr.appearance": 0.35,
+      "attr.composure": 0.2
+     },
+     "craft": {
+      "skill.$skill": 0.65,
+      "attr.wisdom": 0.35
+     }
+    },
+    "quality": "sqrt(max(0, fx.presence) * max(0, fx.craft))",
+    "spread": "max(0.04, 0.2 - 0.12*min(1, skill.$skill))",
+    "need": "f.$need",
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": []
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": []
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": []
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": []
+     }
+    ]
+   }
+  },
+  {
+   "id": "tpl.support",
+   "abstract": true,
+   "params": [
+    "skill",
+    "need"
+   ],
+   "defaults": {
+    "need": "comfort_need"
+   },
+   "category": "social",
+   "target": "character",
+   "fsm": "Talk",
+   "goap": false,
+   "visibility": "public",
+   "check": {
+    "factors": {
+     "warmth": {
+      "attr.wisdom": 0.45,
+      "attr.charisma": 0.2,
+      "attr.composure": 0.35
+     },
+     "craft": {
+      "skill.$skill": 0.8,
+      "attr.wisdom": 0.2
+     }
+    },
+    "quality": "sqrt(max(0, fx.warmth) * max(0, fx.craft))",
+    "spread": "max(0.04, 0.2 - 0.12*min(1, skill.$skill))",
+    "need": "f.$need",
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": []
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": []
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": []
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": []
+     }
+    ]
+   }
+  }
+ ]
+}

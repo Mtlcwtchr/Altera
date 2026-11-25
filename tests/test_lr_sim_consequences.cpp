@@ -244,9 +244,10 @@ TEST(lr_sim_consequences_skill_gain_curve) {
     applyEffectList(w, *adult, {e}, nullptr);
     const double low = adult->skills["cooking"];
     CHECK(low > 0.0 && low < 0.1);
-    adult->skills["cooking"] = 0.8;
+    // LR-141: past soft start (0.8) each division of 0.1 halves the gain
+    adult->skills["cooking"] = 0.9;
     applyEffectList(w, *adult, {e}, nullptr);
-    CHECK(adult->skills["cooking"] - 0.8 < low * 0.2);
+    CHECK(std::abs((adult->skills["cooking"] - 0.9) - low * 0.5) < low * 0.01);
     small->skills["cooking"] = 0.0;
     applyEffectList(w, *small, {e}, nullptr);
     CHECK_EQ(small->skills["cooking"], 0.0);
@@ -255,8 +256,9 @@ TEST(lr_sim_consequences_skill_gain_curve) {
     kid.skills["cooking"] = 0.0;
     applyEffectList(w, kid, {e}, nullptr);
     CHECK(kid.skills["cooking"] > 0.0 && kid.skills["cooking"] < low * 0.5);
-    // above one's talent (at most 0.95) practice gives next to nothing
-    adult->skills["cooking"] = 0.97;
+    // LR-141: past 1 it still grows, ever slower (superhuman), no cap
+    adult->skills["cooking"] = 1.2;
     applyEffectList(w, *adult, {e}, nullptr);
-    CHECK(adult->skills["cooking"] - 0.97 < 0.1 * 0.3 * 0.03 * 0.03 * 0.7);
+    CHECK(adult->skills["cooking"] > 1.2);
+    CHECK(adult->skills["cooking"] - 1.2 < low * 0.07);
 }

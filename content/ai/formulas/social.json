@@ -1,0 +1,33 @@
+{
+ "_doc": "LR-141: сложность социальных дел для каждой цели (gdd/stats/STATS_SKILLS_v0.3.md §6). t. — слушатель/цель, без префикса — исполнитель. Чем выше, тем труднее.",
+ "formulas": [
+  {"id": "listener_need",
+   "expr": "0.45 + 0.15*(1 - t.need.energy) + 0.1*t.need.fun - 0.12*t.rel.affinity - 0.05*t.trait.cheerful + 0.06*t.trait.melancholic + 0.04*t.moodlet.grieving",
+   "min": 0.05, "max": 1.5,
+   "doc": "Развеселить слушателя: устал — труднее, уже весел — труднее (ему и так хорошо), симпатизирует рассказчику — легче, весельчак — легче, меланхолик и горюющий — труднее"},
+  {"id": "joke_need",
+   "expr": "f.listener_need + 0.05*t.trait.stoic - 0.05*t.trait.easygoing + 0.1*t.moodlet.grieving",
+   "min": 0.05, "max": 1.5,
+   "doc": "Рассмешить: как развеселить байкой, но стоик держится, а горюющему не до шуток"},
+  {"id": "charm_need",
+   "expr": "0.5 - 0.15*t.rel.attraction - 0.08*t.rel.affinity + 0.08*t.trait.stoic - 0.06*t.trait.romantic + 0.1*t.moodlet.grieving",
+   "min": 0.05, "max": 1.5,
+   "doc": "Понравиться: уже тянет к исполнителю — легче, романтик — легче, стоик и горюющий — труднее"},
+  {"id": "comfort_need",
+   "expr": "0.35 + 0.25*t.moodlet.grieving + 0.1*t.moodlet.frightened - 0.12*t.rel.trust - 0.08*t.rel.affinity",
+   "min": 0.05, "max": 1.5,
+   "doc": "Утешить: горе и страх — труднее, доверие — легче"},
+  {"id": "calm_need",
+   "expr": "0.45 + 0.12*t.trait.hot_tempered - 0.08*t.trait.patient + 0.1*t.rel.enmity - 0.08*t.rel.trust",
+   "min": 0.05, "max": 1.5,
+   "doc": "Успокоить: вспыльчивого труднее, терпеливого легче, неприязнь мешает, доверие помогает"},
+  {"id": "impress_need",
+   "expr": "0.5 + 0.08*t.trait.skeptic + 0.05*t.trait.proud - 0.06*t.trait.excitable - 0.06*t.rel.respect",
+   "min": 0.05, "max": 1.5,
+   "doc": "Впечатлить (похвальба, стихи): скептик и гордец — труднее, впечатлительный — легче"},
+  {"id": "counsel_need",
+   "expr": "0.45 - 0.12*t.rel.trust - 0.06*t.rel.respect + 0.08*t.trait.stubborn",
+   "min": 0.05, "max": 1.5,
+   "doc": "Дать совет, который примут: доверие и уважение помогают, упрямец не слушает"}
+ ]
+}
