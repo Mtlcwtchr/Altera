@@ -1,4 +1,5 @@
 #include "sim/craft/craft_validate.hpp"
+#include "sim/craft/craft_magic.hpp"
 
 #include <set>
 
@@ -48,10 +49,21 @@ Known known(const CraftData& d) {
     return k;
 }
 
+// AL-117: an aspect effect (aspect.<id>[.minus|.shift]) of a known aspect is known even when no
+// material carries it yet; without content/magic every well-formed one is.
+bool knownAspect(const CraftData& d, const std::string& effect) {
+    std::string a;
+    char v = '+';
+    if (!parseAspectEffect(effect, a, v)) return false;
+    return d.aspects.empty() || d.aspect(a) != nullptr;
+}
+
 void checkExpr(const CraftData& d, const Known& k, const Expr& e, const std::set<std::string>& extra,
                const std::string& where, std::vector<std::string>& err) {
     static const std::set<std::string> vars{"q", "len", "thick", "joint", "solo", "liquid", "wear", "mass", "x",
-                                            "heat", "even", "hygiene"};
+                                            "heat", "even", "hygiene",
+                                            // AL-117: magic in the thing
+                                            "unstable", "aspects", "rune", "inscribed", "resonance", "deeds"};
     for (const auto& n : e.names()) {
         if (vars.count(n) || extra.count(n) || isProp(n) || d.isFunction(n)) continue;
         size_t dot = n.find('.');
@@ -73,7 +85,7 @@ void checkExpr(const CraftData& d, const Known& k, const Expr& e, const std::set
         else if (fn == "flaw") ok = d.flaw(arg) != nullptr;
         else if (fn == "state") ok = k.states.count(arg) > 0 || arg == "glazed";
         else if (fn == "tag") ok = k.tags.count(arg) > 0;
-        else if (fn == "eff") ok = k.effects.count(arg) > 0;
+        else if (fn == "eff") ok = k.effects.count(arg) > 0 || knownAspect(d, arg);
         if (!ok) err.push_back(where + ": unknown argument in " + s + " ('" + e.source() + "')");
     }
 }
@@ -198,7 +210,8 @@ void validateCraft(const Content& c, ValidationReport& r) {
             for (size_t b = 0, e; b <= ef.size(); b = e + 1) {
                 e = ef.find('|', b);
                 if (e == std::string::npos) e = ef.size();
-                if (!k.effects.count(ef.substr(b, e - b))) E(w + ": unknown effect " + ef.substr(b, e - b));
+                if (!k.effects.count(ef.substr(b, e - b)) && !knownAspect(d, ef.substr(b, e - b)))
+                    E(w + ": unknown effect " + ef.substr(b, e - b));
             }
         for (const auto& n : f.needs) checkExpr(d, k, n.expr, {}, w + ".needs", xerr);
         for (const auto& [key, e] : f.derive) checkExpr(d, k, e, {}, w + ".derive." + key, xerr);
@@ -219,7 +232,7 @@ void validateCraft(const Content& c, ValidationReport& r) {
                 std::string a = t.substr(b, e - b);
                 if (a == "no_air" || a == "no_yeast") continue;
                 if (a.rfind("eff:", 0) == 0) {
-                    if (!k.effects.count(a.substr(4))) E(w + ": unknown effect " + a);
+                    if (!k.effects.count(a.substr(4)) && !knownAspect(d, a.substr(4))) E(w + ": unknown effect " + a);
                     continue;
                 }
                 if (a.rfind("heat", 0) == 0 && a.size() == 5) continue;

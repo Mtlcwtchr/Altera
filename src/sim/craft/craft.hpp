@@ -28,6 +28,17 @@ struct StepRec { // one entry of an item's history (designs and recipes are made
     std::string outForm, outShape, outMat; // what came out (fast craft takes a stored one instead)
 };
 
+// AL-117: a rune cut into a carrier (inscribe) and the aspects laid into it (bind).
+struct Rune {
+    double q = 0.0;                       // quality of the cut
+    double conductivity = 0.0;            // of the carrier piece
+    double capacity = 0.0;                // mana_capacity of the carrier piece
+    std::map<std::string, double> aspects; // "fire" (+), "fire.minus" (-), "fire.shift" (~) -> power
+    std::string trigger;                  // constant | on_hit | on_touch | on_word | on_threat
+    double charge = 0.0;                  // 0..capacity: what is left to spend
+    bool bound() const { return !aspects.empty(); }
+};
+
 struct Item {
     std::string material;                 // main material
     std::map<std::string, double> p;      // current properties (single piece)
@@ -51,6 +62,12 @@ struct Item {
     std::string jointType;
     double wear = 0.0;                    // 0 new .. 1 worn out
     std::uint64_t maker = 0;
+    // AL-117: enchantment and the story of the thing (an artifact is a thing with a rich one)
+    bool inscribed = false;
+    Rune rune;
+    int deeds = 0;                        // notable things done with it (fights won, foes slain)
+    double resonance = 0.0;               // 1 - exp(-deeds / resonance_deeds): the "soul" of the thing
+    std::vector<std::string> history;     // the last deeds ("slew", "won", ...), newest last
     std::vector<StepRec> trace;
     // recognition (recognize())
     std::string form;                     // archetype, improvised_*, or "" (an intermediate)

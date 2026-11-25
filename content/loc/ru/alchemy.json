@@ -1,0 +1,406 @@
+{
+ "alchemy.drink.blast": "склянка взрывается в руках у {who}",
+ "alchemy.drink.ok": "{who} выпивает {item}",
+ "alchemy.reason.blast": "склянка взорвалась",
+ "alchemy.reason.no_charge": "руна выдохлась: нужен отдых или подпитка",
+ "alchemy.reason.no_such_item": "такой вещи нет",
+ "alchemy.reason.not_a_potion": "это нельзя выпить как зелье",
+ "alchemy.reason.not_enchanted": "в вещи нет зачарования",
+ "craft.enchanted": "зачаровано",
+ "craft.reason.carrier_cannot_hold": "{arg} не держит магию: руна не ляжет",
+ "craft.reason.no_aspect": "в реагенте нет аспектов магии",
+ "craft.reason.no_rune": "на вещи нет руны: сначала нанести руну",
+ "craft.resonance": "резонанс {value}",
+ "craft.rune.charge": "заряд {charge}",
+ "craft.rune.trigger": "срабатывает: {trigger}",
+ "form.alembic.name": {
+  "nom": "перегонный куб",
+  "g": "m"
+ },
+ "form.crucible.name": {
+  "nom": "тигель",
+  "g": "m"
+ },
+ "form.fire_draught.name": {
+  "nom": "огненное зелье",
+  "g": "n"
+ },
+ "form.healing_potion.name": {
+  "nom": "целебное зелье",
+  "g": "n"
+ },
+ "form.parchment_sheet.name": {
+  "nom": "лист пергамента",
+  "g": "m"
+ },
+ "form.potion.name": {
+  "nom": "зелье",
+  "g": "n"
+ },
+ "form.scroll.name": {
+  "nom": "свиток",
+  "g": "m"
+ },
+ "form.shadow_draught.name": {
+  "nom": "теневое зелье",
+  "g": "n"
+ },
+ "form.sleeping_draught.name": {
+  "nom": "сонное зелье",
+  "g": "n"
+ },
+ "form.volatile_flask.name": {
+  "nom": "гремучая склянка",
+  "g": "f"
+ },
+ "interaction.craft:alembic.name": "сделать: перегонный куб",
+ "interaction.craft:crucible.name": "сделать: тигель",
+ "interaction.craft:fire_draught.name": "сделать: огненное зелье",
+ "interaction.craft:healing_potion.name": "сделать: целебное зелье",
+ "interaction.craft:parchment_sheet.name": "сделать: лист пергамента",
+ "interaction.craft:potion.name": "сделать: зелье",
+ "interaction.craft:scroll.name": "сделать: свиток",
+ "interaction.craft:shadow_draught.name": "сделать: теневое зелье",
+ "interaction.craft:sleeping_draught.name": "сделать: сонное зелье",
+ "interaction.craft:volatile_flask.name": "сделать: гремучая склянка",
+ "item.alembic.name": {
+  "nom": "перегонный куб",
+  "gen": "перегонного куба",
+  "dat": "перегонному кубу",
+  "acc": "перегонный куб",
+  "ins": "перегонным кубом",
+  "pre": "перегонном кубе",
+  "g": "m"
+ },
+ "item.crucible.name": {
+  "nom": "тигель",
+  "gen": "тигля",
+  "dat": "тиглю",
+  "acc": "тигель",
+  "ins": "тиглем",
+  "pre": "тигле",
+  "g": "m"
+ },
+ "item.dragon_blood.name": {
+  "nom": "драконья кровь",
+  "gen": "драконьей крови",
+  "dat": "драконьей крови",
+  "acc": "драконью кровь",
+  "ins": "драконьей кровью",
+  "pre": "драконьей крови",
+  "g": "f"
+ },
+ "item.dragon_bone.name": {
+  "nom": "драконья кость",
+  "gen": "драконьей кости",
+  "dat": "драконьей кости",
+  "acc": "драконью кость",
+  "ins": "драконьей костью",
+  "pre": "драконьей кости",
+  "g": "f"
+ },
+ "item.fire_draught.name": {
+  "nom": "огненное зелье",
+  "gen": "огненного зелья",
+  "dat": "огненному зелью",
+  "acc": "огненное зелье",
+  "ins": "огненным зельем",
+  "pre": "огненном зелье",
+  "g": "n"
+ },
+ "item.healing_potion.name": {
+  "nom": "целебное зелье",
+  "gen": "целебного зелья",
+  "dat": "целебному зелью",
+  "acc": "целебное зелье",
+  "ins": "целебным зельем",
+  "pre": "целебном зелье",
+  "g": "n"
+ },
+ "item.mithril.name": {
+  "nom": "мифрил",
+  "gen": "мифрила",
+  "dat": "мифрилу",
+  "acc": "мифрил",
+  "ins": "мифрилом",
+  "pre": "мифриле",
+  "g": "m"
+ },
+ "item.moon_moss.name": {
+  "nom": "лунный мох",
+  "gen": "лунного мха",
+  "dat": "лунному мху",
+  "acc": "лунный мох",
+  "ins": "лунным мхом",
+  "pre": "лунном мхе",
+  "g": "m"
+ },
+ "item.moonstone.name": {
+  "nom": "лунный камень",
+  "gen": "лунного камня",
+  "dat": "лунному камню",
+  "acc": "лунный камень",
+  "ins": "лунным камнем",
+  "pre": "лунном камне",
+  "g": "m"
+ },
+ "item.night_moss.name": {
+  "nom": "ночной мох",
+  "gen": "ночного мха",
+  "dat": "ночному мху",
+  "acc": "ночной мох",
+  "ins": "ночным мхом",
+  "pre": "ночном мхе",
+  "g": "m"
+ },
+ "item.parchment.name": {
+  "nom": "пергамент",
+  "gen": "пергамента",
+  "dat": "пергаменту",
+  "acc": "пергамент",
+  "ins": "пергаментом",
+  "pre": "пергаменте",
+  "g": "m"
+ },
+ "item.potion.name": {
+  "nom": "зелье",
+  "gen": "зелья",
+  "dat": "зелью",
+  "acc": "зелье",
+  "ins": "зельем",
+  "pre": "зелье",
+  "g": "n"
+ },
+ "item.quicksilver.name": {
+  "nom": "ртуть",
+  "gen": "ртути",
+  "dat": "ртути",
+  "acc": "ртуть",
+  "ins": "ртутью",
+  "pre": "ртути",
+  "g": "f"
+ },
+ "item.scroll.name": {
+  "nom": "свиток",
+  "gen": "свитка",
+  "dat": "свитку",
+  "acc": "свиток",
+  "ins": "свитком",
+  "pre": "свитке",
+  "g": "m"
+ },
+ "item.shadow_draught.name": {
+  "nom": "теневое зелье",
+  "gen": "теневого зелья",
+  "dat": "теневому зелью",
+  "acc": "теневое зелье",
+  "ins": "теневым зельем",
+  "pre": "теневом зелье",
+  "g": "n"
+ },
+ "item.sleeping_draught.name": {
+  "nom": "сонное зелье",
+  "gen": "сонного зелья",
+  "dat": "сонному зелью",
+  "acc": "сонное зелье",
+  "ins": "сонным зельем",
+  "pre": "сонном зелье",
+  "g": "n"
+ },
+ "item.sulfur.name": {
+  "nom": "сера",
+  "gen": "серы",
+  "dat": "сере",
+  "acc": "серу",
+  "ins": "серой",
+  "pre": "сере",
+  "g": "f"
+ },
+ "item.troll_liver.name": {
+  "nom": "печень тролля",
+  "gen": "печени тролля",
+  "dat": "печени тролля",
+  "acc": "печень тролля",
+  "ins": "печенью тролля",
+  "pre": "печени тролля",
+  "g": "f"
+ },
+ "item.volatile_flask.name": {
+  "nom": "гремучая склянка",
+  "gen": "гремучей склянки",
+  "dat": "гремучей склянке",
+  "acc": "гремучую склянку",
+  "ins": "гремучей склянкой",
+  "pre": "гремучей склянке",
+  "g": "f"
+ },
+ "knowledge.alchemy.name": "Алхимия",
+ "knowledge.runecraft.name": "Руническое дело",
+ "material.dragon_blood.made": "{form} на драконьей крови",
+ "material.dragon_blood.name": {
+  "nom": "драконья кровь",
+  "gen": "драконьей крови",
+  "dat": "драконьей крови",
+  "acc": "драконью кровь",
+  "ins": "драконьей кровью",
+  "pre": "драконьей крови",
+  "g": "f"
+ },
+ "material.dragon_bone.made": "{form} из драконьей кости",
+ "material.dragon_bone.name": {
+  "nom": "драконья кость",
+  "gen": "драконьей кости",
+  "dat": "драконьей кости",
+  "acc": "драконью кость",
+  "ins": "драконьей костью",
+  "pre": "драконьей кости",
+  "g": "f"
+ },
+ "material.mithril.made": "мифрилов{form:g|ый|ая|ое|ые} {form}",
+ "material.mithril.name": {
+  "nom": "мифрил",
+  "gen": "мифрила",
+  "dat": "мифрилу",
+  "acc": "мифрил",
+  "ins": "мифрилом",
+  "pre": "мифриле",
+  "g": "m"
+ },
+ "material.moon_moss.made": "{form} из лунного мха",
+ "material.moon_moss.name": {
+  "nom": "лунный мох",
+  "gen": "лунного мха",
+  "dat": "лунному мху",
+  "acc": "лунный мох",
+  "ins": "лунным мхом",
+  "pre": "лунном мхе",
+  "g": "m"
+ },
+ "material.moonstone.made": "{form} из лунного камня",
+ "material.moonstone.name": {
+  "nom": "лунный камень",
+  "gen": "лунного камня",
+  "dat": "лунному камню",
+  "acc": "лунный камень",
+  "ins": "лунным камнем",
+  "pre": "лунном камне",
+  "g": "m"
+ },
+ "material.night_moss.made": "{form} из ночного мха",
+ "material.night_moss.name": {
+  "nom": "ночной мох",
+  "gen": "ночного мха",
+  "dat": "ночному мху",
+  "acc": "ночной мох",
+  "ins": "ночным мхом",
+  "pre": "ночном мхе",
+  "g": "m"
+ },
+ "material.parchment.made": "пергаментн{form:g|ый|ая|ое|ые} {form}",
+ "material.parchment.name": {
+  "nom": "пергамент",
+  "gen": "пергамента",
+  "dat": "пергаменту",
+  "acc": "пергамент",
+  "ins": "пергаментом",
+  "pre": "пергаменте",
+  "g": "m"
+ },
+ "material.quicksilver.made": "{form} на ртути",
+ "material.quicksilver.name": {
+  "nom": "ртуть",
+  "gen": "ртути",
+  "dat": "ртути",
+  "acc": "ртуть",
+  "ins": "ртутью",
+  "pre": "ртути",
+  "g": "f"
+ },
+ "material.spirit.made": "{form} на спирту",
+ "material.spirit.name": {
+  "nom": "спирт",
+  "gen": "спирта",
+  "dat": "спирту",
+  "acc": "спирт",
+  "ins": "спиртом",
+  "pre": "спирте",
+  "g": "m"
+ },
+ "material.sulfur.made": "{form} из серы",
+ "material.sulfur.name": {
+  "nom": "сера",
+  "gen": "серы",
+  "dat": "сере",
+  "acc": "серу",
+  "ins": "серой",
+  "pre": "сере",
+  "g": "f"
+ },
+ "material.troll_liver.made": "{form} из печени тролля",
+ "material.troll_liver.name": {
+  "nom": "печень тролля",
+  "gen": "печени тролля",
+  "dat": "печени тролля",
+  "acc": "печень тролля",
+  "ins": "печенью тролля",
+  "pre": "печени тролля",
+  "g": "f"
+ },
+ "moodlet.drank_potion.name": "Выпил зелье",
+ "moodlet.potion_armor.name": "Кожа как камень",
+ "moodlet.potion_burn.name": "Жжёт изнутри",
+ "moodlet.potion_calm.name": "Спокойствие",
+ "moodlet.potion_cold.name": "Знобит от зелья",
+ "moodlet.potion_fear.name": "Наведённый страх",
+ "moodlet.potion_heal_wounds.name": "Раны затягиваются",
+ "moodlet.potion_hide.name": "Укрыт тенью",
+ "moodlet.potion_mana.name": "Сила в жилах",
+ "moodlet.potion_poison.name": "Отравлен",
+ "moodlet.potion_sleep.name": "Клонит в сон",
+ "moodlet.potion_strength.name": "Прилив сил",
+ "process.bind.name": {
+  "nom": "связывание",
+  "g": "n"
+ },
+ "process.calcine.name": {
+  "nom": "прокаливание",
+  "g": "n"
+ },
+ "process.dissolve.name": {
+  "nom": "растворение",
+  "g": "n"
+ },
+ "process.distill.name": {
+  "nom": "перегонка",
+  "g": "f"
+ },
+ "process.inscribe.name": {
+  "nom": "нанесение руны",
+  "g": "n"
+ },
+ "process.mode.constant.name": "постоянно",
+ "process.mode.on_hit.name": "при ударе",
+ "process.mode.on_threat.name": "при угрозе",
+ "process.mode.on_touch.name": "при касании",
+ "process.mode.on_word.name": "по слову",
+ "process.scrape.name": {
+  "nom": "выделка пергамента",
+  "g": "f"
+ },
+ "shape.alembic_raw.name": {
+  "nom": "перегонный куб",
+  "g": "m"
+ },
+ "shape.crucible_raw.name": {
+  "nom": "тигель",
+  "g": "m"
+ },
+ "station.alembic.name": {
+  "nom": "перегонный куб",
+  "g": "m"
+ },
+ "station.crucible.name": {
+  "nom": "тигель",
+  "g": "m"
+ }
+}

@@ -7,6 +7,7 @@
 
 #include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
+#include "sim/alchemy.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
@@ -798,6 +799,8 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
     // a body that survived a non-lethal "death" is down, i.e. knocked out.
     if (cr.outcome == "win" || cr.outcome == "lose") {
         Character& winner = cr.outcome == "win" ? c : t;
+        // AL-117: the deed joins the story of the winner's weapon (its resonance)
+        noteWeaponDeed(w, winner, (cr.outcome == "win" ? cr.targetDead : cr.actorDead) ? "slew" : "won");
         Character& loser = cr.outcome == "win" ? t : c;
         std::string state = cr.outcome == "win" ? cr.targetState : cr.actorState;
         if (state == "dead" && loser.body.alive) state = "ko";

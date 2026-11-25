@@ -300,7 +300,9 @@
   "mortar": "υ",
   "tanning_pit": "□",
   "quern": "⊜",
-  "table": "π"
+  "table": "π",
+  "alembic": "⚗",
+  "crucible": "∪"
  },
  "processes": {
   "heat": [
@@ -390,6 +392,30 @@
   "repair": [
    "✚",
    "l"
+  ],
+  "distill": [
+   "⚗",
+   "u"
+  ],
+  "calcine": [
+   "♁",
+   "z"
+  ],
+  "dissolve": [
+   "◒",
+   "u"
+  ],
+  "scrape": [
+   "▭",
+   "e"
+  ],
+  "inscribe": [
+   "ᚱ",
+   "W"
+  ],
+  "bind": [
+   "✶",
+   "H"
   ]
  },
  "shapes": {

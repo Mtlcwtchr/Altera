@@ -95,7 +95,8 @@ Actor actorWith(double skill, std::uint64_t id = 7) {
     Actor a;
     a.id = id;
     for (const char* s : {"cooking", "smithing", "carpentry", "knapping", "spinning", "weaving", "sewing", "tanning",
-                          "pottery", "brewing", "herbalism", "toolmaking", "fiber_working", "building", "firemaking"})
+                          "pottery", "brewing", "herbalism", "toolmaking", "fiber_working", "building", "firemaking",
+                          "alchemy", "runecraft"}) // AL-117
         a.skills[s] = skill;
     for (const auto& [id2, m] : data().materials) a.knowsMaterial[id2] = skill;
     return a;

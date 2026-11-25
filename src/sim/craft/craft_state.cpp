@@ -49,6 +49,16 @@ void to_json(Json& j, const Item& it) {
     }
     if (it.wear > 0) j["wear"] = it.wear;
     if (it.maker) j["maker"] = it.maker;
+    if (it.inscribed) { // AL-117
+        j["rune"] = Json{{"q", it.rune.q},           {"conductivity", it.rune.conductivity},
+                         {"capacity", it.rune.capacity}, {"aspects", it.rune.aspects},
+                         {"trigger", it.rune.trigger},   {"charge", it.rune.charge}};
+    }
+    if (it.deeds) {
+        j["deeds"] = it.deeds;
+        j["resonance"] = it.resonance;
+        j["history"] = it.history;
+    }
     // recognition is recomputed on load (recognize()); the form is kept for lookups
     if (!it.form.empty()) j["form"] = it.form;
 }
@@ -78,6 +88,19 @@ void from_json(const Json& j, Item& it) {
     it.joint = j.value("joint", 1.0);
     it.jointType = j.value("joint_type", "");
     it.wear = j.value("wear", 0.0);
+    if (j.contains("rune")) {
+        const Json& r = j["rune"];
+        it.inscribed = true;
+        it.rune.q = r.value("q", 0.0);
+        it.rune.conductivity = r.value("conductivity", 0.0);
+        it.rune.capacity = r.value("capacity", 0.0);
+        it.rune.aspects = r.value("aspects", std::map<std::string, double>{});
+        it.rune.trigger = r.value("trigger", "");
+        it.rune.charge = r.value("charge", 0.0);
+    }
+    it.deeds = j.value("deeds", 0);
+    it.resonance = j.value("resonance", 0.0);
+    it.history = j.value("history", std::vector<std::string>{});
     it.maker = j.value("maker", std::uint64_t{0});
     it.trace = j.value("trace", std::vector<StepRec>{});
     it.form = j.value("form", "");
