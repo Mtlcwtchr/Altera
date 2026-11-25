@@ -235,6 +235,46 @@ def _(c):
     c.rect(11, 10, 14, 11, "G"); c.rect(12, 9, 13, 12, "G")
 
 
+# AL-117: alchemy and runes
+@icon("pr_distill")
+def _(c):
+    c.disc(6, 9, 4, "u"); c.disc(6, 9, 2, "U")
+    c.line(8, 5, 14, 3, "M"); c.line(14, 3, 14, 10, "M")
+    c.rect(5, 3, 7, 5, "M")
+    flame(c, 6, 14.5, 0.5)
+
+
+@icon("pr_calcine")
+def _(c):
+    c.rect(4, 3, 11, 9, "z"); c.rect(5, 3, 10, 4, "W")
+    flame(c, 7.5, 12.5, 0.8)
+
+
+@icon("pr_dissolve")
+def _(c):
+    c.rect(2, 9, 13, 13, "n"); c.rect(3, 9, 12, 11, "u")
+    c.disc(8, 5, 2, "W"); c.px(8, 8, "u"); c.px(6, 7, "u")
+
+
+@icon("pr_scrape")
+def _(c):
+    c.rect(2, 4, 11, 13, "e")
+    c.line(9, 2, 14, 7, "W", 2); c.line(12, 8, 14, 10, "n")
+
+
+@icon("pr_inscribe")
+def _(c):
+    c.rect(2, 2, 13, 13, "W")
+    c.line(7, 4, 7, 12, "H"); c.line(7, 4, 11, 7, "H"); c.line(7, 8, 11, 12, "H")
+
+
+@icon("pr_bind")
+def _(c):
+    c.ring(8, 8, 7, "u")
+    c.line(8, 2, 8, 14, "H"); c.line(2, 8, 14, 8, "H"); c.line(4, 4, 12, 12, "H"); c.line(12, 4, 4, 12, "H")
+    c.disc(8, 8, 1.6, "y")
+
+
 @icon("ac_make")
 def _(c):
     c.rect(2, 9, 13, 10, "M"); c.rect(5, 11, 10, 12, "M"); c.rect(3, 13, 12, 14, "x")
