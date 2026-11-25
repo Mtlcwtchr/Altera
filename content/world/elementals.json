@@ -1,0 +1,108 @@
+{
+ "_doc": "AL-115 (LIVELYREALMS_SETTING_v0.2 §5.7): элементали — существа content/creatures/elemental_*.json, живут, пока клетка под ними их кормит (src/sim/elementals.cpp). feed: поле → порог (байт), с которого клетка кормит; ≥ — нужно не меньше, ≤ — не больше. Сытый элементаль набирает силу (body.health) на gain за тик, голодный теряет loss, на «смерти» (kill) гибнет сразу. writes — каналы аспекта (формат world_channels), которые он сам пишет в свою клетку каждый тик с силой power·health. spawn: где поле сильное (min на клетке и не меньше cells таких клеток в чанке), с шансом chance_per_day на чанк рождается дикий. Призыв магией: summonElemental(aspect, место, сила). ignites — сам поджигает клетку под собой, если там есть чем гореть (своим жаром он себя не кормит: ест только настоящий огонь).",
+ "elementals": {
+  "elemental_fire": {
+   "aspect": "fire",
+   "feed": {
+    "heat": [
+     ">=",
+     120
+    ]
+   },
+   "kill": {
+    "moisture": [
+     ">=",
+     200
+    ]
+   },
+   "rain_kills_mm": 2.0,
+   "gain": 0.04,
+   "loss": 0.03,
+   "writes": {
+    "light": "+1*power"
+   },
+   "power": 2.0,
+   "radius_m": 1.5,
+   "spawn": {
+    "field": "heat",
+    "min": 200,
+    "cells": 150,
+    "chance_per_day": 0.15
+   },
+   "ignites": true
+  },
+  "elemental_water": {
+   "aspect": "water",
+   "feed": {
+    "moisture": [
+     ">=",
+     170
+    ]
+   },
+   "kill": {
+    "heat": [
+     ">=",
+     140
+    ]
+   },
+   "gain": 0.03,
+   "loss": 0.02,
+   "writes": {
+    "moisture": "+0.2*power"
+   },
+   "power": 1.5,
+   "radius_m": 1.5,
+   "spawn": {
+    "field": "moisture",
+    "min": 245,
+    "cells": 400,
+    "chance_per_day": 0.05,
+    "not_water": true
+   }
+  },
+  "elemental_air": {
+   "aspect": "air",
+   "feed_wind_ms": 6.0,
+   "gain": 0.03,
+   "loss": 0.015,
+   "writes": {
+    "moisture": "-0.05*power"
+   },
+   "power": 1.0,
+   "radius_m": 2.0,
+   "spawn": {
+    "wind_ms": 12.0,
+    "chance_per_day": 0.1
+   }
+  },
+  "elemental_earth": {
+   "aspect": "earth",
+   "feed": {
+    "moisture": [
+     "<=",
+     230
+    ]
+   },
+   "kill": {
+    "heat": [
+     ">=",
+     245
+    ]
+   },
+   "gain": 0.02,
+   "loss": 0.01,
+   "writes": {
+    "fertility": "+0.01*power"
+   },
+   "power": 1.0,
+   "radius_m": 1.0,
+   "needs_land": true,
+   "spawn": {
+    "field": "aether",
+    "min": 180,
+    "cells": 60,
+    "chance_per_day": 0.1
+   }
+  }
+ }
+}
