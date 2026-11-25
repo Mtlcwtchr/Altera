@@ -33,6 +33,11 @@ sim::Json staticJson(const sim::World& w, const ViewText& t);
 // AL-96: the village chronicle from entry `since` on (at most `limit`, the newest):
 // {n: the log's size, list: [{i, day, t, type, who, text}]}.
 sim::Json chronicleJson(const sim::World& w, const ViewText& t, std::size_t since, std::size_t limit = 300);
+// LR-140: a person's needs grouped by tier. Fills `needs` (every need: base ones
+// in file order, then the derived; {id, name, v, tier, derived, care, crit?})
+// and `tiers` (pyramid order, spirit last: {id, name, order, sat, needs: [ids]}).
+void needsJson(const sim::World& w, const ViewText& t, const sim::Character& c, sim::Json& needs, sim::Json& tiers,
+               bool withCrit);
 // The clock and the weather, for the bottom bar.
 sim::Json clockJson(const sim::World& w);
 
