@@ -389,7 +389,9 @@ TEST(altera_sim_last_year_stores_follow_the_season) {
         return units;
     };
     const double autumn = food("autumn"), summer = food("summer");
-    CHECK(autumn > summer * 3.0); // after the harvest vs the hungry gap
+    // after the harvest vs the hungry gap (AL-93: grain keeps ~16%/year lost and
+    // the fields feed a year, so some of last year's grain is still there)
+    CHECK(autumn > summer * 2.0);
     CHECK(summer > 0.0);
 }
 

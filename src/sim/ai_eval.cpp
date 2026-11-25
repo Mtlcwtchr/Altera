@@ -816,7 +816,13 @@ static std::vector<Effect> takeWhatFits(World& w, Character& c, const Interactio
     return out;
 }
 
+std::map<std::string, long>& interactionTally() {
+    static std::map<std::string, long> tally;
+    return tally;
+}
+
 void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar) {
+    if (!d.continuous) ++interactionTally()[d.id];
     // chance: one deterministic roll per (actor, tick, interaction); a failed
     // roll applies on_fail instead of eff. Risks roll independently after.
     bool success = true;

@@ -201,3 +201,48 @@ TEST(altera_sim_farm_year_closes) {
     CHECK_EQ(ripened, static_cast<int>(w.families().size()));
     for (WorldObject* f : fields(w)) CHECK(stockOf(*f, "sown") > 0); // the second sowing
 }
+
+TEST(altera_sim_farm_field_follows_household) {
+    // AL-93: between the harvest and the sowing a household's field is fitted to
+    // the mouths it feeds now (strips_per_person), not left at the worldgen size
+    // while the family grows; a growing crop is never touched.
+    World w = makeTestWorld(real(), worldCfg("winter"));
+    const CropDef& cd = real().objects.at("field").crop;
+    WorldObject* f = fields(w).front();
+    Family& fam = w.families().at(f->ownerFamily);
+    auto alive = [&] {
+        int n = 0;
+        for (EntityId m : fam.members)
+            if (const Character* c = w.character(m); c && c->body.alive) ++n;
+        return n;
+    };
+    const int people = alive();
+    CHECK(people >= 2);
+    f->stock["strips"] = 1;
+    f->stock["sown"] = 0;
+    f->stock["ripe"] = 0;
+    f->stock["tilled"] = 0;
+    cropsDaily(w);
+    const int strips = stockOf(*f, "strips");
+    CHECK(strips >= static_cast<int>(std::floor(people * cd.stripsLo)));
+    CHECK(strips <= static_cast<int>(std::ceil(people * cd.stripsHi)));
+    // Fewer mouths: less land worked.
+    for (size_t i = 1; i < fam.members.size(); ++i)
+        if (Character* c = w.character(fam.members[i])) c->body.alive = false;
+    cropsDaily(w);
+    CHECK(stockOf(*f, "strips") < strips);
+    CHECK(stockOf(*f, "strips") <= static_cast<int>(std::ceil(cd.stripsHi)));
+    // A sown field keeps its strips.
+    f->stock["sown"] = 3;
+    f->stock["strips"] = 3;
+    cropsDaily(w);
+    CHECK_EQ(stockOf(*f, "strips"), 3);
+    // The worldgen draws the same per-person land for the first households.
+    World s = makeTestWorld(real(), worldCfg("winter"));
+    for (WorldObject* g : fields(s)) {
+        int n = 0;
+        for (EntityId m : s.families().at(g->ownerFamily).members)
+            if (s.character(m)) ++n;
+        CHECK(stockOf(*g, "strips") >= static_cast<int>(std::floor(n * cd.stripsLo)) - 1);
+    }
+}

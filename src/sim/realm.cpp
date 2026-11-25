@@ -1221,6 +1221,7 @@ double payFromVillage(Ctx& x, const Settlement& p, double amount, Character* to)
         if (it == stock.end() || it->second <= 0 || left <= 0) return;
         const int n = std::min(it->second, static_cast<int>(std::ceil(left / rate)));
         it->second -= n;
+        interactionTally()["realm:pay_" + item] += n;
         left -= n * rate;
     };
     take(chief->inventory, "coin", 1.0);
@@ -1287,6 +1288,7 @@ double raidLocal(Ctx& x, Settlement& by, Settlement& on, double share) {
             if (t <= 0) continue;
             n -= t;
             loot[item] += t;
+            interactionTally()["realm:raid_" + item] += t;
             taken += item == "coin" ? t : t * food;
         }
     Rng rng = rngOf(x, on.id, "realm:raid_hurt");
@@ -2506,6 +2508,7 @@ void tributeDaily(Ctx& x) {
                     const double rate = item == "coin" ? 1.0 : 0.5;
                     const int t = std::min(n, static_cast<int>(std::ceil((p.tribute - paid) / rate)));
                     n -= t;
+                    interactionTally()["realm:tribute_" + item] += t;
                     paid += t * rate;
                 }
             }
