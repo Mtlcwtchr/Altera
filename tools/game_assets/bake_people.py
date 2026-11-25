@@ -5,8 +5,8 @@ blender -b --factory-startup -P bake_people.py -- --src D:/AlteraGame/_asset_src
         [--clips-only | --mesh-only] [--max-clips N]
 
 Writes
-  assets/altera_game/people/people.askin      meshes of every look, skeletons, one texture atlas
-  assets/altera_game/people/portrait_<look>.png, portrait_<look>_id.png   head shots and their class masks
+  assets/lr_game/people/people.askin      meshes of every look, skeletons, one texture atlas
+  assets/lr_game/people/portrait_<look>.png, portrait_<look>_id.png   head shots and their class masks
   content/animations/humanoid_ual/baked/people.aanim   clips as per-joint basis (git-ignored, clip licences)
   content/animations/humanoid_ual/baked/people_anim.json   clip names, interaction/state -> clip
 
@@ -38,7 +38,7 @@ OUT_G = SRC + '/OF/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (G
 UB = SRC + '/UB/Universal Base Characters[Standard]/Base Characters/Godot - UE/'
 HAIR = SRC + '/UB/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)/'
 ANIM = REPO + '/content/animations/humanoid_ual'
-OUT_MESH = REPO + '/assets/altera_game/people'
+OUT_MESH = REPO + '/assets/lr_game/people'
 OUT_ANIM = ANIM + '/baked'
 os.makedirs(OUT_MESH, exist_ok=True)
 os.makedirs(OUT_ANIM, exist_ok=True)

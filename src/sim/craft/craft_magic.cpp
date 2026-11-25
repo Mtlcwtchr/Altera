@@ -4,7 +4,7 @@
 #include <cmath>
 #include <functional>
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 namespace {
 double clamp01(double v) { return std::min(1.0, std::max(0.0, v)); }
@@ -146,4 +146,4 @@ double noteDeed(const CraftData& d, Item& it, const std::string& what) {
     return it.resonance;
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

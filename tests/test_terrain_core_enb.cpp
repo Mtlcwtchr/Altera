@@ -91,7 +91,7 @@ TEST(terrain_core_enb_preset_base_and_bad_names) {
 
 // Values out of range are held to their limits.
 TEST(terrain_core_enb_values_are_clamped) {
-    const auto file = std::filesystem::temp_directory_path() / "altera_enb_clamp_test.json";
+    const auto file = std::filesystem::temp_directory_path() / "lr_enb_clamp_test.json";
     {
         std::ofstream out(file);
         out << R"({"preset": "x", "presets": {"x": {"ao": {"strength": 99, "radius": -1},

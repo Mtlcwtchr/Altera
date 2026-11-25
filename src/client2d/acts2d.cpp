@@ -6,9 +6,9 @@
 #include "sim/act_info.hpp"
 #include "sim/ai.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 
@@ -239,4 +239,4 @@ std::string resultText(const ViewText& t, const std::string& result) {
     return W.text("ui2d.refused", {{"code", r}});
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

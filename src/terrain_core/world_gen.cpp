@@ -210,7 +210,7 @@ GeneratedWorld build(const WorldSpec& spec, std::uint32_t size, std::uint32_t sa
     geo.iterations = 40;
     geo.maxHeight = float(t.peak);
     geo.diffusion = 0.12f;
-    if (const char* e = std::getenv("ALTERA_WORLDGEN_SKIP"); !(e && std::string(e).find("geology") != std::string::npos))
+    if (const char* e = std::getenv("LR_WORLDGEN_SKIP"); !(e && std::string(e).find("geology") != std::string::npos))
         gen::geology(g, L.uplift, geo, 0.0f, [&](float d) { report("geology", d); });
     gen::smooth(g, 1);   // the coarse cells' steps, before they are blown up
     // The border is base level to the geology and stays where it was while
@@ -259,8 +259,8 @@ GeneratedWorld build(const WorldSpec& spec, std::uint32_t size, std::uint32_t sa
             f.heights[k] += (gen::fbm(x / 700.0, y / 700.0, 4, true, seed + 41) - 0.35f) * (6.0f + 70.0f * m) +
                             gen::fbm(x / 260.0, y / 260.0, 3, false, seed + 42) * (1.5f + 10.0f * m);
         }
-    // ALTERA_WORLDGEN_SKIP=geology,water,thermal: a step left out, to look at the others alone
-    const char* skipEnv = std::getenv("ALTERA_WORLDGEN_SKIP");
+    // LR_WORLDGEN_SKIP=geology,water,thermal: a step left out, to look at the others alone
+    const char* skipEnv = std::getenv("LR_WORLDGEN_SKIP");
     const std::string skip = skipEnv ? skipEnv : "";
     report("water", 0);
     gen::WaterSettings ws;

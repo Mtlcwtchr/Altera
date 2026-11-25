@@ -13,7 +13,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -592,4 +592,4 @@ ValidationReport validateDialogueRules(const DialogueGenData& d, const Content* 
     return v;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

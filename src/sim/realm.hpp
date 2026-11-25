@@ -34,7 +34,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Content;
@@ -154,4 +154,4 @@ void realmClassify(World& w, Settlement& p);
 // A raid of `by` on `on` now (for tests and commands): what was taken.
 double realmRaid(World& w, RealmState& s, EntityId by, EntityId on);
 
-} // namespace altera::sim
+} // namespace lr::sim

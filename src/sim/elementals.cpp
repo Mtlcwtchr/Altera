@@ -10,7 +10,7 @@
 #include "sim/world.hpp"
 #include "sim/world_fields.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -230,4 +230,4 @@ void elementalsTick(World& w, bool daily) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

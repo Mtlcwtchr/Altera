@@ -10,7 +10,7 @@
 #include "sim/news.hpp"
 #include "sim/building.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -173,4 +173,4 @@ std::vector<GoalScore> scoreGoals(const World& w, const Character& c) {
     return out;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

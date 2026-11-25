@@ -29,7 +29,7 @@ int main(int argc,char** argv) {
             }
         }
         else if (arg=="--help") {
-            std::cout<<"Campfire engine module editor\n"
+            std::cout<<"RealSimEngine engine module editor\n"
                 <<"  --settings FILE  Camera/terrain workspace settings\n"
                 <<"  --shot FILE      Render a deterministic preview to PNG and exit\n"
                 <<"  --cpu-preview    Use the legacy CPU inspection renderer\n"
@@ -57,8 +57,8 @@ int main(int argc,char** argv) {
     SDL_Window* window=nullptr;SDL_Renderer* renderer=nullptr;
     SDL_Surface* uiSurface=nullptr;
     const auto flags=automated?SDL_WINDOW_HIDDEN:SDL_WINDOW_RESIZABLE;
-    if (useGpu) window=SDL_CreateWindow("Campfire - engine modules / GPU",1440,900,flags);
-    else SDL_CreateWindowAndRenderer("Campfire - engine modules / CPU",1440,900,flags,&window,&renderer);
+    if (useGpu) window=SDL_CreateWindow("RealSimEngine - engine modules / GPU",1440,900,flags);
+    else SDL_CreateWindowAndRenderer("RealSimEngine - engine modules / CPU",1440,900,flags,&window,&renderer);
     if (!window || (!useGpu && !renderer)) {
         std::cerr<<SDL_GetError()<<'\n';SDL_Quit();return 1;
     }

@@ -17,7 +17,7 @@
 #include "sim/gear.hpp"
 #include "sim/social_chain.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -329,4 +329,4 @@ bool handle(World& w, Command& cmd) {
 
 void installControl(World& w) { w.addCommandHandler(handle); }
 
-} // namespace altera::sim
+} // namespace lr::sim

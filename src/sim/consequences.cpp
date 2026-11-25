@@ -19,7 +19,7 @@
 
 namespace fs = std::filesystem;
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -605,4 +605,4 @@ void installConsequences(World& w) {
     });
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

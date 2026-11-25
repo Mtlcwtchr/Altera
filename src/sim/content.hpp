@@ -11,7 +11,7 @@
 #include "sim/craft/craft_data.hpp"
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct ItemDef {
     std::string id;
@@ -510,7 +510,7 @@ struct AiConfig {
 };
 
 // build.json: the modules a household builds from (gdd/blueprints/
-// ALTERA_BLUEPRINTS_SPEC_v0.2 §1-2, Valheim-like): a 3D grid of 2 x 2 x 3 m
+// LR_BLUEPRINTS_SPEC_v0.2 §1-2, Valheim-like): a 3D grid of 2 x 2 x 3 m
 // cells; a piece takes a cell (foundation, floor), a cell's volume (a roof
 // slope), an edge (a wall, a gable) or a corner (a pillar) of one storey.
 struct BuildPieceDef {
@@ -652,4 +652,4 @@ BuildCatalog parseBuild(const Json& j);
 void parseBackstories(const Json& j, Content& c);
 void validateBackstories(const Content& c, ValidationReport& r);
 
-} // namespace altera::sim
+} // namespace lr::sim

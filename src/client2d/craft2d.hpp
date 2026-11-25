@@ -15,7 +15,7 @@
 #include "client2d/view2d.hpp"
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 struct WorkshopQuery {
     sim::Json draft = sim::Json::object();   // {process, slots{slot:[refs]}, shape, mode, heat, len}
@@ -34,4 +34,4 @@ sim::Json workshopTexts(const ViewText& t);
 // gathered materials, a few made tools and the starter recipes of some crafts.
 void craftKit(sim::World& w, sim::Character& c);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

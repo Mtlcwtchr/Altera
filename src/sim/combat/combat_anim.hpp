@@ -13,7 +13,7 @@
 
 #include "sim/combat/combat.hpp"
 
-namespace altera::combat {
+namespace lr::combat {
 
 struct AnimCue {
     int round = 0;
@@ -52,4 +52,4 @@ private:
     double roundMs_ = 1500, hitFrameMs_ = 520, windupMs_ = 350;
 };
 
-} // namespace altera::combat
+} // namespace lr::combat

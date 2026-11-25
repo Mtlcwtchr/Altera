@@ -1,6 +1,6 @@
 #include "sim/craft/craft_state.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 void to_json(Json& j, const ItemFlaw& f) { j = Json{{"id", f.id}, {"revealed", f.revealed}}; }
 void from_json(const Json& j, ItemFlaw& f) {
@@ -175,4 +175,4 @@ void from_json(const Json& j, CraftState& s) {
     s.tried = j.value("tried", std::map<std::string, int>{});
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

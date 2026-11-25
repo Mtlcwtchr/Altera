@@ -11,7 +11,7 @@
 
 #include "sim/building.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 using sim::EntityId;
 using sim::Tick;
@@ -365,4 +365,4 @@ struct Snapshot {
     TradeSnap trade;                      // AL-75: the trade window's target (wheel target)
 };
 
-} // namespace altera::game
+} // namespace lr::game

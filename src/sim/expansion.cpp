@@ -10,7 +10,7 @@
 
 #include "sim/content.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 namespace {
 
 Json readOpt(const std::string& path) {
@@ -272,4 +272,4 @@ void validateExpansion(const Content& c, ValidationReport& r) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

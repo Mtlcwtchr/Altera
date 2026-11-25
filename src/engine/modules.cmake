@@ -2,7 +2,7 @@
 add_library(asr_camera STATIC ${CMAKE_CURRENT_LIST_DIR}/camera/camera.cpp)
 target_include_directories(asr_camera PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_camera PUBLIC asr_core PRIVATE asr_warnings)
-add_library(Campfire::Camera ALIAS asr_camera)
+add_library(RealSimEngine::Camera ALIAS asr_camera)
 
 add_library(asr_terrain_generator STATIC
         ${CMAKE_CURRENT_LIST_DIR}/terrain/plate_field.cpp
@@ -11,12 +11,12 @@ add_library(asr_terrain_generator STATIC
         ${CMAKE_CURRENT_LIST_DIR}/terrain/mountain_shape.cpp)
 target_include_directories(asr_terrain_generator PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_terrain_generator PUBLIC asr_core PRIVATE asr_warnings)
-add_library(Campfire::Terrain ALIAS asr_terrain_generator)
+add_library(RealSimEngine::Terrain ALIAS asr_terrain_generator)
 
 add_library(asr_representation STATIC ${CMAKE_CURRENT_LIST_DIR}/render/representation_selector.cpp)
 target_include_directories(asr_representation PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_representation PUBLIC asr_camera PRIVATE asr_warnings)
-add_library(Campfire::Representation ALIAS asr_representation)
+add_library(RealSimEngine::Representation ALIAS asr_representation)
 
 find_package(Threads REQUIRED)
 add_library(asr_impostors STATIC
@@ -25,7 +25,7 @@ add_library(asr_impostors STATIC
         ${CMAKE_CURRENT_LIST_DIR}/render/impostor_hierarchy.cpp)
 target_include_directories(asr_impostors PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_impostors PUBLIC asr_representation Threads::Threads PRIVATE asr_warnings)
-add_library(Campfire::Impostors ALIAS asr_impostors)
+add_library(RealSimEngine::Impostors ALIAS asr_impostors)
 
 add_library(asr_virtual_geometry STATIC
         ${CMAKE_CURRENT_LIST_DIR}/geometry/cluster_dag.cpp
@@ -37,7 +37,7 @@ add_library(asr_virtual_geometry STATIC
         ${CMAKE_CURRENT_LIST_DIR}/render/geometry/page_residency.cpp)
 target_include_directories(asr_virtual_geometry PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_virtual_geometry PRIVATE asr_warnings)
-add_library(Campfire::VirtualGeometry ALIAS asr_virtual_geometry)
+add_library(RealSimEngine::VirtualGeometry ALIAS asr_virtual_geometry)
 
 # The world on disk: chunk keys, chunk files of typed compressed blocks, atomic
 # writes and the world root's manifest. Knows nothing of what a block holds -
@@ -51,7 +51,7 @@ add_library(asr_world_store STATIC
 target_include_directories(asr_world_store PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_include_directories(asr_world_store PRIVATE ${zstd_SOURCE_DIR}/lib)
 target_link_libraries(asr_world_store PUBLIC asr_core PRIVATE libzstd_static nlohmann_json asr_warnings)
-add_library(Campfire::WorldStore ALIAS asr_world_store)
+add_library(RealSimEngine::WorldStore ALIAS asr_world_store)
 
 # The authored world (world_authoring_import_export_spec): 256 m rasters and
 # stable-id vectors in 32 km source chunks, and the package importer/exporter.
@@ -68,7 +68,7 @@ add_library(asr_world_source STATIC
         ${CMAKE_CURRENT_LIST_DIR}/world_source/bake.cpp)
 target_include_directories(asr_world_source PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_world_source PUBLIC asr_world_store nlohmann_json PRIVATE ZLIB::ZLIB asr_warnings)
-add_library(Campfire::WorldSource ALIAS asr_world_source)
+add_library(RealSimEngine::WorldSource ALIAS asr_world_source)
 
 # Terrain categories and the biomes of the control layers
 # (doc/plan_ground_types_2026-10-01.md): the libraries and categories read
@@ -82,7 +82,7 @@ add_library(asr_biomes STATIC
         ${CMAKE_CURRENT_LIST_DIR}/biomes/detail_edits.cpp)
 target_include_directories(asr_biomes PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_biomes PUBLIC asr_core nlohmann_json PRIVATE asr_warnings)
-add_library(Campfire::Biomes ALIAS asr_biomes)
+add_library(RealSimEngine::Biomes ALIAS asr_biomes)
 
 # The procedural environment (doc/plan_procedural_environment_2026-10-03.md):
 # fields, zones, feature recipes and their terrain operations, the planner,
@@ -108,7 +108,7 @@ add_library(asr_environment STATIC
         ${CMAKE_CURRENT_LIST_DIR}/environment/painted_layer.cpp)
 target_include_directories(asr_environment PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_environment PUBLIC asr_core nlohmann_json PRIVATE asr_warnings)
-add_library(Campfire::Environment ALIAS asr_environment)
+add_library(RealSimEngine::Environment ALIAS asr_environment)
 
 # The character animator: poses, clips, blend spaces, state machines, layers,
 # IK and procedural humanoid motion. Pure CPU, no dependencies.
@@ -120,4 +120,4 @@ add_library(asr_animation STATIC
         ${CMAKE_CURRENT_LIST_DIR}/animation/animator.cpp)
 target_include_directories(asr_animation PUBLIC ${CMAKE_SOURCE_DIR}/src)
 target_link_libraries(asr_animation PRIVATE asr_warnings)
-add_library(Campfire::Animation ALIAS asr_animation)
+add_library(RealSimEngine::Animation ALIAS asr_animation)

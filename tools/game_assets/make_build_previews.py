@@ -3,9 +3,9 @@
     python tools/game_assets/make_build_previews.py [--repo D:/AlteraGame/altera]
 
 Renders every piece of content/ai/build.json from our kit bake
-(assets/altera_game/buildings/buildings.astm, see bake_buildings.py) in a three
+(assets/lr_game/buildings/buildings.astm, see bake_buildings.py) in a three
 quarter view, textured and lit, on a clear background, and writes
-assets/altera_game/ui/build_previews.png (one row of cells) and
+assets/lr_game/ui/build_previews.png (one row of cells) and
 build_previews.json {"cell": px, "pieces": {id: index}} read by the HUD.
 """
 import argparse, json, os, struct
@@ -109,7 +109,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--repo', default='D:/AlteraGame/altera')
     a = ap.parse_args()
-    meshes, V, I, layers = read_astm(os.path.join(a.repo, 'assets/altera_game/buildings/buildings.astm'))
+    meshes, V, I, layers = read_astm(os.path.join(a.repo, 'assets/lr_game/buildings/buildings.astm'))
     build = json.load(open(os.path.join(a.repo, 'content/ai/build.json'), encoding='utf-8'))
     cells, index = [], {}
     for p in build['pieces']:
@@ -121,7 +121,7 @@ def main():
         index[p['id']] = len(cells)
         cells.append(render(V, I, layers, fi, ic, CELL))
         print('preview', p['id'])
-    out = os.path.join(a.repo, 'assets/altera_game/ui')
+    out = os.path.join(a.repo, 'assets/lr_game/ui')
     Image.fromarray(np.concatenate(cells, 1)).save(os.path.join(out, 'build_previews.png'))
     json.dump({'cell': CELL, 'pieces': index}, open(os.path.join(out, 'build_previews.json'), 'w'), indent=1)
     print('wrote', len(cells), 'previews')

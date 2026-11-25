@@ -19,7 +19,7 @@ struct TempDir {
     fs::path path;
     explicit TempDir(const std::string& name) {
         std::random_device rd;
-        path = fs::temp_directory_path() / ("altera_biomes_" + name + "_" + std::to_string(rd()));
+        path = fs::temp_directory_path() / ("lr_biomes_" + name + "_" + std::to_string(rd()));
         fs::remove_all(path);
         fs::create_directories(path);
     }

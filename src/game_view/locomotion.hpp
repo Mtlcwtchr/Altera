@@ -18,7 +18,7 @@
 //
 // Pure logic, the standard library only (no engine, no GPU): the skinned set
 // (skinned.cpp) applies the rig operations, sim_game.cpp feeds the animator.
-// Tests: tests/test_altera_locomotion.cpp. Parameters: content/animations/locomotion.json.
+// Tests: tests/test_lr_locomotion.cpp. Parameters: content/animations/locomotion.json.
 
 #include <algorithm>
 #include <array>
@@ -26,7 +26,7 @@
 #include <string>
 #include <vector>
 
-namespace altera::game::loco {
+namespace lr::game::loco {
 
 constexpr float kPi = 3.14159265358979f;
 constexpr float kDeg = kPi / 180.0f;
@@ -783,4 +783,4 @@ inline void applyProcedural(const Config& c, const Rig& r, const std::vector<int
     }
 }
 
-} // namespace altera::game::loco
+} // namespace lr::game::loco

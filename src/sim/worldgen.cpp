@@ -13,7 +13,7 @@
 #include <fstream>
 #include <stdexcept>
 
-namespace altera::sim {
+namespace lr::sim {
 
 Json loadJsonFile(const std::string& path) {
     std::ifstream f(path, std::ios::binary);
@@ -934,4 +934,4 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
 std::string randomPersonName(Rng& r, bool female, const Content* c) { return makeName(r, female, c); }
 std::string randomFamilyName(Rng& r, const Content* c) { return makeFamilyName(r, c); }
 
-} // namespace altera::sim
+} // namespace lr::sim

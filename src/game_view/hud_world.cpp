@@ -2,7 +2,7 @@
 // water, the mountains, the climate and the rivers, with the world's map
 // beside them (the generator itself at a small size, on a worker thread, so
 // the picture is the world that will be made), or the imported world of
-// Altera. The button tells the game (HudHost::menuAction "world_create").
+// LivelyRealms. The button tells the game (HudHost::menuAction "world_create").
 
 #include "game_view/hud.hpp"
 #include "game_view/hud_style.hpp"
@@ -11,7 +11,7 @@
 #include <chrono>
 #include <cmath>
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 using ui::Colour;
@@ -145,4 +145,4 @@ void Hud::worldPanel(float W, float H) {
     ui_->claim(P);
 }
 
-} // namespace altera::game
+} // namespace lr::game

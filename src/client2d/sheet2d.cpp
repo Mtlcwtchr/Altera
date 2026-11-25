@@ -8,9 +8,9 @@
 #include "sim/gear.hpp"
 #include "sim/trade.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 
@@ -337,4 +337,4 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
     return d;
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

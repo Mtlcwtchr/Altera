@@ -13,7 +13,7 @@
 #include "sim/content.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 int MemoryBudget::Pool::per(int people) const {
     const int n = std::max(1, people);
@@ -211,4 +211,4 @@ void expandSharedMemory(Json& characters, const Json& events) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

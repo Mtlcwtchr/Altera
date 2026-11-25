@@ -8,7 +8,7 @@
 #include "sim/combat_bridge.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -532,4 +532,4 @@ void captivityTick(World& w) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -53,7 +53,7 @@
 
 #include "sim/dialogue_gen.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 
@@ -169,4 +169,4 @@ ValidationReport validateDialogueRules(const DialogueGenData& d, const Content* 
 // True when `key` is filled by some fact source (built-in or a registered provider).
 bool knownDialogueFact(const std::string& key);
 
-} // namespace altera::sim
+} // namespace lr::sim

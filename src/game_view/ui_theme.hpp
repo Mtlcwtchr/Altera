@@ -25,7 +25,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace altera::game {
+namespace lr::game {
 
 struct ThemeColour {
     float r = 1, g = 1, b = 1, a = 1;
@@ -208,4 +208,4 @@ inline float uiScaleFor(int percent, float screenHeight) {
     return user * screen;
 }
 
-} // namespace altera::game
+} // namespace lr::game

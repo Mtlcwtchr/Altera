@@ -34,7 +34,7 @@ IGLESIAS_PACKS = {
     "Human_Dance_Animations_FREE": "igl_dance",
     "Human_Spellcasting_Animations_FREE": "igl_spell",
 }
-# Modern-life Motifect clips that make no sense in Altera
+# Modern-life Motifect clips that make no sense in LivelyRealms
 MOTIFECT_SKIP = {"check_phone_standing", "take_photo_with_phone", "type_on_keyboard", "push_shopping_cart",
                  "open_refrigerator", "brush_teeth", "write_on_whiteboard", "climb_stairs_down", "climb_stairs_up"}
 

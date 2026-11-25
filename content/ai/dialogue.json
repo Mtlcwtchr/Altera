@@ -1,5 +1,5 @@
 {
- "_doc": "Altera, диалоги (задача C) по AI_DATA_SCHEMA v0.2 §9a. Текста нет: dialogue.<template>.<variant> в loc/<lang>/dialogue.json. Нестандартные разделы (speech_act_rules, initiation, dialog_plans, agent_join, response_eval, menu, consent, topic_kinds, legal_rules, agent_projection) — правила слоя диалогов (шаг 4), см. gdd/interactions/INTERACTIONS_DIALOGUE_v0.1.md",
+ "_doc": "LivelyRealms, диалоги (задача C) по AI_DATA_SCHEMA v0.2 §9a. Текста нет: dialogue.<template>.<variant> в loc/<lang>/dialogue.json. Нестандартные разделы (speech_act_rules, initiation, dialog_plans, agent_join, response_eval, menu, consent, topic_kinds, legal_rules, agent_projection) — правила слоя диалогов (шаг 4), см. gdd/interactions/INTERACTIONS_DIALOGUE_v0.1.md",
  "speech_acts": [
   "greet",
   "farewell",

@@ -9,7 +9,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 // ---- shared evaluation ---------------------------------------------------
 struct EvalCtx {
@@ -242,4 +242,4 @@ void dropGoal(World& w, Character& c, const std::string& reason, bool failed);
 // Human-readable / JSON report of why characters did what they did.
 Json aiReport(const World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

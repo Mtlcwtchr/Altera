@@ -19,7 +19,7 @@
 
 #include "client2d/view2d.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 // null when there is no such character
 sim::Json sheetJson(const sim::World& w, const ViewText& t, sim::EntityId id);
@@ -28,4 +28,4 @@ sim::Json sheetJson(const sim::World& w, const ViewText& t, sim::EntityId id);
 // with who/target/object/item filled in); the type itself when there is no key.
 std::string memoryText(const sim::World& w, const ViewText& t, const sim::Character& self, const sim::MemoryEntry& m);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

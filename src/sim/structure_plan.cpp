@@ -9,7 +9,7 @@
 
 #include "sim/building.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 namespace {
 constexpr double kPi = 3.14159265358979323846;
 
@@ -724,4 +724,4 @@ std::vector<std::string> checkStructure(const BuildCatalog& build, const Structu
     return bad;
 }
 
-}  // namespace altera::sim
+}  // namespace lr::sim

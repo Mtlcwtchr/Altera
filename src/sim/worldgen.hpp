@@ -5,7 +5,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 // cfg: content/sim/test_world.json (AI_DATA_SCHEMA.md §11). `seed` overrides cfg.seed when non-zero.
 World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seed = 0);
@@ -17,4 +17,4 @@ Json loadJsonFile(const std::string& path);
 std::string randomPersonName(Rng& r, bool female, const Content* c = nullptr);
 std::string randomFamilyName(Rng& r, const Content* c = nullptr);
 
-} // namespace altera::sim
+} // namespace lr::sim

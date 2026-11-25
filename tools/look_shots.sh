@@ -17,7 +17,7 @@ seed="${1:-11}"; [ $# -gt 0 ] && shift
 [ "${1:-}" = "--" ] && shift
 extra=("$@")
 mkdir -p "$out"
-bin="${ALTERA_BUILD_DIR:-${CAMPFIRE_BUILD_DIR:-cmake-build-relwithdebinfo}}/altera_client"
+bin="${LR_BUILD_DIR:-${REALSIM_BUILD_DIR:-cmake-build-relwithdebinfo}}/lr_client"
 size="${LOOK_SIZE:-1600x900}"
 export ASR_TERRAIN_CACHE_DIR="${ASR_TERRAIN_CACHE_DIR:-/tmp/altera-look-cache}"
 mkdir -p "$ASR_TERRAIN_CACHE_DIR"

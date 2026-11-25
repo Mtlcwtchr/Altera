@@ -6,7 +6,7 @@ small atlas.
 
 blender -b --factory-startup -P bake_animals.py -- --src D:/AlteraGame/_asset_src/animals --repo D:/AlteraGame/altera
 
-Writes assets/altera_game/beasts/<species>.askin, .aanim, _anim.json (Quaternius, CC0)."""
+Writes assets/lr_game/beasts/<species>.askin, .aanim, _anim.json (Quaternius, CC0)."""
 import bpy, sys, os, json, struct, math
 import numpy as np
 from mathutils import Vector, Matrix
@@ -16,7 +16,7 @@ def opt(k, d=None):
     return a[a.index(k) + 1] if k in a else d
 SRC = opt('--src', 'D:/AlteraGame/_asset_src/animals')
 REPO = opt('--repo', 'D:/AlteraGame/altera')
-OUT = REPO + '/assets/altera_game/beasts'
+OUT = REPO + '/assets/lr_game/beasts'
 os.makedirs(OUT, exist_ok=True)
 UAA = SRC + '/UAA/Ultimate Animated Animals - July 2021/glTF/'
 FAA = SRC + '/FAA/Blends/'

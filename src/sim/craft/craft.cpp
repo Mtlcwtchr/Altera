@@ -5,7 +5,7 @@
 #include <cmath>
 #include <functional>
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 namespace {
 
@@ -1509,4 +1509,4 @@ int inspectItem(const CraftData& d, Item& it, double skill, std::uint64_t seed, 
     return found;
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

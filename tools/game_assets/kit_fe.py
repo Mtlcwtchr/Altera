@@ -8,7 +8,7 @@ import bpy, bmesh
 import numpy as np
 from mathutils import Vector, Matrix
 
-SRC = os.environ.get('ALTERA_ASSET_SRC', 'D:/AlteraGame/_asset_src')
+SRC = os.environ.get('LR_ASSET_SRC', 'D:/AlteraGame/_asset_src')
 VMK = SRC + '/vmk/Medieval Village MegaKit[Standard]/glTF'
 VT = SRC + '/vmk/Medieval Village MegaKit[Standard]/Textures'
 KRT = SRC + '/krt/PNG'

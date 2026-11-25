@@ -17,7 +17,7 @@
 
 namespace fs = std::filesystem;
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -753,4 +753,4 @@ void installJustice(World& w) {
     });
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

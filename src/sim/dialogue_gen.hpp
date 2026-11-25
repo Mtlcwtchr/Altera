@@ -27,7 +27,7 @@
 #include "sim/content.hpp"
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class Loc;
 
@@ -188,4 +188,4 @@ ValidationReport validateDialogueGen(const DialogueGenData& d, const Content* c 
 // A Prop against its predicate: known pred, required roles present, role kinds allowed.
 bool checkProp(const DialogueGenData& d, const Prop& p, std::string* error = nullptr);
 
-} // namespace altera::sim
+} // namespace lr::sim

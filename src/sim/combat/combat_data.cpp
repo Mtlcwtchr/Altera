@@ -4,7 +4,7 @@
 #include <fstream>
 #include <set>
 
-namespace altera::combat {
+namespace lr::combat {
 
 namespace fs = std::filesystem;
 
@@ -697,4 +697,4 @@ CombatData build(const std::map<std::string, OJson>& files) {
 }
 } // namespace
 
-} // namespace altera::combat
+} // namespace lr::combat
