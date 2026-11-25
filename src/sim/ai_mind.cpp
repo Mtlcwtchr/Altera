@@ -689,6 +689,7 @@ void installAi(World& w) {
             realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
+        fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
@@ -713,6 +714,7 @@ void installAi(World& w) {
     installGear(w);
     installTrade(w);
     installRealm(w);
+    installFields(w);
 }
 
 } // namespace altera::sim

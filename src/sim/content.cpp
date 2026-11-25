@@ -753,6 +753,13 @@ ClimateDef parseClimate(const Json& j, std::vector<std::string>& W) {
     }
     d.biomeRainMult = opt(j, "biome_rain_mult", std::map<std::string, double>{});
     d.biomeTempAdd = opt(j, "biome_temp_add", std::map<std::string, double>{});
+    if (j.contains("wind")) { // AL-115
+        const Json& wj = j.at("wind");
+        warnUnknown(wj, {"from_deg", "ms", "sd", "_doc"}, "climate.wind", W);
+        d.windFromDeg = opt(wj, "from_deg", d.windFromDeg);
+        d.windMs = opt(wj, "ms", d.windMs);
+        d.windSd = opt(wj, "sd", d.windSd);
+    }
     const Json soils = j.value("soils", Json::object()); // a named copy: items() of a temporary dangles
     for (const auto& [biome, s] : soils.items()) {
         if (biome.rfind('_', 0) == 0) continue;
