@@ -10,6 +10,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/world_reactions.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -162,6 +163,7 @@ FieldsConfig FieldsConfig::fromJson(const Json& j, std::vector<std::string>* war
             else if (k.rfind('_', 0) != 0) c.things[k] = thing(v);
         }
     if (j.contains("untouched")) c.untouched = j["untouched"].get<std::vector<std::string>>();
+    c.regrowMinDays = j.value("regrow_min_days", c.regrowMinDays);
     for (const auto& [k, t] : c.things)
         if (!t.material.empty() && !c.materials.count(t.material)) warn("thing " + k + ": unknown material " + t.material);
     for (const auto& [k, m] : c.pieceMaterials)
@@ -260,6 +262,9 @@ Json WorldFields::toJson() const {
     Json wj = Json::object();
     for (const auto& [s, p] : weather) wj[std::to_string(s)] = {p.rainMm, p.heat, p.wind};
     out["weather"] = std::move(wj);
+    Json rg = Json::array();
+    for (const auto& r : regrow) rg.push_back({r.type, r.pos.x, r.pos.y, r.day});
+    out["regrow"] = std::move(rg);
     return out;
 }
 
@@ -295,6 +300,8 @@ void WorldFields::fromJson(const Json& j) {
     if (j.contains("weather") && j["weather"].is_object())
         for (const auto& [k, v] : j["weather"].items())
             weather[static_cast<EntityId>(std::stoul(k))] = {v[0].get<double>(), v[1].get<double>(), v[2].get<double>()};
+    for (const auto& r : j.value("regrow", Json::array()))
+        regrow.push_back({r[0].get<std::string>(), {r[1].get<double>(), r[2].get<double>()}, r[3].get<int>()});
 }
 
 // --- the baseline -------------------------------------------------------------------------
@@ -564,6 +571,8 @@ void breakObject(World& w, EntityId id, bool burnt, const std::string& cause) {
         for (const auto& [k, v] : o->stock) left[k] += v;
     w.fields().burningObjects.erase(id);
     w.fields().objectIntegrity.erase(id);
+    if (auto d = w.content().objects.find(type); d != w.content().objects.end() && d->second.perKm2 > 0 && o->ownerFamily == kNone)
+        w.fields().regrow.push_back({type, at, w.day() + fieldsConfig(w).regrowMinDays});
     w.removeObject(id);
     if (m) dropDebris(w, at, m->debrisType, left);
     if (chron)
@@ -816,7 +825,51 @@ std::vector<std::string> applyChannels(World& w, Vec2 at, double radiusM, const 
             });
         } else other.push_back(key);
     }
-    return other;
+    return applyLifeChannels(w, at, radiusM, channels, power, other);
+}
+
+// --- for the reactions -----------------------------------------------------------------------------
+
+bool anyActiveChunk(const World& w) {
+    for (const auto& [k, c] : w.fields().chunks)
+        if (c.active) return true;
+    return false;
+}
+
+void forEachStoredCell(World& w, bool activeOnly, const std::function<void(CellRef&)>& fn) {
+    const FieldsConfig& cfg = fieldsConfig(w);
+    const int n = cfg.chunk;
+    for (auto& [key, c] : w.fields().chunks)
+        if (c.active || !activeOnly)
+        for (int j = 0; j < n; ++j)
+            for (int i = 0; i < n; ++i) {
+                const int idx = j * n + i;
+                CellRef r;
+                r.x = c.cx * n + i;
+                r.y = c.cy * n + j;
+                r.active = c.active;
+                r.water = w.map().w > 0 && w.map().waterAt({r.x + 0.5, r.y + 0.5});
+                for (int f = 0; f < kFieldCount; ++f) r.v[f] = &c.v[f][idx];
+                r.fuel = &c.fuel[idx];
+                r.fire = &c.fire[idx];
+                r.burnt = &c.burnt[idx];
+                fn(r);
+            }
+}
+
+void fieldAddCell(World& w, Field f, int x, int y, double amount) { addCell(w, static_cast<int>(f), x, y, amount); }
+
+int fuelAt(const World& w, Vec2 at) {
+    const FieldsConfig& cfg = fieldsConfig(w);
+    const int x = cellOf(at.x), y = cellOf(at.y);
+    if (const FieldChunk* c = chunkAt(w, x, y)) return c->fuel[cellIndexIn(cfg, *c, x, y)];
+    return baseAt(w, cfg, ambient(w), x, y).fuel;
+}
+
+bool burntAt(const World& w, Vec2 at) {
+    const int x = cellOf(at.x), y = cellOf(at.y);
+    const FieldChunk* c = chunkAt(w, x, y);
+    return c && c->burnt[cellIndexIn(fieldsConfig(w), *c, x, y)];
 }
 
 // --- time ------------------------------------------------------------------------------------------
@@ -1065,6 +1118,9 @@ void stepBodies(World& w) {
         const int f = fireAt(w, c.pos);
         if (f <= 0) continue;
         c.body.health -= cfg.fire.burnHealth * f / 255.0;
+        // one awake on their feet gets out of the flames (a tick is ten minutes)
+        Vec2 away;
+        if (c.body.health > 0.0 && w.now() >= c.body.downUntil && fieldDanger(w, c.pos, 40.0, &away)) c.pos = away;
         if (c.body.health <= 0.0) {
             c.body.alive = false;
             c.body.health = 0.0;
@@ -1091,9 +1147,27 @@ void fieldsTick(World& w) {
         wf.ambientDay = -1;
     }
     if (wf.empty()) return;
+    if (daily && !wf.regrow.empty()) {
+        // young growth: the source comes back once its ground is not scorched any more
+        std::vector<WorldFields::Regrow> keep;
+        for (const auto& r : wf.regrow) {
+            if (w.day() < r.day || burntAt(w, r.pos) || fireAt(w, r.pos) > 0) {
+                keep.push_back(r);
+                continue;
+            }
+            WorldObject o;
+            o.type = r.type;
+            o.pos = r.pos;
+            if (auto d = w.content().objects.find(r.type); d != w.content().objects.end()) o.stock = d->second.stock;
+            w.addObject(o);
+        }
+        wf.regrow = std::move(keep);
+    }
     stepChunks(w, daily);
-    if (!wf.burningObjects.empty() || !wf.burningPieces.empty() || !wf.chunks.empty()) stepThings(w);
-    stepBodies(w);
+    const bool live = anyActiveChunk(w);
+    if (live || daily) reactionsTick(w, daily);   // M4: steam, ice, mud, melt, tainted water; crops in flames
+    if (!wf.burningObjects.empty() || !wf.burningPieces.empty() || live) stepThings(w);
+    if (live) stepBodies(w);
 }
 
 namespace {

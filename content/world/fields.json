@@ -22,6 +22,8 @@
   "desert":   {"moisture": 15,  "fertility": 20,  "fuel": 10,  "aether": 0},
   "mountain": {"moisture": 60,  "fertility": 40,  "fuel": 30,  "aether": 3}
  },
+ "regrow_doc": "природный источник (дерево, куст, луг из objects.json с per_km2), сгоревший или сломанный, возвращается на то же место, когда горючее клетки отросло, но не раньше regrow_min_days",
+ "regrow_min_days": 30,
  "water_moisture": 255,
  "rain_moisture_per_mm": 6,
  "fire": {
@@ -70,8 +72,6 @@
   "reed_bed":       {"material": "plant", "radius_m": 2.0},
   "hay_meadow":     {"material": "plant", "radius_m": 3.0},
   "hay":            {"material": "plant"},
-  "field":          {"material": "plant", "radius_m": 4.0},
-  "garden":         {"material": "plant", "radius_m": 2.0},
   "house":          {"material": "wood", "integrity": 260, "radius_m": 2.5, "keeps_stock": true},
   "storage":        {"material": "wood", "integrity": 120, "keeps_stock": true},
   "chest":          {"material": "wood", "integrity": 80, "keeps_stock": true},
@@ -92,5 +92,6 @@
   "rubble":         {"material": "stone", "integrity": 60, "keeps_stock": true},
   "wreckage":       {"material": "wood", "integrity": 40, "keeps_stock": true}
  },
- "untouched": ["water", "riverbank", "corpse", "grave", "build_site", "roof_piece", "village_fire", "campfire"]
+ "_untouched_doc": "огонь и удары их не ломают; посев на field/garden сгорает отдельно (world_reactions.cpp), сам участок остаётся",
+ "untouched": ["water", "riverbank", "corpse", "grave", "build_site", "roof_piece", "village_fire", "campfire", "field", "garden"]
 }
