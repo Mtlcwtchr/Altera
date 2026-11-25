@@ -330,6 +330,7 @@ add_library(altera_sim STATIC
         src/sim/justice.cpp
         src/sim/facts.cpp
         src/sim/village_life.cpp
+        src/sim/magic.cpp
         src/sim/realm.cpp
         src/sim/memory_budget.cpp
         src/sim/dialogue_memory.cpp
@@ -855,6 +856,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_speech_feed.cpp tests/test_altera_sim_news.cpp
             tests/test_altera_sim_village_life.cpp tests/test_altera_sim_memory_budget.cpp
             tests/test_altera_sim_realm.cpp
+            tests/test_altera_sim_magic.cpp
             tests/test_altera_sim_ecology.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp

@@ -1,0 +1,335 @@
+{
+ "_doc": "LivelyRealms §5.10 (AL-116): магия в ответах на беды. Беда (trouble) запускает путь из стадий; каждый день на стадии после min_days с шансом daily выбирается следующая по весам: w = base × Π traits[черта] × (knows|unknown по тому, знает ли человек о магии) × (1 + w_bond·сила связи) × (1 + w_honor·(честь−0.5)) × (1 + w_death·знание Смерти). do — что человек делает на стадии (словарь кода в magic.cpp: grieve, let_go, ask_around, seek_healer, speak_dead, study_forbidden, experiment, raise, keep, exposure, fall, plague, redeem, lich). Пусто в next = путь закончен. Не сценарий: только данные поверх обычных правил сима.",
+ "troubles": {
+  "kin_death": {
+   "start": "grieve",
+   "bond_min": 0.45,
+   "stages": {
+    "grieve": {
+     "do": "grieve",
+     "min_days": 3,
+     "daily": 0.35,
+     "next": [
+      {
+       "to": "let_go",
+       "base": 1.0,
+       "traits": {
+        "fickle": 1.6,
+        "pious": 1.3,
+        "stubborn": 0.6,
+        "family_minded": 0.7
+       }
+      },
+      {
+       "to": "ask_around",
+       "base": 0.25,
+       "unknown": 0.25,
+       "knows": 1.0,
+       "w_bond": 1.5,
+       "traits": {
+        "curious": 1.6,
+        "stubborn": 1.4,
+        "family_minded": 1.5,
+        "pious": 0.6
+       }
+      }
+     ]
+    },
+    "ask_around": {
+     "do": "ask_around",
+     "min_days": 4,
+     "daily": 0.3,
+     "next": [
+      {
+       "to": "let_go",
+       "base": 0.8,
+       "traits": {
+        "fickle": 1.5,
+        "pious": 1.3
+       }
+      },
+      {
+       "to": "speak_dead",
+       "base": 0.7,
+       "knows": 1.0,
+       "unknown": 0.2
+      },
+      {
+       "to": "study_forbidden",
+       "base": 0.18,
+       "w_bond": 1.2,
+       "w_honor": -1.5,
+       "traits": {
+        "stubborn": 1.5,
+        "unscrupulous": 2.0,
+        "honest": 0.5,
+        "pious": 0.4,
+        "curious": 1.4
+       }
+      }
+     ]
+    },
+    "speak_dead": {
+     "do": "speak_dead",
+     "min_days": 1,
+     "daily": 0.5,
+     "next": [
+      {
+       "to": "let_go",
+       "base": 1.0
+      },
+      {
+       "to": "study_forbidden",
+       "base": 0.25,
+       "w_honor": -1.5,
+       "traits": {
+        "stubborn": 1.6,
+        "unscrupulous": 1.8,
+        "pious": 0.4
+       }
+      }
+     ]
+    },
+    "study_forbidden": {
+     "do": "study_forbidden",
+     "min_days": 20,
+     "daily": 0.12,
+     "next": [
+      {
+       "to": "experiment",
+       "base": 1.0,
+       "w_death": 2.0
+      },
+      {
+       "to": "redeem",
+       "base": 0.25,
+       "traits": {
+        "pious": 2.0,
+        "honest": 1.5,
+        "unscrupulous": 0.4
+       }
+      }
+     ]
+    },
+    "experiment": {
+     "do": "experiment",
+     "min_days": 6,
+     "daily": 0.2,
+     "next": [
+      {
+       "to": "raise",
+       "base": 1.0,
+       "w_death": 1.5
+      },
+      {
+       "to": "exposure",
+       "base": 0.35
+      }
+     ]
+    },
+    "raise": {
+     "do": "raise",
+     "min_days": 1,
+     "daily": 0.6,
+     "next": [
+      {
+       "to": "keep",
+       "base": 1.0
+      }
+     ]
+    },
+    "keep": {
+     "do": "keep",
+     "min_days": 15,
+     "daily": 0.08,
+     "next": [
+      {
+       "to": "exposure",
+       "base": 0.6
+      },
+      {
+       "to": "fall",
+       "base": 0.45,
+       "w_honor": -1.5,
+       "w_death": 1.0,
+       "traits": {
+        "proud": 1.5,
+        "unscrupulous": 1.8,
+        "honest": 0.5
+       }
+      },
+      {
+       "to": "redeem",
+       "base": 0.35,
+       "w_honor": 1.5,
+       "traits": {
+        "pious": 1.8,
+        "family_minded": 1.3
+       }
+      },
+      {
+       "to": "plague",
+       "base": 0.12,
+       "traits": {
+        "slob": 2.0,
+        "lazy": 1.5,
+        "diligent": 0.5
+       }
+      }
+     ]
+    },
+    "exposure": {
+     "do": "exposure",
+     "min_days": 5,
+     "daily": 0.15,
+     "next": [
+      {
+       "to": "fall",
+       "base": 0.6,
+       "w_honor": -1.5
+      },
+      {
+       "to": "redeem",
+       "base": 0.6,
+       "w_honor": 1.5,
+       "traits": {
+        "pious": 1.6
+       }
+      }
+     ]
+    },
+    "fall": {
+     "do": "fall",
+     "min_days": 30,
+     "daily": 0.05,
+     "next": [
+      {
+       "to": "lich",
+       "base": 0.3,
+       "w_death": 3.0,
+       "traits": {
+        "proud": 1.5
+       }
+      },
+      {
+       "to": "plague",
+       "base": 0.15
+      },
+      {
+       "to": "redeem",
+       "base": 0.1,
+       "traits": {
+        "pious": 2.0
+       }
+      }
+     ]
+    },
+    "plague": {
+     "do": "plague",
+     "min_days": 10,
+     "daily": 0.1,
+     "next": [
+      {
+       "to": "redeem",
+       "base": 0.5
+      },
+      {
+       "to": "fall",
+       "base": 0.5
+      }
+     ]
+    },
+    "redeem": {
+     "do": "redeem",
+     "min_days": 1,
+     "daily": 1.0,
+     "next": []
+    },
+    "lich": {
+     "do": "lich",
+     "min_days": 1,
+     "daily": 1.0,
+     "next": []
+    },
+    "let_go": {
+     "do": "let_go",
+     "min_days": 0,
+     "daily": 1.0,
+     "next": []
+    }
+   }
+  },
+  "maimed": {
+   "start": "seek_healer",
+   "stages": {
+    "seek_healer": {
+     "do": "seek_healer",
+     "min_days": 1,
+     "daily": 0.5,
+     "next": [
+      {
+       "to": "let_go",
+       "base": 1.0
+      },
+      {
+       "to": "ask_around",
+       "base": 0.3,
+       "knows": 1.0,
+       "unknown": 0.3,
+       "traits": {
+        "proud": 1.5,
+        "stubborn": 1.3
+       }
+      }
+     ]
+    },
+    "ask_around": {
+     "do": "ask_around",
+     "min_days": 5,
+     "daily": 0.2,
+     "next": [
+      {
+       "to": "seek_healer",
+       "base": 0.8,
+       "knows": 1.0,
+       "unknown": 0.1
+      },
+      {
+       "to": "let_go",
+       "base": 1.0
+      }
+     ]
+    },
+    "let_go": {
+     "do": "let_go",
+     "min_days": 0,
+     "daily": 1.0,
+     "next": []
+    }
+   }
+  },
+  "ill_kin": {
+   "start": "seek_healer",
+   "bond_min": 0.45,
+   "stages": {
+    "seek_healer": {
+     "do": "seek_healer",
+     "min_days": 0,
+     "daily": 0.6,
+     "next": [
+      {
+       "to": "let_go",
+       "base": 1.0
+      }
+     ]
+    },
+    "let_go": {
+     "do": "let_go",
+     "min_days": 0,
+     "daily": 1.0,
+     "next": []
+    }
+   }
+  }
+ }
+}

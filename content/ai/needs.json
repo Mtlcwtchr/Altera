@@ -399,6 +399,34 @@
    "ttl": 2304,
    "_doc": "AL-39: кашель, грудная болезнь; срок ставит village_life",
    "_part": "village_life"
+  },
+  {
+   "id": "spoke_with_dead",
+   "value": 0.25,
+   "ttl": 1440,
+   "_doc": "AL-116: поговорил с умершим близким",
+   "_part": "magic"
+  },
+  {
+   "id": "dread_dark_magic",
+   "value": -0.25,
+   "ttl": 720,
+   "_doc": "AL-116: видел тёмное колдовство или нежить",
+   "_part": "magic"
+  },
+  {
+   "id": "healed_by_magic",
+   "value": 0.2,
+   "ttl": 432,
+   "_doc": "AL-116: исцелён магией",
+   "_part": "magic"
+  },
+  {
+   "id": "obsessed_with_return",
+   "value": -0.2,
+   "ttl": 2160,
+   "_doc": "AL-116: ищет способ вернуть умершего",
+   "_part": "magic"
   }
  ]
 }
