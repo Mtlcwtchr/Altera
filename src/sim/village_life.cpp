@@ -1,6 +1,7 @@
 // Village life (village_life.hpp, AL-39).
 
 #include "sim/village_life.hpp"
+#include "sim/world_reactions.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -589,6 +590,7 @@ void bodyDaily(World& w, Character& c, const VillageLifeRules& r, const std::map
     if (stage == "elder") p *= m("elder");
     if (c.need("hunger") < 0.25) p *= m("hungry");
     if (c.need("warmth") < 0.3) p *= m("cold");
+    if (drinksTaintedWater(w, c)) p *= m("tainted_water"); // AL-115: taint in the well or the stream
     if (auto it = sickIn.find(c.status.family); it != sickIn.end()) p += r.contagion * it->second;
     Rng rng = w.rng(c.id, "village:illness");
     if (!rng.chance(p)) return;

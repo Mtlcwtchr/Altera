@@ -1,0 +1,898 @@
+{
+ "_doc": "AL-115 (LIVELYREALMS_SETTING_v0.2 §5.6): реакции аспектов и клеток мира (src/sim/world_reactions.*). pairs — каждая неупорядоченная пара аспектов из aspects.json (и аспект сам с собой), ключ 'a+b' по алфавиту; значение — 'none' или {result, channels (добавка к каналам аспектов в формате world_channels), fx, cancel (оба аспекта гасят друг друга), min_power}. Валидатор требует запись у каждой пары. cells — правила клетки над полями: when (heat_c_min/max, heat_min, moisture_min/max, taint_min, fuel_max, water, burnt), do — байт за тик, do_per_day — байт в день, state — что видит 2D и движение, fx — эффект для рендера.",
+ "move_factor": {
+  "ice": 0.7,
+  "mud": 0.55,
+  "molten": 0.0,
+  "steam": 0.9,
+  "poisoned": 1.0,
+  "blighted": 1.0,
+  "scorched": 1.0
+ },
+ "pairs": {
+  "fire+fire": "none",
+  "fire+water": {
+   "result": "steam",
+   "channels": {
+    "moisture": "-1*power",
+    "heat": "-1*power"
+   },
+   "fx": "steam"
+  },
+  "air+fire": {
+   "result": "firestorm",
+   "channels": {
+    "heat": "+1*power",
+    "wind": "+1*power"
+   },
+   "fx": "flame"
+  },
+  "earth+fire": {
+   "result": "magma",
+   "channels": {
+    "heat": "+2*power",
+    "integrity": "-1*power"
+   },
+   "fx": "lava",
+   "min_power": 3
+  },
+  "fire+life": {
+   "result": "cautery",
+   "channels": {},
+   "fx": "sparks"
+  },
+  "fire+plants": {
+   "result": "wildfire",
+   "channels": {
+    "heat": "+1*power"
+   },
+   "fx": "flame"
+  },
+  "beasts+fire": "none",
+  "fire+weather": {
+   "result": "heatwave",
+   "channels": {
+    "sun": "+1*power"
+   },
+   "fx": "haze"
+  },
+  "fire+metal": {
+   "result": "molten_metal",
+   "channels": {
+    "heat": "+1*power"
+   },
+   "fx": "sparks"
+  },
+  "fire+stone": {
+   "result": "magma",
+   "channels": {
+    "heat": "+2*power",
+    "integrity": "-1*power"
+   },
+   "fx": "lava",
+   "min_power": 3
+  },
+  "fire+poison": {
+   "result": "toxic_smoke",
+   "channels": {
+    "taint": "+0.5*power"
+   },
+   "fx": "smoke"
+  },
+  "blood+fire": "none",
+  "fire+mind": "none",
+  "fire+sleep": "none",
+  "fire+light": {
+   "result": "blaze",
+   "channels": {
+    "light": "+1*power"
+   },
+   "fx": "flame"
+  },
+  "fire+shadow": {
+   "result": "black_fire",
+   "channels": {
+    "light": "-1*power",
+    "heat": "+0.5*power"
+   },
+   "fx": "smoke"
+  },
+  "death+fire": {
+   "result": "pyre",
+   "channels": {
+    "taint": "-1*power"
+   },
+   "fx": "flame"
+  },
+  "fire+space": "none",
+  "fire+time": "none",
+  "bond+fire": {
+   "result": "bound_fire",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+fire": {
+   "result": "pure_fire",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "water+water": "none",
+  "air+water": {
+   "result": "rain",
+   "channels": {
+    "rain": "+0.5*power"
+   },
+   "fx": "rain"
+  },
+  "earth+water": {
+   "result": "mud",
+   "channels": {
+    "moisture": "+1*power",
+    "integrity": "-0.5*power"
+   },
+   "fx": "splash"
+  },
+  "life+water": {
+   "result": "healing_spring",
+   "channels": {
+    "fertility": "+0.5*power",
+    "taint": "-0.5*power"
+   },
+   "fx": "splash"
+  },
+  "plants+water": {
+   "result": "bloom",
+   "channels": {
+    "growth": "+1*power"
+   },
+   "fx": "splash"
+  },
+  "beasts+water": "none",
+  "water+weather": {
+   "result": "storm",
+   "channels": {
+    "storm": "power"
+   },
+   "fx": "lightning"
+  },
+  "metal+water": {
+   "result": "rust",
+   "channels": {
+    "rust": "+1*power"
+   },
+   "fx": "splash"
+  },
+  "stone+water": {
+   "result": "erosion",
+   "channels": {
+    "integrity": "-0.5*power"
+   },
+   "fx": "splash"
+  },
+  "poison+water": {
+   "result": "poisoned_spring",
+   "channels": {
+    "taint": "+1*power"
+   },
+   "fx": "splash"
+  },
+  "blood+water": "none",
+  "mind+water": "none",
+  "sleep+water": "none",
+  "light+water": "none",
+  "shadow+water": {
+   "result": "black_water",
+   "channels": {
+    "light": "-0.5*power"
+   },
+   "fx": "splash"
+  },
+  "death+water": "none",
+  "space+water": "none",
+  "time+water": "none",
+  "bond+water": {
+   "result": "bound_water",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+water": {
+   "result": "pure_water",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "air+air": "none",
+  "air+earth": {
+   "result": "dust_storm",
+   "channels": {
+    "wind": "+1*power",
+    "moisture": "-0.5*power"
+   },
+   "fx": "dust"
+  },
+  "air+life": "none",
+  "air+plants": {
+   "result": "pollen",
+   "channels": {
+    "growth": "+0.5*power"
+   },
+   "fx": "haze"
+  },
+  "air+beasts": "none",
+  "air+weather": {
+   "result": "gale",
+   "channels": {
+    "wind": "+2*power"
+   },
+   "fx": "dust"
+  },
+  "air+metal": {
+   "result": "lightning_rod",
+   "channels": {
+    "storm": "0.5*power"
+   },
+   "fx": "lightning"
+  },
+  "air+stone": "none",
+  "air+poison": {
+   "result": "miasma",
+   "channels": {
+    "taint": "+0.5*power"
+   },
+   "fx": "haze"
+  },
+  "air+blood": "none",
+  "air+mind": "none",
+  "air+sleep": "none",
+  "air+light": "none",
+  "air+shadow": "none",
+  "air+death": "none",
+  "air+space": {
+   "result": "push",
+   "channels": {
+    "push": "power"
+   },
+   "fx": "dust"
+  },
+  "air+time": "none",
+  "air+bond": {
+   "result": "bound_air",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "air+essence": {
+   "result": "pure_air",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "earth+earth": "none",
+  "earth+life": {
+   "result": "fertile_soil",
+   "channels": {
+    "fertility": "+1*power"
+   },
+   "fx": "dust"
+  },
+  "earth+plants": {
+   "result": "thicket",
+   "channels": {
+    "growth": "+1*power",
+    "fertility": "+0.3*power"
+   },
+   "fx": "dust"
+  },
+  "beasts+earth": "none",
+  "earth+weather": "none",
+  "earth+metal": {
+   "result": "ore",
+   "channels": {
+    "integrity": "+0.5*power"
+   },
+   "fx": "sparks"
+  },
+  "earth+stone": {
+   "result": "quake",
+   "channels": {
+    "integrity": "-1*power"
+   },
+   "fx": "dust"
+  },
+  "earth+poison": "none",
+  "blood+earth": "none",
+  "earth+mind": "none",
+  "earth+sleep": "none",
+  "earth+light": "none",
+  "earth+shadow": "none",
+  "death+earth": {
+   "result": "grave_soil",
+   "channels": {
+    "taint": "+0.5*power",
+    "fertility": "-0.5*power"
+   },
+   "fx": "dust"
+  },
+  "earth+space": "none",
+  "earth+time": "none",
+  "bond+earth": {
+   "result": "bound_earth",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "earth+essence": {
+   "result": "pure_earth",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "life+life": "none",
+  "life+plants": {
+   "result": "overgrowth",
+   "channels": {
+    "growth": "+2*power",
+    "fertility": "-1*power"
+   },
+   "fx": "bloom"
+  },
+  "beasts+life": {
+   "result": "breeding",
+   "channels": {
+    "lure": "+0.5*power"
+   },
+   "fx": "bloom"
+  },
+  "life+weather": "none",
+  "life+metal": "none",
+  "life+stone": "none",
+  "life+poison": {
+   "result": "cancel_partly",
+   "channels": {
+    "taint": "-1*power"
+   },
+   "fx": "fizzle"
+  },
+  "blood+life": {
+   "result": "blood_healing",
+   "channels": {},
+   "fx": "bloom"
+  },
+  "life+mind": "none",
+  "life+sleep": "none",
+  "life+light": "none",
+  "life+shadow": "none",
+  "death+life": {
+   "result": "cancel",
+   "cancel": true,
+   "fx": "fizzle"
+  },
+  "life+space": "none",
+  "life+time": {
+   "result": "youth",
+   "channels": {
+    "growth": "+1*power"
+   },
+   "fx": "bloom"
+  },
+  "bond+life": {
+   "result": "bound_life",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+life": {
+   "result": "pure_life",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "plants+plants": "none",
+  "beasts+plants": "none",
+  "plants+weather": {
+   "result": "good_season",
+   "channels": {
+    "growth": "+1*power",
+    "rain": "+0.3*power"
+   },
+   "fx": "rain"
+  },
+  "metal+plants": "none",
+  "plants+stone": "none",
+  "plants+poison": {
+   "result": "blight",
+   "channels": {
+    "fertility": "-1*power",
+    "growth": "-1*power"
+   },
+   "fx": "haze"
+  },
+  "blood+plants": "none",
+  "mind+plants": "none",
+  "plants+sleep": "none",
+  "light+plants": "none",
+  "plants+shadow": "none",
+  "death+plants": "none",
+  "plants+space": "none",
+  "plants+time": "none",
+  "bond+plants": {
+   "result": "bound_plants",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+plants": {
+   "result": "pure_plants",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "beasts+beasts": "none",
+  "beasts+weather": "none",
+  "beasts+metal": "none",
+  "beasts+stone": "none",
+  "beasts+poison": "none",
+  "beasts+blood": "none",
+  "beasts+mind": {
+   "result": "taming",
+   "channels": {
+    "lure": "+1*power"
+   },
+   "fx": "glow"
+  },
+  "beasts+sleep": "none",
+  "beasts+light": "none",
+  "beasts+shadow": "none",
+  "beasts+death": {
+   "result": "carrion",
+   "channels": {
+    "taint": "+0.3*power"
+   },
+   "fx": "smoke"
+  },
+  "beasts+space": "none",
+  "beasts+time": "none",
+  "beasts+bond": {
+   "result": "bound_beasts",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "beasts+essence": {
+   "result": "pure_beasts",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "weather+weather": "none",
+  "metal+weather": "none",
+  "stone+weather": "none",
+  "poison+weather": "none",
+  "blood+weather": "none",
+  "mind+weather": "none",
+  "sleep+weather": "none",
+  "light+weather": {
+   "result": "sunshine",
+   "channels": {
+    "sun": "+1*power"
+   },
+   "fx": "glow"
+  },
+  "shadow+weather": "none",
+  "death+weather": "none",
+  "space+weather": "none",
+  "time+weather": {
+   "result": "season_turn",
+   "channels": {},
+   "fx": "haze"
+  },
+  "bond+weather": {
+   "result": "bound_weather",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+weather": {
+   "result": "pure_weather",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "metal+metal": "none",
+  "metal+stone": {
+   "result": "forge_stone",
+   "channels": {
+    "integrity": "+1*power"
+   },
+   "fx": "sparks"
+  },
+  "metal+poison": "none",
+  "blood+metal": "none",
+  "metal+mind": "none",
+  "metal+sleep": "none",
+  "light+metal": "none",
+  "metal+shadow": "none",
+  "death+metal": "none",
+  "metal+space": "none",
+  "metal+time": "none",
+  "bond+metal": {
+   "result": "bound_metal",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+metal": {
+   "result": "pure_metal",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "stone+stone": "none",
+  "poison+stone": "none",
+  "blood+stone": "none",
+  "mind+stone": "none",
+  "sleep+stone": "none",
+  "light+stone": "none",
+  "shadow+stone": "none",
+  "death+stone": "none",
+  "space+stone": "none",
+  "stone+time": "none",
+  "bond+stone": {
+   "result": "bound_stone",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+stone": {
+   "result": "pure_stone",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "poison+poison": "none",
+  "blood+poison": {
+   "result": "venom",
+   "channels": {},
+   "fx": "haze"
+  },
+  "mind+poison": "none",
+  "poison+sleep": "none",
+  "light+poison": "none",
+  "poison+shadow": "none",
+  "death+poison": {
+   "result": "plague",
+   "channels": {
+    "taint": "+1.5*power"
+   },
+   "fx": "haze"
+  },
+  "poison+space": "none",
+  "poison+time": "none",
+  "bond+poison": {
+   "result": "bound_poison",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+poison": {
+   "result": "pure_poison",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "blood+blood": "none",
+  "blood+mind": "none",
+  "blood+sleep": "none",
+  "blood+light": "none",
+  "blood+shadow": "none",
+  "blood+death": {
+   "result": "blood_rite",
+   "channels": {
+    "taint": "+0.5*power",
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "blood+space": "none",
+  "blood+time": "none",
+  "blood+bond": {
+   "result": "bound_blood",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "blood+essence": {
+   "result": "pure_blood",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "mind+mind": "none",
+  "mind+sleep": {
+   "result": "dream",
+   "channels": {},
+   "fx": "glow"
+  },
+  "light+mind": "none",
+  "mind+shadow": "none",
+  "death+mind": "none",
+  "mind+space": "none",
+  "mind+time": "none",
+  "bond+mind": {
+   "result": "bound_mind",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+mind": {
+   "result": "pure_mind",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "sleep+sleep": "none",
+  "light+sleep": "none",
+  "shadow+sleep": {
+   "result": "nightmare",
+   "channels": {},
+   "fx": "smoke"
+  },
+  "death+sleep": "none",
+  "sleep+space": "none",
+  "sleep+time": "none",
+  "bond+sleep": {
+   "result": "bound_sleep",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+sleep": {
+   "result": "pure_sleep",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "light+light": "none",
+  "light+shadow": {
+   "result": "cancel",
+   "cancel": true,
+   "fx": "fizzle"
+  },
+  "death+light": {
+   "result": "holy_light",
+   "channels": {
+    "taint": "-1.5*power"
+   },
+   "fx": "glow"
+  },
+  "light+space": "none",
+  "light+time": "none",
+  "bond+light": {
+   "result": "bound_light",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+light": {
+   "result": "pure_light",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "shadow+shadow": "none",
+  "death+shadow": {
+   "result": "gloom",
+   "channels": {
+    "taint": "+1*power",
+    "light": "-1*power"
+   },
+   "fx": "smoke"
+  },
+  "shadow+space": "none",
+  "shadow+time": "none",
+  "bond+shadow": {
+   "result": "bound_shadow",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+shadow": {
+   "result": "pure_shadow",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "death+death": "none",
+  "death+space": "none",
+  "death+time": {
+   "result": "decay",
+   "channels": {
+    "integrity": "-1*power",
+    "taint": "+0.5*power"
+   },
+   "fx": "dust"
+  },
+  "bond+death": {
+   "result": "bound_death",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "death+essence": {
+   "result": "pure_death",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "space+space": "none",
+  "space+time": {
+   "result": "rift",
+   "channels": {
+    "aether": "+2*power"
+   },
+   "fx": "glow"
+  },
+  "bond+space": {
+   "result": "bound_space",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+space": {
+   "result": "pure_space",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "time+time": "none",
+  "bond+time": {
+   "result": "bound_time",
+   "channels": {
+    "aether": "+0.3*power"
+   },
+   "fx": "glow"
+  },
+  "essence+time": {
+   "result": "pure_time",
+   "channels": {
+    "aether": "+0.5*power"
+   },
+   "fx": "glow"
+  },
+  "bond+bond": "none",
+  "bond+essence": {
+   "result": "attunement",
+   "channels": {
+    "aether": "+1*power"
+   },
+   "fx": "glow"
+  },
+  "essence+essence": "none"
+ },
+ "cells": [
+  {
+   "id": "steam",
+   "_doc": "жар встречает воду: пар, вода уходит, жар падает, видимость хуже",
+   "when": {
+    "heat_c_min": 100,
+    "moisture_min": 170
+   },
+   "do": {
+    "moisture": -8,
+    "heat": -6
+   },
+   "fx": "steam",
+   "state": "steam"
+  },
+  {
+   "id": "ice",
+   "_doc": "холод и вода: лёд, по воде можно ходить, скользко",
+   "when": {
+    "heat_c_max": -2,
+    "moisture_min": 200
+   },
+   "state": "ice"
+  },
+  {
+   "id": "mud",
+   "_doc": "переувлажнённый грунт: грязь, идти медленнее, стены на нём теряют опору",
+   "when": {
+    "moisture_min": 215,
+    "heat_c_min": 0,
+    "water": false
+   },
+   "state": "mud",
+   "piece_damage_per_day": 3
+  },
+  {
+   "id": "molten",
+   "_doc": "сильный жар без горючего: камень плавится, остывая, твердеет снова",
+   "when": {
+    "heat_min": 240,
+    "fuel_max": 0,
+    "water": false
+   },
+   "state": "molten",
+   "do": {
+    "integrity": -20
+   }
+  },
+  {
+   "id": "poisoned_water",
+   "_doc": "порча в воде: пьющие из этой воды болеют (village_life.json mult tainted_water)",
+   "when": {
+    "water": true,
+    "taint_min": 40
+   },
+   "state": "poisoned",
+   "spread_with_water": 0.3
+  },
+  {
+   "id": "taint_flow",
+   "_doc": "слабая порча в воде всё равно уходит с ней дальше",
+   "when": {
+    "water": true,
+    "taint_min": 6
+   },
+   "spread_with_water": 0.3
+  },
+  {
+   "id": "blight",
+   "_doc": "сильная порча: земля скудеет",
+   "when": {
+    "taint_min": 120
+   },
+   "state": "blighted",
+   "do_per_day": {
+    "fertility": -2
+   }
+  },
+  {
+   "id": "scorched",
+   "_doc": "выжженная, ещё не отросшая земля",
+   "when": {
+    "burnt": true
+   },
+   "state": "scorched"
+  }
+ ]
+}

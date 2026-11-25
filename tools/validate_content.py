@@ -301,8 +301,49 @@ def check_docs(L):
     return r
 
 
+def check_elements(L):
+    """AL-115: поля клетки (world/fields.json) и матрица реакций (magic/reactions.json)."""
+    r = Report("elements")
+    root = L["root"]
+    fp, rp, ap = root / "world" / "fields.json", root / "magic" / "reactions.json", root / "magic" / "aspects.json"
+    if not fp.exists():
+        r.warn("нет world/fields.json, пропуск"); return r
+    f = jload(fp)
+    known_fields = {"heat", "moisture", "fertility", "integrity", "light", "aether", "taint"}
+    for k in f.get("fields", {}):
+        if k not in known_fields: r.err(f"fields.json: неизвестное поле {k}")
+    mats = {k for k in f.get("materials", {}) if not k.startswith("_")}
+    ai = L.get("ai")
+    objs = _ids(jload(ai / "objects.json"), "objects") if ai and (ai / "objects.json").exists() else set()
+    for t, v in f.get("things", {}).items():
+        if t.startswith("_") or not isinstance(v, dict): continue
+        if v.get("material") and v["material"] not in mats: r.err(f"fields.json things.{t}: нет материала {v['material']}")
+        if objs and t not in objs: r.err(f"fields.json things.{t}: нет такого объекта в objects.json")
+    for m, v in f.get("piece_materials", {}).items():
+        if v not in mats: r.err(f"fields.json piece_materials.{m}: нет материала {v}")
+    if not rp.exists() or not ap.exists():
+        r.warn("нет magic/reactions.json или magic/aspects.json, матрица не проверена"); return r
+    asp = [a["id"] for a in jload(ap).get("aspects", [])]
+    pairs = jload(rp).get("pairs", {})
+    want = set()
+    for i, a in enumerate(asp):
+        for b in asp[i:]:
+            want.add("+".join(sorted([a, b])))
+    for k in sorted(want - set(pairs)): r.err(f"reactions.json: нет записи для пары {k} (нужна реакция или \"none\")")
+    for k in sorted(set(pairs) - want): r.err(f"reactions.json: пара {k} из неизвестных аспектов")
+    for k, v in pairs.items():
+        if isinstance(v, dict):
+            for ch in v.get("channels", {}):
+                if ch not in known_fields and ch not in {"transfer", "rain", "sun", "wind", "storm", "rust", "growth", "lure", "push",
+                                                         "raise_ground", "shape_plants", "shape_metal", "shape_stone"}:
+                    r.warn(f"reactions.json {k}: канал {ch} никто не читает")
+    r.info = f"пар {len(pairs)}, с реакцией {sum(1 for v in pairs.values() if isinstance(v, dict))}"
+    return r
+
+
 CHECKS = {"json": check_json, "loc": check_loc, "ai": check_ai, "expansion": check_expansion,
           "crafting": check_crafting, "backstory": check_backstory, "docs": check_docs}
+CHECKS["elements"] = check_elements  # AL-115
 
 
 def main():
