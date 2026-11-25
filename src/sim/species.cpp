@@ -1,5 +1,6 @@
 // Peoples as data (AL-114): see species.hpp.
 #include "sim/species.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -17,10 +18,9 @@ namespace fs = std::filesystem;
 namespace {
 
 Json readFile(const fs::path& p, std::vector<std::string>& errors) {
-    std::ifstream in(p);
-    if (!in) return Json();
+    if (!data::exists(p)) return Json();
     try {
-        return Json::parse(in, nullptr, true, true);
+        return data::readJson(p.string());
     } catch (const std::exception& e) {
         errors.push_back(p.filename().string() + ": " + e.what());
         return Json();
@@ -28,13 +28,7 @@ Json readFile(const fs::path& p, std::vector<std::string>& errors) {
 }
 
 std::vector<fs::path> jsonFiles(const fs::path& dir) {
-    std::vector<fs::path> out;
-    std::error_code ec;
-    if (!fs::is_directory(dir, ec)) return out;
-    for (const auto& e : fs::directory_iterator(dir, ec))
-        if (e.is_regular_file() && e.path().extension() == ".json") out.push_back(e.path());
-    std::sort(out.begin(), out.end());
-    return out;
+    return data::listPaths(dir); // LR-142: every layer's files, sorted
 }
 
 double num(const Json& j, const char* k, double d) { return j.is_object() && j.contains(k) && j[k].is_number() ? j[k].get<double>() : d; }

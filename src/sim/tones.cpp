@@ -1,4 +1,5 @@
 #include "sim/tones.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -23,13 +24,13 @@ const ToneRules* toneRules(const Content& c) {
     static std::map<std::string, std::unique_ptr<ToneRules>> cache;
     if (c.dir.empty()) return nullptr;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return it->second.get();
     std::unique_ptr<ToneRules> r;
     const fs::path p = fs::path(c.dir) / "tones.json";
-    if (fs::exists(p)) {
+    if (data::exists(p)) {
         r = std::make_unique<ToneRules>();
-        std::ifstream f(p, std::ios::binary);
+        data::InFile f(p, std::ios::binary);
         const Json j = Json::parse(f);
         r->order = j.value("order", std::vector<std::string>{});
         const Json rc = j.value("reception", Json::object());
@@ -56,7 +57,7 @@ const ToneRules* toneRules(const Content& c) {
         for (const auto& o : r->order)
             if (!r->tones.count(o)) throw std::runtime_error("tones.json: order names unknown tone '" + o + "'");
     }
-    return (cache[c.dir] = std::move(r)).get();
+    return (cache[data::cacheKey(c.dir)] = std::move(r)).get();
 }
 
 std::string toneOf(const World& w, const Character& actor, const Character* target) {

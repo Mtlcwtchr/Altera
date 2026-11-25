@@ -1,6 +1,7 @@
 // AL-115: elementals (sim/elementals.hpp).
 
 #include "sim/elementals.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -67,7 +68,7 @@ const ElementalsConfig& config(const World& w) {
     if (!slot) {
         slot = std::make_unique<ElementalsConfig>();
         if (w.content().dir.empty()) return *slot;
-        std::ifstream in(w.content().dir + "/../world/elementals.json");
+        data::InFile in(w.content().dir + "/../world/elementals.json");
         if (!in) return *slot;
         const Json j = Json::parse(in, nullptr, false);
         if (j.is_discarded()) return *slot;

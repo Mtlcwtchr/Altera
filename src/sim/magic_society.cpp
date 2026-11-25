@@ -3,6 +3,7 @@
 // See magic_society.hpp.
 
 #include "sim/magic_society.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -29,7 +30,7 @@ constexpr Tick kHour = kTicksPerDay / 24;
 const std::vector<std::string> kClasses = {"magic", "witchcraft", "necromancy"}; // mild -> grave
 
 Json readJson(const fs::path& p) {
-    std::ifstream f(p);
+    data::InFile f(p);
     if (!f) return Json();
     return Json::parse(f, nullptr, false);
 }
@@ -282,11 +283,11 @@ const SocietyRules& societyRules(const Content& c) {
     static const SocietyRules kNoRules;
     if (c.dir.empty()) return kNoRules;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<SocietyRules>();
     loadRules(*r, fs::path(c.dir).parent_path() / "magic" / "society.json");
-    return *cache.emplace(c.dir, std::move(r)).first->second;
+    return *cache.emplace(data::cacheKey(c.dir), std::move(r)).first->second;
 }
 
 std::vector<std::string> checkSociety(const Content& c) {

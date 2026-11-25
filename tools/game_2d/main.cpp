@@ -63,6 +63,7 @@ using socket_t = int;
 #include "client2d/session2d.hpp"
 #include "client2d/view2d.hpp"
 #include "sim/ai.hpp"
+#include "sim/data_fs.hpp"
 #include "sim/building.hpp"
 #include "sim/loc.hpp"
 #include "sim/speech_feed.hpp"
@@ -91,6 +92,13 @@ struct App {
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
     // AL-99: the session (new game, saves)
     const Content* content = nullptr;
+    // LR-142: hot reload. Content and loc read again keep the old ones alive (a world, a cached
+    // pointer may still hold them); the client JSON is read again in place.
+    std::string contentDir, locDir;
+    std::vector<std::unique_ptr<Content>> reloadedContent;
+    std::vector<std::unique_ptr<Loc>> reloadedLoc;
+    bool hotReload = true;
+    std::chrono::steady_clock::time_point lastDataCheck{};
     Json baseCfg;               // the world file
     Json wheel;                 // content/ui/wheel.json
     Json sky;                   // AL-110: content/sprites_2d/sky2d.json
@@ -144,12 +152,25 @@ Json speechJson(App& a, const Vec2* near) {
     return out;
 }
 
+// LR-142: content files come through the data layers (mods, the data folder beside the exe);
+// a JSON file is the layered JSON ("_merge" layers merged), anything else the top layer's file.
 std::string readFile(const std::string& p, bool* ok = nullptr) {
-    std::ifstream f(p, std::ios::binary);
-    if (ok) *ok = bool(f);
-    std::stringstream ss;
-    ss << f.rdbuf();
-    return ss.str();
+    const bool json = p.size() > 5 && p.compare(p.size() - 5, 5, ".json") == 0;
+    if (json && data::exists(p)) {
+        try {
+            const std::string out = data::readJson(p).dump();
+            if (ok) *ok = true;
+            return out;
+        } catch (const std::exception& e) {
+            std::cerr << "data: " << e.what() << "\n";
+            if (ok) *ok = false;
+            return {};
+        }
+    }
+    std::string out;
+    const bool have = data::readText(p, out);
+    if (ok) *ok = have;
+    return out;
 }
 
 std::string queryParam(const std::string& path, const std::string& key) {
@@ -551,9 +572,71 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
 
 } // namespace
 
+// The 2D client's own JSON (content/sprites_2d, content/ui), at start and on a hot reload.
+void loadClientData(App& app) {
+    bool haveRules = false;
+    const std::string rulesText = readFile(app.spritesDir + "/map2d.json", &haveRules);
+    app.ground = haveRules ? c2::GroundRules::fromJson(Json::parse(rulesText).value("ground", Json::object()))
+                           : c2::GroundRules::defaults();
+    bool haveSky = false;
+    const std::string skyText = readFile(app.spritesDir + "/sky2d.json", &haveSky);
+    app.sky = haveSky ? Json::parse(skyText) : Json::object();
+    bool haveCrops = false;
+    const std::string cropsText = readFile(app.spritesDir + "/crops2d.json", &haveCrops);
+    app.crops = haveCrops ? c2::CropRules::fromJson(Json::parse(cropsText).value("plots", Json::object())) : c2::CropRules{};
+    bool haveWheel = false;
+    const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
+    bool haveCraftUi = false;
+    const std::string craftUi = readFile(app.root + "/content/ui/craft.json", &haveCraftUi);
+    app.craftUi = haveCraftUi ? Json::parse(craftUi) : Json::object();
+    app.talk = c2::TalkCatalog::make(haveWheel ? Json::parse(wheel) : Json());
+    app.wheel = haveWheel ? Json::parse(wheel) : Json();
+}
+
+// LR-142: a content file changed on disk (any layer): read the content, the loc and the client
+// JSON again and put them under the running world. A file that does not load keeps the old data.
+void reloadData(App& app, const std::vector<std::string>& why) {
+    std::cout << "data: " << why.size() << " file(s) changed (" << why.front() << (why.size() > 1 ? ", ..." : "")
+              << "), reloading" << std::endl;
+    const std::uint64_t gen = data::generation();
+    data::reload(); // the modules' caches key on the generation: they read fresh from here on
+    try {
+        auto fresh = std::make_unique<Content>(Content::load(app.contentDir));
+        auto loc = std::make_unique<Loc>(Loc::load(app.locDir));
+        loadClientData(app);
+        for (const auto& w : fresh->warnings) std::cerr << "content: " << w << "\n";
+        if (app.world) app.world->rebindContent(*fresh);
+        app.content = fresh.get();
+        app.text.loc = loc.get();
+        if (!loc->hasLanguage(app.text.lang)) app.text.lang = loc->base();
+        app.reloadedContent.push_back(std::move(fresh));
+        app.reloadedLoc.push_back(std::move(loc));
+        if (app.world) app.acts = c2::ActCatalog::make(*app.world, app.wheel);
+        std::cout << "data: reloaded (generation " << data::generation() << ")" << std::endl;
+    } catch (const std::exception& e) {
+        data::restoreGeneration(gen);
+        std::cerr << "data: reload failed, the old data stays: " << e.what() << std::endl;
+    }
+}
+
+// Once a second: did a watched content file change?
+void checkData(App& app) {
+    if (!app.hotReload) return;
+    const auto now = std::chrono::steady_clock::now();
+    if (now - app.lastDataCheck < std::chrono::seconds(1)) return;
+    app.lastDataCheck = now;
+    const std::vector<std::string> ch = data::changed();
+    if (!ch.empty()) reloadData(app, ch);
+}
+
 int main(int argc, char** argv) {
     App app;
-    app.root = LR_SIM_SOURCE_DIR;
+    // LR-142: content/ beside the exe (data/content, content) or above it (a build tree), else the
+    // source tree; mods/ folders over it (sim/data_fs.hpp). --root still names a tree outright.
+    app.root = std::filesystem::path(data::mountDefault(argc > 0 ? argv[0] : "", std::string(LR_SIM_SOURCE_DIR) + "/content"))
+                   .parent_path()
+                   .generic_string();
+    if (const char* h = std::getenv("LR_HOT_RELOAD"); h && *h == '0') app.hotReload = false;
     std::string contentDir, worldFile, locDir, season, lang = "ru";
     std::uint64_t seed = 7;
     int port = 8766;
@@ -569,7 +652,11 @@ int main(int argc, char** argv) {
             }
             return argv[++i];
         };
-        if (!std::strcmp(argv[i], "--root")) app.root = next();
+        if (!std::strcmp(argv[i], "--root")) {
+            app.root = next();
+            data::mount(app.root + "/content", data::layers());
+        }
+        else if (!std::strcmp(argv[i], "--no-hot-reload")) app.hotReload = false;
         else if (!std::strcmp(argv[i], "--content")) contentDir = next();
         else if (!std::strcmp(argv[i], "--world")) worldFile = next();
         else if (!std::strcmp(argv[i], "--seed")) seed = std::stoull(next());
@@ -592,6 +679,11 @@ int main(int argc, char** argv) {
     if (worldFile.empty()) worldFile = app.root + "/content/sim/test_world.json";
     if (locDir.empty()) locDir = app.root + "/content/loc";
     app.webDir = app.root + "/tools/game_2d/web";
+    if (!std::filesystem::is_directory(app.webDir)) app.webDir = std::string(LR_SIM_SOURCE_DIR) + "/tools/game_2d/web"; // debug page
+    app.contentDir = contentDir;
+    app.locDir = locDir;
+    std::cout << "data: " << data::contentRoot() << (data::layers().empty() ? "" : " + mods:") << std::endl;
+    for (const auto& l : data::layers()) std::cout << "  " << l << std::endl;
     app.spritesDir = app.root + "/content/sprites_2d";
 #ifdef LR_GAME2D_NATIVE
     // the game's own window (tools/game_2d/native), up before the world is made
@@ -614,25 +706,10 @@ int main(int argc, char** argv) {
         const Loc loc = Loc::load(locDir);
         app.text.loc = &loc;
         app.text.lang = loc.hasLanguage(lang) ? lang : loc.base();
-        bool haveRules = false;
-        const std::string rulesText = readFile(app.spritesDir + "/map2d.json", &haveRules);
-        if (haveRules) app.ground = c2::GroundRules::fromJson(Json::parse(rulesText).value("ground", Json::object()));
-        bool haveSky = false;
-        const std::string skyText = readFile(app.spritesDir + "/sky2d.json", &haveSky);
-        app.sky = haveSky ? Json::parse(skyText) : Json::object();
-        bool haveCrops = false;
-        const std::string cropsText = readFile(app.spritesDir + "/crops2d.json", &haveCrops);
-        if (haveCrops) app.crops = c2::CropRules::fromJson(Json::parse(cropsText).value("plots", Json::object()));
         app.content = &content;
         app.baseCfg = loadJsonFile(worldFile);
         app.saveDir = c2::saveDir2d();
-        bool haveWheel = false;
-        const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
-        bool haveCraftUi = false;
-        const std::string craftUi = readFile(app.root + "/content/ui/craft.json", &haveCraftUi);
-        app.craftUi = haveCraftUi ? Json::parse(craftUi) : Json::object();
-        app.talk = c2::TalkCatalog::make(haveWheel ? Json::parse(wheel) : Json());
-        app.wheel = haveWheel ? Json::parse(wheel) : Json();
+        loadClientData(app);
         app.game.seed = seed;
         if (app.baseCfg.contains("size_m"))   // the world file's own size stays unless a size is picked
             app.game.size = app.baseCfg.value("size_m", 12000.0) <= 9000 ? "small" : app.baseCfg.value("size_m", 12000.0) >= 15000 ? "large" : "medium";
@@ -728,6 +805,7 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            checkData(app); // LR-142: hot reload of the content
             const auto now = Clock::now();
             const double dt = std::chrono::duration<double>(now - lastTick).count();
             lastTick = now;

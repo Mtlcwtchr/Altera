@@ -1,17 +1,18 @@
-#include "sim/craft/craft_expr.hpp"
+#include "sim/expr.hpp"
 
 #include <cctype>
 #include <cmath>
+#include <map>
 #include <cstdlib>
 #include <stdexcept>
 
-namespace lr::sim::craft {
+namespace lr::sim {
 
 namespace {
 
 enum class Op {
     Num, Var, Sym, Neg, Not, Add, Sub, Mul, Div, Lt, Le, Gt, Ge, Eq, Ne, And, Or, Tern,
-    Min, Max, Clamp, Abs, Floor, Ceil, Round
+    Min, Max, Clamp, Abs, Floor, Ceil, Round, Pow, Sqrt, Exp, Log, Lerp, Sign, Step, Fn, Noise, POver
 };
 
 } // namespace
@@ -19,7 +20,8 @@ enum class Op {
 struct ExprNode {
     Op op = Op::Num;
     double num = 0.0;
-    std::string name, arg; // Var: name; Sym: name(fn) + arg
+    std::string name, arg; // Var: name; Sym: name(fn) + arg; Fn: name of a registered function
+    const ExprFn* fn = nullptr;
     std::vector<std::shared_ptr<const ExprNode>> kids;
 };
 
@@ -30,6 +32,19 @@ using NodeP = std::shared_ptr<const ExprNode>;
 const std::set<std::string>& symbolicFns() {
     static const std::set<std::string> s{"has", "count", "mass", "flaw", "state", "tag", "eff", "role"};
     return s;
+}
+
+std::map<std::string, ExprFn>& fnRegistry() {
+    static std::map<std::string, ExprFn> r;
+    return r;
+}
+
+// The raw text of a call argument: up to the next ',' or ')' at depth 0.
+std::string trimmed(const std::string& t) {
+    size_t a = 0, b = t.size();
+    while (a < b && std::isspace(static_cast<unsigned char>(t[a]))) ++a;
+    while (b > a && std::isspace(static_cast<unsigned char>(t[b - 1]))) --b;
+    return t.substr(a, b - a);
 }
 
 struct Parser {
@@ -139,6 +154,44 @@ struct Parser {
         }
         return s.substr(b, i - b);
     }
+    // f.<id>(a, k=b): a call of a named formula with arguments. The arguments are kept as
+    // text and the call reads as one name, "f.<id>(a,k=b)", answered by the formula book
+    // (sim/formulas.hpp), which specialises the formula once per distinct call.
+    NodeP formulaCall(const std::string& id) {
+        std::vector<std::string> parts;
+        std::string cur;
+        int depth = 0;
+        for (;;) {
+            if (i >= s.size()) fail("expected ')' after " + id + "(");
+            const char ch = s[i++];
+            if (depth == 0 && (ch == ',' || ch == ')')) {
+                const std::string t = trimmed(cur);
+                if (!t.empty() || ch == ',') {
+                    if (t.empty()) fail("empty argument in " + id + "(");
+                    parts.push_back(t);
+                }
+                cur.clear();
+                if (ch == ')') break;
+                continue;
+            }
+            if (ch == '(') ++depth;
+            if (ch == ')') --depth;
+            cur += ch;
+        }
+        std::string name = id + "(";
+        for (size_t k = 0; k < parts.size(); ++k) {
+            std::string a;
+            for (char ch : parts[k])
+                if (!std::isspace(static_cast<unsigned char>(ch))) a += ch;
+            name += (k ? "," : "") + a;
+        }
+        name += ")";
+        auto n = std::make_shared<ExprNode>();
+        n->op = Op::Var;
+        n->name = name;
+        if (names) names->insert(name);
+        return n;
+    }
     NodeP primary() {
         ws();
         if (i >= s.size()) fail("unexpected end");
@@ -174,6 +227,7 @@ struct Parser {
             return n;
         }
         eat("(");
+        if (id.rfind("f.", 0) == 0) return formulaCall(id);
         if (symbolicFns().count(id)) {
             std::string arg;
             if (!peek(")")) arg = ident();
@@ -202,6 +256,23 @@ struct Parser {
         else if (id == "floor") { need(1, 1); op = Op::Floor; }
         else if (id == "ceil") { need(1, 1); op = Op::Ceil; }
         else if (id == "round") { need(1, 1); op = Op::Round; }
+        else if (id == "pow") { need(2, 2); op = Op::Pow; }
+        else if (id == "sqrt") { need(1, 1); op = Op::Sqrt; }
+        else if (id == "exp") { need(1, 1); op = Op::Exp; }
+        else if (id == "log") { need(1, 1); op = Op::Log; }
+        else if (id == "lerp") { need(3, 3); op = Op::Lerp; }
+        else if (id == "sign") { need(1, 1); op = Op::Sign; }
+        else if (id == "step") { need(2, 2); op = Op::Step; }
+        else if (id == "noise") { need(2, 2); op = Op::Noise; }
+        else if (id == "p_over") { need(3, 3); op = Op::POver; }
+        else if (auto it = fnRegistry().find(id); it != fnRegistry().end()) {
+            need(static_cast<size_t>(it->second.minArgs), static_cast<size_t>(it->second.maxArgs));
+            auto n = mk(Op::Fn, std::move(args));
+            auto* m = const_cast<ExprNode*>(n.get());
+            m->name = id;
+            m->fn = &it->second;
+            return n;
+        }
         else fail("unknown function " + id);
         return mk(op, std::move(args));
     }
@@ -246,6 +317,39 @@ double evalNode(const ExprNode& n, const ExprCtx& c) {
     case Op::Floor: return std::floor(k(0));
     case Op::Ceil: return std::ceil(k(0) - 1e-9);
     case Op::Round: return std::round(k(0));
+    case Op::Pow: {
+        const double b = k(0), e = k(1);
+        const double v = std::pow(b, e);
+        return std::isfinite(v) ? v : 0.0;
+    }
+    case Op::Sqrt: return std::sqrt(std::max(0.0, k(0)));
+    case Op::Exp: return std::exp(std::min(k(0), 700.0));
+    case Op::Log: {
+        const double x = k(0);
+        return x > 0.0 ? std::log(x) : 0.0;
+    }
+    case Op::Lerp: return k(0) + (k(1) - k(0)) * k(2);
+    case Op::Sign: {
+        const double x = k(0);
+        return x > 0.0 ? 1.0 : x < 0.0 ? -1.0 : 0.0;
+    }
+    case Op::Step: return k(1) >= k(0) ? 1.0 : 0.0; // step(edge, x)
+    case Op::Noise: { // noise(mean, sd): a normal draw from the context's stream (Box-Muller)
+        const double mean = k(0), sd = k(1);
+        const double u1 = std::max(1e-12, c.rand01()), u2 = c.rand01();
+        return mean + sd * std::sqrt(-2.0 * std::log(u1)) * std::cos(6.283185307179586 * u2);
+    }
+    case Op::POver: { // p_over(mean, sd, t): the chance a normal draw is above t
+        const double mean = k(0), sd = k(1), t = k(2);
+        if (sd <= 1e-12) return mean > t ? 1.0 : 0.0;
+        return 0.5 * std::erfc((t - mean) / (sd * std::sqrt(2.0)));
+    }
+    case Op::Fn: {
+        std::vector<double> a(n.kids.size());
+        for (size_t j = 0; j < n.kids.size(); ++j) a[j] = k(j);
+        const double v = n.fn->eval(a, c);
+        return std::isfinite(v) ? v : 0.0;
+    }
     }
     return 0.0;
 }
@@ -253,6 +357,41 @@ double evalNode(const ExprNode& n, const ExprCtx& c) {
 } // namespace
 
 bool isSymbolicFn(const std::string& fn) { return symbolicFns().count(fn) > 0; }
+
+void registerExprFn(const std::string& name, int minArgs, int maxArgs, ExprFn::Eval eval) {
+    ExprFn& f = fnRegistry()[name];
+    f.minArgs = minArgs;
+    f.maxArgs = maxArgs;
+    f.eval = std::move(eval);
+}
+
+bool isExprFn(const std::string& name) { return fnRegistry().count(name) > 0; }
+
+namespace {
+std::map<std::string, ExprPrefixCheck>& prefixRegistry() {
+    static std::map<std::string, ExprPrefixCheck> r;
+    return r;
+}
+} // namespace
+
+void registerExprPrefix(const std::string& prefix, ExprPrefixCheck known) { prefixRegistry()[prefix] = std::move(known); }
+
+bool exprNameKnown(const std::string& name, std::string* why) {
+    for (const auto& [p, check] : prefixRegistry()) {
+        if (name.compare(0, p.size(), p) != 0) continue;
+        if (!check) return true;
+        std::string w;
+        if (check(name.substr(p.size()), &w)) return true;
+        if (why) *why = w.empty() ? "unknown " + p + " id '" + name.substr(p.size()) + "'" : w;
+        return false;
+    }
+    if (why) *why = "no data source answers '" + name + "' (registered prefixes: " + [] {
+        std::string all;
+        for (const auto& [p, c] : prefixRegistry()) all += (all.empty() ? "" : " ") + p;
+        return all.empty() ? std::string("none") : all;
+    }() + ")";
+    return false;
+}
 
 Expr Expr::compile(const std::string& src, std::string* error) {
     Expr e;
@@ -335,4 +474,4 @@ double Constraint::closeness(double x, double falloff) const {
     return std::max(0.0, 1.0 - d / falloff);
 }
 
-} // namespace lr::sim::craft
+} // namespace lr::sim

@@ -1,4 +1,5 @@
 #include "sim/gear.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <filesystem>
@@ -20,13 +21,13 @@ const GearRules* gearRules(const Content& c) {
     static std::map<std::string, std::unique_ptr<GearRules>> cache;
     if (c.dir.empty()) return nullptr;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return it->second.get();
     std::unique_ptr<GearRules> r;
     const fs::path p = fs::path(c.dir) / "gear.json";
-    if (fs::exists(p)) {
+    if (data::exists(p)) {
         r = std::make_unique<GearRules>();
-        std::ifstream f(p, std::ios::binary);
+        data::InFile f(p, std::ios::binary);
         const Json j = Json::parse(f);
         const Json carry = j.value("carry", Json::object());
         r->comfortKg = carry.value("comfort_kg", r->comfortKg);
@@ -69,8 +70,8 @@ const GearRules* gearRules(const Content& c) {
         };
         readItem(j.value("default", Json::object()), r->fallback);
         // stack sizes from items.json (how many small things share a cell)
-        if (const fs::path ip = fs::path(c.dir) / "items.json"; fs::exists(ip)) {
-            std::ifstream fi(ip, std::ios::binary);
+        if (const fs::path ip = fs::path(c.dir) / "items.json"; data::exists(ip)) {
+            data::InFile fi(ip, std::ios::binary);
             const Json items = Json::parse(fi).value("items", Json::array());
             for (const auto& v : items)
                 if (v.contains("id")) r->stacks[v["id"].get<std::string>()] = v.value("stack", 1);
@@ -91,7 +92,7 @@ const GearRules* gearRules(const Content& c) {
             r->items[k] = g;
         }
     }
-    return (cache[c.dir] = std::move(r)).get();
+    return (cache[data::cacheKey(c.dir)] = std::move(r)).get();
 }
 
 double loadKg(const GearRules& R, const Character& c) {

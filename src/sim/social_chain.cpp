@@ -1,6 +1,7 @@
 // Social chains (AL-40): see social_chain.hpp.
 
 #include "sim/social_chain.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -291,13 +292,13 @@ const SocialRules* socialRules(const Content& c) {
     static std::map<std::string, std::unique_ptr<SocialRules>> cache;
     if (c.dir.empty()) return nullptr;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return it->second.get();
     std::unique_ptr<SocialRules> r;
     const fs::path p = fs::path(c.dir) / "social_chains.json";
-    if (fs::exists(p)) {
+    if (data::exists(p)) {
         r = std::make_unique<SocialRules>();
-        std::ifstream f(p, std::ios::binary);
+        data::InFile f(p, std::ios::binary);
         const Json j = Json::parse(f);
         const Json cfg = j.value("config", Json::object());
         r->askTicks = cfg.value("ask_ticks", r->askTicks);
@@ -349,7 +350,7 @@ const SocialRules* socialRules(const Content& c) {
         for (auto& [id, sc] : r->chains)
             if (sc.talk.empty() && sc.talkOnly) sc.talk = fallback;
     }
-    return (cache[c.dir] = std::move(r)).get();
+    return (cache[data::cacheKey(c.dir)] = std::move(r)).get();
 }
 
 const SocialChainDef* socialChain(const Content& c, const std::string& act) {

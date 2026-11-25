@@ -11,6 +11,7 @@
 // Trace and report carry codes + params; with a loc table their "text" fields
 // are assembled in --lang (doc/design/LOC_FORMAT.md).
 
+#include <filesystem>
 #include <cstdio>
 #include <cstring>
 #include <fstream>
@@ -20,6 +21,7 @@
 #include <string>
 
 #include "sim/dialogue_corpus.hpp"
+#include "sim/data_fs.hpp"
 #include "sim/dialogue_gen.hpp"
 #include "sim/dialogue_rules.hpp"
 #include "sim/ai.hpp"
@@ -114,7 +116,11 @@ void writeLedger(std::ostream& out, const World& w, bool header) {
 } // namespace
 
 int main(int argc, char** argv) {
-    std::string root = LR_SIM_SOURCE_DIR;
+    // LR-142: content/ beside the exe or the source tree, with mods/ over it (sim/data_fs.hpp)
+    std::string root = std::filesystem::path(lr::sim::data::mountDefault(argc > 0 ? argv[0] : "",
+                                                                         std::string(LR_SIM_SOURCE_DIR) + "/content"))
+                           .parent_path()
+                           .generic_string();
     std::string contentDir = root + "/content/ai";
     std::string worldFile = root + "/content/sim/test_world.json";
     std::string locDir = root + "/content/loc";

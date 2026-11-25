@@ -1,6 +1,7 @@
 // After an accusation: answer, pursuit, court, sentence (justice.hpp, AL-37).
 
 #include "sim/justice.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -564,12 +565,12 @@ const CaseRules& caseRules(const Content& c) {
     static const CaseRules kDefaults;
     if (c.dir.empty()) return kDefaults;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<CaseRules>();
     const fs::path p = fs::path(c.dir) / "consequences.json";
-    if (fs::exists(p)) {
-        std::ifstream f(p, std::ios::binary);
+    if (data::exists(p)) {
+        data::InFile f(p, std::ios::binary);
         const Json root = Json::parse(f);
         const Json j = root.value("case", Json::object());
         const Json t = j.value("timing", Json::object());
@@ -621,7 +622,7 @@ const CaseRules& caseRules(const Content& c) {
         r->accusedToAccuser = loadRel(rel.value("accused", Json::object()));
     }
     auto* out = r.get();
-    cache[c.dir] = std::move(r);
+    cache[data::cacheKey(c.dir)] = std::move(r);
     return *out;
 }
 

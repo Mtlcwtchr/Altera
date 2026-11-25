@@ -10,6 +10,7 @@
 #include "sim/core.hpp"
 #include "sim/craft/craft_data.hpp"
 #include "sim/rules.hpp"
+#include "sim/formulas.hpp"
 
 namespace lr::sim {
 
@@ -608,6 +609,7 @@ struct Content {
     std::vector<BackstoryDef> backstories; // content/ai/backstories.json, file order (none = no choice)
     BackstoryConfig backstoryCfg;
     Json charCreation = Json::object(); // AL-136: content/ai/character_creation.json (sim/charcreate.hpp)
+    FormulaBook formulas;               // LR-142: content/ai/formulas/*.json (sim/formulas.hpp)
     const BackstoryDef* backstory(const std::string& id) const {
         for (const auto& b : backstories)
             if (b.id == id) return &b;

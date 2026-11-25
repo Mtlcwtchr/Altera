@@ -231,6 +231,9 @@ public:
     explicit World(const Content& content, std::uint64_t seed = 1);
 
     const Content& content() const { return *content_; }
+    // LR-142: hot reload puts freshly loaded content under the running world (ids stay, numbers
+    // and rules change). The caller keeps `c` alive as long as the world.
+    void rebindContent(const Content& c) { content_ = &c; }
     std::uint64_t seed() const { return seed_; }
     Tick now() const { return tick_; }
     int day() const { return static_cast<int>(tick_ / kTicksPerDay); }

@@ -1,4 +1,8 @@
 #include "sim/content.hpp"
+
+#include "sim/char_expr.hpp"
+#include "sim/data_fs.hpp"
+#include "sim/templates.hpp"
 #include "sim/consequences.hpp"
 #include "sim/craft_sim.hpp"
 
@@ -107,15 +111,8 @@ std::string Content::fsmRoot(const std::string& state) const {
 
 namespace {
 
-Json readJson(const std::string& path) {
-    std::ifstream f(path, std::ios::binary);
-    if (!f) throw std::runtime_error("cannot open " + path);
-    try {
-        return Json::parse(f);
-    } catch (const std::exception& e) {
-        throw std::runtime_error(path + ": " + e.what());
-    }
-}
+// LR-142: through the data layers (mods, the data folder beside the exe)
+Json readJson(const std::string& path) { return data::readJson(path); }
 
 template <class T> T opt(const Json& j, const char* key, T def) {
     auto it = j.find(key);
@@ -860,10 +857,7 @@ RoomCatalog parseRooms(const Json& j) {
 }
 
 Content Content::load(const std::string& dir) {
-    auto f = [&](const char* name) {
-        std::ifstream probe(dir + "/" + name);
-        return probe ? readJson(dir + "/" + name) : Json::object();
-    };
+    auto f = [&](const char* name) { return data::readJsonOr(dir + "/" + name, Json::object()); };
     Json items = f("items.json"), objects = f("objects.json"), needs = f("needs.json"), traits = f("traits.json"),
          htn = f("htn.json"), interactions = f("interactions.json"), config = f("config.json"),
          knowledge = f("knowledge.json");
@@ -890,8 +884,7 @@ Content Content::load(const std::string& dir) {
     // join theirs, other fields (worth, quality, material) fill in where the item has none.
     for (const char* pack : {"cuisine", "resources"}) {
         const std::string path = dir + "/" + pack + "/items.json";
-        std::ifstream probe(path);
-        if (!probe) continue;
+        if (!data::exists(path)) continue;
         const Json cu = readJson(path);
         for (const auto& a : cu.value("annotate", Json::array())) {
             const std::string id = a.value("id", std::string());
@@ -912,6 +905,22 @@ Content Content::load(const std::string& dir) {
     // AL-114: monsters (content/creatures) join the animals, their loot items and hunts join the catalog.
     Json species = f("species.json");
     std::vector<std::string> creatureErrors = mergeCreatures(dir + "/../creatures", species, items, interactions);
+    // LR-142: templates (extends / use / params) of every list, before anything reads them
+    std::vector<std::string> ferr;
+    {
+        const TemplateBook book = TemplateBook::load(dir + "/templates", &ferr);
+        auto expand = [&](Json& file, const char* key) {
+            if (file.is_object() && file.contains(key)) expandTemplates(file[key], book, key, &ferr);
+        };
+        expand(items, "items");
+        expand(objects, "objects");
+        expand(interactions, "interactions");
+        expand(traits, "traits");
+        expand(needs, "needs");
+        expand(needs, "moodlets");
+        expand(knowledge, "knowledge");
+        for (auto& e : ferr) e = "templates: " + e;
+    }
     Content c = fromJson(items, objects, needs, traits, f("goals.json"), htn, interactions, f("fsm.json"), config,
                          f("dialogue.json"), knowledge, species);
     c.expansion = std::move(expansion);
@@ -935,7 +944,12 @@ Content Content::load(const std::string& dir) {
         for (const auto& n : names.value("family", Json::array())) c.familyNames.push_back(n.get<std::string>());
     }
     c.dir = dir;
+    {   // LR-142: the named formulas, checked against the ids loaded above
+        c.formulas = FormulaBook::load(dir + "/formulas", &ferr);
+        c.formulas.finalize(&ferr, [&c](const std::string& n, std::string* why) { return charExprNameKnown(c, n, why); });
+    }
     ValidationReport v = validate(c);
+    for (auto& e : ferr) v.errors.push_back(e.rfind("templates: ", 0) == 0 ? e : "formulas: " + e);
     for (auto& w : v.warnings) c.warnings.push_back(w);
     if (!v.ok()) {
         std::ostringstream os;

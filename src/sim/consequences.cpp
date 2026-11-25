@@ -1,6 +1,7 @@
 // Consequences of deeds (consequences.hpp, AL-31..AL-36).
 
 #include "sim/consequences.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -163,12 +164,12 @@ const ConsequenceRules& consequenceRules(const Content& c) {
     static const ConsequenceRules kDefaults;
     if (c.dir.empty()) return kDefaults;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<ConsequenceRules>();
     const fs::path p = fs::path(c.dir) / "consequences.json";
-    if (fs::exists(p)) {
-        std::ifstream f(p, std::ios::binary);
+    if (data::exists(p)) {
+        data::InFile f(p, std::ios::binary);
         const Json j = Json::parse(f);
         if (j.contains("reputation"))
             for (auto t = j["reputation"].begin(); t != j["reputation"].end(); ++t)
@@ -205,7 +206,7 @@ const ConsequenceRules& consequenceRules(const Content& c) {
         r->rumorTrust = num(ru, "trust", r->rumorTrust);
     }
     auto* out = r.get();
-    cache[c.dir] = std::move(r);
+    cache[data::cacheKey(c.dir)] = std::move(r);
     return *out;
 }
 
@@ -255,7 +256,7 @@ const NoiseParams& noiseParams(const Content& c, double decay) {
     static std::mutex mu;
     static std::map<std::string, std::unique_ptr<NoiseParams>> cache;
     std::lock_guard<std::mutex> lock(mu);
-    auto& slot = cache[c.dir];
+    auto& slot = cache[data::cacheKey(c.dir)];
     if (!slot) slot = std::make_unique<NoiseParams>(NoiseParams::fromJson(dialogueGenData(c).noise, decay));
     return *slot;
 }

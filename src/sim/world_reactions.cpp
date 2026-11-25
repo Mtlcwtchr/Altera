@@ -1,6 +1,7 @@
 // AL-115 M4: reactions of the elements in the world (sim/world_reactions.hpp).
 
 #include "sim/world_reactions.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -18,7 +19,7 @@ namespace lr::sim {
 namespace {
 
 Json readIf(const std::string& path) {
-    std::ifstream in(path);
+    data::InFile in(path);
     if (!in) return Json::object();
     Json j = Json::parse(in, nullptr, false);
     return j.is_discarded() ? Json::object() : j;

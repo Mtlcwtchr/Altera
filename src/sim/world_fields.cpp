@@ -1,6 +1,7 @@
 // AL-115: the fields of the world's cells, fire and destruction (sim/world_fields.hpp).
 
 #include "sim/world_fields.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -219,7 +220,7 @@ const FieldsConfig& fieldsConfig(const World& w) {
     if (!slot) {
         Json j = Json::object();
         if (!w.content().dir.empty()) {
-            std::ifstream in(w.content().dir + "/../world/fields.json");
+            data::InFile in(w.content().dir + "/../world/fields.json");
             if (in) j = Json::parse(in, nullptr, false);
             if (j.is_discarded()) j = Json::object();
         }

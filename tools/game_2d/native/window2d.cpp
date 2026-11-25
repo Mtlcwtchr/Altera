@@ -45,6 +45,7 @@
 #include "native/atmos2d.hpp"
 #include "native/ctx2d.hpp"
 #include "native/pixels2d.hpp"
+#include "sim/data_fs.hpp"
 
 namespace game2d {
 
@@ -74,11 +75,21 @@ constexpr int kPage = 1024, kCell = 22;   // atlas pages, one picture a cell wit
 
 double nowMs() { return double(SDL_GetTicks()); }
 
+// LR-142: through the data layers (mods, the data folder beside the exe): a JSON file is the
+// layered JSON, anything else the top layer's file.
 std::string readText(const std::filesystem::path& p) {
-    std::ifstream f(p, std::ios::binary);
-    std::stringstream ss;
-    ss << f.rdbuf();
-    return ss.str();
+    const std::string s = p.string();
+    if (p.extension() == ".json" && lr::sim::data::exists(s)) {
+        try {
+            return lr::sim::data::readJson(s).dump();
+        } catch (const std::exception& e) {
+            std::cerr << "data: " << e.what() << "\n";
+            return {};
+        }
+    }
+    std::string out;
+    lr::sim::data::readText(s, out);
+    return out;
 }
 
 Json parseOr(const std::string& s, Json fallback) {
@@ -257,6 +268,7 @@ struct Window::Impl : Ctx {
     bool follow = false, glyphs = false, altDown = false, fullscreen = false;
     std::string roofMode = "auto";
     double lastFrame = 0, lastPoll = -1e9, lastBar = -1e9;
+    std::uint64_t dataGen = 0;   // LR-142: the data generation the sprites and the map rules were read at
     bool selectedMe = false;
 
     // --- leading ------------------------------------------------------------------
@@ -833,6 +845,23 @@ struct Window::Impl : Ctx {
                 if (str(s, "mode") == "full") break;
             }
         slots = {Slot{"act", "chat", true}, Slot{"goal", "eat"}, Slot{"goal", "drink"}, Slot{"goal", "rest"}, Slot{}, Slot{}, Slot{}, Slot{}};
+    }
+
+    // LR-142: the content was reloaded (a JSON changed on disk): read the sprites, the map rules
+    // and the HUD again, keep the camera and the quick bar, repaint everything.
+    void reloadStatic() {
+        const double cx = camX, cy = camY;
+        const auto keepSlots = slots;
+        UI.clear();
+        actsRe.clear();
+        hidden.clear();
+        loadStatic();
+        camX = cx;
+        camY = cy;
+        slots = keepSlots;
+        atlas.clear();
+        for (auto& [k, c] : chunks) c.painted = false;
+        std::cout << "window: data reloaded" << std::endl;
     }
 
     // --- ground chunks --------------------------------------------------------------------
@@ -2855,6 +2884,7 @@ struct Window::Impl : Ctx {
         host = &h;
         loadingFrame("");
         loadStatic();
+        dataGen = lr::sim::data::generation();
         if (const char* s = SDL_getenv("LR_2D_SHOT")) shotPath = s;
         if (const char* s = SDL_getenv("LR_2D_SHOT_AFTER")) shotAfter = std::atof(s);
         if (const char* s = SDL_getenv("LR_2D_SELECT")) selectIndex = std::atoi(s);
@@ -2891,6 +2921,10 @@ struct Window::Impl : Ctx {
             host->pump(8);
             if (t - lastPoll > 250) guard("poll", [&] { poll(); });
             if (t - lastBar > 1200) guard("bar", [&] { checkBar(); });
+            if (lr::sim::data::generation() != dataGen) {   // LR-142: hot reload
+                dataGen = lr::sim::data::generation();
+                guard("reload", [&] { reloadStatic(); });
+            }
             camera(dt);
             stepVis(dt);
             guard("walk", [&] { walkMe(dt); });

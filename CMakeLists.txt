@@ -369,7 +369,11 @@ add_library(lr_sim STATIC
         src/sim/tones.cpp
         src/sim/social_chain.cpp
         src/sim/ai_report.cpp
-        src/sim/craft/craft_expr.cpp
+        src/sim/expr.cpp
+        src/sim/formulas.cpp
+        src/sim/char_expr.cpp
+        src/sim/data_fs.cpp
+        src/sim/templates.cpp
         src/sim/craft/craft_data.cpp
         src/sim/craft/craft.cpp
         src/sim/craft/craft_chain.cpp
@@ -855,7 +859,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_loc.cpp tests/test_lr_sim_loc_gen.cpp tests/test_lr_sim_content.cpp
             tests/test_lr_sim_farming.cpp tests/test_lr_sim_crafts.cpp
             tests/test_lr_sim_combat.cpp tests/test_lr_sim_captivity.cpp
-            tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
+            tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
             tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
             tests/test_lr_sim_gear.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp

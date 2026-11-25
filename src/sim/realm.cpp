@@ -1,5 +1,6 @@
 // The realm (AL-85, AL-92): see realm.hpp and gdd/realm/REALM_v0.2_unified.md.
 #include "sim/realm.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -179,15 +180,15 @@ const RealmRules& realmRules(const Content& c) {
     static const RealmRules kOff;
     if (c.dir.empty()) return kOff;
     std::lock_guard<std::mutex> lock(mu);
-    auto it = cache.find(c.dir);
+    auto it = cache.find(data::cacheKey(c.dir));
     if (it != cache.end()) return *it->second;
     auto r = std::make_unique<RealmRules>();
     const fs::path p = fs::path(c.dir) / "realm.json";
-    if (fs::exists(p)) {
-        std::ifstream in(p);
+    if (data::exists(p)) {
+        data::InFile in(p);
         *r = parseRules(Json::parse(in));
     }
-    return *cache.emplace(c.dir, std::move(r)).first->second;
+    return *cache.emplace(data::cacheKey(c.dir), std::move(r)).first->second;
 }
 
 void addRealmHook(RealmHook h) { hooks().push_back(std::move(h)); }

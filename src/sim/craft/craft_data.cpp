@@ -1,4 +1,5 @@
 #include "sim/craft/craft_data.hpp"
+#include "sim/data_fs.hpp"
 
 #include <algorithm>
 #include <fstream>
@@ -599,19 +600,19 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
 
 CraftData CraftData::load(const std::string& dir) {
     auto f = [&](const char* name) -> Json {
-        std::ifstream in(dir + "/" + name);
+        data::InFile in(dir + "/" + name);
         if (!in) return Json::object();
         Json j;
         in >> j;
         return j;
     };
-    std::ifstream probe(dir + "/materials.json");
+    data::InFile probe(dir + "/materials.json");
     if (!probe) return CraftData{};
     CraftData d = fromJson(f("materials.json"), f("shapes.json"), f("processes.json"), f("functions.json"),
                            f("forms.json"), f("flaws.json"), f("reacts.json"), f("stations.json"),
                            f("crafting_config.json"), f("designs.json"));
     // AL-117: the aspects of magic live in content/magic (dir is content/ai/craft)
-    std::ifstream am(dir + "/../../magic/aspects.json");
+    data::InFile am(dir + "/../../magic/aspects.json");
     if (am) {
         Json a;
         try {
