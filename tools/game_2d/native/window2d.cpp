@@ -346,6 +346,9 @@ struct Window::Impl : Ctx {
     const Json& statics() const override { return ST; }
     const Json& map2d() const override { return MAP; }
     const Json& craftLook() const override { return LOOK; }
+    void refreshMap() override {
+        for (auto& [k, c] : chunks) c.at = 0;
+    }
     const Json& resources() const override { return RES; }
     void walkTo(double x, double y) override {
         if (me < 0 || !vis.count(me)) return;
@@ -1177,6 +1180,7 @@ struct Window::Impl : Ctx {
             if (it.thing) guard("thing", [&] { drawThing(*it.thing, sc); });
             else guard("pawn", [&] { drawPawn(*it.person, vis[ident(*it.person, "id")], sc); });
         guard("drawRoofs", [&] { drawRoofs(tp); });
+        guard("build", [&] { screens->drawWorld(); });
         guard("drawRoomLabels", [&] { drawRoomLabels(); });
         guard("drawPlay", [&] { drawPlay(sc); });
         guard("drawSelection", [&] { drawSelection(sc); });
@@ -2015,6 +2019,23 @@ struct Window::Impl : Ctx {
     }
     void worldInput() {
         const bool overUi = in.overUi || in.mouseX >= mapW() || in.mouseY >= mapH();
+        {
+            double wx, wy;
+            toWorld(in.mouseX, in.mouseY, wx, wy);
+            if (screens->mapInput(wx, wy, in, overUi || dragging)) {   // the build mode has the pointer
+                if (!overUi && in.wheel != 0) {
+                    double bx, by, ax, ay;
+                    toWorld(in.mouseX, in.mouseY, bx, by);
+                    zoom = std::clamp(zoom + (in.wheel > 0 ? 1 : -1), 1, 3);
+                    toWorld(in.mouseX, in.mouseY, ax, ay);
+                    camX += bx - ax;
+                    camY += by - ay;
+                }
+                clickedWorld = rclickedWorld = false;
+                haveHover = false;
+                return;
+            }
+        }
         if (!overUi && !dragging) {
             toWorld(in.mouseX, in.mouseY, hoverX, hoverY);
             haveHover = true;

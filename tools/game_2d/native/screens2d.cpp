@@ -103,10 +103,16 @@ void Screens::closeTop() {
         }
 }
 
+void Screens::closeAll() {
+    for (auto& w : stack_) w->closing = true;
+}
+
 void Screens::open(const std::string& id, const Json& args) {
     if (id == "menu" || id == "new" || id == "pick" || id == "saves") openMenu(c_, *this, id, args);
     else if (id == "chronicle") openChronicle(c_, *this);
     else if (id == "workshop") openWorkshop(c_, *this);
+    else if (id == "build") openBuild(c_, *this);
+    else if (id == "colony") openColony(c_, *this);
     else if (id == "sheet") openSheet(c_, *this, args.is_number() ? args.get<long long>() : -1);
     else if (id == "talk" || id == "trade") openTalk(c_, *this, args.is_number() ? args.get<long long>() : c_.selected(), id == "trade");
     else c_.toast(c_.L("ui2d.soon", {{"what", c_.L("ui2d.screen." + id)}}));
@@ -133,11 +139,13 @@ bool Screens::key(SDL_Scancode sc, SDL_Keymod mod) {
             closeTop();
             return true;
         }
+        if (buildKey(c_, *this, sc)) return true;
         if (c_.selected() >= 0 && c_.selected() != c_.meId()) return false;   // the first Esc lets go of someone else
         open("menu");
         return true;
     }
     if (Win* t = top(); t && t->onKey && t->onKey(c_, *t, sc)) return true;
+    if (!any() && buildKey(c_, *this, sc)) return true;
     if (sc == SDL_SCANCODE_T && !any()) {   // talk to the selected one
         open("talk");
         return true;
@@ -155,8 +163,10 @@ void Screens::polled() {
         if (w->onPoll && !w->closing) w->onPoll(c_, *w);
 }
 
-bool Screens::mapClick(double, double, int, bool) { return false; }
-void Screens::drawWorld() {}
+bool Screens::mapInput(double wx, double wy, const ui::Input& in, bool overUi) {
+    return !any() && buildMapInput(c_, *this, wx, wy, in, overUi);
+}
+void Screens::drawWorld() { buildDrawWorld(c_, *this); }
 void Screens::personButtons(long long, std::vector<std::pair<std::string, std::function<void()>>>&) {}
 
 void Screens::draw() {
@@ -175,7 +185,10 @@ void Screens::draw() {
             releaseIfNone();
         } else ++i;
     }
-    if (stack_.empty()) return;
+    if (stack_.empty()) {
+        buildPanel(c_, *this);
+        return;
+    }
     ui::Ui& g = c_.gui();
     ui::Input& in = c_.input();
     const float U = c_.u(), W = c_.screenW(), H = c_.screenH();
