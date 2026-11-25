@@ -20,9 +20,10 @@
    "head": "big",
    "nose": "long",
    "build": "wiry",
-   "hair": "none",
    "beard": "never",
-   "eyes": "#e8d040"
+   "eyes": "#e8d040",
+   "hair_m": "none none tuft mohawk",
+   "hair_f": "tuft ponytail none"
   }
  },
  "life": {

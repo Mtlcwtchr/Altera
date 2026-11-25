@@ -119,7 +119,11 @@ std::string heldOf(const World& w, const Character& c) {
 
 // AL-114: the kind as the 2D client draws it: sprite size, skin, glyph, stone in the sun.
 static void raceJson(const World& w, const Character& c, Json& p) {
-    if (c.race.empty()) return;
+    if (c.race.empty()) {   // LR-139: a human (the default kind) still has its hair and beard sets
+        if (w.content().peoples.loaded && !c.isAnimal())
+            if (const sim::RaceDef& r = sim::raceOf(w.content(), c); !r.pawn.empty()) p["rlook"] = r.pawn;
+        return;
+    }
     const sim::RaceDef& r = sim::raceOf(w.content(), c);
     p["race"] = c.race;
     p["rpx"] = r.spritePx;

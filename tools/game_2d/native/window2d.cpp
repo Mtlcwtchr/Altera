@@ -563,7 +563,7 @@ struct Window::Impl : Ctx {
         if (!str(p, "rskin").empty()) spec.skin = str(p, "rskin");   // AL-114: the kind's skin
         if (flag(p, "stone")) spec.skin = "#8c8c86";                 // a troll asleep as stone
         // LR-139: the kind's look (species body.pawn): ears, head, nose, brow, eyes, tusks, build
-        std::string beardRule, hairRule;
+        std::string beardRule, hairRule, hairSet, beardSet;
         if (p.contains("rlook") && p["rlook"].is_object()) {
             const Json& rl = p["rlook"];
             spec.ears = str(rl, "ears");
@@ -576,6 +576,8 @@ struct Window::Impl : Ctx {
             spec.skinPat = str(rl, "skin_pattern");
             beardRule = str(rl, "beard");
             hairRule = str(rl, "hair");
+            hairSet = str(rl, f ? "hair_f" : "hair_m");   // LR-139: the kind's cuts and beards
+            beardSet = str(rl, "beards");
             if (child && spec.tusks == "yes") spec.tusks = "small";
         }
         std::string hc = HAIR[(h >> 6) % 6];
@@ -588,6 +590,20 @@ struct Window::Impl : Ctx {
         if (beardRule == "long" && !f && !child) spec.beard = spec.longBeard = true;   // a dwarf's pride
         if (hairRule == "none") spec.hair.first = "none";
         if (hairRule == "tuft") spec.hair.first = "tuft";
+        auto pick = [](const std::string& set, std::uint32_t k) {
+            std::vector<std::string> v;
+            std::istringstream in(set);
+            for (std::string w; in >> w;) v.push_back(w);
+            return v.empty() ? std::string() : v[k % v.size()];
+        };
+        const std::uint32_t h2 = idHash(num(p, "id"), 5);
+        if (!child)
+            if (const std::string cut = pick(hairSet, h2); !cut.empty()) spec.hair.first = cut;
+        if (spec.beard) {
+            const std::string bs = pick(beardSet, h2 >> 8);
+            if (bs.empty() && beardRule != "long") spec.beard = false;   // a kind without beards
+            else spec.beardStyle = bs;
+        }
         // AL-136: the look chosen at the character's creation
         if (p.contains("look") && p["look"].is_object()) {
             const Json& lk = p["look"];
@@ -595,7 +611,12 @@ struct Window::Impl : Ctx {
             if (!str(lk, "skin").empty() && !flag(p, "stone")) spec.skin = str(lk, "skin");
             if (!str(lk, "hair").empty()) spec.hair.first = str(lk, "hair");
             if (!str(lk, "hair_colour").empty()) spec.hair.second = str(lk, "hair_colour");
-            if (!str(lk, "beard").empty()) spec.beard = !f && !child && str(lk, "beard") == "yes";
+            if (const std::string b = str(lk, "beard"); !b.empty()) {
+                spec.beard = !f && !child && b != "no";
+                spec.beardStyle = b == "yes" || b == "no" ? "" : b;   // LR-139: a style, or the old yes = full
+                if (spec.beardStyle == "long") spec.longBeard = true;
+                else spec.longBeard = false;
+            }
         }
         std::vector<std::pair<std::string, std::string>> wear;
         std::set<std::string> kinds;

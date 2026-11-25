@@ -135,11 +135,17 @@
     "fat"
    ]
   },
+  "_doc_sets": "LR-139: a kind's own cuts and beards come from content/species/<id>.json body.pawn hair_m / hair_f / beards (and the pawn rule beard: never | long); these lists are the fallback",
   "hair": [
    "short",
    "long",
    "bun",
    "braids",
+   "ponytail",
+   "curly",
+   "cropped",
+   "mohawk",
+   "topknot",
    "bald"
   ],
   "hair_colours": [
@@ -155,7 +161,12 @@
   ],
   "beard": [
    "no",
-   "yes"
+   "stubble",
+   "moustache",
+   "goatee",
+   "full",
+   "long",
+   "braided"
   ],
   "skins": {
    "human": [

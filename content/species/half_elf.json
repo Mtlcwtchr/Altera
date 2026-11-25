@@ -19,7 +19,10 @@
   "pawn": {
    "ears": "half",
    "build": "slim",
-   "beard": "rare"
+   "beard": "rare",
+   "hair_m": "short long ponytail cropped curly",
+   "hair_f": "long braids bun ponytail curly",
+   "beards": "stubble moustache goatee"
   }
  }
 }

@@ -13,7 +13,10 @@
   "speed_mult": 1.0,
   "reach_mult": 1.0,
   "pawn": {
-   "_doc": "LR-139: how the 2D pawn draws this kind (tools/game_2d/native/pixels2d.cpp)"
+   "_doc": "LR-139: how the 2D pawn draws this kind (tools/game_2d/native/pixels2d.cpp)",
+   "hair_m": "short short cropped curly ponytail topknot bald",
+   "hair_f": "long long bun braids ponytail curly",
+   "beards": "full full stubble moustache goatee long"
   }
  },
  "life": {

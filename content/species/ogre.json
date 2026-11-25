@@ -20,9 +20,11 @@
    "tusks": "small",
    "brow": "heavy",
    "ears": "big",
-   "hair": "none",
    "nose": "big",
-   "beard": "rare"
+   "beard": "rare",
+   "hair_m": "none none tuft topknot",
+   "hair_f": "tuft ponytail none",
+   "beards": "stubble full"
   }
  },
  "life": {

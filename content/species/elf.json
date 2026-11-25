@@ -19,7 +19,9 @@
    "head": "long",
    "build": "slim",
    "beard": "never",
-   "eyes": "#3a6a9a"
+   "eyes": "#3a6a9a",
+   "hair_m": "long long ponytail topknot short",
+   "hair_f": "long long braids bun ponytail"
   }
  },
  "life": {

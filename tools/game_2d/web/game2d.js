@@ -202,6 +202,19 @@
     if (rl.beard === 'rare') spec.beard = spec.beard && ((h >>> 18) % 4) === 0;
     if (rl.beard === 'long' && !f && !child) spec.beard = spec.long_beard = true;
     if (rl.hair === 'none' || rl.hair === 'tuft') spec.hair[0] = rl.hair;
+    // LR-139: the kind's cuts and beards, picked by the id (pixels2d.cpp's pawnSpec does the same)
+    const pick = (set, k) => { const v = (set || '').split(/\s+/).filter(Boolean); return v.length ? v[k % v.length] : ''; };
+    const h2 = hash(p.id, 5);
+    if (!child) { const cut = pick(rl[f ? 'hair_f' : 'hair_m'], h2); if (cut) spec.hair[0] = cut; }
+    if (spec.beard) { const bs = pick(rl.beards, h2 >>> 8); if (!bs && rl.beard !== 'long') spec.beard = false; else spec.beard_style = bs; }
+    if (p.look) { // AL-136: the look chosen at creation
+      const lk = p.look;
+      if (lk.body && !child) spec.body = lk.body;
+      if (lk.skin && !p.stone) spec.skin = lk.skin;
+      if (lk.hair) spec.hair[0] = lk.hair;
+      if (lk.hair_colour) spec.hair[1] = lk.hair_colour;
+      if (lk.beard) { spec.beard = !f && !child && lk.beard !== 'no'; spec.beard_style = lk.beard === 'yes' || lk.beard === 'no' ? '' : lk.beard; spec.long_beard = spec.beard_style === 'long'; }
+    }
     const wear = [];
     const wornKinds = new Set();
     for (const it of p.worn || []) {

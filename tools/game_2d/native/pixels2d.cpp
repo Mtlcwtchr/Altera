@@ -145,6 +145,14 @@ std::array<Rgba, N * N> pawn(const PawnSpec& spec, char d, const PawnPose& pose,
     bcy -= bob;
     hcy += pose.dip;
     const Mask body = ell(bcx, bcy, brx, bry);
+    // LR-139: long hair falls behind the shoulders (drawn before the body, so the body hides it below them)
+    {
+        const std::string hk = spec.hair.first;
+        const Rgba hcB = parseHex(spec.hair.second.empty() ? "#5a3a20" : spec.hair.second);
+        if (hk == "long" && d != 'N') c.layer(ell(hcx - (d == 'E' ? 1.0 : 0), hcy + 2.4, (d == 'E' ? hrx : hrx + 1.1), hry + 2.6), hcB);
+        if (hk == "ponytail" && d == 'E') c.layer(pts({{int(std::trunc(hcx - hrx)), int(std::trunc(hcy))}, {int(std::trunc(hcx - hrx)) - 1, int(std::trunc(hcy)) + 1},
+                                                        {int(std::trunc(hcx - hrx)) - 1, int(std::trunc(hcy)) + 2}, {int(std::trunc(hcx - hrx)), int(std::trunc(hcy)) + 3}}), hcB);
+    }
     const bool cloak = !spec.cloak.empty();
     const Rgba cloakCol = cloak ? parseHex(spec.cloak) : 0;
     if (cloak && (d == 'S' || d == 'E')) c.layer(ell(bcx - (d == 'E' ? 0.6 : 0), bcy - 0.3, brx + 1.2, bry + 0.6), cloakCol);
@@ -350,10 +358,6 @@ std::array<Rgba, N * N> pawn(const PawnSpec& spec, char d, const PawnPose& pose,
     const Mask head = ell(hcx, hcy, d != 'E' ? hrx : hrx * 0.95, hry);
     const std::string hair = spec.hair.first.empty() ? "short" : spec.hair.first;
     const Rgba hc = parseHex(spec.hair.second.empty() ? "#5a3a20" : spec.hair.second);
-    if (hair == "long" && d != 'N')
-        c.layer(filter(ell(hcx - (d == 'E' ? 0.5 : 0), hcy + 1.4, hrx + 0.9, hry + 1.6),
-                       [&](int x, int y) { return y >= hcy - 1 && (d == 'E' || std::abs(x + 0.5 - hcx) >= hrx - 1.2); }),
-                hc);
     if (spec.skinPat == "warts") c.layer(head, sk, [](int x, int y, Rgba cc) { return (x * 5 + y * 7) % 9 == 0 ? mulRgb(cc, 0.78) : Rgba(0); });
     else c.layer(head, sk);
     const double top = std::trunc(hcy - hry);
@@ -379,22 +383,69 @@ std::array<Rgba, N * N> pawn(const PawnSpec& spec, char d, const PawnPose& pose,
         if (!spec.tusks.empty()) c.layer(pts({{fx + 2, faceY + 2}, {fx + 2, faceY + (spec.tusks == "yes" ? 1 : 2)}}), ivory, nullptr, false);
     }
     if (spec.beard && d != 'N') {
-        Mask bm = filter(head, [&](int x, int y) { return y >= hcy + 1.2 && (d == 'S' || x + 0.5 >= hcx - 0.5); });
-        if (spec.longBeard) bm |= ell(hcx + (d == 'E' ? 1.2 : 0), hcy + hry + 1.2, d == 'E' ? 1.8 : 2.6, 2.6);
-        c.layer(bm, hc, nullptr, spec.longBeard);
+        // LR-139: the beard's style
+        const std::string bs = !spec.beardStyle.empty() ? spec.beardStyle : spec.longBeard ? "long" : "full";
+        const Mask chin = filter(head, [&](int x, int y) { return y >= hcy + 1.2 && (d == 'S' || x + 0.5 >= hcx - 0.5); });
+        const Mask lip = d == 'S' ? pts({{fx - 2, faceY + 1}, {fx - 1, faceY + 1}, {fx, faceY + 1}, {fx + 1, faceY + 1}})
+                                  : pts({{fx + 1, faceY + 1}, {fx + 2, faceY + 1}});
+        if (bs == "stubble") c.layer(chin, mixRgb(sk, hc, 0.45), [&](int x, int y, Rgba cc) { return (x + y) % 2 ? mixRgb(sk, hc, 0.25) : cc; }, false);
+        else if (bs == "moustache") c.layer(lip, hc, nullptr, false);
+        else if (bs == "goatee") {
+            c.layer(lip, hc, nullptr, false);
+            c.layer(d == 'S' ? pts({{fx - 1, faceY + 2}, {fx, faceY + 2}, {fx - 1, faceY + 3}, {fx, faceY + 3}}) : pts({{fx + 1, faceY + 2}, {fx + 1, faceY + 3}}), hc, nullptr, false);
+        } else {
+            Mask bm = chin;
+            const bool lng = bs == "long" || bs == "braided";
+            if (lng) bm |= ell(hcx + (d == 'E' ? 1.2 : 0), hcy + hry + 1.2, d == 'E' ? 1.8 : 2.6, 2.6);
+            if (bs == "braided") bm |= ell(hcx + (d == 'E' ? 1.2 : 0), hcy + hry + 3.6, 1.0, 1.4);
+            c.layer(bm, hc, bs == "braided" ? [](int, int y, Rgba cc) { return y % 2 ? mulRgb(cc, 0.75) : Rgba(0); } : std::function<Rgba(int, int, Rgba)>(nullptr), lng);
+        }
         if (spec.tusks == "yes" && d == 'S') c.layer(pts({{fx - 2, faceY + 1}, {fx + 1, faceY + 1}}), ivory, nullptr, false);
     }
     if (hair == "tuft") c.layer(pts({{fx - 1, int(top)}, {fx, int(top) - 1}, {fx, int(top)}, {fx + 1, int(top)}}), hc);
-    if (hair == "short" || hair == "long" || hair == "bun" || hair == "braids") {
+    // LR-139: more cuts: cropped (a short top), mohawk (a ridge), curly (a mop), topknot, ponytail
+    if (hair == "cropped") {
+        const Mask m = d == 'N' ? filter(head, [&](int, int y) { return y + 0.5 <= hcy + 1.2; }) : filter(head, [&](int, int y) { return y + 0.5 <= hcy - 2.0; });
+        c.layer(m, mixRgb(hc, sk, 0.25), nullptr, false);
+    }
+    if (hair == "mohawk") {
+        Mask m = d == 'E' ? filter(ell(hcx - 0.4, hcy - 0.6, hrx + 0.4, hry + 0.6), [&](int, int y) { return y + 0.5 <= top + 2.0; })
+                          : filter(ell(hcx, hcy - 0.6, hrx, hry + 0.9), [&](int x, int y) { return std::abs(x + 0.5 - hcx) <= 1.0 && (d == 'N' || y + 0.5 <= top + 1.5); });
+        c.layer(m, hc);
+    }
+    if (hair == "curly") {
+        const Mask m = d == 'N' ? ell(hcx, hcy - 0.3, hrx + 0.7, hry + 0.6)
+                                : filter(ell(hcx - (d == 'E' ? 0.6 : 0), hcy - 0.5, hrx + 0.7, hry + 0.5),
+                                         [&](int x, int y) { return y + 0.5 <= hcy - 0.9 || (d == 'E' ? x + 0.5 <= hcx - 1.0 : std::abs(x + 0.5 - hcx) >= hrx - 0.4) && y + 0.5 <= hcy + 1.0; });
+        c.layer(m, hc, [](int x, int y, Rgba cc) { return (x + 2 * y) % 3 == 0 ? mulRgb(cc, 0.78) : Rgba(0); });
+    }
+    if (hair == "short" || hair == "long" || hair == "bun" || hair == "braids" || hair == "topknot" || hair == "ponytail") {
         Mask hm;
         if (d == 'S') hm = filter(head, [&](int, int y) { return y + 0.5 <= hcy - 1.1; });
         else if (d == 'E')
             hm = filter(head, [&](int x, int y) { return y + 0.5 <= hcy - 1.1 || (x + 0.5 <= hcx - 1.2 && y + 0.5 <= hcy + 2); });
         else hm = filter(head, [&](int, int y) { return y + 0.5 <= hcy + 2.6; }) | (hair != "short" ? head : Mask());
         if (hair == "long" && d == 'N') hm |= ell(hcx, hcy + 1.4, hrx + 0.9, hry + 1.6);
+        // long hair frames the face down the cheeks
+        if (hair == "long" && d == 'S') hm |= filter(head, [&](int x, int y) { return std::abs(x + 0.5 - hcx) >= hrx - 1.1 && y + 0.5 <= hcy + 2.2; });
+        if (hair == "long" && d == 'E') hm |= filter(head, [&](int x, int y) { return x + 0.5 <= hcx + 0.4 && y + 0.5 <= hcy + 2.6; });
         if (hair == "bun") hm |= ell(hcx, top - 0.2, 1.8, 1.6);
-        if (hair == "braids" && d != 'E') hm |= ell(hcx - hrx - 0.6, hcy + 1.5, 1.2, 1.6) | ell(hcx + hrx + 0.6, hcy + 1.5, 1.2, 1.6);
+        if (hair == "topknot") hm |= ell(hcx - (d == 'E' ? 0.6 : 0), top - 0.9, 1.1, 1.3);
+        if (hair == "ponytail" && d == 'N') hm |= pts({{fx, int(std::trunc(hcy + hry)) - 1}, {fx, int(std::trunc(hcy + hry))}, {fx - 1, int(std::trunc(hcy + hry)) + 1}, {fx, int(std::trunc(hcy + hry)) + 2}});
         c.layer(hm, hc);
+        // braids hang over the shoulders (LR-139: plaited, not muffs)
+        if (hair == "braids") {
+            const int y0 = int(std::trunc(hcy)) + 1;
+            auto plait = [&](int x) {
+                Mask m;
+                for (int y = y0; y <= y0 + 4; ++y) m |= one(x, y);
+                c.layer(m, hc, [](int, int y, Rgba cc) { return y % 2 ? mulRgb(cc, 0.72) : Rgba(0); });
+            };
+            if (d != 'E') {
+                plait(int(std::trunc(hcx - hrx + 0.2)));
+                plait(int(std::trunc(hcx + hrx - 1.2)));
+            } else plait(int(std::trunc(hcx - hrx * 0.6)));
+        }
     }
     if (ears.any() && hair != "none") c.layer(ears & ~head, sk, nullptr, false);   // ears through the hair
     const std::string& hat = spec.hat.first;
@@ -484,7 +535,7 @@ std::string PawnSpec::key() const {
     std::string k = body + "|" + skin + "|" + (child ? "c" : "a") + "|" + hair.first + hair.second + "|" + (beard ? "b" : "") + "|";
     for (const auto& [a, b] : wear) k += a + b + ",";
     return k + "|" + cloak + "|" + hat.first + hat.second + "|" + tool + "|" + ears + head + "," + nose + brow + eyes + "," + tusks +
-           build + skinPat + (longBeard ? "L" : "") + (naked ? "N" : "");
+           build + skinPat + (longBeard ? "L" : "") + beardStyle + (naked ? "N" : "");
 }
 
 Pixels pawnPixels(const PawnSpec& spec, char side, int bob) {

@@ -60,6 +60,7 @@ struct PawnSpec {
     std::string build;    // slim | stocky | broad | hulking | wiry
     std::string skinPat;  // warts
     bool longBeard = false;
+    std::string beardStyle;   // LR-139: stubble | moustache | goatee | full | long | braided ("" = full, or long)
     bool naked = false;   // nothing on the torso: drawn bare
     std::string key() const;
 };

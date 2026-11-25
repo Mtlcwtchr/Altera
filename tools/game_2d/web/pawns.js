@@ -83,6 +83,14 @@ const Pawns = (() => {
     hcy -= bob; bcy -= bob;
     hcy += pose.dip || 0;
     const body = ell(bcx, bcy, brx, bry);
+    { // LR-139: long hair falls behind the shoulders (before the body, so the body hides it below them)
+      const [hk, hcB] = spec.hair || ['short', '#5a3a20'];
+      if (hk === 'long' && d !== 'N') c.layer(ell(hcx - (d === 'E' ? 1.0 : 0), hcy + 2.4, d === 'E' ? hrx : hrx + 1.1, hry + 2.6), hcB);
+      if (hk === 'ponytail' && d === 'E') {
+        const x0 = Math.trunc(hcx - hrx), y0 = Math.trunc(hcy);
+        c.layer(new Set([[x0, y0], [x0 - 1, y0 + 1], [x0 - 1, y0 + 2], [x0, y0 + 3]].filter(([x, y]) => x >= 0 && y >= 0 && x < N && y < N).map(([x, y]) => key(x, y))), hcB);
+      }
+    }
     const warts = spec.skin_pattern === 'warts';
     const P0 = pts => new Set(pts.filter(([x, y]) => x >= 0 && y >= 0 && x < N && y < N).map(([x, y]) => key(x, y)));
     const cloak = spec.cloak;
@@ -209,8 +217,6 @@ const Pawns = (() => {
     // head
     const head = ell(hcx, hcy, d !== 'E' ? hrx : hrx * 0.95, hry);
     const [hair, hc] = spec.hair || ['short', '#5a3a20'];
-    if (hair === 'long' && d !== 'N')
-      c.layer(filter(ell(hcx - (d === 'E' ? 0.5 : 0), hcy + 1.4, hrx + 0.9, hry + 1.6), (x, y) => y >= hcy - 1 && (d === 'E' || Math.abs(x + 0.5 - hcx) >= hrx - 1.2)), hc);
     c.layer(head, sk, warts ? (x, y, cc) => ((x * 5 + y * 7) % 9 === 0 ? mul(cc, 0.78) : null) : null);
     const top = Math.trunc(hcy - hry), faceY = Math.trunc(hcy + 0.3), fx = Math.trunc(hcx);
     // LR-139: the face of the kind: eyes (their colour, a blink), a heavy brow, a nose, tusks
@@ -230,22 +236,50 @@ const Pawns = (() => {
       if (spec.nose === 'long') c.layer(P0([[nx, faceY + 1], [nx + 1, faceY + 1], [nx + 1, faceY + 2]]), sk);
       if (spec.tusks) c.layer(P0([[fx + 2, faceY + 2], [fx + 2, faceY + (spec.tusks === 'yes' ? 1 : 2)]]), ivory, null, false);
     }
-    if (spec.beard && d !== 'N') {
-      let bm = filter(head, (x, y) => y >= hcy + 1.2 && (d === 'S' || x + 0.5 >= hcx - 0.5));
-      if (spec.long_beard) bm = union(bm, ell(hcx + (d === 'E' ? 1.2 : 0), hcy + hry + 1.2, d === 'E' ? 1.8 : 2.6, 2.6));
-      c.layer(bm, hc, null, !!spec.long_beard);
+    if (spec.beard && d !== 'N') { // LR-139: the beard's style
+      const bs = spec.beard_style || (spec.long_beard ? 'long' : 'full');
+      const chin = filter(head, (x, y) => y >= hcy + 1.2 && (d === 'S' || x + 0.5 >= hcx - 0.5));
+      const lip = d === 'S' ? P0([[fx - 2, faceY + 1], [fx - 1, faceY + 1], [fx, faceY + 1], [fx + 1, faceY + 1]]) : P0([[fx + 1, faceY + 1], [fx + 2, faceY + 1]]);
+      if (bs === 'stubble') c.layer(chin, mix(sk, hc, 0.45), (x, y, cc) => ((x + y) % 2 ? mix(sk, hc, 0.25) : cc), false);
+      else if (bs === 'moustache') c.layer(lip, hc, null, false);
+      else if (bs === 'goatee') {
+        c.layer(lip, hc, null, false);
+        c.layer(d === 'S' ? P0([[fx - 1, faceY + 2], [fx, faceY + 2], [fx - 1, faceY + 3], [fx, faceY + 3]]) : P0([[fx + 1, faceY + 2], [fx + 1, faceY + 3]]), hc, null, false);
+      } else {
+        let bm = chin;
+        const lng = bs === 'long' || bs === 'braided';
+        if (lng) bm = union(bm, ell(hcx + (d === 'E' ? 1.2 : 0), hcy + hry + 1.2, d === 'E' ? 1.8 : 2.6, 2.6));
+        if (bs === 'braided') bm = union(bm, ell(hcx + (d === 'E' ? 1.2 : 0), hcy + hry + 3.6, 1.0, 1.4));
+        c.layer(bm, hc, bs === 'braided' ? (x, y, cc) => (y % 2 ? mul(cc, 0.75) : null) : null, lng);
+      }
       if (spec.tusks === 'yes' && d === 'S') c.layer(P0([[fx - 2, faceY + 1], [fx + 1, faceY + 1]]), ivory, null, false);
     }
     if (hair === 'tuft') c.layer(P0([[fx - 1, top], [fx, top - 1], [fx, top], [fx + 1, top]]), hc);
-    if (['short', 'long', 'bun', 'braids'].includes(hair)) {
+    // LR-139: more cuts: cropped, mohawk, curly, topknot, ponytail
+    if (hair === 'cropped') c.layer(d === 'N' ? filter(head, (x, y) => y + 0.5 <= hcy + 1.2) : filter(head, (x, y) => y + 0.5 <= hcy - 2.0), mix(hc, sk, 0.25), null, false);
+    if (hair === 'mohawk') c.layer(d === 'E' ? filter(ell(hcx - 0.4, hcy - 0.6, hrx + 0.4, hry + 0.6), (x, y) => y + 0.5 <= top + 2.0)
+      : filter(ell(hcx, hcy - 0.6, hrx, hry + 0.9), (x, y) => Math.abs(x + 0.5 - hcx) <= 1.0 && (d === 'N' || y + 0.5 <= top + 1.5)), hc);
+    if (hair === 'curly') c.layer(d === 'N' ? ell(hcx, hcy - 0.3, hrx + 0.7, hry + 0.6)
+      : filter(ell(hcx - (d === 'E' ? 0.6 : 0), hcy - 0.5, hrx + 0.7, hry + 0.5),
+        (x, y) => y + 0.5 <= hcy - 0.9 || ((d === 'E' ? x + 0.5 <= hcx - 1.0 : Math.abs(x + 0.5 - hcx) >= hrx - 0.4) && y + 0.5 <= hcy + 1.0)),
+      hc, (x, y, cc) => ((x + 2 * y) % 3 === 0 ? mul(cc, 0.78) : null));
+    if (['short', 'long', 'bun', 'braids', 'topknot', 'ponytail'].includes(hair)) {
       let hm;
       if (d === 'S') hm = filter(head, (x, y) => y + 0.5 <= hcy - 1.1);
       else if (d === 'E') hm = filter(head, (x, y) => y + 0.5 <= hcy - 1.1 || (x + 0.5 <= hcx - 1.2 && y + 0.5 <= hcy + 2));
       else hm = union(filter(head, (x, y) => y + 0.5 <= hcy + 2.6), hair !== 'short' ? head : new Set());
       if (hair === 'long' && d === 'N') hm = union(hm, ell(hcx, hcy + 1.4, hrx + 0.9, hry + 1.6));
       if (hair === 'bun') hm = union(hm, ell(hcx, top - 0.2, 1.8, 1.6));
-      if (hair === 'braids' && d !== 'E') hm = union(hm, ell(hcx - hrx - 0.6, hcy + 1.5, 1.2, 1.6), ell(hcx + hrx + 0.6, hcy + 1.5, 1.2, 1.6));
+      if (hair === 'topknot') hm = union(hm, ell(hcx - (d === 'E' ? 0.6 : 0), top - 0.9, 1.1, 1.3));
+      if (hair === 'ponytail' && d === 'N') { const yb = Math.trunc(hcy + hry); hm = union(hm, P0([[fx, yb - 1], [fx, yb], [fx - 1, yb + 1], [fx, yb + 2]])); }
+      if (hair === 'long' && d === 'S') hm = union(hm, filter(head, (x, y) => Math.abs(x + 0.5 - hcx) >= hrx - 1.1 && y + 0.5 <= hcy + 2.2));
+      if (hair === 'long' && d === 'E') hm = union(hm, filter(head, (x, y) => x + 0.5 <= hcx + 0.4 && y + 0.5 <= hcy + 2.6));
       c.layer(hm, hc);
+      if (hair === 'braids') { // plaits over the shoulders
+        const y0 = Math.trunc(hcy) + 1;
+        const plait = x => { const p = []; for (let y = y0; y <= y0 + 4; y++) p.push([x, y]); c.layer(P0(p), hc, (xx, y, cc) => (y % 2 ? mul(cc, 0.72) : null)); };
+        if (d !== 'E') { plait(Math.trunc(hcx - hrx + 0.2)); plait(Math.trunc(hcx + hrx - 1.2)); } else plait(Math.trunc(hcx - hrx * 0.6));
+      }
     }
     if (ears.size && hair !== 'none') c.layer(minus(ears, head), sk, null, false);   // ears through the hair
     const [hat, hcol] = spec.hat || [null, null];

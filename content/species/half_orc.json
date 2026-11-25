@@ -22,7 +22,10 @@
    "brow": "heavy",
    "ears": "",
    "eyes": "",
-   "beard": "rare"
+   "beard": "rare",
+   "hair_m": "mohawk cropped short topknot ponytail",
+   "hair_f": "braids ponytail long curly",
+   "beards": "stubble goatee full moustache"
   }
  }
 }

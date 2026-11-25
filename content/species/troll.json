@@ -21,10 +21,11 @@
    "tusks": "yes",
    "nose": "long",
    "ears": "long",
-   "hair": "tuft",
    "beard": "never",
    "eyes": "#e8d040",
-   "skin_pattern": "warts"
+   "skin_pattern": "warts",
+   "hair_m": "tuft tuft mohawk none",
+   "hair_f": "tuft ponytail"
   }
  },
  "life": {
