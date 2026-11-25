@@ -76,6 +76,10 @@ struct PawnPose {
 };
 
 constexpr int kPawn = 20;
+// LR-139: the parts of pawns as data (content/sprites_2d/pawns2d.json): hair, beards, ears,
+// noses, brows, tusks, eyes, hats, skin patterns, bodies, builds, heads. Load it before drawing.
+void setPawnParts(const nlohmann::json& parts);
+const nlohmann::json& pawnParts();
 // The pawn seen from side 'S' | 'E' | 'N' | 'W' (W mirrors E), bob 0 | 1.
 Pixels pawnPixels(const PawnSpec& spec, char side, int bob);
 Pixels pawnPixels(const PawnSpec& spec, char side, const PawnPose& pose);

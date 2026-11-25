@@ -12,7 +12,7 @@
   const $ = id => document.getElementById(id);
 
   // --- state ------------------------------------------------------------------
-  let ST = null, MAP = null, RES = null;     // /api/static, map2d.json, resources.json
+  let ST = null, MAP = null, RES = null, PAWN_PARTS = null;   // PAWN_PARTS: pawns2d.json (LR-139)     // /api/static, map2d.json, resources.json
   let UI = {};                               // ui2d.* strings
   const chunks = new Map();                  // "cx,cy" -> {json, canvas, glyph, at, str}
   const pending = new Set();
@@ -183,23 +183,27 @@
     return list[hash(p.famId || 0, 3) % list.length];
   }
   function pawnSpec(p) {
-    const h = hash(p.id, 1), child = p.age < 13, f = p.sex === 'f';
+    // LR-139: how the people one meets look (pawns2d.json npc), as window2d.cpp's pawnSpec
+    const NPC = (PAWN_PARTS && PAWN_PARTS.npc) || {};
+    const pickN = (k, i, fb) => { const v = NPC[k]; return Array.isArray(v) && v.length ? v[i % v.length] : fb; };
+    const numN = (k, fb) => (typeof NPC[k] === 'number' ? NPC[k] : fb);
+    const h = hash(p.id, 1), child = p.age < numN('child_age', 13), f = p.sex === 'f';
     const spec = { child };
-    spec.body = f ? 'fem' : ['norm', 'norm', 'thin', 'fat'][h % 4];
-    spec.skin = ['light', 'light', 'light', 'mid', 'light', 'mid', 'light', 'dark'][(h >>> 3) % 8];
-    let hc = HAIR[(h >>> 6) % HAIR.length];
-    if (p.age >= 55) hc = '#b0b0a8';
-    spec.hair = [f ? ['long', 'bun', 'braids', 'long'][(h >>> 9) % 4] : 'short', hc];
-    if (!f && !child && p.age >= 18 && ((h >>> 12) % 3)) spec.beard = true;
+    spec.body = f ? pickN('bodies_f', h, 'fem') : pickN('bodies_m', h, 'norm');
+    spec.skin = pickN('skins', h >>> 3, 'light');
+    let hc = pickN('hair_colours', h >>> 6, HAIR[0]);
+    if (p.age >= numN('grey_age', 55)) hc = pickN('grey', 0, '#b0b0a8');
+    spec.hair = [f ? pickN('hair_f', h >>> 9, 'long') : pickN('hair_m', h >>> 9, 'short'), hc];
+    if (!f && !child && p.age >= numN('beard_age', 18) && ((h >>> 12) % Math.max(1, numN('beard_one_in', 3)))) spec.beard = true;
     if (p.rskin) spec.skin = p.rskin;          // AL-114: the kind's skin
-    if (p.stone) spec.skin = '#8c8c86';
+    if (p.stone) spec.skin = pickN('stone', 0, '#8c8c86');
     // LR-139: the kind's look (species body.pawn), as pixels2d.cpp's pawnSpec
     const rl = p.rlook || {};
     for (const k of ['ears', 'head', 'nose', 'brow', 'eyes', 'tusks', 'skin_pattern']) if (rl[k]) spec[k] = rl[k];
     if (rl.build && !child) spec.build = rl.build;
     if (child && spec.tusks === 'yes') spec.tusks = 'small';
     if (rl.beard === 'never') spec.beard = false;
-    if (rl.beard === 'rare') spec.beard = spec.beard && ((h >>> 18) % 4) === 0;
+    if (rl.beard === 'rare') spec.beard = spec.beard && ((h >>> 18) % Math.max(1, numN('rare_one_in', 4))) === 0;
     if (rl.beard === 'long' && !f && !child) spec.beard = spec.long_beard = true;
     if (rl.hair === 'none' || rl.hair === 'tuft') spec.hair[0] = rl.hair;
     // LR-139: the kind's cuts and beards, picked by the id (pixels2d.cpp's pawnSpec does the same)
@@ -234,7 +238,7 @@
     const order = ['shirt', 'robe', 'mail', 'pants', 'boots', 'tabard', 'apron', 'belt', 'bag', 'pack'];
     wear.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
     spec.wear = wear;
-    if (!spec.hat && f && !child && !naked && ((h >>> 15) % 5) < 2) spec.hat = ['kerchief', '#e8e0d0'];
+    if (!spec.hat && f && !child && !naked && ((h >>> 15) % 100) < numN('kerchief_pct', 40)) spec.hat = ['kerchief', pickN('kerchief', 0, '#e8e0d0')];
     // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
     for (const [pat, tool] of MAP.tools || []) if (p.held && p.held.includes(pat)) { spec.tool = tool; break; }
     return spec;
@@ -750,8 +754,11 @@
 
   // --- start ---------------------------------------------------------------------------------
   Promise.all([getJson('/api/static'), getJson('/sprites/sprites.json'), getJson('/sprites/map2d.json'),
-    getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops]) => {
+    getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null),
+    getJson('/sprites/pawns2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts]) => {
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
+    Pawns.setParts(pawnParts);   // LR-139: hair, beards, ears, builds as data
+    PAWN_PARTS = pawnParts || {};
     Sprites.load(sprites);
     Sprites.merge(crops);   // AL-112: fields and gardens
     MAP.actsRe = (MAP.acts || []).map(([re, sp]) => [new RegExp(re), sp]);

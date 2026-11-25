@@ -341,9 +341,100 @@ def check_elements(L):
     return r
 
 
+def check_pawns(L):
+    """LR-139: части 2D-пешек (sprites_2d/pawns2d.json) и облик народов (species/*.json body.pawn) ссылаются друг на друга."""
+    r = Report("pawns")
+    root = L["root"]
+    pp = root / "sprites_2d" / "pawns2d.json"
+    if not pp.exists():
+        r.warn("нет sprites_2d/pawns2d.json, пропуск"); return r
+    P = jload(pp)
+    import re
+    VARS = {"x", "y", "hcx", "hcy", "hrx", "hry", "top", "fx", "fy", "ey", "hl", "hrr", "eb", "nx", "bcx", "bcy", "brx", "bry", "bx", "by",
+            "step", "swing", "child", "tx", "ty", "hy", "sw", "footy", "abs", "min", "max", "trunc", "floor"}
+    COLS = set(P.get("colours", {})) | {"skin", "hair", "eye", "hat", "c", "wear", "cloak", "feet"}
+    shapes = set(P.get("shapes", {}))
+
+    def expr(v, where):
+        if isinstance(v, (int, float)): return
+        if not isinstance(v, str) or not re.fullmatch(r"[0-9a-z_+\-*/%().<>=!&|, ]*", v):
+            r.err(f"{where}: плохое выражение {v!r}"); return
+        for w in re.findall(r"[a-z_]+", v):
+            if w not in VARS: r.err(f"{where}: неизвестное имя {w} в {v!r}")
+
+    def colour(v, where):
+        t = (v or "").replace(" ", "")
+        if t.startswith("#"): return
+        for w in re.findall(r"[a-z_]+", t):
+            if w != "mix" and w not in COLS: r.err(f"{where}: неизвестный цвет {w}")
+
+    def shape(sh, where):
+        if isinstance(sh, str):
+            if not (sh.startswith("@") and sh[1:] in shapes): r.err(f"{where}: нет формы {sh}")
+            return
+        if not isinstance(sh, dict): r.err(f"{where}: форма не объект"); return
+        for k in ("ell", "rect", "col", "px"):
+            for v in sh.get(k, []):
+                for e in (v if isinstance(v, list) else [v]): expr(e, where)
+        for k in ("where", "when"):
+            if k in sh: expr(sh[k], where)
+        if "minus" in sh: shape(sh["minus"], where)
+
+    def ops(lst, where):
+        for i, o in enumerate(lst if isinstance(lst, list) else []):
+            w = f"{where}[{i}]"
+            if "shapes" in o:
+                for sh in o["shapes"]: shape(sh, w)
+                if "where" in o: expr(o["where"], w)
+            else: shape(o, w)
+            colour(o.get("colour", "skin"), w)
+            if "pattern" in o:
+                expr(o["pattern"].get("if", "1"), w); colour(o["pattern"].get("colour", "c"), w)
+
+    for n, v in P.get("shapes", {}).items():
+        for sh in (v if isinstance(v, list) else [v]): shape(sh, f"shapes.{n}")
+    for g in ("ears", "brows", "noses", "tusks", "beards", "hats", "wear", "tools"):
+        for n, v in P.get(g, {}).items():
+            if not n.startswith("_"): ops(v, f"{g}.{n}")
+    for g in ("hair", "cloak"):
+        for n, v in P.get(g, {}).items():
+            if isinstance(v, dict):
+                for slot in ("back", "front"): ops(v.get(slot, []), f"{g}.{n}.{slot}")
+            elif g == "cloak": ops(v, f"{g}.{n}")
+    for g in ("face", "feet", "hands"): ops(P.get(g, []), g)
+    # the kinds name only what exists
+    sp = root / "species"
+    groups = {"ears": "ears", "nose": "noses", "brow": "brows", "tusks": "tusks", "build": "builds", "head": "heads", "skin_pattern": "skin_patterns"}
+    hairs, beards = set(P.get("hair", {})) | {"bald", "none"}, set(P.get("beards", {}))
+    n = 0
+    for f in sorted(sp.glob("*.json")) if sp.is_dir() else []:
+        d = jload(f)
+        pw = (d.get("body") or {}).get("pawn") if isinstance(d, dict) else None
+        if not isinstance(pw, dict): continue
+        n += 1
+        for k, g in groups.items():
+            v = pw.get(k)
+            if v and v not in P.get(g, {}): r.err(f"species/{f.name} body.pawn.{k}: {v} нет в pawns2d.json {g}")
+        for k in ("hair_m", "hair_f"):
+            for w in (pw.get(k) or "").split():
+                if w not in hairs: r.err(f"species/{f.name} body.pawn.{k}: причёски {w} нет в pawns2d.json hair")
+        for w in (pw.get("beards") or "").split():
+            if w not in beards: r.err(f"species/{f.name} body.pawn.beards: бороды {w} нет в pawns2d.json beards")
+    cc = L.get("ai") / "character_creation.json" if L.get("ai") else None
+    if cc and cc.exists():
+        look = jload(cc).get("look", {})
+        for w in look.get("hair", []):
+            if w not in hairs: r.err(f"character_creation.json look.hair: {w} нет в pawns2d.json hair")
+        for w in look.get("beard", []):
+            if w not in beards and w not in ("no", "yes"): r.err(f"character_creation.json look.beard: {w} нет в pawns2d.json beards")
+    r.info = f"причёсок {len(hairs) - 2}, бород {len(beards)}, народов с обликом {n}"
+    return r
+
+
 CHECKS = {"json": check_json, "loc": check_loc, "ai": check_ai, "expansion": check_expansion,
           "crafting": check_crafting, "backstory": check_backstory, "docs": check_docs}
 CHECKS["elements"] = check_elements  # AL-115
+CHECKS["pawns"] = check_pawns  # LR-139
 
 
 def main():

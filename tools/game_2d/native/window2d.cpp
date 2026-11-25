@@ -549,19 +549,29 @@ struct Window::Impl : Ctx {
         if (!list.is_array() || list.empty()) return "#8a6a48";
         return list[idHash(std::max(0.0, num(p, "famId")), 3) % list.size()].get<std::string>();
     }
+    // LR-139: an entry of a list in pawns2d.json npc (the fallback when the data has none)
+    static std::string npcPick(const char* key, std::uint32_t k, const char* fallback) {
+        const Json& npc = pawnParts().contains("npc") ? pawnParts()["npc"] : Json::object();
+        if (!npc.contains(key) || !npc[key].is_array() || npc[key].empty()) return fallback;
+        const Json& v = npc[key][k % npc[key].size()];
+        return v.is_string() ? v.get<std::string>() : fallback;
+    }
+    static double npcNum(const char* key, double fallback) {
+        const Json& P = pawnParts();
+        if (!P.contains("npc") || !P["npc"].contains(key) || !P["npc"][key].is_number()) return fallback;
+        return P["npc"][key].get<double>();
+    }
     PawnSpec pawnSpec(const Json& p) const {
-        static const char* HAIR[] = {"#5a3a20", "#2a1a10", "#7a5030", "#d8a848", "#a85a30", "#3a2818"};
+        // how the people one meets look (pawns2d.json npc: bodies, skins, hair colours, beards, kerchiefs)
         const std::uint32_t h = idHash(num(p, "id"), 1);
         const double age = num(p, "age", 30);
-        const bool child = age < 13, f = str(p, "sex") == "f";
+        const bool child = age < npcNum("child_age", 13), f = str(p, "sex") == "f";
         PawnSpec spec;
         spec.child = child;
-        static const char* BODY[] = {"norm", "norm", "thin", "fat"};
-        spec.body = f ? "fem" : BODY[h % 4];
-        static const char* SKIN[] = {"light", "light", "light", "mid", "light", "mid", "light", "dark"};
-        spec.skin = SKIN[(h >> 3) % 8];
+        spec.body = f ? npcPick("bodies_f", h, "fem") : npcPick("bodies_m", h, "norm");
+        spec.skin = npcPick("skins", h >> 3, "light");
         if (!str(p, "rskin").empty()) spec.skin = str(p, "rskin");   // AL-114: the kind's skin
-        if (flag(p, "stone")) spec.skin = "#8c8c86";                 // a troll asleep as stone
+        if (flag(p, "stone")) spec.skin = npcPick("stone", 0, "#8c8c86");   // a troll asleep as stone
         // LR-139: the kind's look (species body.pawn): ears, head, nose, brow, eyes, tusks, build
         std::string beardRule, hairRule, hairSet, beardSet;
         if (p.contains("rlook") && p["rlook"].is_object()) {
@@ -580,13 +590,13 @@ struct Window::Impl : Ctx {
             beardSet = str(rl, "beards");
             if (child && spec.tusks == "yes") spec.tusks = "small";
         }
-        std::string hc = HAIR[(h >> 6) % 6];
-        if (age >= 55) hc = "#b0b0a8";
-        static const char* FH[] = {"long", "bun", "braids", "long"};
-        spec.hair = {f ? FH[(h >> 9) % 4] : "short", hc};
-        if (!f && !child && age >= 18 && ((h >> 12) % 3)) spec.beard = true;
+        std::string hc = npcPick("hair_colours", h >> 6, "#5a3a20");
+        if (age >= npcNum("grey_age", 55)) hc = npcPick("grey", 0, "#b0b0a8");
+        spec.hair = {f ? npcPick("hair_f", h >> 9, "long") : npcPick("hair_m", h >> 9, "short"), hc};
+        const int beardIn = std::max(1, int(npcNum("beard_one_in", 3)));   // all but one in N grown men
+        if (!f && !child && age >= npcNum("beard_age", 18) && ((h >> 12) % beardIn)) spec.beard = true;
         if (beardRule == "never") spec.beard = false;
-        if (beardRule == "rare") spec.beard = spec.beard && (h >> 18) % 4 == 0;
+        if (beardRule == "rare") spec.beard = spec.beard && (h >> 18) % std::max(1, int(npcNum("rare_one_in", 4))) == 0;
         if (beardRule == "long" && !f && !child) spec.beard = spec.longBeard = true;   // a dwarf's pride
         if (hairRule == "none") spec.hair.first = "none";
         if (hairRule == "tuft") spec.hair.first = "tuft";
@@ -646,7 +656,8 @@ struct Window::Impl : Ctx {
         };
         std::stable_sort(wear.begin(), wear.end(), [&](const auto& a, const auto& b) { return rank(a.first) < rank(b.first); });
         spec.wear = wear;
-        if (spec.hat.first.empty() && f && !child && !spec.naked && ((h >> 15) % 5) < 2) spec.hat = {"kerchief", "#e8e0d0"};
+        if (spec.hat.first.empty() && f && !child && !spec.naked && ((h >> 15) % 100) < npcNum("kerchief_pct", 40))
+            spec.hat = {"kerchief", npcPick("kerchief", 0, "#e8e0d0")};
         // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
         const std::string held = str(p, "held");
         if (MAP.contains("tools") && !held.empty())
@@ -750,6 +761,7 @@ struct Window::Impl : Ctx {
         const auto dir = root / "content/sprites_2d";
         sprites.load(parseOr(readText(dir / "sprites.json"), Json::object()));
         MAP = parseOr(readText(dir / "map2d.json"), Json::object());
+        loadPawnParts();   // LR-139: hair, beards, ears, builds... as data
         RES = parseOr(readText(dir / "resources.json"), Json());
         LOOK = parseOr(readText(dir / "craft2d.json"), Json::object());
         atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
@@ -2357,8 +2369,29 @@ struct Window::Impl : Ctx {
         }
     }
 
+    // LR-139: pawns2d.json is read at the start and again whenever it changes on disk, so
+    // a new cut or a kind's ears show at once, without a rebuild or a restart.
+    std::filesystem::file_time_type partsTime{};
+    double partsChecked = 0;
+    void loadPawnParts() {
+        const auto path = root / "content/sprites_2d/pawns2d.json";
+        std::error_code ec;
+        partsTime = std::filesystem::last_write_time(path, ec);
+        setPawnParts(parseOr(readText(path), Json::object()));
+    }
+    void watchPawnParts() {
+        if (nowMs() - partsChecked < 1000) return;
+        partsChecked = nowMs();
+        std::error_code ec;
+        const auto t = std::filesystem::last_write_time(root / "content/sprites_2d/pawns2d.json", ec);
+        if (ec || t == partsTime) return;
+        loadPawnParts();
+        atlas.clear();   // every sprite is drawn again on demand
+    }
+
     // --- one frame -------------------------------------------------------------------------
     bool events() {
+        watchPawnParts();
         in.pressed = in.released = in.rightPressed = in.doubleClick = false;
         in.wheel = 0;
         in.text.clear();
