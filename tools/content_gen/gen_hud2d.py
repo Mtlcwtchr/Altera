@@ -5,7 +5,8 @@ Writes content/sprites_2d/hud2d.json:
   "sprites"  - hud_<name> grids in the sprites.json palette ('.' empty), 9x9;
   "vitals"   - health / strength / blood / mood -> icon;
   "attrs"    - the 8 attributes (expansion/attributes.json) -> icon, short name key;
-  "tiers"    - the need tiers (gdd/motivation tiers: body, safety, belonging, esteem,
+  "tiers"    - the icons of the needs, by tier (the fallback grouping; LR-140: the sim
+               sends its own tiers in the card, the window uses those); the need tiers (gdd/motivation tiers: body, safety, belonging, esteem,
                purpose, spirit) -> the need ids in each and their icons. A need the
                sim does not have yet (the derived ones) is skipped by the window, so
                the tier shows what the sim sends;
@@ -92,9 +93,9 @@ def main():
                                      ["warmth", "hud_flame"], ["hygiene", "hud_soap"]]},
             {"id": "safety", "needs": [["safety", "hud_house"], ["provision", "hud_sack"]]},
             {"id": "belonging", "needs": [["social", "hud_people"], ["kinship", "hud_ring"], ["acceptance", "hud_hand"]]},
-            {"id": "esteem", "needs": [["standing", "hud_crown"]]},
+            {"id": "esteem", "needs": [["standing", "hud_crown"], ["fun", "hud_lute"]]},
             {"id": "purpose", "needs": [["purpose", "hud_star"], ["legacy", "hud_tree"]]},
-            {"id": "spirit", "needs": [["fun", "hud_lute"], ["grace", "hud_sun"]]},
+            {"id": "spirit", "needs": [["grace", "hud_sun"]]},
         ],
         "other_need": "hud_star",
         "moodlets": [
