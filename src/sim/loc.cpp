@@ -409,7 +409,7 @@ const std::vector<std::string>& traceCodes() {
         "control.confirmed",   "control.free_will_resume", "control.hint",      "control.order",
         "control.order_refused", "control.paused",        "control.queued",    "control.resumed",
         "control.suspended_dropped", "control.to_ai",     "control.to_player", "fsm.abort",
-        "fsm.arrived",         "fsm.done",                 "fsm.enter",         "fsm.wait",
+        "fsm.approach",        "fsm.arrived",         "fsm.done",                 "fsm.enter",         "fsm.wait",
         "goal.done",           "goal.dropped",             "goal.failed",       "goap.fail",
         "goap.plan",           "goap.replan",              "htn.method_failed", "htn.no_method",
         "htn.plan",            "htn.replan",               "utility.choose",    "utility.interrupt",

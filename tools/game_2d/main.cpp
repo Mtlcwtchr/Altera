@@ -40,6 +40,7 @@ using socket_t = int;
 #include <algorithm>
 #include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
@@ -56,6 +57,7 @@ using socket_t = int;
 #include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
+#include "client2d/sky2d.hpp"
 #include "client2d/talk2d.hpp"
 #include "client2d/session2d.hpp"
 #include "client2d/view2d.hpp"
@@ -89,6 +91,7 @@ struct App {
     const Content* content = nullptr;
     Json baseCfg;               // the world file
     Json wheel;                 // content/ui/wheel.json
+    Json sky;                   // AL-110: content/sprites_2d/sky2d.json
     std::unique_ptr<World> owned;
     c2::NewGame game;
     double runHours = 7.0;
@@ -187,6 +190,11 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     Json j = c2::clockJson(*a.world);
     j["paused"] = a.paused;
     j["tps"] = a.tps;
+    // AL-110: the sky of this tick and the next (the window blends between them)
+    static const char* forced = std::getenv("ALTERA_2D_WEATHER");   // frames: clear|cloudy|rain|storm|snow|sleet|fog|snowy
+    const std::string wx = forced ? forced : "";
+    j["sky"] = c2::skyJson(c2::withWeather(c2::skyAt(*a.world, a.sky, a.world->now()), a.sky, wx));
+    j["sky_next"] = c2::skyJson(c2::withWeather(c2::skyAt(*a.world, a.sky, a.world->now() + 1), a.sky, wx));
     j["step_ms"] = a.lastStepMs;
     j["last_result"] = a.lastResult;
     j["people"] = c2::peopleJson(*a.world, a.text, near, r);
@@ -593,6 +601,9 @@ int main(int argc, char** argv) {
         bool haveRules = false;
         const std::string rulesText = readFile(app.spritesDir + "/map2d.json", &haveRules);
         if (haveRules) app.ground = c2::GroundRules::fromJson(Json::parse(rulesText).value("ground", Json::object()));
+        bool haveSky = false;
+        const std::string skyText = readFile(app.spritesDir + "/sky2d.json", &haveSky);
+        app.sky = haveSky ? Json::parse(skyText) : Json::object();
         app.content = &content;
         app.baseCfg = loadJsonFile(worldFile);
         app.saveDir = c2::saveDir2d();
