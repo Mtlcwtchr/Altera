@@ -271,6 +271,16 @@
    "_doc": "появляется исполнителем при смерти персонажа"
   },
   {
+   "id": "wreckage", "stand_m": 0.8,
+   "owned": false,
+   "_doc": "AL-115: обломки сломанной или сгоревшей деревянной вещи (доски, дрова, уголь); запас кладёт src/sim/world_fields.cpp"
+  },
+  {
+   "id": "rubble", "stand_m": 0.8,
+   "owned": false,
+   "_doc": "AL-115: щебень разрушенной каменной вещи или стены; запас кладёт src/sim/world_fields.cpp"
+  },
+  {
    "id": "grave", "stand_m": 1.0,
    "owned": false,
    "_doc": "spawn:grave из погребения (часть C)"

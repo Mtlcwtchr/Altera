@@ -11,6 +11,7 @@
 #include "sim/character.hpp"
 #include "sim/content.hpp"
 #include "sim/dialogue_rules.hpp"
+#include "sim/world_fields.hpp"
 
 namespace altera::sim {
 
@@ -286,6 +287,9 @@ public:
     std::size_t removeObjects(const std::vector<EntityId>& ids);
     MapGrid& map() { return map_; }
     const MapGrid& map() const { return map_; }
+    // AL-115: the fields of the map's cells, fire and the integrity of things (sim/world_fields.hpp)
+    WorldFields& fields() { return fields_; }
+    const WorldFields& fields() const { return fields_; }
     const Family* familyOf(const Character& c) const;
 
     // --- events ---------------------------------------------------------
@@ -359,6 +363,7 @@ private:
     std::uint64_t nextCmdSeq_ = 1; // commands (own counter: replay must not depend on event traffic)
     EntityId nextId_ = 1;
     MapGrid map_;
+    WorldFields fields_;
     std::map<EntityId, Character> chars_;
     std::map<EntityId, WorldObject> objects_;
     std::map<std::string, std::vector<EntityId>> byType_;

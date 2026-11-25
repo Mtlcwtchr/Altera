@@ -5,6 +5,7 @@
 #include <cstdio>
 
 #include "sim/dialogue_say.hpp"
+#include "sim/news.hpp"
 #include "sim/social_chain.hpp"
 #include "sim/tones.hpp"
 #include "sim/trade.hpp"
@@ -109,8 +110,12 @@ Json talkJson(World& w, const ViewText& t, ActCatalog& acts, TalkCatalog& cat, E
     // the topics to bring up
     Json topics = Json::array();
     int i = 0;
-    for (const auto& tp : dialogueTopics(w, *me, *them)) {
+    // AL-111: the questions first (what's new, about yourself, a person, a place), then what to tell
+    std::vector<MenuTopic> menu = them->body.alive ? askTopics(w, *me, *them) : std::vector<MenuTopic>{};
+    for (auto& tp : dialogueTopics(w, *me, *them)) menu.push_back(std::move(tp));
+    for (const auto& tp : menu) {
         topics.push_back({{"i", i++},
+                          {"ask", tp.act.rfind("ask_", 0) == 0},
                           {"act", tp.act},
                           {"verb", text(t, "hud.talk.act." + tp.act)},
                           {"label", menuLabel(*t.loc, t.lang, w, *me, *them, tp)},
@@ -273,10 +278,18 @@ std::string sayTopic(World& w, EntityId meId, EntityId targetId, int index) {
     Character* me = w.character(meId);
     Character* them = w.character(targetId);
     if (!me || !them || me == them) return "no_person";
-    const auto topics = dialogueTopics(w, *me, *them);
+    // the same list as talkJson's topics: the questions, then dialogueTopics
+    std::vector<MenuTopic> topics = them->body.alive ? askTopics(w, *me, *them) : std::vector<MenuTopic>{};
+    for (auto& tp : dialogueTopics(w, *me, *them)) topics.push_back(std::move(tp));
     if (index < 0 || index >= int(topics.size())) return "no_topic";
     const MenuTopic& tp = topics[std::size_t(index)];
-    say(w, *me, *them, tp.act, tp.prop, tp.epi);
+    if (tp.act.rfind("ask_", 0) == 0) { // AL-111: they answer from what they know
+        askAndAnswer(w, *me, *them, tp);
+        return "";
+    }
+    std::optional<Prop> content;
+    if (!tp.prop.pred.empty()) content = tp.prop;
+    say(w, *me, *them, tp.act, content, tp.epi, "", "", tp.args);
     return "";
 }
 

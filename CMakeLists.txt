@@ -312,6 +312,7 @@ endif() # NOT ALTERA_SIM_ONLY
 # deterministic from seed + command log; depends on nothing but the JSON header.
 # ---------------------------------------------------------------------------
 add_library(altera_sim STATIC
+        src/sim/world_fields.cpp
         src/sim/rules.cpp
         src/sim/content.cpp
         src/sim/expansion.cpp
@@ -324,6 +325,7 @@ add_library(altera_sim STATIC
         src/sim/dialogue_rules.cpp
         src/sim/rumor_noise.cpp
         src/sim/dialogue_say.cpp
+        src/sim/news.cpp
         src/sim/speech_feed.cpp
         src/sim/justice.cpp
         src/sim/facts.cpp
@@ -851,7 +853,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_dialogue_rules.cpp
             tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp tests/test_altera_sim_dialogue_say.cpp
             tests/test_altera_sim_justice.cpp tests/test_altera_sim_facts.cpp
-            tests/test_altera_sim_speech_feed.cpp
+            tests/test_altera_sim_speech_feed.cpp tests/test_altera_sim_news.cpp
             tests/test_altera_sim_village_life.cpp tests/test_altera_sim_memory_budget.cpp
             tests/test_altera_sim_realm.cpp
             tests/test_altera_sim_ecology.cpp
@@ -862,7 +864,8 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp
             tests/test_altera_client2d_talk.cpp tests/test_altera_client2d_session.cpp
             tests/test_altera_client2d_craft.cpp
-            tests/test_altera_build2d.cpp)
+            tests/test_altera_build2d.cpp
+            tests/test_altera_sim_fields.cpp)
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sheet.cpp)   # AL-100
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sky.cpp)     # AL-110
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_crops.cpp)   # AL-112

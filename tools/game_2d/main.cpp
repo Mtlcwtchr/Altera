@@ -203,6 +203,8 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     j["me"] = controlled(*a.world);
     j["speech"] = speechJson(a, near);
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
+    // AL-115: fire, smoke and magic as point lights / fx for the 2D renderer (src/sim/world_fields.hpp)
+    j["world_fx"] = altera::sim::fieldsViewJson(*a.world, near, r);
     return j;
 }
 
@@ -423,6 +425,14 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             c2::Grid2d grid = c2::buildGrid(*a.world, a.ground, x, y, w, h);
             c2::paintCrops(*a.world, a.crops, grid);   // AL-112
             respond(s, 200, "application/json", c2::toJson(grid).dump());
+        } else if (path.rfind("/api/fields", 0) == 0) {
+            // AL-115: one field of the cells as bytes for an overlay (?f=heat&x=&y=&w=&h=)
+            altera::sim::Field f = altera::sim::Field::heat;
+            altera::sim::fieldFromName(queryParam(path, "f"), f);
+            respond(s, 200, "application/json",
+                    altera::sim::fieldRasterJson(*a.world, f, intParam(path, "x", 0), intParam(path, "y", 0), intParam(path, "w", 64),
+                                                 intParam(path, "h", 64))
+                        .dump());
         } else if (path.rfind("/api/state", 0) == 0) {
             const std::string sel = queryParam(path, "sel");
             EntityId id = kNone;

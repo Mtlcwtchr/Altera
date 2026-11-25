@@ -95,6 +95,8 @@ struct DayWeather {
     double tempC = 10.0;
     double rainMm = 0.0;
     bool wet = false;
+    // AL-115: the day's wind - where it blows from (degrees clockwise from north, -y) and how hard
+    double windFromDeg = 250.0, windMs = 4.0;
 };
 DayWeather weatherAt(const World& w, EntityId settlement, int epochDay);
 DayWeather weatherToday(const World& w, EntityId settlement);
