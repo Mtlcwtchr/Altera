@@ -11,3 +11,4 @@ Linux (облако, проверено 20.11): `cmake --preset sim-linux && cma
 - Не тянуть Windows-заголовки в `src/sim`: библиотека должна собираться на Linux.
 Данные: `content/ai/*.json` (схема AI_DATA_SCHEMA), проверка `validate_content.py ai`.
 Спеки: `gdd/ALTERA_CORE_SPEC_v0.1.md`, `gdd/ALTERA_GDD_v1.0_draft.md`, `gdd/WORK_PLAN.md`, `gdd/AI_DATA_SCHEMA.md`.
+Виды (AL-114, 25.11): разумные виды = данные `content/species/<id>.json` поверх общего Character (`src/sim/species.hpp`, поле `Character::race`, "" = человек), культуры `content/species/cultures/`, кто где живёт `content/species/settle.json`; монстры = звери `content/creatures/*.json` (формат species.json + sapience, loot; охота `hunt_<id>` генерируется). Возраст по виду читается через `Body::lifeYears()` в человеческих годах, никаких `if (race == ...)`.

@@ -561,7 +561,8 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
                         "flee_m", "diet", "prey", "aggression", "attack", "hunger_per_day", "breed_every_days",
                         "territory_m", "starve_days", "domestic", "per_family", "per_family_chance",
                         "graze_seasons", "fodder", "fodder_per_head", "products", "breed_season", "brood", "cull",
-                        "growth_per_year", "meat_days", "hunt_below", "leave_heads", "refuge_share", "immigrate_below", "_doc"},
+                        "growth_per_year", "meat_days", "hunt_below", "leave_heads", "refuge_share", "immigrate_below", "_doc",
+                        "sapience", "loot", "tags", "lair", "innate_spells", "hunt", "_source"},
                     "species", W);
         SpeciesDef s;
         s.id = j.at("id").get<std::string>();
@@ -633,6 +634,9 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
             }
             s.keep = opt(cj, "keep", 0);
         }
+        s.sapience = opt(j, "sapience", s.sapience);
+        if (j.contains("loot") && j["loot"].is_object()) s.loot = j["loot"].get<std::map<std::string, int>>();
+        s.tags = strings(j, "tags");
         if (!c.species.emplace(s.id, s).second) err.add("species: duplicate id " + s.id);
     }
     c.householdMust = strings(knowledge, "household_must");
@@ -904,9 +908,14 @@ Content Content::load(const std::string& dir) {
             if (!found) expansion.errors.push_back(std::string(pack) + ": annotate of unknown item '" + id + "'");
         }
     }
+    // AL-114: monsters (content/creatures) join the animals, their loot items and hunts join the catalog.
+    Json species = f("species.json");
+    std::vector<std::string> creatureErrors = mergeCreatures(dir + "/../creatures", species, items, interactions);
     Content c = fromJson(items, objects, needs, traits, f("goals.json"), htn, interactions, f("fsm.json"), config,
-                         f("dialogue.json"), knowledge, f("species.json"));
+                         f("dialogue.json"), knowledge, species);
     c.expansion = std::move(expansion);
+    for (auto& e : creatureErrors) c.expansion.errors.push_back("creatures: " + e);
+    c.peoples = loadSpecies(dir + "/../species"); // AL-114: sapient kinds (absent = everyone human)
     c.climate = parseClimate(f("climate.json"), c.warnings);
     c.care = parseCare(f("care.json"), c.warnings);
     c.roomsJson = f("rooms.json"); // AL-88: before the design acts (workshop rooms)

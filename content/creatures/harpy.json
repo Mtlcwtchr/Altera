@@ -1,0 +1,65 @@
+{
+ "id": "harpy",
+ "habitat": "land",
+ "biomes": [
+  "mountain",
+  "cliffs",
+  "coast"
+ ],
+ "per_km2": 0.01,
+ "group": [
+  3,
+  8
+ ],
+ "max_group": 12,
+ "speed_m_per_tick": 150,
+ "notice_m": 200,
+ "flee_m": 300,
+ "diet": "prey",
+ "prey": [
+  "hare",
+  "goats",
+  "hens"
+ ],
+ "aggression": 0.35,
+ "attack": {
+  "damage": [
+   0.1,
+   0.3
+  ],
+  "chance": 0.4,
+  "sated_days_after_kill": 10
+ },
+ "hunger_per_day": 0.4,
+ "breed_every_days": 200,
+ "growth_per_year": 0.45,
+ "meat_days": 2,
+ "hunt_below": 0.6,
+ "leave_heads": 2,
+ "territory_m": 7000,
+ "starve_days": 12,
+ "sapience": 0.3,
+ "tags": [
+  "monster",
+  "flying"
+ ],
+ "loot": {
+  "harpy_feather": 3
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.1,
+   "skill": "archery",
+   "per_skill": 0.5,
+   "min": 0.03,
+   "max": 0.7
+  },
+  "duration": 8,
+  "cost": 9
+ },
+ "_doc": "Гарпии: стаи на скалах, таскают кур и коз."
+}

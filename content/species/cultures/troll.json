@@ -1,0 +1,28 @@
+{
+ "id": "troll",
+ "species": "troll",
+ "names": {
+  "m": [
+   "Grakk",
+   "Murg",
+   "Ulk",
+   "Throg"
+  ],
+  "f": [
+   "Gruna",
+   "Morga",
+   "Skaha",
+   "Ulla"
+  ],
+  "family": []
+ },
+ "speech": "growl",
+ "build_style": "cave",
+ "teach_aspects": [
+  "life",
+  "water"
+ ],
+ "forbid_aspects": [],
+ "norms": {},
+ "_doc": "Тролли: пещеры и болота, рычащая речь; до рассвета ищут тень."
+}

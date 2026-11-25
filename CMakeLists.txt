@@ -331,6 +331,7 @@ add_library(altera_sim STATIC
         src/sim/justice.cpp
         src/sim/facts.cpp
         src/sim/village_life.cpp
+        src/sim/species.cpp
         src/sim/realm.cpp
         src/sim/memory_budget.cpp
         src/sim/dialogue_memory.cpp
@@ -862,7 +863,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_ecology.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_sim_trade.cpp
+            tests/test_altera_sim_trade.cpp tests/test_altera_sim_species.cpp
             tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp tests/test_altera_hotbar.cpp
             tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp
             tests/test_altera_client2d_talk.cpp tests/test_altera_client2d_session.cpp

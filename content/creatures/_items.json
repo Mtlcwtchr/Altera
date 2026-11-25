@@ -1,0 +1,127 @@
+{
+ "_doc": "AL-114: добыча монстров для крафта, алхимии и зачарования (сливается в items).",
+ "items": [
+  {
+   "id": "varg_pelt",
+   "material": "hide_raw",
+   "tags": [
+    "animal",
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 4,
+   "value": 6,
+   "_doc": "AL-114: шкура варга"
+  },
+  {
+   "id": "varg_fang",
+   "material": "bone",
+   "tags": [
+    "animal",
+    "monster_part",
+    "trophy",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 2
+  },
+  {
+   "id": "spider_venom",
+   "tags": [
+    "monster_part",
+    "alchemy",
+    "poison"
+   ],
+   "stack": 10,
+   "value": 8,
+   "_doc": "AL-114: яд пещерного паука — алхимия (AL-117)"
+  },
+  {
+   "id": "spider_silk",
+   "tags": [
+    "monster_part",
+    "craft_raw",
+    "fiber"
+   ],
+   "stack": 10,
+   "value": 4
+  },
+  {
+   "id": "drowner_brain",
+   "tags": [
+    "monster_part",
+    "alchemy"
+   ],
+   "stack": 6,
+   "value": 6
+  },
+  {
+   "id": "harpy_feather",
+   "material": "feather",
+   "tags": [
+    "animal",
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 20,
+   "value": 2
+  },
+  {
+   "id": "basilisk_eye",
+   "tags": [
+    "monster_part",
+    "alchemy",
+    "enchant",
+    "rare"
+   ],
+   "stack": 2,
+   "value": 60
+  },
+  {
+   "id": "basilisk_scale",
+   "material": "horn",
+   "tags": [
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 10
+  },
+  {
+   "id": "manticore_spine",
+   "material": "bone",
+   "tags": [
+    "monster_part",
+    "alchemy",
+    "poison",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 12
+  },
+  {
+   "id": "griffin_feather",
+   "material": "feather",
+   "tags": [
+    "monster_part",
+    "enchant",
+    "craft_raw"
+   ],
+   "stack": 20,
+   "value": 15
+  },
+  {
+   "id": "dragon_scale",
+   "material": "horn",
+   "tags": [
+    "monster_part",
+    "enchant",
+    "craft_raw",
+    "rare"
+   ],
+   "stack": 10,
+   "value": 120,
+   "_doc": "AL-114: чешуя дракона (с убитого дракона, задание realm)"
+  }
+ ]
+}

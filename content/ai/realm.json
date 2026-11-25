@@ -28,6 +28,26 @@
   {
    "kind": "bandit_camp",
    "n": 1
+  },
+  {
+   "kind": "dwarf_hold",
+   "n": 1
+  },
+  {
+   "kind": "elf_grove",
+   "n": 1
+  },
+  {
+   "kind": "orc_hold",
+   "n": 1
+  },
+  {
+   "kind": "goblin_warren",
+   "n": 1
+  },
+  {
+   "kind": "dragon_lair",
+   "n": 1
   }
  ],
  "templates": {
@@ -150,6 +170,137 @@
     "outlaw"
    ],
    "names": "bandit_camp"
+  },
+  "dwarf_hold": {
+   "pop": [
+    60,
+    140
+   ],
+   "food_days": [
+    150,
+    240
+   ],
+   "wealth_per_head": 2.2,
+   "land": 0.6,
+   "crafts": 0.45,
+   "fort": 0.8,
+   "institution": "lord",
+   "knights": [
+    1,
+    3
+   ],
+   "children": [
+    0,
+    2
+   ],
+   "names": "dwarf_hold",
+   "_doc": "AL-114: гномий чертог в горах (виды: content/species/settle.json)."
+  },
+  "elf_grove": {
+   "pop": [
+    30,
+    80
+   ],
+   "food_days": [
+    150,
+    260
+   ],
+   "wealth_per_head": 1.6,
+   "land": 1.1,
+   "crafts": 0.3,
+   "fort": 0.3,
+   "institution": "chief",
+   "knights": [
+    0,
+    1
+   ],
+   "children": [
+    0,
+    1
+   ],
+   "names": "elf_grove",
+   "_doc": "AL-114: эльфийская роща."
+  },
+  "orc_hold": {
+   "pop": [
+    50,
+    120
+   ],
+   "food_days": [
+    60,
+    120
+   ],
+   "wealth_per_head": 0.7,
+   "land": 0.7,
+   "crafts": 0.05,
+   "fort": 0.4,
+   "institution": "chief",
+   "knights": [
+    2,
+    4
+   ],
+   "children": [
+    2,
+    5
+   ],
+   "names": "orc_hold",
+   "_doc": "AL-114: орочье становище; набеги не прописаны, вырастают из бедности и характера вождя."
+  },
+  "goblin_warren": {
+   "pop": [
+    25,
+    70
+   ],
+   "food_days": [
+    20,
+    50
+   ],
+   "wealth_per_head": 0.3,
+   "land": 0.15,
+   "crafts": 0.1,
+   "fort": 0.1,
+   "institution": "ataman",
+   "knights": [
+    0,
+    1
+   ],
+   "children": [
+    0,
+    0
+   ],
+   "tags": [
+    "outlaw"
+   ],
+   "names": "goblin_warren",
+   "_doc": "AL-114: гоблинские норы: полей почти нет, живут набегами и воровством."
+  },
+  "dragon_lair": {
+   "pop": [
+    1,
+    1
+   ],
+   "food_days": [
+    200,
+    400
+   ],
+   "wealth_per_head": 600,
+   "land": 0.0,
+   "crafts": 0.0,
+   "fort": 1.0,
+   "institution": "lair",
+   "knights": [
+    0,
+    0
+   ],
+   "children": [
+    0,
+    0
+   ],
+   "tags": [
+    "outlaw"
+   ],
+   "names": "dragon_lair",
+   "_doc": "AL-114: логово дракона = поселение из одного жителя с кладом (wealth); сила = might вида dragon; без полей и вне закона, поэтому сам классифицируется как raiders и ходит в набеги, против него вешают награду (bandit_bounty)."
   }
  },
  "_templates_doc": "Start numbers only. land = field yield factor (0 = no fields), crafts = share of work in crafts/trade, fort = walls and a garrison; tags = history it starts with.",
@@ -168,6 +319,12 @@
   },
   "ataman": {
    "dynastic": false
+  },
+  "lair": {
+   "dynastic": false,
+   "celibate": true,
+   "solitary": true,
+   "tag": "dragon_lair"
   }
  },
  "classify": {
@@ -205,6 +362,31 @@
    "ashgrove",
    "kingsbarrow",
    "goatridge"
+  ],
+  "dwarf_hold": [
+   "khazdun",
+   "ironhall",
+   "deepforge"
+  ],
+  "elf_grove": [
+   "silverleaf",
+   "moonglade",
+   "starwood"
+  ],
+  "orc_hold": [
+   "skullridge",
+   "ashtusk",
+   "bloodmoor"
+  ],
+  "goblin_warren": [
+   "ratholes",
+   "muckpit",
+   "sootwarren"
+  ],
+  "dragon_lair": [
+   "emberpeak",
+   "wyrmcrag",
+   "ashen_spire"
   ]
  },
  "economy": {

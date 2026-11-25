@@ -1,0 +1,43 @@
+{
+ "id": "dwarven",
+ "species": "dwarf",
+ "names": {
+  "m": [
+   "Balin",
+   "Borin",
+   "Durgan",
+   "Grimli",
+   "Thrain",
+   "Torvald"
+  ],
+  "f": [
+   "Brunna",
+   "Dagna",
+   "Helga",
+   "Kathra",
+   "Sigrun",
+   "Vistra"
+  ],
+  "family": [
+   "Ironfist",
+   "Stonebeard",
+   "Deepdelver",
+   "Hammerfall"
+  ]
+ },
+ "speech": "blunt",
+ "build_style": "dwarven",
+ "teach_aspects": [
+  "earth",
+  "fire",
+  "metal"
+ ],
+ "forbid_aspects": [
+  "death"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "oathbreaking": "crime"
+ },
+ "_doc": "Гномы: горные чертоги, прямая речь, клятва свята."
+}

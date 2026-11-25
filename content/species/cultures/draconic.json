@@ -1,0 +1,32 @@
+{
+ "id": "draconic",
+ "species": "dragon",
+ "names": {
+  "m": [
+   "Vyrmax",
+   "Kaelthrax",
+   "Ignarion",
+   "Morvathar",
+   "Szarnoth"
+  ],
+  "f": [
+   "Aurvyra",
+   "Nyxaleth",
+   "Sarthyss",
+   "Vexmira",
+   "Ysolvane"
+  ],
+  "family": []
+ },
+ "speech": "grand",
+ "build_style": "lair",
+ "teach_aspects": [
+  "fire",
+  "air"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "tribute": "owed"
+ },
+ "_doc": "Драконы: высокомерная величавая речь, дань им положена."
+}

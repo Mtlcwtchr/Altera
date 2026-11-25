@@ -1,0 +1,89 @@
+{
+ "id": "troll",
+ "tags": [
+  "folk",
+  "giant",
+  "stone"
+ ],
+ "sapience": 0.45,
+ "glyph": "T",
+ "body": {
+  "height_m": 3.0,
+  "mass_kg": 400,
+  "sprite_px": 32,
+  "night_vision": 1.0,
+  "speed_mult": 0.9,
+  "reach_mult": 1.6,
+  "skin": "#6e8a72"
+ },
+ "life": {
+  "adult_years": 25,
+  "elder_years": 120,
+  "lifespan_years": 150,
+  "fertility": 0.3,
+  "interbreed": {}
+ },
+ "needs": {
+  "hunger": 1.8,
+  "warmth": 0.4,
+  "hygiene": 0.3
+ },
+ "diet": [
+  "any",
+  "carrion"
+ ],
+ "aptitudes": {
+  "brawling": {
+   "learn": 1.2,
+   "cap": 1.1
+  },
+  "*": {
+   "learn": 0.6,
+   "cap": 0.8
+  }
+ },
+ "affinity": {
+  "life": 1.4,
+  "water": 1.4,
+  "fire": 0.4,
+  "light": 0.3
+ },
+ "traits_pool": {
+  "brawny": 3.0,
+  "robust": 3.0,
+  "hot_tempered": 1.6,
+  "slow_learner": 2.0,
+  "fast_healer": 3.0
+ },
+ "resist": {
+  "cold": 0.3
+ },
+ "weak": {
+  "fire": 2.0
+ },
+ "culture_default": "troll",
+ "relations_bias": {
+  "human": -0.35,
+  "dwarf": -0.4,
+  "elf": -0.4,
+  "orc": -0.05,
+  "ogre": 0.05,
+  "goblin": -0.1
+ },
+ "regen": {
+  "health_per_day": 0.25,
+  "blocked_by_moodlets": [
+   "burned",
+   "scorched"
+  ]
+ },
+ "sun_sleep": {
+  "light_above": 0.6,
+  "state": "petrified_sleep",
+  "wake_below": 0.3,
+  "_doc": "Под прямым светом (поле light выше порога, без крыши) каменеет и засыпает: неподвижен, нужды заморожены, обычное оружие не берёт. Ночью или в тени просыпается. До поля light (AL-115) свет = день по часам."
+ },
+ "gifted_chance": 0.02,
+ "settlement_tag": "troll",
+ "_doc": "Тролли: огромные, регенерируют раны (не увечья), огонь гасит регенерацию; на солнце каменеют и засыпают."
+}

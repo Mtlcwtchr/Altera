@@ -106,6 +106,7 @@ struct Canvas {
 };
 
 Rgba skinOf(const std::string& s) {
+    if (!s.empty() && s[0] == '#') return parseHex(s); // AL-114: a kind's own skin (orc green, troll grey)
     if (s == "mid") return parseHex("#c88a5c");
     if (s == "dark") return parseHex("#8a5a3a");
     return parseHex("#eab48a");

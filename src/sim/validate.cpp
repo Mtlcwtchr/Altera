@@ -296,6 +296,7 @@ void checkCurve(const Curve& cv, const std::string& where, V& v) {
 ValidationReport validate(const Content& c) {
     ValidationReport r;
     V v{c, r};
+    validateSpecies(c, r); // AL-114
 
     // Needs / traits.
     for (const auto& n : c.needs) {

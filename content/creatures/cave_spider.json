@@ -1,0 +1,63 @@
+{
+ "id": "cave_spider",
+ "habitat": "land",
+ "biomes": [
+  "forest"
+ ],
+ "per_km2": 0.006,
+ "group": [
+  1,
+  3
+ ],
+ "max_group": 4,
+ "speed_m_per_tick": 90,
+ "notice_m": 60,
+ "flee_m": 80,
+ "diet": "prey",
+ "prey": [
+  "hare",
+  "deer"
+ ],
+ "aggression": 0.4,
+ "attack": {
+  "damage": [
+   0.2,
+   0.45
+  ],
+  "chance": 0.45,
+  "sated_days_after_kill": 25
+ },
+ "hunger_per_day": 0.25,
+ "breed_every_days": 200,
+ "growth_per_year": 0.4,
+ "meat_days": 4,
+ "hunt_below": 0.5,
+ "leave_heads": 1,
+ "territory_m": 2500,
+ "starve_days": 25,
+ "sapience": 0.1,
+ "tags": [
+  "monster",
+  "venomous"
+ ],
+ "loot": {
+  "spider_venom": 1,
+  "spider_silk": 2
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.15,
+   "skill": "hunting",
+   "per_skill": 0.45,
+   "min": 0.05,
+   "max": 0.75
+  },
+  "duration": 6,
+  "cost": 8
+ },
+ "_doc": "Пещерные пауки: логово в чаще и пещерах; яд и шёлк для алхимии и ремесла."
+}

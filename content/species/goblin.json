@@ -1,0 +1,97 @@
+{
+ "id": "goblin",
+ "tags": [
+  "folk",
+  "greenskin",
+  "small"
+ ],
+ "sapience": 0.7,
+ "glyph": "g",
+ "body": {
+  "height_m": 1.0,
+  "mass_kg": 30,
+  "sprite_px": 16,
+  "night_vision": 0.9,
+  "speed_mult": 1.05,
+  "reach_mult": 0.7,
+  "skin": "#9aae4a"
+ },
+ "life": {
+  "adult_years": 8,
+  "elder_years": 28,
+  "lifespan_years": 35,
+  "fertility": 2.2,
+  "pregnancy_mult": 0.6,
+  "interbreed": {}
+ },
+ "needs": {
+  "hunger": 0.8,
+  "hygiene": 0.5
+ },
+ "diet": [
+  "any",
+  "carrion"
+ ],
+ "aptitudes": {
+  "trapping": {
+   "learn": 1.5,
+   "cap": 1.2
+  },
+  "stealth": {
+   "learn": 1.5,
+   "cap": 1.2
+  },
+  "daggers": {
+   "learn": 1.2,
+   "cap": 1.1
+  },
+  "herbalism": {
+   "learn": 1.2,
+   "cap": 1.1
+  },
+  "deception": {
+   "learn": 1.4,
+   "cap": 1.15
+  },
+  "toolmaking": {
+   "learn": 1.3,
+   "cap": 1.15
+  },
+  "leadership": {
+   "learn": 0.7,
+   "cap": 0.85
+  }
+ },
+ "affinity": {
+  "poison": 1.6,
+  "shadow": 1.5,
+  "light": 0.6
+ },
+ "traits_pool": {
+  "excitable": 2.0,
+  "unscrupulous": 2.0,
+  "nimble_fingers": 2.0,
+  "superstitious": 1.6,
+  "iron_stomach": 2.5,
+  "stoic": 0.4
+ },
+ "resist": {
+  "poison": 0.6,
+  "illness": 0.7
+ },
+ "weak": {
+  "fear": 1.5
+ },
+ "culture_default": "goblin",
+ "relations_bias": {
+  "human": -0.25,
+  "elf": -0.5,
+  "dwarf": -0.6,
+  "orc": 0.05,
+  "ogre": 0.0,
+  "dragon": -0.2
+ },
+ "gifted_chance": 0.06,
+ "settlement_tag": "goblin",
+ "_doc": "Гоблины: маленькие (спрайт 16×16), ночное зрение, едят почти всё, жуткая плодовитость, легко пугаются. Ловушки, воровство, алхимия, механика."
+}

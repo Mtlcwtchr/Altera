@@ -1,0 +1,63 @@
+{
+ "id": "drowner",
+ "habitat": "land",
+ "biomes": [
+  "marsh",
+  "river"
+ ],
+ "per_km2": 0.015,
+ "group": [
+  1,
+  4
+ ],
+ "max_group": 6,
+ "speed_m_per_tick": 70,
+ "notice_m": 50,
+ "flee_m": 60,
+ "diet": "prey",
+ "prey": [
+  "hare",
+  "fish_shoal"
+ ],
+ "aggression": 0.45,
+ "attack": {
+  "damage": [
+   0.15,
+   0.4
+  ],
+  "chance": 0.4,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.3,
+ "breed_every_days": 260,
+ "growth_per_year": 0.3,
+ "meat_days": 3,
+ "hunt_below": 0.5,
+ "leave_heads": 1,
+ "territory_m": 2000,
+ "starve_days": 20,
+ "sapience": 0.15,
+ "tags": [
+  "monster",
+  "water"
+ ],
+ "loot": {
+  "drowner_brain": 1
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.2,
+   "skill": "hunting",
+   "per_skill": 0.45,
+   "min": 0.05,
+   "max": 0.8
+  },
+  "duration": 6,
+  "cost": 7
+ },
+ "_doc": "Болотные утопцы: выходят к броду и одиночкам у воды."
+}

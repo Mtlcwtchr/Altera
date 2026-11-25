@@ -1,0 +1,66 @@
+{
+ "id": "griffin",
+ "habitat": "land",
+ "biomes": [
+  "mountain",
+  "cliffs"
+ ],
+ "per_km2": 0.002,
+ "group": [
+  1,
+  2
+ ],
+ "max_group": 3,
+ "speed_m_per_tick": 180,
+ "notice_m": 300,
+ "flee_m": 400,
+ "diet": "prey",
+ "prey": [
+  "goats",
+  "deer",
+  "boar"
+ ],
+ "aggression": 0.25,
+ "attack": {
+  "damage": [
+   0.3,
+   0.7
+  ],
+  "chance": 0.45,
+  "sated_days_after_kill": 25
+ },
+ "hunger_per_day": 0.3,
+ "breed_every_days": 720,
+ "growth_per_year": 0.08,
+ "meat_days": 20,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 12000,
+ "starve_days": 25,
+ "sapience": 0.4,
+ "tags": [
+  "monster",
+  "flying",
+  "tameable"
+ ],
+ "loot": {
+  "griffin_feather": 4,
+  "hide": 1
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.05,
+   "skill": "archery",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.55
+  },
+  "duration": 10,
+  "cost": 12
+ },
+ "_doc": "Грифон: гнездо на скалах, приручается редко; перо — для зачарования."
+}

@@ -541,6 +541,8 @@ struct Window::Impl : Ctx {
         spec.body = f ? "fem" : BODY[h % 4];
         static const char* SKIN[] = {"light", "light", "light", "mid", "light", "mid", "light", "dark"};
         spec.skin = SKIN[(h >> 3) % 8];
+        if (!str(p, "rskin").empty()) spec.skin = str(p, "rskin");   // AL-114: the kind's skin
+        if (flag(p, "stone")) spec.skin = "#8c8c86";                 // a troll asleep as stone
         std::string hc = HAIR[(h >> 6) % 6];
         if (age >= 55) hc = "#b0b0a8";
         static const char* FH[] = {"long", "bun", "braids", "long"};
@@ -1267,7 +1269,7 @@ struct Window::Impl : Ctx {
         const std::string sp = str(p, "sp");
         const bool alive = flag(p, "alive");
         if (glyphs) {
-            std::string g = alive ? "@" : "%";
+            std::string g = alive ? (str(p, "rg").empty() ? "@" : str(p, "rg")) : "%";   // AL-114: the kind's glyph
             if (!sp.empty()) {
                 std::size_t at = 0;
                 const std::string nm = str(p, "name").empty() ? sp : str(p, "name");
@@ -1288,10 +1290,12 @@ struct Window::Impl : Ctx {
         int bob = v.moving ? v.bob : 0;
         if (!v.moving && st == "Work") bob = int((long long)(nowMs() / 350) + id) % 2;
         const Sprite img = pawnSprite(pawnSpec(p), lying ? 'S' : v.face, lying ? 0 : bob);
+        // AL-114: a kind's size (a goblin 16, an ogre or a troll 32 px against the 20 of a man)
+        const float k = num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f;
         if (lying) {
             const float cx = sx, cy = sy - 3 * sc;
-            blit(img, cx - 10 * sc, cy - 10 * sc, kPawn * sc, kPawn * sc, alive ? 1.0f : 0.6f, -90);
-        } else blit(img, sx - 10 * sc, sy - 18 * sc, kPawn * sc, kPawn * sc);
+            blit(img, cx - 10 * sc * k, cy - 10 * sc * k, kPawn * sc * k, kPawn * sc * k, alive ? 1.0f : 0.6f, -90);
+        } else blit(img, sx - 10 * sc * k, sy - 18 * sc * k, kPawn * sc * k, kPawn * sc * k);
     }
     void drawRoofs(double tp) {
         if (roofMode == "none") return;

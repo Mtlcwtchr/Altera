@@ -75,18 +75,21 @@ std::string makeFamilyName(Rng& r, const Content* c = nullptr) {
     return std::string(a[r.irange(0, 9)]) + b[r.irange(0, 7)];
 }
 
-std::vector<std::string> pickTraits(Rng& r, const Content& c, const std::vector<std::string>& pool, int count) {
+std::vector<std::string> pickTraits(Rng& r, const Content& c, const std::vector<std::string>& pool, int count,
+                                    const RaceDef* race = nullptr) {
     std::vector<std::string> out;
     double total = 0.0;
-    for (const auto& t : pool) {
+    // AL-114: the kind makes some traits likelier (dwarves stubborn), none impossible
+    auto weight = [&](const std::string& t) {
         auto d = c.traits.find(t);
-        total += d == c.traits.end() ? 1.0 : std::max(0.0, d->second.weightInPool);
-    }
+        const double w = d == c.traits.end() ? 1.0 : std::max(0.0, d->second.weightInPool);
+        return race ? w * raceTraitWeight(*race, t) : w;
+    };
+    for (const auto& t : pool) total += weight(t);
     auto draw = [&]() -> const std::string& {
         double x = r.uniform() * total;
         for (const auto& t : pool) {
-            auto d = c.traits.find(t);
-            x -= d == c.traits.end() ? 1.0 : std::max(0.0, d->second.weightInPool);
+            x -= weight(t);
             if (x <= 0.0) return t;
         }
         return pool.back();
@@ -108,6 +111,9 @@ std::vector<std::string> pickTraits(Rng& r, const Content& c, const std::vector<
 World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedOverride) {
     const std::uint64_t seed = seedOverride ? seedOverride : cfg.value("seed", std::uint64_t{1});
     World w(content, seed);
+    // AL-114: who lives in the map's village (settle.json map; a test world may give "peoples")
+    std::map<std::string, double> peoplesMix = content.peoples.mapMix;
+    if (cfg.contains("peoples") && cfg["peoples"].is_object()) peoplesMix = cfg["peoples"].get<std::map<std::string, double>>();
     {
         // start_day (day of year) or season: spring | summer | autumn | winter.
         static const char* kSeasons[] = {"spring", "summer", "autumn", "winter"};
@@ -630,7 +636,19 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             c.body.sex = sex;
             c.body.ageDays = ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1);
             c.name = makeName(rng, sex == 'f', &content) + " " + fam.name;
-            c.traits = pickTraits(rng, content, pool, traitsPer);
+            // AL-114: the kind (settle.json map, or the test world's "peoples"), by a stream of its own
+            const RaceDef* kind = nullptr;
+            if (content.peoples.loaded) {
+                Rng rr = w.rng(c.id, "race:kind");
+                setRace(content, c, drawRace(peoplesMix, rr, content.peoples.defaultRace));
+                if (!c.race.empty()) {
+                    kind = content.raceOf(c.race);
+                    c.body.ageDays = raceAgeDays(*kind, ageYears + rr.uniform());
+                    if (const std::string n = cultureName(content, c.race, rr, sex == 'f', false); !n.empty())
+                        c.name = n + " " + fam.name;
+                }
+            }
+            c.traits = pickTraits(rng, content, pool, traitsPer, kind);
             for (const auto& n : content.needs) c.needs[n.id] = rng.range(n.startLo, n.startHi);
             const bool child = c.body.stage() == "child";
             c.knowledge = startKnowledge(rng, ageYears);
@@ -643,6 +661,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             if (lot) c.pos = lot->house.at(c.pos.x - house.x, lot->house.hd + 2.0 + std::fabs(c.pos.y - house.y) * 0.5);
             c.home = fam.storage;
             Character& placed = w.addCharacter(std::move(c));
+            raceAtBirth(w, placed);
             members.push_back(placed.id);
             return placed;
         };
