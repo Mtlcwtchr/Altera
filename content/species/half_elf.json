@@ -14,5 +14,12 @@
    "elf": "half_elf",
    "half_elf": "half_elf"
   }
+ },
+ "body": {
+  "pawn": {
+   "ears": "half",
+   "build": "slim",
+   "beard": "rare"
+  }
  }
 }

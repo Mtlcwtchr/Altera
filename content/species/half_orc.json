@@ -16,6 +16,13 @@
   }
  },
  "body": {
-  "skin": "#a8a868"
+  "skin": "#a8a868",
+  "pawn": {
+   "tusks": "small",
+   "brow": "heavy",
+   "ears": "",
+   "eyes": "",
+   "beard": "rare"
+  }
  }
 }

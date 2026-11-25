@@ -16,6 +16,21 @@
   4,
   3
  ],
+ "base_clothes": {
+  "_doc": "LR-139: the plain clothes a person made by the world starts in (worldgen, a birth, the first tick). A slot already worn or carried is skipped. Without a torso thing a 2D pawn is drawn naked.",
+  "m": {
+   "tunic": 1,
+   "trousers": 1,
+   "belt": 1
+  },
+  "f": {
+   "tunic": 1,
+   "belt": 1
+  },
+  "child": {
+   "tunic": 1
+  }
+ },
  "slots": [
   {
    "id": "head",

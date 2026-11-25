@@ -9,11 +9,18 @@
  "body": {
   "height_m": 1.35,
   "mass_kg": 75,
-  "sprite_px": 20,
+  "sprite_px": 18,
   "night_vision": 0.8,
   "speed_mult": 0.9,
   "reach_mult": 0.85,
-  "skin": "#d8a07a"
+  "skin": "#d8a07a",
+  "pawn": {
+   "head": "wide",
+   "build": "stocky",
+   "nose": "big",
+   "brow": "heavy",
+   "beard": "long"
+  }
  },
  "life": {
   "adult_years": 30,

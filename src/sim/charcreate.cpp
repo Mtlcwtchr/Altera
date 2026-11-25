@@ -121,6 +121,7 @@ Json creationRules(const Content& c, const std::string& culture) {
             e["elder"] = r->elderYears;
             e["lifespan"] = r->lifespanYears;
             e["px"] = r->spritePx;
+            if (!r->pawn.empty()) e["pawn"] = r->pawn;   // LR-139: ears, head, tusks... for the preview
             e["gifted_chance"] = r->giftedChance;
             // the kind's strongest and weakest aptitudes, for the card
             std::vector<std::pair<std::string, RaceAptitude>> ap(r->aptitudes.begin(), r->aptitudes.end());

@@ -11,7 +11,10 @@
   "sprite_px": 20,
   "night_vision": 0.0,
   "speed_mult": 1.0,
-  "reach_mult": 1.0
+  "reach_mult": 1.0,
+  "pawn": {
+   "_doc": "LR-139: how the 2D pawn draws this kind (tools/game_2d/native/pixels2d.cpp)"
+  }
  },
  "life": {
   "adult_years": 14,

@@ -125,6 +125,7 @@ static void raceJson(const World& w, const Character& c, Json& p) {
     p["rpx"] = r.spritePx;
     if (!r.skin.empty()) p["rskin"] = r.skin;
     if (!r.glyph.empty()) p["rg"] = r.glyph;
+    if (!r.pawn.empty()) p["rlook"] = r.pawn;   // LR-139: ears, head, tusks, build...
     if (c.body.petrified) p["stone"] = true;
 }
 

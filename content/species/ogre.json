@@ -13,7 +13,17 @@
   "night_vision": 0.3,
   "speed_mult": 0.95,
   "reach_mult": 1.5,
-  "skin": "#b89a78"
+  "skin": "#b89a78",
+  "pawn": {
+   "head": "small",
+   "build": "hulking",
+   "tusks": "small",
+   "brow": "heavy",
+   "ears": "big",
+   "hair": "none",
+   "nose": "big",
+   "beard": "rare"
+  }
  },
  "life": {
   "adult_years": 18,

@@ -14,7 +14,16 @@
   "night_vision": 0.9,
   "speed_mult": 1.05,
   "reach_mult": 0.7,
-  "skin": "#9aae4a"
+  "skin": "#9aae4a",
+  "pawn": {
+   "ears": "long",
+   "head": "big",
+   "nose": "long",
+   "build": "wiry",
+   "hair": "none",
+   "beard": "never",
+   "eyes": "#e8d040"
+  }
  },
  "life": {
   "adult_years": 8,

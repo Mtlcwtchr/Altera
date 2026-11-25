@@ -57,17 +57,50 @@ const Pawns = (() => {
     px(x, y, c) { if (x >= 0 && x < N && y >= 0 && y < N) this.g[key(x, y)] = c; }
   }
 
-  function pawn(spec, d, bob, child) {
-    const c = new Canvas(), sk = SKIN[spec.skin || 'light'] || SKIN.light;
+  // LR-139: pose {bob, step, swing, dip, blink} (pixels2d.cpp pawnPose); a number is the bob alone
+  function pawn(spec, d, pose, child) {
+    if (typeof pose === 'number') pose = { bob: pose };
+    const bob = pose.bob || 0, step = pose.step === undefined ? -1 : pose.step;
+    const c = new Canvas(), sk = (spec.skin || '').startsWith('#') ? spec.skin : (SKIN[spec.skin || 'light'] || SKIN.light);
     let hcx, hcy, hr, bcx, bcy, brx, bry;
     if (child) { hcx = 10; hcy = 9.5; hr = 3.7; bcx = 10; bcy = 15.6; brx = 3.8; bry = 3.9; }
-    else { hcx = 10; hcy = 6.6; hr = 4.3; bcx = 10; bcy = 14; [brx, bry] = BODY[spec.body || 'norm'] || BODY.norm; }
+    else {
+      hcx = 10; hcy = 6.6; hr = 4.3; bcx = 10; bcy = 14; [brx, bry] = BODY[spec.body || 'norm'] || BODY.norm;
+      const b = spec.build;   // LR-139: the kind's build
+      if (b === 'stocky') { brx *= 1.2; bry *= 0.8; bcy += 1.2; hcy += 2.4; }
+      else if (b === 'slim') { brx *= 0.86; bry *= 1.06; hcy -= 0.4; }
+      else if (b === 'broad') { brx *= 1.14; hcy += 0.3; }
+      else if (b === 'hulking') { brx *= 1.24; bry *= 1.02; hcy += 1.4; }
+      else if (b === 'wiry') { brx *= 0.84; bry *= 0.9; bcy += 0.5; hcy += 0.6; }
+    }
+    let hrx = hr, hry = hr;   // LR-139: the shape of the head
+    if (spec.head === 'wide') { hrx = hr * 1.14; hry = hr * 0.92; }
+    else if (spec.head === 'long') { hrx = hr * 0.9; hry = hr * 1.08; }
+    else if (spec.head === 'small') hrx = hry = hr * 0.8;
+    else if (spec.head === 'big') hrx = hry = hr * 1.12;
     if (d === 'E') { brx *= 0.82; hcx += 0.7; }
+    if (d === 'E' && spec.build === 'hulking') hcx += 0.8;
     hcy -= bob; bcy -= bob;
+    hcy += pose.dip || 0;
     const body = ell(bcx, bcy, brx, bry);
+    const warts = spec.skin_pattern === 'warts';
+    const P0 = pts => new Set(pts.filter(([x, y]) => x >= 0 && y >= 0 && x < N && y < N).map(([x, y]) => key(x, y)));
     const cloak = spec.cloak;
     if (cloak && (d === 'S' || d === 'E')) c.layer(ell(bcx - (d === 'E' ? 0.6 : 0), bcy - 0.3, brx + 1.2, bry + 0.6), cloak);
-    c.layer(body, sk);
+    c.layer(body, sk, warts ? (x, y, cc) => ((x * 7 + y * 3) % 11 === 0 ? mul(cc, 0.78) : null) : null);
+    { // LR-139: feet under the body, bare or shod; walking they step in turn
+      let fc = mul(sk, 0.8);
+      for (const [kind, col] of spec.wear || []) if (kind === 'boots') fc = col;
+      const fy = Math.min(N - 1, Math.trunc(bcy + bry - 0.2)), bx = Math.trunc(bcx);
+      if (d === 'E') {
+        if (step === 1) c.layer(P0([[bx - 2, fy], [bx + 2, fy]]), fc, null, false);
+        else if (step === 3) c.layer(P0([[bx, fy]]), fc, null, false);
+        else c.layer(P0([[bx - 1, fy], [bx + 1, fy]]), fc, null, false);
+      } else {
+        if (step !== 1) c.layer(P0([[bx - 2, fy]]), fc, null, false);
+        if (step !== 3) c.layer(P0([[bx + 1, fy]]), fc, null, false);
+      }
+    }
     const robeMask = () => union(body, ell(bcx, bcy + 1.5, brx + 0.8, bry - 0.4));
     for (const [kind, col] of spec.wear || []) {
       if (kind === 'shirt') c.layer(body, col);
@@ -103,9 +136,11 @@ const Pawns = (() => {
     if (cloak && d === 'N') c.layer(ell(bcx, bcy - 0.3, brx + 1.2, bry + 0.6), cloak);
     if (cloak && d === 'S') { c.px(Math.trunc(bcx) - 1, Math.trunc(bcy - bry) + 1, '#e8c040'); c.px(Math.trunc(bcx), Math.trunc(bcy - bry) + 1, '#e8c040'); }
     // hands
-    const hy = Math.trunc(bcy + 1);
-    if (d === 'S' || d === 'N') for (const hx_ of [Math.trunc(bcx - brx) - 1, Math.trunc(bcx + brx)]) c.layer(new Set([key(hx_, hy)]), sk);
-    else c.layer(new Set([key(Math.trunc(bcx + brx) - 1, hy)]), sk);
+    const hy = Math.trunc(bcy + 1) - 2 * (pose.swing || 0), sw = step === 1 ? 1 : step === 3 ? -1 : 0;
+    if (d === 'S' || d === 'N') {
+      c.layer(P0([[Math.trunc(bcx - brx) - 1, Math.trunc(bcy + 1) + sw]]), sk);
+      c.layer(P0([[Math.trunc(bcx + brx), hy - sw]]), sk);
+    } else c.layer(P0([[Math.trunc(bcx + brx) - 1 + sw, hy]]), sk);
     // tool
     const tool = spec.tool;
     let tx = Math.trunc(bcx + brx) + (d !== 'E' ? 1 : 0); const ty = hy;
@@ -149,50 +184,94 @@ const Pawns = (() => {
     if (tool === 'torch') { stick(ty - 1, ty + 1, WOOD); c.layer(S([[tx, ty - 2]]), '#e87828', null, false); c.layer(S([[tx, ty - 3]]), '#f8d848', null, false); }
     if (tool === 'basket') c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty], [tx - 1, ty + 1], [tx, ty + 1], [tx + 1, ty + 1]]), '#c8a050', (x, y, cc) => ((x + y) % 2 ? mul(cc, 0.8) : null));
     if (tool === 'bucket') { c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty], [tx - 1, ty + 1], [tx, ty + 1], [tx + 1, ty + 1]]), WOOD); c.layer(S([[tx - 1, ty], [tx, ty], [tx + 1, ty]]), IRON, null, false); }
+    // LR-139: the kind's ears, under the head so its outline shades them (and again over the hair)
+    let ears = new Set();
+    {
+      const ey = Math.trunc(hcy), hl = Math.trunc(hcx - hrx), hrr = Math.trunc(hcx + hrx), e = spec.ears;
+      let ear = [];
+      if (d === 'S' || d === 'N') {
+        if (e === 'pointed') ear = [[hl - 1, ey], [hl - 1, ey - 1], [hl - 2, ey - 2], [hl - 3, ey - 3], [hrr, ey], [hrr, ey - 1], [hrr + 1, ey - 2], [hrr + 2, ey - 3]];
+        if (e === 'half') ear = [[hl - 1, ey], [hl - 1, ey - 1], [hrr, ey], [hrr, ey - 1]];
+        if (e === 'long') ear = [[hl - 1, ey], [hl - 2, ey], [hl - 3, ey - 1], [hrr, ey], [hrr + 1, ey], [hrr + 2, ey - 1]];
+        if (e === 'big') ear = [[hl - 1, ey], [hl - 1, ey + 1], [hrr, ey], [hrr, ey + 1]];
+        ears = P0(ear);
+      } else {
+        const bx = Math.trunc(hcx - 0.6);
+        if (e === 'pointed') ear = [[bx - 1, ey - 1], [bx - 2, ey - 2], [bx - 3, ey - 3]];
+        if (e === 'half') ear = [[bx - 1, ey - 1], [bx - 2, ey - 2]];
+        if (e === 'long') ear = [[bx - 1, ey], [bx - 2, ey - 1], [bx - 3, ey - 1], [bx - 4, ey - 2]];
+        if (e === 'big') ear = [[bx - 1, ey], [bx - 1, ey + 1], [bx - 2, ey]];
+        if (Math.trunc(hrx + 0.5) >= 4 && (e === 'pointed' || e === 'half')) ear.push([bx - 4 + (e === 'half' ? 1 : 0), ey - 3 + (e === 'half' ? 1 : 0)]);
+        ears = minus(P0(ear), ell(hcx, hcy, hrx * 0.95, hry));
+      }
+      if (ears.size) c.layer(ears, sk);
+    }
     // head
-    const head = ell(hcx, hcy, d !== 'E' ? hr : hr * 0.95, hr);
+    const head = ell(hcx, hcy, d !== 'E' ? hrx : hrx * 0.95, hry);
     const [hair, hc] = spec.hair || ['short', '#5a3a20'];
     if (hair === 'long' && d !== 'N')
-      c.layer(filter(ell(hcx - (d === 'E' ? 0.5 : 0), hcy + 1.4, hr + 0.9, hr + 1.6), (x, y) => y >= hcy - 1 && (d === 'E' || Math.abs(x + 0.5 - hcx) >= hr - 1.2)), hc);
-    c.layer(head, sk);
-    const top = Math.trunc(hcy - hr), faceY = Math.trunc(hcy + 0.3);
-    if (d === 'S') { c.px(Math.trunc(hcx) - 2, faceY, OUT); c.px(Math.trunc(hcx) + 1, faceY, OUT); }
-    else if (d === 'E') c.px(Math.trunc(hcx) + 2, faceY, OUT);
-    if (spec.beard && d !== 'N') c.layer(filter(head, (x, y) => y >= hcy + 1.2 && (d === 'S' || x + 0.5 >= hcx - 0.5)), hc, null, false);
+      c.layer(filter(ell(hcx - (d === 'E' ? 0.5 : 0), hcy + 1.4, hrx + 0.9, hry + 1.6), (x, y) => y >= hcy - 1 && (d === 'E' || Math.abs(x + 0.5 - hcx) >= hrx - 1.2)), hc);
+    c.layer(head, sk, warts ? (x, y, cc) => ((x * 5 + y * 7) % 9 === 0 ? mul(cc, 0.78) : null) : null);
+    const top = Math.trunc(hcy - hry), faceY = Math.trunc(hcy + 0.3), fx = Math.trunc(hcx);
+    // LR-139: the face of the kind: eyes (their colour, a blink), a heavy brow, a nose, tusks
+    const eye = pose.blink ? mul(sk, 0.6) : (spec.eyes || OUT), dark = mul(sk, 0.62), ivory = '#f0e8d0';
+    if (d === 'S') {
+      c.px(fx - 2, faceY, eye); c.px(fx + 1, faceY, eye);
+      if (spec.brow === 'heavy') c.layer(P0([[fx - 2, faceY - 1], [fx - 1, faceY - 1], [fx, faceY - 1], [fx + 1, faceY - 1]]), dark, null, false);
+      if (spec.nose === 'big' || spec.nose === 'long') c.layer(P0([[fx - 1, faceY + 1], [fx, faceY + 1]]), mul(sk, 0.8), null, false);
+      if (spec.nose === 'long') c.px(fx, faceY + 2, mul(sk, 0.7));
+      if (spec.tusks === 'yes') c.layer(P0([[fx - 2, faceY + 2], [fx + 1, faceY + 2], [fx - 2, faceY + 1], [fx + 1, faceY + 1]]), ivory, null, false);
+      else if (spec.tusks === 'small') c.layer(P0([[fx - 2, faceY + 2], [fx + 1, faceY + 2]]), ivory, null, false);
+    } else if (d === 'E') {
+      c.px(fx + 2, faceY, eye);
+      if (spec.brow === 'heavy') c.layer(P0([[fx + 1, faceY - 1], [fx + 2, faceY - 1], [fx + 3, faceY - 1]]), dark, null, false);
+      const nx = Math.trunc(hcx + hrx * 0.95);
+      if (spec.nose === 'big') c.layer(P0([[nx, faceY + 1]]), sk);
+      if (spec.nose === 'long') c.layer(P0([[nx, faceY + 1], [nx + 1, faceY + 1], [nx + 1, faceY + 2]]), sk);
+      if (spec.tusks) c.layer(P0([[fx + 2, faceY + 2], [fx + 2, faceY + (spec.tusks === 'yes' ? 1 : 2)]]), ivory, null, false);
+    }
+    if (spec.beard && d !== 'N') {
+      let bm = filter(head, (x, y) => y >= hcy + 1.2 && (d === 'S' || x + 0.5 >= hcx - 0.5));
+      if (spec.long_beard) bm = union(bm, ell(hcx + (d === 'E' ? 1.2 : 0), hcy + hry + 1.2, d === 'E' ? 1.8 : 2.6, 2.6));
+      c.layer(bm, hc, null, !!spec.long_beard);
+      if (spec.tusks === 'yes' && d === 'S') c.layer(P0([[fx - 2, faceY + 1], [fx + 1, faceY + 1]]), ivory, null, false);
+    }
+    if (hair === 'tuft') c.layer(P0([[fx - 1, top], [fx, top - 1], [fx, top], [fx + 1, top]]), hc);
     if (['short', 'long', 'bun', 'braids'].includes(hair)) {
       let hm;
       if (d === 'S') hm = filter(head, (x, y) => y + 0.5 <= hcy - 1.1);
       else if (d === 'E') hm = filter(head, (x, y) => y + 0.5 <= hcy - 1.1 || (x + 0.5 <= hcx - 1.2 && y + 0.5 <= hcy + 2));
       else hm = union(filter(head, (x, y) => y + 0.5 <= hcy + 2.6), hair !== 'short' ? head : new Set());
-      if (hair === 'long' && d === 'N') hm = union(hm, ell(hcx, hcy + 1.4, hr + 0.9, hr + 1.6));
+      if (hair === 'long' && d === 'N') hm = union(hm, ell(hcx, hcy + 1.4, hrx + 0.9, hry + 1.6));
       if (hair === 'bun') hm = union(hm, ell(hcx, top - 0.2, 1.8, 1.6));
-      if (hair === 'braids' && d !== 'E') hm = union(hm, ell(hcx - hr - 0.6, hcy + 1.5, 1.2, 1.6), ell(hcx + hr + 0.6, hcy + 1.5, 1.2, 1.6));
+      if (hair === 'braids' && d !== 'E') hm = union(hm, ell(hcx - hrx - 0.6, hcy + 1.5, 1.2, 1.6), ell(hcx + hrx + 0.6, hcy + 1.5, 1.2, 1.6));
       c.layer(hm, hc);
     }
+    if (ears.size && hair !== 'none') c.layer(minus(ears, head), sk, null, false);   // ears through the hair
     const [hat, hcol] = spec.hat || [null, null];
     if (hat === 'hood') {
-      let m = union(ell(hcx, hcy, hr + 1, hr + 0.9), ell(hcx, hcy + 3.5, hr + 1.2, 2.2));
+      let m = union(ell(hcx, hcy, hrx + 1, hry + 0.9), ell(hcx, hcy + 3.5, hrx + 1.2, 2.2));
       if (d === 'S') m = minus(m, filter(head, (x, y) => y + 0.5 >= hcy - 1.3 && Math.abs(x + 0.5 - hcx) <= 2.8));
       if (d === 'E') m = minus(m, filter(head, (x, y) => y + 0.5 >= hcy - 1.3 && x + 0.5 >= hcx + 0.2));
       c.layer(m, hcol);
     }
     if (hat === 'helmet') {
-      c.layer(filter(ell(hcx, hcy, hr + 0.6, hr + 0.6), (x, y) => y + 0.5 <= hcy - 0.6), hcol);
+      c.layer(filter(ell(hcx, hcy, hrx + 0.6, hry + 0.6), (x, y) => y + 0.5 <= hcy - 0.6), hcol);
       if (d === 'S') c.layer(new Set([key(Math.trunc(hcx), Math.trunc(hcy))]), hcol, null, false);
     }
     if (hat === 'straw') {
-      c.layer(ell(hcx, top + 2, hr + 2.6, 1.8), hcol, (x, y, cc) => ((x + y) % 3 === 0 ? mul(cc, 0.85) : null));
-      c.layer(ell(hcx, top + 0.6, hr - 1.2, 1.7), hcol);
+      c.layer(ell(hcx, top + 2, hrx + 2.6, 1.8), hcol, (x, y, cc) => ((x + y) % 3 === 0 ? mul(cc, 0.85) : null));
+      c.layer(ell(hcx, top + 0.6, hrx - 1.2, 1.7), hcol);
     }
-    if (hat === 'kerchief') c.layer(filter(ell(hcx, hcy, hr + 0.4, hr + 0.4), (x, y) => y + 0.5 <= hcy - 0.8 || d === 'N'), hcol);
-    if (hat === 'cap') c.layer(filter(ell(hcx, hcy - 0.6, hr + 0.3, hr), (x, y) => y + 0.5 <= hcy - 1.4), hcol);
+    if (hat === 'kerchief') c.layer(filter(ell(hcx, hcy, hrx + 0.4, hry + 0.4), (x, y) => y + 0.5 <= hcy - 0.8 || d === 'N'), hcol);
+    if (hat === 'cap') c.layer(filter(ell(hcx, hcy - 0.6, hrx + 0.3, hry), (x, y) => y + 0.5 <= hcy - 1.4), hcol);
     return c.g;
   }
 
   // A pawn as a 20x20 canvas: side S | E | N | W, bob 0 | 1. Cached by spec.
   const cache = new Map();
   function sprite(spec, d, bob) {
-    const k = JSON.stringify(spec) + d + bob;
+    const k = JSON.stringify(spec) + d + JSON.stringify(bob);
     let cv = cache.get(k);
     if (cv) return cv;
     const g = pawn(spec, d === 'W' ? 'E' : d, bob, !!spec.child);
@@ -207,5 +286,18 @@ const Pawns = (() => {
     cache.set(k, cv);
     return cv;
   }
-  return { sprite, SIZE: N };
+  // LR-139: the frame now: walking by metres walked, working by the clock, idle a breath and a blink
+  function hash(n, salt) {
+    let h = (Math.imul(n >>> 0, 2654435761) + Math.imul(salt, 40503)) >>> 0;
+    h ^= h >>> 15; h = Math.imul(h, 2246822519) >>> 0; h ^= h >>> 13;
+    return h >>> 0;
+  }
+  function pose(moving, walked, working, ms, id) {
+    const phase = (hash(Math.max(0, id | 0), 7) % 1000) / 1000;
+    if (moving) { const st = Math.floor(walked * 3) & 3; return { bob: st & 1, step: st }; }
+    const s = ms / 1000 + phase * 4;
+    if (working) { const f = Math.floor(s / 0.3) & 1; return { bob: f, swing: f }; }
+    return { dip: (s % 2.6) < 0.9 ? 1 : 0, blink: ((s + phase * 3) % 3.7) < 0.14 };
+  }
+  return { sprite, pose, SIZE: N };
 })();

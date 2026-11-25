@@ -199,6 +199,38 @@ TEST(lr_sim_gear_people_dress_themselves) {
     CHECK(wornCount(*c, "helmet") == 0);
 }
 
+// LR-139: nobody starts naked: the world dresses everyone in plain clothes (gear.json
+// base_clothes) at its first tick; later the clothes are not conjured (a stripped one stays bare).
+TEST(lr_sim_gear_everyone_starts_dressed) {
+    World w = gearWorld();
+    w.step();
+    int people = 0, dressed = 0, kids = 0;
+    for (auto& [id, c] : w.characters()) {
+        if (c.isAnimal() || !c.body.alive) continue;
+        ++people;
+        dressed += c.worn.count("torso:under") ? 1 : 0;
+        if (c.body.stage() == "child") kids += c.worn.count("torso:under") ? 1 : 0;
+        if (c.body.stage() == "adult" && c.body.sex == 'm' && !c.worn.count("legs:under")) CHECK(!"a man without trousers");
+    }
+    CHECK(people > 0);
+    CHECK_EQ(dressed, people);
+    Character* c = adult(w);
+    if (!c) return;
+    c->worn.clear();
+    c->inventory.clear();
+    for (int i = 0; i < kTicksPerDay / 24 + 1; ++i) w.step();
+    CHECK(c->worn.empty());
+    // a newborn is swaddled
+    Character baby = *c;
+    baby.id = 0;
+    baby.worn.clear();
+    baby.inventory.clear();
+    baby.body.ageDays = 0;
+    giveBaseClothes(w, baby);
+    CHECK_EQ(baby.worn["torso:under"], std::string("tunic"));
+    CHECK(!baby.worn.count("legs:under"));
+}
+
 TEST(lr_sim_gear_armour_counts_only_worn) {
     World w = gearWorld();
     Character* c = adult(w);

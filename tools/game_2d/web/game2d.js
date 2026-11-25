@@ -191,6 +191,17 @@
     if (p.age >= 55) hc = '#b0b0a8';
     spec.hair = [f ? ['long', 'bun', 'braids', 'long'][(h >>> 9) % 4] : 'short', hc];
     if (!f && !child && p.age >= 18 && ((h >>> 12) % 3)) spec.beard = true;
+    if (p.rskin) spec.skin = p.rskin;          // AL-114: the kind's skin
+    if (p.stone) spec.skin = '#8c8c86';
+    // LR-139: the kind's look (species body.pawn), as pixels2d.cpp's pawnSpec
+    const rl = p.rlook || {};
+    for (const k of ['ears', 'head', 'nose', 'brow', 'eyes', 'tusks', 'skin_pattern']) if (rl[k]) spec[k] = rl[k];
+    if (rl.build && !child) spec.build = rl.build;
+    if (child && spec.tusks === 'yes') spec.tusks = 'small';
+    if (rl.beard === 'never') spec.beard = false;
+    if (rl.beard === 'rare') spec.beard = spec.beard && ((h >>> 18) % 4) === 0;
+    if (rl.beard === 'long' && !f && !child) spec.beard = spec.long_beard = true;
+    if (rl.hair === 'none' || rl.hair === 'tuft') spec.hair[0] = rl.hair;
     const wear = [];
     const wornKinds = new Set();
     for (const it of p.worn || []) {
@@ -205,15 +216,12 @@
       else if (layer === 'cap' || layer === 'helmet' || layer === 'hood') spec.hat = [layer, col];
       else wear.push([layer, col]);
     }
-    // nothing on the body from the sim (no tunic yet): homespun by sex and age, in the household's colour
-    if (!['shirt', 'robe', 'mail', 'tabard'].some(k => wornKinds.has(k))) {
-      const of = (MAP.outfit && MAP.outfit[child ? 'child' : (f ? 'f' : 'm')]) || [];
-      for (const [kind, col] of of) wear.unshift([kind, col === 'family' ? famColour(p) : col]);
-    }
+    // LR-139: only what the sim says is worn; nothing on the torso: the pawn is bare
+    const naked = !['shirt', 'robe', 'mail', 'tabard'].some(k => wornKinds.has(k));
     const order = ['shirt', 'robe', 'mail', 'pants', 'boots', 'tabard', 'apron', 'belt', 'bag', 'pack'];
     wear.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
     spec.wear = wear;
-    if (!spec.hat && f && !child && ((h >>> 15) % 5) < 2) spec.hat = ['kerchief', '#e8e0d0'];
+    if (!spec.hat && f && !child && !naked && ((h >>> 15) % 5) < 2) spec.hat = ['kerchief', '#e8e0d0'];
     // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
     for (const [pat, tool] of MAP.tools || []) if (p.held && p.held.includes(pat)) { spec.tool = tool; break; }
     return spec;
@@ -262,6 +270,7 @@
       const s = Math.min(d, speed * dt);
       const cellBefore = Math.floor(v.x) + Math.floor(v.y);
       v.x += dx / d * s; v.y += dy / d * s;
+      v.walked = (v.walked || 0) + s;   // LR-139: the step of the walk cycle
       v.moving = true;
       if (Math.floor(v.x) + Math.floor(v.y) !== cellBefore) v.bob ^= 1;   // a hop a cell
       v.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
@@ -381,10 +390,8 @@
     }
     let spec = p._spec;
     if (!spec || p._specKey !== p._lookKey) { spec = p._spec = pawnSpec(p); p._specKey = p._lookKey; }
-    // work: the tool sways; a step: a 1 px hop
-    let bob = v.moving ? v.bob : 0;
-    if (!v.moving && p.st === 'Work') bob = (Math.floor(performance.now() / 350) + p.id) % 2;
-    const img = Pawns.sprite(spec, lying ? 'S' : v.face, lying ? 0 : bob);
+    // LR-139: the walk cycle, a blow at work, a breath and a blink standing
+    const img = Pawns.sprite(spec, lying ? 'S' : v.face, lying ? 0 : Pawns.pose(v.moving, v.walked || 0, p.st === 'Work', performance.now(), p.id));
     // the 20x20 canvas sits over the cell: feet on the spot, head into the cell above
     if (lying) {
       ctx.save(); ctx.translate(sx, sy - 3 * sc); ctx.rotate(-Math.PI / 2);
