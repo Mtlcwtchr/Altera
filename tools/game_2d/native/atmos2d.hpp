@@ -64,7 +64,8 @@ public:
     // --- ground and air (lit by the light map after) ------------------------------
     void drawGround();                   // wet darkening, snow lying
     void snowOn(float x, float y, float w, float h);   // snow on a roof (screen rect)
-    void addSmoke(double wx, double wy, std::uint64_t key, double strength);
+    // kind: 0 smoke, 1 steam (white, quick), 2 a fire's thick smoke
+    void addSmoke(double wx, double wy, std::uint64_t key, double strength, int kind = 0);
     void drawAir();                      // smoke, fog, cloud shadows
 
     // --- light ---------------------------------------------------------------------
@@ -84,6 +85,7 @@ private:
     struct Smoke {
         double x, y, s;
         std::uint64_t key;
+        int kind;
     };
     SDL_Renderer* ren_ = nullptr;
     SDL_Texture* lightMap_ = nullptr;

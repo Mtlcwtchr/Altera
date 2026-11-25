@@ -48,5 +48,6 @@
  "chronicle.thing_burnt": "Сгорело дотла: {object}",
  "chronicle.thing_destroyed": "Разрушено ({cause}): {object}",
  "chronicle.build_broken": "Рухнула часть постройки: {n} {n:plural|деталь|детали|деталей}",
- "chronicle.lightning": "В округе ударила молния"
+ "chronicle.lightning": "В округе ударила молния",
+ "chronicle.crop_burnt": "Огонь уничтожил посев: {family}"
 }

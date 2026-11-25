@@ -313,6 +313,7 @@ endif() # NOT ALTERA_SIM_ONLY
 # ---------------------------------------------------------------------------
 add_library(altera_sim STATIC
         src/sim/world_fields.cpp
+        src/sim/world_reactions.cpp
         src/sim/rules.cpp
         src/sim/content.cpp
         src/sim/expansion.cpp
@@ -331,6 +332,7 @@ add_library(altera_sim STATIC
         src/sim/facts.cpp
         src/sim/village_life.cpp
         src/sim/magic.cpp
+        src/sim/species.cpp
         src/sim/realm.cpp
         src/sim/memory_budget.cpp
         src/sim/dialogue_memory.cpp
@@ -369,7 +371,9 @@ add_library(altera_sim STATIC
         src/sim/craft/craft_chain.cpp
         src/sim/craft/craft_validate.cpp
         src/sim/craft/craft_state.cpp
+        src/sim/craft/craft_magic.cpp
         src/sim/craft_sim.cpp
+        src/sim/alchemy.cpp
         src/sim/building.cpp)
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_warnings)
@@ -414,6 +418,7 @@ target_include_directories(altera_client2d PUBLIC src)
 target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
 target_sources(altera_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
 target_sources(altera_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
+target_sources(altera_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 add_executable(altera_game_2d tools/game_2d/main.cpp)
 target_link_libraries(altera_game_2d PRIVATE altera_client2d asr_warnings)
 if(WIN32)
@@ -845,7 +850,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
-            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp tests/test_altera_sim_worth.cpp tests/test_altera_sim_resources.cpp
+            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp tests/test_altera_sim_worth.cpp tests/test_altera_sim_resources.cpp tests/test_altera_sim_alchemy.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp tests/test_altera_sim_reach.cpp
             tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp tests/test_altera_sim_structures.cpp tests/test_altera_sim_rooms.cpp
@@ -860,15 +865,16 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_ecology.cpp
             tests/test_altera_sim_social.cpp
             tests/test_altera_sim_dialogue_memory.cpp tests/test_altera_sim_dialogue_lines.cpp
-            tests/test_altera_sim_trade.cpp
+            tests/test_altera_sim_trade.cpp tests/test_altera_sim_species.cpp
             tests/test_altera_cutaway.cpp tests/test_altera_ui_theme.cpp tests/test_altera_locomotion.cpp tests/test_altera_hotbar.cpp
             tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp
             tests/test_altera_client2d_talk.cpp tests/test_altera_client2d_session.cpp
             tests/test_altera_client2d_craft.cpp
             tests/test_altera_build2d.cpp
-            tests/test_altera_sim_fields.cpp)
+            tests/test_altera_sim_fields.cpp tests/test_altera_sim_reactions.cpp)
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sheet.cpp)   # AL-100
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sky.cpp)     # AL-110
+    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_crops.cpp)   # AL-112
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim altera_client2d asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")

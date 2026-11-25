@@ -1,0 +1,40 @@
+{
+ "id": "goblin",
+ "species": "goblin",
+ "names": {
+  "m": [
+   "Snik",
+   "Grub",
+   "Nogg",
+   "Skritch",
+   "Zit",
+   "Fizzle"
+  ],
+  "f": [
+   "Nix",
+   "Sniv",
+   "Grizzle",
+   "Mog",
+   "Tikka",
+   "Zabba"
+  ],
+  "family": [
+   "Mudfoot",
+   "Ratbiter",
+   "Sootnose",
+   "Twitchear"
+  ]
+ },
+ "speech": "squeaky",
+ "build_style": "goblin",
+ "teach_aspects": [
+  "poison",
+  "shadow",
+  "fire"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "theft": "clever"
+ },
+ "_doc": "Гоблины: норы и свалки, писклявая скороговорка, кража ловкость, а не позор."
+}

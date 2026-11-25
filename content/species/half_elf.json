@@ -1,0 +1,18 @@
+{
+ "id": "half_elf",
+ "blend": [
+  "human",
+  "elf"
+ ],
+ "glyph": "e",
+ "settlement_tag": "",
+ "_doc": "Полуэльф = blend(human, elf): числа усреднены, списки и словари слиты (среднее). Свои поля перекрывают смесь.",
+ "culture_default": "fantasy_european",
+ "life": {
+  "interbreed": {
+   "human": "half_elf",
+   "elf": "half_elf",
+   "half_elf": "half_elf"
+  }
+ }
+}

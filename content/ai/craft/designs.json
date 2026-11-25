@@ -3840,6 +3840,337 @@
      }
     }
    ]
+  },
+  {
+   "id": "crucible",
+   "form": "crucible",
+   "steps": [
+    {
+     "process": "mould",
+     "shape": "crucible_raw",
+     "len": 1,
+     "slots": {
+      "work": [
+       "mat:clay"
+      ]
+     }
+    },
+    {
+     "process": "dry",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "heat",
+     "mode": "fire",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "alembic",
+   "form": "alembic",
+   "steps": [
+    {
+     "process": "smelt",
+     "slots": {
+      "ore": [
+       "mat:copper_ore"
+      ],
+      "fuel": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "bar",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "plate",
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "hammer",
+     "shape": "alembic_raw",
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "healing_potion",
+   "form": "healing_potion",
+   "stations": [
+    "alembic"
+   ],
+   "steps": [
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "mat:yarrow"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "distill",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "sleeping_draught",
+   "form": "sleeping_draught",
+   "steps": [
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "mat:poppy"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "shadow_draught",
+   "form": "shadow_draught",
+   "steps": [
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "mat:night_moss"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "parchment_sheet",
+   "form": "parchment_sheet",
+   "steps": [
+    {
+     "process": "scrape",
+     "shape": "sheet",
+     "slots": {
+      "work": [
+       "mat:hide_raw"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "scroll",
+   "form": "scroll",
+   "stations": [
+    "alembic"
+   ],
+   "steps": [
+    {
+     "process": "scrape",
+     "shape": "sheet",
+     "slots": {
+      "work": [
+       "mat:hide_raw"
+      ]
+     }
+    },
+    {
+     "process": "inscribe",
+     "slots": {
+      "work": [
+       "step:1"
+      ]
+     }
+    },
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "mat:yarrow"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "distill",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    },
+    {
+     "process": "bind",
+     "mode": "on_word",
+     "slots": {
+      "work": [
+       "step:2"
+      ],
+      "reagent": [
+       "step:4"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "fire_draught",
+   "form": "fire_draught",
+   "stations": [
+    "crucible"
+   ],
+   "steps": [
+    {
+     "process": "calcine",
+     "shape": "powder",
+     "heat": 3,
+     "slots": {
+      "work": [
+       "mat:charcoal"
+      ]
+     }
+    },
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "step:1"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "potion",
+   "form": "potion",
+   "stations": [
+    "crucible"
+   ],
+   "steps": [
+    {
+     "process": "calcine",
+     "shape": "powder",
+     "heat": 3,
+     "slots": {
+      "work": [
+       "mat:antler"
+      ]
+     }
+    },
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "step:1"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    }
+   ]
+  },
+  {
+   "id": "volatile_flask",
+   "form": "volatile_flask",
+   "stations": [
+    "alembic"
+   ],
+   "steps": [
+    {
+     "process": "mix",
+     "mode": "grind_herbs",
+     "slots": {
+      "a": [
+       "mat:hemlock"
+      ],
+      "b": [
+       "mat:yarrow"
+      ]
+     }
+    },
+    {
+     "process": "dissolve",
+     "shape": "liquid",
+     "slots": {
+      "work": [
+       "step:1"
+      ],
+      "liquid": [
+       "mat:water"
+      ]
+     }
+    },
+    {
+     "process": "distill",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:2"
+      ]
+     }
+    },
+    {
+     "process": "distill",
+     "heat": 2,
+     "slots": {
+      "work": [
+       "step:3"
+      ]
+     }
+    }
+   ]
   }
  ]
 }

@@ -1,6 +1,7 @@
 // Village life (village_life.hpp, AL-39).
 
 #include "sim/village_life.hpp"
+#include "sim/world_reactions.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -124,7 +125,7 @@ void loadRules(VillageLifeRules& r, const Json& j) {
 
 const VillageLifeRules& R(const World& w) { return villageLifeRules(w.content()); }
 
-int years(const Character& c) { return c.body.ageDays / kDaysPerYear; }
+int years(const Character& c) { return c.body.lifeYears(); } // AL-114: in human years
 bool person(const Character* c) { return c && c->body.alive && !c->isAnimal(); }
 bool idleBody(const Character& c) { return !c.captivity.held(); }
 
@@ -390,6 +391,7 @@ void startPregnancy(World& w, Character& mother, EntityId father, Tick due) {
 bool canConceive(const World& w, const Character& woman, const Character& man, const VillageLifeRules& r) {
     if (woman.body.sex != 'f' || man.body.sex != 'm' || !fertile(woman, r) || !fertile(man, r)) return false;
     if (isPregnant(w, woman)) return false;
+    if (childRace(w.content(), woman.race, man.race).empty()) return false; // AL-114: no children between these kinds
     const Tick born = lastMemory(woman, "gave_birth");
     return born < 0 || w.now() - born >= static_cast<Tick>(r.birthSpacingDays) * kTicksPerDay;
 }
@@ -399,8 +401,14 @@ void tryConceive(World& w, Character& a, Character& b, const VillageLifeRules& r
     Character& man = a.body.sex == 'f' ? b : a;
     if (&woman == &man || !canConceive(w, woman, man, r)) return;
     Rng rng = w.rng(woman.id, "village:conceive");
-    if (!rng.chance(conceiveChanceOf(woman, r))) return;
-    startPregnancy(w, woman, man.id, w.now() + static_cast<Tick>(r.pregnancyDays) * kTicksPerDay);
+    const Content& ct = w.content();
+    const double kind = woman.race.empty() && man.race.empty()
+                            ? 1.0
+                            : std::sqrt(raceConceiveMult(ct, woman) * raceConceiveMult(ct, man)); // AL-114
+    if (!rng.chance(conceiveChanceOf(woman, r) * kind)) return;
+    const double carry = woman.race.empty() ? 1.0 : raceOf(ct, woman).pregnancyMult;
+    startPregnancy(w, woman, man.id,
+                   w.now() + static_cast<Tick>(std::lround(r.pregnancyDays * carry)) * kTicksPerDay);
     const bool wed = woman.status.spouse == man.id;
     w.chronicle("pregnancy", {woman.id, man.id}, "chronicle.village.pregnancy",
                 {{"mother", woman.id}, {"father", man.id}, {"wedlock", wed}});
@@ -432,6 +440,15 @@ EntityId bear(World& w, Character& mother, Character* father, Rng& rng, const Vi
     const auto fam = w.families().find(mother.status.family);
     const std::string famName = fam != w.families().end() ? fam->second.name : std::string();
     k.name = randomPersonName(rng, k.body.sex == 'f', &ct) + (famName.empty() ? "" : " " + famName);
+    // AL-114: the child's kind (a half-elf of a man and an elf), a name of its culture
+    if (!mother.race.empty() || (father && !father->race.empty())) {
+        std::string kind = childRace(ct, mother.race, father ? father->race : mother.race);
+        if (kind.empty()) kind = mother.race;
+        setRace(ct, k, kind);
+        Rng nr = w.rng(mother.id, "race:name");
+        if (const std::string n = cultureName(ct, k.race, nr, k.body.sex == 'f', false); !n.empty())
+            k.name = n + (famName.empty() ? "" : " " + famName);
+    }
     k.traits = inheritTraits(rng, ct, &mother, father, r);
     for (const auto& n : ct.needs) k.needs[n.id] = n.startHi;
     for (const auto& [a, v] : mother.attrs) {
@@ -449,6 +466,7 @@ EntityId bear(World& w, Character& mother, Character* father, Rng& rng, const Vi
     k.home = mother.home;
     k.knownObjects = mother.knownObjects;
     Character& child = w.addCharacter(std::move(k));
+    raceAtBirth(w, child); // AL-114: the gift (trait gifted) by the kind's chance
     const EntityId cid = child.id;
     if (fam != w.families().end()) fam->second.members.push_back(cid);
     // (pointers into the map stay valid: std::map nodes do not move)
@@ -589,6 +607,7 @@ void bodyDaily(World& w, Character& c, const VillageLifeRules& r, const std::map
     if (stage == "elder") p *= m("elder");
     if (c.need("hunger") < 0.25) p *= m("hungry");
     if (c.need("warmth") < 0.3) p *= m("cold");
+    if (drinksTaintedWater(w, c)) p *= m("tainted_water"); // AL-115: taint in the well or the stream
     if (auto it = sickIn.find(c.status.family); it != sickIn.end()) p += r.contagion * it->second;
     Rng rng = w.rng(c.id, "village:illness");
     if (!rng.chance(p)) return;
@@ -693,6 +712,10 @@ void meetVillage(World& w, Character& s, const Settlement& st) {
         to.familiarity = std::max(to.familiarity, 0.05);
         from.familiarity = std::max(from.familiarity, 0.05);
         to.trust = std::min(to.trust, -0.1);
+        if (!o.race.empty() || !s.race.empty()) { // AL-114: what one kind thinks of another at first
+            to.affinity = std::clamp(to.affinity + raceBias(w.content(), o.race, s.race), -1.0, 1.0);
+            from.affinity = std::clamp(from.affinity + raceBias(w.content(), s.race, o.race), -1.0, 1.0);
+        }
         if (o.body.stage() != "child") memo(w, o, "stranger_arrived", s.id, 0.0, 0.3);
     }
 }

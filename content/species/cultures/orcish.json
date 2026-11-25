@@ -1,0 +1,40 @@
+{
+ "id": "orcish",
+ "species": "orc",
+ "names": {
+  "m": [
+   "Grokh",
+   "Durbag",
+   "Murzug",
+   "Ugakh",
+   "Shagrat",
+   "Rokh"
+  ],
+  "f": [
+   "Grisha",
+   "Murza",
+   "Shagra",
+   "Ushna",
+   "Yazga",
+   "Borka"
+  ],
+  "family": [
+   "Bloodtusk",
+   "Skullsplitter",
+   "Ironjaw",
+   "Ashclaw"
+  ]
+ },
+ "speech": "rough",
+ "build_style": "orcish",
+ "teach_aspects": [
+  "fire",
+  "blood",
+  "earth"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "raiding": "honored"
+ },
+ "_doc": "Орки: становища, грубая речь, набег почётен."
+}

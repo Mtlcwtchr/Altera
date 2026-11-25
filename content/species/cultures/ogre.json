@@ -1,0 +1,30 @@
+{
+ "id": "ogre",
+ "species": "ogre",
+ "names": {
+  "m": [
+   "Grum",
+   "Hulg",
+   "Mungo",
+   "Thud"
+  ],
+  "f": [
+   "Bulga",
+   "Hesta",
+   "Moga",
+   "Thurna"
+  ],
+  "family": [
+   "Bigbelly",
+   "Stonegut"
+  ]
+ },
+ "speech": "slow",
+ "build_style": "orcish",
+ "teach_aspects": [
+  "earth"
+ ],
+ "forbid_aspects": [],
+ "norms": {},
+ "_doc": "Огры: медленная простая речь, ценят еду и силу."
+}

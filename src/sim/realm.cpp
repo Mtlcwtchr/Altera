@@ -38,6 +38,7 @@ struct RealmInstitution {
     bool celibate = false;     // the head has no house to pass on (an abbot)
     bool elective = false;     // a new head from among the people, not an heir
     bool dynastic = true;      // the house of the head names the settlement's house
+    bool solitary = false;     // AL-114: nobody joins it (a dragon's lair is a settlement of one)
     std::string tag;           // the tag it gives (cult)
 };
 
@@ -120,6 +121,7 @@ RealmRules parseRules(const Json& j) {
         d.celibate = it.value().value("celibate", false);
         d.elective = it.value().value("elective", false);
         d.dynastic = it.value().value("dynastic", true);
+        d.solitary = it.value().value("solitary", false);
         d.tag = it.value().value("tag", std::string());
         r.institutions[it.key()] = d;
     }
@@ -258,7 +260,7 @@ struct Ctx {
 };
 
 bool person(const Character* c) { return c && c->body.alive && !c->isAnimal(); }
-int years(const Character& c) { return c.body.ageDays / kDaysPerYear; }
+int years(const Character& c) { return c.body.lifeYears(); } // AL-114: in human years
 double dkm(Vec2 a, Vec2 b) { return std::hypot(a.x - b.x, a.y - b.y); }
 
 Rng rngOf(const Ctx& x, EntityId id, std::string_view salt) { return x.w.rng(id, salt); }
@@ -553,6 +555,13 @@ double realmStrength(const World& w, const RealmState& s, const Settlement& p) {
     double str = p.militia * (0.4 + p.morale) * (0.7 + 0.6 * a.martial);
     for (EntityId m : mercsOf(x, p.id))
         if (const Character* f = fig(x, m)) str += 4.0 * f->standing.martial * f->body.health;
+    // AL-114: a body worth an army (a grown dragon) counts by its kind's might
+    if (w.content().peoples.loaded)
+        for (const auto* pool : {&w.offstage(), &w.characters()})
+            for (const auto& [id, f] : *pool)
+                if (f.body.alive && !f.race.empty() && f.status.settlement == p.id && f.standing.captor == kNone &&
+                    f.body.stage() != "child")
+                    if (const RaceDef* rd = w.content().raceOf(f.race); rd && rd->might > 0.0) str += rd->might * f.body.health;
     if (!p.full())  // on the map the knights are in the levy already
         for (const auto& [id, f] : w.offstage())
             if (f.body.alive && f.status.settlement == p.id && f.standing.at == p.id && f.standing.role == "knight" &&
@@ -665,11 +674,27 @@ Character& newResident(Ctx& x, Rng& rng, EntityId home, char sex, int ageYears, 
         if (!taken) break;
     }
     f.body.ageDays = std::max(0, ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1));
+    // AL-114: the kind from the settlement's peoples (a stream of its own: the rest draws as before)
+    if (const Settlement* hp = pol(x, home); hp && !hp->peoples.empty() && ct.peoples.loaded) {
+        Rng rr = rngOf(x, f.id, "race:kind");
+        setRace(ct, f, drawRace(hp->peoples, rr, ct.peoples.defaultRace));
+        if (!f.race.empty()) {
+            f.body.ageDays = raceAgeDays(raceOf(ct, f), ageYears + rr.uniform());
+            if (const std::string n = cultureName(ct, f.race, rr, sex == 'f', false); !n.empty())
+                f.name = house.empty() ? n : n + " " + house;
+        }
+    }
     f.status.settlement = f.standing.at = home;
     const int nt = inum(x.r.fig, "traits", 2);
     for (int i = 0; i < nt; ++i)
         if (auto t = pickTrait(rng, ct, f.traits); !t.empty()) f.traits.push_back(t);
     for (const auto& n : ct.needs) f.needs[n.id] = rng.range(std::max(0.5, n.startLo), std::max(0.7, n.startHi));
+    if (!f.race.empty()) { // AL-114: the kind's leanings among the traits drawn
+        const RaceDef& rd = raceOf(ct, f);
+        for (const auto& [t, wgt] : rd.traitsPool)
+            if (wgt >= 2.0 && ct.traits.count(t) && !f.hasTrait(t) && rngOf(x, f.id, "race:trait:" + t).chance(0.25 * wgt))
+                f.traits.push_back(t);
+    }
     if (ageYears >= 12)
         for (const auto& k : ct.householdMust) {
             f.knowledge.insert(k);
@@ -936,6 +961,8 @@ Settlement& newSettlement(Ctx& x, Rng& rng, const std::string& tpl, const std::s
     p.institution = t.institution;
     p.founded = x.day;
     for (const auto& g : t.tags) p.tags.insert(g);
+    if (auto mx = x.w.content().peoples.templateMix.find(tpl); mx != x.w.content().peoples.templateMix.end())
+        p.peoples = mx->second; // AL-114: who lives there
     // what it has lived by so far (the last half-year): fields and work, as the numbers say
     p.income["fields"] = 0.5 * p.pop * num(x.r.eco, "year_yield_days", 400) * p.land * num(x.r.eco, "grain_price", 0.05);
     classify(x.r, p, x.day);
@@ -1574,6 +1601,11 @@ void birthOffstage(Ctx& x, Character& mother, const VillageLifeRules& vl) {
             const std::string house = fa && !fa->standing.house.empty() ? fa->standing.house : mo->standing.house;
             Character& k = newResident(x, rng, mo->status.settlement, rng.chance(0.5) ? 'm' : 'f', 0, house);
             k.body.ageDays = 0;
+            if (x.w.content().peoples.loaded) { // AL-114: the parents' kind, not the settlement's draw
+                std::string kind = childRace(x.w.content(), mo->race, fa ? fa->race : mo->race);
+                setRace(x.w.content(), k, kind.empty() ? mo->race : kind);
+                raceAtBirth(x.w, k);
+            }
             k.status.mother = mid;
             k.status.father = faId;
             const EntityId kid = k.id;
@@ -1894,7 +1926,7 @@ void banditsDaily(Ctx& x) {
         if (camp.ruined || camp.full() || !camp.tagged("raiders")) continue;
         Rng rng = rngOf(x, camp.id, "realm:bandits");
         for (Settlement& p : polities(x))
-            if (outlaw(camp) && !p.ruined && !p.full() && !p.tagged("raiders") && p.unrest > 0.4 &&
+            if (outlaw(camp) && !institutionOf(x.r, camp).solitary && !p.ruined && !p.full() && !p.tagged("raiders") && p.unrest > 0.4 &&
                 rng.chance(num(x.r.ban, "outlaws_from_unrest", 0.02) * p.unrest)) {
                 if (movePeople(x, p, camp, 1, true, "outlaws")) camp.militia += 1;
             }
@@ -2486,6 +2518,40 @@ void warsDaily(Ctx& x) {
     if (x.s.wars.size() > 60) {
         auto& v = x.s.wars;
         v.erase(std::remove_if(v.begin(), v.end(), [&](const RealmWar& q) { return q.over && x.day - q.last > 720; }), v.end());
+    }
+}
+
+// AL-114: what a settlement's people are (dwarven, elven, mixed... by who lives there,
+// once a season) and a hoarder's treasure (a dragon's hoard grows by the year).
+void peoplesDaily(Ctx& x) {
+    const Content& ct = x.w.content();
+    if (!ct.peoples.loaded) return;
+    std::set<std::string> kindTags = {"mixed"};
+    for (const auto& [id, r] : ct.peoples.races)
+        if (!r.settlementTag.empty()) kindTags.insert(r.settlementTag);
+    for (Settlement& p : polities(x)) {
+        if (p.ruined) continue;
+        const int phase = (x.day + static_cast<int>(p.id)) % kDaysPerYear;
+        const bool unread = std::none_of(kindTags.begin(), kindTags.end(), [&](const std::string& t) { return p.tagged(t); });
+        if (phase % 90 == 0 || (unread && !p.peoples.empty())) {
+            std::map<std::string, int> count;
+            for (Character* c : residents(x, p.id)) ++count[raceId(ct, *c)];
+            if (p.full())
+                for (const auto& [id, c] : x.w.characters())
+                    if (person(&c) && c.status.settlement == p.id) ++count[raceId(ct, c)];
+            for (const auto& t : kindTags) p.tags.erase(t);
+            for (const auto& t : peoplesTags(ct, count)) p.tags.insert(t);
+        }
+        if (phase != 0) continue;
+        const Character* chief = fig(x, p.chief);
+        if (!chief || !chief->body.alive || chief->race.empty()) continue;
+        const RaceDef& rd = raceOf(ct, *chief);
+        if (!rd.hoard.is_object() || rd.hoard.empty()) continue;
+        const double grow = rd.hoard.value("grow_per_year", 0.0);
+        if (grow > 0.0 && p.wealth > 0.0) {
+            p.wealth *= 1.0 + grow;
+            log(x, "hoard_grows", {{"pol", p.id}, {"fig", chief->id}, {"wealth", std::round(p.wealth)}});
+        }
     }
 }
 
@@ -3258,6 +3324,7 @@ void realmDaily(World& w) {
     resettle(x);
     decayGrievances(x);
     tributeDaily(x);
+    peoplesDaily(x);
     councils(x);
     offersDaily(x);
     warsDaily(x);
@@ -3376,7 +3443,7 @@ std::vector<std::string> realmLocKeys() {
           "ruler_died", "succession", "succession_crisis", "usurped", "claim_failed", "heir_to_monastery", "exiled",
           "reclaim_start", "reclaimed", "reclaim_failed", "revolt", "revolt_won", "revolt_crushed", "quest_posted",
           "quest_taken", "quest_done", "quest_failed", "quest_expired", "hero_died", "ambush_beaten", "punitive", "resettled",
-          "arrives_village", "envoy_arrives", "leaves_village", "died_in_village", "wanderer_settles"})
+          "arrives_village", "envoy_arrives", "leaves_village", "died_in_village", "wanderer_settles", "hoard_grows"})
         k.push_back(std::string("chronicle.realm.") + c);
     for (const char* q : {"beast_bounty", "bandit_bounty", "war_service", "escort", "haunting"})
         k.push_back(std::string("realm.quest.") + q + ".name");

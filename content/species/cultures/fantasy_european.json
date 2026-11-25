@@ -1,0 +1,24 @@
+{
+ "id": "fantasy_european",
+ "species": "human",
+ "names": {},
+ "speech": "plain",
+ "build_style": "fantasy_european",
+ "teach_aspects": [
+  "fire",
+  "water",
+  "earth",
+  "air",
+  "light",
+  "life"
+ ],
+ "forbid_aspects": [
+  "death",
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "suspect"
+ },
+ "_doc": "Людская культура по умолчанию: средневековые европейцы. names пусто = общий пул content/ai/names.json."
+}

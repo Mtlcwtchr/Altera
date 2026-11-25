@@ -1,4 +1,5 @@
 #include "sim/craft_sim.hpp"
+#include "sim/alchemy.hpp"
 #include "sim/memory_budget.hpp"
 
 #include <algorithm>
@@ -777,7 +778,10 @@ bool handleCraft(World& w, Command& cmd) {
 
 } // namespace
 
-void installCrafting(World& w) { w.addCommandHandler(handleCraft); }
+void installCrafting(World& w) {
+    w.addCommandHandler(handleCraft);
+    installAlchemy(w); // AL-117: alchemy_drink, alchemy_use_rune
+}
 
 std::string craftItemName(const Loc& loc, const std::string& lang, const craft::CraftData& d, const craft::Item& it) {
     const Item* main = &it;

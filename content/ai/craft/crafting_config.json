@@ -130,5 +130,29 @@
    "rotten": 0.3,
    "soiled": 0.7
   }
+ },
+ "magic": {
+  "_doc": "AL-117 (LivelyRealms §7-§8): rune_min_conductivity: a carrier below it takes no rune; aspect_max: cap of an aspect effect; unstable_safe / blast_k: opposed aspects (aspects.json opposes, or + against - of one aspect) blow a step or a flask up with chance (unstable - safe) * blast_k * (1.2 - q); bind_cap_share: rune power <= carrier mana_capacity * share; rune_worth / resonance_worth: worth multipliers; resonance_deeds: deeds for resonance 1 - 1/e; resonance_rune: rune power grows with resonance; triggers: modes of bind; charge_per_use: share of the capacity one use spends.",
+  "rune_min_conductivity": 0.3,
+  "aspect_max": 1.0,
+  "unstable_safe": 0.25,
+  "blast_k": 1.2,
+  "blast_effects": [
+   "body:health-0.08"
+  ],
+  "bind_cap_share": 1.0,
+  "rune_worth": 2.0,
+  "resonance_worth": 3.0,
+  "resonance_deeds": 12,
+  "resonance_rune": 0.5,
+  "triggers": [
+   "constant",
+   "on_hit",
+   "on_touch",
+   "on_word",
+   "on_threat"
+  ],
+  "default_trigger": "on_word",
+  "charge_per_use": 0.25
  }
 }

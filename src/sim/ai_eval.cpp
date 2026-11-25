@@ -7,6 +7,7 @@
 
 #include "sim/dialogue_say.hpp"
 #include "sim/ai.hpp"
+#include "sim/alchemy.hpp"
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
@@ -688,7 +689,8 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
                            ? 0.0
                            : gain * cf.skillGainMult * std::pow(std::max(0.0, 1.0 - v), cf.skillGainCurve);
                 if (c.body.ageDays < cf.skillChildUntilYears * kDaysPerYear) gain *= cf.skillChildMult;
-                const double talent = skillTalent(cf, c.id, e.key);
+                gain *= raceLearnMult(w.content(), c, e.key); // AL-114: the kind's aptitude
+                const double talent = std::min(1.0, skillTalent(cf, c.id, e.key) * raceCapMult(w.content(), c, e.key));
                 if (v > talent) gain *= std::exp(-(v - talent) * cf.skillOverTalentFalloff);
             }
             v = clamp01(e.op == '=' ? e.value : v + gain);
@@ -798,6 +800,8 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
     // a body that survived a non-lethal "death" is down, i.e. knocked out.
     if (cr.outcome == "win" || cr.outcome == "lose") {
         Character& winner = cr.outcome == "win" ? c : t;
+        // AL-117: the deed joins the story of the winner's weapon (its resonance)
+        noteWeaponDeed(w, winner, (cr.outcome == "win" ? cr.targetDead : cr.actorDead) ? "slew" : "won");
         Character& loser = cr.outcome == "win" ? t : c;
         std::string state = cr.outcome == "win" ? cr.targetState : cr.actorState;
         if (state == "dead" && loser.body.alive) state = "ko";

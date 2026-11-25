@@ -478,6 +478,12 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const auto& r : reasonCodes()) k.insert("reason." + r);
     for (const auto& i : idleCodes()) k.insert("report.idle." + i);
     k.insert("chronicle.death");
+    // AL-114: the kinds, their cultures, monsters, the troll in the sun
+    for (const auto& [id, r] : c.peoples.races) k.insert("species." + id + ".name");
+    for (const auto& [id, cu] : c.peoples.cultures) k.insert("culture." + id + ".name");
+    for (const auto& [id, s] : c.species) k.insert("species." + id + ".name");
+    if (c.peoples.loaded)
+        for (const char* ck : {"chronicle.species.petrified", "chronicle.species.woke"}) k.insert(ck);
     for (const char* ck : {"chronicle.deed_seen", "chronicle.loss_noticed", "chronicle.suspicion"}) k.insert(ck);
     for (const char* ck : {"chronicle.case_opened", "chronicle.case_returned", "chronicle.case_compensated",
                            "chronicle.case_denied", "chronicle.case_fled", "chronicle.case_let_go", "chronicle.case_quarrel",

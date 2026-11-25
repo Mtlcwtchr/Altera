@@ -1,0 +1,58 @@
+{
+ "_doc": "Какие виды живут где на старте мира. map: деревня карты (сейчас только люди — fantasy_european по умолчанию). realm_templates: смесь видов по шаблонам realm.json (доли). Новые жители и дети потом наследуют вид родителей (полукровки по interbreed).",
+ "default_race": "human",
+ "map": {
+  "human": 1.0
+ },
+ "realm_templates": {
+  "village": {
+   "human": 0.92,
+   "half_elf": 0.04,
+   "dwarf": 0.04
+  },
+  "town": {
+   "human": 0.8,
+   "dwarf": 0.08,
+   "elf": 0.04,
+   "half_elf": 0.04,
+   "half_orc": 0.04
+  },
+  "keep": {
+   "human": 0.95,
+   "dwarf": 0.05
+  },
+  "monastery": {
+   "human": 1.0
+  },
+  "bandit_camp": {
+   "human": 0.6,
+   "half_orc": 0.2,
+   "orc": 0.1,
+   "goblin": 0.1
+  },
+  "dwarf_hold": {
+   "dwarf": 0.95,
+   "human": 0.05
+  },
+  "elf_grove": {
+   "elf": 0.9,
+   "half_elf": 0.1
+  },
+  "orc_hold": {
+   "orc": 0.8,
+   "goblin": 0.15,
+   "ogre": 0.05
+  },
+  "goblin_warren": {
+   "goblin": 0.9,
+   "troll": 0.05,
+   "ogre": 0.05
+  },
+  "troll_den": {
+   "troll": 1.0
+  },
+  "dragon_lair": {
+   "dragon": 1.0
+  }
+ }
+}

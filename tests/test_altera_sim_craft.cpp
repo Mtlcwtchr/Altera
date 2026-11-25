@@ -95,7 +95,8 @@ Actor actorWith(double skill, std::uint64_t id = 7) {
     Actor a;
     a.id = id;
     for (const char* s : {"cooking", "smithing", "carpentry", "knapping", "spinning", "weaving", "sewing", "tanning",
-                          "pottery", "brewing", "herbalism", "toolmaking", "fiber_working", "building", "firemaking"})
+                          "pottery", "brewing", "herbalism", "toolmaking", "fiber_working", "building", "firemaking",
+                          "alchemy", "runecraft"}) // AL-117
         a.skills[s] = skill;
     for (const auto& [id2, m] : data().materials) a.knowsMaterial[id2] = skill;
     return a;
@@ -638,6 +639,11 @@ TEST(altera_craft_made_gear_in_combat) {
     CHECK(mail.done && mail.out.derivedStr["layer"] == "mail");
     c->craft.items.push_back(mail.out);
     if (pad.done) c->craft.items.push_back(pad.out);
+    // AL-109: made armour counts on the body only, not in the bag
+    c->inventory["mail_shirt"] = 1;
+    const altera::combat::FighterSpec bagged = fighterOf(*b, *c, "fighting");
+    CHECK(std::find(bagged.armor.begin(), bagged.armor.end(), "mail") == bagged.armor.end());
+    c->worn["torso:armour"] = "mail_shirt";
     altera::combat::FighterSpec worn = fighterOf(*b, *c, "fighting");
     CHECK(std::find(worn.armor.begin(), worn.armor.end(), "mail") != worn.armor.end());
     CHECK(worn.armorEff.size() == worn.armor.size());

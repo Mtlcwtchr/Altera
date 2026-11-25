@@ -106,7 +106,9 @@ struct AssembleRule {
     std::string to;   // result shape
 };
 
-enum class ProcOp { Shape, Heat, Blend, Join, Soak };
+// AL-117: inscribe cuts a rune into a carrier that holds magic (conductivity), bind
+// lays the aspects of a reagent into the rune (up to the carrier's mana_capacity).
+enum class ProcOp { Shape, Heat, Blend, Join, Soak, Inscribe, Bind };
 
 struct ProcessDef {
     std::string id;
@@ -142,6 +144,10 @@ struct ProcessDef {
     std::vector<std::string> needs; // sim effects on the actor per step
     std::string fsm = "Work";
     std::vector<std::string> chainIn, chainOut; // hints (§16.1)
+    // AL-117 (alchemy): effect id prefix -> multiplier applied to the work piece's effects
+    // after the step ("aspect." concentrates the aspects, "*" every other effect); capped by
+    // config magic.aspect_max.
+    std::vector<std::pair<std::string, double>> concentrate;
 };
 
 struct ReactDef {
@@ -267,6 +273,31 @@ struct CraftConfig {
     std::map<int, double> heatC;
 };
 
+// AL-117: what crafting needs to know of the aspects of magic (content/magic/aspects.json).
+struct AspectInfo {
+    std::string id;
+    std::vector<std::string> opposes;
+    bool enabled = true;
+    // vector (+ - ~) -> body field (health, burn, cold, ...) -> expression of `power`
+    std::map<std::string, std::map<std::string, std::string>> body;
+};
+
+struct MagicCraftConfig {
+    double runeMinConductivity = 0.3; // a carrier that conducts less cannot take a rune
+    double aspectMax = 1.0;           // an effect of an aspect is never stronger than this
+    double unstableSafe = 0.25;       // instability below this never blows up
+    double blastK = 1.2;              // chance of a blast per step = (unstable - safe) * blast_k * (1.2 - q)
+    std::vector<std::string> blastEffects{"body:health-0.08"};
+    double bindCapShare = 1.0;        // rune power = min(reagent aspects, cap * share) * quality
+    double runeWorth = 2.0;           // worth *= 1 + rune_worth * total rune power
+    double resonanceWorth = 3.0;      // worth *= 1 + resonance_worth * resonance
+    double resonanceDeeds = 12.0;     // resonance = 1 - exp(-deeds / resonance_deeds)
+    double resonanceRune = 0.5;       // rune power *= 1 + resonance_rune * resonance
+    std::vector<std::string> triggers{"constant", "on_hit", "on_touch", "on_word", "on_threat"};
+    std::string defaultTrigger = "on_word";
+    double chargePerUse = 0.25;       // a use spends this share of the rune's charge
+};
+
 struct CraftData {
     std::map<std::string, MaterialDef> materials;
     std::map<std::string, ShapeDef> shapes;
@@ -283,6 +314,8 @@ struct CraftData {
     std::map<std::string, FlawDef> flaws;
     std::vector<DesignDef> designs;
     CraftConfig cfg;
+    std::map<std::string, AspectInfo> aspects; // AL-117: empty when content/magic is absent
+    MagicCraftConfig magic;
     std::vector<std::string> errors, warnings;
     bool loaded = false;
 
@@ -295,12 +328,17 @@ struct CraftData {
     const DesignDef* design(const std::string& id) const;
     bool isFunction(const std::string& id) const;
 
-    // content/ai/craft; a missing directory gives an empty, not-loaded set.
+    const AspectInfo* aspect(const std::string& id) const;
+    // content/ai/craft (and content/magic/aspects.json beside content/ai, when present);
+    // a missing directory gives an empty, not-loaded set.
     static CraftData load(const std::string& dir);
     static CraftData fromJson(const Json& materials, const Json& shapes, const Json& processes,
                               const Json& functions, const Json& forms, const Json& flaws, const Json& reacts,
                               const Json& stations, const Json& config, const Json& designs);
 };
+
+// AL-117: fills d.aspects from content/magic/aspects.json (load() does it by itself).
+void loadAspects(CraftData& d, const Json& aspects);
 
 // Every loc key the crafting content needs in the base language.
 std::vector<std::string> craftLocKeys(const CraftData& d);

@@ -60,6 +60,15 @@
     for (const [m, c] of Object.entries(WALL)) if (piece.includes(m)) return c;
     return ['n', 'N'];
   }
+  // AL-112: the symbol of a field / garden tile in the glyph mode
+  function cropGlyph(name) {
+    if (name.includes('path')) return null;
+    if (name.includes('over')) return [',', 'T'];
+    if (name.includes('ripe')) return ['"', 'y'];
+    if (name.includes('tilled') || name.includes('sown')) return ['=', 'n'];
+    if (name.includes('fallow') || name.includes('bare') || name.includes('stubble')) return [',', 't'];
+    return ['"', 'l'];
+  }
   function paintChunk(c) {
     const j = c.json, cvs = document.createElement('canvas');
     cvs.width = j.w * T; cvs.height = j.h * T;
@@ -84,6 +93,26 @@
           else g.drawImage(sp, x * T, y * T);
         }
       }
+    }
+    // AL-112: fields and gardens over the ground (one char per cell, '.' none)
+    if (j.crop && j.crop_tiles) for (let y = 0; y < j.h; y++) for (let x = 0; x < j.w; x++) {
+      const ch = j.crop.charCodeAt(y * j.w + x);
+      if (ch === 46) continue;
+      const [name, rot] = j.crop_tiles[ch - 48] || [];
+      if (!name) continue;
+      if (glyphs) {
+        const gl = cropGlyph(name);
+        if (!gl) continue;
+        g.fillStyle = '#100c08'; g.fillRect(x * T, y * T, T, T);
+        g.fillStyle = Sprites.colour(gl[1]); g.globalAlpha = 0.7;
+        g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+        g.fillText(gl[0], x * T + 8, y * T + 9); g.globalAlpha = 1;
+        continue;
+      }
+      const sp = Sprites.get(name);
+      if (!sp) continue;
+      if (rot) { g.save(); g.translate(x * T + 8, y * T + 8); g.rotate(rot * Math.PI / 2); g.drawImage(sp, -8, -8); g.restore(); }
+      else g.drawImage(sp, x * T, y * T);
     }
     // walls, doors, windows of the ground storey on the cell lines (4 px strips)
     for (const e of j.edges) {
@@ -167,21 +196,26 @@
     for (const it of p.worn || []) {
       const w = MAP.wear && MAP.wear[it];
       if (!w) continue;
-      wornKinds.add(w.layer);
-      if (w.layer === 'cloak') spec.cloak = w.colour;
-      else if (w.layer === 'cap' || w.layer === 'helmet' || w.layer === 'hood') spec.hat = [w.layer, w.colour];
-      else wear.push([w.layer, w.colour]);
+      // AL-109: a woman's tunic is a gown, "family" is the household's colour, a dyed thing its dye's
+      const layer = f && w.layer_f ? w.layer_f : w.layer;
+      let col = w.colour === 'family' ? famColour(p) : w.colour;
+      if (p.dye && p.dye[it] && MAP.dyes && MAP.dyes[p.dye[it]]) col = MAP.dyes[p.dye[it]];
+      wornKinds.add(layer);
+      if (layer === 'cloak') spec.cloak = col;
+      else if (layer === 'cap' || layer === 'helmet' || layer === 'hood') spec.hat = [layer, col];
+      else wear.push([layer, col]);
     }
-    // the sim gives nobody clothes yet at the start: homespun by sex and age, in the household's colour
+    // nothing on the body from the sim (no tunic yet): homespun by sex and age, in the household's colour
     if (!['shirt', 'robe', 'mail', 'tabard'].some(k => wornKinds.has(k))) {
       const of = (MAP.outfit && MAP.outfit[child ? 'child' : (f ? 'f' : 'm')]) || [];
       for (const [kind, col] of of) wear.unshift([kind, col === 'family' ? famColour(p) : col]);
     }
-    const order = ['shirt', 'robe', 'mail', 'pants', 'tabard', 'apron', 'belt'];
+    const order = ['shirt', 'robe', 'mail', 'pants', 'boots', 'tabard', 'apron', 'belt', 'bag', 'pack'];
     wear.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
     spec.wear = wear;
     if (!spec.hat && f && !child && ((h >>> 15) % 5) < 2) spec.hat = ['kerchief', '#e8e0d0'];
-    for (const [pat, tool] of MAP.tools || []) if ((p.inv || []).some(i => i.includes(pat))) { spec.tool = tool; break; }
+    // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
+    for (const [pat, tool] of MAP.tools || []) if (p.held && p.held.includes(pat)) { spec.tool = tool; break; }
     return spec;
   }
   // beasts: a small blob in the colour of the kind
@@ -333,7 +367,7 @@
     if (glyphs) {
       ctx.fillStyle = p.sp ? Sprites.colour('t') : (p.id === selId ? '#ffe080' : famColour(p));
       ctx.font = `bold ${14 * sc}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(p.sp ? (p.name || p.sp)[0] : (p.alive ? '@' : '%'), sx, sy);
+      ctx.fillText(p.sp ? (p.name || p.sp)[0] : (p.alive ? (p.rg || '@') : '%'), sx, sy);  // AL-114: the kind's glyph
       return;
     }
     // shadow
@@ -679,7 +713,7 @@
       me = s.me || null;
       people = s.people;
       byId = new Map(people.map(p => [p.id, p]));
-      for (const p of people) p._lookKey = (p.worn || []).join() + '|' + (p.inv || []).join() + p.age;
+      for (const p of people) p._lookKey = (p.worn || []).join() + '|' + (p.held || '') + '|' + JSON.stringify(p.dye || {}) + p.age;
       for (const [id, p] of byId) { const old = oldSpecs.get(id); if (old && old.k === p._lookKey) { p._spec = old.s; p._specKey = old.k; } }
       oldSpecs.clear();
       for (const p of people) if (p._spec) oldSpecs.set(p.id, { k: p._specKey, s: p._spec });
@@ -696,9 +730,10 @@
 
   // --- start ---------------------------------------------------------------------------------
   Promise.all([getJson('/api/static'), getJson('/sprites/sprites.json'), getJson('/sprites/map2d.json'),
-    getJson('/sprites/resources.json').catch(() => null)]).then(([st, sprites, map2d, res]) => {
+    getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops]) => {
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
     Sprites.load(sprites);
+    Sprites.merge(crops);   // AL-112: fields and gardens
     MAP.actsRe = (MAP.acts || []).map(([re, sp]) => [new RegExp(re), sp]);
     for (const h of MAP.hidden || []) hidden.add(h);
     document.title = L('ui2d.title');

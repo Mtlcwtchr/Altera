@@ -181,6 +181,24 @@
     "mortar"
    ],
    "quality_bonus": 0.0
+  },
+  {
+   "id": "alembic",
+   "_doc": "AL-117: a copper still; distils with the heat of a hearth or forge at hand",
+   "tags": [
+    "alembic"
+   ],
+   "quality_bonus": 0.05,
+   "even": 0.7
+  },
+  {
+   "id": "crucible",
+   "_doc": "AL-117: a fired clay crucible; calcines in a forge or furnace",
+   "tags": [
+    "crucible"
+   ],
+   "quality_bonus": 0.0,
+   "even": 0.6
   }
  ]
 }

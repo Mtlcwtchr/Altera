@@ -6,6 +6,7 @@
 #include <string>
 #include <vector>
 
+#include "sim/species.hpp"
 #include "sim/core.hpp"
 #include "sim/craft/craft_data.hpp"
 #include "sim/rules.hpp"
@@ -165,6 +166,10 @@ struct SpeciesDef {
     int breedFrom = -1, breedTo = -1; // birth season (day of year); -1: breed_every_days
     int broodLo = 1, broodHi = 1;     // young per birth
     int cullFrom = -1, cullTo = -1, keep = 0; // slaughter season and heads kept over winter
+    // AL-114: monsters on the same ladder (content/creatures): how much mind, what a kill leaves for crafting.
+    double sapience = 0.1;
+    std::map<std::string, int> loot;
+    std::vector<std::string> tags;
 };
 
 struct NeedDef {
@@ -587,6 +592,11 @@ struct Content {
     Json dialogueRules = Json::object(); // the rest of dialogue.json (plans, menu, consent, ...)
     std::map<std::string, KnowledgeDef> knowledge;
     std::map<std::string, SpeciesDef> species;
+    SpeciesCatalog peoples; // AL-114: content/species (sapient kinds, cultures); empty = all human
+    const RaceDef* raceOf(const std::string& id) const {
+        auto it = peoples.races.find(id.empty() ? peoples.defaultRace : id);
+        return it == peoples.races.end() ? nullptr : &it->second;
+    }
     ClimateDef climate;
     CareDef care;
     craft::CraftData craft; // content/ai/craft (not loaded = no crafting content)

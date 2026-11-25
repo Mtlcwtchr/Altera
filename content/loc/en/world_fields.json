@@ -8,5 +8,6 @@
  "chronicle.thing_burnt": "Burnt to the ground: {object}",
  "chronicle.thing_destroyed": "Destroyed ({cause}): {object}",
  "chronicle.build_broken": "Part of a building came down: {n} pieces",
- "chronicle.lightning": "Lightning struck nearby"
+ "chronicle.lightning": "Lightning struck nearby",
+ "chronicle.crop_burnt": "Fire took the crop of {family}"
 }

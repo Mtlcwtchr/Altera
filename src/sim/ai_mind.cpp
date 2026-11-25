@@ -696,6 +696,7 @@ void installAi(World& w) {
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
         tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
+        dressTick(world);     // AL-109: people put on what they carry and can wear
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
             if (!c.body.alive) continue;

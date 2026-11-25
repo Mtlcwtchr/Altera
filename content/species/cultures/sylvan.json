@@ -1,0 +1,45 @@
+{
+ "id": "sylvan",
+ "species": "elf",
+ "names": {
+  "m": [
+   "Aelar",
+   "Caelion",
+   "Elandor",
+   "Faelar",
+   "Lorien",
+   "Thalion"
+  ],
+  "f": [
+   "Aerin",
+   "Elowen",
+   "Ilyra",
+   "Miriel",
+   "Sylvara",
+   "Tauriel"
+  ],
+  "family": [
+   "Leafsong",
+   "Moonbrook",
+   "Silverbough",
+   "Starwind"
+  ]
+ },
+ "speech": "ornate",
+ "build_style": "sylvan",
+ "teach_aspects": [
+  "life",
+  "light",
+  "air",
+  "water"
+ ],
+ "forbid_aspects": [
+  "death",
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "woodcutting": "frowned"
+ },
+ "_doc": "Эльфы: лесные рощи, певучая речь, вырубка леса осуждается."
+}

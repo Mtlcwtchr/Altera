@@ -30,6 +30,7 @@
 
 #include <array>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <string>
 #include <vector>
@@ -104,6 +105,7 @@ struct FieldsConfig {
     std::map<std::string, ThingRule> things;             // object type -> rule
     ThingRule thingDefault;                               // objects not listed (empty material = untouched)
     std::vector<std::string> untouched;                   // object types fire and damage leave alone
+    int regrowMinDays = 30;
     static FieldsConfig defaults();
     static FieldsConfig fromJson(const Json& j, std::vector<std::string>* warnings = nullptr);
     int heatOfC(double c) const;
@@ -137,6 +139,13 @@ struct WorldFields {
         double rainMm = 0.0, heat = 0.0, wind = 0.0;
     };
     std::map<EntityId, WeatherPush> weather;
+    // natural sources lost to fire or blows, coming back where they stood once the ground has grown back
+    struct Regrow {
+        std::string type;
+        Vec2 pos;
+        int day = 0;   // not before this day
+    };
+    std::vector<Regrow> regrow;
     // derived, not saved
     int ambientDay = -1;
     int ambientHeat = 14;
@@ -144,7 +153,7 @@ struct WorldFields {
     std::uint64_t indexSig = 0;
     std::map<std::int64_t, std::vector<EntityId>> objectsByChunk, piecesByChunk;
 
-    bool empty() const { return chunks.empty() && burningObjects.empty() && burningPieces.empty(); }
+    bool empty() const { return chunks.empty() && burningObjects.empty() && burningPieces.empty() && regrow.empty(); }
     Json toJson() const;
     void fromJson(const Json& j);
 };
@@ -179,6 +188,21 @@ bool damageObject(World& w, EntityId obj, int dmg, const std::string& cause);
 bool damagePiece(World& w, EntityId piece, int dmg, const std::string& cause);
 // Evaluates "+2*power" / "-0.3*power" / "power" / "1.5".
 double channelValue(const Json& expr, double power);
+
+// --- for the reactions (sim/world_reactions.hpp) ---------------------------------------
+// A stored cell: its bytes, writable. Dormant chunks (active = false) hold their fast
+// fields (heat, moisture, integrity, light) at the baseline: rules on them skip those.
+struct CellRef {
+    int x = 0, y = 0;
+    bool active = true, water = false;
+    std::array<std::uint8_t*, kFieldCount> v{};
+    std::uint8_t *fuel = nullptr, *fire = nullptr, *burnt = nullptr;
+};
+void forEachStoredCell(World& w, bool activeOnly, const std::function<void(CellRef&)>& fn);
+bool anyActiveChunk(const World& w);
+void fieldAddCell(World& w, Field f, int x, int y, double amount);
+int fuelAt(const World& w, Vec2 at);
+bool burntAt(const World& w, Vec2 at);
 
 // --- time -----------------------------------------------------------------------------
 void fieldsTick(World& w);    // every tick (installAi's think hook)
