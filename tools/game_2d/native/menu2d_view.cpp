@@ -64,6 +64,7 @@ void openMain(Ctx& c, Screens& s) {
     w->title = c.L("ui2d.menu.title");
     w->width = 0.30f;
     w->height = 0.62f;
+    w->autoFit = true;   // LR-143
     w->data = c.get("/api/menu");
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) {
         const float U = c.u();
@@ -98,7 +99,7 @@ void openMain(Ctx& c, Screens& s) {
             openSaves(c, s, "load");
         }
         if (item("quit", true)) c.quitGame();
-        c.textC(body.x + body.w / 2, body.bottom() - 22 * U, c.L("ui2d.menu.keys"), pal::dim, 12 * U);
+        c.textC(body.x + body.w / 2, y + 10 * U, c.L("ui2d.menu.keys"), pal::dim, 12 * U);   // LR-143: under the buttons, the window hugs them
     };
     s.push(std::move(w));
 }
@@ -110,6 +111,7 @@ void openNew(Ctx& c, Screens& s) {
     w->title = c.L("ui2d.ng.title");
     w->width = 0.56f;
     w->height = 0.72f;
+    w->autoFit = true;   // LR-143
     w->data = {{"M", c.get("/api/menu")}, {"seed", randomSeed()}, {"season", ""}};
     w->data["size"] = jstr(w->data["M"].value("options", Json::object()).value("defaults", Json::object()), "size");
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) {
@@ -206,6 +208,7 @@ void openPick(Ctx& c, Screens& s) {
     w->tab = "kin";
     w->width = 0.80f;
     w->height = 0.84f;
+    w->autoFit = true;   // LR-143
     w->data = {{"M", c.get("/api/menu")}, {"fams", c.get("/api/dynasties").value("families", Json::array())}, {"id", -1}, {"back", ""}};
     // the head of the full village is offered first, as the game would pick
     for (const auto& f : w->data["fams"])
@@ -326,6 +329,7 @@ void openSaves(Ctx& c, Screens& s, const std::string& mode) {
     w->tab = mode;
     w->width = 0.56f;
     w->height = 0.74f;
+    w->autoFit = true;   // LR-143
     w->data = {{"M", c.get("/api/menu")}, {"sure", ""}};
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) {
         if (busy(c, w, body)) return;
@@ -440,6 +444,7 @@ void openChronicle(Ctx& c, Screens& s) {
     w->title = c.L("ui2d.screen.chronicle");
     w->width = 0.5f;
     w->height = 0.8f;
+    w->autoFit = true;   // LR-143
     w->data = {{"since", 0}, {"list", Json::array()}};
     auto load = [](Ctx& c, Win& w) {
         const Json r = c.get("/api/chronicle?since=" + std::to_string(w.data["since"].get<long long>()));

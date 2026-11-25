@@ -198,8 +198,11 @@ void Screens::draw() {
     c_.fill(0, 0, W, H, ui::Colour(0, 0, 0, 0.45f));
     const float pad = 12 * U, headH = 40 * U;
     const float fw = std::min(W - 40 * U, w.wantW > 0 ? w.wantW : std::max(420 * U, W * w.width));
-    const float fh = std::min(H - 40 * U, w.fitH > 0 ? std::max(160 * U, w.fitH + headH + 10 * U + pad) : std::max(300 * U, H * w.height));
-    const ui::Rect box{std::round((W - fw) / 2), std::round((H - fh) / 2), std::round(fw), std::round(fh)};
+    const float fullH = std::min(H - 40 * U, std::max(300 * U, H * w.height));
+    const float fh = std::min(H - 40 * U, w.fitH > 0 ? std::max(160 * U, w.fitH + headH + 10 * U + pad) : fullH);
+    // a fitted window keeps its top where the full one has it: tabs do not jump as it hugs
+    const float top = w.autoFit ? std::round((H - fullH) / 2) : std::round((H - fh) / 2);
+    const ui::Rect box{std::round((W - fw) / 2), top, std::round(fw), std::round(fh)};
     const bool outside = in.pressed && !box.contains(in.mouseX, in.mouseY);
     g.claim({0, 0, W, H});
     c_.carved(box);
@@ -215,7 +218,15 @@ void Screens::draw() {
     if (g.button(ui::widgetId("win.close"), {box.right() - pad - 30 * U, box.y + 8 * U, 30 * U, 28 * U}, "X")) w.closing = true;
     c_.fill(box.x + pad, box.y + headH + 2 * U, box.w - 2 * pad, std::max(1.0f, U), pal::bronze);
     const ui::Rect body{box.x + pad, box.y + headH + 10 * U, box.w - 2 * pad, box.h - headH - 10 * U - pad};
-    if (w.render) w.render(c_, w, body);
+    if (w.autoFit) {
+        // laid out at the full height, measured by how far down it drew
+        const ui::Rect full{body.x, body.y, body.w, fullH - headH - 10 * U - pad};
+        float ink = body.y;
+        g.inkTo(&ink);
+        if (w.render) w.render(c_, w, full);
+        g.inkTo(nullptr);
+        w.fitH = std::ceil(ink - body.y + 8 * U);
+    } else if (w.render) w.render(c_, w, body);
     if (outside && w.frames > 0) w.closing = true;   // not the click that opened it
     ++w.frames;
 }

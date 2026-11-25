@@ -692,6 +692,7 @@ void openColony(Ctx& c, Screens& s) {
     w->tab = "overview";
     w->width = 0.84f;
     w->height = 0.84f;
+    w->autoFit = true;   // LR-143
     loadCatalog(c);
     w->data = {{"d", c.get("/api/colony")}, {"at", now()}};
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) { renderColony(c, s, w, body); };

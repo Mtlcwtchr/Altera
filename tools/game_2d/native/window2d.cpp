@@ -445,6 +445,7 @@ struct Window::Impl : Ctx {
         SDL_SetRenderDrawColorFloat(ren, c.r, c.g, c.b, c.a);
         const SDL_FRect r{x, y, w, h};
         SDL_RenderFillRect(ren, &r);
+        ui.ink({x, y, w, h});
     }
     void frame(float x, float y, float w, float h, const ui::Colour& c, float t) override {
         fill(x, y, w, t, c);
@@ -602,6 +603,7 @@ struct Window::Impl : Ctx {
     void blit(const Sprite& s, float x, float y, float w, float h, float alpha = 1.0f, double angle = 0) {
         if (!s) return;
         SDL_SetTextureAlphaModFloat(s.tex, alpha);
+        ui.ink({x, y, w, h});
         const SDL_FRect d{x, y, w, h};
         if (angle != 0) SDL_RenderTextureRotated(ren, s.tex, &s.src, &d, angle, nullptr, SDL_FLIP_NONE);
         else SDL_RenderTexture(ren, s.tex, &s.src, &d);
