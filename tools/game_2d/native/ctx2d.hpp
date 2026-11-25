@@ -103,6 +103,7 @@ struct Win {
     std::function<void(Ctx&, Win&, const ui::Rect& body)> render;
     std::function<void(Ctx&, Win&)> onClose;
     std::function<void(Ctx&, Win&)> onPoll;   // with the state's poll
+    std::function<bool(Ctx&, Win&, SDL_Scancode)> onKey;   // a key while it is on top
     bool closing = false;
     int frames = 0;   // drawn so far
     double polledAt = -1e9;
