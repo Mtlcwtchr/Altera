@@ -567,6 +567,10 @@
     [
      "standing",
      "hud_crown"
+    ],
+    [
+     "fun",
+     "hud_lute"
     ]
    ]
   },
@@ -586,10 +590,6 @@
   {
    "id": "spirit",
    "needs": [
-    [
-     "fun",
-     "hud_lute"
-    ],
     [
      "grace",
      "hud_sun"

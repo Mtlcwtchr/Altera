@@ -2239,10 +2239,15 @@ struct Window::Impl : Ctx {
             text(x + 2 * U, y, L("ui2d.needs"), kGold, 13 * U, true);
             y += 19 * U;
             std::set<std::string> placed;
-            auto tierRows = [&](const std::string& tid, const std::vector<std::pair<const Json*, std::string>>& list) {
+            // a need that matters little to this person (care, LR-140: grace of a non-believer) is dimmed
+            auto careless = [](const Json& n) { return n.contains("care") && n["care"].is_number() && n["care"].get<double>() < 0.3; };
+            auto tierRows = [&](const std::string& tid, const std::string& title, double sat,
+                                const std::vector<std::pair<const Json*, std::string>>& list) {
                 if (list.empty()) return;
                 double worst = 1;
-                for (const auto& [n, ic] : list) worst = std::min(worst, num(*n, "v"));
+                for (const auto& [n, ic] : list)
+                    if (!careless(*n)) worst = std::min(worst, num(*n, "v"));
+                if (sat >= 0) worst = sat;   // the sim's own measure of the tier
                 // a fold row with the worst need's pips inside
                 const float h = 20 * U;
                 const bool open = !folded.count("tier." + tid);
@@ -2250,10 +2255,10 @@ struct Window::Impl : Ctx {
                 well(rr);
                 const bool over = rr.contains(in.mouseX, in.mouseY);
                 text(x + 5 * U, y + 3 * U, open ? "v" : ">", kGold, 12 * U);
-                text(x + 18 * U, y + 3 * U, L("ui2d.tier." + tid), over ? kText : kGold, 13 * U);
+                text(x + 18 * U, y + 3 * U, title, over ? kText : kGold, 13 * U);
                 const std::string wn = std::to_string(int(std::lround(worst * 100)));
                 text(x + w - 5 * U - textW(wn, 11 * U), y + 4 * U, wn, kDim, 11 * U);
-                pips(x + w - 34 * U - 5 * 4 * pp, y + (h - 4 * pp) / 2, 5, worst, tone(worst));
+                pips(x + w - 40 * U - 5 * 4 * pp, y + (h - 4 * pp) / 2, 5, worst, tone(worst));
                 if (over && in.pressed && !screens->any()) {
                     if (open) folded.insert("tier." + tid);
                     else folded.erase("tier." + tid);
@@ -2265,28 +2270,49 @@ struct Window::Impl : Ctx {
                     const float rh = 19 * U;
                     icon(ic, x + 12 * U, y + (rh - iconSize()) / 2);
                     const std::string vn = std::to_string(int(std::lround(v * 100)));
-                    text(x + 12 * U + iconSize() + 5 * U, y + 3 * U, ui.fit(str(*n, "name"), w - 120 * U, fs(12 * U)), v < 0.6 ? kGold : kText, 12 * U);
-                    pips(x + w - 34 * U - 5 * 4 * pp, y + (rh - 4 * pp) / 2, 5, v, tone(v));
+                    const ui::Colour nc = careless(*n) ? kDim : v < 0.6 ? kGold : kText;
+                    text(x + 12 * U + iconSize() + 5 * U, y + 3 * U, ui.fit(str(*n, "name"), w - 120 * U, fs(12 * U)), nc, 12 * U);
+                    pips(x + w - 40 * U - 5 * 4 * pp, y + (rh - 4 * pp) / 2, 5, v, tone(v));
                     text(x + w - 5 * U - textW(vn, 11 * U), y + 4 * U, vn, kDim, 11 * U);
                     y += rh;
                 }
                 y += 3 * U;
             };
-            for (const auto& t : HUD.value("tiers", Json::array())) {
-                std::vector<std::pair<const Json*, std::string>> list;
+            // the icons by need id (hud2d.json)
+            std::map<std::string, std::string> needIcon;
+            for (const auto& t : HUD.value("tiers", Json::array()))
                 for (const auto& e : arr(t, "needs"))
-                    if (e.is_array() && e.size() >= 2)
-                        for (const auto& n : needs)
-                            if (str(n, "id") == e[0].get<std::string>()) {
-                                list.push_back({&n, e[1].get<std::string>()});
-                                placed.insert(str(n, "id"));
-                            }
-                tierRows(str(t, "id"), list);
-            }
+                    if (e.is_array() && e.size() >= 2) needIcon[e[0].get<std::string>()] = e[1].get<std::string>();
+            auto iconOf = [&](const std::string& id) {
+                const auto it = needIcon.find(id);
+                return it != needIcon.end() ? it->second : HUD.value("other_need", "");
+            };
+            auto take = [&](const std::string& id, std::vector<std::pair<const Json*, std::string>>& list) {
+                for (const auto& n : needs)
+                    if (str(n, "id") == id && !placed.count(id)) {
+                        list.push_back({&n, iconOf(id)});
+                        placed.insert(id);
+                    }
+            };
+            if (const Json& tiers = arr(d, "tiers"); !tiers.empty()) {
+                // LR-140: the sim's tiers, in the pyramid's order, with their names and fill
+                for (const auto& t : tiers) {
+                    std::vector<std::pair<const Json*, std::string>> list;
+                    for (const auto& id : arr(t, "needs"))
+                        if (id.is_string()) take(id.get<std::string>(), list);
+                    tierRows(str(t, "id"), str(t, "name"), t.contains("sat") && t["sat"].is_number() ? t["sat"].get<double>() : -1, list);
+                }
+            } else
+                for (const auto& t : HUD.value("tiers", Json::array())) {   // an older sim: the tiers of hud2d.json
+                    std::vector<std::pair<const Json*, std::string>> list;
+                    for (const auto& e : arr(t, "needs"))
+                        if (e.is_array() && !e.empty()) take(e[0].get<std::string>(), list);
+                    tierRows(str(t, "id"), L("ui2d.tier." + str(t, "id")), -1, list);
+                }
             std::vector<std::pair<const Json*, std::string>> rest;
             for (const auto& n : needs)
-                if (!placed.count(str(n, "id"))) rest.push_back({&n, HUD.value("other_need", "")});
-            tierRows("other", rest);
+                if (!placed.count(str(n, "id"))) rest.push_back({&n, iconOf(str(n, "id"))});
+            tierRows("other", L("ui2d.tier.other"), -1, rest);
             y += 3 * U;
         }
         // thoughts
