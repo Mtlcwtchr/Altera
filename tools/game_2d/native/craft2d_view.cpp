@@ -32,6 +32,55 @@ std::string firstLetters(const std::string& s, int n) {
 struct Craft {
     Ctx& c;
     Win& w;
+    std::string hover;   // AL-109: the name of the icon under the mouse, drawn last as a tooltip
+
+    // AL-109: an action as a pixel icon (craft2d.json action_icons / process_icons), its name in
+    // the tooltip; dim and dead when it cannot be done. A letter when there is no icon.
+    bool iconButton(std::uint64_t id, const ui::Rect& b, const std::string& sprite, const std::string& tip, bool enabled = true,
+                    bool on = false) {
+        const float U = c.u();
+        ui::Ui& g = c.gui();
+        ui::Input& in = c.input();
+        const bool click = g.selectable(id, b, on) && enabled;
+        const bool over = b.contains(in.mouseX, in.mouseY);
+        c.fill(b.x, b.y, b.w, b.h, on ? pal::leather : over && enabled ? pal::walnut : pal::walnutD);
+        c.frame(b.x, b.y, b.w, b.h, on ? pal::gold : enabled ? (over ? pal::gold : pal::bronze) : pal::bronze.withAlpha(0.3f), on ? 2 * U : U);
+        const float is = std::floor(std::min(b.w, b.h) * 0.8f / 16) * 16 > 0 ? std::floor(std::min(b.w, b.h) * 0.8f / 16) * 16
+                                                                              : std::min(b.w, b.h) * 0.8f;
+        if (sprite.empty() || !c.spriteAt(sprite, Json(), b.x + (b.w - is) / 2, b.y + (b.h - is) / 2, is, enabled ? 1.0f : 0.35f))
+            c.textC(b.x + b.w / 2, b.y + (b.h - c.textH(15 * U)) / 2, firstLetters(tip, 2), enabled ? pal::text : pal::dim, 15 * U);
+        if (over) hover = tip;
+        return click;
+    }
+    std::string actionIcon(const std::string& id) const {
+        const Json& look = c.craftLook();
+        return look.contains("action_icons") ? look["action_icons"].value(id, std::string()) : std::string();
+    }
+    std::string processIcon(const std::string& id) const {
+        const Json& look = c.craftLook();
+        return look.contains("process_icons") ? look["process_icons"].value(id, std::string()) : std::string();
+    }
+    // the tooltip by the mouse, kept inside the window
+    void drawTip(const ui::Rect& body) {
+        if (hover.empty()) return;
+        const float U = c.u();
+        ui::Input& in = c.input();
+        const float px = 13 * U, maxW = 360 * U;
+        const auto rows = c.wrap(hover, maxW, px);
+        float tw = 0;
+        for (const auto& r : rows) tw = std::max(tw, c.textW(r, px));
+        const float bw = tw + 16 * U, bh = rows.size() * (c.textH(px) + 3 * U) + 10 * U;
+        float x = in.mouseX + 18 * U, y = in.mouseY + 20 * U;
+        if (x + bw > body.right()) x = in.mouseX - bw - 8 * U;
+        if (y + bh > body.bottom()) y = in.mouseY - bh - 8 * U;
+        c.fill(x, y, bw, bh, pal::leatherD);
+        c.frame(x, y, bw, bh, pal::gold, U);
+        float yy = y + 5 * U;
+        for (const auto& r : rows) {
+            c.text(x + 8 * U, yy, r, pal::text, px);
+            yy += c.textH(px) + 3 * U;
+        }
+    }
     const Json& ws() const { return w.data["ws"]; }
     Json& draft() { return w.data["draft"]; }
     std::string T(const std::string& k, const std::map<std::string, std::string>& a = {}) const {
@@ -315,12 +364,12 @@ struct Craft {
             const float bs = 46 * U;
             const ui::Rect b{cx + R * float(std::cos(a)) - bs / 2, cy + R * float(std::sin(a)) - bs / 2, bs, bs};
             const bool avail = jflag(p, "available"), on = jstr(p, "id") == cur;
-            if (g.selectable(ui::widgetId("ws.proc", i), b, on)) pickProcess(jstr(p, "id"));
-            c.fill(b.x, b.y, b.w, b.h, on ? pal::leather : pal::walnutD);
-            c.frame(b.x, b.y, b.w, b.h, on ? pal::gold : avail ? pal::bronze : pal::bronze.withAlpha(0.3f), on ? 2 * U : U);
-            c.textC(b.x + b.w / 2, b.y + 12 * U, firstLetters(jstr(p, "name"), 3), avail ? pal::text : pal::dim, 15 * U);
-            if (b.contains(in.mouseX, in.mouseY))
-                tip = T("hud.craft.proc_tip", {{"name", jstr(p, "name")}, {"time", jstr(p, "time")}}) + (avail ? "" : " · " + jstr(p, "need"));
+            const std::string ptip =
+                T("hud.craft.proc_tip", {{"name", jstr(p, "name")}, {"time", jstr(p, "time")}}) + (avail ? "" : " · " + jstr(p, "need"));
+            // AL-109: a picture of the process, the name and why not in the tooltip (a dim one can still be picked)
+            if (iconButton(ui::widgetId("ws.proc", i), b, processIcon(jstr(p, "id")), ptip, true, on)) pickProcess(jstr(p, "id"));
+            if (!avail) c.fill(b.x, b.y, b.w, b.h, ui::Colour(0, 0, 0, 0.35f));
+            if (b.contains(in.mouseX, in.mouseY)) tip = ptip;
             ++i;
         }
         // the piece in the middle: the chosen process's slots
@@ -486,7 +535,7 @@ struct Craft {
         }
         // clear | make (held)
         const float bh = 44 * U;
-        if (g.button(ui::widgetId("ws.clear"), {r.x, y, 44 * U, bh}, "X")) {
+        if (iconButton(ui::widgetId("ws.clear"), {r.x, y, 44 * U, bh}, actionIcon("clear"), L("ui2d.craft.clear"))) {
             w.data["draft"] = Json::object();
             load();
         }
@@ -500,7 +549,11 @@ struct Craft {
         c.fill(mk.x, mk.y, mk.w, mk.h, can ? pal::leather : pal::walnutD);
         c.fill(mk.x, mk.y, mk.w * float(k), mk.h, pal::gold.withAlpha(0.6f));
         c.frame(mk.x, mk.y, mk.w, mk.h, can ? pal::gold : pal::bronze.withAlpha(0.4f), 2 * U);
-        c.textC(mk.x + mk.w / 2, mk.y + (mk.h - c.textH(15 * U)) / 2, L("ui2d.craft.hold"), can ? pal::text : pal::dim, 15 * U);
+        // AL-109: the make icon; the words (hold E) in the tooltip
+        const float is = 32 * U;
+        if (!c.spriteAt(actionIcon("make"), Json(), mk.x + (mk.w - is) / 2, mk.y + (mk.h - is) / 2, is, can ? 1.0f : 0.35f))
+            c.textC(mk.x + mk.w / 2, mk.y + (mk.h - c.textH(15 * U)) / 2, L("ui2d.craft.hold"), can ? pal::text : pal::dim, 15 * U);
+        if (mk.contains(in.mouseX, in.mouseY)) hover = L("ui2d.craft.hold") + (can || !f.is_object() ? "" : " · " + jstr(f, "why"));
         g.claim(mk);
         if (holding && k >= 1) {
             w.data["holdAt"] = -1.0;   // not again until let go
@@ -531,15 +584,16 @@ struct Craft {
             std::string steps;
             int n = 1;
             for (const auto& st : jarr(rc, "steps")) steps += (steps.empty() ? "" : " > ") + std::to_string(n++) + ". " + (jflag(st, "known") ? jstr(st, "name") : "?");
-            c.text(row.x + 58 * U, row.y + 26 * U, c.fit(steps, row.w - 300 * U, 12 * U), pal::ink.withAlpha(0.8f), 12 * U);
+            c.text(row.x + 58 * U, row.y + 26 * U, c.fit(steps, row.w - 130 * U, 12 * U), pal::ink.withAlpha(0.8f), 12 * U);
             std::string sub = L("ui2d.craft.mastery", {{"n", std::to_string(pct(jnum(rc, "mastery")))}}) + " · " + T("hud.craft.successes", {{"n", jstr(rc, "successes")}});
             std::string miss;
             for (const auto& m : jarr(rc, "missing"))
                 if (m.is_string()) miss += (miss.empty() ? "" : ", ") + m.get<std::string>();
             if (!miss.empty()) sub += " · " + L("ui2d.craft.missing", {{"list", miss}});
-            c.text(row.x + 58 * U, row.y + 44 * U, c.fit(sub, row.w - 300 * U, 12 * U), miss.empty() ? pal::ink.withAlpha(0.7f) : pal::bad, 12 * U);
+            c.text(row.x + 58 * U, row.y + 44 * U, c.fit(sub, row.w - 130 * U, 12 * U), miss.empty() ? pal::ink.withAlpha(0.7f) : pal::bad, 12 * U);
             const bool go = jflag(rc, "master") && jflag(rc, "can");
-            if (g.button(ui::widgetId("ws.fast", k), {row.right() - 220 * U, row.y + 14 * U, 210 * U, 36 * U}, L("ui2d.craft.from_memory"), go)) {
+            if (iconButton(ui::widgetId("ws.fast", k), {row.right() - 52 * U, row.y + 12 * U, 42 * U, 42 * U}, actionIcon("memory"),
+                           L("ui2d.craft.from_memory"), go)) {
                 act("craft_fast", {{"recipe", jstr(rc, "id")}, {"count", 1}});
                 w.tab = "bench";
             }
@@ -573,16 +627,18 @@ struct Craft {
             if (jflag(t, "hidden_flaws")) notes.push_back(L("ui2d.craft.hidden"));
             std::string nt;
             for (const auto& n : notes) nt += (nt.empty() ? "" : " · ") + n;
-            c.text(row.x + 58 * U, row.y + 26 * U, c.fit(nt, row.w - 420 * U, 12 * U), flaws.empty() ? pal::ink.withAlpha(0.7f) : pal::bad, 12 * U);
-            c.gauge({row.x + 58 * U, row.y + 44 * U, std::min(240 * U, row.w - 420 * U), 8 * U}, 1 - jnum(t, "wear"), pal::good);
-            const float bw = 120 * U;
+            c.text(row.x + 58 * U, row.y + 26 * U, c.fit(nt, row.w - 220 * U, 12 * U), flaws.empty() ? pal::ink.withAlpha(0.7f) : pal::bad, 12 * U);
+            c.gauge({row.x + 58 * U, row.y + 44 * U, std::min(240 * U, row.w - 220 * U), 8 * U}, 1 - jnum(t, "wear"), pal::good);
+            const float bw = 40 * U;   // AL-109: icons, the names in the tooltip
             float bx = row.right() - 3 * (bw + 6 * U);
-            if (g.button(ui::widgetId("ws.inspect", k), {bx, row.y + 12 * U, bw, 34 * U}, L("ui2d.craft.inspect"))) act("craft_inspect", {{"item", t["i"]}});
+            if (iconButton(ui::widgetId("ws.inspect", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("inspect"), L("ui2d.craft.inspect")))
+                act("craft_inspect", {{"item", t["i"]}});
             bx += bw + 6 * U;
             const bool rep = jnum(t, "wear") > 0.05 || !jarr(t, "flaws").empty();
-            if (g.button(ui::widgetId("ws.repair", k), {bx, row.y + 12 * U, bw, 34 * U}, L("ui2d.craft.repair"), rep)) act("craft_repair", {{"item", t["i"]}});
+            if (iconButton(ui::widgetId("ws.repair", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("repair"), L("ui2d.craft.repair"), rep))
+                act("craft_repair", {{"item", t["i"]}});
             bx += bw + 6 * U;
-            if (g.button(ui::widgetId("ws.tobench", k), {bx, row.y + 12 * U, bw, 34 * U}, c.fit(L("ui2d.craft.to_bench"), bw - 8 * U, 13 * U))) {
+            if (iconButton(ui::widgetId("ws.tobench", k), {bx, row.y + 12 * U, bw, bw}, actionIcon("to_bench"), L("ui2d.craft.to_bench"))) {
                 w.tab = "bench";
                 g.endScroll(y + 66 * U);
                 putRef(jstr(t, "ref"));
@@ -618,7 +674,7 @@ struct Craft {
             thingIcon(cd, row.x + 8 * U, row.y + 14 * U, 48 * U);
             const std::string tag = jflag(cd, "finished") ? L("ui2d.craft.done") : L("ui2d.craft.fit", {{"n", std::to_string(pct(jnum(cd, "fit")))}});
             c.text(row.x + 66 * U, row.y + 6 * U, jstr(cd, "name") + "  (" + tag + ")", pal::ink, 15 * U);
-            c.gauge({row.x + 66 * U, row.y + 28 * U, std::min(220 * U, row.w - 340 * U), 8 * U}, jnum(cd, "fit"), pal::gold);
+            c.gauge({row.x + 66 * U, row.y + 28 * U, std::min(220 * U, row.w - 140 * U), 8 * U}, jnum(cd, "fit"), pal::gold);
             // the chain along the stations
             float sx = row.x + 66 * U;
             int si = 0;
@@ -645,10 +701,10 @@ struct Craft {
             std::string miss;
             for (const auto& m : jarr(cd, "missing"))
                 if (m.is_string()) miss += (miss.empty() ? "" : ", ") + m.get<std::string>();
-            if (!miss.empty()) c.text(row.x + 66 * U, row.y + 70 * U - 2 * U, c.fit(T("hud.craft.missing", {{"list", miss}}), row.w - 340 * U, 11 * U), pal::bad, 11 * U);
+            if (!miss.empty()) c.text(row.x + 66 * U, row.y + 70 * U - 2 * U, c.fit(T("hud.craft.missing", {{"list", miss}}), row.w - 140 * U, 11 * U), pal::bad, 11 * U);
             const bool has = cd.contains("draft") && cd["draft"].is_object();
-            if (g.button(ui::widgetId("ws.lay", k), {row.right() - 250 * U, row.y + 24 * U, 240 * U, 36 * U},
-                         c.fit(has ? L("ui2d.craft.lay") : L("ui2d.craft.no_next"), 232 * U, 13 * U), has)) {
+            if (iconButton(ui::widgetId("ws.lay", k), {row.right() - 52 * U, row.y + 20 * U, 42 * U, 42 * U}, actionIcon("lay"),
+                           has ? L("ui2d.craft.lay") : L("ui2d.craft.no_next"), has)) {
                 w.data["draft"] = cd["draft"];
                 if (cd["draft"].contains("heat")) w.data["heat"] = std::min(int(jnum(ws(), "heat_max")), int(jnum(cd["draft"], "heat")));
                 w.tab = "bench";
@@ -689,6 +745,7 @@ void openWorkshop(Ctx& c, Screens& s) {
         else if (w.tab == "things") cr.things(body);
         else if (w.tab == "helper") cr.helper(body);
         else cr.bench(body);
+        cr.drawTip(body);
     };
     w->onPoll = [](Ctx& c, Win& w) {
         if (now() - jnum(w.data, "at") > 1500 && jnum(w.data, "holdAt") == 0) Craft{c, w}.load();

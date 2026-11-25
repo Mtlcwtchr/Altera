@@ -552,8 +552,14 @@ struct Window::Impl : Ctx {
         if (p.contains("worn") && p["worn"].is_array())
             for (const auto& it : p["worn"]) {
                 if (!it.is_string() || !W.contains(it.get<std::string>())) continue;
-                const Json& w = W[it.get<std::string>()];
-                const std::string layer = str(w, "layer"), c = str(w, "colour");
+                const std::string id = it.get<std::string>();
+                const Json& w = W[id];
+                // AL-109: a woman's tunic is a gown, "family" is the household's colour, a dyed thing its dye's
+                const std::string layer = f && w.contains("layer_f") ? str(w, "layer_f") : str(w, "layer");
+                std::string c = str(w, "colour");
+                if (c == "family") c = famColour(p);
+                if (p.contains("dye") && p["dye"].is_object() && p["dye"].contains(id) && MAP.contains("dyes"))
+                    c = MAP["dyes"].value(p["dye"][id].get<std::string>(), c);
                 kinds.insert(layer);
                 if (layer == "cloak") spec.cloak = c;
                 else if (layer == "cap" || layer == "helmet" || layer == "hood") spec.hat = {layer, c};
@@ -570,7 +576,7 @@ struct Window::Impl : Ctx {
             // unshift one by one: the last of the outfit ends first
             for (const auto& b : base) wear.insert(wear.begin(), b);
         }
-        static const std::vector<std::string> order = {"shirt", "robe", "mail", "pants", "tabard", "apron", "belt"};
+        static const std::vector<std::string> order = {"shirt", "robe", "mail", "pants", "boots", "tabard", "apron", "belt", "bag", "pack"};
         auto rank = [&](const std::string& k) {
             const auto it = std::find(order.begin(), order.end(), k);
             return it == order.end() ? -1 : int(it - order.begin());
@@ -578,17 +584,14 @@ struct Window::Impl : Ctx {
         std::stable_sort(wear.begin(), wear.end(), [&](const auto& a, const auto& b) { return rank(a.first) < rank(b.first); });
         spec.wear = wear;
         if (spec.hat.first.empty() && f && !child && ((h >> 15) % 5) < 2) spec.hat = {"kerchief", "#e8e0d0"};
-        if (MAP.contains("tools") && p.contains("inv") && p["inv"].is_array())
-            for (const auto& pt : MAP["tools"]) {
-                const std::string pat = pt[0].get<std::string>();
-                bool has = false;
-                for (const auto& i : p["inv"])
-                    if (i.is_string() && i.get<std::string>().find(pat) != std::string::npos) has = true;
-                if (has) {
+        // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
+        const std::string held = str(p, "held");
+        if (MAP.contains("tools") && !held.empty())
+            for (const auto& pt : MAP["tools"])
+                if (held.find(pt[0].get<std::string>()) != std::string::npos) {
                     spec.tool = pt[1].get<std::string>();
                     break;
                 }
-            }
         return spec;
     }
     std::string actIcon(const Json& p) const {

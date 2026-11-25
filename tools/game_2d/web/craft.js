@@ -91,6 +91,15 @@
     cv.className = 'px';
     return cv;
   }
+  // AL-109: an action/process as its pixel icon (craft2d.json action_icons / process_icons); the name is the title
+  function iconBtn(b, sprite, px = 32) {
+    if (!sprite || !hasSprite(sprite)) return b;
+    b.textContent = '';
+    b.classList.add('ico');
+    b.appendChild(paint(sprite, null, px));
+    return b;
+  }
+  const actIcon = id => (LOOK && LOOK.action_icons || {})[id];
   function hasSprite(name) { return !!(LOOK && LOOK.sprites[name]) || Sprites.has(name); }
   // a thing of the bag: its own sprite when it has one, else the glyph of its shape / kind
   function thingIcon(t, px) {
@@ -249,6 +258,7 @@
       b.style.top = (cy + Math.sin(a) * R - 22) + 'px';
       b.title = T('hud.craft.proc_tip', { name: p.name, time: p.time }) + (p.available ? '' : ' · ' + p.need);
       b.onclick = () => pickProcess(p.id);
+      iconBtn(b, (LOOK && LOOK.process_icons || {})[p.id]);
       ringBox.appendChild(b);
     });
     // the piece in the middle: the chosen process's slots as drop targets
@@ -405,10 +415,11 @@
     col.appendChild(sheet);
     const row = el('div', 'ws-act');
     const clear = el('button', 'btn sq', '✖');
-    clear.title = L('ui2d.craft.clear');
+    clear.title = L('ui2d.craft.clear'); iconBtn(clear, actIcon('clear'), 24);
     clear.onclick = () => { draft = {}; load({}); };
     const make = el('button', 'btn ok hold' + (f && f.can ? '' : ' off'), `<i class="fill"></i><span>${esc(L('ui2d.craft.hold'))}</span>`);
-    make.title = T('hud.craft.hold');
+    make.title = L('ui2d.craft.hold') + (f && !f.can && f.why ? ' · ' + f.why : '');
+    if (actIcon('make') && hasSprite(actIcon('make'))) make.querySelector('span').replaceWith(paint(actIcon('make'), null, 32));
     make.addEventListener('mousedown', e => { if (e.button === 0) holdStart(); });
     make.addEventListener('mouseup', holdStop);
     make.addEventListener('mouseleave', holdStop);
@@ -472,7 +483,8 @@
         (r.missing.length ? ' · <span class="bad">' + esc(L('ui2d.craft.missing', { list: r.missing.join(', ') })) + '</span>' : '')));
       row.appendChild(mid);
       const b = el('button', 'btn' + (r.master && r.can ? '' : ' off'), esc(L('ui2d.craft.from_memory')));
-      b.title = r.master ? T('hud.craft.fast_time', { time: r.time, stages: r.stages }) : L('ui2d.craft.not_master');
+      b.title = L('ui2d.craft.from_memory') + ' · ' + (r.master ? T('hud.craft.fast_time', { time: r.time, stages: r.stages }) : L('ui2d.craft.not_master'));
+      iconBtn(b, actIcon('memory'));
       b.onclick = () => { if (r.master && r.can) { tab = 'bench'; act('craft_fast', { recipe: r.id, count: 1 }).then(() => { const w = G.win.get('workshop'); if (w) { w.tab = 'bench'; w.refresh(); } }); } };
       row.appendChild(b);
       box.appendChild(row);
@@ -498,11 +510,11 @@
       mid.appendChild(wear);
       row.appendChild(mid);
       const btns = el('div', 'btns');
-      const ins = el('button', 'btn sq', '⌕'); ins.title = L('ui2d.craft.inspect');
+      const ins = iconBtn(el('button', 'btn sq', '⌕'), actIcon('inspect'), 24); ins.title = L('ui2d.craft.inspect');
       ins.onclick = () => act('craft_inspect', { item: t.i });
-      const rep = el('button', 'btn sq' + (t.wear > 0.05 || t.flaws.length ? '' : ' off'), '✚'); rep.title = L('ui2d.craft.repair');
+      const rep = el('button', 'btn sq' + (t.wear > 0.05 || t.flaws.length ? '' : ' off'), '✚'); rep.title = L('ui2d.craft.repair'); iconBtn(rep, actIcon('repair'), 24);
       rep.onclick = () => { if (t.wear > 0.05 || t.flaws.length) { act('craft_repair', { item: t.i }); } };
-      const bench = el('button', 'btn sq', '⇧'); bench.title = L('ui2d.craft.to_bench');
+      const bench = iconBtn(el('button', 'btn sq', '⇧'), actIcon('to_bench'), 24); bench.title = L('ui2d.craft.to_bench');
       bench.onclick = () => { putRef(t.ref); const w = G.win.get('workshop'); if (w) { w.tab = 'bench'; w.refresh(); } };
       btns.appendChild(ins); btns.appendChild(rep); btns.appendChild(bench);
       row.appendChild(btns);
@@ -542,6 +554,7 @@
       if (c.missing.length) mid.appendChild(el('div', 'bad', esc(T('hud.craft.missing', { list: c.missing.join(', ') }))));
       card.appendChild(mid);
       const lay = el('button', 'btn' + (c.draft ? '' : ' off'), esc(c.draft ? L('ui2d.craft.lay') : L('ui2d.craft.no_next')));
+      lay.title = c.draft ? L('ui2d.craft.lay') : L('ui2d.craft.no_next'); iconBtn(lay, actIcon('lay'));
       lay.onclick = () => {
         if (!c.draft) return;
         draft = JSON.parse(JSON.stringify(c.draft));

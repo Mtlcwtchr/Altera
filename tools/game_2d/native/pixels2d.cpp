@@ -156,6 +156,28 @@ std::array<Rgba, N * N> pawn(const PawnSpec& spec, char d, int bob, bool child) 
                     }),
                     col);
         }
+        // AL-109: boots at the bottom of the body, a satchel on the hip, a pack on the back
+        if (kind == "boots") c.layer(filter(body, [&](int, int y) { return y + 0.5 >= bcy + bry - 1.6; }), col, nullptr, false);
+        const int bx = int(std::trunc(bcx)), by = int(std::trunc(bcy));
+        if (kind == "bag") {
+            if (d == 'S') {
+                c.layer(pts({{bx - 2, by - 4}, {bx - 1, by - 3}, {bx, by - 2}, {bx + 1, by - 1}}), mulRgb(col, 0.7), nullptr, false);
+                c.layer(pts({{bx + 2, by}, {bx + 3, by}, {bx + 2, by + 1}, {bx + 3, by + 1}}), col);
+            } else if (d == 'E') c.layer(pts({{bx - 1, by}, {bx, by}, {bx - 1, by + 1}, {bx, by + 1}}), col);
+            else c.layer(pts({{bx - 3, by}, {bx - 2, by}, {bx - 3, by + 1}, {bx - 2, by + 1}}), col);
+        }
+        if (kind == "pack") {
+            if (d == 'N') {
+                Mask m;
+                for (int y = by - 3; y <= by + 1; ++y)
+                    for (int x = bx - 2; x <= bx + 1; ++x) m |= one(x, y);
+                c.layer(m, col);
+            } else if (d == 'E') {
+                Mask m;
+                for (int y = by - 3; y <= by + 1; ++y) m |= one(int(std::trunc(bcx - brx)), y) | one(int(std::trunc(bcx - brx)) + 1, y);
+                c.layer(m, col);
+            } else c.layer(pts({{bx - 2, by - 4}, {bx - 2, by - 3}, {bx + 1, by - 4}, {bx + 1, by - 3}}), mulRgb(col, 0.7), nullptr, false);
+        }
     }
     if (cloak && d == 'N') c.layer(ell(bcx, bcy - 0.3, brx + 1.2, bry + 0.6), cloakCol);
     if (cloak && d == 'S') {
@@ -196,6 +218,72 @@ std::array<Rgba, N * N> pawn(const PawnSpec& spec, char d, int bob, bool child) 
     if (tool == "sickle") {
         c.layer(pts({{tx, ty}, {tx, ty + 1}}), wood);
         c.layer(pts({{tx, ty - 1}, {tx + 1, ty - 2}, {tx + 1, ty - 3}, {tx, ty - 4}}), steel);
+    }
+    // AL-109: the tool of the act in hand
+    auto stick = [&](int y0, int y1, Rgba col) {
+        Mask m;
+        for (int y = y0; y <= y1; ++y) m |= one(tx, y);
+        c.layer(m, col);
+    };
+    const Rgba iron = parseHex("#8a8e94"), straw = parseHex("#c8a050");
+    if (tool == "axe") {
+        stick(ty - 2, ty + 1, wood);
+        c.layer(pts({{tx + 1, ty - 3}, {tx + 1, ty - 2}, {tx + 1, ty - 1}, {tx + 2, ty - 2}}), steel);
+    }
+    if (tool == "knife") {
+        c.layer(one(tx, ty), wood);
+        c.layer(pts({{tx, ty - 1}, {tx, ty - 2}}), steel, nullptr, false);
+    }
+    if (tool == "sword") {
+        stick(ty - 7, ty - 1, steel);
+        c.layer(pts({{tx - 1, ty}, {tx, ty}, {tx + 1, ty}}), parseHex("#b89040"), nullptr, false);
+        c.layer(one(tx, ty + 1), wood, nullptr, false);
+    }
+    if (tool == "bow") {
+        c.layer(pts({{tx, ty - 4}, {tx + 1, ty - 3}, {tx + 1, ty - 2}, {tx + 1, ty - 1}, {tx + 1, ty}, {tx + 1, ty + 1}, {tx, ty + 2}}), wood);
+        Mask m;
+        for (int y = ty - 3; y <= ty + 1; ++y) m |= one(tx, y);
+        c.layer(m, parseHex("#e8e0c8"), nullptr, false);
+    }
+    if (tool == "stick") stick(ty - 3, ty + 3, wood);
+    if (tool == "pick") {
+        stick(ty - 3, ty + 1, wood);
+        c.layer(pts({{tx - 1, ty - 3}, {tx, ty - 4}, {tx + 1, ty - 3}}), iron);
+    }
+    if (tool == "spade") {
+        stick(ty - 4, ty + 1, wood);
+        c.layer(pts({{tx - 1, ty + 2}, {tx, ty + 2}, {tx + 1, ty + 2}, {tx - 1, ty + 3}, {tx, ty + 3}, {tx + 1, ty + 3}}), iron);
+    }
+    if (tool == "fork") {
+        stick(ty - 4, ty + 3, wood);
+        c.layer(pts({{tx - 1, ty - 5}, {tx + 1, ty - 5}, {tx - 1, ty - 6}, {tx + 1, ty - 6}, {tx, ty - 5}}), iron, nullptr, false);
+    }
+    if (tool == "rod") {
+        c.layer(pts({{tx, ty + 1}, {tx, ty}, {tx, ty - 1}, {tx, ty - 2}, {tx + 1, ty - 3}, {tx + 1, ty - 4}, {tx + 1, ty - 5},
+                     {tx + 2, ty - 6}, {tx + 2, ty - 7}}),
+                wood, nullptr, false);
+        c.layer(pts({{tx + 3, ty - 6}, {tx + 3, ty - 5}, {tx + 3, ty - 4}, {tx + 3, ty - 3}}), parseHex("#d8e0e8"), nullptr, false);
+    }
+    if (tool == "needle") c.layer(pts({{tx, ty - 1}, {tx, ty - 2}}), steel, nullptr, false);
+    if (tool == "spindle") {
+        stick(ty - 2, ty + 1, wood);
+        c.layer(pts({{tx - 1, ty + 1}, {tx + 1, ty + 1}}), parseHex("#a06a38"), nullptr, false);
+        c.layer(one(tx, ty - 3), parseHex("#e8e0d0"), nullptr, false);
+    }
+    if (tool == "saw") {
+        c.layer(one(tx, ty), wood);
+        c.layer(pts({{tx, ty - 1}, {tx, ty - 2}, {tx, ty - 3}, {tx, ty - 4}, {tx + 1, ty - 2}, {tx + 1, ty - 4}}), steel);
+    }
+    if (tool == "torch") {
+        stick(ty - 1, ty + 1, wood);
+        c.layer(one(tx, ty - 2), parseHex("#e87828"), nullptr, false);
+        c.layer(one(tx, ty - 3), parseHex("#f8d848"), nullptr, false);
+    }
+    if (tool == "basket") c.layer(pts({{tx - 1, ty}, {tx, ty}, {tx + 1, ty}, {tx - 1, ty + 1}, {tx, ty + 1}, {tx + 1, ty + 1}}), straw,
+                                  [](int x, int y, Rgba cc) { return (x + y) % 2 ? mulRgb(cc, 0.8) : Rgba(0); });
+    if (tool == "bucket") {
+        c.layer(pts({{tx - 1, ty}, {tx, ty}, {tx + 1, ty}, {tx - 1, ty + 1}, {tx, ty + 1}, {tx + 1, ty + 1}}), wood);
+        c.layer(pts({{tx - 1, ty}, {tx, ty}, {tx + 1, ty}}), iron, nullptr, false);
     }
     // head
     const Mask head = ell(hcx, hcy, d != 'E' ? hr : hr * 0.95, hr);
