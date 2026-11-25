@@ -780,6 +780,9 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
     };
     hurt(c, cr.actorHealth, cr.actorDead, cr.actorHits, cr.actorBlood);
     hurt(t, cr.targetHealth, cr.targetDead, cr.targetHits, cr.targetBlood);
+    // AL-117: runes that fire on a hit strike the other side (through the magic core)
+    fireHitRunes(w, c, t);
+    fireHitRunes(w, t, c);
     auto out = d.combat.outcomes.find(cr.outcome);
     if (out != d.combat.outcomes.end()) applyEffectList(w, c, out->second, target, &t, &wit);
     auto remember = [&](Character& who, EntityId other, const std::string& o) {
