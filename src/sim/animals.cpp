@@ -87,6 +87,8 @@ void bite(World& w, Character& wolf, Character& victim, const SpeciesDef& s) {
         return;
     }
     const double dmg = r.range(s.attackLo, s.attackHi);
+    const EntityId vid = victim.id;
+    innateStrike(w, &wolf, s.innateSpells, vid, nullptr, "bite"); // AL-114: the basilisk's gaze
     victim.body.health = clamp01(victim.body.health - dmg);
     w.remember(victim, MemoryEntry{0, "attacked_by_beast", {wolf.id}, kNone, -0.7, 0.0, "seen", 1.0});
     auto md = w.content().moodlets.find("mauled");
