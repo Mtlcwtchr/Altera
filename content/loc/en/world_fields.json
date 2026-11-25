@@ -1,0 +1,12 @@
+{
+ "_doc": "AL-115: the world's cell fields, fire, broken things (src/sim/world_fields.cpp).",
+ "object.wreckage.name": "wreckage",
+ "object.rubble.name": "rubble",
+ "cause.fire.name": "fire",
+ "cause.force.name": "a blow",
+ "cause.rust.name": "rust",
+ "chronicle.thing_burnt": "Burnt to the ground: {object}",
+ "chronicle.thing_destroyed": "Destroyed ({cause}): {object}",
+ "chronicle.build_broken": "Part of a building came down: {n} pieces",
+ "chronicle.lightning": "Lightning struck nearby"
+}

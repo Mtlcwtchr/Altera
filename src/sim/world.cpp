@@ -542,6 +542,8 @@ Json World::toJson() const {
         for (const auto& [id, c] : offstage_) off.push_back(c);
         out["offstage"] = std::move(off);
     }
+    if (!fields_.empty() || !fields_.objectIntegrity.empty() || !fields_.pieceIntegrity.empty() || !fields_.weather.empty())
+        out["fields"] = fields_.toJson(); // AL-115
     return out;
 }
 
@@ -608,6 +610,8 @@ void World::loadJson(const Json& j) {
     modules_.clear();
     if (j.contains("modules"))
         for (auto it = j["modules"].begin(); it != j["modules"].end(); ++it) modules_[it.key()] = *it;
+    fields_ = WorldFields{}; // AL-115
+    if (j.contains("fields")) fields_.fromJson(j["fields"]);
 }
 
 Fact& World::addFact(Fact f) {
