@@ -116,5 +116,21 @@
  "chronicle.realm.died_in_village": "{fig} met death in the village",
  "chronicle.realm.wanderer_settles": "The wanderer {who} stayed in the village for good",
  "chronicle.realm.punitive": "{pol} rode out against {pol2}",
- "chronicle.realm.resettled": "{pol} is settled again: people from {pol2} came to the ashes, {fig} leads them"
+ "chronicle.realm.resettled": "{pol} is settled again: people from {pol2} came to the ashes, {fig} leads them",
+ "chronicle.realm.hoard_grows": "The hoard at {pol} grows: {fig} gathers wealth",
+ "realm.place.khazdun.name": "Khazdun",
+ "realm.place.ironhall.name": "Ironhall",
+ "realm.place.deepforge.name": "Deepforge",
+ "realm.place.silverleaf.name": "Silverleaf",
+ "realm.place.moonglade.name": "Moonglade",
+ "realm.place.starwood.name": "Starwood",
+ "realm.place.skullridge.name": "Skullridge",
+ "realm.place.ashtusk.name": "Ashtusk",
+ "realm.place.bloodmoor.name": "Bloodmoor",
+ "realm.place.ratholes.name": "Ratholes",
+ "realm.place.muckpit.name": "Muckpit",
+ "realm.place.sootwarren.name": "Sootwarren",
+ "realm.place.emberpeak.name": "Emberpeak",
+ "realm.place.wyrmcrag.name": "Wyrmcrag",
+ "realm.place.ashen_spire.name": "Ashen Spire"
 }

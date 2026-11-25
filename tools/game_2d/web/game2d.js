@@ -367,7 +367,7 @@
     if (glyphs) {
       ctx.fillStyle = p.sp ? Sprites.colour('t') : (p.id === selId ? '#ffe080' : famColour(p));
       ctx.font = `bold ${14 * sc}px monospace`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-      ctx.fillText(p.sp ? (p.name || p.sp)[0] : (p.alive ? '@' : '%'), sx, sy);
+      ctx.fillText(p.sp ? (p.name || p.sp)[0] : (p.alive ? (p.rg || '@') : '%'), sx, sy);  // AL-114: the kind's glyph
       return;
     }
     // shadow

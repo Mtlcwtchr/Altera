@@ -1,0 +1,99 @@
+{
+ "id": "elf",
+ "tags": [
+  "folk",
+  "fey"
+ ],
+ "sapience": 1.0,
+ "glyph": "e",
+ "body": {
+  "height_m": 1.78,
+  "mass_kg": 58,
+  "sprite_px": 20,
+  "night_vision": 0.2,
+  "speed_mult": 1.08,
+  "reach_mult": 1.0,
+  "skin": "#f2d6b8"
+ },
+ "life": {
+  "adult_years": 50,
+  "elder_years": 330,
+  "lifespan_years": 400,
+  "fertility": 0.25,
+  "pregnancy_mult": 1.3,
+  "interbreed": {
+   "human": "half_elf",
+   "half_elf": "half_elf"
+  }
+ },
+ "needs": {
+  "energy": 0.85,
+  "hunger": 0.85
+ },
+ "diet": [
+  "any"
+ ],
+ "aptitudes": {
+  "archery": {
+   "learn": 1.4,
+   "cap": 1.15
+  },
+  "herbalism": {
+   "learn": 1.35,
+   "cap": 1.1
+  },
+  "carpentry": {
+   "learn": 1.2,
+   "cap": 1.1
+  },
+  "music": {
+   "learn": 1.4,
+   "cap": 1.15
+  },
+  "singing": {
+   "learn": 1.3,
+   "cap": 1.1
+  },
+  "smithing": {
+   "learn": 0.8,
+   "cap": 0.9
+  },
+  "mining": {
+   "learn": 0.7,
+   "cap": 0.85
+  }
+ },
+ "affinity": {
+  "life": 1.5,
+  "light": 1.4,
+  "air": 1.3,
+  "death": 0.6
+ },
+ "traits_pool": {
+  "proud": 2.0,
+  "patient": 2.0,
+  "unforgiving": 1.8,
+  "sharp_memory": 2.0,
+  "nimble": 1.6,
+  "gluttonous": 0.4
+ },
+ "resist": {
+  "illness": 0.6
+ },
+ "weak": {
+  "iron": 1.3
+ },
+ "culture_default": "sylvan",
+ "relations_bias": {
+  "human": 0.0,
+  "dwarf": -0.25,
+  "orc": -0.55,
+  "goblin": -0.5,
+  "half_elf": 0.1,
+  "troll": -0.4,
+  "dragon": -0.4
+ },
+ "gifted_chance": 0.12,
+ "settlement_tag": "elven",
+ "_doc": "Эльфы: живут ~400 лет, медленно размножаются, долгая память обид и дружбы (unforgiving, sharp_memory чаще). Плохо переносят железо."
+}

@@ -117,6 +117,17 @@ std::string heldOf(const World& w, const Character& c) {
 
 } // namespace
 
+// AL-114: the kind as the 2D client draws it: sprite size, skin, glyph, stone in the sun.
+static void raceJson(const World& w, const Character& c, Json& p) {
+    if (c.race.empty()) return;
+    const sim::RaceDef& r = sim::raceOf(w.content(), c);
+    p["race"] = c.race;
+    p["rpx"] = r.spritePx;
+    if (!r.skin.empty()) p["rskin"] = r.skin;
+    if (!r.glyph.empty()) p["rg"] = r.glyph;
+    if (c.body.petrified) p["stone"] = true;
+}
+
 Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beastsR) {
     Json out = Json::array();
     for (const auto& [id, c] : w.characters()) {
@@ -177,6 +188,7 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
             p["inv"] = inv;
             p["occ"] = c.occupation;
             p["role"] = c.status.role;
+            raceJson(w, c, p); // AL-114
         }
         out.push_back(std::move(p));
     }
@@ -191,7 +203,7 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
     Json d = {{"id", id},
               {"name", personName(t, c)},
               {"sp", c.species},
-              {"spn", c.isAnimal() ? t.name("species", c.species) : ""},
+              {"spn", c.isAnimal() ? t.name("species", c.species) : (c.race.empty() ? "" : t.name("species", c.race))},
               {"alive", c.body.alive},
               {"cause", c.body.causeOfDeath},
               {"sex", std::string(1, c.body.sex)},

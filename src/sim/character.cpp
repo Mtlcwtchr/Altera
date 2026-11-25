@@ -116,6 +116,11 @@ void to_json(Json& j, const Character& c) {
              {"home", c.home},
              {"controller", c.controller},
              {"ai", c.ai}};
+    if (!c.race.empty()) { // AL-114: the kind and what the body takes from it
+        j["race"] = c.race;
+        j["race_years"] = {c.body.adultYears, c.body.elderYears};
+    }
+    if (c.body.petrified) j["petrified"] = true;
     if (!c.species.empty()) {
         j["species"] = c.species;
         j["group"] = c.group;
@@ -170,6 +175,12 @@ void from_json(const Json& j, Character& c) {
     c.controller = j.value("controller", Controller{});
     c.ai = j.value("ai", AiState{});
     c.species = j.value("species", std::string());
+    c.race = j.value("race", std::string());
+    if (j.contains("race_years") && j["race_years"].is_array() && j["race_years"].size() == 2) {
+        c.body.adultYears = j["race_years"][0].get<int>();
+        c.body.elderYears = j["race_years"][1].get<int>();
+    }
+    c.body.petrified = j.value("petrified", false);
     c.group = j.value("group", 1);
     c.den = j.value("den", Vec2{});
     c.starveDays = j.value("starve_days", 0);

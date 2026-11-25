@@ -2,6 +2,7 @@
 // Character - one data type for the player's people and every NPC
 // (CORE_SPEC §2). Only `controller` tells them apart.
 
+#include <algorithm>
 #include <deque>
 #include <map>
 #include <set>
@@ -22,9 +23,20 @@ struct Body {
     std::string causeOfDeath;
     double blood = 100.0; // combat units (combat_config stamina/blood scale); bleeding and wounds lower it
     Tick downUntil = 0;   // knocked out / carried off after a fight: the mind does not run until then
+    // AL-114: the kind's life (sim/species.hpp setRace): when it grows up and old.
+    int adultYears = 14, elderYears = 60;
+    bool petrified = false; // a troll asleep as stone in the sun (species.cpp)
     std::string stage() const {
         const int years = ageDays / kDaysPerYear;
-        return years < 14 ? "child" : (years >= 60 ? "elder" : "adult");
+        return years < adultYears ? "child" : (years >= elderYears ? "elder" : "adult");
+    }
+    // Age in human years (14 = grown, 60 = old): what the rules that count years read.
+    int lifeYears() const {
+        const int years = ageDays / kDaysPerYear;
+        if (adultYears == 14 && elderYears == 60) return years;
+        const double y = static_cast<double>(ageDays) / kDaysPerYear;
+        if (y <= adultYears) return static_cast<int>(14.0 * y / std::max(1, adultYears));
+        return static_cast<int>(14.0 + (y - adultYears) * 46.0 / std::max(1, elderYears - adultYears));
     }
 };
 
@@ -308,6 +320,8 @@ struct Character {
     // Animals and monsters (species.json): a group of `group` heads driven by
     // animals.cpp; empty species = a person with the four-layer mind.
     std::string species;
+    // AL-114: the sapient kind (content/species, sim/species.hpp); "" = the default (human).
+    std::string race;
     int group = 1;
     Vec2 den;          // territory centre
     int starveDays = 0;

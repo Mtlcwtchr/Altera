@@ -1,0 +1,66 @@
+{
+ "id": "varg",
+ "habitat": "land",
+ "biomes": [
+  "forest",
+  "meadow"
+ ],
+ "per_km2": 0.012,
+ "group": [
+  2,
+  5
+ ],
+ "max_group": 7,
+ "speed_m_per_tick": 125,
+ "notice_m": 150,
+ "flee_m": 180,
+ "diet": "prey",
+ "prey": [
+  "deer",
+  "boar",
+  "hare"
+ ],
+ "aggression": 0.5,
+ "attack": {
+  "damage": [
+   0.25,
+   0.6
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 15
+ },
+ "hunger_per_day": 0.5,
+ "breed_every_days": 300,
+ "growth_per_year": 0.3,
+ "meat_days": 14,
+ "hunt_below": 0.55,
+ "leave_heads": 2,
+ "immigrate_below": 0.25,
+ "territory_m": 6000,
+ "starve_days": 10,
+ "sapience": 0.2,
+ "tags": [
+  "monster",
+  "beast"
+ ],
+ "loot": {
+  "varg_pelt": 1,
+  "varg_fang": 2
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.1,
+   "skill": "hunting",
+   "per_skill": 0.45,
+   "min": 0.03,
+   "max": 0.7
+  },
+  "duration": 8,
+  "cost": 9
+ },
+ "_doc": "Варги: крупные злые волки. Перебьют оленей — голодные идут к деревне; перебьют варгов — оленей больше, и они едят поля."
+}

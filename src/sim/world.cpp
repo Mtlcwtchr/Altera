@@ -270,6 +270,9 @@ void World::updateBodies() {
         if (!c.body.alive) continue;
         if (tick_ % kTicksPerDay == 0 && tick_ > 0) ++c.body.ageDays;
         if (c.isAnimal()) continue; // animals.cpp drives their hunger
+        // AL-114: the kind's body (a troll turns to stone in the sun: its needs wait)
+        if (const RaceDef* rd = content_->raceOf(c.race); rd && (rd->sunSleep.on || rd->regen.healthPerDay > 0.0))
+            if (!raceBodyTick(*this, c, rd->sunSleep.on && sheltered(c, roofs))) continue;
         const std::string& biome = map_.biomeAt(c.pos);
         bool starving = false;
         for (const auto& n : content_->needs) {
@@ -280,6 +283,7 @@ void World::updateBodies() {
             auto sm = n.seasonMult.find(season());
             if (sm != n.seasonMult.end()) rate *= sm->second;
             if (n.shelteredMult != 1.0 && sheltered(c, roofs)) rate *= n.shelteredMult;
+            if (!c.race.empty() && raceAppliesTo(c)) rate *= raceNeedMult(*content_, c, n.id); // AL-114
             for (const auto& [item, mult] : n.clothingMult)
                 if (c.has(item) > 0) rate *= mult;
             for (const auto& t : c.traits) {
@@ -381,6 +385,7 @@ void to_json(Json& j, const Settlement& s) {
         }
         j["structures"] = a;
     }
+    if (!s.peoples.empty()) j["peoples"] = s.peoples;
 }
 void from_json(const Json& j, Settlement& s) {
     const Settlement d;
@@ -411,6 +416,7 @@ void from_json(const Json& j, Settlement& s) {
         s.unrestDays = p.value("unrest_days", d.unrestDays), s.size = p.value("size", d.size);
         s.tags = p.value("tags", d.tags), s.income = p.value("income", d.income);
     }
+    s.peoples = j.value("peoples", std::map<std::string, double>{});
     s.zones.clear();
     for (const auto& z : j.value("zones", Json::array())) {
         const auto r = z.value("rect", std::vector<double>{});

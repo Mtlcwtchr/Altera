@@ -1,0 +1,21 @@
+{
+ "id": "half_orc",
+ "blend": [
+  "human",
+  "orc"
+ ],
+ "glyph": "o",
+ "settlement_tag": "",
+ "_doc": "Полуорк = blend(human, orc).",
+ "culture_default": "fantasy_european",
+ "life": {
+  "interbreed": {
+   "human": "half_orc",
+   "orc": "half_orc",
+   "half_orc": "half_orc"
+  }
+ },
+ "body": {
+  "skin": "#a8a868"
+ }
+}

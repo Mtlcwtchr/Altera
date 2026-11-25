@@ -1,0 +1,66 @@
+{
+ "id": "manticore",
+ "habitat": "land",
+ "biomes": [
+  "steppe",
+  "desert",
+  "badlands"
+ ],
+ "per_km2": 0.002,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 2,
+ "speed_m_per_tick": 140,
+ "notice_m": 180,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "deer",
+  "boar",
+  "goats"
+ ],
+ "aggression": 0.75,
+ "attack": {
+  "damage": [
+   0.45,
+   0.9
+  ],
+  "chance": 0.55,
+  "sated_days_after_kill": 30
+ },
+ "hunger_per_day": 0.3,
+ "breed_every_days": 800,
+ "growth_per_year": 0.06,
+ "meat_days": 25,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 9000,
+ "starve_days": 30,
+ "sapience": 0.35,
+ "tags": [
+  "monster",
+  "venomous"
+ ],
+ "loot": {
+  "manticore_spine": 3,
+  "hide": 2
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.05,
+   "skill": "hunting",
+   "per_skill": 0.35,
+   "min": 0.02,
+   "max": 0.5
+  },
+  "duration": 10,
+  "cost": 14
+ },
+ "_doc": "Мантикора: хищник степи, ядовитые шипы хвоста."
+}

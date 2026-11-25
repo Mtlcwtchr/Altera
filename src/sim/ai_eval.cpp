@@ -689,7 +689,8 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
                            ? 0.0
                            : gain * cf.skillGainMult * std::pow(std::max(0.0, 1.0 - v), cf.skillGainCurve);
                 if (c.body.ageDays < cf.skillChildUntilYears * kDaysPerYear) gain *= cf.skillChildMult;
-                const double talent = skillTalent(cf, c.id, e.key);
+                gain *= raceLearnMult(w.content(), c, e.key); // AL-114: the kind's aptitude
+                const double talent = std::min(1.0, skillTalent(cf, c.id, e.key) * raceCapMult(w.content(), c, e.key));
                 if (v > talent) gain *= std::exp(-(v - talent) * cf.skillOverTalentFalloff);
             }
             v = clamp01(e.op == '=' ? e.value : v + gain);

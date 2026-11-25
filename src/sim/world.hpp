@@ -117,6 +117,7 @@ struct Settlement {
     std::string size;                // hamlet | village | town | city (classified)
     std::set<std::string> tags;      // raiders, outlaw, cult, fortified, farming, trade, vassal, tributary, ruined
     std::map<std::string, double> income; // the last year's income by source: fields | raids | trade | crafts
+    std::map<std::string, double> peoples; // AL-114: the kinds newcomers here are drawn from (settle.json); empty = the default
     bool full() const { return mode == "full"; }
     bool tagged(const std::string& t) const { return tags.count(t) > 0; }
     bool polity() const { return !size.empty(); } // the realm has read it at least once

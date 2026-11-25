@@ -388,5 +388,21 @@
  "chronicle.realm.died_in_village": "{fig} наш{fig:g|ёл|ла} смерть в деревне",
  "chronicle.realm.wanderer_settles": "Странни{who:g|к|ца} {who} остал{who:g|ся|ась} в деревне насовсем",
  "chronicle.realm.punitive": "{pol} выступил{pol:g||а|о} карательным походом на {pol2:acc}",
- "chronicle.realm.resettled": "{pol} заселяют снова: люди из {pol2:gen} пришли на пепелище, старшим стал {fig}"
+ "chronicle.realm.resettled": "{pol} заселяют снова: люди из {pol2:gen} пришли на пепелище, старшим стал {fig}",
+ "chronicle.realm.hoard_grows": "Клад в {pol:pre} растёт: {fig} копит богатство",
+ "realm.place.khazdun.name": "Хаздун",
+ "realm.place.ironhall.name": "Железный Чертог",
+ "realm.place.deepforge.name": "Глубокая Кузня",
+ "realm.place.silverleaf.name": "Серебролист",
+ "realm.place.moonglade.name": "Лунная Поляна",
+ "realm.place.starwood.name": "Звёздный Лес",
+ "realm.place.skullridge.name": "Черепной Хребет",
+ "realm.place.ashtusk.name": "Пепельный Клык",
+ "realm.place.bloodmoor.name": "Кровавая Пустошь",
+ "realm.place.ratholes.name": "Крысьи Норы",
+ "realm.place.muckpit.name": "Грязная Яма",
+ "realm.place.sootwarren.name": "Сажевые Норы",
+ "realm.place.emberpeak.name": "Угольный Пик",
+ "realm.place.wyrmcrag.name": "Змеиный Утёс",
+ "realm.place.ashen_spire.name": "Пепельный Шпиль"
 }

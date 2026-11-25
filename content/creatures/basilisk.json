@@ -1,0 +1,86 @@
+{
+ "id": "basilisk",
+ "habitat": "land",
+ "biomes": [
+  "desert",
+  "badlands",
+  "canyon"
+ ],
+ "per_km2": 0.002,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "speed_m_per_tick": 60,
+ "notice_m": 80,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hare",
+  "goats"
+ ],
+ "aggression": 0.7,
+ "attack": {
+  "damage": [
+   0.5,
+   0.95
+  ],
+  "chance": 0.55,
+  "sated_days_after_kill": 40
+ },
+ "hunger_per_day": 0.12,
+ "breed_every_days": 900,
+ "growth_per_year": 0.05,
+ "meat_days": 20,
+ "hunt_below": 0.4,
+ "leave_heads": 0,
+ "territory_m": 5000,
+ "starve_days": 60,
+ "sapience": 0.25,
+ "tags": [
+  "monster",
+  "venomous",
+  "gaze"
+ ],
+ "loot": {
+  "basilisk_eye": 1,
+  "basilisk_scale": 2
+ },
+ "innate_spells": [
+  {
+   "id": "stone_gaze",
+   "aspects": [
+    [
+     "earth",
+     "+"
+    ],
+    [
+     "death",
+     "~"
+    ]
+   ],
+   "form": "gaze",
+   "mods": {
+    "power": 3
+   },
+   "name_key": "spell.innate.stone_gaze"
+  }
+ ],
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.05,
+   "skill": "hunting",
+   "per_skill": 0.35,
+   "min": 0.02,
+   "max": 0.5
+  },
+  "duration": 10,
+  "cost": 14
+ },
+ "_doc": "Василиск: одиночка, взгляд каменит (встроенное заклинание, исполняет магия AL-116); глаз — редкий реагент."
+}

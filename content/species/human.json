@@ -1,0 +1,50 @@
+{
+ "id": "human",
+ "tags": [
+  "folk"
+ ],
+ "sapience": 1.0,
+ "glyph": "h",
+ "body": {
+  "height_m": 1.72,
+  "mass_kg": 70,
+  "sprite_px": 20,
+  "night_vision": 0.0,
+  "speed_mult": 1.0,
+  "reach_mult": 1.0
+ },
+ "life": {
+  "adult_years": 14,
+  "elder_years": 60,
+  "lifespan_years": 60,
+  "fertility": 1.0,
+  "interbreed": {
+   "elf": "half_elf",
+   "orc": "half_orc",
+   "half_elf": "half_elf",
+   "half_orc": "half_orc"
+  }
+ },
+ "needs": {},
+ "diet": [
+  "any"
+ ],
+ "aptitudes": {},
+ "affinity": {},
+ "traits_pool": {},
+ "resist": {},
+ "weak": {},
+ "culture_default": "fantasy_european",
+ "relations_bias": {
+  "elf": 0.0,
+  "dwarf": 0.05,
+  "orc": -0.2,
+  "goblin": -0.25,
+  "ogre": -0.1,
+  "troll": -0.35,
+  "dragon": -0.5
+ },
+ "gifted_chance": 0.05,
+ "settlement_tag": "human",
+ "_doc": "Люди: эталон, все множители 1, взросление 14, старость 60. Самые плодовитые, учатся новому быстрее (quick_learner чаще)."
+}
