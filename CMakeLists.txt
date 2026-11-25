@@ -368,7 +368,9 @@ add_library(altera_sim STATIC
         src/sim/craft/craft_chain.cpp
         src/sim/craft/craft_validate.cpp
         src/sim/craft/craft_state.cpp
+        src/sim/craft/craft_magic.cpp
         src/sim/craft_sim.cpp
+        src/sim/alchemy.cpp
         src/sim/building.cpp)
 target_include_directories(altera_sim PUBLIC src)
 target_link_libraries(altera_sim PUBLIC nlohmann_json altera_combat PRIVATE asr_warnings)
@@ -845,7 +847,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_loc.cpp tests/test_altera_sim_loc_gen.cpp tests/test_altera_sim_content.cpp
             tests/test_altera_sim_farming.cpp tests/test_altera_sim_crafts.cpp
             tests/test_altera_sim_combat.cpp tests/test_altera_sim_captivity.cpp
-            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp tests/test_altera_sim_worth.cpp tests/test_altera_sim_resources.cpp
+            tests/test_altera_sim_craft.cpp tests/test_altera_sim_cuisine.cpp tests/test_altera_sim_worth.cpp tests/test_altera_sim_resources.cpp tests/test_altera_sim_alchemy.cpp
             tests/test_altera_sim_build.cpp tests/test_altera_sim_backstory.cpp
             tests/test_altera_sim_collide.cpp tests/test_altera_sim_actinfo.cpp tests/test_altera_sim_player_acts.cpp tests/test_altera_sim_reach.cpp
             tests/test_altera_sim_gear.cpp tests/test_altera_sim_village.cpp tests/test_altera_sim_structures.cpp tests/test_altera_sim_rooms.cpp

@@ -870,12 +870,17 @@ Content Content::load(const std::string& dir) {
     // by the same rules, after the cuisine and before the expansion.
     ExpansionData resources =
         mergeExpansion(dir + "/resources", items, objects, needs, traits, htn, interactions, config, knowledge);
+    // AL-117: the alchemy pack (potions, scrolls, alembic and crucible, reagents, alchemy and runecraft)
+    ExpansionData alchemy =
+        mergeExpansion(dir + "/alchemy", items, objects, needs, traits, htn, interactions, config, knowledge);
     ExpansionData expansion =
         mergeExpansion(dir + "/expansion", items, objects, needs, traits, htn, interactions, config, knowledge);
     for (const auto& e : cuisine.errors) expansion.errors.push_back("cuisine: " + e);
     for (const auto& k : cuisine.kept) expansion.kept.push_back("cuisine:" + k);
     for (const auto& e : resources.errors) expansion.errors.push_back("resources: " + e);
     for (const auto& k : resources.kept) expansion.kept.push_back("resources:" + k);
+    for (const auto& e : alchemy.errors) expansion.errors.push_back("alchemy: " + e);
+    for (const auto& k : alchemy.kept) expansion.kept.push_back("alchemy:" + k);
     // A pack may annotate items it does not add (base and expansion ones): its category tags
     // join theirs, other fields (worth, quality, material) fill in where the item has none.
     for (const char* pack : {"cuisine", "resources"}) {

@@ -1,0 +1,77 @@
+{
+ "_doc": "AL-117: moodlets of drinking potions (potion_<body field of content/magic/aspects.json>).",
+ "moodlets": [
+  {
+   "id": "drank_potion",
+   "value": 0.03,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_burn",
+   "value": -0.15,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_cold",
+   "value": -0.1,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_heal_wounds",
+   "value": 0.1,
+   "ttl": 24,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_hide",
+   "value": 0.02,
+   "ttl": 6,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_calm",
+   "value": 0.1,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_fear",
+   "value": -0.2,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_sleep",
+   "value": 0.0,
+   "ttl": 8,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_poison",
+   "value": -0.25,
+   "ttl": 24,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_strength",
+   "value": 0.08,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_armor",
+   "value": 0.05,
+   "ttl": 12,
+   "_part": "AL-117"
+  },
+  {
+   "id": "potion_mana",
+   "value": 0.05,
+   "ttl": 12,
+   "_part": "AL-117"
+  }
+ ]
+}

@@ -1,4 +1,5 @@
 #include "sim/craft/craft.hpp"
+#include "sim/craft/craft_magic.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -200,6 +201,13 @@ struct ItemCtx : ExprCtx {
         if (n == "liquid") return it.shape == "liquid" ? 1.0 : 0.0;
         if (n == "wear") return it.wear;
         if (n == "mass") return itemMass(d, it);
+        // AL-117: magic in the thing
+        if (n == "unstable") return instability(d, it);
+        if (n == "aspects") return aspectTotal(it);
+        if (n == "rune") return runePower(d, it);
+        if (n == "inscribed") return it.inscribed ? 1.0 : 0.0;
+        if (n == "resonance") return it.resonance;
+        if (n == "deeds") return it.deeds;
         size_t dot = n.find('.');
         if (dot != std::string::npos) {
             std::string head = n.substr(0, dot), k = n.substr(dot + 1);
@@ -725,6 +733,44 @@ Applied applyStep(const CraftData& d, const ProcessDef& p, const StepInput& in, 
         if (!out.parts.empty()) out.material = mainPiece(out)->material;
         break;
     }
+    case ProcOp::Inscribe: { // AL-117: a rune cut into the best conductor of the thing
+        if (!work) break;
+        out = *work;
+        Carrier cr = carrierOf(d, out);
+        out.inscribed = true;
+        out.rune.q = qStep;
+        out.rune.conductivity = cr.conductivity;
+        out.rune.capacity = cr.capacity;
+        // an ink (blood, silver dust, a tincture) lends its aspects to the cut
+        for (const Item* c : co)
+            for (const auto& a : aspectDoses(*c)) out.rune.q = clamp01(out.rune.q + 0.1 * a.power);
+        out.tags.insert("inscribed");
+        break;
+    }
+    case ProcOp::Bind: { // AL-117: the aspects of the reagents laid into the rune, up to the carrier's capacity
+        if (!work) break;
+        out = *work;
+        std::map<std::string, double> add;
+        double total = 0.0;
+        for (const Item* c : co)
+            for (const auto& a : aspectDoses(*c)) {
+                add[runeKey(a.aspect, a.vec)] += a.power;
+                total += a.power;
+            }
+        const double limit = out.rune.capacity * d.magic.bindCapShare;
+        const double take = total > 0 ? std::min(1.0, limit / total) : 0.0;
+        const double qual = (0.5 + 0.5 * out.rune.q) * (0.6 + 0.4 * qStep);
+        for (const auto& [k, v] : add) out.rune.aspects[k] += v * take * qual;
+        double sum = 0.0;
+        for (const auto& [k, v] : out.rune.aspects) sum += v;
+        if (sum > limit && sum > 0)
+            for (auto& [k, v] : out.rune.aspects) v *= limit / sum;
+        const std::string& m = in.target.mode;
+        out.rune.trigger = !m.empty() ? m : (out.rune.trigger.empty() ? d.magic.defaultTrigger : out.rune.trigger);
+        out.rune.charge = out.rune.capacity;
+        out.tags.insert("enchanted");
+        break;
+    }
     case ProcOp::Shape:
     case ProcOp::Heat:
     case ProcOp::Soak: {
@@ -815,6 +861,20 @@ Applied applyStep(const CraftData& d, const ProcessDef& p, const StepInput& in, 
     }
     if (!p.setState.empty() && !out.isAssembly()) enterState(d, out, p.setState);
     if (p.reacts || p.op == ProcOp::Blend) applyReacts(d, p, out, env, massShare, A.fired, roll);
+    // AL-117: distilling, calcining, dissolving concentrate some effects and lose others;
+    // a good step concentrates more
+    if (!p.concentrate.empty())
+        for (auto& [e, k] : out.effects) {
+            double mult = -1.0;
+            for (const auto& [pre, f] : p.concentrate)
+                if (pre != "*" && e.rfind(pre, 0) == 0) mult = f;
+            if (mult < 0)
+                for (const auto& [pre, f] : p.concentrate)
+                    if (pre == "*") mult = f;
+            if (mult < 0) continue;
+            if (mult > 1.0) mult = 1.0 + (mult - 1.0) * (0.5 + qStep);
+            k = std::min(d.magic.aspectMax, k * mult);
+        }
     if (!out.isAssembly())
         if (const MaterialDef* m = d.material(out.material))
             for (const auto& r : m->refine)
@@ -987,10 +1047,30 @@ double itemWorth(const CraftData& d, const Item& it) {
     std::set<std::string> dtags(it.derivedTags.begin(), it.derivedTags.end());
     for (const auto& t : it.tags) dtags.erase(t);
     w *= tagSetWorth(d, dtags);
+    // AL-117: an enchantment and a story raise the worth (an artifact = rare stuff + strong rune + history)
+    w *= 1.0 + d.magic.runeWorth * runePower(d, it);
+    w *= 1.0 + d.magic.resonanceWorth * it.resonance;
     return std::clamp(w, d.cfg.worthMin, d.cfg.worthCap);
 }
 
+namespace {
+void recognizeBase(const CraftData& d, Item& it);
+}
+
 void recognize(const CraftData& d, Item& it) {
+    recognizeBase(d, it);
+    // AL-117: the rune does not change what the thing is; it adds to what it does
+    if (it.rune.bound()) {
+        it.derivedTags.push_back("enchanted");
+        for (const auto& a : runeDoses(d, it))
+            it.derived["rune." + runeKey(a.aspect, a.vec)] = a.power;
+        it.derivedStr["rune_trigger"] = it.rune.trigger;
+    }
+    if (it.resonance > 0) it.derived["resonance"] = it.resonance;
+}
+
+namespace {
+void recognizeBase(const CraftData& d, Item& it) {
     ItemCtx ctx(d, it, 0);
     std::map<std::string, double> fn;
     ctx.fn = &fn;
@@ -1085,6 +1165,7 @@ void recognize(const CraftData& d, Item& it) {
             if (im.fn == "any") pick = &im;
     if (pick) it.form = pick->id;
 }
+} // namespace
 
 Roll::Roll(std::uint64_t seed, std::uint64_t actor, std::uint64_t tick, std::uint64_t step)
     : state(mix64(seed ^ mix64(actor * 0x100000001B3ull ^ mix64(tick * 0x9E37ull ^ mix64(step + 0x51ull))))) {}
@@ -1200,6 +1281,21 @@ std::string checkStep(const CraftData& d, const StepInput& in, const Workplace& 
         !p->shapeMap.count(work->shape) && p->transform.empty() && p->setState.empty() && p->toMaterial.empty() &&
         p->fixes.empty())
         return fail("bad_target", work->shape);
+    if (p->op == ProcOp::Inscribe && work) { // AL-117: the carrier must hold magic
+        if (carrierOf(d, *work).conductivity + 1e-9 < d.magic.runeMinConductivity)
+            return fail("carrier_cannot_hold", mainPiece(*work)->material);
+    }
+    if (p->op == ProcOp::Bind) {
+        if (work && !work->inscribed) return fail("no_rune", "");
+        bool any = false;
+        for (const auto& sl : p->slots) {
+            const auto* v = slotItems(in, sl.name);
+            if (!v) continue;
+            for (size_t j = 0; j < v->size(); ++j)
+                if (&(*v)[j] != work && !aspectDoses((*v)[j]).empty()) any = true;
+        }
+        if (!any) return fail("no_aspect", "");
+    }
     if (p->op == ProcOp::Join) {
         size_t parts = 0;
         for (const auto& [slot, items] : in.slots)
@@ -1297,6 +1393,17 @@ StepResult runStep(const CraftData& d, const StepInput& in, const Actor& a, cons
         return R;
     }
     Item& out = A.out;
+    // AL-117: opposed aspects fight in the vessel; a poor step lets them blow it apart
+    if (const double un = instability(d, out); un > d.magic.unstableSafe) {
+        const double pb = clamp01((un - d.magic.unstableSafe) * d.magic.blastK * (1.2 - R.qStep) * riskMul);
+        if (roll.next() < pb) {
+            R.outcome = Outcome::Catastrophe;
+            R.risks.push_back("blast");
+            R.riskEffects.insert(R.riskEffects.end(), d.magic.blastEffects.begin(), d.magic.blastEffects.end());
+            salvageAll("");
+            return R;
+        }
+    }
     std::map<std::string, std::vector<std::string>> refs;
     std::vector<StepRec> trace = mergedTrace(p, in, &refs);
     addQ(out, R.qStep);

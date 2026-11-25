@@ -25,7 +25,7 @@
   "hardness": "avg_mass", "toughness": "avg_mass", "density": "avg_mass", "flex": "avg_mass", "edge": "max",
   "melt": "min", "flammable": "max", "porous": "avg_mass", "fiber": "avg_mass", "moisture": "avg_mass",
   "purity": "min", "nutrition": "sum_cap", "sugar": "sum_cap", "toxic": "max", "tacky": "max", "workable": "avg_mass",
-  "warmth": "avg_mass", "cover": "max", "waterproof": "max"
+  "warmth": "avg_mass", "cover": "max", "waterproof": "max", "mana_capacity": "max", "conductivity": "max"
  },
  "effect_rules": {
   "stack": ["pain_relief", "sweet", "sour", "salty", "umami", "bitter", "fresh", "pungent", "tonic", "digestive", "rich", "antiseptic", "preserves", "warm", "sting"],

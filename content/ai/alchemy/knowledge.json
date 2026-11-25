@@ -1,0 +1,27 @@
+{
+ "_doc": "AL-117: alchemy (distil, calcine, dissolve) and runecraft (inscribe, bind). Nobody starts with them (no world roll): learnt by doing or from a teacher.",
+ "knowledge": [
+  {
+   "id": "alchemy",
+   "requires": [
+    "herbalism"
+   ],
+   "learn_ticks": 72,
+   "self_ticks": 600,
+   "start_chance_adult": 0.0,
+   "family_knowledge": true,
+   "_part": "AL-117"
+  },
+  {
+   "id": "runecraft",
+   "requires": [
+    "alchemy"
+   ],
+   "learn_ticks": 96,
+   "self_ticks": null,
+   "start_chance_adult": 0.0,
+   "family_knowledge": false,
+   "_part": "AL-117"
+  }
+ ]
+}

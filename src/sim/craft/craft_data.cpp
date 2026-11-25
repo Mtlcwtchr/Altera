@@ -88,7 +88,9 @@ const std::vector<std::string>& propNames() {
     static const std::vector<std::string> v{"hardness", "toughness", "density", "flex",    "edge",     "melt",
                                             "flammable", "porous",   "fiber",   "moisture", "purity",  "nutrition",
                                             "sugar",    "toxic",     "tacky",   "workable", "warmth",  "cover",
-                                            "waterproof"};
+                                            "waterproof",
+                                            // AL-117: how well the stuff carries aspects, how much power it holds
+                                            "conductivity", "mana_capacity"};
     return v;
 }
 
@@ -222,6 +224,23 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
                     else d.cfg.tagWorth[it.key()] = it.value().get<double>();
                 }
         }
+        if (c.contains("magic")) { // AL-117
+            const Json& m = c["magic"];
+            auto& g = d.magic;
+            g.runeMinConductivity = opt(m, "rune_min_conductivity", g.runeMinConductivity);
+            g.aspectMax = opt(m, "aspect_max", g.aspectMax);
+            g.unstableSafe = opt(m, "unstable_safe", g.unstableSafe);
+            g.blastK = opt(m, "blast_k", g.blastK);
+            if (m.contains("blast_effects")) g.blastEffects = strs(m, "blast_effects");
+            g.bindCapShare = opt(m, "bind_cap_share", g.bindCapShare);
+            g.runeWorth = opt(m, "rune_worth", g.runeWorth);
+            g.resonanceWorth = opt(m, "resonance_worth", g.resonanceWorth);
+            g.resonanceDeeds = std::max(1.0, opt(m, "resonance_deeds", g.resonanceDeeds));
+            g.resonanceRune = opt(m, "resonance_rune", g.resonanceRune);
+            if (m.contains("triggers")) g.triggers = strs(m, "triggers");
+            g.defaultTrigger = m.value("default_trigger", g.defaultTrigger);
+            g.chargePerUse = opt(m, "charge_per_use", g.chargePerUse);
+        }
         if (c.contains("heat") && c["heat"].contains("levels"))
             for (auto it = c["heat"]["levels"].begin(); it != c["heat"]["levels"].end(); ++it)
                 d.cfg.heatC[std::stoi(it.key())] = it.value().get<double>();
@@ -317,7 +336,7 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         warnUnknown(j, {"id", "op", "skill", "skill_by", "category", "requires", "inputs", "time", "difficulty",
                         "shape_map", "assemble", "transform", "set_state", "to_material", "extract", "marks", "fixes",
                         "reacts", "risky", "flaws", "risk", "modes", "no_air_modes", "ordered", "tool_wear", "needs",
-                        "fsm", "chain_in", "chain_out", "worth"},
+                        "fsm", "chain_in", "chain_out", "worth", "concentrate"},
                     where, W);
         p.worth = worthField(j, where, E);
         std::string op = j.value("op", "shape");
@@ -326,6 +345,8 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         else if (op == "blend") p.op = ProcOp::Blend;
         else if (op == "join") p.op = ProcOp::Join;
         else if (op == "soak") p.op = ProcOp::Soak;
+        else if (op == "inscribe") p.op = ProcOp::Inscribe;
+        else if (op == "bind") p.op = ProcOp::Bind;
         else E.add(where + ": unknown op " + op);
         p.skill = j.value("skill", "");
         if (j.contains("requires")) {
@@ -397,6 +418,12 @@ CraftData CraftData::fromJson(const Json& materials, const Json& shapes, const J
         p.fsm = j.value("fsm", "Work");
         p.chainIn = strs(j, "chain_in");
         p.chainOut = strs(j, "chain_out");
+        if (j.contains("concentrate") && j["concentrate"].is_object())
+            for (auto it = j["concentrate"].begin(); it != j["concentrate"].end(); ++it) {
+                if (!it.value().is_number() || it.value().get<double>() < 0)
+                    E.add(where + ".concentrate." + it.key() + ": a number >= 0");
+                else p.concentrate.push_back({it.key(), it.value().get<double>()});
+            }
         if (p.id.empty()) E.add("processes: an entry without id");
         else if (!d.processes.emplace(p.id, p).second) E.add("processes: duplicate " + p.id);
         else d.processOrder.push_back(p.id);
@@ -580,10 +607,41 @@ CraftData CraftData::load(const std::string& dir) {
     };
     std::ifstream probe(dir + "/materials.json");
     if (!probe) return CraftData{};
-    return fromJson(f("materials.json"), f("shapes.json"), f("processes.json"), f("functions.json"), f("forms.json"),
-                    f("flaws.json"), f("reacts.json"), f("stations.json"), f("crafting_config.json"),
-                    f("designs.json"));
+    CraftData d = fromJson(f("materials.json"), f("shapes.json"), f("processes.json"), f("functions.json"),
+                           f("forms.json"), f("flaws.json"), f("reacts.json"), f("stations.json"),
+                           f("crafting_config.json"), f("designs.json"));
+    // AL-117: the aspects of magic live in content/magic (dir is content/ai/craft)
+    std::ifstream am(dir + "/../../magic/aspects.json");
+    if (am) {
+        Json a;
+        try {
+            am >> a;
+            loadAspects(d, a);
+        } catch (const std::exception& e) {
+            d.errors.push_back(std::string("magic/aspects.json: ") + e.what());
+        }
+    }
+    return d;
 }
+
+void loadAspects(CraftData& d, const Json& aspects) {
+    d.aspects.clear();
+    for (const auto& j : aspects.value("aspects", Json::array())) {
+        AspectInfo a;
+        a.id = j.value("id", "");
+        if (a.id.empty()) continue;
+        a.opposes = j.value("opposes", std::vector<std::string>{});
+        a.enabled = j.value("enabled", true);
+        if (j.contains("body") && j["body"].is_object())
+            for (auto v = j["body"].begin(); v != j["body"].end(); ++v)
+                if (v.value().is_object())
+                    for (auto f = v.value().begin(); f != v.value().end(); ++f)
+                        if (f.value().is_string()) a.body[v.key()][f.key()] = f.value().get<std::string>();
+        d.aspects[a.id] = a;
+    }
+}
+
+const AspectInfo* CraftData::aspect(const std::string& id) const { return findIn(aspects, id); }
 
 std::vector<std::string> craftLocKeys(const CraftData& d) {
     std::vector<std::string> k;
@@ -605,7 +663,7 @@ std::vector<std::string> craftLocKeys(const CraftData& d) {
         k.push_back(std::string("craft.outcome.") + o);
     for (const char* r : {"unknown_process", "missing_input", "too_many", "wrong_input", "unknown_slot", "no_tool",
                           "tool_too_soft", "no_station", "station_needs", "too_cold", "bad_mode", "bad_target",
-                          "too_many_parts"})
+                          "too_many_parts", "carrier_cannot_hold", "no_rune", "no_aspect"})
         k.push_back(std::string("craft.reason.") + r);
     for (const char* s : {"missing", "cannot_start", "ruined", "hurt", "too_long", "unknown_step", "done"})
         k.push_back(std::string("craft.stop.") + s);

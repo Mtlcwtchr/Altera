@@ -51,7 +51,7 @@
    "requires": {"tool": ["striking"], "station": ["anvil"], "heat_min": 2, "tool_hardness_ge": "hardness*0.8"},
    "inputs": [{"slot": "work", "shape": ["lump", "bar", "plate", "bar_thin"], "tag": ["metal", "metal_raw"], "p": {"workable": ">=0.3"}}],
    "time": 4, "difficulty": {"base": 0.35, "add": "0.3*hardness - 0.2*purity"},
-   "shape_map": {"lump": ["bar"], "bar": ["bar", "blank_blade", "blank_head", "plate", "bar_thin", "wire", "nail", "rivet", "sickle_blade"], "plate": ["blank_helm", "sheet_metal", "cauldron_raw", "hoe_blade", "comb_raw", "charm_raw"], "bar_thin": ["wire"]},
+   "shape_map": {"lump": ["bar"], "bar": ["bar", "blank_blade", "blank_head", "plate", "bar_thin", "wire", "nail", "rivet", "sickle_blade"], "plate": ["blank_helm", "sheet_metal", "cauldron_raw", "hoe_blade", "comb_raw", "charm_raw", "alembic_raw"], "bar_thin": ["wire"]},
    "transform": {"purity": "min(1, x + 0.08*q)", "hardness": "min(1, x + 0.02)"},
    "flaws": [{"id": "crack", "p": "0.3*(1-q)", "when": "toughness<0.2"}, {"id": "uneven", "p": "0.4*(1-q)"}],
    "fixes": ["impure"],
@@ -148,7 +148,7 @@
    "requires": {"station": ["wheel", "bench"]},
    "inputs": [{"slot": "work", "tag": ["clay", "wax", "fat"], "p": {"workable": ">=0.4"}}],
    "time": 4, "difficulty": {"base": 0.3},
-   "shape_map": {"lump": ["vessel_raw", "bowl_raw", "brick_raw", "tile_raw", "candle_raw", "candlestick_raw", "pipe_raw", "whistle_raw"]},
+   "shape_map": {"lump": ["vessel_raw", "bowl_raw", "brick_raw", "tile_raw", "candle_raw", "candlestick_raw", "pipe_raw", "whistle_raw", "crucible_raw"]},
    "flaws": [{"id": "crack", "p": "0.3*(1-q)", "when": "moisture<0.3"}]},
 
   {"id": "tan", "op": "shape", "skill": "tanning",
@@ -172,6 +172,18 @@
    "transform": {"wear": "max(0, x - 0.1 - 0.4*q)"},
    "fixes": ["loose_joint", "uneven"],
    "flaws": [{"id": "loose_joint", "p": "0.15*(1-q)", "when": "joint<1"}],
-   "modes": ["hone", "patch", "rivet", "straighten"]}
+   "modes": ["hone", "patch", "rivet", "straighten"]},
+
+  {"id": "distill", "op": "shape", "skill": "alchemy", "skill_by": [{"tag": "alcohol", "skill": "brewing"}], "requires": {"station": ["alembic"], "heat_min": 2}, "inputs": [{"slot": "work", "shape": ["liquid"]}], "time": 6, "difficulty": {"base": 0.4, "add": "0.3*aspects"}, "transform": {"moisture": "x*0.5"}, "concentrate": {"aspect.": 1.6, "*": 0.7}, "flaws": [{"id": "burnt", "p": "0.2*(1-q)"}], "risk": [{"id": "scald", "p": 0.03, "eff": ["body:health-0.03"]}], "marks": ["distilled"], "risky": true, "chain_in": ["liquid"], "chain_out": ["liquid"]},
+
+  {"id": "calcine", "op": "shape", "skill": "alchemy", "skill_by": [{"tag": "metal", "skill": "smithing"}], "requires": {"station": ["crucible"], "heat_min": 3}, "inputs": [{"slot": "work", "tag": ["mineral", "herb", "bone", "metal", "metal_raw", "reagent", "fuel"]}], "time": 8, "difficulty": {"base": 0.45}, "shape_map": {"lump": ["powder"], "bone": ["powder"], "fiber_raw": ["powder"], "powder": ["powder"]}, "transform": {"moisture": "0", "flammable": "x*0.2"}, "concentrate": {"aspect.": 1.5, "*": 0.3}, "risk": [{"id": "burn_hand", "p": 0.04, "eff": ["body:health-0.04"]}], "marks": ["calcined"], "risky": true, "chain_in": ["lump"], "chain_out": ["powder"]},
+
+  {"id": "dissolve", "op": "soak", "skill": "alchemy", "skill_by": [{"tag": "herb", "skill": "herbalism"}], "requires": {"station": ["pot", "tub", "bench", "alembic"]}, "inputs": [{"slot": "work", "shape": ["any"]}, {"slot": "liquid", "tag": ["solvent", "water"], "max": 2}], "time": 4, "difficulty": {"base": 0.3}, "shape_map": {"lump": ["liquid"], "powder": ["liquid"], "fiber_raw": ["liquid"], "bone": ["liquid"], "liquid": ["liquid"]}, "concentrate": {"aspect.": 1.2}, "extract": "dissolve", "marks": ["dissolved"], "chain_in": ["any"], "chain_out": ["liquid"]},
+
+  {"id": "scrape", "op": "shape", "skill": "tanning", "requires": {"tool": ["cutting"], "station": ["frame", "bench"]}, "inputs": [{"slot": "work", "tag": ["hide"], "shape": ["hide", "sheet"]}], "time": 12, "difficulty": {"base": 0.35}, "shape_map": {"hide": ["sheet"]}, "to_material": "parchment", "flaws": [{"id": "uneven", "p": "0.3*(1-q)"}]},
+
+  {"id": "inscribe", "op": "inscribe", "skill": "runecraft", "requires": {"tool": ["cutting", "needle"]}, "inputs": [{"slot": "work", "shape": ["any"]}, {"slot": "ink", "optional": true, "shape": ["any"], "tag": ["liquid", "reagent", "blood"], "either": true}], "time": 6, "difficulty": {"base": 0.45, "add": "0.3*(1-conductivity)"}, "marks": ["inscribed"], "worth": 1.2},
+
+  {"id": "bind", "op": "bind", "skill": "runecraft", "requires": {"station": ["bench", "alembic"]}, "inputs": [{"slot": "work", "tag": ["inscribed"]}, {"slot": "reagent", "shape": ["any"], "max": 3}], "time": 8, "difficulty": {"base": 0.5, "add": "0.3*rune"}, "risk": [{"id": "backlash", "p": 0.02, "eff": ["body:health-0.03"]}], "modes": ["constant", "on_hit", "on_touch", "on_word", "on_threat"], "marks": ["enchanted"], "risky": true, "worth": 1.3}
  ]
 }

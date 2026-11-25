@@ -774,6 +774,114 @@
    ".kTTTTTTTTk.....",
    "..kkkkkkkk......",
    "................"
+  ],
+  "pr_distill": [
+   "................",
+   "................",
+   ".....kkk.....kk.",
+   "....kMMMk.kkkMMk",
+   "....kMMMkkMMMkMk",
+   "...kuMMMMMkkkkMk",
+   "..kuuuuuuk...kMk",
+   ".kuuuUUuuuk..kMk",
+   ".kuuUUUUuuk..kMk",
+   ".kuuUUUUuuk..kMk",
+   ".kuuuUUuuuk..kMk",
+   "..kuuuuuuk....k.",
+   "...kuufuk.......",
+   "....kffk........",
+   "...kfFFfk.......",
+   "....kFFk........"
+  ],
+  "pr_calcine": [
+   "................",
+   "................",
+   "....kkkkkkkk....",
+   "...kzWWWWWWzk...",
+   "...kzWWWWWWzk...",
+   "...kzzzzzzzzk...",
+   "...kzzzzzzzzk...",
+   "...kzzzzzzzzk...",
+   "...kzzzzfzzzk...",
+   "...kzzzfzzzzk...",
+   "....kkfffkkk....",
+   "....kfffffk.....",
+   "....kfFFFfk.....",
+   "....kfFFFfk.....",
+   ".....kfFfk......",
+   "......kfk......."
+  ],
+  "pr_dissolve": [
+   "................",
+   "................",
+   ".......kk.......",
+   "......kWWk......",
+   ".....kWWWWk.....",
+   ".....kWWWWk.....",
+   "......kWWk......",
+   ".....kukk.......",
+   "..kkkkkkukkkkk..",
+   ".knuuuuuuuuuunk.",
+   ".knuuuuuuuuuunk.",
+   ".knuuuuuuuuuunk.",
+   ".knnnnnnnnnnnnk.",
+   ".knnnnnnnnnnnnk.",
+   "..kkkkkkkkkkkk..",
+   "................"
+  ],
+  "pr_scrape": [
+   "................",
+   ".........kk.....",
+   "........kWWk....",
+   "..kkkkkkkWWWk...",
+   ".keeeeeeeeWWWk..",
+   ".keeeeeeeeeWWWk.",
+   ".keeeeeeeeeeWWWk",
+   ".keeeeeeeeeekWWW",
+   ".keeeeeeeeeenkWW",
+   ".keeeeeeeeeeknkk",
+   ".keeeeeeeeeekknk",
+   ".keeeeeeeeeek.k.",
+   ".keeeeeeeeeek...",
+   ".keeeeeeeeeek...",
+   "..kkkkkkkkkk....",
+   "................"
+  ],
+  "pr_inscribe": [
+   "................",
+   "..kkkkkkkkkkkk..",
+   ".kWWWWWWWWWWWWk.",
+   ".kWWWWWWWWWWWWk.",
+   ".kWWWWWHWWWWWWk.",
+   ".kWWWWWHHWWWWWk.",
+   ".kWWWWWHWHHWWWk.",
+   ".kWWWWWHWWWHWWk.",
+   ".kWWWWWHWWWWWWk.",
+   ".kWWWWWHHWWWWWk.",
+   ".kWWWWWHWHWWWWk.",
+   ".kWWWWWHWWHWWWk.",
+   ".kWWWWWHWWWHWWk.",
+   ".kWWWWWWWWWWWWk.",
+   "..kkkkkkkkkkkk..",
+   "................"
+  ],
+  "pr_bind": [
+   ".....kkkkkk.....",
+   "....kuuuuuuk....",
+   "...kuukkHkuuk...",
+   "..kukk.kHkkkuk..",
+   ".kukHk.kHk.kHuk.",
+   "kuukkHkkHkkHkuuk",
+   "kuk..kHyykHk.kuk",
+   "kukkkkyyyykkkkuk",
+   "kuHHHHyyyyHHHHHk",
+   "kukkkkkyyHkkkkuk",
+   "kuuk.kHkHkHkkuuk",
+   ".kukkHkkHkkHkuk.",
+   "..kuHk.kHkkkHk..",
+   "...kuukkHkuuk...",
+   "....kuuuHuuk....",
+   ".....kkkkkk....."
   ]
  },
  "stations": {
@@ -822,7 +930,9 @@
   "mortar": "υ",
   "tanning_pit": "□",
   "quern": "⊜",
-  "table": "π"
+  "table": "π",
+  "alembic": "⚗",
+  "crucible": "∪"
  },
  "processes": {
   "heat": [
@@ -912,6 +1022,30 @@
   "repair": [
    "✚",
    "l"
+  ],
+  "distill": [
+   "⚗",
+   "u"
+  ],
+  "calcine": [
+   "♁",
+   "z"
+  ],
+  "dissolve": [
+   "◒",
+   "u"
+  ],
+  "scrape": [
+   "▭",
+   "e"
+  ],
+  "inscribe": [
+   "ᚱ",
+   "W"
+  ],
+  "bind": [
+   "✶",
+   "H"
   ]
  },
  "shapes": {
@@ -1213,7 +1347,13 @@
   "mould": "pr_mould",
   "tan": "pr_tan",
   "alloy": "pr_alloy",
-  "repair": "pr_repair"
+  "repair": "pr_repair",
+  "distill": "pr_distill",
+  "calcine": "pr_calcine",
+  "dissolve": "pr_dissolve",
+  "scrape": "pr_scrape",
+  "inscribe": "pr_inscribe",
+  "bind": "pr_bind"
  },
  "action_icons": {
   "make": "ac_make",
