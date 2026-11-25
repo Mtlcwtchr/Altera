@@ -7,6 +7,7 @@
 #include <mutex>
 
 #include "sim/character.hpp"
+#include "sim/gear.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -35,6 +36,11 @@ const CombatBridge* combatBridge(const Content& c) {
         b->weaponItems = j.value("weapon_items", std::vector<std::string>{});
         b->weaponOfItem = j.value("weapon_of_item", std::map<std::string, std::string>{});
         b->armorOfItem = j.value("armor_of_item", std::map<std::string, std::string>{});
+        for (const auto& f : c.craft.forms)
+            if (!f.item.empty()) b->itemOfForm[f.id] = f.item;
+        if (const GearRules* R = gearRules(c))
+            for (const auto& [id, g] : R->items)
+                if (!g.slot.empty()) b->wearable.insert(id);
         if (j.contains("animal")) {
             b->animalWeapon = j["animal"].value("weapon", b->animalWeapon);
             b->animalSkillKey = j["animal"].value("skill_key", b->animalSkillKey);
@@ -119,7 +125,9 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
     }
     for (const auto& [item, armor] : b.armorOfItem) {
         auto inv = c.inventory.find(item);
-        if (inv != c.inventory.end() && inv->second > 0) s.armor.push_back(armor);
+        if (inv == c.inventory.end() || inv->second <= 0) continue;
+        if (b.wearable.count(item) && wornCount(c, item) == 0) continue;   // in the bag, not on the body
+        s.armor.push_back(armor);
     }
     applyMadeGear(b, c, s);
     return s;
@@ -169,6 +177,9 @@ void applyMadeGear(const CombatBridge& b, const Character& c, combat::FighterSpe
     std::set<std::string> layers;
     for (const auto& it : c.craft.items) {
         if (it.kind != "armor" || it.wear >= 1.0) continue;
+        if (const auto fi = b.itemOfForm.find(it.form);
+            fi != b.itemOfForm.end() && b.wearable.count(fi->second) && wornCount(c, fi->second) == 0)
+            continue;   // AL-109: carried, not worn
         auto l = it.derivedStr.find("layer");
         if (l == it.derivedStr.end() || !b.data->armorIx.count(l->second) || !layers.insert(l->second).second) continue;
         auto have = std::find(s.armor.begin(), s.armor.end(), l->second);

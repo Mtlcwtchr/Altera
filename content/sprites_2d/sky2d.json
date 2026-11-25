@@ -1,0 +1,34 @@
+{
+  "_doc": "AL-110: the sky of the 2D client (src/client2d/sky2d.cpp computes it, tools/game_2d/native/atmos2d.cpp draws it). The sim keeps only the day's mean temperature and rain (src/sim/weather.cpp); the hours are spread from them here, the same for the same tick. sun: noon hour, day length swing over the year (hours, longest at midsummer, day 135), the noon altitude at the equinox and its swing (degrees). ambient: the light colour by the sun's altitude (degrees, rgb 0..1), blended between the keys; moon: how much the moon's phase lifts the night. clouds and rain dim it. precip: hours a wet day rains (base + per mm), snow below snow_c, sleet below sleet_c (the hour's temperature: the mean +- temp_swing, coldest at 3, warmest at 15), thunder from thunder_mmh on days warmer than thunder_c. wind: the sim's day wind (DayWeather windFromDeg/windMs, content/ai/climate.json), plus m/s in rain and storms. fog: the chance of a foggy morning by season, plus after a wet day; it lies from fog_from hours before sunrise to fog_to after, and the wind blows it off (gone at wind_clear m/s). snow: cm a mm of snow lays, melt cm a day per degree over 1. lights: object types that give light - radius (m), colour, strength 0..1, flicker 0..1, when: always | hearth (meals and evening) | evening | worked (someone working at it); window and torch are the lit windows of a house someone is in, and the torch a person carries outdoors at night. shadow: heights (m) of what casts a shadow by kind.",
+  "sun": {"noon": 12.5, "day_len": 12.0, "day_len_swing": 4.5, "alt_noon": 40.0, "alt_swing": 22.0},
+  "ambient": [
+    {"alt": -14, "rgb": [0.12, 0.15, 0.30]},
+    {"alt": -6, "rgb": [0.30, 0.29, 0.46]},
+    {"alt": -1, "rgb": [0.68, 0.52, 0.54]},
+    {"alt": 4, "rgb": [1.0, 0.80, 0.66]},
+    {"alt": 12, "rgb": [1.0, 0.94, 0.86]},
+    {"alt": 25, "rgb": [1.0, 1.0, 1.0]}
+  ],
+  "moon": 0.45,
+  "cloud_dim": 0.28,
+  "rain_dim": 0.14,
+  "storm_dim": 0.25,
+  "precip": {"hours_base": 2, "hours_per_mm": 0.8, "hours_max": 18, "snow_c": 0.5, "sleet_c": 2.5, "temp_swing": 4.0, "thunder_mmh": 2.0, "thunder_c": 13.0},
+  "wind": {"rain_boost": 3.0, "storm_boost": 6.0},
+  "fog": {"chance": {"spring": 0.22, "summer": 0.10, "autumn": 0.35, "winter": 0.25}, "after_wet": 0.25, "fog_from": 3.0, "fog_to": 3.5, "wind_clear": 5.0, "rain_haze": 0.25, "snow_haze": 0.35},
+  "snow": {"cm_per_mm": 1.0, "melt": 0.6, "full_cm": 4.0, "days_back": 30},
+  "lights": {
+    "hearth": {"r": 6.5, "rgb": [1.0, 0.62, 0.30], "i": 0.95, "flicker": 0.25, "when": "hearth"},
+    "village_fire": {"r": 9.0, "rgb": [1.0, 0.58, 0.26], "i": 1.0, "flicker": 0.35, "when": "evening"},
+    "campfire": {"r": 7.5, "rgb": [1.0, 0.58, 0.26], "i": 1.0, "flicker": 0.35, "when": "always"},
+    "common_oven": {"r": 5.0, "rgb": [1.0, 0.55, 0.25], "i": 0.8, "flicker": 0.15, "when": "worked"},
+    "forge": {"r": 6.5, "rgb": [1.0, 0.50, 0.22], "i": 1.0, "flicker": 0.3, "when": "worked"},
+    "lime_kiln": {"r": 5.5, "rgb": [1.0, 0.50, 0.25], "i": 0.8, "flicker": 0.15, "when": "always"},
+    "charcoal_clamp": {"r": 3.5, "rgb": [1.0, 0.40, 0.18], "i": 0.55, "flicker": 0.2, "when": "always"},
+    "shrine": {"r": 3.0, "rgb": [1.0, 0.80, 0.50], "i": 0.5, "flicker": 0.2, "when": "evening"},
+    "window": {"r": 3.8, "rgb": [1.0, 0.72, 0.40], "i": 0.7, "flicker": 0.08, "when": "occupied"},
+    "torch": {"r": 5.0, "rgb": [1.0, 0.64, 0.32], "i": 0.85, "flicker": 0.3, "when": "night"}
+  },
+  "smoke": ["hearth", "village_fire", "campfire", "forge", "common_oven", "lime_kiln", "charcoal_clamp"],
+  "shadow": {"tree": 7.0, "pine_tree": 9.0, "oak_grove": 8.0, "fruit_tree": 4.0, "bush": 1.2, "thing": 1.0, "pawn": 1.7, "beast": 1.0, "roof": 2.6}
+}

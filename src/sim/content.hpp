@@ -75,6 +75,8 @@ struct ClimateDef {
     std::map<std::string, double> biomeRainMult;
     std::map<std::string, double> biomeTempAdd;
     std::map<std::string, SoilDef> soils; // by biome; "default" for the rest
+    // AL-115: the prevailing wind (direction it blows from, degrees clockwise from north = -y) and its strength
+    double windFromDeg = 250.0, windMs = 4.0, windSd = 2.0;
     const SoilDef& soil(const std::string& biome) const;
 };
 

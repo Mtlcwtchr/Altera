@@ -601,6 +601,20 @@ void buildingTick(World& w) {
 
 void installBuilding(World& w) { w.addCommandHandler(handle); }
 
+int destroyPiece(World& w, EntityId piece, const std::string& cause) {
+    auto it = w.pieces().find(piece);
+    if (it == w.pieces().end()) return 0;
+    const bool built = it->second.built;
+    if (it->second.site != kNone) w.removeObject(it->second.site);
+    w.pieces().erase(it);
+    w.piecesDirty = true;
+    w.roomsDirty = true;
+    const int fell = collapse(w) + (built ? 1 : 0);
+    if (fell > 0) w.chronicle("collapse", {}, "chronicle.build_broken", {{"n", fell}, {"cause", cause}});
+    refreshPieces(w);
+    return fell;
+}
+
 EntityId mandateHolder(const World& w, EntityId settlement) {
     auto it = w.settlements().find(settlement);
     return it == w.settlements().end() ? kNone : it->second.chief;

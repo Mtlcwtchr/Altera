@@ -312,6 +312,7 @@ endif() # NOT ALTERA_SIM_ONLY
 # deterministic from seed + command log; depends on nothing but the JSON header.
 # ---------------------------------------------------------------------------
 add_library(altera_sim STATIC
+        src/sim/world_fields.cpp
         src/sim/rules.cpp
         src/sim/content.cpp
         src/sim/expansion.cpp
@@ -324,6 +325,7 @@ add_library(altera_sim STATIC
         src/sim/dialogue_rules.cpp
         src/sim/rumor_noise.cpp
         src/sim/dialogue_say.cpp
+        src/sim/news.cpp
         src/sim/speech_feed.cpp
         src/sim/justice.cpp
         src/sim/facts.cpp
@@ -412,6 +414,8 @@ add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.c
 target_include_directories(altera_client2d PUBLIC src)
 target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
 target_sources(altera_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
+target_sources(altera_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
+target_sources(altera_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 add_executable(altera_game_2d tools/game_2d/main.cpp)
 target_link_libraries(altera_game_2d PRIVATE altera_client2d asr_warnings)
 if(WIN32)
@@ -552,7 +556,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
     target_sources(altera_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp
-            tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp
+            tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
     target_include_directories(altera_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(altera_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
@@ -851,7 +855,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_dialogue_rules.cpp
             tests/test_altera_sim_rumor_noise.cpp tests/test_altera_sim_rumor_spread.cpp tests/test_altera_sim_dialogue_say.cpp
             tests/test_altera_sim_justice.cpp tests/test_altera_sim_facts.cpp
-            tests/test_altera_sim_speech_feed.cpp
+            tests/test_altera_sim_speech_feed.cpp tests/test_altera_sim_news.cpp
             tests/test_altera_sim_village_life.cpp tests/test_altera_sim_memory_budget.cpp
             tests/test_altera_sim_realm.cpp
             tests/test_altera_sim_ecology.cpp
@@ -862,8 +866,11 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_sim_dialogue_corpus.cpp tests/test_altera_client2d.cpp
             tests/test_altera_client2d_talk.cpp tests/test_altera_client2d_session.cpp
             tests/test_altera_client2d_craft.cpp
-            tests/test_altera_build2d.cpp)
+            tests/test_altera_build2d.cpp
+            tests/test_altera_sim_fields.cpp)
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sheet.cpp)   # AL-100
+    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sky.cpp)     # AL-110
+    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_crops.cpp)   # AL-112
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim altera_client2d asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
