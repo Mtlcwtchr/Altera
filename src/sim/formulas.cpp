@@ -348,6 +348,13 @@ double FormulaBook::eval(const std::string& idOrCall, const ExprCtx& ctx, double
     return evalCompiled(*c, fc);
 }
 
+double FormulaBook::evalArgs(const std::string& id, const std::map<std::string, double>& args, double dflt) const {
+    if (!has(id)) return dflt;
+    MapExprCtx c;
+    for (const auto& [k, v] : args) c.vars["arg." + k] = v;
+    return eval(id, c, dflt);
+}
+
 double FormulaBook::evalExpr(const Expr& e, const ExprCtx& ctx, double dflt) const {
     if (e.empty()) return dflt;
     Ctx fc(*this, ctx);

@@ -78,6 +78,9 @@ public:
     // The value of a formula by id ("persuade_bonus") or call ("f.persuade_bonus(skill=lore)"),
     // reading other names from `ctx`. An unknown formula gives `dflt`.
     double eval(const std::string& idOrCall, const ExprCtx& ctx, double dflt = 0.0) const;
+    // A formula of numbers the code hands in by name (read as arg.<name>); `dflt` when the
+    // book has no such formula, so code can keep its old rule as the fallback.
+    double evalArgs(const std::string& id, const std::map<std::string, double>& args, double dflt) const;
     // Evaluates an expression compiled elsewhere (an act's chance in its own file), with
     // f.<...> names answered by this book.
     double evalExpr(const Expr& e, const ExprCtx& ctx, double dflt = 0.0) const;

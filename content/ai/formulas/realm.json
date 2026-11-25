@@ -1,0 +1,20 @@
+{
+  "_doc": "LR-142: the realm's strength in war (sim/realm.cpp realmStrength). Numbers the code hands in are arg.<name>; see doc/design/DATA_DRIVEN.md.",
+  "formulas": [
+    {
+      "id": "realm_levy",
+      "expr": "arg.militia * (0.4 + arg.morale) * (0.7 + 0.6 * arg.martial)",
+      "doc": "the levy of a settlement: its militia, lifted by morale and by how martial its ruler is"
+    },
+    {
+      "id": "realm_mercenary",
+      "expr": "4 * arg.martial * arg.health",
+      "doc": "one hired sword in the settlement's pay"
+    },
+    {
+      "id": "realm_knight",
+      "expr": "3 * arg.martial * arg.health",
+      "doc": "a knight at home beyond the map (on the map the knights are in the levy)"
+    }
+  ]
+}

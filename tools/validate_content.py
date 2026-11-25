@@ -13,6 +13,11 @@
   backstory  ai/backstories.json: ссылки на умения, черты, характеристики, предметы, чертежи, права, оси,
              места старта, иконки (icons.json, ui/backstory.json) и ключи loc backstory.<id>.name/desc/life
   docs       пути в *.md существуют, нет дублей id задач в WORK_PLAN/BACKLOG
+  formulas   ai/formulas/*.json (LR-142): id, ссылки f.<id>, cfg.<константы>, $параметры, префиксы имён
+             (attr./skill./trait./need./rel. сверяются с id контента), синтаксис, циклы
+  templates  extends / use в списках ai/*.json и ai/templates (LR-142): известные id, нет циклов
+  mods       папки модов (--mods, по умолчанию ../mods рядом с content/): JSON парсится, "_merge" ложится
+             на существующий файл базы, id новых записей не пустые
 
 Корень: --root, иначе ./content (раскладка репо) или /mnt/project-files/gdd (раскладка общей папки).
 Вывод: итог по подкомандам + первые 20 проблем каждой; полный журнал в --log (по умолчанию validate_content.log).
@@ -437,11 +442,191 @@ CHECKS["elements"] = check_elements  # AL-115
 CHECKS["pawns"] = check_pawns  # LR-139
 
 
+# ---------------------------------------------------------------- LR-142: formulas, templates, mods
+FORMULA_PREFIXES = ("attr.", "skill.", "trait.", "need.", "rep.", "rel.", "t.", "arg.", "cfg.", "f.", "age")
+FUNCS = {"min", "max", "clamp", "abs", "floor", "ceil", "round", "pow", "sqrt", "exp", "log", "lerp", "sign",
+         "step", "noise", "p_over", "has", "count", "mass", "flaw", "state", "tag", "eff", "role"}
+WORDS = {"and", "or", "not", "true", "false"}
+NAME_RE = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*(?:\.[A-Za-z0-9_$]+)*")
+
+
+def _content_ids(L):
+    ai = L.get("ai")
+    ids = {"attr": set(), "skill": set(), "trait": set(), "need": set()}
+    if not ai: return ids
+    def grab(path, key, kind):
+        p = ai / path
+        if p.exists():
+            try:
+                for e in jload(p).get(key, []):
+                    if isinstance(e, dict) and isinstance(e.get("id"), str): ids[kind].add(e["id"])
+            except Exception: pass
+    grab("knowledge.json", "knowledge", "skill"); grab("traits.json", "traits", "trait"); grab("needs.json", "needs", "need")
+    for sub in ("expansion", "cuisine", "resources", "alchemy"):
+        grab(f"{sub}/knowledge.json", "knowledge", "skill"); grab(f"{sub}/traits.json", "traits", "trait"); grab(f"{sub}/needs.json", "needs", "need")
+    p = ai / "expansion" / "attributes.json"
+    if p.exists():
+        try: ids["attr"] = set(x for x in jload(p).get("attributes", []) if isinstance(x, str))
+        except Exception: pass
+    return ids
+
+
+def _formula_names(src):
+    """Names an expression reads: (plain names, f.calls) without function names."""
+    names, calls, i = [], [], 0
+    while i < len(src):
+        m = NAME_RE.match(src, i)
+        if not m or (i > 0 and (src[i - 1].isalnum() or src[i - 1] in "._")):
+            i += 1; continue
+        n, j = m.group(0), m.end()
+        k = j
+        while k < len(src) and src[k] == " ": k += 1
+        if n.startswith("f.") and k < len(src) and src[k] == "(":
+            depth, e = 0, k
+            while e < len(src):
+                depth += src[e] == "("; depth -= src[e] == ")"
+                if depth == 0: break
+                e += 1
+            calls.append((n[2:], src[k + 1:e])); i = e + 1; continue
+        if k < len(src) and src[k] == "(":
+            if n not in FUNCS: names.append(("fn", n))
+            i = j; continue
+        if n not in WORDS and not n[0].isdigit(): names.append(("var", n))
+        i = j
+    return names, calls
+
+
+def check_formulas(L):
+    r = Report("formulas")
+    ai = L.get("ai")
+    d = ai / "formulas" if ai else None
+    if not d or not d.is_dir():
+        r.info = "нет ai/formulas"; return r
+    defs, consts = {}, {}
+    for p in sorted(d.glob("*.json")):
+        try: j = jload(p)
+        except Exception as e: r.err(f"{p.name}: не парсится ({e})"); continue
+        for k, v in (j.get("constants", {}) if isinstance(j, dict) else {}).items():
+            if not isinstance(v, (int, float)): r.err(f"{p.name}: константа {k} не число")
+            consts[k] = v
+        for f in (j if isinstance(j, list) else j.get("formulas", [])):
+            fid = f.get("id") if isinstance(f, dict) else None
+            if not isinstance(fid, str) or not re.fullmatch(r"[a-z_][a-z0-9_]*", fid):
+                r.err(f"{p.name}: формула без простого id ({fid!r})"); continue
+            if fid in defs: r.warn(f"{p.name}: f.{fid} уже есть в {defs[fid][1]}, берётся последняя")
+            ex = f.get("expr")
+            if isinstance(ex, dict):
+                ex = " + ".join(f"{k} * {w}" for k, w in ex.items())
+            elif isinstance(ex, (int, float)):
+                ex = str(ex)
+            if not isinstance(ex, str) or not ex.strip(): r.err(f"{p.name}: f.{fid} без expr"); continue
+            defs[fid] = (f, p.name, ex)
+    ids = _content_ids(L)
+    graph = {}
+    for fid, (f, fn, ex) in defs.items():
+        params = f.get("params", [])
+        for m in re.finditer(r"\$([A-Za-z0-9_]+)", ex):
+            if m.group(1) not in params: r.err(f"{fn}: f.{fid}: ${m.group(1)} не параметр")
+        if ex.count("(") != ex.count(")"): r.err(f"{fn}: f.{fid}: скобки не сходятся")
+        names, calls = _formula_names(ex)
+        graph[fid] = set()
+        for kind, n in names:
+            if kind == "fn": r.err(f"{fn}: f.{fid}: неизвестная функция {n}()"); continue
+            if n.startswith("f."): graph[fid].add(n[2:]); continue
+            if "$" in n: continue
+            if not n.startswith(FORMULA_PREFIXES): r.err(f"{fn}: f.{fid}: имя «{n}» не начинается известным префиксом"); continue
+            if n.startswith("cfg.") and n[4:] not in consts: r.err(f"{fn}: f.{fid}: нет константы {n}")
+            base = n[2:] if n.startswith("t.") else n
+            for kind2 in ("attr", "skill", "trait", "need"):
+                if base.startswith(kind2 + ".") and ids[kind2] and base.split(".", 1)[1] not in ids[kind2]:
+                    r.err(f"{fn}: f.{fid}: неизвестный {kind2} «{base.split('.', 1)[1]}»")
+        for cid, args in calls: graph[fid].add(cid)
+        for g in graph[fid]:
+            if g not in defs: r.err(f"{fn}: f.{fid}: нет формулы f.{g}")
+    state = {}
+    def dfs(u, path):
+        state[u] = 1
+        for v in graph.get(u, ()):
+            if state.get(v) == 1: r.err("цикл формул: " + " -> ".join(path + [v]))
+            elif v in defs and not state.get(v): dfs(v, path + [v])
+        state[u] = 2
+    for u in defs:
+        if not state.get(u): dfs(u, [u])
+    r.info = f"{len(defs)} формул, {len(consts)} констант"
+    return r
+
+
+TEMPLATE_LISTS = {"items.json": "items", "objects.json": "objects", "interactions.json": "interactions",
+                  "traits.json": "traits", "needs.json": "needs", "knowledge.json": "knowledge"}
+
+
+def check_templates(L):
+    r = Report("templates")
+    ai = L.get("ai")
+    if not ai: return r
+    book = {}
+    td = ai / "templates"
+    if td.is_dir():
+        for p in sorted(td.glob("*.json")):
+            try:
+                for t in jload(p).get("templates", []):
+                    if isinstance(t, dict) and isinstance(t.get("id"), str): book[t["id"]] = t
+            except Exception as e: r.err(f"templates/{p.name}: {e}")
+    n = 0
+    for fname, key in TEMPLATE_LISTS.items():
+        lists = []
+        for p in [ai / fname] + [ai / sub / fname for sub in ("cuisine", "resources", "alchemy", "expansion")]:
+            if p.exists():
+                try: lists += [e for e in jload(p).get(key, []) if isinstance(e, dict)]
+                except Exception: pass
+        local = {e["id"]: e for e in lists if isinstance(e.get("id"), str)}
+        def find(i): return local.get(i) or book.get(i)
+        for e in lists:
+            refs = ([e["extends"]] if isinstance(e.get("extends"), str) else []) + [u for u in e.get("use", []) if isinstance(u, str)]
+            if not refs: continue
+            n += 1
+            for ref in refs:
+                if not find(ref): r.err(f"{fname}: «{e.get('id')}» ссылается на неизвестный шаблон «{ref}»")
+            seen, cur = {e.get("id")}, e
+            while isinstance(cur.get("extends"), str):
+                nxt = cur["extends"]
+                if nxt in seen: r.err(f"{fname}: цикл extends через «{nxt}»"); break
+                seen.add(nxt); cur = find(nxt) or {}
+    r.info = f"{len(book)} шаблонов в книге, {n} записей с extends/use"
+    return r
+
+
+MODS_DIRS = []
+
+
+def check_mods(L):
+    r = Report("mods")
+    root = L["root"]
+    dirs = MODS_DIRS or [root.parent / "mods"]
+    mods = [m for d in dirs if d.is_dir() for m in sorted(d.iterdir()) if m.is_dir() and not m.name.startswith((".", "_"))]
+    for m in mods:
+        for p in sorted(m.rglob("*.json")):
+            rel = p.relative_to(m)
+            try: j = jload(p)
+            except Exception as e: r.err(f"{m.name}/{rel}: не парсится ({e})"); continue
+            if isinstance(j, dict) and j.get("_merge") and not (root / rel).exists():
+                r.warn(f"{m.name}/{rel}: \"_merge\", но в базе нет content/{rel} — файл ляжет как новый")
+    r.info = f"{len(mods)} модов"
+    return r
+
+
+CHECKS["formulas"] = check_formulas  # LR-142
+CHECKS["templates"] = check_templates  # LR-142
+CHECKS["mods"] = check_mods  # LR-142
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmds", nargs="*")
     ap.add_argument("--root"); ap.add_argument("--log", default="validate_content.log"); ap.add_argument("--quiet", action="store_true")
+    ap.add_argument("--mods", action="append", default=[], help="папка модов (можно несколько); по умолчанию ../mods")
     a = ap.parse_args()
+    MODS_DIRS.extend(Path(m) for m in a.mods)
     cmds = [c for c in a.cmds if c != "all"] or list(CHECKS)
     bad = [c for c in cmds if c not in CHECKS]
     if bad: ap.error(f"неизвестная подкоманда: {bad}; есть: {list(CHECKS)}")
