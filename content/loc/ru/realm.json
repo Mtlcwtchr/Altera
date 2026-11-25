@@ -432,5 +432,6 @@
   "pre": "поиске реликвии",
   "g": "m"
  },
- "chronicle.realm.dragon_slain": "{fig} сразил{fig:g||а} дракона {fig2:acc} у логова {pol:gen}"
+ "chronicle.realm.dragon_slain": "{fig} сразил{fig:g||а} дракона {fig2:acc} у логова {pol:gen}",
+ "chronicle.realm.dragon_breath": "{fig} из {pol:gen} дохнул огнём на {pol2:acc}"
 }

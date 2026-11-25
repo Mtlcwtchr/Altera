@@ -257,3 +257,16 @@ TEST(altera_sim_species_monsters_on_the_ladder) {
     }
     CHECK(c.speciesOf("wolf")->sapience < c.speciesOf("griffin")->sapience);
 }
+
+// Built-in spells go through the magic core (AL-116): a dragon's breath on a place, a basilisk's gaze.
+TEST(altera_sim_species_innate_spells_cast) {
+    World w = makeTestWorld(realContent(), worldCfg(), 5);
+    const Content& c = realContent();
+    const Vec2 at = w.settlements().begin()->second.center;
+    CHECK(innateStrike(w, nullptr, c.raceOf("dragon")->innateSpells, kNone, &at, "test"));
+    CHECK(!c.speciesOf("basilisk")->innateSpells.empty());
+    Character* p = anAdult(w);
+    Json gaze = c.speciesOf("basilisk")->innateSpells;
+    gaze[0]["chance"] = 1.0;
+    CHECK(innateStrike(w, nullptr, gaze, p->id, nullptr, "test"));
+}

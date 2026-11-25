@@ -1318,6 +1318,13 @@ void hurtVillager(Ctx& x, Character& c, double dmg, const std::string& cause, En
 }
 
 double raidLocal(Ctx& x, Settlement& by, Settlement& on, double share) {
+    // AL-114: a raider with a built-in spell (a dragon's breath) uses it on the village: the fields burn by the world's rules
+    if (const Character* chief = fig(x, by.chief); chief && chief->body.alive && !chief->race.empty())
+        if (const RaceDef* rd = x.w.content().raceOf(chief->race); rd && !rd->innateSpells.empty()) {
+            const Vec2 at = on.center;
+            if (innateStrike(x.w, nullptr, rd->innateSpells, kNone, &at, "raid:" + std::to_string(x.day)))
+                log(x, "dragon_breath", {{"pol", by.id}, {"fig", chief->id}, {"pol2", on.id}});
+        }
     double taken = 0.0;
     std::map<std::string, int> loot;
     for (WorldObject* o : localStores(x, on))
@@ -3478,7 +3485,7 @@ std::vector<std::string> realmLocKeys() {
           "reclaim_start", "reclaimed", "reclaim_failed", "revolt", "revolt_won", "revolt_crushed", "quest_posted",
           "quest_taken", "quest_done", "quest_failed", "quest_expired", "hero_died", "ambush_beaten", "punitive", "resettled",
           "arrives_village", "envoy_arrives", "leaves_village", "died_in_village", "wanderer_settles", "hoard_grows",
-          "dragon_slain"})
+          "dragon_slain", "dragon_breath"})
         k.push_back(std::string("chronicle.realm.") + c);
     for (const char* q : {"beast_bounty", "bandit_bounty", "war_service", "escort", "haunting", "necromancer_hunt",
                           "dragon_slay", "artifact_hunt"})
