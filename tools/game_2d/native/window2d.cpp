@@ -2199,7 +2199,8 @@ struct Window::Impl : Ctx {
         if (human) portrait(*p, x + pp, y + pp, port - 2 * pp);
         const float tx = x + port + 6 * U;
         float bw = 0;
-        if (human && flag(d, "alive")) {
+        // LR-138: one leads only one's own kin
+        if (human && flag(d, "alive") && (ident(d, "id") == me || !d.contains("lead") || flag(d, "lead"))) {
             const long long id = ident(d, "id");
             const std::string lbl = L(id == me ? "ui2d.release" : "ui2d.lead");
             bw = textW(lbl, 12 * U) + 16 * U;

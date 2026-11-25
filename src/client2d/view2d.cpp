@@ -222,7 +222,8 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
               {"mood", r2(c.mood(w.now()))},
               {"role", c.status.role},
               {"occ", c.occupation},
-              {"pl", c.controller.isPlayer()}};
+              {"pl", c.controller.isPlayer()},
+              {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
     // LR-137: the names to show for the family and the trade (the raw ids stay above)
     if (f && t.loc) d["famn"] = t.loc->personNoun(t.lang, f->name, 'm').value("nom", f->name);
     if (!c.occupation.empty() && t.loc) {

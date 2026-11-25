@@ -45,6 +45,23 @@ std::pair<EntityId, EntityId> twoAdults(const World& w) {
     return {a, b};
 }
 
+// LR-138: two grown people of one house (the player switches only among kin),
+// from two households of the dynasty when there are such.
+std::pair<EntityId, EntityId> kinAdults(const World& w) {
+    std::pair<EntityId, EntityId> same{kNone, kNone};
+    for (const auto& [a, ca] : w.characters()) {
+        if (ca.isAnimal() || ca.body.stage() != "adult") continue;
+        for (const auto& [b, cb] : w.characters()) {
+            if (b == a || cb.isAnimal() || cb.body.stage() != "adult") continue;
+            const bool dyn = ca.status.dynasty != kNone && ca.status.dynasty == cb.status.dynasty;
+            const bool fam = ca.status.family != kNone && ca.status.family == cb.status.family;
+            if (dyn && !fam) return {a, b};
+            if ((dyn || fam) && same.first == kNone) same = {a, b};
+        }
+    }
+    return same;
+}
+
 // Runs n ticks; counts position jumps faster than walking (there must be none)
 // and the ticks `watch` spends without any goal.
 int runSmooth(World& w, Tick n, EntityId watch, int& watchNoGoal) {
@@ -68,7 +85,7 @@ const std::string kOk = "ok";
 TEST(lr_sim_switch_a_b_a) {
     World w = aiWorld();
     w.run(kTicksPerDay + 40);
-    const auto [A, B] = twoAdults(w);
+    const auto [A, B] = kinAdults(w);
     CHECK(A != kNone && B != kNone);
 
     // 1. Take A: its autonomous plan is paused, not deleted.
@@ -335,4 +352,96 @@ TEST(lr_sim_control_unqueue) {
     CHECK_EQ(w.character(A)->ai.queue.size(), before + 1);
     CHECK_EQ(w.character(A)->ai.queue.back().task, ids[1]);
     CHECK(w.applyNow(cmdOf("unqueue", {{"id", A}, {"index", 99}})).result != kOk);
+}
+
+namespace {
+
+// A grown person of another house than `a` (not of its household, dynasty,
+// not a spouse, a parent or a child).
+EntityId strangerTo(const World& w, EntityId a) {
+    const Character& ca = *w.character(a);
+    for (const auto& [id, c] : w.characters()) {
+        if (id == a || c.isAnimal() || !c.body.alive || c.body.stage() != "adult") continue;
+        if (c.status.family != kNone && c.status.family == ca.status.family) continue;
+        if (c.status.dynasty != kNone && c.status.dynasty == ca.status.dynasty) continue;
+        if (c.status.spouse == a || ca.status.spouse == id) continue;
+        if (c.status.mother == a || c.status.father == a || ca.status.mother == id || ca.status.father == id) continue;
+        return id;
+    }
+    return kNone;
+}
+
+} // namespace
+
+// LR-138: one plays one dynasty, as in an RPG - the player leads only their own kin.
+TEST(lr_sim_one_plays_one_dynasty) {
+    World w = aiWorld();
+    const auto [A, K] = kinAdults(w);
+    CHECK(A != kNone && K != kNone);
+    const EntityId S = strangerTo(w, A);
+    CHECK(S != kNone);
+    // nobody led yet: the first choice is free
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}})).result, kOk);
+    CHECK(mayLead(w, 1, *w.character(K)));
+    CHECK(!mayLead(w, 1, *w.character(S)));
+    // another house: refused, the player stays with A
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", S}})).result, std::string("rejected:not_your_dynasty"));
+    CHECK(w.character(A)->controller.isPlayer());
+    CHECK(!w.character(S)->controller.isPlayer());
+    // kin: allowed
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", K}})).result, kOk);
+    CHECK(w.character(K)->controller.isPlayer());
+    // letting go (watching, the colony mode) does not open the door to anyone
+    CHECK_EQ(w.applyNow(cmdOf("release_control", Json::object())).result, kOk);
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", S}})).result, std::string("rejected:not_your_dynasty"));
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}})).result, kOk);
+    // the house is the player's own: another player picks their own freely
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", S}}, 2)).result, kOk);
+    CHECK_EQ(w.applyNow(cmdOf("release_control", Json::object(), 2)).result, kOk);
+    // the house is saved with the world
+    {
+        World l(content(), 0);
+        installAi(l);
+        l.loadJson(w.toJson());
+        CHECK_EQ(l.applyNow(cmdOf("take_control", {{"id", S}})).result, std::string("rejected:not_your_dynasty"));
+    }
+    // a new game's choice forgets the house
+    {
+        World l(content(), 0);
+        installAi(l);
+        l.loadJson(w.toJson());
+        forgetHouse(l, 1);
+        CHECK_EQ(l.applyNow(cmdOf("take_control", {{"id", S}})).result, kOk);
+    }
+    // the house died out: the player goes on with anyone
+    const Character a = *w.character(A);
+    CHECK_EQ(w.applyNow(cmdOf("release_control", Json::object())).result, kOk);
+    for (auto& [id, c] : w.characters()) {
+        if (c.isAnimal()) continue;
+        const bool kin = id == A || (c.status.family != kNone && c.status.family == a.status.family) ||
+                         (c.status.dynasty != kNone && c.status.dynasty == a.status.dynasty) || c.status.spouse == A ||
+                         a.status.spouse == id || c.status.mother == A || c.status.father == A ||
+                         a.status.mother == id || a.status.father == id;
+        if (kin) c.body.alive = false;
+    }
+    CHECK(mayLead(w, 1, *w.character(S)));
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", S}})).result, kOk);
+}
+
+// LR-138: an order is set about at once, not a tick later.
+TEST(lr_sim_player_order_starts_at_once) {
+    World w = aiWorld();
+    w.run(kTicksPerDay + 40);
+    const EntityId A = twoAdults(w).first;
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}})).result, kOk);
+    CHECK_EQ(w.character(A)->ai.fsm.state, std::string("Idle"));
+    CHECK_EQ(w.applyNow(cmdOf("set_goal", {{"id", A}, {"goal", "stock_food"}})).result, kOk);
+    CHECK(w.character(A)->ai.fsm.state != "Idle");
+    // the first step of the walk comes with the very next tick
+    const Character& a = *w.character(A);
+    if (a.ai.fsm.state == "Move") {
+        const Vec2 was = a.pos;
+        w.step();
+        CHECK(dist(was, w.character(A)->pos) > 1e-6 || w.character(A)->ai.fsm.state != "Move");
+    }
 }

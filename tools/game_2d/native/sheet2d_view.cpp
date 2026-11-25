@@ -662,7 +662,9 @@ void render(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
         if (const Json* p = c.person(id)) c.lookAt(jnum(*p, "x"), jnum(*p, "y"));
         w.closing = true;
     }
-    if (alive && btn("cs.lead", S(c, mine ? "release" : "lead"))) {
+    // LR-138: one leads only one's own kin
+    const bool canLead = mine || !d.contains("lead") || jflag(d, "lead");
+    if (alive && canLead && btn("cs.lead", S(c, mine ? "release" : "lead"))) {
         if (mine) c.cmdToast({{"op", "cmd"}, {"type", "release_control"}, {"args", Json::object()}});
         else c.cmdToast({{"op", "cmd"}, {"type", "take_control"}, {"args", {{"id", id}}}});
         c.refresh();

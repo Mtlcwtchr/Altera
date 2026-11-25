@@ -80,6 +80,7 @@
     },
     "no_such_character": "no such character",
     "controlled_by_other": "another player controls this character",
+    "not_your_dynasty": "not your dynasty: you can lead only your own kin",
     "nothing_controlled": "the player controls nobody",
     "no_paused_plan": "no paused plan",
     "cannot": "cannot: {detail}",

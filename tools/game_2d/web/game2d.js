@@ -559,7 +559,7 @@
     let h = `<div class="head"><span id="cardpic"></span><div class="t"><div class="n">${esc(d.name)}</div>` +
       `<div class="sub">${esc(d.fam || d.spn || '')}${d.age != null ? ' · ' + esc(L('ui2d.age', { n: d.age })) : ''}</div></div></div>`;
     if (!d.alive) h += `<div class="parch">${esc(L('ui2d.dead'))}${d.cause ? ': ' + esc(d.cause) : ''}</div>`;
-    if (!d.sp && d.alive) h += `<div class="cardbtns"><button class="btn wide" id="b-lead">${esc(L(d.id === me ? 'ui2d.release' : 'ui2d.lead'))}</button></div>`;
+    if (!d.sp && d.alive && (d.id === me || d.lead !== false)) h += `<div class="cardbtns"><button class="btn wide" id="b-lead">${esc(L(d.id === me ? 'ui2d.release' : 'ui2d.lead'))}</button></div>`;
     h += `<div class="parch"><b>${esc(L('ui2d.doing'))}:</b> ${esc(d.act || L('ui2d.idle'))}` + (d.goal ? `<br><b>${esc(L('ui2d.wants'))}:</b> ${esc(d.goal)}` : '') + '</div>';
     h += `<div class="row"><span>${esc(L('ui2d.health'))}</span>${bar(d.hp, tone(d.hp))}<span>${Math.round(d.hp * 100)}</span></div>`;
     const mood = (d.mood + 1) / 2;
