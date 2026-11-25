@@ -32,6 +32,7 @@
 #include <cstdint>
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -91,6 +92,27 @@ struct FireRule {
     double rainPerMm = 20.0;    // flame a mm of the day's rain puts out each tick of that day
     int smokeMin = 40;          // flame from which a cell smokes (2D fx)
 };
+// AL-115: the relief that Earth~ shapes.
+struct GroundRule {
+    double stepM = 0.25;         // a byte step of the ground
+    double pitWaterM = 1.0;      // a pit this deep holds water
+    double drainPerM = 25.0;     // moisture raised land loses a metre up
+    double crackPerM = 120.0;    // integrity a built piece loses a metre its ground moves
+    double slopeSlow = 1.2;      // walking: 1 / (1 + slope * slopeSlow)
+    double minMove = 0.2;        // ... never slower than this on a slope
+};
+// AL-115: people fight a fire that comes near their village.
+struct FirefightRule {
+    double alarmM = 350.0;       // a fire this near the settlement's centre raises the alarm
+    double recruitM = 900.0;     // who is this near comes to fight it
+    int crew = 8;                // at most this many from a settlement
+    double reachM = 2.5;         // one douses this far ahead
+    int douse = 70;              // flame one bucket takes off a tick
+    double waterM = 150.0;       // with water (a river, a pond, a well) this near the fire ...
+    double noWaterMult = 0.35;   // ... else beating it with branches and earth
+    double fatigue = 0.02;       // fatigue a tick of fighting
+    std::vector<std::string> waterObjects{"well"};
+};
 struct FieldsConfig {
     int chunk = 32;
     double zeroC = -40.0, cPerStep = 4.0;
@@ -106,6 +128,8 @@ struct FieldsConfig {
     ThingRule thingDefault;                               // objects not listed (empty material = untouched)
     std::vector<std::string> untouched;                   // object types fire and damage leave alone
     int regrowMinDays = 30;
+    GroundRule ground;
+    FirefightRule firefight;
     static FieldsConfig defaults();
     static FieldsConfig fromJson(const Json& j, std::vector<std::string>* warnings = nullptr);
     int heatOfC(double c) const;
@@ -121,6 +145,8 @@ struct FieldChunk {
     int cx = 0, cy = 0;
     std::array<std::vector<std::uint8_t>, kFieldCount> v;   // chunk*chunk each
     std::vector<std::uint8_t> fuel, fire, burnt;            // what can burn; the flame; burnt-out marks
+    // AL-115: the lie of the land, 128 = as made, a step = FieldsConfig::groundStepM (empty: untouched)
+    std::vector<std::uint8_t> ground;
     bool active = true;     // stepped every tick; false: scarred only, stepped daily
     int quiet = 0;          // ticks with nothing to do
 };
@@ -146,14 +172,19 @@ struct WorldFields {
         int day = 0;   // not before this day
     };
     std::vector<Regrow> regrow;
+    // AL-115: people fighting a fire (person -> the settlement that raised the alarm); settlements in alarm
+    std::map<EntityId, EntityId> firefighters;
+    std::set<EntityId> fireAlarm;
     // derived, not saved
     int ambientDay = -1;
     int ambientHeat = 14;
     double rainMmToday = 0.0, windFromDeg = 270.0, windMs = 3.0;
     std::uint64_t indexSig = 0;
+    std::vector<Vec2> firePts;           // where it burns, gathered once a tick (firefight.cpp)
+    std::int64_t firePtsTick = -1;
     std::map<std::int64_t, std::vector<EntityId>> objectsByChunk, piecesByChunk;
 
-    bool empty() const { return chunks.empty() && burningObjects.empty() && burningPieces.empty() && regrow.empty(); }
+    bool empty() const { return chunks.empty() && burningObjects.empty() && burningPieces.empty() && regrow.empty() && firefighters.empty() && fireAlarm.empty(); }
     Json toJson() const;
     void fromJson(const Json& j);
 };
@@ -165,6 +196,11 @@ int fieldByte(const World& w, Field f, Vec2 at);
 double fieldAt(const World& w, Field f, Vec2 at);
 double heatC(const World& w, Vec2 at);
 int fireAt(const World& w, Vec2 at);          // the flame of the cell 0..255
+bool fieldsStoredAt(const World& w, Vec2 at);  // something wrote here (the cell is not its baseline)
+// AL-115: the ground's height over the land as made, metres (+ raised, - dug), and the
+// steepest rise to a neighbouring cell (metres per metre).
+double groundAt(const World& w, Vec2 at);
+double slopeAt(const World& w, Vec2 at);
 bool burnable(const World& w, Vec2 at);       // has fuel and is not too wet
 // What stands on a cell at its weakest: 0..1 of full (1 = nothing damaged or nothing there).
 double integrityAt(const World& w, Vec2 at);
@@ -178,9 +214,18 @@ void fieldAdd(World& w, Field f, Vec2 at, double radiusM, double amount);
 // A magic aspect's channels for one vector (aspects.json world_channels["+"|"-"|"~"]):
 // {"heat": "+2*power", ...} in units of FieldRule::unit; special keys: transfer
 // (draws the named field from the ring round the disc into it), rain/sun/wind/storm
-// (the settlement's local weather), rust (metal things), growth (crops, M4).
-// Keys it does not know are returned (raise_ground, shape_*, push, lure: other systems').
+// (the settlement's local weather), rust (metal things), growth (crops, M4),
+// raise_ground / lower_ground / shape_stone (the relief: groundAdd).
+// Keys it does not know are returned (push, lure: other systems').
 std::vector<std::string> applyChannels(World& w, Vec2 at, double radiusM, const Json& channels, double power);
+// AL-115: raises (+) or lowers (-) the ground in a disc by up to `metres` at the centre
+// (shaped like a mound; `sharp` = a wall/pit with steep sides). A pit deeper than
+// a metre fills with water, raised land drains; a built piece whose ground moves
+// cracks (its supports fail), a tree on a heaved cell may topple.
+void groundAdd(World& w, Vec2 at, double radiusM, double metres, bool sharp = false);
+// AL-115: water thrown on a fire: lowers the flame of the cells and the burning things
+// within r by `flame`, wets them; returns how much fire was there before.
+int douse(World& w, Vec2 at, double radiusM, int flame);
 // Sets a cell burning (a torch, a lightning strike, a spell).
 bool ignite(World& w, Vec2 at, int flame = 200);
 // Damage to one thing (an axe, a ram): integrity points; true if it broke.

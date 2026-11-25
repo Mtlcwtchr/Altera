@@ -15,5 +15,9 @@
  "species.elemental_air.name": "air elemental",
  "species.elemental_earth.name": "earth elemental",
  "chronicle.elemental_born": "The elements have taken shape: {who}",
- "cause.dispersed.name": "dispersal"
+ "cause.dispersed.name": "dispersal",
+ "cause.quake.name": "ground shift",
+ "chronicle.fire_alarm": "Fire near {settlement}: people run to put it out",
+ "chronicle.fire_out": "The fire near {settlement} is out",
+ "chronicle.ground_moved": "The ground heaved and sank nearby"
 }

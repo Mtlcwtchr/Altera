@@ -17,6 +17,7 @@
 #include "sim/content.hpp"
 #include "sim/tones.hpp"
 #include "sim/world.hpp"
+#include "sim/world_reactions.hpp"
 
 namespace altera::sim {
 
@@ -108,7 +109,8 @@ bool criticalNeed(const World& w, const Character& c) {
     return false;
 }
 
-void stepTowards(Character& c, Vec2 to, double maxStep) {
+void stepTowards(const World& w, Character& c, Vec2 to, double maxStep) {
+    maxStep *= stepMoveFactor(w, c.pos, to, maxStep);   // AL-115: mud, ice, steep ground
     const double d = dist(c.pos, to);
     if (d <= maxStep || d < 1e-9) c.pos = to;
     else {
@@ -536,7 +538,7 @@ SocialStep tickFollower(World& w, Character& f, const SocialRules& R, std::strin
     const double d = dist(f.pos, leader->pos);
     if (d > R.followM) {
         const Vec2 to = shortOf(f.pos, leader->pos, R.followM);
-        stepTowards(f, to, cfg.walkMPerTick * R.followSpeedMult);
+        stepTowards(w, f, to, cfg.walkMPerTick * R.followSpeedMult);
         show(f, "Move", fl.chain, leader->id, "", 1, w.now());
     } else if (f.ai.fsm.state != "Idle") {
         f.ai.fsm = FsmState{};
@@ -636,8 +638,8 @@ SocialStep tickSocial(World& w, Character& c, std::string& why) {
             closePair(w, c, t);
             return SocialStep::Failed;
         }
-        stepTowards(c, o->pos, cfg.walkMPerTick);
-        stepTowards(*t, shortOf(t->pos, o->pos, R->togetherM * 0.5), cfg.walkMPerTick);
+        stepTowards(w, c, o->pos, cfg.walkMPerTick);
+        stepTowards(w, *t, shortOf(t->pos, o->pos, R->togetherM * 0.5), cfg.walkMPerTick);
         c.ai.fsm.dest = o->pos;
         t->ai.fsm.dest = o->pos;
         if (dist(c.pos, o->pos) <= R->togetherM && dist(t->pos, o->pos) <= R->togetherM) {
@@ -656,7 +658,7 @@ SocialStep tickSocial(World& w, Character& c, std::string& why) {
         if (w.now() < l.until) {
             // AL-73: one who talks to a person at work keeps by them
             if (t->ai.social.aside && dist(c.pos, t->pos) > R->togetherM * 1.5) {
-                stepTowards(c, shortOf(c.pos, t->pos, R->togetherM * 0.5), cfg.walkMPerTick);
+                stepTowards(w, c, shortOf(c.pos, t->pos, R->togetherM * 0.5), cfg.walkMPerTick);
                 c.ai.fsm.dest = c.pos;
             }
             const SocialStage& cur = sc->stages[static_cast<size_t>(l.stage)];

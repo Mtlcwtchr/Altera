@@ -58,7 +58,12 @@ const ReactionsConfig& reactionsConfig(const World& w);
 
 // The state of a cell by the first cell rule that fits ("" = nothing special).
 std::string cellStateAt(const World& w, Vec2 at);
+// Walking speed factor of a cell: its state (mud, ice, molten: reactions.json move_factor)
+// and the slope of the ground (Earth~); 1 = as fast as anywhere.
 double moveFactorAt(const World& w, Vec2 at);
+// The same for a step of `step` metres from `from` toward `to`: time-weighted along
+// the way (only cells something wrote count; untouched ground is the norm).
+double stepMoveFactor(const World& w, Vec2 from, Vec2 to, double step);
 // Is it dangerous to stand here (flames, heat near burning, strong taint)?
 // If so, `away` is the nearest safer place within lookM (upwind first).
 bool fieldDanger(const World& w, Vec2 at, double lookM, Vec2* away);
@@ -68,7 +73,7 @@ bool drinksTaintedWater(const World& w, const Character& c);
 // A spell's aspects landing on the world: each aspect's world_channels for its
 // vector, then the reactions of every pair among them (a cancelling pair drops
 // both). Returns what reacted and the channel keys left for other systems.
-struct SpellPart {
+struct WorldSpellPart {
     std::string aspect;
     std::string vec = "+";   // + | - | ~
 };
@@ -76,7 +81,7 @@ struct SpellWorldResult {
     std::vector<std::string> reactions, unhandled;
     bool cancelled = false;
 };
-SpellWorldResult applySpellToWorld(World& w, Vec2 at, double radiusM, const std::vector<SpellPart>& parts, double power);
+SpellWorldResult applySpellToWorld(World& w, Vec2 at, double radiusM, const std::vector<WorldSpellPart>& parts, double power);
 // The ecology's channels applyChannels leaves: growth (crops ripen, the soil pays), lure (beasts).
 // Returns the keys it did not take either.
 std::vector<std::string> applyLifeChannels(World& w, Vec2 at, double radiusM, const Json& channels, double power,

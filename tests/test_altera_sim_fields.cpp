@@ -316,9 +316,10 @@ TEST(altera_sim_fields_magic_channels_write_the_world) {
     const double rain0 = w.fields().weather[village(w)].rainMm;
     applyChannels(w, meadow, 3.0, channelsOf("weather", "+"), 2.0);
     CHECK(w.fields().weather[village(w)].rainMm > rain0);
-    // keys for other systems come back
-    const auto other = applyChannels(w, meadow, 3.0, channelsOf("earth", "~"), 1.0);
-    CHECK(other.size() == 1 && other[0] == "raise_ground");
+    // keys for other systems come back; Earth~ heaves the ground itself
+    CHECK(applyChannels(w, meadow, 3.0, channelsOf("earth", "~"), 1.0).empty());
+    const auto other = applyChannels(w, meadow, 3.0, Json{{"push", "power"}}, 1.0);
+    CHECK(other.size() == 1 && other[0] == "push");
     // [Fire~] draws heat from round the disc into it
     Vec2 hot{meadow.x + 300, meadow.y};
     fieldAdd(w, Field::heat, {hot.x + 5, hot.y}, 2.0, 40.0);

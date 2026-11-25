@@ -43,9 +43,10 @@ bool inBiome(const World& w, const SpeciesDef& s, Vec2 p) {
     return std::find(s.biomes.begin(), s.biomes.end(), b) != s.biomes.end();
 }
 
-void moveToward(Character& c, Vec2 to, double speed) {
+void moveToward(const World& w, Character& c, Vec2 to, double speed) {
     const double d = dist(c.pos, to);
     if (d < 1e-6) return;
+    speed *= stepMoveFactor(w, c.pos, to, speed);   // AL-115: mud, ice, steep ground
     const double k = std::min(1.0, speed / d);
     c.pos.x += (to.x - c.pos.x) * k;
     c.pos.y += (to.y - c.pos.y) * k;
@@ -202,7 +203,7 @@ void livestockThink(World& w, Character& a, const SpeciesDef& s) {
     double& hunger = a.needs["hunger"];
     const bool graze = grazesOn(s, dayOfYear(w));
     if (w.isNight() || !graze) {
-        if (dist(a.pos, a.den) > 5.0) moveToward(a, a.den, s.speedMPerTick * 0.6);
+        if (dist(a.pos, a.den) > 5.0) moveToward(w, a, a.den, s.speedMPerTick * 0.6);
         return;
     }
     if (hunger < 0.95 && inBiome(w, s, a.pos)) hunger = clamp01(hunger + 2.5 / static_cast<double>(kTicksPerDay));
@@ -211,7 +212,7 @@ void livestockThink(World& w, Character& a, const SpeciesDef& s) {
         const double ang = r.range(0.0, 2.0 * kPi);
         const double rad = r.range(0.0, std::max(20.0, s.territoryM));
         const Vec2 to = clampToMap(w, {a.den.x + std::cos(ang) * rad, a.den.y + std::sin(ang) * rad});
-        if (inBiome(w, s, to)) moveToward(a, to, s.speedMPerTick * 0.5);
+        if (inBiome(w, s, to)) moveToward(w, a, to, s.speedMPerTick * 0.5);
     }
 }
 
@@ -468,7 +469,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     if (s.domestic) return livestockThink(w, a, s);
     // AL-115: beasts run from fire, heat and poison in the cells' fields
     if (Vec2 away; !isElemental(w, a.species) && fieldDanger(w, a.pos, 60.0, &away)) {
-        moveToward(a, clampToMap(w, away), s.speedMPerTick * 1.4);
+        moveToward(w, a, clampToMap(w, away), s.speedMPerTick * 1.4);
         if (!a.hasMoodlet("alarmed", w.now())) a.moodlets.push_back({"alarmed", 0.0, w.now() + 6});
         return;
     }
@@ -490,7 +491,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
                             !a.hasMoodlet("sated", now) &&
                             w.rng(a.id, "dare").uniform() < s.aggression;
         if (attack) {
-            moveToward(a, person->pos, s.speedMPerTick);
+            moveToward(w, a, person->pos, s.speedMPerTick);
             if (dist(a.pos, person->pos) <= 5.0) {
                 Character& victim = *w.character(person->id);
                 if (!packFight(w, a, victim)) bite(w, a, victim, s);
@@ -502,7 +503,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
         if (dist(away, a.pos) < 1e-6) away.x += 1.0;
         Vec2 to{a.pos.x + (away.x - a.pos.x) * 10.0, a.pos.y + (away.y - a.pos.y) * 10.0};
         to = clampToMap(w, to);
-        moveToward(a, to, s.speedMPerTick * 1.3);
+        moveToward(w, a, to, s.speedMPerTick * 1.3);
         if (!alarmed) a.moodlets.push_back({"alarmed", 0.0, now + 6});
         return;
     }
@@ -523,7 +524,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
         }
         if (hunter) {
             Vec2 to{a.pos.x + (a.pos.x - hunter->pos.x) * 5.0, a.pos.y + (a.pos.y - hunter->pos.y) * 5.0};
-            moveToward(a, clampToMap(w, to), s.speedMPerTick * 1.2);
+            moveToward(w, a, clampToMap(w, to), s.speedMPerTick * 1.2);
             return;
         }
     }
@@ -540,7 +541,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
             }
             Character* prey = nearestPrey(w, a, s, s.territoryM);
             if (prey) {
-                moveToward(a, prey->pos, s.speedMPerTick);
+                moveToward(w, a, prey->pos, s.speedMPerTick);
                 if (dist(a.pos, prey->pos) <= 10.0) {
                     Rng r = w.rng(a.id, "kill");
                     if (r.uniform() < 0.25) {
@@ -569,7 +570,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
         const double ang = r.range(0.0, 2.0 * kPi);
         const double rad = r.range(0.0, std::max(50.0, s.territoryM * 0.5));
         Vec2 to = clampToMap(w, {a.den.x + std::cos(ang) * rad, a.den.y + std::sin(ang) * rad});
-        if (inBiome(w, s, to)) moveToward(a, to, s.speedMPerTick * 0.5);
+        if (inBiome(w, s, to)) moveToward(w, a, to, s.speedMPerTick * 0.5);
     }
 }
 
