@@ -5,6 +5,7 @@
 #include <algorithm>
 
 #include "framework.hpp"
+#include "sim/species.hpp"
 #include "sim/ai.hpp"
 #include "sim/loc.hpp"
 #include "sim/village_life.hpp"
@@ -40,9 +41,10 @@ std::pair<Character*, Character*> youngPair(World& w) {
             singles.push_back(&c);
     for (Character* m : singles)
         for (Character* f : singles)
-            if (m->body.sex == 'm' && f->body.sex == 'f' && m->status.family != f->status.family) {
-                m->body.ageDays = 22 * kDaysPerYear;
-                f->body.ageDays = 20 * kDaysPerYear;
+            // AL-136: households are of one kind each (the village is mixed); a pair of one kind
+            if (m->body.sex == 'm' && f->body.sex == 'f' && m->status.family != f->status.family && m->race == f->race) {
+                m->body.ageDays = raceAgeDays(raceOf(w.content(), *m), 22.0);
+                f->body.ageDays = raceAgeDays(raceOf(w.content(), *f), 20.0);
                 return {m, f};
             }
     return {nullptr, nullptr};

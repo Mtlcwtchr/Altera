@@ -41,5 +41,22 @@
   "necromancy": "crime",
   "woodcutting": "frowned"
  },
+ "peoples": {
+  "default": {
+   "elf": 0.9,
+   "half_elf": 0.1
+  }
+ },
+ "welcome": {
+  "elf": 1.0,
+  "half_elf": 0.8,
+  "human": 0.5,
+  "dwarf": 0.3,
+  "orc": 0.05,
+  "goblin": 0.05,
+  "troll": 0.0,
+  "dragon": 0.0
+ },
+ "welcome_other": 0.25,
  "_doc": "Эльфы: лесные рощи, певучая речь, вырубка леса осуждается."
 }

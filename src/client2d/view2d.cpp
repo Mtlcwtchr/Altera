@@ -128,6 +128,11 @@ static void raceJson(const World& w, const Character& c, Json& p) {
     if (c.body.petrified) p["stone"] = true;
 }
 
+// AL-136: the look chosen at the character's creation (the pawn's body, skin, hair...)
+static void lookJson(const Character& c, Json& p) {
+    if (!c.look.empty()) p["look"] = c.look;
+}
+
 Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beastsR) {
     Json out = Json::array();
     for (const auto& [id, c] : w.characters()) {
@@ -189,6 +194,7 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
             p["occ"] = c.occupation;
             p["role"] = c.status.role;
             raceJson(w, c, p); // AL-114
+            lookJson(c, p);    // AL-136
         }
         out.push_back(std::move(p));
     }

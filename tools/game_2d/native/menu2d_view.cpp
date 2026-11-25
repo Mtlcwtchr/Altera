@@ -211,7 +211,7 @@ void openPick(Ctx& c, Screens& s) {
     for (const auto& f : w->data["fams"])
         for (const auto& p : jarr(f, "people"))
             if (w->data["id"].get<long long>() < 0 && jflag(f, "full") && jflag(p, "chief")) w->data["id"] = jid(p, "id");
-    w->render = [](Ctx& c, Win& w, const ui::Rect& body) {
+    w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) {
         const float U = c.u();
         ui::Ui& g = c.gui();
         const float bh = 42 * U;
@@ -303,11 +303,15 @@ void openPick(Ctx& c, Screens& s) {
         }
         const float bw = 260 * U, by = body.bottom() - bh;
         if (g.button(ui::widgetId("pick.watch"), {body.x, by, bw, bh}, c.L("ui2d.pick.watch"))) begin(c, w, {{"watch", true}});
-        const std::string go = who.empty() ? c.L("ui2d.pick.none") : c.L(w.tab == "kin" ? "ui2d.pick.go" : "ui2d.pick.come", {{"who", who}});
+        const std::string go = who.empty() ? c.L("ui2d.pick.none") : c.L(w.tab == "kin" ? "ui2d.pick.go" : "ui2d.pick.create", {{"who", who}});
         const float gw = std::max(bw, c.textW(go, 15 * U) + 40 * U);
         if (g.button(ui::widgetId("pick.go"), {body.right() - gw, by, gw, bh}, go, pal::gold, pal::ink, !who.empty())) {
             if (w.tab == "kin") begin(c, w, {{"id", pid}});
-            else begin(c, w, {{"backstory", jstr(w.data, "back")}});
+            else {
+                // AL-136: a newcomer is made on the creation screen (race, look, talents, attributes)
+                w.closing = true;
+                openCreate(c, s, jstr(w.data, "back"));
+            }
         }
     };
     s.push(std::move(w));

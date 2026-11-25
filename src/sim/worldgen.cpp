@@ -112,7 +112,13 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     const std::uint64_t seed = seedOverride ? seedOverride : cfg.value("seed", std::uint64_t{1});
     World w(content, seed);
     // AL-114: who lives in the map's village (settle.json map; a test world may give "peoples")
+    // AL-136: or a culture of the world file / test ("culture"), its mix for a village
     std::map<std::string, double> peoplesMix = content.peoples.mapMix;
+    std::string mapCulture = content.peoples.mapCulture;
+    if (cfg.contains("culture") && cfg["culture"].is_string()) {
+        mapCulture = cfg["culture"].get<std::string>();
+        peoplesMix = culturePeoples(content.peoples, mapCulture, "village");
+    }
     if (cfg.contains("peoples") && cfg["peoples"].is_object()) peoplesMix = cfg["peoples"].get<std::map<std::string, double>>();
     {
         // start_day (day of year) or season: spring | summer | autumn | winter.
@@ -205,6 +211,8 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     st.id = w.settlements().rbegin()->first;
     st.name = cfg.value("settlement_name", std::string("Emberford"));
     st.center = center;
+    st.culture = mapCulture;    // AL-136: whose ways the village keeps, and whom it is drawn from
+    if (content.peoples.loaded) st.peoples = peoplesMix;
 
     // AL-8: a planned village (roads, a square, lots facing the roads, fields
     // beyond the yards) when the world brings its ground (the game passes
@@ -629,6 +637,11 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
 
         if (home) fillStations(*home, fam.id);   // AL-76: the trade's stations (the forge, the anvil...)
 
+        std::string famRace = content.peoples.defaultRace;
+        if (content.peoples.loaded) {
+            Rng fr = w.rng(fam.id, "race:family");
+            famRace = drawRace(peoplesMix, fr, content.peoples.defaultRace);
+        }
         std::vector<EntityId> members;
         auto makePerson = [&](char sex, int ageYears, const std::string& role) -> Character& {
             Character c;
@@ -636,11 +649,12 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             c.body.sex = sex;
             c.body.ageDays = ageYears * kDaysPerYear + rng.irange(0, kDaysPerYear - 1);
             c.name = makeName(rng, sex == 'f', &content) + " " + fam.name;
-            // AL-114: the kind (settle.json map, or the test world's "peoples"), by a stream of its own
+            // AL-114: the kind (settle.json map / the village's culture, or the test world's
+            // "peoples"); AL-136: one kind per household, drawn by a stream of its own
             const RaceDef* kind = nullptr;
             if (content.peoples.loaded) {
                 Rng rr = w.rng(c.id, "race:kind");
-                setRace(content, c, drawRace(peoplesMix, rr, content.peoples.defaultRace));
+                setRace(content, c, famRace);
                 if (!c.race.empty()) {
                     kind = content.raceOf(c.race);
                     c.body.ageDays = raceAgeDays(*kind, ageYears + rr.uniform());

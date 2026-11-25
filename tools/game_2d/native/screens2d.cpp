@@ -56,7 +56,7 @@ Screens::Screens(Ctx& c) : c_(c), v_(std::make_unique<Views>()) {}
 Screens::~Screens() = default;
 
 namespace {
-bool holdsPause(const std::string& id) { return id == "menu" || id == "new" || id == "pick" || id == "saves"; }
+bool holdsPause(const std::string& id) { return id == "menu" || id == "new" || id == "pick" || id == "saves" || id == "create"; }
 } // namespace
 
 void Screens::hold() {
@@ -109,6 +109,7 @@ void Screens::closeAll() {
 
 void Screens::open(const std::string& id, const Json& args) {
     if (id == "menu" || id == "new" || id == "pick" || id == "saves") openMenu(c_, *this, id, args);
+    else if (id == "create") openCreate(c_, *this, args.is_string() ? args.get<std::string>() : std::string());
     else if (id == "chronicle") openChronicle(c_, *this);
     else if (id == "workshop") openWorkshop(c_, *this);
     else if (id == "build") openBuild(c_, *this);

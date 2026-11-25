@@ -36,5 +36,20 @@
  "norms": {
   "theft": "clever"
  },
+ "peoples": {
+  "default": {
+   "goblin": 0.9,
+   "troll": 0.05,
+   "ogre": 0.05
+  }
+ },
+ "welcome": {
+  "goblin": 1.0,
+  "orc": 0.7,
+  "troll": 0.6,
+  "ogre": 0.6,
+  "half_orc": 0.5
+ },
+ "welcome_other": 0.2,
  "_doc": "Гоблины: норы и свалки, писклявая скороговорка, кража ловкость, а не позор."
 }

@@ -20,5 +20,57 @@
   "necromancy": "crime",
   "witchcraft": "suspect"
  },
+ "peoples": {
+  "village": {
+   "human": 0.62,
+   "dwarf": 0.1,
+   "half_elf": 0.1,
+   "elf": 0.08,
+   "half_orc": 0.07,
+   "goblin": 0.03
+  },
+  "town": {
+   "human": 0.7,
+   "dwarf": 0.1,
+   "elf": 0.06,
+   "half_elf": 0.07,
+   "half_orc": 0.05,
+   "goblin": 0.02
+  },
+  "keep": {
+   "human": 0.92,
+   "dwarf": 0.05,
+   "half_orc": 0.03
+  },
+  "monastery": {
+   "human": 0.95,
+   "half_elf": 0.05
+  },
+  "bandit_camp": {
+   "human": 0.6,
+   "half_orc": 0.2,
+   "orc": 0.1,
+   "goblin": 0.1
+  },
+  "default": {
+   "human": 0.85,
+   "dwarf": 0.06,
+   "half_elf": 0.05,
+   "elf": 0.04
+  }
+ },
+ "welcome": {
+  "human": 1.0,
+  "half_elf": 0.9,
+  "dwarf": 0.8,
+  "elf": 0.75,
+  "half_orc": 0.55,
+  "orc": 0.3,
+  "goblin": 0.35,
+  "ogre": 0.25,
+  "troll": 0.15,
+  "dragon": 0.0
+ },
+ "welcome_other": 0.4,
  "_doc": "Людская культура по умолчанию: средневековые европейцы. names пусто = общий пул content/ai/names.json."
 }

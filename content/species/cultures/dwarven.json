@@ -39,5 +39,22 @@
   "necromancy": "crime",
   "oathbreaking": "crime"
  },
+ "peoples": {
+  "default": {
+   "dwarf": 0.95,
+   "human": 0.05
+  }
+ },
+ "welcome": {
+  "dwarf": 1.0,
+  "human": 0.6,
+  "half_elf": 0.4,
+  "elf": 0.2,
+  "orc": 0.05,
+  "goblin": 0.0,
+  "troll": 0.0,
+  "dragon": 0.0
+ },
+ "welcome_other": 0.3,
  "_doc": "Гномы: горные чертоги, прямая речь, клятва свята."
 }

@@ -335,6 +335,9 @@ struct Window::Impl : Ctx {
         blit(sp, x, y, size, size, alpha);
         return true;
     }
+    void pawn(const Json& p, char side, float x, float y, float size) override {   // AL-136
+        blit(pawnSprite(pawnSpec(p), side, 0), x, y, size, size);
+    }
     void face(long long id, const std::string& name, float x, float y, float size) override {
         if (const Json* p = person(id)) {
             portrait(*p, x, y, size);
@@ -526,6 +529,7 @@ struct Window::Impl : Ctx {
 
     // --- pawns from what the sim says the person wears and holds ------------------------
     std::string famColour(const Json& p) const {
+        if (p.contains("look") && p["look"].is_object() && !str(p["look"], "cloth").empty()) return str(p["look"], "cloth");   // AL-136
         const Json list = MAP.value("family_colours", Json::array({"#8a6a48"}));
         if (!list.is_array() || list.empty()) return "#8a6a48";
         return list[idHash(std::max(0.0, num(p, "famId")), 3) % list.size()].get<std::string>();
@@ -548,6 +552,15 @@ struct Window::Impl : Ctx {
         static const char* FH[] = {"long", "bun", "braids", "long"};
         spec.hair = {f ? FH[(h >> 9) % 4] : "short", hc};
         if (!f && !child && age >= 18 && ((h >> 12) % 3)) spec.beard = true;
+        // AL-136: the look chosen at the character's creation
+        if (p.contains("look") && p["look"].is_object()) {
+            const Json& lk = p["look"];
+            if (!str(lk, "body").empty() && !child) spec.body = str(lk, "body");
+            if (!str(lk, "skin").empty() && !flag(p, "stone")) spec.skin = str(lk, "skin");
+            if (!str(lk, "hair").empty()) spec.hair.first = str(lk, "hair");
+            if (!str(lk, "hair_colour").empty()) spec.hair.second = str(lk, "hair_colour");
+            if (!str(lk, "beard").empty()) spec.beard = !f && !child && str(lk, "beard") == "yes";
+        }
         std::vector<std::pair<std::string, std::string>> wear;
         std::set<std::string> kinds;
         const Json& W = MAP.contains("wear") ? MAP["wear"] : Json::object();

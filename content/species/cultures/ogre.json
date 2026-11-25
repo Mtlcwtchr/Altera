@@ -26,5 +26,18 @@
  ],
  "forbid_aspects": [],
  "norms": {},
+ "peoples": {
+  "default": {
+   "ogre": 0.9,
+   "goblin": 0.1
+  }
+ },
+ "welcome": {
+  "ogre": 1.0,
+  "troll": 0.5,
+  "orc": 0.5,
+  "goblin": 0.6
+ },
+ "welcome_other": 0.15,
  "_doc": "Огры: медленная простая речь, ценят еду и силу."
 }
