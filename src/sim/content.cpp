@@ -637,6 +637,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         s.sapience = opt(j, "sapience", s.sapience);
         if (j.contains("loot") && j["loot"].is_object()) s.loot = j["loot"].get<std::map<std::string, int>>();
         s.tags = strings(j, "tags");
+        if (j.contains("innate_spells") && j["innate_spells"].is_array()) s.innateSpells = j["innate_spells"];
         if (!c.species.emplace(s.id, s).second) err.add("species: duplicate id " + s.id);
     }
     c.householdMust = strings(knowledge, "household_must");

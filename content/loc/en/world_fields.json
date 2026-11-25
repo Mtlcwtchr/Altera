@@ -9,5 +9,11 @@
  "chronicle.thing_destroyed": "Destroyed ({cause}): {object}",
  "chronicle.build_broken": "Part of a building came down: {n} pieces",
  "chronicle.lightning": "Lightning struck nearby",
- "chronicle.crop_burnt": "Fire took the crop of {family}"
+ "chronicle.crop_burnt": "Fire took the crop of {family}",
+ "species.elemental_fire.name": "fire elemental",
+ "species.elemental_water.name": "water elemental",
+ "species.elemental_air.name": "air elemental",
+ "species.elemental_earth.name": "earth elemental",
+ "chronicle.elemental_born": "The elements have taken shape: {who}",
+ "cause.dispersed.name": "dispersal"
 }

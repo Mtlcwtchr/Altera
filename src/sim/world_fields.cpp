@@ -10,6 +10,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/elementals.hpp"
 #include "sim/world_reactions.hpp"
 #include "sim/world.hpp"
 
@@ -1115,12 +1116,13 @@ void stepBodies(World& w) {
     const FieldsConfig& cfg = fieldsConfig(w);
     for (auto& [id, c] : w.characters()) {
         if (!c.body.alive) continue;
+        if (c.isAnimal() && isElemental(w, c.species)) continue;   // they are what burns
         const int f = fireAt(w, c.pos);
         if (f <= 0) continue;
         c.body.health -= cfg.fire.burnHealth * f / 255.0;
         // one awake on their feet gets out of the flames (a tick is ten minutes)
         Vec2 away;
-        if (c.body.health > 0.0 && w.now() >= c.body.downUntil && fieldDanger(w, c.pos, 40.0, &away)) c.pos = away;
+        if (!c.isAnimal() && c.body.health > 0.0 && w.now() >= c.body.downUntil && fieldDanger(w, c.pos, 40.0, &away)) c.pos = away;
         if (c.body.health <= 0.0) {
             c.body.alive = false;
             c.body.health = 0.0;
@@ -1146,6 +1148,7 @@ void fieldsTick(World& w) {
         }
         wf.ambientDay = -1;
     }
+    elementalsTick(w, daily);   // AL-115 §5.7: they live on the cells' fields
     if (wf.empty()) return;
     if (daily && !wf.regrow.empty()) {
         // young growth: the source comes back once its ground is not scorched any more

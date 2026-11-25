@@ -137,6 +137,13 @@ std::string drawRace(const std::map<std::string, double>& mix, Rng& rng, const s
 // The gift (trait gifted) is rolled by the magic core (AL-116) from giftedChance.
 void raceAtBirth(World& w, Character& c);
 
+// A built-in spell (dragon breath, basilisk gaze; innate_spells of the kind or the
+// creature) fired by the magic core without mana or knowledge (castStored). Each
+// entry may carry "chance" (default 1). `holder` may be null (a dragon offstage).
+// Returns whether something was cast; false without magic content.
+bool innateStrike(World& w, Character* holder, const Json& innateSpells, EntityId target, const Vec2* at,
+                  const std::string& salt);
+
 // --- trolls in the sun ------------------------------------------------------------
 bool petrified(const Character& c);
 void forcePetrify(World& w, Character& c); // Light+ at night (AL-116)

@@ -1,0 +1,47 @@
+{
+ "id": "elemental_fire",
+ "habitat": "land",
+ "biomes": [
+  "meadow",
+  "forest",
+  "marsh",
+  "river",
+  "steppe",
+  "desert",
+  "mountain",
+  "badlands",
+  "canyon"
+ ],
+ "per_km2": 0,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "flee_m": 0,
+ "diet": "graze",
+ "aggression": 0.4,
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 0,
+ "leave_heads": 0,
+ "starve_days": 100000,
+ "sapience": 0.1,
+ "speed_m_per_tick": 40,
+ "notice_m": 40,
+ "attack": {
+  "damage": [
+   0.2,
+   0.45
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 3
+ },
+ "tags": [
+  "elemental",
+  "fire",
+  "magical"
+ ],
+ "_doc": "Огненный элементаль: сгусток Огня. Жжёт и поджигает клетку под собой, в лесу разрастается пожаром, под дождём и в воде гаснет (content/world/elementals.json)."
+}

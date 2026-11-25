@@ -81,6 +81,15 @@ def main(argv):
             if new != p:
                 subprocess.run(["git", "mv", p, new], check=True)
                 moved += 1
+    # directories named altera_* (assets/altera_game, tests/data/altera_mvp)
+    if not argv:
+        dirs = sorted({str(Path(*Path(f).parts[:i + 1])) for f in files if not f.startswith(SKIP_DIRS)
+                       for i, part in enumerate(Path(f).parts[:-1]) if re.match(r"altera_", part)}, key=len)
+        for d in dirs:
+            if Path(d).is_dir():
+                new = str(Path(d).with_name(re.sub(r"^altera_", "lr_", Path(d).name)))
+                subprocess.run(["git", "mv", d, new], check=True)
+                moved += 1
     print(f"changed {changed} files, moved {moved}")
 
 
