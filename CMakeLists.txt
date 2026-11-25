@@ -546,6 +546,17 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     target_link_libraries(asr_engine_gui PUBLIC asr_core asr_representation asr_terrain_generator
             asr_virtual_geometry SDL3::SDL3-static PRIVATE asr_warnings)
     add_library(Campfire::Gui ALIAS asr_engine_gui)
+    # AL-94: the 2D client in its own window (tools/game_2d/native): SDL3's GPU renderer (D3D12)
+    # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
+    target_sources(altera_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
+            src/engine/ui/ui.cpp src/engine/ui/font.cpp)
+    target_include_directories(altera_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
+    target_link_libraries(altera_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
+    target_compile_definitions(altera_game_2d PRIVATE ALTERA_GAME2D_NATIVE=1)
+    if(WIN32)
+        set_target_properties(altera_game_2d PROPERTIES WIN32_EXECUTABLE ON)   # no console window
+        target_link_options(altera_game_2d PRIVATE /ENTRY:mainCRTStartup)
+    endif()
     if(ASR_BUILD_CLIENT OR (ASR_BUILD_ENGINE_EDITOR AND ASR_ENGINE_EDITOR_GPU))
         include(src/engine/gpu_modules.cmake)
     endif()

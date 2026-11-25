@@ -8,7 +8,9 @@
 - `content/sprites_2d/sprites.json` — спрайты сетками букв палитры (генератор `tools/content_gen/gen_sprites_2d.py`), `map2d.json` — что чем рисовать (земля, объекты, одежда, инструменты, значки дел), `resources.json` — пак ресурсов (AL-86).
 - Строки страницы: `content/loc/<lang>/ui2d.json`.
 
-Запуск: `altera_game_2d [--seed N] [--lang ru|en] [--port 8766] [--run-hours 7] [--paused]`, страница откроется сама (Windows).
+**Своё окно (AL-94, `tools/game_2d/native/`):** в полной сборке (`cmake-build-windows`) `altera_game_2d.exe` открывает игру в собственном окне без браузера и без консоли: SDL3 с GPU-рендером (Direct3D 12), спрайты из атласа квадами, текст и рамки через `src/engine/ui`. Окно ходит в те же маршруты, что и страница, только напрямую в процессе (`Host::call`), так что окно и страница показывают одну игру. F11 или Alt+Enter — полный экран; закрыть окно — автосейв и выход. Пока в окне карта, люди, выбор, карточка, дома, ведение человека (WASD, клик по земле, ПКМ — меню дел, панель 1–8); меню, лист, разговор, мастерская и стройка переносятся следующими этапами, до тех пор они есть на странице. Страница осталась отладочным клиентом: `--web` (страница в браузере) или `--no-browser` (только сервер, для `shots*.js`). Рядом с окном сервер тоже поднимается на `--port`, если порт свободен. Кадр окна: переменные `ALTERA_2D_SHOT=файл.png`, `ALTERA_2D_SHOT_AFTER=сек`, `ALTERA_2D_SELECT=N`, `ALTERA_2D_ZOOM=1..3`, `ALTERA_2D_SHOT_QUIT=1`.
+
+Запуск: `altera_game_2d [--seed N] [--lang ru|en] [--port 8766] [--run-hours 7] [--paused] [--web | --no-browser]`; в sim-only сборке (Linux) окна нет, страница откроется сама (Windows).
 Кадры: `node tools/game_2d/shots.js` → `terrain_lab_out/shots_for_user/`.
 Тест: `altera_sim_tests client2d`.
 

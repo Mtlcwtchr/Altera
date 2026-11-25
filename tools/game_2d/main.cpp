@@ -49,6 +49,9 @@ using socket_t = int;
 #include <string>
 
 #include "client2d/acts2d.hpp"
+#ifdef ALTERA_GAME2D_NATIVE
+#include "native/window2d.hpp"
+#endif
 #include "client2d/craft2d.hpp"
 #include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
@@ -241,10 +244,16 @@ bool autosave(App& a) {
     return true;
 }
 
-void respond(socket_t s, int code, const std::string& type, const std::string& body);
+// The answer to one request, sent over the socket by serveClient or handed to
+// the native window (tools/game_2d/native) as it is.
+struct Reply {
+    int code = 200;
+    std::string type = "text/plain", body;
+};
+void respond(Reply& s, int code, const std::string& type, const std::string& body);
 
 // True when `path` was one of the session's routes (and is answered).
-bool handleSession(App& a, socket_t s, const std::string& method, const std::string& path, const std::string& body) {
+bool handleSession(App& a, Reply& s,const std::string& method, const std::string& path, const std::string& body) {
     auto route = [&](const char* p) { return path.rfind(p, 0) == 0; };
     auto reply = [&](const Json& j) { respond(s, 200, "application/json", j.dump()); };
     const Json q = method == "POST" ? Json::parse(body.empty() ? "{}" : body) : Json::object();
@@ -327,15 +336,21 @@ void sendAll(socket_t s, const std::string& data) {
     }
 }
 
-void respond(socket_t s, int code, const std::string& type, const std::string& body) {
-    const std::string h = "HTTP/1.1 " + std::to_string(code) + (code == 200 ? " OK" : " Error") +
-                          "\r\nContent-Type: " + type + "\r\nCache-Control: no-store\r\nContent-Length: " +
-                          std::to_string(body.size()) + "\r\nConnection: close\r\n\r\n";
-    sendAll(s, h + body);
+void respond(Reply& s, int code, const std::string& type, const std::string& body) {
+    s.code = code;
+    s.type = type;
+    s.body = body;
+}
+
+void sendReply(socket_t s, const Reply& r) {
+    const std::string h = "HTTP/1.1 " + std::to_string(r.code) + (r.code == 200 ? " OK" : " Error") +
+                          "\r\nContent-Type: " + r.type + "\r\nCache-Control: no-store\r\nContent-Length: " +
+                          std::to_string(r.body.size()) + "\r\nConnection: close\r\n\r\n";
+    sendAll(s, h + r.body);
 }
 
 // A file under `dir` by the request's rest of path; no way out of it.
-void serveFile(socket_t s, const std::string& dir, std::string rest) {
+void serveFile(Reply& s,const std::string& dir, std::string rest) {
     const size_t q = rest.find('?');
     if (q != std::string::npos) rest = rest.substr(0, q);
     if (rest.empty() || rest.find("..") != std::string::npos || rest.find('\\') != std::string::npos) {
@@ -347,6 +362,8 @@ void serveFile(socket_t s, const std::string& dir, std::string rest) {
     if (!ok) respond(s, 404, "text/plain", "not found: " + rest);
     else respond(s, 200, mimeOf(rest), body);
 }
+
+void dispatch(App& a, Reply& s, const std::string& method, const std::string& path, const std::string& body);
 
 void serveClient(App& a, socket_t s) {
     std::string req;
@@ -373,6 +390,14 @@ void serveClient(App& a, socket_t s) {
     std::string method, path;
     line >> method >> path;
     const std::string body = req.substr(headerEnd + 4);
+    Reply rep;
+    dispatch(a, rep, method, path, body);
+    sendReply(s, rep);
+}
+
+// One request of the page or of the native window (tools/game_2d/native): the
+// same routes either way, so both clients see one game.
+void dispatch(App& a, Reply& s, const std::string& method, const std::string& path, const std::string& body) {
     try {
         if (path == "/" || path.rfind("/?", 0) == 0) {
             serveFile(s, a.webDir, "index.html");
@@ -510,6 +535,7 @@ int main(int argc, char** argv) {
     int port = 8766;
     double& runHours = app.runHours;   // the world starts at midnight; the view opens in the morning
     bool openBrowser = true;
+    bool web = false;       // --web: the page in the browser (the debug client); --no-browser: the server alone
     bool observe = false;   // --observe: watch only, nobody is led
     for (int i = 1; i < argc; ++i) {
         auto next = [&]() -> std::string {
@@ -529,7 +555,8 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--port")) port = std::stoi(next());
         else if (!std::strcmp(argv[i], "--run-hours")) runHours = std::stod(next());
         else if (!std::strcmp(argv[i], "--paused")) app.paused = true;
-        else if (!std::strcmp(argv[i], "--no-browser")) openBrowser = false;
+        else if (!std::strcmp(argv[i], "--no-browser")) openBrowser = false, web = true;
+        else if (!std::strcmp(argv[i], "--web")) web = true;
         else if (!std::strcmp(argv[i], "--observe")) observe = true;
         else if (!std::strcmp(argv[i], "--autosave-min")) app.autosaveMin = std::max(0, std::stoi(next()));
         else {
@@ -542,6 +569,21 @@ int main(int argc, char** argv) {
     if (locDir.empty()) locDir = app.root + "/content/loc";
     app.webDir = app.root + "/tools/game_2d/web";
     app.spritesDir = app.root + "/content/sprites_2d";
+#ifdef ALTERA_GAME2D_NATIVE
+    // the game's own window (tools/game_2d/native), up before the world is made
+    game2d::attachConsole(web);
+    std::unique_ptr<game2d::Window> window;
+    if (!web) {
+        window = std::make_unique<game2d::Window>(app.root);
+        if (!window->open()) {
+            std::cerr << "no window: " << window->error() << " - the page instead (--web)\n";
+            window.reset();
+            web = true;
+        }
+    }
+#else
+    web = true;
+#endif
     try {
         std::cout << "loading content..." << std::endl;
         const Content content = Content::load(contentDir);
@@ -603,6 +645,8 @@ int main(int argc, char** argv) {
 #else
         std::signal(SIGPIPE, SIG_IGN);
 #endif
+        // the HTTP server: the page (--web) and the shot scripts; beside the window it is only for
+        // debugging, so a port in use is no failure there
         socket_t ls = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
@@ -610,41 +654,48 @@ int main(int argc, char** argv) {
         inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
         int yes = 1;
         setsockopt(ls, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof yes);
-        if (bind(ls, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || listen(ls, 16) != 0)
-            throw std::runtime_error("cannot listen on 127.0.0.1:" + std::to_string(port) + " (already running?)");
+        if (bind(ls, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || listen(ls, 16) != 0) {
+            if (web) throw std::runtime_error("cannot listen on 127.0.0.1:" + std::to_string(port) + " (already running?)");
+            CLOSESOCK(ls);
+            ls = INVALID_SOCKET;
+        }
         const std::string url = "http://127.0.0.1:" + std::to_string(port) + "/";
-        std::cout << "Altera 2D: " << url << "  (" << world0.characters().size() << " characters; Ctrl+C to quit)"
-                  << std::endl;
+        std::cout << "Altera 2D: " << (ls != INVALID_SOCKET ? url : std::string("no server")) << "  ("
+                  << world0.characters().size() << " characters; Ctrl+C to quit)" << std::endl;
 #ifdef _WIN32
-        if (openBrowser) ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
+        if (web && openBrowser) ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 #else
         (void)openBrowser;
 #endif
         using Clock = std::chrono::steady_clock;
         auto lastTick = Clock::now();
         double owed = 0.0;
-        while (!app.quit) {
-            fd_set rd;
-            FD_ZERO(&rd);
-            FD_SET(ls, &rd);
-            timeval tv{0, 2000};
-            if (select(int(ls) + 1, &rd, nullptr, nullptr, &tv) > 0) {
-                socket_t cs = accept(ls, nullptr, nullptr);
-                if (cs != INVALID_SOCKET) {
+        // One round: the requests waiting (up to `waitUs` for the first), then the sim's steps owed,
+        // within `budgetMs` of real time.
+        auto pump = [&](long waitUs, int budgetMs) {
+            if (ls != INVALID_SOCKET) {
+                fd_set rd;
+                FD_ZERO(&rd);
+                FD_SET(ls, &rd);
+                timeval tv{0, waitUs};
+                if (select(int(ls) + 1, &rd, nullptr, nullptr, &tv) > 0) {
+                    socket_t cs = accept(ls, nullptr, nullptr);
+                    if (cs != INVALID_SOCKET) {
 #ifdef _WIN32
-                    DWORD to = 2000;
-                    setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&to), sizeof to);
+                        DWORD to = 2000;
+                        setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&to), sizeof to);
 #else
-                    timeval to{2, 0};
-                    setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to);
+                        timeval to{2, 0};
+                        setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to);
 #endif
-                    serveClient(app, cs);
+                        serveClient(app, cs);
 #ifdef _WIN32
-                    shutdown(cs, SD_SEND);
+                        shutdown(cs, SD_SEND);
 #else
-                    shutdown(cs, SHUT_WR);
+                        shutdown(cs, SHUT_WR);
 #endif
-                    CLOSESOCK(cs);
+                        CLOSESOCK(cs);
+                    }
                 }
             }
             const auto now = Clock::now();
@@ -653,10 +704,10 @@ int main(int argc, char** argv) {
             if (app.autosaveMin > 0 && now - app.lastAutosave > std::chrono::minutes(app.autosaveMin)) autosave(app);
             if (app.paused) {
                 owed = 0.0;
-                continue;
+                return;
             }
             owed = std::min(owed + dt * app.tps, 2000.0);
-            const auto budgetEnd = Clock::now() + std::chrono::milliseconds(100);
+            const auto budgetEnd = Clock::now() + std::chrono::milliseconds(budgetMs);
             while (owed >= 1.0 && Clock::now() < budgetEnd) {
                 const auto t0 = Clock::now();
                 app.world->step();
@@ -664,11 +715,31 @@ int main(int argc, char** argv) {
                 owed -= 1.0;
             }
             if (owed > 1.0 && Clock::now() >= budgetEnd) owed = std::min(owed, 1.0 + app.tps * 0.1);
+        };
+#ifdef ALTERA_GAME2D_NATIVE
+        if (window) {
+            game2d::Host host;
+            host.call = [&](const std::string& method, const std::string& path, const std::string& body, int* code) {
+                Reply r;
+                dispatch(app, r, method, path, body);
+                if (code) *code = r.code;
+                return r.body;
+            };
+            host.pump = [&](int budgetMs) { pump(0, budgetMs); };
+            host.quitting = [&] { return app.quit; };
+            window->run(host);
+            if (!app.quit) autosave(app);   // the window closed some other way than the menu's Quit
+            app.quit = true;
         }
+#endif
+        while (!app.quit) pump(2000, 100);
         std::cout << "quit" << std::endl;
-        CLOSESOCK(ls);
+        if (ls != INVALID_SOCKET) CLOSESOCK(ls);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\n";
+#ifdef ALTERA_GAME2D_NATIVE
+        if (window) window->fail(e.what());
+#endif
         return 1;
     }
     return 0;
