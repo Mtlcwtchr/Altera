@@ -39,6 +39,16 @@
   "energy": 0.85,
   "hunger": 0.85
  },
+ "stats": {
+  "agility": 0.1,
+  "dexterity": 0.08,
+  "appearance": 0.08,
+  "vitality": -0.05,
+  "strength": -0.05,
+  "perception": 0.06,
+  "attunement": 0.12,
+  "memory": 0.05
+ },
  "diet": [
   "any"
  ],

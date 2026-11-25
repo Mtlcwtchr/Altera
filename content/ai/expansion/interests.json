@@ -359,8 +359,7 @@
    "skills": [
     "persuasion",
     "leadership",
-    "diplomacy",
-    "deception"
+    "guile"
    ],
    "interactions": [
     "call_council",
@@ -483,7 +482,7 @@
    "id": "storytelling_craft",
    "category": "mind",
    "skills": [
-    "storytelling",
+    "eloquence",
     "poetry"
    ],
    "interactions": [

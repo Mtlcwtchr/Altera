@@ -68,116 +68,52 @@
  },
  "annotations": {
   "foraging": {
-   "category": "gathering",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "endurance"
-   }
+   "category": "gathering"
   },
   "firemaking": {
-   "category": "household",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "intellect"
-   }
+   "category": "household"
   },
   "cooking": {
-   "category": "food",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   }
+   "category": "food"
   },
   "knapping": {
-   "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   }
+   "category": "craft"
   },
   "fiber_working": {
-   "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   }
+   "category": "craft"
   },
   "toolmaking": {
-   "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "intellect"
-   }
+   "category": "craft"
   },
   "woodcutting": {
-   "category": "gathering",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "endurance"
-   }
+   "category": "gathering"
   },
   "building": {
-   "category": "craft",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "intellect"
-   }
+   "category": "craft"
   },
   "spinning": {
-   "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "willpower"
-   }
+   "category": "craft"
   },
   "weaving": {
-   "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "intellect"
-   }
+   "category": "craft"
   },
   "sewing": {
-   "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   }
+   "category": "craft"
   },
   "hunting": {
-   "category": "gathering",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "agility"
-   }
+   "category": "gathering"
   },
   "herbalism": {
-   "category": "faith_care",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "intellect"
-   }
+   "category": "faith_care"
   },
   "faith": {
-   "category": "faith_care",
-   "attrs": {
-    "primary": "willpower",
-    "secondary": "charisma"
-   }
+   "category": "faith_care"
   },
   "medicine": {
-   "category": "faith_care",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "dexterity"
-   }
+   "category": "faith_care"
   },
-  "storytelling": {
-   "category": "mind",
-   "attrs": {
-    "primary": "charisma",
-    "secondary": "intellect"
-   }
+  "eloquence": {
+   "category": "mind"
   }
  },
  "knowledge": [
@@ -189,10 +125,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "gathering",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.45,
    "family_knowledge": true
   },
@@ -202,10 +134,6 @@
    "learn_ticks": 30,
    "self_ticks": 240,
    "category": "gathering",
-   "attrs": {
-    "primary": "willpower",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.35,
    "family_knowledge": true
   },
@@ -215,10 +143,6 @@
    "learn_ticks": 18,
    "self_ticks": 120,
    "category": "gathering",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.35
   },
   {
@@ -229,10 +153,6 @@
    "learn_ticks": 24,
    "self_ticks": 180,
    "category": "gathering",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.2
   },
   {
@@ -241,10 +161,6 @@
    "learn_ticks": 24,
    "self_ticks": 150,
    "category": "gathering",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "endurance"
-   },
    "start_chance_adult": 0.12,
    "family_knowledge": true
   },
@@ -256,10 +172,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "gathering",
-   "attrs": {
-    "primary": "willpower",
-    "secondary": "dexterity"
-   },
    "start_chance_adult": 0.06,
    "family_knowledge": true
   },
@@ -271,10 +183,6 @@
    "learn_ticks": 48,
    "self_ticks": 360,
    "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "strength"
-   },
    "start_chance_adult": 0.25,
    "family_knowledge": true
   },
@@ -286,10 +194,6 @@
    "learn_ticks": 48,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.1,
    "family_knowledge": true
   },
@@ -302,10 +206,6 @@
    "learn_ticks": 72,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "dexterity"
-   },
    "start_chance_adult": 0.06,
    "family_knowledge": true
   },
@@ -317,10 +217,6 @@
    "learn_ticks": 30,
    "self_ticks": 240,
    "category": "craft",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.15,
    "family_knowledge": true
   },
@@ -333,10 +229,6 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.08,
    "family_knowledge": true
   },
@@ -348,10 +240,6 @@
    "learn_ticks": 30,
    "self_ticks": 240,
    "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.15,
    "family_knowledge": true
   },
@@ -363,10 +251,6 @@
    "learn_ticks": 18,
    "self_ticks": 90,
    "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.3
   },
   {
@@ -377,10 +261,6 @@
    "learn_ticks": 30,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.05,
    "family_knowledge": true
   },
@@ -392,10 +272,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "food",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.15,
    "family_knowledge": true
   },
@@ -407,10 +283,6 @@
    "learn_ticks": 24,
    "self_ticks": 180,
    "category": "food",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.3
   },
   {
@@ -421,10 +293,6 @@
    "learn_ticks": 18,
    "self_ticks": 120,
    "category": "food",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "dexterity"
-   },
    "start_chance_adult": 0.3
   },
   {
@@ -433,10 +301,6 @@
    "learn_ticks": 48,
    "self_ticks": 300,
    "category": "combat",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "agility"
-   },
    "start_chance_adult": 0.35
   },
   {
@@ -447,10 +311,6 @@
    "learn_ticks": 60,
    "self_ticks": null,
    "category": "combat",
-   "attrs": {
-    "primary": "agility",
-    "secondary": "strength"
-   },
    "start_chance_adult": 0.08,
    "family_knowledge": true
   },
@@ -462,10 +322,6 @@
    "learn_ticks": 48,
    "self_ticks": 400,
    "category": "combat",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "endurance"
-   },
    "start_chance_adult": 0.1
   },
   {
@@ -476,10 +332,6 @@
    "learn_ticks": 48,
    "self_ticks": 400,
    "category": "combat",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.15
   },
   {
@@ -490,10 +342,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "combat",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "agility"
-   },
    "start_chance_adult": 0.12
   },
   {
@@ -504,10 +352,6 @@
    "learn_ticks": 48,
    "self_ticks": 360,
    "category": "combat",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "strength"
-   },
    "start_chance_adult": 0.12,
    "family_knowledge": true
   },
@@ -517,10 +361,6 @@
    "learn_ticks": 12,
    "self_ticks": 60,
    "category": "combat",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "endurance"
-   },
    "start_chance_adult": 0.5
   },
   {
@@ -531,10 +371,6 @@
    "learn_ticks": 30,
    "self_ticks": 240,
    "category": "combat",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "agility"
-   },
    "start_chance_adult": 0.1
   },
   {
@@ -543,10 +379,6 @@
    "learn_ticks": 24,
    "self_ticks": 200,
    "category": "combat",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "strength"
-   },
    "start_chance_adult": 0.08
   },
   {
@@ -557,10 +389,6 @@
    "learn_ticks": 60,
    "self_ticks": null,
    "category": "combat",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.04
   },
   {
@@ -571,10 +399,6 @@
    "learn_ticks": 48,
    "self_ticks": 400,
    "category": "combat",
-   "attrs": {
-    "primary": "agility",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.1,
    "family_knowledge": true
   },
@@ -584,10 +408,6 @@
    "learn_ticks": 12,
    "self_ticks": 60,
    "category": "body",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "endurance"
-   },
    "start_chance_adult": 0.6
   },
   {
@@ -596,10 +416,6 @@
    "learn_ticks": 12,
    "self_ticks": 60,
    "category": "body",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "agility"
-   },
    "start_chance_adult": 0.5
   },
   {
@@ -608,10 +424,6 @@
    "learn_ticks": 24,
    "self_ticks": 180,
    "category": "body",
-   "attrs": {
-    "primary": "agility",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.2
   },
   {
@@ -620,10 +432,6 @@
    "learn_ticks": 12,
    "self_ticks": 90,
    "category": "body",
-   "attrs": {
-    "primary": "agility",
-    "secondary": "charisma"
-   },
    "start_chance_adult": 0.45
   },
   {
@@ -632,34 +440,22 @@
    "learn_ticks": 18,
    "self_ticks": 150,
    "category": "social",
-   "attrs": {
-    "primary": "charisma",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.4
   },
   {
-   "id": "deception",
+   "id": "guile",
    "requires": [],
    "learn_ticks": 18,
    "self_ticks": 150,
    "category": "social",
-   "attrs": {
-    "primary": "charisma",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.3
   },
   {
-   "id": "intimidation",
+   "id": "menace",
    "requires": [],
    "learn_ticks": 12,
    "self_ticks": 90,
    "category": "social",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.3
   },
   {
@@ -668,26 +464,7 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "social",
-   "attrs": {
-    "primary": "charisma",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.1
-  },
-  {
-   "id": "diplomacy",
-   "requires": [
-    "persuasion"
-   ],
-   "learn_ticks": 48,
-   "self_ticks": null,
-   "category": "social",
-   "attrs": {
-    "primary": "charisma",
-    "secondary": "intellect"
-   },
-   "start_chance_adult": 0.05,
-   "family_knowledge": true
   },
   {
    "id": "trade",
@@ -695,10 +472,6 @@
    "learn_ticks": 24,
    "self_ticks": 200,
    "category": "social",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "charisma"
-   },
    "start_chance_adult": 0.25
   },
   {
@@ -707,10 +480,6 @@
    "learn_ticks": 18,
    "self_ticks": 150,
    "category": "social",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "charisma"
-   },
    "start_chance_adult": 0.15,
    "family_knowledge": true
   },
@@ -720,10 +489,6 @@
    "learn_ticks": 72,
    "self_ticks": null,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.07,
    "family_knowledge": true
   },
@@ -733,10 +498,6 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.15
   },
   {
@@ -747,10 +508,6 @@
    "learn_ticks": 72,
    "self_ticks": null,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.03,
    "family_knowledge": true
   },
@@ -760,10 +517,6 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.15
   },
   {
@@ -772,10 +525,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "mind",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.2
   },
   {
@@ -784,10 +533,6 @@
    "learn_ticks": 12,
    "self_ticks": 90,
    "category": "mind",
-   "attrs": {
-    "primary": "charisma",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.55
   },
   {
@@ -796,10 +541,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "charisma"
-   },
    "start_chance_adult": 0.1
   },
   {
@@ -808,10 +549,6 @@
    "learn_ticks": 12,
    "self_ticks": 90,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.5
   },
   {
@@ -820,10 +557,6 @@
    "learn_ticks": 36,
    "self_ticks": 300,
    "category": "mind",
-   "attrs": {
-    "primary": "perception",
-    "secondary": "intellect"
-   },
    "start_chance_adult": 0.12
   },
   {
@@ -834,10 +567,6 @@
    "learn_ticks": 60,
    "self_ticks": null,
    "category": "faith_care",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.05
   },
   {
@@ -848,10 +577,6 @@
    "learn_ticks": 72,
    "self_ticks": null,
    "category": "faith_care",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.03,
    "family_knowledge": true
   },
@@ -863,10 +588,6 @@
    "learn_ticks": 48,
    "self_ticks": null,
    "category": "faith_care",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "charisma"
-   },
    "start_chance_adult": 0.06,
    "family_knowledge": true
   },
@@ -876,10 +597,6 @@
    "learn_ticks": 12,
    "self_ticks": 60,
    "category": "household",
-   "attrs": {
-    "primary": "willpower",
-    "secondary": "dexterity"
-   },
    "start_chance_adult": 0.6
   },
   {
@@ -888,10 +605,6 @@
    "learn_ticks": 12,
    "self_ticks": 60,
    "category": "household",
-   "attrs": {
-    "primary": "willpower",
-    "secondary": "charisma"
-   },
    "start_chance_adult": 0.55
   },
   {
@@ -903,10 +616,6 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "gathering",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.2,
    "family_knowledge": true
   },
@@ -918,10 +627,6 @@
    "learn_ticks": 12,
    "self_ticks": 90,
    "category": "gathering",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "dexterity"
-   },
    "start_chance_adult": 0.4
   },
   {
@@ -932,10 +637,6 @@
    "learn_ticks": 24,
    "self_ticks": 200,
    "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "endurance"
-   },
    "start_chance_adult": 0.15,
    "family_knowledge": true
   },
@@ -947,10 +648,6 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.06,
    "family_knowledge": true
   },
@@ -963,10 +660,6 @@
    "learn_ticks": 30,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.06,
    "family_knowledge": true
   },
@@ -978,10 +671,6 @@
    "learn_ticks": 24,
    "self_ticks": 200,
    "category": "craft",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.05,
    "family_knowledge": true
   },
@@ -993,10 +682,6 @@
    "learn_ticks": 18,
    "self_ticks": 120,
    "category": "gathering",
-   "attrs": {
-    "primary": "endurance",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.2,
    "family_knowledge": true
   },
@@ -1009,10 +694,6 @@
    "learn_ticks": 72,
    "self_ticks": null,
    "category": "social",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "willpower"
-   },
    "start_chance_adult": 0.03,
    "family_knowledge": true
   },
@@ -1024,10 +705,6 @@
    "learn_ticks": 18,
    "self_ticks": 120,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.1
   },
   {
@@ -1038,10 +715,6 @@
    "learn_ticks": 36,
    "self_ticks": null,
    "category": "mind",
-   "attrs": {
-    "primary": "intellect",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.02,
    "family_knowledge": true
   },
@@ -1053,10 +726,6 @@
    "learn_ticks": 72,
    "self_ticks": null,
    "category": "craft",
-   "attrs": {
-    "primary": "strength",
-    "secondary": "dexterity"
-   },
    "start_chance_adult": 0.02,
    "family_knowledge": true
   },
@@ -1068,11 +737,39 @@
    "learn_ticks": 24,
    "self_ticks": 200,
    "category": "craft",
-   "attrs": {
-    "primary": "dexterity",
-    "secondary": "perception"
-   },
    "start_chance_adult": 0.1
+  },
+  {
+   "id": "courtship",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 120,
+   "category": "social",
+   "start_chance_adult": 0.35
+  },
+  {
+   "id": "insight",
+   "requires": [],
+   "learn_ticks": 18,
+   "self_ticks": 160,
+   "category": "social",
+   "start_chance_adult": 0.4
+  },
+  {
+   "id": "empathy",
+   "requires": [],
+   "learn_ticks": 12,
+   "self_ticks": 120,
+   "category": "social",
+   "start_chance_adult": 0.45
+  },
+  {
+   "id": "tricks",
+   "requires": [],
+   "learn_ticks": 24,
+   "self_ticks": 200,
+   "category": "mind",
+   "start_chance_adult": 0.08
   }
  ]
 }

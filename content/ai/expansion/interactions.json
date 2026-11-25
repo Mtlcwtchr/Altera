@@ -1054,24 +1054,6 @@
    "pre": [
     "skill:poetry>=0.1"
    ],
-   "chance": {
-    "base": 0.45,
-    "skill": "poetry",
-    "per_skill": 0.5,
-    "min": 0.1,
-    "max": 0.95
-   },
-   "eff": [
-    "need:purpose+0.04",
-    "skill:poetry+0.01",
-    "rel_back:respect+0.04",
-    "t.moodlet:moved",
-    "reputation:notoriety+0.005"
-   ],
-   "on_fail": [
-    "skill:poetry+0.005",
-    "moodlet:embarrassed"
-   ],
    "social": {
     "meaning": "culture"
    },
@@ -1079,7 +1061,52 @@
     "offer",
     "accept"
    ],
-   "_part": "x"
+   "_part": "x",
+   "extends": "tpl.talk",
+   "args": {
+    "skill": "poetry",
+    "need": "impress_need"
+   },
+   "eff": [
+    "need:purpose+0.04",
+    "skill:poetry+0.01"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "t.moodlet:moved",
+       "rel_back:respect+0.06",
+       "reputation:notoriety+0.008"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.moodlet:moved",
+       "rel_back:respect+0.04",
+       "reputation:notoriety+0.005"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "rel_back:respect+0.01"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "moodlet:embarrassed"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "toast_health",
@@ -1162,7 +1189,7 @@
       "sewing",
       "hunting",
       "herbalism",
-      "storytelling",
+      "eloquence",
       "farming",
       "animal_husbandry",
       "fishing",
@@ -1257,23 +1284,6 @@
    "pre": [
     "rel:affinity>=-0.2"
    ],
-   "chance": {
-    "base": 0.5,
-    "skill": "persuasion",
-    "per_skill": 0.4,
-    "min": 0.15,
-    "max": 0.9
-   },
-   "eff": [
-    "t.moodlet:calmed",
-    "rel_back:trust+0.03",
-    "rel_back:enmity-0.03",
-    "skill:persuasion+0.004"
-   ],
-   "on_fail": [
-    "moodlet:irritated",
-    "rel_back:affinity-0.02"
-   ],
    "social": {
     "meaning": "support"
    },
@@ -1281,7 +1291,50 @@
     "persuade",
     "offer"
    ],
-   "_part": "x"
+   "_part": "x",
+   "extends": "tpl.support",
+   "args": {
+    "skill": "empathy",
+    "need": "calm_need"
+   },
+   "eff": [
+    "skill:empathy+0.005"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "t.moodlet:calmed",
+       "rel_back:trust+0.05",
+       "rel_back:enmity-0.05"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.moodlet:calmed",
+       "rel_back:trust+0.03",
+       "rel_back:enmity-0.03"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": []
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "moodlet:irritated",
+       "rel_back:affinity-0.02"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "boast",
@@ -1293,30 +1346,57 @@
    "legal": [],
    "visibility": "public",
    "goap": false,
-   "chance": {
-    "base": 0.4,
-    "skill": "persuasion",
-    "per_skill": 0.3,
-    "min": 0.1,
-    "max": 0.8
-   },
-   "eff": [
-    "reputation:valor+0.01",
-    "need:purpose+0.03",
-    "t.moodlet:amazed"
-   ],
-   "on_fail": [
-    "reputation:honesty-0.01",
-    "t.moodlet:irritated",
-    "rel_back:respect-0.02"
-   ],
    "social": {
     "meaning": "status"
    },
    "speech": [
     "inform"
    ],
-   "_part": "x"
+   "_part": "x",
+   "extends": "tpl.talk",
+   "args": {
+    "skill": "eloquence",
+    "need": "impress_need"
+   },
+   "eff": [
+    "need:purpose+0.03",
+    "skill:eloquence+0.003"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "reputation:valor+0.015",
+       "t.moodlet:amazed",
+       "rel_back:respect+0.02"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "reputation:valor+0.01",
+       "t.moodlet:amazed"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": []
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "reputation:honesty-0.01",
+       "t.moodlet:irritated",
+       "rel_back:respect-0.02"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "serenade",
@@ -1334,30 +1414,69 @@
     "time:night",
     "!t.age:child"
    ],
-   "chance": {
-    "base": 0.4,
-    "skill": "singing",
-    "per_skill": 0.5,
-    "min": 0.1,
-    "max": 0.9
-   },
-   "eff": [
-    "rel_back:attraction+0.07",
-    "skill:singing+0.01",
-    "t.moodlet:flattered",
-    "memory:sang_together"
-   ],
-   "on_fail": [
-    "moodlet:embarrassed",
-    "rel_back:respect-0.01"
-   ],
    "social": {
     "meaning": "courtship"
    },
    "speech": [
     "offer"
    ],
-   "_part": "x"
+   "_part": "x",
+   "eff": [
+    "skill:singing+0.01",
+    "skill:courtship+0.004",
+    "memory:sang_together",
+    "attr:voice+0.0003"
+   ],
+   "check": {
+    "factors": {
+     "presence": {
+      "attr.charisma": 0.35,
+      "attr.voice": 0.4,
+      "attr.appearance": 0.25
+     },
+     "craft": {
+      "skill.singing": 0.7,
+      "skill.courtship": 0.3
+     }
+    },
+    "quality": "sqrt(max(0, fx.presence) * max(0, fx.craft))",
+    "spread": "max(0.04, 0.2 - 0.12*min(1, skill.singing))",
+    "need": "f.charm_need",
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "rel_back:attraction+0.1",
+       "t.moodlet:flattered",
+       "t.moodlet:moved"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "rel_back:attraction+0.07",
+       "t.moodlet:flattered"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "rel_back:attraction+0.01"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "moodlet:embarrassed",
+       "rel_back:respect-0.01"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "confide",
@@ -1753,11 +1872,6 @@
    "pre": [
     "skill:history_lore>=0.1"
    ],
-   "eff": [
-    "rel_back:respect+0.03",
-    "t.need:purpose+0.04",
-    "skill:history_lore+0.003"
-   ],
    "social": {
     "meaning": "support"
    },
@@ -1765,7 +1879,59 @@
     "inform",
     "persuade"
    ],
-   "_part": "x"
+   "_part": "x",
+   "eff": [
+    "skill:history_lore+0.003",
+    "skill:empathy+0.003"
+   ],
+   "check": {
+    "factors": {
+     "sense": {
+      "attr.wisdom": 0.6,
+      "attr.intellect": 0.2,
+      "attr.memory": 0.2
+     },
+     "craft": {
+      "skill.history_lore": 0.5,
+      "skill.empathy": 0.5
+     }
+    },
+    "quality": "sqrt(max(0, fx.sense) * max(0, fx.craft))",
+    "spread": "max(0.04, 0.2 - 0.12*min(1, skill.empathy))",
+    "need": "f.counsel_need",
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "rel_back:respect+0.05",
+       "t.need:purpose+0.06"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "rel_back:respect+0.03",
+       "t.need:purpose+0.04"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "rel_back:respect+0.01"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "rel_back:respect-0.01"
+      ]
+     }
+    ]
+   }
   }
  ]
 }

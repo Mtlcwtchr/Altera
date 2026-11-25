@@ -1,5 +1,6 @@
 // Magic of aspects, the undead and the paths out of grief (AL-116). See magic.hpp.
 
+#include "sim/stats.hpp"
 #include "sim/magic.hpp"
 #include "sim/data_fs.hpp"
 
@@ -914,7 +915,7 @@ CastOutcome castSpell(World& w, Character& caster, const Spell& s, const CastTar
     // learning from a reasonably hard cast
     const double margin = k.competence - k.difficulty;
     const double hard = std::exp(-margin * margin / 0.08);
-    caster.skills[r.skill] = clamp01(skillOf(w, caster) + r.skillGainCast * (0.4 + hard));
+    practiceSkill(w, caster, r.skill, r.skillGainCast * (0.4 + hard)); // LR-141
     bool death = false;
     for (const auto& p : s.parts) {
         const double was = m.aspects[p.aspect];

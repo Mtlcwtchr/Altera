@@ -1,3 +1,4 @@
+#include "sim/stats.hpp"
 #include "sim/craft_sim.hpp"
 #include "sim/alchemy.hpp"
 #include "sim/memory_budget.hpp"
@@ -87,9 +88,9 @@ void applyRisks(World& w, Character& c, const std::vector<std::string>& effs) {
     if (!list.empty()) applyEffectList(w, c, list, nullptr);
 }
 
-void learnFromStep(Character& c, const StepResult& r) {
-    for (const auto& [sk, xp] : r.skillXp)
-        if (!sk.empty()) c.skills[sk] = std::min(1.0, c.skills[sk] + xp);
+void learnFromStep(const World& w, Character& c, const StepResult& r) {
+    for (const auto& [sk, xp] : r.skillXp) // LR-141: past soft start by divisions, no cap
+        if (!sk.empty()) practiceSkill(w, c, sk, xp);
     for (const auto& [m, g] : r.knowGain) c.craft.knowsMaterial[m] = std::min(1.0, c.craft.knowsMaterial[m] + g);
 }
 
@@ -253,7 +254,7 @@ CraftOutcome craftAttempt(World& w, Character& c, const CraftCommand& cmd) {
     out.started = true;
     out.time = r.time;
     consume(c, made, inv, d);
-    learnFromStep(c, r);
+    learnFromStep(w, c, r);
     applyRisks(w, c, r.riskEffects);
     for (const auto& s : r.salvage) keep(c, s, d, nullptr);
     if (r.hasOut) {
@@ -347,7 +348,7 @@ CraftOutcome fastCraft(World& w, Character& c, const std::string& recipeId, int 
         out.time += run.time;
         if (!run.results.empty()) out.started = true;
         for (const auto& r : run.results) {
-            learnFromStep(c, r);
+            learnFromStep(w, c, r);
             applyRisks(w, c, r.riskEffects);
         }
         // what left the pool was used: match the survivors back to their origin

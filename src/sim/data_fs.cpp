@@ -27,6 +27,8 @@ struct State {
     std::map<std::string, std::string> dirs;
     std::vector<std::pair<int, std::function<void()>>> listeners;
     int nextId = 1;
+    // mountDefault's mod folders: watched too, so a mod dropped in while the game runs joins
+    std::vector<std::string> modRoots, extraLayers;
 };
 
 State& st() {
@@ -254,10 +256,19 @@ std::string mountDefault(const std::string& exePath, const std::string& fallback
         std::error_code ec;
         modRoots.push_back(norm((fs::absolute(fs::path(exePath), ec).parent_path() / "mods").string()));
     }
-    std::vector<std::string> layers = discoverMods(modRoots);
+    std::vector<std::string> layers = discoverMods(modRoots), extra;
     if (const char* env = std::getenv("LR_MODS"); env && *env)
-        for (const auto& p : splitList(env)) layers.push_back(p);
+        for (const auto& p : splitList(env)) extra.push_back(norm(p));
+    layers.insert(layers.end(), extra.begin(), extra.end());
     mount(root, layers);
+    State& s = st();
+    std::lock_guard<std::mutex> lk(s.mu);
+    s.modRoots = modRoots;
+    s.extraLayers = extra;
+    for (const auto& r : modRoots) {
+        s.dirs[r] = listingHash(r);
+        s.files[r + "/load_order.json"] = stampOf(r + "/load_order.json");
+    }
     return root;
 }
 
@@ -391,6 +402,15 @@ std::vector<std::string> changed() {
             out.push_back(p + "/");
             h = now;
         }
+    }
+    // a mod folder added, removed or reordered: the layers are found again
+    if (!out.empty() && !s.modRoots.empty()) {
+        std::vector<std::string> layers = discoverMods(s.modRoots);
+        layers.insert(layers.end(), s.extraLayers.begin(), s.extraLayers.end());
+        std::vector<std::string> kept;
+        for (const auto& l : layers)
+            if (l != s.root) kept.push_back(l);
+        if (kept != s.layers) s.layers = std::move(kept);
     }
     return out;
 }

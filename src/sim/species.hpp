@@ -55,6 +55,7 @@ struct RaceDef {
     std::map<std::string, std::string> interbreed; // other kind -> the child's kind (absent = no children)
     // mind and body
     std::map<std::string, double> needMult;
+    std::map<std::string, double> statMods; // LR-141: stat -> shift of the kind's mean (0..1 scale, may pass 1)
     std::vector<std::string> diet;
     std::map<std::string, RaceAptitude> aptitudes; // skill -> (learn, cap); "*" = every other skill
     std::map<std::string, double> affinity;        // magic aspect -> multiplier (AL-116 reads it)

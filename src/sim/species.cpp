@@ -80,6 +80,7 @@ RaceDef blendOf(const RaceDef& a, const RaceDef& b) {
     r.fertility = avg(a.fertility, b.fertility);
     r.pregnancyMult = avg(a.pregnancyMult, b.pregnancyMult);
     r.needMult = avgMap(a.needMult, b.needMult, 1.0);
+    r.statMods = avgMap(a.statMods, b.statMods, 0.0);
     r.diet = a.diet;
     r.affinity = avgMap(a.affinity, b.affinity, 1.0);
     r.traitsPool = avgMap(a.traitsPool, b.traitsPool, 1.0);
@@ -122,6 +123,7 @@ void readRace(const Json& j, RaceDef& r) {
     if (l.contains("interbreed") && l["interbreed"].is_object())
         r.interbreed = l["interbreed"].get<std::map<std::string, std::string>>();
     if (j.contains("needs")) r.needMult = dmap(j, "needs");
+    if (j.contains("stats")) r.statMods = dmap(j, "stats"); // LR-141
     if (j.contains("diet")) r.diet = strs(j, "diet");
     if (j.contains("aptitudes") && j["aptitudes"].is_object())
         for (auto it = j["aptitudes"].begin(); it != j["aptitudes"].end(); ++it)
@@ -364,6 +366,10 @@ void validateSpecies(const Content& c, ValidationReport& r) {
         }
         if (!d.cultureDefault.empty() && !s.cultures.count(d.cultureDefault))
             r.errors.push_back("species " + id + ": culture_default '" + d.cultureDefault + "' unknown");
+        for (const auto& [a, m] : d.statMods)
+            if (!c.expansion.attributes.empty() &&
+                std::find(c.expansion.attributes.begin(), c.expansion.attributes.end(), a) == c.expansion.attributes.end())
+                r.errors.push_back("species " + id + ": stats names unknown stat '" + a + "'");
         for (const auto& [n, m] : d.needMult)
             if (!c.need(n)) r.warnings.push_back("species " + id + ": needs names unknown need '" + n + "'");
         for (const auto& [t, m] : d.traitsPool)

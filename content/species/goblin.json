@@ -38,6 +38,15 @@
   "hunger": 0.8,
   "hygiene": 0.5
  },
+ "stats": {
+  "dexterity": 0.1,
+  "perception": 0.08,
+  "creativity": 0.06,
+  "strength": -0.12,
+  "vitality": -0.04,
+  "composure": -0.06,
+  "appearance": -0.08
+ },
  "diet": [
   "any",
   "carrion"
@@ -59,7 +68,7 @@
    "learn": 1.2,
    "cap": 1.1
   },
-  "deception": {
+  "guile": {
    "learn": 1.4,
    "cap": 1.15
   },

@@ -331,7 +331,9 @@ struct Character {
     std::vector<Moodlet> moodlets;
     std::vector<std::string> traits;
     std::map<std::string, double> skills;
-    std::map<std::string, double> attrs; // the 8 attributes 0..1 (expansion attributes.json); empty = not rolled
+    std::map<std::string, double> attrs; // LR-141: the stats' base (content/ai/stats/stats.json), 0..1, may pass 1; empty = not rolled
+    std::map<std::string, double> attrsNow;  // LR-141: the current stats (base + kind + traits, age, state); not saved, sim/stats.cpp
+    std::map<std::string, int> skillDay;     // LR-141: the age in days a skill was last practised (forgetting)
     std::string backstory;               // backstories.json id the player started as; empty = none
     // AL-136: how the person looks, as chosen at the character's creation (body, skin, hair,
     // hair_colour, beard, cloth; character_creation.json look). Empty = the client's own pick.

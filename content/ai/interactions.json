@@ -1140,12 +1140,6 @@
    "pre": [
     "rel:affinity>=0"
    ],
-   "eff": [
-    "rel_back:affinity+0.06",
-    "rel_back:trust+0.02",
-    "t.moodlet:comforted",
-    "moodlet:helped_someone"
-   ],
    "duration": 2,
    "cost": 2,
    "fsm": "Talk",
@@ -1156,23 +1150,75 @@
    ],
    "social": {
     "meaning": "support"
+   },
+   "extends": "tpl.support",
+   "args": {
+    "skill": "empathy",
+    "need": "comfort_need"
+   },
+   "eff": [
+    "moodlet:helped_someone",
+    "skill:empathy+0.008"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "t.moodlet:comforted",
+       "rel_back:affinity+0.07",
+       "rel_back:trust+0.04"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.moodlet:comforted",
+       "rel_back:affinity+0.05",
+       "rel_back:trust+0.02"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "rel_back:affinity+0.02"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "rel_back:affinity-0.01"
+      ]
+     }
+    ]
    }
   },
   {
    "id": "tell_stories",
    "category": "social",
    "target": "object:village_fire",
-   "eff": [
-    "need:fun+0.3",
-    "need:social+0.15",
-    "need:warmth+0.1",
-    "moodlet:had_fun",
-    "memory:told_stories"
-   ],
    "duration": 6,
    "cost": 4,
    "fsm": "Talk",
-   "visibility": "public"
+   "visibility": "public",
+   "extends": "tpl.performance",
+   "args": {
+    "skill": "eloquence"
+   },
+   "eff": [
+    "need:fun+0.2",
+    "need:social+0.15",
+    "need:warmth+0.1",
+    "moodlet:had_fun",
+    "memory:told_stories",
+    "skill:eloquence+0.01",
+    "attr:voice+0.0002"
+   ],
+   "_doc": "LR-141: слушатели у костра веселятся по качеству рассказчика (харизма, голос, красноречие, воображение, память), а не всегда"
   },
   {
    "id": "play",
@@ -1513,12 +1559,6 @@
    "id": "joke",
    "category": "social",
    "target": "character",
-   "eff": [
-    "need:social+0.05",
-    "need:fun+0.1",
-    "rel_back:affinity+0.03",
-    "t.need:fun+0.1"
-   ],
    "duration": 1,
    "cost": 1,
    "fsm": "Talk",
@@ -1530,29 +1570,57 @@
    },
    "speech": [],
    "mvp": true,
-   "_doc": "Знак эффекта зависит от совпадения юмора (расширение match)",
-   "chance": {
-    "base": 0.5,
-    "skill": "storytelling",
-    "per_skill": 0.4
+   "_doc": "LR-141: смешно выходит у остроумного (харизма, воображение, красноречие); стоику и горюющему не до шуток",
+   "_part": "c",
+   "extends": "tpl.talk",
+   "args": {
+    "skill": "eloquence",
+    "need": "joke_need"
    },
-   "on_fail": [
-    "rel_back:affinity-0.04"
+   "eff": [
+    "need:social+0.05",
+    "need:fun+0.1",
+    "skill:eloquence+0.005"
    ],
-   "_part": "c"
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "t.need:fun+0.15",
+       "t.moodlet:amused",
+       "rel_back:affinity+0.04"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.need:fun+0.1",
+       "rel_back:affinity+0.03"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": []
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "rel_back:affinity-0.04",
+       "moodlet:embarrassed"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "tell_story",
    "category": "social",
    "target": "character",
-   "eff": [
-    "need:social+0.1",
-    "need:fun+0.05",
-    "rel_back:affinity+0.02",
-    "skill:storytelling+0.01",
-    "t.need:fun+0.15",
-    "t.need:social+0.1"
-   ],
    "duration": 2,
    "cost": 2,
    "fsm": "Talk",
@@ -1567,16 +1635,59 @@
     "request"
    ],
    "mvp": true,
-   "_part": "c"
+   "_part": "c",
+   "extends": "tpl.talk",
+   "args": {
+    "skill": "eloquence"
+   },
+   "eff": [
+    "need:social+0.1",
+    "need:fun+0.05",
+    "skill:eloquence+0.01"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "t.need:fun+0.2",
+       "t.need:social+0.12",
+       "t.moodlet:spellbound",
+       "rel_back:affinity+0.04"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.need:fun+0.12",
+       "t.need:social+0.08",
+       "rel_back:affinity+0.02"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "t.need:social+0.04"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "t.moodlet:bored",
+       "rel_back:affinity-0.01"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "compliment",
    "category": "social",
    "target": "character",
-   "eff": [
-    "rel_back:affinity+0.04",
-    "t.moodlet:flattered"
-   ],
    "duration": 1,
    "cost": 1,
    "fsm": "Talk",
@@ -1588,7 +1699,49 @@
    },
    "speech": [],
    "mvp": true,
-   "_part": "c"
+   "_part": "c",
+   "extends": "tpl.charm",
+   "args": {
+    "skill": "courtship"
+   },
+   "eff": [
+    "skill:courtship+0.005"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "t.moodlet:flattered",
+       "rel_back:affinity+0.05",
+       "rel_back:attraction+0.02"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "t.moodlet:flattered",
+       "rel_back:affinity+0.04"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "rel_back:affinity+0.01"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "rel_back:trust-0.02"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "insult",
@@ -1691,11 +1844,6 @@
    "pre": [
     "age:adult"
    ],
-   "eff": [
-    "rel_back:affinity+0.03",
-    "memory:flirted",
-    "rel_back:attraction+0.04"
-   ],
    "duration": 1,
    "cost": 1,
    "fsm": "Talk",
@@ -1708,12 +1856,6 @@
    "speech": [],
    "mvp": true,
    "_doc": "Знак эффекта по влечению собеседника; при браке одного из них — тег adultery_suspicion у свидетеля",
-   "chance": {
-    "base": 0.45
-   },
-   "on_fail": [
-    "rel_back:affinity-0.03"
-   ],
    "_part": "c",
    "legal_if": [
     {
@@ -1723,7 +1865,51 @@
       "!status_pair:married"
      ]
     }
-   ]
+   ],
+   "extends": "tpl.charm",
+   "args": {
+    "skill": "courtship"
+   },
+   "eff": [
+    "memory:flirted",
+    "skill:courtship+0.008"
+   ],
+   "check": {
+    "outcomes": [
+     {
+      "id": "great",
+      "over": 0.2,
+      "eff": [
+       "rel_back:attraction+0.07",
+       "rel_back:affinity+0.03",
+       "t.moodlet:flattered"
+      ]
+     },
+     {
+      "id": "good",
+      "over": 0.0,
+      "eff": [
+       "rel_back:attraction+0.04",
+       "rel_back:affinity+0.02"
+      ]
+     },
+     {
+      "id": "flat",
+      "over": -0.15,
+      "eff": [
+       "rel_back:attraction+0.01"
+      ]
+     },
+     {
+      "id": "bad",
+      "else": true,
+      "eff": [
+       "rel_back:affinity-0.03",
+       "moodlet:embarrassed"
+      ]
+     }
+    ]
+   }
   },
   {
    "id": "embrace",

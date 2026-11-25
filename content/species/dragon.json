@@ -30,11 +30,23 @@
   "social": 0.15,
   "warmth": 0.1
  },
+ "stats": {
+  "strength": 2.0,
+  "vitality": 1.5,
+  "endurance": 0.8,
+  "memory": 0.35,
+  "charisma": 0.3,
+  "composure": 0.2,
+  "intellect": 0.15,
+  "attunement": 0.6,
+  "voice": 0.5,
+  "dexterity": -0.3
+ },
  "diet": [
   "meat"
  ],
  "aptitudes": {
-  "intimidation": {
+  "menace": {
    "learn": 1.5,
    "cap": 1.3
   },

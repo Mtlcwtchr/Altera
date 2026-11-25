@@ -1,0 +1,91 @@
+{
+ "_doc": "LR-141: поправки текущих статов от состояния. if — условие (формула, правда = не 0), scale — сила (формула, по умолчанию 1), add — сдвиг стата ×scale, mult — множитель (1 + (m−1)×scale). Имена: attr_base.*, need.*, trait.*, moodlet.<id> (1/0), body.health, body.fatigue, age.",
+ "mods": [
+  {
+   "id": "tired",
+   "if": "body.fatigue > 0.6",
+   "scale": "(body.fatigue - 0.6) / 0.4",
+   "add": {
+    "strength": -0.12,
+    "agility": -0.12,
+    "endurance": -0.15,
+    "dexterity": -0.06,
+    "composure": -0.08,
+    "intellect": -0.05,
+    "charisma": -0.04
+   }
+  },
+  {
+   "id": "hurt",
+   "if": "body.health < 0.7",
+   "scale": "(0.7 - body.health) / 0.7",
+   "add": {
+    "strength": -0.2,
+    "agility": -0.25,
+    "endurance": -0.15,
+    "composure": -0.1,
+    "appearance": -0.05
+   }
+  },
+  {
+   "id": "tipsy",
+   "if": "moodlet.tipsy",
+   "add": {
+    "dexterity": -0.08,
+    "agility": -0.06,
+    "composure": -0.06,
+    "perception": -0.05,
+    "charisma": 0.04,
+    "creativity": 0.03
+   }
+  },
+  {
+   "id": "hungover",
+   "if": "moodlet.hungover",
+   "add": {
+    "intellect": -0.06,
+    "composure": -0.05,
+    "charisma": -0.05,
+    "perception": -0.04
+   }
+  },
+  {
+   "id": "sick",
+   "if": "moodlet.sick",
+   "add": {
+    "strength": -0.1,
+    "endurance": -0.15,
+    "voice": -0.1,
+    "appearance": -0.08,
+    "charisma": -0.05
+   }
+  },
+  {
+   "id": "hungry",
+   "if": "need.hunger < 0.25",
+   "scale": "(0.25 - need.hunger) / 0.25",
+   "add": {
+    "strength": -0.1,
+    "endurance": -0.1,
+    "composure": -0.08,
+    "intellect": -0.04
+   }
+  },
+  {
+   "id": "unkempt",
+   "if": "need.hygiene < 0.3",
+   "scale": "(0.3 - need.hygiene) / 0.3",
+   "add": {
+    "appearance": -0.1,
+    "charisma": -0.03
+   }
+  },
+  {
+   "id": "gift",
+   "if": "trait.gifted",
+   "add": {
+    "attunement": 0.45
+   }
+  }
+ ]
+}

@@ -1,3 +1,4 @@
+#include "sim/act_check.hpp"
 #include "sim/content.hpp"
 
 #include "sim/char_expr.hpp"
@@ -449,7 +450,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : interactions.value("interactions", Json::array())) {
         warnUnknown(j, {"id", "category", "target", "pre", "eff", "from_target", "duration", "cost", "fsm", "reserve",
                         "goap", "legal", "visibility", "social", "speech", "continuous", "until", "params", "chance",
-                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents", "range_m", "craft"},
+                        "on_fail", "risk", "combat", "terms", "legal_if", "legal_unless", "consent", "mvp", "intents", "range_m", "craft", "check"},
                     "interactions", W);
         InteractionDef d;
         d.id = j.at("id").get<std::string>();
@@ -498,6 +499,11 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
             }
         }
         d.onFail = effects(j, "on_fail", where + " on_fail", err);
+        if (j.contains("check") && j["check"].is_object()) { // LR-141
+            std::vector<std::string> ce;
+            d.check = parseActCheck(j["check"], where + " check", ce);
+            for (auto& e : ce) err.add(e);
+        }
         for (const auto& rj : j.value("risk", Json::array())) {
             warnUnknown(rj, {"id", "p", "eff"}, where + " risk", W);
             RiskDef r;
