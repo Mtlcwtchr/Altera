@@ -8,7 +8,7 @@
 #include <set>
 #include <tuple>
 
-namespace altera::sim {
+namespace lr::sim {
 namespace {
 
 using Key = std::tuple<int, int, int>;   // x, y, storey
@@ -207,4 +207,4 @@ const Room* roomAt(const World& w, Vec2 p, int storey) {
     return nullptr;
 }
 
-}  // namespace altera::sim
+}  // namespace lr::sim

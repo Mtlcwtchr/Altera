@@ -37,7 +37,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct WorldObject;
@@ -215,4 +215,4 @@ Json fieldsViewJson(const World& w, const Vec2* near, double r);
 // One field as a raster of bytes for an overlay: {x,y,w,h,field,data:[...]}.
 Json fieldRasterJson(const World& w, Field f, int x0, int y0, int wCells, int hCells);
 
-} // namespace altera::sim
+} // namespace lr::sim

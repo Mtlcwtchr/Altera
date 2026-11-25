@@ -22,7 +22,7 @@
 #include "sim/magic_society.hpp"
 #include "sim/wounds.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -726,4 +726,4 @@ void installAi(World& w) {
     installMagicSociety(w);
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

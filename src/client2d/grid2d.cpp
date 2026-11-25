@@ -7,9 +7,9 @@
 #include "sim/building.hpp"
 #include "sim/village_plan.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 const std::vector<std::string>& groundNames() {
     static const std::vector<std::string> n = {"grass", "meadow", "forest", "marsh", "water",
@@ -279,4 +279,4 @@ Json toJson(const Grid2d& g) {
     return j;
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

@@ -10,9 +10,9 @@
 #include "sim/tones.hpp"
 #include "sim/trade.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 
@@ -293,4 +293,4 @@ std::string sayTopic(World& w, EntityId meId, EntityId targetId, int index) {
     return "";
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

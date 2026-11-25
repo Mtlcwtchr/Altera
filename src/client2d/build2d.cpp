@@ -5,9 +5,9 @@
 #include <map>
 #include <set>
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 namespace {
 
@@ -536,4 +536,4 @@ Json colonyJson(const World& w, const ViewText& t, EntityId viewer) {
     return j;
 }
 
-}  // namespace altera::client2d
+}  // namespace lr::client2d

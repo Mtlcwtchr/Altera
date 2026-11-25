@@ -9,7 +9,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 // The person a new game starts as: the head of a household who is not the
 // chief (lowest id), else any living adult. kNone when there is nobody.
@@ -23,4 +23,4 @@ bool applyBackstory(World& w, Character& c, const BackstoryDef& b, std::string& 
 // false when `cmd` is not that command; sets cmd.result to rejected:<why> on failure.
 bool handleBackstoryCommand(World& w, Command& cmd, int player);
 
-} // namespace altera::sim
+} // namespace lr::sim

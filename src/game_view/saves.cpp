@@ -10,12 +10,12 @@
 
 namespace fs = std::filesystem;
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 fs::path baseDir() {
-    if (const char* d = std::getenv("ALTERA_SAVE_DIR"); d && *d) return fs::u8path(d);
-    if (char* p = SDL_GetPrefPath("Altera", "Altera")) {
+    if (const char* d = std::getenv("LR_SAVE_DIR"); d && *d) return fs::u8path(d);
+    if (char* p = SDL_GetPrefPath("LivelyRealms", "LivelyRealms")) {
         fs::path r = fs::u8path(p);
         SDL_free(p);
         return r;
@@ -80,7 +80,7 @@ std::vector<SaveMeta> listSaves() {
                 m.backstory = j.value("backstory", "");
                 m.alive = j.value("alive", 0);
             } catch (const std::exception& e) {
-                SDL_Log("altera_game: save slot %d: %s", s, e.what());
+                SDL_Log("lr_game: save slot %d: %s", s, e.what());
             }
         }
         out.push_back(m);
@@ -141,7 +141,7 @@ void storeSettings(const GameSettings& s) {
                       {"wall_mode", s.wallMode}, {"ui_style", s.uiStyle}, {"ui_scale", s.uiScale},
                       {"bar2", s.bar2}, {"vitals_always", s.vitalsAlways}};
     std::string why;
-    if (!writeFile(baseDir() / "settings.json", j.dump(1), &why)) SDL_Log("altera_game: settings: %s", why.c_str());
+    if (!writeFile(baseDir() / "settings.json", j.dump(1), &why)) SDL_Log("lr_game: settings: %s", why.c_str());
 }
 
-} // namespace altera::game
+} // namespace lr::game

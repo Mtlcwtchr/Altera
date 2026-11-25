@@ -1,5 +1,5 @@
 {
-  "_doc": "Пробы слоя Utility: состояние blackboard → ожидаемая цель-лидер (expect_top — допустимые). Для юнит-тестов A (altera_sim_tests) и для сверки кривых. need: 1 = удовлетворена. home/has — количества.",
+  "_doc": "Пробы слоя Utility: состояние blackboard → ожидаемая цель-лидер (expect_top — допустимые). Для юнит-тестов A (lr_sim_tests) и для сверки кривых. need: 1 = удовлетворена. home/has — количества.",
   "probes": [
     {"id": "hungry_day_home_full",   "bb": {"need": {"hunger": 0.25}, "home": {"household_idol": 1, "meal": 3, "roots": 6, "firewood": 6}}, "expect_top": ["eat"]},
     {"id": "tired_night",            "bb": {"night": true, "need": {"energy": 0.35}, "home": {"household_idol": 1, "meal": 3, "roots": 6, "firewood": 6}}, "expect_top": ["sleep"]},

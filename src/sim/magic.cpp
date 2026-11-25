@@ -15,7 +15,7 @@
 #include "sim/world_fields.hpp"
 #include "sim/species.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -1651,4 +1651,4 @@ void installMagic(World& w) {
         };
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

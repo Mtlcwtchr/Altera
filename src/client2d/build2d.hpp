@@ -21,7 +21,7 @@
 #include "sim/building.hpp"
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 // One module of a stroke: build.json kind, grid cell (cell_m; furniture: thing_m), storey, rot.
 struct StrokePiece {
@@ -81,4 +81,4 @@ sim::Json planJson(const sim::World& w, const ViewText& t, sim::EntityId viewer,
 // what they do, the plan's sites and what they lack, the offices (rights).
 sim::Json colonyJson(const sim::World& w, const ViewText& t, sim::EntityId viewer);
 
-}  // namespace altera::client2d
+}  // namespace lr::client2d

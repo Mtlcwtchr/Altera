@@ -5,7 +5,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 namespace {
 
@@ -335,4 +335,4 @@ double Constraint::closeness(double x, double falloff) const {
     return std::max(0.0, 1.0 - d / falloff);
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

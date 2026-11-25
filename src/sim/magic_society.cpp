@@ -18,7 +18,7 @@
 #include "sim/world.hpp"
 #include "sim/world_fields.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -1010,4 +1010,4 @@ void installMagicSociety(World& w) {
     (void)once;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

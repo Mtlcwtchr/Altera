@@ -734,7 +734,7 @@ void openWorkshop(Ctx& c, Screens& s) {
     w->width = 0.92f;
     w->height = 0.9f;
     w->data = {{"draft", Json::object()}, {"wish", ""}, {"heat", -1}, {"tx", Json::object()}, {"holdAt", 0.0}};
-    Craft{c, *w}.load(SDL_getenv("ALTERA_2D_KIT") ? Json{{"kit", true}} : Json::object());
+    Craft{c, *w}.load(SDL_getenv("LR_2D_KIT") ? Json{{"kit", true}} : Json::object());
     w->render = [](Ctx& c, Win& w, const ui::Rect& body) {
         Craft cr{c, w};
         if (!cr.ws().is_object()) {

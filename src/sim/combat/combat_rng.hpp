@@ -10,7 +10,7 @@
 #include <utility>
 #include <vector>
 
-namespace altera::combat {
+namespace lr::combat {
 
 class Rng {
 public:
@@ -89,4 +89,4 @@ inline std::uint64_t combatSeed(std::uint64_t worldSeed, std::uint64_t combatId,
     return x ^ (x >> 33);
 }
 
-} // namespace altera::combat
+} // namespace lr::combat

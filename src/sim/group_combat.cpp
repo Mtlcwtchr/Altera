@@ -9,7 +9,7 @@
 #include "sim/combat_bridge.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 GroupRules loadGroupRules(const Json& j, const Content& c, std::vector<std::string>& err) {
     GroupRules r;
@@ -291,4 +291,4 @@ double winChance(World& w, Character& actor, const InteractionDef& d, Character&
     return static_cast<double>(wins) / static_cast<double>(std::max(1, n));
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

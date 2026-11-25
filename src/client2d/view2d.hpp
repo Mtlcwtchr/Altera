@@ -9,7 +9,7 @@
 #include "sim/loc.hpp"
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 struct ViewText {
     const sim::Loc* loc = nullptr;
@@ -36,4 +36,4 @@ sim::Json chronicleJson(const sim::World& w, const ViewText& t, std::size_t sinc
 // The clock and the weather, for the bottom bar.
 sim::Json clockJson(const sim::World& w);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

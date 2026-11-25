@@ -9,8 +9,8 @@
 //   slot_<n>.json       {format: altera.save/1, client: "2d", game: {...}, world: World::toJson}
 //   slot_<n>.meta.json  a few lines for the slot list (the list never parses worlds)
 // Slot 0 is the autosave, 1..kSlots2d the player's. The folder is
-// ALTERA_SAVE_DIR/saves_2d when that is set, else %APPDATA%/Altera/Altera/saves_2d
-// (Windows) or $XDG_DATA_HOME (~/.local/share)/Altera/Altera/saves_2d.
+// LR_SAVE_DIR/saves_2d when that is set, else %APPDATA%/LivelyRealms/LivelyRealms/saves_2d
+// (Windows) or $XDG_DATA_HOME (~/.local/share)/LivelyRealms/LivelyRealms/saves_2d.
 
 #include <cstdint>
 #include <filesystem>
@@ -20,7 +20,7 @@
 #include "client2d/view2d.hpp"
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 constexpr int kSlots2d = 6;
 
@@ -65,4 +65,4 @@ sim::Json readSave2d(const std::filesystem::path& dir, int slot);
 std::unique_ptr<sim::World> loadWorld2d(const sim::Content& c, const sim::Json& save);
 bool deleteSave2d(const std::filesystem::path& dir, int slot);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

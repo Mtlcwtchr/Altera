@@ -7,11 +7,11 @@
 // camera and a person or the mouse dissolves, and with the walls up the roof
 // and the upper storeys of the house a person is inside of go.
 //
-// Nothing is faded with alpha: the statics shader (assets/shaders/altera_game/
+// Nothing is faded with alpha: the statics shader (assets/shaders/lr_game/
 // statics.hlsl) drops pixels by an ordered dither against `vis`, above `keep`
 // metres over the piece's own bottom - the rough PSX look, and no sorting.
 //
-// Pure logic, the standard library only: tests/test_altera_cutaway.cpp.
+// Pure logic, the standard library only: tests/test_lr_cutaway.cpp.
 
 #include <algorithm>
 #include <array>
@@ -21,7 +21,7 @@
 #include <unordered_map>
 #include <vector>
 
-namespace altera::game::cutaway {
+namespace lr::game::cutaway {
 
 enum class Mode : int { Up = 0, Cut = 1, Down = 2 };
 // Home goes round as The Sims' wall button does: cut away -> down -> up -> cut away.
@@ -301,4 +301,4 @@ private:
     }
 };
 
-} // namespace altera::game::cutaway
+} // namespace lr::game::cutaway

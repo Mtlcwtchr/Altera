@@ -770,7 +770,7 @@
     {
       "name": "Megalith_Menhir_A",
       "source": "tools/blender/megaliths.py --kind menhir",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -785,7 +785,7 @@
     {
       "name": "Megalith_Fallen_A",
       "source": "tools/blender/megaliths.py --kind fallen_menhir",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -800,7 +800,7 @@
     {
       "name": "Megalith_Needle_A",
       "source": "tools/blender/megaliths.py --kind needle",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -815,7 +815,7 @@
     {
       "name": "Megalith_Cyclopean_A",
       "source": "tools/blender/megaliths.py --kind cyclopean_block",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -830,7 +830,7 @@
     {
       "name": "Megalith_Head_A",
       "source": "tools/blender/megaliths.py --kind colossus_head",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -845,7 +845,7 @@
     {
       "name": "Megalith_Portal_A",
       "source": "tools/blender/megaliths.py --kind portal_tower",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -860,7 +860,7 @@
     {
       "name": "Megalith_MarshPanel_A",
       "source": "tools/blender/megaliths.py --kind marsh_panel",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -875,7 +875,7 @@
     {
       "name": "Megalith_Mirror_A",
       "source": "tools/blender/megaliths.py --kind mirror_monument",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",
@@ -890,7 +890,7 @@
     {
       "name": "Megalith_Defender_A",
       "source": "tools/blender/megaliths.py --kind iron_defender",
-      "author": "generated (Altera)",
+      "author": "generated (LivelyRealms)",
       "license": "proprietary-owned",
       "modifications": [
         "generated procedurally in Blender",

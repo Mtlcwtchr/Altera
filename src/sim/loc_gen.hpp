@@ -26,7 +26,7 @@
 
 #include "sim/loc.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct Prop;
 struct Ref;
@@ -68,4 +68,4 @@ std::string tidyLine(const std::string& s, bool capitalize);
 ValidationReport validateLocGen(const Loc& loc, const std::vector<std::string>& predicates = {},
                                 const std::map<std::string, std::vector<std::string>>& roles = {});
 
-} // namespace altera::sim
+} // namespace lr::sim

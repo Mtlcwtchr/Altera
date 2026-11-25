@@ -21,7 +21,7 @@
 
 namespace engine { class Device; }
 
-namespace altera::game {
+namespace lr::game {
 
 class LoadingScreen {
 public:
@@ -67,4 +67,4 @@ private:
     SDL_Window* window_ = nullptr;
 };
 
-} // namespace altera::game
+} // namespace lr::game

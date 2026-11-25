@@ -17,7 +17,7 @@
 
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 using sim::EntityId;
 using sim::Json;
@@ -109,4 +109,4 @@ Ground groundAt(const sim::World& w, const GroundRules& rules, int x, int y);
 
 Json toJson(const Grid2d& g);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

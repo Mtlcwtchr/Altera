@@ -7,7 +7,7 @@
 #include "sim/content.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 int RecoveryRules::rankOf(const std::string& treatment) const {
     for (std::size_t i = 0; i < rank.size(); ++i)
@@ -342,4 +342,4 @@ void healWounds(World& w) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

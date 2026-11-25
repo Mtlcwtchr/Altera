@@ -2,7 +2,7 @@ r"""Skyrim SE archives (BSA v105) for the dev-only asset pipeline (AL-11).
 
 Lists and extracts files; LZ4 frame decompression in pure Python (no packages).
 Everything taken from here is a placeholder to replace with our own art before
-release (assets/altera_game/props/registry.json marks each one).
+release (assets/lr_game/props/registry.json marks each one).
 
     python bsa.py list  "<Skyrim Data>/Skyrim - Meshes0.bsa" [substring]
     python bsa.py get   "<archive>" "meshes\clutter\barrel01.nif" out.nif

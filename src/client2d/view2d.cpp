@@ -11,9 +11,9 @@
 #include "sim/ai.hpp"
 #include "sim/combat_bridge.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
-using namespace altera::sim;
+using namespace lr::sim;
 
 std::string ViewText::name(const std::string& kind, const std::string& id) const {
     if (id.empty() || !loc) return id;
@@ -303,4 +303,4 @@ Json clockJson(const World& w) {
     return j;
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

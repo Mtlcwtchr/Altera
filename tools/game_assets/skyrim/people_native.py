@@ -15,10 +15,10 @@ retargeted onto the Skyrim skeleton (world rotation deltas; only the limbs are a
 from the T-pose onto Skyrim's A-pose, the spine keeps its own frames).
 
 Output (git-ignored, Bethesda content is never committed; replace before prod):
-  assets/altera_game/people/people_sky.askin        meshes, two skeletons (m, f), atlas
-  assets/altera_game/people/people_sky.aanim        clips (sky__* Skyrim, ual__* retargeted; @f = female take)
-  assets/altera_game/people/people_sky_anim.json    state / interaction -> clip
-  assets/altera_game/props/registry_people.json     what was used, replace_before_prod
+  assets/lr_game/people/people_sky.askin        meshes, two skeletons (m, f), atlas
+  assets/lr_game/people/people_sky.aanim        clips (sky__* Skyrim, ual__* retargeted; @f = female take)
+  assets/lr_game/people/people_sky_anim.json    state / interaction -> clip
+  assets/lr_game/props/registry_people.json     what was used, replace_before_prod
 """
 import argparse, json, math, os, struct, sys
 import numpy as np
@@ -469,12 +469,12 @@ def main():
     base.parents = rigs[0].parents
     base.skeletons = [r.matrices() for r in rigs]
     out = A.write_people(a.repo, base, verts, idx, looks, atlas)
-    pdir = os.path.join(a.repo, 'assets/altera_game/people')
+    pdir = os.path.join(a.repo, 'assets/lr_game/people')
     # write_people names its file people_sky.askin: that is the one the game loads
     if a.no_clips:
         return
     # ---- clips
-    ual = Askin.read(os.path.join(a.repo, 'assets/altera_game/people/people.askin'))
+    ual = Askin.read(os.path.join(a.repo, 'assets/lr_game/people/people.askin'))
     ujs = json.load(open(os.path.join(a.repo, 'content/animations/humanoid_ual/baked/people_anim.json'), encoding='utf-8'))
     uclips, uframes, unj, ufps = read_aanim(os.path.join(a.repo, 'content/animations/humanoid_ual/baked/people.aanim'))
     ucl = {c[0]: c for c in uclips}
@@ -552,7 +552,7 @@ def main():
     json.dump({'clips': [t[0] for t in table], 'state': state, 'interaction': inter},
               open(os.path.join(pdir, 'people_sky_anim.json'), 'w', encoding='utf-8'), indent=1)
     print('wrote people_sky.aanim', len(table), 'clips', total, 'frames')
-    rdir = os.path.join(a.repo, 'assets/altera_game/props')
+    rdir = os.path.join(a.repo, 'assets/lr_game/props')
     json.dump({'source': reg['source'], 'replace_before_prod': True,
                'note': 'AL-70: Skyrim people on the Skyrim skeleton.hkx with Skyrim clips (sky__*) and UAL clips retargeted (ual__*)',
                'looks': report, 'clips': [t[0] for t in table]},

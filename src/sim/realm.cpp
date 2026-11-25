@@ -17,7 +17,7 @@
 
 namespace fs = std::filesystem;
 
-namespace altera::sim {
+namespace lr::sim {
 
 // --- rules ---------------------------------------------------------------------
 
@@ -3522,4 +3522,4 @@ Json realmNoun(const Loc& loc, const std::string& lang, const World& w, EntityId
     return nullptr;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

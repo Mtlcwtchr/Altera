@@ -26,7 +26,7 @@
 #include "sim/trade.hpp"
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 struct TalkCatalog {
     struct Sphere {
@@ -64,4 +64,4 @@ std::string offerMode(const sim::Content& c, const sim::Goods& give, const sim::
 // "" when said, else why not.
 std::string sayTopic(sim::World& w, sim::EntityId me, sim::EntityId target, int index);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

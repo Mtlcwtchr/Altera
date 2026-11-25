@@ -25,7 +25,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -180,4 +180,4 @@ void installTrade(World& w);
 Json goodsJson(const Goods& g);
 Goods goodsFrom(const Content& c, const Json& j);
 
-} // namespace altera::sim
+} // namespace lr::sim

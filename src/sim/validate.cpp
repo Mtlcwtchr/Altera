@@ -7,7 +7,7 @@
 #include "sim/content.hpp"
 #include "sim/craft/craft_validate.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 namespace {
 
 const std::set<std::string> kCondSubjects = {"has", "at", "need", "knows", "skill", "trait", "age", "body", "time",
@@ -558,4 +558,4 @@ ValidationReport validate(const Content& c) {
     return r;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -175,7 +175,7 @@ void ModulePanel::draw(ui::Ui& gui, bool gpuPreview) {
     const auto button=[&](const char* id,const std::string& text) {
         const bool pressed=gui.button(ui::widgetId(id),{x,y,w,25},text); y+=31; return pressed;
     };
-    label("CAMERA / Campfire::Camera");
+    label("CAMERA / RealSimEngine::Camera");
     if (button("engine.mode",camera.modeName())) {
         const auto next=camera.mode==camera::Camera::Mode::Map?camera::Camera::Mode::Orbit:
             camera.mode==camera::Camera::Mode::Orbit?camera::Camera::Mode::Free:camera::Camera::Mode::Map;
@@ -193,7 +193,7 @@ void ModulePanel::draw(ui::Ui& gui, bool gpuPreview) {
     if (button("engine.quality","Cycle quality: 0.5 / 1 / 2 / 4 px"))
         quality.geometryErrorPx=quality.geometryErrorPx>=4?0.5:std::min(4.0,quality.geometryErrorPx*2);
     label("Impostor: "+number(quality.impostorErrorPx)+" px | parallax: "+number(quality.parallaxErrorPx));
-    label("TERRAIN / Campfire::Terrain");
+    label("TERRAIN / RealSimEngine::Terrain");
     label("Seed: "+std::to_string(seed)+" | relief: "+number(relief,1));
     if (button("engine.seed","Next seed + rebuild")) { ++seed;regenerate=true; }
     if (button("engine.relief","Cycle relief: 0.5 / 1 / 2")) { relief=relief>=2?0.5:relief*2;regenerate=true; }

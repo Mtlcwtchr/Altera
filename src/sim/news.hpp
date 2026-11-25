@@ -33,7 +33,7 @@
 #include "sim/dialogue_rules.hpp"
 #include "sim/dialogue_say.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 class Loc;
@@ -133,10 +133,10 @@ bool talkOverNews(World& w, Character& teller, Character& hearer, const std::str
 // Whether `answerer` will not talk to `asker` (too hostile).
 bool declinesToAnswer(const World& w, const Character& answerer, const Character& asker);
 
-} // namespace altera::sim
+} // namespace lr::sim
 
-namespace altera::sim {
-// --- the dialogue corpus and line tests (dialogue_corpus.cpp, test_altera_sim_dialogue_lines) ---
+namespace lr::sim {
+// --- the dialogue corpus and line tests (dialogue_corpus.cpp, test_lr_sim_dialogue_lines) ---
 // Whether a fact key is this module's (news*, person*, place*, story.*).
 bool newsFactKey(const std::string& key);
 // For a corpus moment of `act` aimed at `target` (may be null): the facts the act's
@@ -145,4 +145,4 @@ void sampleNewsFacts(const std::string& act, const DialogueRuleDef* target, Cont
 // The loc arguments of this module's lines for a sample moment: {news} is a real
 // chronicle line about args.person / args.src, {place} a sample settlement, ...
 void sampleNewsArgs(const Loc& loc, const std::string& lang, Json& args);
-} // namespace altera::sim
+} // namespace lr::sim

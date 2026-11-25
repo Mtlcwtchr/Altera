@@ -495,7 +495,7 @@ bool WorldRenderer::draw(const client::Camera& camera, const WorldRenderSettings
         models_->prepareDensity(scene, cull.viewportWidth, scene);
     const auto shadowStart = std::chrono::steady_clock::now();
     if (!shadows_->update(device_,scene,settings.sunDirection,settings.shadows &&
-        std::getenv("ALTERA_NO_SHADOWS")==nullptr && std::getenv("CAMPFIRE_NO_SHADOWS")==nullptr && settings.map==world::MapView::Natural && terrain.finalStage())) return false;
+        std::getenv("LR_NO_SHADOWS")==nullptr && std::getenv("REALSIM_NO_SHADOWS")==nullptr && settings.map==world::MapView::Natural && terrain.finalStage())) return false;
     if (engine::PassClock::get().on()) {
         const auto end = std::chrono::steady_clock::now();
         engine::PassClock::get().add("prepare: scene objects", std::chrono::duration<double, std::milli>(shadowStart - prepareStart).count());

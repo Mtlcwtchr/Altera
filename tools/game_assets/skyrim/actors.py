@@ -16,10 +16,10 @@ committed bake instead:
 
 Output (git-ignored, Bethesda content is never committed), loaded by the game in
 place of the committed bake when present:
-  assets/altera_game/people/people_sky.askin
-  assets/altera_game/beasts/<species>_sky.askin
+  assets/lr_game/people/people_sky.askin
+  assets/lr_game/beasts/<species>_sky.askin
 plus preview_actors.png and the registry entries (replace_before_prod) in
-assets/altera_game/props/registry_actors.json.
+assets/lr_game/props/registry_actors.json.
 """
 import argparse, io, json, os, sys
 import numpy as np
@@ -261,7 +261,7 @@ def nif_parts(lib, path, blended=False):
 
 # ------------------------------------------------------------------ people
 def bake_people(lib, cfg, repo, atlas, report):
-    base = Askin.read(os.path.join(repo, 'assets/altera_game/people/people.askin'))
+    base = Askin.read(os.path.join(repo, 'assets/lr_game/people/people.askin'))
     jindex = {n: i for i, n in enumerate(base.names)}
     skel = {'m': skeleton_world(lib, cfg['skeleton_m']), 'f': skeleton_world(lib, cfg['skeleton_f'])}
     verts, idx, looks = [], [], []
@@ -393,7 +393,7 @@ def write_people(repo, base, verts, idx, looks, atlas):
         h = float(out.verts['pos'][sel, 2].max()) if len(sel) else 1.8
         out.looks.append([nm, si, fi, ic, h])
     out.atlas = img
-    path = os.path.join(repo, 'assets/altera_game/people/people_sky.askin')
+    path = os.path.join(repo, 'assets/lr_game/people/people_sky.askin')
     out.write(path)
     print('wrote', path, len(out.verts), 'verts', len(out.idx) // 3, 'tris, atlas', img.shape[:2],
           'MB', round(os.path.getsize(path) / 1e6, 1))
@@ -403,7 +403,7 @@ def write_people(repo, base, verts, idx, looks, atlas):
 # ------------------------------------------------------------------ beasts
 def bake_beast(lib, e, repo, report):
     sp = e['species']
-    base = Askin.read(os.path.join(repo, 'assets/altera_game/beasts', sp + '.askin'))
+    base = Askin.read(os.path.join(repo, 'assets/lr_game/beasts', sp + '.askin'))
     parts = []
     for p in e['nif'] if isinstance(e['nif'], list) else [e['nif']]:
         got = nif_parts(lib, p)
@@ -478,7 +478,7 @@ def bake_beast(lib, e, repo, report):
     out.idx = np.concatenate(tris)
     out.looks = [[base.looks[0][0], 0, 0, len(out.idx), float(Q[:, 2].max())]]
     out.atlas = img
-    path = os.path.join(repo, 'assets/altera_game/beasts', sp + '_sky.askin')
+    path = os.path.join(repo, 'assets/lr_game/beasts', sp + '_sky.askin')
     out.write(path)
     print('%-10s %-55s verts %6d tris %6d size %s' % (sp, str(e['nif'])[:55], len(Q), len(out.idx) // 3,
                                                       (Q.max(0) - Q.min(0)).round(2)))
@@ -556,7 +556,7 @@ def main():
             o = bake_beast(lib, e, a.repo, report['beasts'])
             if o is not None:
                 sets.append((e['species'], o))
-    out_dir = os.path.join(a.repo, 'assets/altera_game/props')
+    out_dir = os.path.join(a.repo, 'assets/lr_game/props')
     os.makedirs(out_dir, exist_ok=True)
     preview(sets, os.path.join(out_dir, 'preview_actors.png'))
     json.dump({'source': reg['source'], 'replace_before_prod': True, 'actors': report},

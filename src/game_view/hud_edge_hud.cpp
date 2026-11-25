@@ -13,7 +13,7 @@
 #include "game_view/hud.hpp"
 #include "game_view/hud_style.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 using ui::Colour;
@@ -382,4 +382,4 @@ void Hud::edgeSkillToast(const Snapshot& s, const ActorSnap* sel, float ox, floa
     label(x + 118, y + 46, host_->text("hud.edge.skill_step", {{"n", t.step}}), kMute.withAlpha(fade), 13, true);
 }
 
-} // namespace altera::game
+} // namespace lr::game

@@ -21,7 +21,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -90,4 +90,4 @@ std::map<std::string, int> deedGoods(const InteractionDef& d);
 // Memory types about somebody's misdeed (who[0] = the doer).
 bool isDeedMemory(const std::string& type);
 
-} // namespace altera::sim
+} // namespace lr::sim

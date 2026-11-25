@@ -8,7 +8,7 @@
 #include "engine/ui/ui.hpp"
 #include "game_view/ui_theme.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 struct HudPalette {
     ui::Colour panel, card, tip, gold, goldPale, goldDark, rim, text, mute, hot;
@@ -48,4 +48,4 @@ inline const ui::Colour& kDark = hudPalette().dark;
 inline const ui::Colour& kSeal = hudPalette().seal;
 } // namespace hudroles
 
-} // namespace altera::game
+} // namespace lr::game

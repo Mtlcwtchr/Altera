@@ -1,4 +1,4 @@
-// altera_sim <-> combat core (src/sim/combat). An interaction with a `combat`
+// lr_sim <-> combat core (src/sim/combat). An interaction with a `combat`
 // block (interactions.json) runs as the FSM state Fight; when the act ends the
 // core plays the fight out round by round from a seed of (world seed, the two
 // ids, the tick) and the result comes back as an outcome of the actor
@@ -21,7 +21,7 @@
 #include "sim/group_combat.hpp"
 #include "sim/wounds.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -89,4 +89,4 @@ bool combatNeedsFullMode(const World& w, const CombatBridge& b, const Character&
 CombatResolution resolveCombat(const World& w, const Character& actor, const InteractionDef& d, const Character& target,
                                combat::EventStream* events = nullptr, const std::string& mode = "");
 
-} // namespace altera::sim
+} // namespace lr::sim

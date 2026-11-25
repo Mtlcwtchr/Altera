@@ -1,5 +1,5 @@
 #pragma once
-// Altera simulation core: basic types shared by every module. Headless, no
+// LivelyRealms simulation core: basic types shared by every module. Headless, no
 // engine or renderer dependency; determinism comes from Rng seeded by hashes of
 // (world seed, entity, tick, salt), never from iteration order or wall clock.
 
@@ -10,7 +10,7 @@
 
 #include <nlohmann/json.hpp>
 
-namespace altera::sim {
+namespace lr::sim {
 
 using Json = nlohmann::json;
 using Tick = std::int64_t;
@@ -86,4 +86,4 @@ inline void from_json(const Json& j, Vec2& v) {
 
 inline double clamp01(double v) { return v < 0.0 ? 0.0 : (v > 1.0 ? 1.0 : v); }
 
-} // namespace altera::sim
+} // namespace lr::sim

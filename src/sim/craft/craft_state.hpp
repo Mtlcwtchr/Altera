@@ -10,7 +10,7 @@
 #include "sim/core.hpp"
 #include "sim/craft/craft_chain.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 struct CraftState {
     std::vector<Item> items;                 // made things (instances); inventory counts them by form item
@@ -38,4 +38,4 @@ void from_json(const Json& j, Recipe& r);
 void to_json(Json& j, const CraftState& s);
 void from_json(const Json& j, CraftState& s);
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

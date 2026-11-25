@@ -16,7 +16,7 @@
 
 #include "sim/dialogue_gen.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 class Loc;
@@ -101,4 +101,4 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
 // Is `listener` spoken to as "вы" (reg=vy) by `speaker`: the nobility.
 bool addressedVy(const World& w, EntityId speaker, EntityId listener);
 
-} // namespace altera::sim
+} // namespace lr::sim

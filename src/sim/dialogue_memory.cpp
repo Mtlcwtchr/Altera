@@ -13,7 +13,7 @@
 #include "sim/loc.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -337,4 +337,4 @@ std::string renderUtterance(const Loc& loc, const std::string& lang, const World
     return loc.text(lang, sayKey, locArgs(loc, lang, w, params, self));
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

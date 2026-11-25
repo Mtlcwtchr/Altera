@@ -39,7 +39,7 @@ struct TempDir {
     std::filesystem::path path;
     TempDir() {
         std::random_device rd;
-        path = std::filesystem::temp_directory_path() / ("altera_ground_" + std::to_string(rd()));
+        path = std::filesystem::temp_directory_path() / ("lr_ground_" + std::to_string(rd()));
         std::filesystem::remove_all(path);
         std::filesystem::create_directories(path);
     }

@@ -17,7 +17,7 @@
 #include "sim/magic.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct AspectUse {
     bool ok = false;
@@ -51,4 +51,4 @@ void noteWeaponDeed(World& w, Character& c, const std::string& what);
 
 void installAlchemy(World& w); // commands alchemy_drink, alchemy_use_rune
 
-} // namespace altera::sim
+} // namespace lr::sim
