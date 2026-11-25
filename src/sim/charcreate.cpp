@@ -1,6 +1,7 @@
 #include "sim/charcreate.hpp"
 
 #include <algorithm>
+#include <sstream>
 #include <cmath>
 #include <cstdio>
 #include <set>
@@ -78,8 +79,28 @@ std::map<std::string, std::vector<std::string>> lookOptions(const Content& c, co
     o["hair_colour"] = jstrs(L, "hair_colours");
     o["cloth"] = jstrs(L, "cloth");
     if (sex != 'f') o["beard"] = jstrs(L, "beard");
-    // the skin: the kind's own list, else shades of its one colour, else the human list
     const std::string rid = raceOrDefault(c, race);
+    // LR-139: the kind's own sets of cuts and beards (species body.pawn), each word once
+    if (const RaceDef* r = findRace(c, rid)) {
+        auto words = [](const std::string& s, std::vector<std::string> out) {
+            std::istringstream in(s);
+            for (std::string w; in >> w;) {
+                if (w == "none") w = "bald";
+                if (std::find(out.begin(), out.end(), w) == out.end()) out.push_back(w);
+            }
+            return out;
+        };
+        const auto it = r->pawn.find(sex == 'f' ? "hair_f" : "hair_m");
+        if (it != r->pawn.end() && !it->second.empty()) o["hair"] = words(it->second, {});
+        if (sex != 'f') {
+            const auto rule = r->pawn.find("beard");
+            const bool never = rule != r->pawn.end() && rule->second == "never", always = rule != r->pawn.end() && rule->second == "long";
+            const auto bs = r->pawn.find("beards");
+            if (never) o["beard"] = {"no"};
+            else if (bs != r->pawn.end() && !bs->second.empty()) o["beard"] = words(bs->second, always ? std::vector<std::string>{} : std::vector<std::string>{"no"});
+        }
+    }
+    // the skin: the kind's own list, else shades of its one colour, else the human list
     const Json skins = L.value("skins", Json::object());
     std::vector<std::string> sk = jstrs(skins, rid.c_str());
     if (sk.empty()) {
@@ -121,6 +142,7 @@ Json creationRules(const Content& c, const std::string& culture) {
             e["elder"] = r->elderYears;
             e["lifespan"] = r->lifespanYears;
             e["px"] = r->spritePx;
+            if (!r->pawn.empty()) e["pawn"] = r->pawn;   // LR-139: ears, head, tusks... for the preview
             e["gifted_chance"] = r->giftedChance;
             // the kind's strongest and weakest aptitudes, for the card
             std::vector<std::pair<std::string, RaceAptitude>> ap(r->aptitudes.begin(), r->aptitudes.end());

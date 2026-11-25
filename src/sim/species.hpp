@@ -46,6 +46,9 @@ struct RaceDef {
     double heightM = 1.72, massKg = 70.0, nightVision = 0.0, speedMult = 1.0, reachMult = 1.0;
     int spritePx = 20;
     std::string skin; // 2D skin colour "#rrggbb" ("" = the human range)
+    // LR-139: how the 2D pawn shows the kind (body.pawn): ears, head, nose, brow, eyes,
+    // tusks, build, hair, beard, skin_pattern -> a word the client draws ("" = the human way)
+    std::map<std::string, std::string> pawn;
     // life
     int adultYears = 14, elderYears = 60, lifespanYears = 60;
     double fertility = 1.0, pregnancyMult = 1.0;

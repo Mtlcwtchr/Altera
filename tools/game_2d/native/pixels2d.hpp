@@ -50,12 +50,42 @@ struct PawnSpec {
     std::string cloak;                                      // "#hex" or empty
     std::pair<std::string, std::string> hat;                // [kind, "#hex"] or empty kind
     std::string tool;
+    // LR-139: the kind's look (species body.pawn, "" = the human way)
+    std::string ears;     // pointed | half | long | big
+    std::string head;     // wide | long | small | big
+    std::string nose;     // big | long
+    std::string brow;     // heavy
+    std::string eyes;     // "#hex" (default dark)
+    std::string tusks;    // yes | small
+    std::string build;    // slim | stocky | broad | hulking | wiry
+    std::string skinPat;  // warts
+    bool longBeard = false;
+    std::string beardStyle;   // LR-139: stubble | moustache | goatee | full | long | braided ("" = full, or long)
+    bool naked = false;   // nothing on the torso: drawn bare
+    std::string key() const;
+};
+
+// LR-139: the frame of a pawn's little animation.
+struct PawnPose {
+    int bob = 0;          // 0 | 1: the whole pawn a pixel up
+    int step = -1;        // 0..3 walking (the feet and hands swing), -1 standing
+    int swing = 0;        // 0 | 1: at work the tool up / down
+    int dip = 0;          // 0 | 1: idle breath, the head a pixel down
+    bool blink = false;   // eyes shut
     std::string key() const;
 };
 
 constexpr int kPawn = 20;
+// LR-139: the parts of pawns as data (content/sprites_2d/pawns2d.json): hair, beards, ears,
+// noses, brows, tusks, eyes, hats, skin patterns, bodies, builds, heads. Load it before drawing.
+void setPawnParts(const nlohmann::json& parts);
+const nlohmann::json& pawnParts();
 // The pawn seen from side 'S' | 'E' | 'N' | 'W' (W mirrors E), bob 0 | 1.
 Pixels pawnPixels(const PawnSpec& spec, char side, int bob);
+Pixels pawnPixels(const PawnSpec& spec, char side, const PawnPose& pose);
+// LR-139: the pose of a pawn at `ms`: walking by the distance walked, working by the clock,
+// idle a breath and a blink now and then (each person out of step by its id).
+PawnPose pawnPose(bool moving, double walkedM, bool working, double ms, long long id);
 // A beast of species `sp` as a 16x16 blob facing 'E' or 'W'.
 Pixels beastPixels(const std::string& sp, char face);
 

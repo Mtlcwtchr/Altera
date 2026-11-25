@@ -12,7 +12,7 @@
   const $ = id => document.getElementById(id);
 
   // --- state ------------------------------------------------------------------
-  let ST = null, MAP = null, RES = null;     // /api/static, map2d.json, resources.json
+  let ST = null, MAP = null, RES = null, PAWN_PARTS = null;   // PAWN_PARTS: pawns2d.json (LR-139)     // /api/static, map2d.json, resources.json
   let UI = {};                               // ui2d.* strings
   const chunks = new Map();                  // "cx,cy" -> {json, canvas, glyph, at, str}
   const pending = new Set();
@@ -183,14 +183,42 @@
     return list[hash(p.famId || 0, 3) % list.length];
   }
   function pawnSpec(p) {
-    const h = hash(p.id, 1), child = p.age < 13, f = p.sex === 'f';
+    // LR-139: how the people one meets look (pawns2d.json npc), as window2d.cpp's pawnSpec
+    const NPC = (PAWN_PARTS && PAWN_PARTS.npc) || {};
+    const pickN = (k, i, fb) => { const v = NPC[k]; return Array.isArray(v) && v.length ? v[i % v.length] : fb; };
+    const numN = (k, fb) => (typeof NPC[k] === 'number' ? NPC[k] : fb);
+    const h = hash(p.id, 1), child = p.age < numN('child_age', 13), f = p.sex === 'f';
     const spec = { child };
-    spec.body = f ? 'fem' : ['norm', 'norm', 'thin', 'fat'][h % 4];
-    spec.skin = ['light', 'light', 'light', 'mid', 'light', 'mid', 'light', 'dark'][(h >>> 3) % 8];
-    let hc = HAIR[(h >>> 6) % HAIR.length];
-    if (p.age >= 55) hc = '#b0b0a8';
-    spec.hair = [f ? ['long', 'bun', 'braids', 'long'][(h >>> 9) % 4] : 'short', hc];
-    if (!f && !child && p.age >= 18 && ((h >>> 12) % 3)) spec.beard = true;
+    spec.body = f ? pickN('bodies_f', h, 'fem') : pickN('bodies_m', h, 'norm');
+    spec.skin = pickN('skins', h >>> 3, 'light');
+    let hc = pickN('hair_colours', h >>> 6, HAIR[0]);
+    if (p.age >= numN('grey_age', 55)) hc = pickN('grey', 0, '#b0b0a8');
+    spec.hair = [f ? pickN('hair_f', h >>> 9, 'long') : pickN('hair_m', h >>> 9, 'short'), hc];
+    if (!f && !child && p.age >= numN('beard_age', 18) && ((h >>> 12) % Math.max(1, numN('beard_one_in', 3)))) spec.beard = true;
+    if (p.rskin) spec.skin = p.rskin;          // AL-114: the kind's skin
+    if (p.stone) spec.skin = pickN('stone', 0, '#8c8c86');
+    // LR-139: the kind's look (species body.pawn), as pixels2d.cpp's pawnSpec
+    const rl = p.rlook || {};
+    for (const k of ['ears', 'head', 'nose', 'brow', 'eyes', 'tusks', 'skin_pattern']) if (rl[k]) spec[k] = rl[k];
+    if (rl.build && !child) spec.build = rl.build;
+    if (child && spec.tusks === 'yes') spec.tusks = 'small';
+    if (rl.beard === 'never') spec.beard = false;
+    if (rl.beard === 'rare') spec.beard = spec.beard && ((h >>> 18) % Math.max(1, numN('rare_one_in', 4))) === 0;
+    if (rl.beard === 'long' && !f && !child) spec.beard = spec.long_beard = true;
+    if (rl.hair === 'none' || rl.hair === 'tuft') spec.hair[0] = rl.hair;
+    // LR-139: the kind's cuts and beards, picked by the id (pixels2d.cpp's pawnSpec does the same)
+    const pick = (set, k) => { const v = (set || '').split(/\s+/).filter(Boolean); return v.length ? v[k % v.length] : ''; };
+    const h2 = hash(p.id, 5);
+    if (!child) { const cut = pick(rl[f ? 'hair_f' : 'hair_m'], h2); if (cut) spec.hair[0] = cut; }
+    if (spec.beard) { const bs = pick(rl.beards, h2 >>> 8); if (!bs && rl.beard !== 'long') spec.beard = false; else spec.beard_style = bs; }
+    if (p.look) { // AL-136: the look chosen at creation
+      const lk = p.look;
+      if (lk.body && !child) spec.body = lk.body;
+      if (lk.skin && !p.stone) spec.skin = lk.skin;
+      if (lk.hair) spec.hair[0] = lk.hair;
+      if (lk.hair_colour) spec.hair[1] = lk.hair_colour;
+      if (lk.beard) { spec.beard = !f && !child && lk.beard !== 'no'; spec.beard_style = lk.beard === 'yes' || lk.beard === 'no' ? '' : lk.beard; spec.long_beard = spec.beard_style === 'long'; }
+    }
     const wear = [];
     const wornKinds = new Set();
     for (const it of p.worn || []) {
@@ -205,15 +233,12 @@
       else if (layer === 'cap' || layer === 'helmet' || layer === 'hood') spec.hat = [layer, col];
       else wear.push([layer, col]);
     }
-    // nothing on the body from the sim (no tunic yet): homespun by sex and age, in the household's colour
-    if (!['shirt', 'robe', 'mail', 'tabard'].some(k => wornKinds.has(k))) {
-      const of = (MAP.outfit && MAP.outfit[child ? 'child' : (f ? 'f' : 'm')]) || [];
-      for (const [kind, col] of of) wear.unshift([kind, col === 'family' ? famColour(p) : col]);
-    }
+    // LR-139: only what the sim says is worn; nothing on the torso: the pawn is bare
+    const naked = !['shirt', 'robe', 'mail', 'tabard'].some(k => wornKinds.has(k));
     const order = ['shirt', 'robe', 'mail', 'pants', 'boots', 'tabard', 'apron', 'belt', 'bag', 'pack'];
     wear.sort((a, b) => order.indexOf(a[0]) - order.indexOf(b[0]));
     spec.wear = wear;
-    if (!spec.hat && f && !child && ((h >>> 15) % 5) < 2) spec.hat = ['kerchief', '#e8e0d0'];
+    if (!spec.hat && f && !child && !naked && ((h >>> 15) % 100) < numN('kerchief_pct', 40)) spec.hat = ['kerchief', pickN('kerchief', 0, '#e8e0d0')];
     // AL-109: the sim says what is in hand now (the act's tool, else a carried weapon)
     for (const [pat, tool] of MAP.tools || []) if (p.held && p.held.includes(pat)) { spec.tool = tool; break; }
     return spec;
@@ -262,6 +287,7 @@
       const s = Math.min(d, speed * dt);
       const cellBefore = Math.floor(v.x) + Math.floor(v.y);
       v.x += dx / d * s; v.y += dy / d * s;
+      v.walked = (v.walked || 0) + s;   // LR-139: the step of the walk cycle
       v.moving = true;
       if (Math.floor(v.x) + Math.floor(v.y) !== cellBefore) v.bob ^= 1;   // a hop a cell
       v.face = Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
@@ -381,10 +407,8 @@
     }
     let spec = p._spec;
     if (!spec || p._specKey !== p._lookKey) { spec = p._spec = pawnSpec(p); p._specKey = p._lookKey; }
-    // work: the tool sways; a step: a 1 px hop
-    let bob = v.moving ? v.bob : 0;
-    if (!v.moving && p.st === 'Work') bob = (Math.floor(performance.now() / 350) + p.id) % 2;
-    const img = Pawns.sprite(spec, lying ? 'S' : v.face, lying ? 0 : bob);
+    // LR-139: the walk cycle, a blow at work, a breath and a blink standing
+    const img = Pawns.sprite(spec, lying ? 'S' : v.face, lying ? 0 : Pawns.pose(v.moving, v.walked || 0, p.st === 'Work', performance.now(), p.id));
     // the 20x20 canvas sits over the cell: feet on the spot, head into the cell above
     if (lying) {
       ctx.save(); ctx.translate(sx, sy - 3 * sc); ctx.rotate(-Math.PI / 2);
@@ -730,8 +754,11 @@
 
   // --- start ---------------------------------------------------------------------------------
   Promise.all([getJson('/api/static'), getJson('/sprites/sprites.json'), getJson('/sprites/map2d.json'),
-    getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops]) => {
+    getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null),
+    getJson('/sprites/pawns2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts]) => {
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
+    Pawns.setParts(pawnParts);   // LR-139: hair, beards, ears, builds as data
+    PAWN_PARTS = pawnParts || {};
     Sprites.load(sprites);
     Sprites.merge(crops);   // AL-112: fields and gardens
     MAP.actsRe = (MAP.acts || []).map(([re, sp]) => [new RegExp(re), sp]);

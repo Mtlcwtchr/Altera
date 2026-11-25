@@ -1,0 +1,147 @@
+{
+ "_doc": "LR-139: the parts of the 2D pawns as data. tools/game_2d/native/pixels2d.cpp and web/pawns.js only stamp them, so a new cut, beard, ear or build needs no rebuild (restart the window). An op = {shapes | one shape's fields, colour, outline (true), flat (set pixels as they are), pattern {if, colour}, sides 'SEN' (W mirrors E)}. A shape = {ell: [cx, cy, rx, ry]} | {head: true} | {body: true} | {px: [[x, y]...]} | '@name' (shapes below), with sides, when (the whole shape), where (each pixel), minus (a shape). Numbers may be expressions over x y (the pixel), hcx hcy hrx hry (head centre, radii), top (the head's top row), fx fy (face column and eye row), ey (the head's middle row), hl hrr (the head's left and right columns), eb (the back of the head seen from the east), nx (the nose tip column from the east), bcx bcy brx bry bx by (the body), step swing child; with + - * / % < <= > >= == != && || ! abs min max trunc floor. Colours: skin, hair, eye, hat, c (the op's own), the names in colours, '#hex', 'name*0.8', 'mix(a,b,0.45)'. Shapes also: {rect: [x0, y0, x1, y1]}, {col: [x, y0, y1]} (a stick). Groups are drawn in this order: hair.back (behind the body), cloak.back, the body (+ skin_patterns.body), feet (colour feet: the boots' if worn), wear (each worn layer, colour wear), cloak.front, hands, tools (tx ty: by the tool hand; hy, sw: the hands' swing; footy), ears (under the head and again over the hair unless the cut is in bald), head (+ skin_patterns.head), face, brows, noses, beards, tusks, hair.front, hats. The species (content/species/*.json body.pawn) name the entries: ears, head, nose, brow, eyes, tusks, build, skin_pattern; hair_m / hair_f / beards are the kind's sets.",
+ "colours": {"outline": "#1a1410", "ivory": "#f0e8d0", "feet": "skin*0.8", "wood": "#7a4a28", "steel": "#c8ccd0", "iron": "#8a8e94", "straw": "#c8a050", "gold": "#e8c040"},
+ "skins": {
+  "light": "#eab48a",
+  "mid": "#c88a5c",
+  "dark": "#8a5a3a"
+ },
+ "frame": {
+  "adult": {"hcx": 10, "hcy": 6.6, "hr": 4.3, "bcx": 10, "bcy": 14, "brx": 5, "bry": 5.2},
+  "child": {"hcx": 10, "hcy": 9.5, "hr": 3.7, "bcx": 10, "bcy": 15.6, "brx": 3.8, "bry": 3.9}
+ },
+ "bodies": {
+  "norm": [5, 5.2],
+  "thin": [4.2, 5.2],
+  "fat": [6.4, 5.4],
+  "fem": [4.6, 5.2]
+ },
+ "builds": {
+  "stocky": {"_doc": "a dwarf: squat, the head low", "brx": 1.2, "bry": 0.8, "bcy": 1.2, "hcy": 2.4},
+  "slim": {"brx": 0.86, "bry": 1.06, "hcy": -0.4},
+  "broad": {"brx": 1.14, "hcy": 0.3},
+  "hulking": {"_doc": "an ogre, a troll: the head low and thrust forward", "brx": 1.24, "bry": 1.02, "hcy": 1.4, "hcx_e": 0.8},
+  "wiry": {"brx": 0.84, "bry": 0.9, "bcy": 0.5, "hcy": 0.6}
+ },
+ "heads": {
+  "wide": [1.14, 0.92],
+  "long": [0.9, 1.08],
+  "small": [0.8, 0.8],
+  "big": [1.12, 1.12]
+ },
+ "skin_patterns": {
+  "warts": {"body": {"if": "(x*7+y*3)%11==0", "colour": "c*0.78"}, "head": {"if": "(x*5+y*7)%9==0", "colour": "c*0.78"}}
+ },
+ "shapes": {
+  "cap": [{"head": true, "where": "y+0.5<=hcy-1.1", "sides": "S"}, {"head": true, "where": "y+0.5<=hcy-1.1 || (x+0.5<=hcx-1.2 && y+0.5<=hcy+2)", "sides": "E"}, {"head": true, "where": "y+0.5<=hcy+2.6", "sides": "N"}],
+  "cap_long": ["@cap", {"head": true, "sides": "N"}],
+  "chin": [{"head": true, "where": "y>=hcy+1.2", "sides": "S"}, {"head": true, "where": "y>=hcy+1.2 && x+0.5>=hcx-0.5", "sides": "E"}],
+  "lip": [{"px": [["fx-2", "fy+1"], ["fx-1", "fy+1"], ["fx", "fy+1"], ["fx+1", "fy+1"]], "sides": "S"}, {"px": [["fx+1", "fy+1"], ["fx+2", "fy+1"]], "sides": "E"}],
+  "beard_long": ["@chin", {"ell": ["hcx", "hcy+hry+1.2", 2.6, 2.6], "sides": "S"}, {"ell": ["hcx+1.2", "hcy+hry+1.2", 1.8, 2.6], "sides": "E"}],
+  "robe": [{"body": true}, {"ell": ["bcx", "bcy+1.5", "brx+0.8", "bry-0.4"]}]
+ },
+ "bald": ["bald", "none"],
+ "face": [{"shapes": [{"px": [["fx-2", "fy"], ["fx+1", "fy"]], "sides": "S"}, {"px": [["fx+2", "fy"]], "sides": "E"}], "colour": "eye", "flat": true}],
+ "ears": {
+  "pointed": [{"px": [["hl-1", "ey"], ["hl-1", "ey-1"], ["hl-2", "ey-2"], ["hl-3", "ey-3"], ["hrr", "ey"], ["hrr", "ey-1"], ["hrr+1", "ey-2"], ["hrr+2", "ey-3"]], "sides": "SN"}, {"px": [["eb-1", "ey-1"], ["eb-2", "ey-2"], ["eb-3", "ey-3"]], "sides": "E", "minus": {"ell": ["hcx", "hcy", "hrx*0.95", "hry"]}}, {"px": [["eb-4", "ey-3"]], "sides": "E", "when": "trunc(hrx+0.5)>=4", "minus": {"ell": ["hcx", "hcy", "hrx*0.95", "hry"]}}],
+  "half": [{"px": [["hl-1", "ey"], ["hl-1", "ey-1"], ["hrr", "ey"], ["hrr", "ey-1"]], "sides": "SN"}, {"px": [["eb-1", "ey-1"], ["eb-2", "ey-2"]], "sides": "E", "minus": {"ell": ["hcx", "hcy", "hrx*0.95", "hry"]}}, {"px": [["eb-3", "ey-2"]], "sides": "E", "when": "trunc(hrx+0.5)>=4", "minus": {"ell": ["hcx", "hcy", "hrx*0.95", "hry"]}}],
+  "long": [{"px": [["hl-1", "ey"], ["hl-2", "ey"], ["hl-3", "ey-1"], ["hrr", "ey"], ["hrr+1", "ey"], ["hrr+2", "ey-1"]], "sides": "SN"}, {"px": [["eb-1", "ey"], ["eb-2", "ey-1"], ["eb-3", "ey-1"], ["eb-4", "ey-2"]], "sides": "E", "minus": {"ell": ["hcx", "hcy", "hrx*0.95", "hry"]}}],
+  "big": [{"px": [["hl-1", "ey"], ["hl-1", "ey+1"], ["hrr", "ey"], ["hrr", "ey+1"]], "sides": "SN"}, {"px": [["eb-1", "ey"], ["eb-1", "ey+1"], ["eb-2", "ey"]], "sides": "E", "minus": {"ell": ["hcx", "hcy", "hrx*0.95", "hry"]}}]
+ },
+ "brows": {
+  "heavy": [{"shapes": [{"px": [["fx-2", "fy-1"], ["fx-1", "fy-1"], ["fx", "fy-1"], ["fx+1", "fy-1"]], "sides": "S"}, {"px": [["fx+1", "fy-1"], ["fx+2", "fy-1"], ["fx+3", "fy-1"]], "sides": "E"}], "colour": "skin*0.62", "outline": false}]
+ },
+ "noses": {
+  "big": [{"shapes": [{"px": [["fx-1", "fy+1"], ["fx", "fy+1"]]}], "colour": "skin*0.8", "outline": false, "sides": "S"}, {"shapes": [{"px": [["nx", "fy+1"]]}], "colour": "skin", "sides": "E"}],
+  "long": [{"shapes": [{"px": [["fx-1", "fy+1"], ["fx", "fy+1"]]}], "colour": "skin*0.8", "outline": false, "sides": "S"}, {"shapes": [{"px": [["fx", "fy+2"]]}], "colour": "skin*0.7", "flat": true, "sides": "S"}, {"shapes": [{"px": [["nx", "fy+1"], ["nx+1", "fy+1"], ["nx+1", "fy+2"]]}], "colour": "skin", "sides": "E"}]
+ },
+ "tusks": {
+  "yes": [{"shapes": [{"px": [["fx-2", "fy+2"], ["fx+1", "fy+2"], ["fx-2", "fy+1"], ["fx+1", "fy+1"]], "sides": "S"}, {"px": [["fx+2", "fy+2"], ["fx+2", "fy+1"]], "sides": "E"}], "colour": "ivory", "outline": false}],
+  "small": [{"shapes": [{"px": [["fx-2", "fy+2"], ["fx+1", "fy+2"]], "sides": "S"}, {"px": [["fx+2", "fy+2"]], "sides": "E"}], "colour": "ivory", "outline": false}]
+ },
+ "beards": {
+  "stubble": [{"shapes": ["@chin"], "colour": "mix(skin,hair,0.45)", "outline": false, "pattern": {"if": "(x+y)%2==1", "colour": "mix(skin,hair,0.25)"}}],
+  "moustache": [{"shapes": ["@lip"], "colour": "hair", "outline": false}],
+  "goatee": [{"shapes": ["@lip"], "colour": "hair", "outline": false}, {"shapes": [{"px": [["fx-1", "fy+2"], ["fx", "fy+2"], ["fx-1", "fy+3"], ["fx", "fy+3"]], "sides": "S"}, {"px": [["fx+1", "fy+2"], ["fx+1", "fy+3"]], "sides": "E"}], "colour": "hair", "outline": false}],
+  "full": [{"shapes": ["@chin"], "colour": "hair", "outline": false}],
+  "long": [{"shapes": ["@beard_long"], "colour": "hair"}],
+  "braided": [{"shapes": ["@beard_long", {"ell": ["hcx", "hcy+hry+3.6", 1.0, 1.4], "sides": "S"}, {"ell": ["hcx+1.2", "hcy+hry+3.6", 1.0, 1.4], "sides": "E"}], "colour": "hair", "pattern": {"if": "y%2==1", "colour": "c*0.75"}}]
+ },
+ "hair": {
+  "short": {"front": [{"shapes": ["@cap"], "colour": "hair"}]},
+  "long": {"back": [{"shapes": [{"ell": ["hcx", "hcy+2.4", "hrx+1.1", "hry+2.6"], "sides": "S"}, {"ell": ["hcx-1.0", "hcy+2.4", "hrx", "hry+2.6"], "sides": "E"}], "colour": "hair"}], "front": [{"shapes": ["@cap_long", {"ell": ["hcx", "hcy+1.4", "hrx+0.9", "hry+1.6"], "sides": "N"}, {"head": true, "where": "abs(x+0.5-hcx)>=hrx-1.1 && y+0.5<=hcy+2.2", "sides": "S"}, {"head": true, "where": "x+0.5<=hcx+0.4 && y+0.5<=hcy+2.6", "sides": "E"}], "colour": "hair"}]},
+  "bun": {"front": [{"shapes": ["@cap_long", {"ell": ["hcx", "top-0.2", 1.8, 1.6]}], "colour": "hair"}]},
+  "braids": {"front": [{"shapes": ["@cap_long"], "colour": "hair"}, {"shapes": [{"px": [["trunc(hcx-hrx+0.2)", "trunc(hcy)+1"], ["trunc(hcx-hrx+0.2)", "trunc(hcy)+2"], ["trunc(hcx-hrx+0.2)", "trunc(hcy)+3"], ["trunc(hcx-hrx+0.2)", "trunc(hcy)+4"], ["trunc(hcx-hrx+0.2)", "trunc(hcy)+5"]], "sides": "SN"}, {"px": [["trunc(hcx+hrx-1.2)", "trunc(hcy)+1"], ["trunc(hcx+hrx-1.2)", "trunc(hcy)+2"], ["trunc(hcx+hrx-1.2)", "trunc(hcy)+3"], ["trunc(hcx+hrx-1.2)", "trunc(hcy)+4"], ["trunc(hcx+hrx-1.2)", "trunc(hcy)+5"]], "sides": "SN"}, {"px": [["trunc(hcx-hrx*0.6)", "trunc(hcy)+1"], ["trunc(hcx-hrx*0.6)", "trunc(hcy)+2"], ["trunc(hcx-hrx*0.6)", "trunc(hcy)+3"], ["trunc(hcx-hrx*0.6)", "trunc(hcy)+4"], ["trunc(hcx-hrx*0.6)", "trunc(hcy)+5"]], "sides": "E"}], "colour": "hair", "pattern": {"if": "y%2==1", "colour": "c*0.72"}}]},
+  "ponytail": {"back": [{"shapes": [{"px": [["hl", "ey"], ["hl-1", "ey+1"], ["hl-1", "ey+2"], ["hl", "ey+3"]]}], "colour": "hair", "sides": "E"}], "front": [{"shapes": ["@cap_long", {"px": [["fx", "trunc(hcy+hry)-1"], ["fx", "trunc(hcy+hry)"], ["fx-1", "trunc(hcy+hry)+1"], ["fx", "trunc(hcy+hry)+2"]], "sides": "N"}], "colour": "hair"}]},
+  "topknot": {"front": [{"shapes": ["@cap_long", {"ell": ["hcx", "top-0.9", 1.1, 1.3], "sides": "SN"}, {"ell": ["hcx-0.6", "top-0.9", 1.1, 1.3], "sides": "E"}], "colour": "hair"}]},
+  "curly": {"front": [{"shapes": [{"ell": ["hcx", "hcy-0.3", "hrx+0.7", "hry+0.6"], "sides": "N"}, {"ell": ["hcx", "hcy-0.5", "hrx+0.7", "hry+0.5"], "sides": "S", "where": "y+0.5<=hcy-0.9 || (abs(x+0.5-hcx)>=hrx-0.4 && y+0.5<=hcy+1.0)"}, {"ell": ["hcx-0.6", "hcy-0.5", "hrx+0.7", "hry+0.5"], "sides": "E", "where": "y+0.5<=hcy-0.9 || (x+0.5<=hcx-1.0 && y+0.5<=hcy+1.0)"}], "colour": "hair", "pattern": {"if": "(x+2*y)%3==0", "colour": "c*0.78"}}]},
+  "cropped": {"front": [{"shapes": [{"head": true, "where": "y+0.5<=hcy+1.2", "sides": "N"}, {"head": true, "where": "y+0.5<=hcy-2.0", "sides": "SE"}], "colour": "mix(hair,skin,0.25)", "outline": false}]},
+  "mohawk": {"front": [{"shapes": [{"ell": ["hcx-0.4", "hcy-0.6", "hrx+0.4", "hry+0.6"], "sides": "E", "where": "y+0.5<=top+2.0"}, {"ell": ["hcx", "hcy-0.6", "hrx", "hry+0.9"], "sides": "S", "where": "abs(x+0.5-hcx)<=1.0 && y+0.5<=top+1.5"}, {"ell": ["hcx", "hcy-0.6", "hrx", "hry+0.9"], "sides": "N", "where": "abs(x+0.5-hcx)<=1.0"}], "colour": "hair"}]},
+  "tuft": {"front": [{"shapes": [{"px": [["fx-1", "top"], ["fx", "top-1"], ["fx", "top"], ["fx+1", "top"]]}], "colour": "hair"}]}
+ },
+ "hats": {
+  "hood": [{"shapes": [{"ell": ["hcx", "hcy", "hrx+1", "hry+0.9"], "sides": "N"}, {"ell": ["hcx", "hcy+3.5", "hrx+1.2", 2.2], "sides": "N"}, {"ell": ["hcx", "hcy", "hrx+1", "hry+0.9"], "sides": "S", "minus": {"head": true, "where": "y+0.5>=hcy-1.3 && abs(x+0.5-hcx)<=2.8"}}, {"ell": ["hcx", "hcy+3.5", "hrx+1.2", 2.2], "sides": "S", "minus": {"head": true, "where": "y+0.5>=hcy-1.3 && abs(x+0.5-hcx)<=2.8"}}, {"ell": ["hcx", "hcy", "hrx+1", "hry+0.9"], "sides": "E", "minus": {"head": true, "where": "y+0.5>=hcy-1.3 && x+0.5>=hcx+0.2"}}, {"ell": ["hcx", "hcy+3.5", "hrx+1.2", 2.2], "sides": "E", "minus": {"head": true, "where": "y+0.5>=hcy-1.3 && x+0.5>=hcx+0.2"}}], "colour": "hat"}],
+  "helmet": [{"shapes": [{"ell": ["hcx", "hcy", "hrx+0.6", "hry+0.6"], "where": "y+0.5<=hcy-0.6"}], "colour": "hat"}, {"shapes": [{"px": [["fx", "ey"]]}], "colour": "hat", "outline": false, "sides": "S"}],
+  "straw": [{"shapes": [{"ell": ["hcx", "top+2", "hrx+2.6", 1.8]}], "colour": "hat", "pattern": {"if": "(x+y)%3==0", "colour": "c*0.85"}}, {"shapes": [{"ell": ["hcx", "top+0.6", "hrx-1.2", 1.7]}], "colour": "hat"}],
+  "kerchief": [{"shapes": [{"ell": ["hcx", "hcy", "hrx+0.4", "hry+0.4"], "where": "y+0.5<=hcy-0.8", "sides": "SE"}, {"ell": ["hcx", "hcy", "hrx+0.4", "hry+0.4"], "sides": "N"}], "colour": "hat"}],
+  "cap": [{"shapes": [{"ell": ["hcx", "hcy-0.6", "hrx+0.3", "hry"], "where": "y+0.5<=hcy-1.4"}], "colour": "hat"}]
+ },
+ "feet": [{"shapes": [{"px": [["bx-2", "footy"], ["bx+2", "footy"]], "sides": "E", "when": "step==1"}, {"px": [["bx", "footy"]], "sides": "E", "when": "step==3"}, {"px": [["bx-1", "footy"], ["bx+1", "footy"]], "sides": "E", "when": "step!=1 && step!=3"}], "colour": "feet", "outline": false}, {"shapes": [{"px": [["bx-2", "footy"]], "sides": "SN", "when": "step!=1"}], "colour": "feet", "outline": false}, {"shapes": [{"px": [["bx+1", "footy"]], "sides": "SN", "when": "step!=3"}], "colour": "feet", "outline": false}],
+ "hands": [{"shapes": [{"px": [["trunc(bcx-brx)-1", "trunc(bcy+1)+sw"]]}], "colour": "skin", "sides": "SN"}, {"shapes": [{"px": [["trunc(bcx+brx)", "hy-sw"]]}], "colour": "skin", "sides": "SN"}, {"shapes": [{"px": [["trunc(bcx+brx)-1+sw", "hy"]]}], "colour": "skin", "sides": "E"}],
+ "cloak": {
+  "back": [{"shapes": [{"ell": ["bcx", "bcy-0.3", "brx+1.2", "bry+0.6"], "sides": "S"}, {"ell": ["bcx-0.6", "bcy-0.3", "brx+1.2", "bry+0.6"], "sides": "E"}], "colour": "cloak"}],
+  "front": [{"shapes": [{"ell": ["bcx", "bcy-0.3", "brx+1.2", "bry+0.6"]}], "colour": "cloak", "sides": "N"}, {"shapes": [{"px": [["bx-1", "trunc(bcy-bry)+1"], ["bx", "trunc(bcy-bry)+1"]]}], "colour": "gold", "flat": true, "sides": "S"}]
+ },
+ "wear": {
+  "shirt": [{"shapes": [{"body": true}], "colour": "wear"}],
+  "pants": [{"shapes": [{"body": true, "where": "y>=bcy+2.2"}], "colour": "wear"}],
+  "robe": [{"shapes": ["@robe"], "colour": "wear"}],
+  "mail": [{"shapes": [{"body": true}], "colour": "wear", "pattern": {"if": "(x+y)%2==1", "colour": "c*0.8"}}],
+  "belt": [{"shapes": ["@robe"], "colour": "wear", "where": "y==by", "outline": false}],
+  "apron": [{"shapes": [{"body": true, "where": "abs(x+0.5-bcx)<=2.6 && y>=bcy-2", "sides": "S"}, {"body": true, "where": "x+0.5>=bcx+brx-2.4 && y>=bcy-2", "sides": "E"}], "colour": "wear"}],
+  "tabard": [{"shapes": [{"body": true, "where": "abs(x+0.5-bcx)<=2.2", "sides": "S"}, {"body": true, "where": "x+0.5>=bcx+brx-2", "sides": "E"}], "colour": "wear"}],
+  "boots": [{"shapes": [{"body": true, "where": "y+0.5>=bcy+bry-1.6"}], "colour": "wear", "outline": false}],
+  "bag": [{"shapes": [{"px": [["bx-2", "by-4"], ["bx-1", "by-3"], ["bx", "by-2"], ["bx+1", "by-1"]]}], "colour": "wear*0.7", "outline": false, "sides": "S"}, {"shapes": [{"px": [["bx+2", "by"], ["bx+3", "by"], ["bx+2", "by+1"], ["bx+3", "by+1"]]}], "colour": "wear", "sides": "S"}, {"shapes": [{"px": [["bx-1", "by"], ["bx", "by"], ["bx-1", "by+1"], ["bx", "by+1"]]}], "colour": "wear", "sides": "E"}, {"shapes": [{"px": [["bx-3", "by"], ["bx-2", "by"], ["bx-3", "by+1"], ["bx-2", "by+1"]]}], "colour": "wear", "sides": "N"}],
+  "pack": [{"shapes": [{"rect": ["bx-2", "by-3", "bx+1", "by+1"]}], "colour": "wear", "sides": "N"}, {"shapes": [{"rect": ["trunc(bcx-brx)", "by-3", "trunc(bcx-brx)+1", "by+1"]}], "colour": "wear", "sides": "E"}, {"shapes": [{"px": [["bx-2", "by-4"], ["bx-2", "by-3"], ["bx+1", "by-4"], ["bx+1", "by-3"]]}], "colour": "wear*0.7", "outline": false, "sides": "S"}]
+ },
+ "tools": {
+  "spear": [{"shapes": [{"col": ["tx", 0, "ty+3"]}], "colour": "wood"}, {"shapes": [{"px": [["tx", 0], ["tx", 1]]}], "colour": "steel", "outline": false}],
+  "hammer": [{"shapes": [{"col": ["tx", "ty-1", "ty+1"]}], "colour": "wood"}, {"shapes": [{"rect": ["tx-1", "ty-3", "tx+1", "ty-2"]}], "colour": "iron"}],
+  "staff": [{"shapes": [{"col": ["tx", "trunc(hcy)-2", 18]}], "colour": "#6a4a28"}, {"shapes": [{"px": [["tx", "trunc(hcy)-3"]]}], "colour": "#c8a848"}],
+  "bread": [{"shapes": [{"rect": ["tx-1", "ty-1", "tx+1", "ty"]}], "colour": "#d89848"}],
+  "sickle": [{"shapes": [{"px": [["tx", "ty"], ["tx", "ty+1"]]}], "colour": "wood"}, {"shapes": [{"px": [["tx", "ty-1"], ["tx+1", "ty-2"], ["tx+1", "ty-3"], ["tx", "ty-4"]]}], "colour": "steel"}],
+  "axe": [{"shapes": [{"col": ["tx", "ty-2", "ty+1"]}], "colour": "wood"}, {"shapes": [{"px": [["tx+1", "ty-3"], ["tx+1", "ty-2"], ["tx+1", "ty-1"], ["tx+2", "ty-2"]]}], "colour": "steel"}],
+  "knife": [{"shapes": [{"px": [["tx", "ty"]]}], "colour": "wood"}, {"shapes": [{"px": [["tx", "ty-1"], ["tx", "ty-2"]]}], "colour": "steel", "outline": false}],
+  "sword": [{"shapes": [{"col": ["tx", "ty-7", "ty-1"]}], "colour": "steel"}, {"shapes": [{"px": [["tx-1", "ty"], ["tx", "ty"], ["tx+1", "ty"]]}], "colour": "#b89040", "outline": false}, {"shapes": [{"px": [["tx", "ty+1"]]}], "colour": "wood", "outline": false}],
+  "bow": [{"shapes": [{"px": [["tx", "ty-4"], ["tx+1", "ty-3"], ["tx+1", "ty-2"], ["tx+1", "ty-1"], ["tx+1", "ty"], ["tx+1", "ty+1"], ["tx", "ty+2"]]}], "colour": "wood"}, {"shapes": [{"col": ["tx", "ty-3", "ty+1"]}], "colour": "#e8e0c8", "outline": false}],
+  "stick": [{"shapes": [{"col": ["tx", "ty-3", "ty+3"]}], "colour": "wood"}],
+  "pick": [{"shapes": [{"col": ["tx", "ty-3", "ty+1"]}], "colour": "wood"}, {"shapes": [{"px": [["tx-1", "ty-3"], ["tx", "ty-4"], ["tx+1", "ty-3"]]}], "colour": "iron"}],
+  "spade": [{"shapes": [{"col": ["tx", "ty-4", "ty+1"]}], "colour": "wood"}, {"shapes": [{"rect": ["tx-1", "ty+2", "tx+1", "ty+3"]}], "colour": "iron"}],
+  "fork": [{"shapes": [{"col": ["tx", "ty-4", "ty+3"]}], "colour": "wood"}, {"shapes": [{"px": [["tx-1", "ty-5"], ["tx+1", "ty-5"], ["tx-1", "ty-6"], ["tx+1", "ty-6"], ["tx", "ty-5"]]}], "colour": "iron", "outline": false}],
+  "rod": [{"shapes": [{"px": [["tx", "ty+1"], ["tx", "ty"], ["tx", "ty-1"], ["tx", "ty-2"], ["tx+1", "ty-3"], ["tx+1", "ty-4"], ["tx+1", "ty-5"], ["tx+2", "ty-6"], ["tx+2", "ty-7"]]}], "colour": "wood", "outline": false}, {"shapes": [{"px": [["tx+3", "ty-6"], ["tx+3", "ty-5"], ["tx+3", "ty-4"], ["tx+3", "ty-3"]]}], "colour": "#d8e0e8", "outline": false}],
+  "needle": [{"shapes": [{"px": [["tx", "ty-1"], ["tx", "ty-2"]]}], "colour": "steel", "outline": false}],
+  "spindle": [{"shapes": [{"col": ["tx", "ty-2", "ty+1"]}], "colour": "wood"}, {"shapes": [{"px": [["tx-1", "ty+1"], ["tx+1", "ty+1"]]}], "colour": "#a06a38", "outline": false}, {"shapes": [{"px": [["tx", "ty-3"]]}], "colour": "#e8e0d0", "outline": false}],
+  "saw": [{"shapes": [{"px": [["tx", "ty"]]}], "colour": "wood"}, {"shapes": [{"px": [["tx", "ty-1"], ["tx", "ty-2"], ["tx", "ty-3"], ["tx", "ty-4"], ["tx+1", "ty-2"], ["tx+1", "ty-4"]]}], "colour": "steel"}],
+  "torch": [{"shapes": [{"col": ["tx", "ty-1", "ty+1"]}], "colour": "wood"}, {"shapes": [{"px": [["tx", "ty-2"]]}], "colour": "#e87828", "outline": false}, {"shapes": [{"px": [["tx", "ty-3"]]}], "colour": "#f8d848", "outline": false}],
+  "basket": [{"shapes": [{"rect": ["tx-1", "ty", "tx+1", "ty+1"]}], "colour": "straw", "pattern": {"if": "(x+y)%2==1", "colour": "c*0.8"}}],
+  "bucket": [{"shapes": [{"rect": ["tx-1", "ty", "tx+1", "ty+1"]}], "colour": "wood"}, {"shapes": [{"rect": ["tx-1", "ty", "tx+1", "ty"]}], "colour": "iron", "outline": false}]
+ },
+ "npc": {
+  "_doc": "how the people one meets look before their kind and their chosen look: a list entry is picked by the person id; *_one_in: chances",
+  "child_age": 13,
+  "bodies_m": ["norm", "norm", "thin", "fat"],
+  "bodies_f": ["fem"],
+  "skins": ["light", "light", "light", "mid", "light", "mid", "light", "dark"],
+  "hair_colours": ["#5a3a20", "#2a1a10", "#7a5030", "#d8a848", "#a85a30", "#3a2818"],
+  "grey_age": 55,
+  "grey": ["#b0b0a8"],
+  "hair_m": ["short"],
+  "hair_f": ["long", "bun", "braids", "long"],
+  "beard_age": 18,
+  "beard_one_in": 3,
+  "rare_one_in": 4,
+  "kerchief_pct": 40,
+  "kerchief": ["#e8e0d0"],
+  "stone": ["#8c8c86"]
+ }
+}
