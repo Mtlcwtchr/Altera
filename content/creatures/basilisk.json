@@ -52,7 +52,7 @@
    "id": "stone_gaze",
    "aspects": [
     [
-     "earth",
+     "stone",
      "+"
     ],
     [
@@ -60,11 +60,12 @@
      "~"
     ]
    ],
-   "form": "gaze",
+   "form": "bolt",
    "mods": {
     "power": 3
    },
-   "name_key": "spell.innate.stone_gaze"
+   "name_key": "spell.innate.stone_gaze",
+   "chance": 0.35
   }
  ],
  "hunt": {

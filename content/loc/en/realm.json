@@ -132,5 +132,6 @@
  "realm.place.sootwarren.name": "Sootwarren",
  "realm.place.emberpeak.name": "Emberpeak",
  "realm.place.wyrmcrag.name": "Wyrmcrag",
- "realm.place.ashen_spire.name": "Ashen Spire"
+ "realm.place.ashen_spire.name": "Ashen Spire",
+ "chronicle.realm.dragon_breath": "{fig} of {pol} breathed fire on {pol2}"
 }

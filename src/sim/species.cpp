@@ -7,6 +7,7 @@
 #include <fstream>
 
 #include "sim/content.hpp"
+#include "sim/magic.hpp"
 #include "sim/world.hpp"
 
 namespace altera::sim {
@@ -464,6 +465,23 @@ void raceAtBirth(World& w, Character& c) {
     const Content& ct = w.content();
     setRace(ct, c, c.race);
     // the gift (trait gifted) is rolled by the magic core (AL-116) from raceOf(..).giftedChance
+}
+
+bool innateStrike(World& w, Character* holder, const Json& innateSpells, EntityId target, const Vec2* at,
+                  const std::string& salt) {
+    if (!innateSpells.is_array() || innateSpells.empty()) return false;
+    Rng rng = w.rng(holder ? holder->id : target, "innate:" + salt);
+    bool any = false;
+    for (const auto& sj : innateSpells) {
+        if (!rng.chance(sj.value("chance", 1.0))) continue;
+        const Spell s = spellFromJson(sj);
+        CastTarget t;
+        t.who = target;
+        if (at) t.hasPos = true, t.at = *at;
+        const double power = sj.contains("mods") ? sj["mods"].value("power", 3.0) : 3.0;
+        any |= castStored(w, holder, s, t, power).cast;
+    }
+    return any;
 }
 
 // --- trolls in the sun --------------------------------------------------------------------

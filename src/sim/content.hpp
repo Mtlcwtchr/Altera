@@ -170,6 +170,7 @@ struct SpeciesDef {
     double sapience = 0.1;
     std::map<std::string, int> loot;
     std::vector<std::string> tags;
+    Json innateSpells = Json::array(); // a built-in spell (a basilisk's gaze): species.hpp innateStrike
 };
 
 struct NeedDef {
