@@ -926,6 +926,7 @@ Content Content::load(const std::string& dir) {
     c.build = parseBuild(f("build.json"));
     c.rooms = parseRooms(c.roomsJson);
     parseBackstories(f("backstories.json"), c);
+    c.charCreation = f("character_creation.json"); // AL-136
     {
         const Json names = f("names.json");
         const Json given = names.value("given", Json::object());

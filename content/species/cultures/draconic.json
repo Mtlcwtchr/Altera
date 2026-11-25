@@ -28,5 +28,14 @@
  "norms": {
   "tribute": "owed"
  },
+ "peoples": {
+  "default": {
+   "dragon": 1.0
+  }
+ },
+ "welcome": {
+  "dragon": 1.0
+ },
+ "welcome_other": 0.0,
  "_doc": "Драконы: высокомерная величавая речь, дань им положена."
 }

@@ -38,6 +38,10 @@ const sim::Json& worldSizes();
 sim::Json newGameOptions(const sim::Content& c, const ViewText& t, const NewGame& defaults);
 // The world file's config with the new game's choices put in.
 sim::Json worldConfig(const sim::Json& base, const NewGame& g);
+// AL-136: the character creation screen's rules (sim/charcreate creationRules) with names:
+// races (name, desc, aptitudes, affinity, look options, gift cost, welcome), talents,
+// flaws, nature, gift, attrs.list, the village's culture, the backstories' shifts.
+sim::Json creationJson(const sim::Content& c, const ViewText& t);
 // A new world, its AI installed, run `runHours` (the world starts at midnight);
 // nobody is led yet.
 std::unique_ptr<sim::World> makeWorld2d(const sim::Content& c, const sim::Json& base, const NewGame& g, double runHours);
@@ -48,6 +52,8 @@ std::unique_ptr<sim::World> makeWorld2d(const sim::Content& c, const sim::Json& 
 sim::Json dynastiesJson(const sim::World& w, const ViewText& t);
 // The player (player 1) begins: {id} leads that person; {backstory[, id]} a
 // newcomer of that backstory (on that person, else the sim's candidate);
+// {create: {backstory, race, sex, age, name, lang, traits, attrs, look}} a person made
+// on the creation screen (AL-136, command create_character);
 // {watch: true} leads nobody. "ok" or the sim's "rejected:..." reason.
 std::string beginAs(sim::World& w, const sim::Json& args);
 

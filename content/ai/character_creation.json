@@ -1,0 +1,198 @@
+{
+ "_doc": "AL-136: создание персонажа при новой игре (src/sim/charcreate.cpp, 2D-окно menu2d_view.cpp). Поверх предыстории: раса (races, только эти можно выбрать), пол, возраст в человеческой мере (age; настоящие годы считает вид), имя, таланты и изъяны по очкам (points; talents/flaws — черта → цена, изъяны возвращают очки; nature — бесплатные черты характера до max.nature), редкий дар (gift: цена base, по шансу вида gifted_chance масштабируется sqrt(base_chance/шанс), в пределах min..max), характеристики по шагам от base (cost за шаг выше base, ниже base шаг возвращает refund), внешность (look). Черты always предыстории даются сверх выбора. Двор игрока принимает его вид. Пришлый вид, которого культура деревни принимает хуже welcome_below (cultures/*.json welcome), начинает чужаком: outsider.relations, умноженные на (welcome_below − welcome)/welcome_below. Тексты: ui2d.cc.* (ui2d_create.json), species.<id>.name/.desc, trait.<id>.name/.desc, attr.<id>.name/.desc.",
+ "races": [
+  "human",
+  "elf",
+  "dwarf",
+  "half_elf",
+  "half_orc",
+  "orc",
+  "goblin",
+  "ogre",
+  "troll"
+ ],
+ "age": {
+  "min": 16,
+  "max": 60,
+  "default": 24
+ },
+ "points": 10,
+ "attrs": {
+  "base": 0.5,
+  "min": 0.3,
+  "max": 0.8,
+  "step": 0.05,
+  "cost": 1,
+  "refund": 1
+ },
+ "max": {
+  "talents": 3,
+  "flaws": 3,
+  "nature": 3
+ },
+ "gift": {
+  "trait": "gifted",
+  "base": 6,
+  "base_chance": 0.05,
+  "min": 3,
+  "max": 9
+ },
+ "talents": {
+  "quick_learner": 3,
+  "sharp_memory": 2,
+  "bookish": 2,
+  "born_storyteller": 2,
+  "lucky": 3,
+  "green_thumb": 2,
+  "silver_tongue": 3,
+  "born_leader": 3,
+  "animal_friend": 2,
+  "singer_born": 1,
+  "nimble_fingers": 2,
+  "brawny": 2,
+  "nimble": 2,
+  "keen_eyed": 2,
+  "tireless": 2,
+  "robust": 2,
+  "fast_healer": 2,
+  "iron_stomach": 1,
+  "charming": 2,
+  "handy": 2,
+  "hardy": 2
+ },
+ "flaws": {
+  "slow_learner": -2,
+  "forgetful": -1,
+  "unlucky": -2,
+  "puny": -2,
+  "clumsy": -2,
+  "dull_senses": -1,
+  "sickly": -3,
+  "frail": -2,
+  "off_putting": -1,
+  "lightweight": -1,
+  "careless": -1,
+  "lazy": -2,
+  "gluttonous": -1,
+  "slob": -1,
+  "fickle": -1
+ },
+ "nature": [
+  "diligent",
+  "sociable",
+  "loner",
+  "honest",
+  "unscrupulous",
+  "proud",
+  "family_minded",
+  "stubborn",
+  "pious",
+  "fastidious",
+  "curious",
+  "generous",
+  "ascetic",
+  "perfectionist",
+  "cheerful",
+  "melancholic",
+  "hot_tempered",
+  "patient",
+  "gossipy",
+  "tight_lipped",
+  "romantic",
+  "stoic",
+  "excitable",
+  "superstitious",
+  "skeptic",
+  "forgiving",
+  "unforgiving",
+  "jealous",
+  "dutiful",
+  "flaky",
+  "competitive",
+  "easygoing",
+  "nurturing",
+  "ambitious",
+  "modest",
+  "thrifty",
+  "spendthrift",
+  "hoarder",
+  "early_bird",
+  "night_owl",
+  "light_sleeper",
+  "heavy_sleeper",
+  "hard_drinker"
+ ],
+ "look": {
+  "body": {
+   "m": [
+    "norm",
+    "thin",
+    "fat"
+   ],
+   "f": [
+    "fem",
+    "thin",
+    "fat"
+   ]
+  },
+  "hair": [
+   "short",
+   "long",
+   "bun",
+   "braids",
+   "bald"
+  ],
+  "hair_colours": [
+   "#2a1a10",
+   "#3a2818",
+   "#5a3a20",
+   "#7a5030",
+   "#a85a30",
+   "#d8a848",
+   "#e8d8a0",
+   "#b0b0a8",
+   "#e8e8e0"
+  ],
+  "beard": [
+   "no",
+   "yes"
+  ],
+  "skins": {
+   "human": [
+    "#f0c8a0",
+    "#eab48a",
+    "#d8a07a",
+    "#c88a5c",
+    "#a86a44",
+    "#8a5a3a",
+    "#6a4028"
+   ]
+  },
+  "skin_shades": [
+   0.86,
+   1.0,
+   1.12
+  ],
+  "cloth": [
+   "#8a6a48",
+   "#6a4a30",
+   "#4a5a3a",
+   "#3a4a6a",
+   "#7a2a24",
+   "#8a7a3a",
+   "#5a3a5a",
+   "#a89a80",
+   "#3a3a3a"
+  ]
+ },
+ "welcome_below": 0.6,
+ "outsider": {
+  "relations": {
+   "village": {
+    "trust": -0.2,
+    "familiarity": -0.25,
+    "affinity": -0.1
+   }
+  }
+ }
+}

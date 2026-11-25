@@ -68,6 +68,8 @@ public:
     virtual bool spriteAt(const std::string& name, const Json& recolour, float x, float y, float size, float alpha = 1.0f) = 0;
     // a pawn of the person (from the people the window knows), or a lettered stone
     virtual void face(long long id, const std::string& name, float x, float y, float size) = 0;
+    // AL-136: a pawn drawn from a person-like JSON (sex, age, rskin, worn, look...) seen from `side` S|E|N|W
+    virtual void pawn(const Json& person, char side, float x, float y, float size) = 0;
     // --- the game
     virtual const Json& statics() const = 0;   // /api/static
     virtual const Json& map2d() const = 0;     // content/sprites_2d/map2d.json
@@ -159,6 +161,7 @@ private:
 // The screen files register here (each defined in its own .cpp).
 void openMenu(Ctx& c, Screens& s, const std::string& which, const Json& args);   // menu2d_view.cpp: menu, new, pick, saves
 void openChronicle(Ctx& c, Screens& s);                                            // menu2d_view.cpp
+void openCreate(Ctx& c, Screens& s, const std::string& backstory);                 // create2d_view.cpp (AL-136)
 void openTalk(Ctx& c, Screens& s, long long target, bool trade);                   // talk2d_view.cpp
 void openSheet(Ctx& c, Screens& s, long long id);                                  // sheet2d_view.cpp
 void openWorkshop(Ctx& c, Screens& s);                                             // craft2d_view.cpp

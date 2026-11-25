@@ -4,6 +4,7 @@
 #include <functional>
 #include <set>
 
+#include "sim/charcreate.hpp"
 #include "sim/content.hpp"
 #include "sim/craft/craft_validate.hpp"
 
@@ -555,6 +556,7 @@ ValidationReport validate(const Content& c) {
     }
     validateExpansion(c, r);
     validateBackstories(c, r);
+    validateCreation(c, r); // AL-136
     return r;
 }
 

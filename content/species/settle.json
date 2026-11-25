@@ -1,58 +1,43 @@
 {
- "_doc": "Какие виды живут где на старте мира. map: деревня карты (сейчас только люди — fantasy_european по умолчанию). realm_templates: смесь видов по шаблонам realm.json (доли). Новые жители и дети потом наследуют вид родителей (полукровки по interbreed).",
+ "_doc": "Какие виды живут где на старте мира (AL-114, AL-136). Состав задаёт культура: map и realm_templates ссылаются на культуру {culture, kind?, peoples?} — берётся cultures/<id>.json peoples[kind] (иначе peoples.default, иначе её вид), peoples здесь перекрывает доли. Можно и прямо {вид: доля}. map: деревня карты (kind village; мир может дать свой culture). Один вид на двор; новые жители и дети потом наследуют вид родителей (полукровки по interbreed). Как культура принимает чужаков — welcome в её файле.",
  "default_race": "human",
  "map": {
-  "human": 1.0
+  "culture": "fantasy_european",
+  "kind": "village"
  },
  "realm_templates": {
   "village": {
-   "human": 0.92,
-   "half_elf": 0.04,
-   "dwarf": 0.04
+   "culture": "fantasy_european"
   },
   "town": {
-   "human": 0.8,
-   "dwarf": 0.08,
-   "elf": 0.04,
-   "half_elf": 0.04,
-   "half_orc": 0.04
+   "culture": "fantasy_european"
   },
   "keep": {
-   "human": 0.95,
-   "dwarf": 0.05
+   "culture": "fantasy_european"
   },
   "monastery": {
-   "human": 1.0
+   "culture": "fantasy_european"
   },
   "bandit_camp": {
-   "human": 0.6,
-   "half_orc": 0.2,
-   "orc": 0.1,
-   "goblin": 0.1
+   "culture": "fantasy_european"
   },
   "dwarf_hold": {
-   "dwarf": 0.95,
-   "human": 0.05
+   "culture": "dwarven"
   },
   "elf_grove": {
-   "elf": 0.9,
-   "half_elf": 0.1
+   "culture": "sylvan"
   },
   "orc_hold": {
-   "orc": 0.8,
-   "goblin": 0.15,
-   "ogre": 0.05
+   "culture": "orcish"
   },
   "goblin_warren": {
-   "goblin": 0.9,
-   "troll": 0.05,
-   "ogre": 0.05
+   "culture": "goblin"
   },
   "troll_den": {
-   "troll": 1.0
+   "culture": "troll"
   },
   "dragon_lair": {
-   "dragon": 1.0
+   "culture": "draconic"
   }
  }
 }

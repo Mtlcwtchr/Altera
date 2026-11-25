@@ -333,6 +333,9 @@ struct Character {
     std::map<std::string, double> skills;
     std::map<std::string, double> attrs; // the 8 attributes 0..1 (expansion attributes.json); empty = not rolled
     std::string backstory;               // backstories.json id the player started as; empty = none
+    // AL-136: how the person looks, as chosen at the character's creation (body, skin, hair,
+    // hair_colour, beard, cloth; character_creation.json look). Empty = the client's own pick.
+    std::map<std::string, std::string> look;
     // AL-75 (sim/trade.hpp): the trade role (trader | tavernkeeper, "" = none) and the
     // deal state: {intent: the offer the next trade act makes, counter: the counter
     // this person made and waits an answer to, rounds: partner -> ticks of recent offers}.

@@ -24,5 +24,16 @@
  ],
  "forbid_aspects": [],
  "norms": {},
+ "peoples": {
+  "default": {
+   "troll": 1.0
+  }
+ },
+ "welcome": {
+  "troll": 1.0,
+  "ogre": 0.5,
+  "goblin": 0.4
+ },
+ "welcome_other": 0.1,
  "_doc": "Тролли: пещеры и болота, рычащая речь; до рассвета ищут тень."
 }

@@ -136,5 +136,14 @@
  "name.Nyxaleth": "Nyxaleth",
  "name.Sarthyss": "Sarthyss",
  "name.Vexmira": "Vexmira",
- "name.Ysolvane": "Ysolvane"
+ "name.Ysolvane": "Ysolvane",
+ "species.human.desc": "The most numerous people: first in nothing, last in nothing, quick to learn new things.",
+ "species.elf.desc": "A long-lived forest people: keen-eyed, nimble, close to the magic of life and air; slow to grow up.",
+ "species.dwarf.desc": "A sturdy mountain people: masters of stone and metal, hard against cold and poison, stubborn.",
+ "species.half_elf.desc": "Children of humans and elves: live longer than humans, get on with both peoples.",
+ "species.half_orc.desc": "Children of humans and orcs: stronger than humans, grow up faster, eyed warily in villages.",
+ "species.orc.desc": "A strong and fertile people: fighters and hunters, drawn to fire and blood; short-lived.",
+ "species.goblin.desc": "A small, quick and cunning people: see in the dark, can put anything to use.",
+ "species.ogre.desc": "A huge and heavy people: the strength of three, eats for five, learns reluctantly.",
+ "species.troll.desc": "A stone-skinned people: wounds close by themselves, but in the sun a troll turns to stone and sleeps."
 }

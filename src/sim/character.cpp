@@ -131,6 +131,7 @@ void to_json(Json& j, const Character& c) {
     if (!c.craft.empty()) j["craft"] = c.craft;
     if (!c.attrs.empty()) j["attrs"] = c.attrs;
     if (!c.backstory.empty()) j["backstory"] = c.backstory;
+    if (!c.look.empty()) j["look"] = c.look;
     if (!c.occupation.empty()) j["occupation"] = c.occupation;
     if (c.deal.is_object() && !c.deal.empty()) j["deal"] = c.deal;
     if (!c.worn.empty()) j["worn"] = c.worn;
@@ -155,6 +156,7 @@ void from_json(const Json& j, Character& c) {
     c.skills = j.value("skills", std::map<std::string, double>{});
     c.attrs = j.value("attrs", std::map<std::string, double>{});
     c.backstory = j.value("backstory", std::string());
+    c.look = j.value("look", std::map<std::string, std::string>{});
     c.occupation = j.value("occupation", std::string());
     c.deal = j.value("deal", Json::object());
     c.worn = j.value("worn", std::map<std::string, std::string>{});

@@ -386,6 +386,7 @@ void to_json(Json& j, const Settlement& s) {
         j["structures"] = a;
     }
     if (!s.peoples.empty()) j["peoples"] = s.peoples;
+    if (!s.culture.empty()) j["culture"] = s.culture;
 }
 void from_json(const Json& j, Settlement& s) {
     const Settlement d;
@@ -417,6 +418,7 @@ void from_json(const Json& j, Settlement& s) {
         s.tags = p.value("tags", d.tags), s.income = p.value("income", d.income);
     }
     s.peoples = j.value("peoples", std::map<std::string, double>{});
+    s.culture = j.value("culture", std::string());
     s.zones.clear();
     for (const auto& z : j.value("zones", Json::array())) {
         const auto r = z.value("rect", std::vector<double>{});

@@ -607,6 +607,7 @@ struct Content {
     ExpansionData expansion; // content/ai/expansion (not loaded = none)
     std::vector<BackstoryDef> backstories; // content/ai/backstories.json, file order (none = no choice)
     BackstoryConfig backstoryCfg;
+    Json charCreation = Json::object(); // AL-136: content/ai/character_creation.json (sim/charcreate.hpp)
     const BackstoryDef* backstory(const std::string& id) const {
         for (const auto& b : backstories)
             if (b.id == id) return &b;

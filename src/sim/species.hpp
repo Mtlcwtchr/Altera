@@ -83,6 +83,13 @@ struct CultureDef {
     std::string speech, buildStyle;
     std::vector<std::string> teachAspects, forbidAspects;
     Json norms = Json::object();
+    // AL-136: who lives in this culture's settlements, by settlement kind (village, town,
+    // keep, ...; "default" for any other): kind of people -> share. Empty = all `species`.
+    std::map<std::string, std::map<std::string, double>> peoples;
+    // How the culture takes people of other kinds who come to live among them:
+    // kind -> 0..1 (1 = as one of their own, 0 = a stranger; absent = `welcomeOther`).
+    std::map<std::string, double> welcome;
+    double welcomeOther = 0.5;
 };
 
 struct SpeciesCatalog {
@@ -90,8 +97,11 @@ struct SpeciesCatalog {
     std::string defaultRace = "human";
     std::map<std::string, RaceDef> races;
     std::map<std::string, CultureDef> cultures;
-    std::map<std::string, double> mapMix;                                 // settle.json map
-    std::map<std::string, std::map<std::string, double>> templateMix;     // settle.json realm_templates
+    std::map<std::string, double> mapMix;                                 // settle.json map (resolved)
+    std::map<std::string, std::map<std::string, double>> templateMix;     // settle.json realm_templates (resolved)
+    // AL-136: the culture of the map's village and of each realm template ("" = none named)
+    std::string mapCulture;
+    std::map<std::string, std::string> templateCulture;
     std::vector<std::string> errors;
 };
 
@@ -130,6 +140,14 @@ double raceBias(const Content& ct, const std::string& from, const std::string& t
 // at least `major` of them, "mixed" when two kinds are each at least `minor`.
 std::vector<std::string> peoplesTags(const Content& ct, const std::map<std::string, int>& count, double major = 0.7,
                                      double minor = 0.2);
+// AL-136: the mix of kinds in a settlement of `culture` of kind `settlementKind`
+// (the culture's peoples[kind], else peoples.default, else all of its species).
+// Empty when the culture is unknown.
+std::map<std::string, double> culturePeoples(const SpeciesCatalog& s, const std::string& culture,
+                                             const std::string& settlementKind);
+// How `culture` takes a newcomer of kind `race` (CultureDef::welcome), 1 for its own
+// species and for an unknown culture.
+double cultureWelcome(const SpeciesCatalog& s, const std::string& culture, const std::string& race);
 // Draws a kind from a mix (settle.json), deterministic by the rng.
 std::string drawRace(const std::map<std::string, double>& mix, Rng& rng, const std::string& fallback);
 

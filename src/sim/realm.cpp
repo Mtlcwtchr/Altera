@@ -968,6 +968,8 @@ Settlement& newSettlement(Ctx& x, Rng& rng, const std::string& tpl, const std::s
     for (const auto& g : t.tags) p.tags.insert(g);
     if (auto mx = x.w.content().peoples.templateMix.find(tpl); mx != x.w.content().peoples.templateMix.end())
         p.peoples = mx->second; // AL-114: who lives there
+    if (auto cu = x.w.content().peoples.templateCulture.find(tpl); cu != x.w.content().peoples.templateCulture.end())
+        p.culture = cu->second; // AL-136
     // what it has lived by so far (the last half-year): fields and work, as the numbers say
     p.income["fields"] = 0.5 * p.pop * num(x.r.eco, "year_yield_days", 400) * p.land * num(x.r.eco, "grain_price", 0.05);
     classify(x.r, p, x.day);

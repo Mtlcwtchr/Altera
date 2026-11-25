@@ -320,6 +320,7 @@ add_library(lr_sim STATIC
         src/sim/content.cpp
         src/sim/expansion.cpp
         src/sim/backstory.cpp
+        src/sim/charcreate.cpp
         src/sim/trade.cpp
         src/sim/collide.cpp
         src/sim/act_info.cpp
@@ -563,6 +564,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     target_sources(lr_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp
             tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
+            tools/game_2d/native/create2d_view.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
     target_include_directories(lr_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(lr_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
@@ -854,7 +856,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_farming.cpp tests/test_lr_sim_crafts.cpp
             tests/test_lr_sim_combat.cpp tests/test_lr_sim_captivity.cpp
             tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
-            tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp
+            tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
             tests/test_lr_sim_gear.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
             tests/test_lr_sim_consequences.cpp tests/test_lr_sim_dialogue_gen.cpp

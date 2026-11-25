@@ -36,5 +36,23 @@
  "norms": {
   "raiding": "honored"
  },
+ "peoples": {
+  "default": {
+   "orc": 0.8,
+   "goblin": 0.15,
+   "ogre": 0.05
+  }
+ },
+ "welcome": {
+  "orc": 1.0,
+  "half_orc": 0.9,
+  "goblin": 0.7,
+  "ogre": 0.7,
+  "troll": 0.5,
+  "human": 0.3,
+  "elf": 0.05,
+  "dwarf": 0.1
+ },
+ "welcome_other": 0.3,
  "_doc": "Орки: становища, грубая речь, набег почётен."
 }

@@ -354,6 +354,9 @@ std::string magicClass(const Content& c, const std::string& aspect) {
 }
 
 std::string settlementCulture(const World& w, EntityId sid) {
+    // AL-136: the settlement's own culture (worldgen / realm templates), else its ruler's kind's
+    if (const auto st = w.settlements().find(sid); st != w.settlements().end() && !st->second.culture.empty())
+        return st->second.culture;
     const Character* ruler = rulerOf(w, sid);
     if (!ruler) return "";
     const RaceDef& rd = raceOf(w.content(), *ruler);

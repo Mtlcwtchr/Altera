@@ -133,8 +133,20 @@ TEST(lr_sim_species_half_bloods) {
 TEST(lr_sim_species_mixed_village_worldgen) {
     Json cfg = worldCfg();
     cfg["peoples"] = {{"dwarf", 0.5}, {"human", 0.5}};
-    World a = makeTestWorld(realContent(), cfg, 11);
-    World b = makeTestWorld(realContent(), cfg, 11);
+    // AL-136: one kind per household, so a seed whose village has both
+    std::uint64_t seed = 11;
+    for (std::uint64_t s = 11; s < 40; ++s) {
+        const World t = makeTestWorld(realContent(), cfg, s);
+        int d = 0, n = 0;
+        for (const auto& [id, c] : t.characters())
+            if (!c.isAnimal()) ++n, d += c.race == "dwarf";
+        if (d > 0 && d < n) {
+            seed = s;
+            break;
+        }
+    }
+    World a = makeTestWorld(realContent(), cfg, seed);
+    World b = makeTestWorld(realContent(), cfg, seed);
     int dwarves = 0, people = 0;
     for (const auto& [id, c] : a.characters()) {
         if (c.isAnimal()) continue;
@@ -149,8 +161,19 @@ TEST(lr_sim_species_mixed_village_worldgen) {
     // a dwarf head of a household is a grown dwarf (the age in dwarf years)
     for (const auto& [id, c] : a.characters())
         if (c.race == "dwarf" && c.status.role == "head") CHECK(c.body.ageDays >= 30 * kDaysPerYear);
-    // the default village is all human, as before
-    World h = makeTestWorld(realContent(), worldCfg(), 11);
+    // AL-136: a household is of one kind
+    for (const auto& [fid, f] : a.families()) {
+        std::string kind = "?";
+        for (EntityId m : f.members)
+            if (const Character* c = a.character(m)) {
+                if (kind == "?") kind = c->race;
+                CHECK_EQ(c->race, kind);
+            }
+    }
+    // a village of one kind still is
+    Json hc = worldCfg();
+    hc["peoples"] = {{"human", 1.0}};
+    World h = makeTestWorld(realContent(), hc, 11);
     for (const auto& [id, c] : h.characters()) CHECK(c.race.empty());
 }
 

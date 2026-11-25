@@ -208,14 +208,64 @@ SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Js
         d.teachAspects = strs(j, "teach_aspects");
         d.forbidAspects = strs(j, "forbid_aspects");
         d.norms = j.value("norms", Json::object());
+        if (j.contains("peoples") && j["peoples"].is_object()) {
+            const Json& pj = j["peoples"];
+            // either one mix {kind: share} or mixes by settlement kind {village: {...}, default: {...}}
+            bool flat = true;
+            for (auto it = pj.begin(); it != pj.end(); ++it) flat = flat && it.value().is_number();
+            if (flat) d.peoples["default"] = dmap(j, "peoples");
+            else
+                for (auto it = pj.begin(); it != pj.end(); ++it) d.peoples[it.key()] = dmap(pj, it.key().c_str());
+        }
+        d.welcome = dmap(j, "welcome");
+        d.welcomeOther = num(j, "welcome_other", d.welcomeOther);
         if (!d.id.empty()) c.cultures[d.id] = d;
     }
     c.defaultRace = settle.value("default_race", c.defaultRace);
-    c.mapMix = dmap(settle, "map");
+    // AL-136: a settlement's mix is either written out {kind: share} or names a culture:
+    // {culture, kind?, peoples?} - the culture's mix for that kind of settlement, with
+    // `peoples` (if any) over it.
+    auto resolve = [&](const Json& e, const std::string& kind, std::string& culture) {
+        std::map<std::string, double> mix;
+        if (!e.is_object()) return mix;
+        if (e.contains("culture") && e["culture"].is_string()) {
+            culture = e["culture"].get<std::string>();
+            if (!c.cultures.count(culture)) c.errors.push_back("settle.json: unknown culture '" + culture + "'");
+            mix = culturePeoples(c, culture, e.value("kind", kind));
+            for (const auto& [k, v] : dmap(e, "peoples")) mix[k] = v;
+            for (auto it = mix.begin(); it != mix.end();) it = it->second <= 0.0 ? mix.erase(it) : std::next(it);
+            return mix;
+        }
+        for (auto it = e.begin(); it != e.end(); ++it)
+            if (it.value().is_number()) mix[it.key()] = it.value().get<double>();
+        return mix;
+    };
+    if (settle.contains("map")) c.mapMix = resolve(settle["map"], "village", c.mapCulture);
     if (settle.contains("realm_templates") && settle["realm_templates"].is_object())
-        for (auto it = settle["realm_templates"].begin(); it != settle["realm_templates"].end(); ++it)
-            c.templateMix[it.key()] = dmap(settle["realm_templates"], it.key().c_str());
+        for (auto it = settle["realm_templates"].begin(); it != settle["realm_templates"].end(); ++it) {
+            std::string cu;
+            c.templateMix[it.key()] = resolve(it.value(), it.key(), cu);
+            if (!cu.empty()) c.templateCulture[it.key()] = cu;
+        }
     return c;
+}
+
+std::map<std::string, double> culturePeoples(const SpeciesCatalog& s, const std::string& culture, const std::string& kind) {
+    const auto cu = s.cultures.find(culture);
+    if (cu == s.cultures.end()) return {};
+    if (auto it = cu->second.peoples.find(kind); it != cu->second.peoples.end()) return it->second;
+    if (auto it = cu->second.peoples.find("default"); it != cu->second.peoples.end()) return it->second;
+    if (!cu->second.species.empty()) return {{cu->second.species, 1.0}};
+    return {};
+}
+
+double cultureWelcome(const SpeciesCatalog& s, const std::string& culture, const std::string& race) {
+    const auto cu = s.cultures.find(culture);
+    if (cu == s.cultures.end()) return 1.0;
+    const std::string r = race.empty() ? s.defaultRace : race;
+    if (auto it = cu->second.welcome.find(r); it != cu->second.welcome.end()) return std::clamp(it->second, 0.0, 1.0);
+    if (r == cu->second.species) return 1.0;
+    return std::clamp(cu->second.welcomeOther, 0.0, 1.0);
 }
 
 SpeciesCatalog loadSpecies(const std::string& dir) {
@@ -330,6 +380,11 @@ void validateSpecies(const Content& c, ValidationReport& r) {
             if (!s.races.count(k)) r.errors.push_back("settle.json " + where + ": unknown kind '" + k + "'");
     };
     mix("map", s.mapMix);
+    for (const auto& [id, cu] : s.cultures) {
+        for (const auto& [kind, m] : cu.peoples) mix("culture " + id + " peoples." + kind, m);
+        for (const auto& [k, v] : cu.welcome)
+            if (!s.races.count(k)) r.errors.push_back("culture " + id + ": welcome names unknown kind '" + k + "'");
+    }
     for (const auto& [t, m] : s.templateMix) mix(t, m);
     // monsters: their loot must be items
     for (const auto& [id, sp] : c.species)

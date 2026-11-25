@@ -9,6 +9,8 @@
 
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
+#include "sim/charcreate.hpp"
+#include "sim/species.hpp"
 #include "sim/worldgen.hpp"
 
 namespace lr::client2d {
@@ -127,7 +129,52 @@ Json newGameOptions(const Content& c, const ViewText& t, const NewGame& d) {
                          {"gear", gear},
                          {"coins", b.coins}});
     }
-    return {{"sizes", sizes}, {"seasons", seasons}, {"backstories", backs}, {"defaults", d.toJson()}};
+    return {{"sizes", sizes}, {"seasons", seasons}, {"backstories", backs}, {"defaults", d.toJson()}, {"create", creationJson(c, t)}};
+}
+
+Json creationJson(const Content& c, const ViewText& t) {
+    // AL-136: the rules of sim/charcreate with the names in the player's language
+    const std::string culture = c.peoples.mapCulture;
+    Json r = creationRules(c, culture);
+    auto desc = [&](const std::string& key) { return t.loc && t.loc->has(t.lang, key) ? t.loc->text(t.lang, key) : std::string(); };
+    r["culture"] = {{"id", culture}, {"name", t.name("culture", culture)}};
+    for (auto& e : r["races"]) {
+        const std::string id = e["id"];
+        e["name"] = t.name("species", id);
+        e["desc"] = desc("species." + id + ".desc");
+        for (auto& a : e["aptitudes"]) a["name"] = t.name("knowledge", a["skill"].get<std::string>());
+        Json aff = Json::array();
+        const Json affinity = e.value("affinity", Json::object());
+        for (const auto& [asp, v] : affinity.items())
+            aff.push_back({{"id", asp}, {"name", t.name("aspect", asp)}, {"v", v}});
+        e["affinity"] = aff;
+    }
+    auto names = [&](Json& list) {
+        for (auto& x : list) {
+            const std::string id = x["id"];
+            x["name"] = t.name("trait", id);
+            x["desc"] = desc("trait." + id + ".desc");
+        }
+    };
+    names(r["talents"]);
+    names(r["flaws"]);
+    Json nature = Json::array();
+    for (const auto& id : r["nature"]) nature.push_back({{"id", id}, {"name", t.name("trait", id.get<std::string>())}, {"desc", desc("trait." + id.get<std::string>() + ".desc")}});
+    r["nature"] = nature;
+    const std::string gift = r["gift"]["trait"];
+    r["gift"]["name"] = t.name("trait", gift);
+    r["gift"]["desc"] = desc("trait." + gift + ".desc");
+    Json attrs = Json::array();
+    for (const auto& id : r["attrs"]["ids"]) {
+        const std::string a = id;
+        attrs.push_back({{"id", a}, {"name", t.name("attr", a)}, {"desc", desc("attr." + a + ".desc")}});
+    }
+    r["attrs"]["list"] = attrs;
+    // the backstories' attribute shifts and fixed traits by id (the screen shows them over the choice)
+    Json backs = Json::object();
+    for (const BackstoryDef& b : c.backstories) backs[b.id] = {{"attrs", b.attrs}, {"traits", b.traitsAlways}};
+    r["backstory"] = backs;
+    return r;
 }
 
 Json worldConfig(const Json& base, const NewGame& g) {
@@ -210,7 +257,12 @@ std::string beginAs(World& w, const Json& args) {
         return "ok";
     }
     const std::string back = args.value("backstory", std::string());
-    if (!back.empty()) {
+    if (args.contains("create") && args["create"].is_object()) {
+        // AL-136: a character made on the creation screen
+        cmd.type = "create_character";
+        cmd.args = args["create"];
+        cmd.args["player"] = 1;
+    } else if (!back.empty()) {
         cmd.type = "start_backstory";
         cmd.args = {{"backstory", back}, {"player", 1}};
         if (args.value("id", kNone) != kNone) cmd.args["id"] = args["id"];
