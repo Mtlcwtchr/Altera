@@ -256,6 +256,8 @@ std::string beginAs(World& w, const Json& args) {
             }
         return "ok";
     }
+    // LR-138: the start of a game: whom to be is chosen anew, and with it the house
+    forgetHouse(w, 1);
     const std::string back = args.value("backstory", std::string());
     if (args.contains("create") && args["create"].is_object()) {
         // AL-136: a character made on the creation screen
