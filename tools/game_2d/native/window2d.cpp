@@ -227,7 +227,7 @@ struct Window::Impl : Ctx {
     float mouseK = 1.0f;     // window coordinates -> output pixels
 
     // --- the game as the routes tell it ---------------------------------------
-    Json ST, MAP, RES;
+    Json ST, MAP, RES, LOOK;
     std::map<std::string, std::string> UI;
     SpriteSet sprites;
     std::vector<std::pair<std::regex, std::string>> actsRe;
@@ -345,6 +345,17 @@ struct Window::Impl : Ctx {
     }
     const Json& statics() const override { return ST; }
     const Json& map2d() const override { return MAP; }
+    const Json& craftLook() const override { return LOOK; }
+    const Json& resources() const override { return RES; }
+    void walkTo(double x, double y) override {
+        if (me < 0 || !vis.count(me)) return;
+        rebuildWalls();
+        std::vector<std::pair<double, double>> found;
+        if (findPath(vis[me].x, vis[me].y, x, y, found)) {
+            path = found;
+            markerX = std::floor(x) + 0.5, markerY = std::floor(y) + 0.5, markerAt = nowMs();
+        } else toast(L("ui2d.no_way"));
+    }
     const std::vector<Json>& peopleList() const override { return people; }
     long long meId() const override { return me; }
     long long selected() const override { return selId; }
@@ -667,6 +678,8 @@ struct Window::Impl : Ctx {
         sprites.load(parseOr(readText(dir / "sprites.json"), Json::object()));
         MAP = parseOr(readText(dir / "map2d.json"), Json::object());
         RES = parseOr(readText(dir / "resources.json"), Json());
+        LOOK = parseOr(readText(dir / "craft2d.json"), Json::object());
+        sprites.merge(LOOK);
         for (const auto& a : MAP.value("acts", Json::array()))
             if (a.is_array() && a.size() >= 2) try {
                     actsRe.push_back({std::regex(a[0].get<std::string>(), std::regex::ECMAScript), a[1].get<std::string>()});
