@@ -74,6 +74,7 @@ public:
     virtual const Json& craftLook() const = 0; // content/sprites_2d/craft2d.json
     virtual const Json& resources() const = 0; // content/sprites_2d/resources.json
     virtual void walkTo(double x, double y) = 0;   // the led person walks there by the cells
+    virtual void refreshMap() = 0;                 // the ground chunks ask again (the plan changed)
     virtual const Json* person(long long id) const = 0;
     virtual const std::vector<Json>& peopleList() const = 0;
     virtual long long meId() const = 0;
@@ -125,14 +126,15 @@ public:
     Win& push(std::unique_ptr<Win> w);   // a window of a screen file
     void close(const std::string& id);
     void closeTop();
+    void closeAll();
     // the frame: draws the windows (top last), true when they take the mouse
     void draw();
     void drawWorld();   // overlays on the map under the windows (build mode)
     // a key not typed into a field: true when a screen took it
     bool key(SDL_Scancode sc, SDL_Keymod mod);
     void polled();   // after each state poll
-    // the map was clicked (build mode takes it)
-    bool mapClick(double wx, double wy, int button, bool down);
+    // the pointer over the map at (wx, wy) this frame: true when a mode (build) takes it
+    bool mapInput(double wx, double wy, const ui::Input& in, bool overUi);
     // the person menu's extra buttons (talk, trade) for a target person
     void personButtons(long long target, std::vector<std::pair<std::string, std::function<void()>>>& out);
     // the column's screen buttons
@@ -164,7 +166,8 @@ void openColony(Ctx& c, Screens& s);                                            
 void openBuild(Ctx& c, Screens& s);                                                // build2d_view.cpp
 bool buildActive(const Screens& s);
 void buildDrawWorld(Ctx& c, Screens& s);
-bool buildMapClick(Ctx& c, Screens& s, double wx, double wy, int button, bool down);
+void buildPanel(Ctx& c, Screens& s);
+bool buildMapInput(Ctx& c, Screens& s, double wx, double wy, const ui::Input& in, bool overUi);
 bool buildKey(Ctx& c, Screens& s, SDL_Scancode sc);
 
 } // namespace game2d
