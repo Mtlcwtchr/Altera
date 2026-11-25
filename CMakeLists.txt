@@ -410,6 +410,7 @@ add_library(altera_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.c
 target_include_directories(altera_client2d PUBLIC src)
 target_link_libraries(altera_client2d PUBLIC altera_sim PRIVATE asr_warnings)
 target_sources(altera_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
+target_sources(altera_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 add_executable(altera_game_2d tools/game_2d/main.cpp)
 target_link_libraries(altera_game_2d PRIVATE altera_client2d asr_warnings)
 if(WIN32)
@@ -550,7 +551,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
     target_sources(altera_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp
-            tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp
+            tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
     target_include_directories(altera_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(altera_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
@@ -862,6 +863,7 @@ if(ASR_BUILD_TESTS)
             tests/test_altera_client2d_craft.cpp
             tests/test_altera_build2d.cpp)
     target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sheet.cpp)   # AL-100
+    target_sources(altera_sim_tests PRIVATE tests/test_altera_client2d_sky.cpp)     # AL-110
     target_include_directories(altera_sim_tests PRIVATE src tests)
     target_link_libraries(altera_sim_tests PRIVATE altera_sim altera_client2d asr_warnings)
     target_compile_definitions(altera_sim_tests PRIVATE ALTERA_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
