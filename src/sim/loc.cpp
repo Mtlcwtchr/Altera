@@ -629,7 +629,7 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref((std::string("realm.") + k).c_str(), s);
             } else if (k == "aspect" || k == "from_aspect") { // AL-116: magic
                 a[k] = ref("aspect", s);
-            } else if (k == "how" || k == "mind") {
+            } else if (k == "how" || k == "mind" || k == "class") { // AL-118: magic.class.<id>
                 a[k] = ref((std::string("magic.") + k).c_str(), s);
             } else if (k == "why" || k == "for") {
                 a[k] = reasonText(loc, lang, s);

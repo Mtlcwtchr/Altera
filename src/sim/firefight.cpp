@@ -7,6 +7,7 @@
 #include <vector>
 
 #include "sim/building.hpp"
+#include "sim/magic.hpp"
 #include "sim/world.hpp"
 #include "sim/world_fields.hpp"
 #include "sim/world_reactions.hpp"
@@ -69,7 +70,7 @@ bool waterNear(const World& w, const FirefightRule& R, Vec2 at) {
 
 bool able(const World& w, const Character& c) {
     return c.body.alive && !c.isAnimal() && !c.controller.isPlayer() && !c.captivity.held() && w.now() >= c.body.downUntil &&
-           c.body.stage() == "adult" && !c.ai.social.active() && c.body.health > 0.4;
+           c.body.stage() == "adult" && !isUndead(c) && !c.ai.social.active() && c.body.health > 0.4;
 }
 
 } // namespace

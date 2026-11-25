@@ -486,5 +486,40 @@
   "Oh... sorry I brought it up."
  ],
  "goal.share_news.name": "Share the news",
- "goal.share_news.thought": "Someone ought to hear what I heard."
+ "goal.share_news.thought": "Someone ought to hear what I heard.",
+ "say.news.tell.kind.magic": [
+  "Heard, {listener}? {news}. Wonders, truly.",
+  "Magic, I tell you: {news_lc}.",
+  "{news}. I didn't see it myself, but people say so."
+ ],
+ "say.news.discuss.kind.magic": [
+  "I keep thinking of that magic: {news_lc}. Good or ill?",
+  "{news}. Not everyone has the gift."
+ ],
+ "say.news.tell.kind.dark_magic": [
+  "Quiet, {listener}... {news}. Unclean doings.",
+  "Heard? {news}. Bar your door at night.",
+  "Dreadful things: {news_lc}. Spare us."
+ ],
+ "say.news.discuss.kind.dark_magic": [
+  "I can't stop thinking: {news_lc}. The dead should lie still.",
+  "{news}. It makes my skin crawl."
+ ],
+ "say.news.tell.kind.witch_trial": [
+  "They tried a witch, {listener}! {news}.",
+  "Heard how it ended? {news}.",
+  "So it came to us too: {news_lc}."
+ ],
+ "say.news.discuss.kind.witch_trial": [
+  "I keep thinking of the trial: {news_lc}. Was it just?",
+  "{news}. Harsh, but maybe it had to be."
+ ],
+ "say.news.tell.kind.dragon": [
+  "Good news, {listener}! {news}.",
+  "Heard? {news}. They'll make songs of it."
+ ],
+ "say.news.discuss.kind.dragon": [
+  "The dragon is slain: {news_lc}. We can breathe again.",
+  "{news}. Now that was a deed."
+ ]
 }
