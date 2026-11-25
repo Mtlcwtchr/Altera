@@ -429,7 +429,7 @@ TEST(lr_sim_content_expansion_merged) {
     CHECK(c.knowledge.size() >= 69);
     CHECK(c.knowledge.count("singing") && c.knowledge.count("trapping"));
     CHECK(c.traits.count("quick_learner") && c.traits.count("night_owl"));
-    CHECK_EQ(x.attributes.size(), std::size_t(8));
+    CHECK_EQ(x.attributes.size(), std::size_t(16)); // LR-141: content/ai/stats/stats.json
     CHECK(x.interests.size() >= 42);
     CHECK(x.temperaments.size() >= 20);
     CHECK(x.calendar.contains("events"));
@@ -438,7 +438,7 @@ TEST(lr_sim_content_expansion_merged) {
     CHECK_EQ(c.knowledge.at("farming").start, std::string("all_from_youth"));
     CHECK(c.items.at("ale").nutrition > 0.0);
     // base knowledge annotated from the expansion
-    CHECK(x.knowledgeExt.count("foraging") && x.knowledgeExt.at("foraging").contains("attrs"));
+    CHECK(x.knowledgeExt.count("foraging") && x.knowledgeExt.at("foraging").contains("category"));
     // new HTN methods sit on the existing tasks
     bool sing = false;
     for (const auto& m : c.task("have_fun_task")->methods) sing |= m.id == "fun_sing";

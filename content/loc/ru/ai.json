@@ -788,5 +788,7 @@
  "trait.stubborn.desc": "Взявшись за дело, не бросает.",
  "trait.stubborn.name": "Упрямый",
  "trait.unscrupulous.desc": "Чужое для него не святое.",
- "trait.unscrupulous.name": "Беспринципный"
+ "trait.unscrupulous.name": "Беспринципный",
+ "moodlet.bored.name": "Заскучал",
+ "moodlet.spellbound.name": "Заслушался"
 }

@@ -364,5 +364,7 @@
  "trait.stubborn.desc": "Never drops what they started.",
  "trait.stubborn.name": "Stubborn",
  "trait.unscrupulous.desc": "Other people's things are fair game.",
- "trait.unscrupulous.name": "Unscrupulous"
+ "trait.unscrupulous.name": "Unscrupulous",
+ "moodlet.bored.name": "Bored",
+ "moodlet.spellbound.name": "Spellbound"
 }
