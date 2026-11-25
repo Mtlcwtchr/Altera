@@ -1431,6 +1431,7 @@ struct Window::Impl : Ctx {
     std::vector<RoomBox> roomBoxes;
     std::vector<std::array<float, 5>> panes;          // lit windows: screen x, y, w, h, strength
     std::vector<std::array<double, 3>> torches;        // world x, y, key
+    std::vector<std::array<double, 3>> fxFlames;       // the sim's fires: world x, y, strength
     double atmosLast = 0;
 
     int roomAt(double x, double y) const {
@@ -1474,7 +1475,7 @@ struct Window::Impl : Ctx {
         const double frac = paused ? 0.0 : std::clamp((t - lastPoll) / 1000.0 * tps, 0.0, 1.0);
         atmos.update(clock.value("sky", Json()), clock.value("sky_next", Json()), frac, dt, t / 1000);
         atmos.frame(mapW(), mapH(), camX, camY, tilePx(), float(sc));
-        wlights.clear(), panes.clear(), torches.clear(), roomBoxes.clear();
+        wlights.clear(), panes.clear(), torches.clear(), roomBoxes.clear(), fxFlames.clear();
         if (!atmos.enabled) return;
         const SkyNow& k = atmos.sky();
         const double tp = tilePx(), hour = num(clock.value("sky", Json::object()), "hour", 12);
@@ -1596,7 +1597,25 @@ struct Window::Impl : Ctx {
                 torches.push_back({v->second.x, v->second.y, double(ident(p, "id"))});
             }
         // lights the sim gives (fire, magic: [{x, y, r, rgb, i, flicker}]) when it does
-        for (const auto& sl : clock.value("lights", Json::array())) {
+        // AL-115: the sim's own fire, magic, steam (/api/state world_fx, metres of the world)
+        const Json wfx = clock.value("world_fx", Json::object());
+        fxFlames.clear();
+        for (const auto& f : wfx.value("fx", Json::array())) {
+            if (!f.is_object()) continue;
+            const std::string kind = str(f, "kind");
+            const double x = num(f, "x"), y = num(f, "y"), st = std::clamp(num(f, "strength", 1), 0.0, 1.5);
+            const std::uint64_t key = std::uint64_t(x * 977 + y * 31) ^ 0x5bd1e995u;
+            if (kind == "flame") {
+                WLight l;
+                l.x = x, l.y = y, l.r = 3 + 4 * st, l.i = std::min(1.0, 0.6 + 0.4 * st), l.flicker = 0.45, l.key = key;
+                l.rgb[0] = 1.0, l.rgb[1] = 0.55, l.rgb[2] = 0.2;
+                wlights.push_back(l);
+                fxFlames.push_back({x, y, st});
+                atmos.addSmoke(x, y - 0.3, key, st, 2);
+            } else if (kind == "steam") atmos.addSmoke(x, y, key, st, 1);
+            else if (kind == "smoke") atmos.addSmoke(x, y, key, st, 0);
+        }
+        for (const auto& sl : wfx.value("lights", clock.value("lights", Json::array()))) {
             if (!sl.is_object()) continue;
             WLight l;
             l.x = num(sl, "x"), l.y = num(sl, "y"), l.r = num(sl, "r", 4), l.i = num(sl, "i", 1), l.flicker = num(sl, "flicker", 0.2);
@@ -1691,6 +1710,17 @@ struct Window::Impl : Ctx {
             atmos.glow(sx + 5 * s, sy - 13 * s, 1.5f * s, 1 * s, 0.45, 0.3, 0.18, 1.0);              // the stick
             atmos.glow(sx + 5 * s, sy - float(15 + f) * s, 1.5f * s, float(2 + f) * s, 1.0, 0.62, 0.2, 0.95);   // the flame
             atmos.glow(sx + 5.25f * s, sy - 14.5f * s, 1 * s, 1 * s, 1.0, 0.95, 0.6, 1.0);
+        }
+        for (const auto& f : fxFlames) {   // tongues of the sim's fires
+            float sx, sy;
+            toScreen(f[0], f[1], sx, sy);
+            const std::uint64_t key = std::uint64_t(f[0] * 977 + f[1] * 31);
+            for (int k = 0; k < 3; ++k) {
+                const double fl = atmos.flick(key + k * 131, 0.8);
+                const float w = float((2.5 + f[2] * 2) * s), hgt = float((4 + f[2] * 5) * fl * s), ox = float((k - 1) * 3) * s;
+                atmos.glow(sx + ox - w / 2, sy - hgt, w, hgt, 1.0, 0.45 + 0.15 * k, 0.12, 0.85);
+                atmos.glow(sx + ox - w / 4, sy - hgt * 0.6f, w / 2, hgt * 0.6f, 1.0, 0.9, 0.5, 0.9);
+            }
         }
         atmos.drawPrecip();
     }

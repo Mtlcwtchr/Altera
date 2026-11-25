@@ -161,14 +161,12 @@ Sky2d skyAt(const sim::World& w, const Json& cfg, sim::Tick tick) {
     const double near = std::max({rainAt(c, epochDay, std::max(0.0, h - 1.0)), rainAt(c, epochDay, std::min(23.99, h + 1.0)), s.precipMmH});
     if (near > 0.02) s.cloud = std::max(s.cloud, 0.7 + 0.3 * std::min(1.0, near / 3.0));
 
-    // wind: the prevailing, turned a little each day, gusting by the hour
+    // wind: the sim's day wind (AL-115: DayWeather.windFromDeg, clockwise from north = -y; fire
+    // spreads by it), turned a little and gusting by the hour, stronger in rain and storms
     const Json& wd = sub(cfg, "wind");
-    const double from = val(wd, "from_deg", 270) + val(wd, "turn", 70) * vnoise(c.salt("wind_dir"), epochDay / 3.0) +
-                        20.0 * vnoise(c.salt("wind_dir_h"), (dayN * 24.0 + h) / 3.0);
-    const double to = (from + 180.0) * kPi / 180.0;
-    s.windX = std::cos(to), s.windY = std::sin(to);
-    s.wind = val(wd, "calm", 0.8) + val(wd, "spread", 6.5) * std::pow(hashU(c.salt("wind"), epochDay), 1.4) +
-             val(wd, "rain_boost", 3.0) * s.intensity + val(wd, "storm_boost", 6.0) * s.thunder;
+    const double from = (dw.windFromDeg + 20.0 * vnoise(c.salt("wind_dir_h"), (dayN * 24.0 + h) / 3.0)) * kPi / 180.0;
+    s.windX = -std::sin(from), s.windY = std::cos(from);   // where it blows to
+    s.wind = dw.windMs + val(wd, "rain_boost", 3.0) * s.intensity + val(wd, "storm_boost", 6.0) * s.thunder;
     s.wind = std::max(0.0, s.wind * (1.0 + 0.3 * vnoise(c.salt("gust"), (dayN * 24.0 + h) * 1.5)));
 
     // fog: some mornings, more after a wet day, blown off by the wind; a haze in rain and snow
