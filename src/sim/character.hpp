@@ -343,6 +343,11 @@ struct Character {
     std::vector<Wound> wounds;
     std::vector<Injury> injuries;
     Vec2 pos;
+    // AL-108: where the character looks (a unit vector, +y = south on the map):
+    // at the target of the act going on, else where it walks (faceAll in the
+    // AI tick). Not saved: the first tick after a load sets it again.
+    Vec2 facing{0.0, 1.0};
+    Vec2 seenPos;          // pos at the last faceAll (the walk's direction)
     EntityId home = kNone; // the family's storage object
     Controller controller;
     Captivity captivity;

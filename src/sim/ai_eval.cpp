@@ -326,6 +326,31 @@ double reachOf(const World& w, const InteractionDef& d) {
     return d.rangeM > 0.0 ? d.rangeM : w.content().config.interactionRangeM;
 }
 
+bool isRanged(const World& w, const InteractionDef& d) { return d.rangeM >= w.content().config.rangedFromM; }
+
+namespace {
+double standOf(const World& w, const WorldObject* o) {
+    if (!o) return 0.0;
+    const auto od = w.content().objects.find(o->type);
+    return od != w.content().objects.end() ? od->second.standM : 0.0;
+}
+} // namespace
+
+double approachOf(const World& w, const InteractionDef& d, const WorldObject* target) {
+    const AiConfig& cfg = w.content().config;
+    if (isRanged(w, d)) return std::max(1.0, reachOf(w, d) * 0.8);
+    if (d.targetsObject()) return standOf(w, target);
+    return std::min(cfg.contactM, reachOf(w, d) * 0.8);
+}
+
+double workReachOf(const World& w, const InteractionDef& d, const WorldObject* target) {
+    const AiConfig& cfg = w.content().config;
+    if (isRanged(w, d)) return reachOf(w, d);
+    const double r = std::min(reachOf(w, d), cfg.contactM + cfg.contactSlackM);
+    if (d.targetsObject()) return std::max(r, standOf(w, target) + 0.25);
+    return r;
+}
+
 EntityId findCreature(const World& w, const std::string& species, Vec2 from, double radius, EntityId family) {
     EntityId best = kNone;
     double bd = radius;
@@ -414,20 +439,18 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
         if (target->type != d.targetType) return fail("wrong_target:" + d.targetType);
         if (target->reservedFor(c.id, w.now())) return fail("reserved:" + d.targetType);
         if (!w.inSeason(*target)) return fail("season:" + d.targetType);
-        if (checkRange) {   // AL-78: one stands beside a thing (stand_m), so it is in reach from there
-            const auto od = w.content().objects.find(target->type);
-            const double stand = od != w.content().objects.end() ? od->second.standM : 0.0;
-            if (dist(target->pos, c.pos) > std::max(reachOf(w, d), stand + 0.25)) return fail("out_of_range:" + d.targetType);
-        }
+        // AL-78: one stands beside a thing (stand_m), so it is in reach from there;
+        // AL-108: and close by, not from across the yard
+        if (checkRange && dist(target->pos, c.pos) > workReachOf(w, d, target)) return fail("out_of_range:" + d.targetType);
     }
     if (d.targetsCharacter() && targetChar) { // without a person only the actor's side is checked
         if (!targetChar->body.alive || targetChar->isAnimal()) return fail("no_person");
-        if (checkRange && dist(targetChar->pos, c.pos) > reachOf(w, d)) return fail("out_of_range:person");
+        if (checkRange && dist(targetChar->pos, c.pos) > workReachOf(w, d)) return fail("out_of_range:person");
     }
     if (d.targetsCreature()) {
         if (!targetChar || !targetChar->body.alive || targetChar->species != d.targetType)
             return fail("no_target:" + d.targetType);
-        if (checkRange && dist(targetChar->pos, c.pos) > reachOf(w, d)) return fail("out_of_range:" + d.targetType);
+        if (checkRange && dist(targetChar->pos, c.pos) > workReachOf(w, d)) return fail("out_of_range:" + d.targetType);
         // A shoal fished down to its spawning stock gives nothing more for now.
         int heads = 0;
         for (const auto& e : d.eff)

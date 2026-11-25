@@ -147,6 +147,9 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
         }
         if (c.ai.fsm.interaction == "goto" || c.ai.fsm.state == "Move")
             p["dest"] = Json::array({r2(c.ai.fsm.dest.x), r2(c.ai.fsm.dest.y)});
+        // AL-108: where the person looks (the act's target, the walk's way): the pawn's side
+        p["fx"] = r2(c.facing.x);
+        p["fy"] = r2(c.facing.y);
         if (!c.isAnimal()) {
             Json worn = Json::array();
             for (const auto& [slot, item] : c.worn) worn.push_back(item);

@@ -200,7 +200,8 @@ bool tickFsm(World& w, Character& c) {
             const InteractionDef* nd = pl.actionIndex + 1 < pl.actions.size()
                                            ? w.content().interaction(pl.actions[pl.actionIndex + 1].interaction)
                                            : nullptr;
-            const double reach = std::max(1.0, (nd ? reachOf(w, *nd) : cfg.interactionRangeM) * 0.8);
+            // AL-108: up close for an act done by hand, a throw away for a hunt
+            const double reach = nd ? approachOf(w, *nd) : cfg.contactM;
             const double dd = dist(c.pos, tc->pos);
             if (!tc->body.alive) {
                 replanStep(w, c, "fsm.lost:target_gone");
@@ -242,6 +243,18 @@ bool tickFsm(World& w, Character& c) {
     }
     WorldObject* target = w.object(f.target);
     Character* creature = (d->targetsCreature() || d->targetsCharacter()) ? w.character(f.target) : nullptr;
+    // AL-108: a person or a herd that moves off during the act is followed
+    // (one keeps by the goats being milked); a ranged act keeps its range.
+    if (creature && creature->body.alive && !isRanged(w, *d) && creature->id != c.id) {
+        const double dd = dist(c.pos, creature->pos);
+        const double keep = approachOf(w, *d);
+        if (dd > workReachOf(w, *d) && dd > 1e-9) {
+            const double go = std::min(dd - keep, cfg.walkMPerTick);
+            c.pos.x += (creature->pos.x - c.pos.x) * go / dd;
+            c.pos.y += (creature->pos.y - c.pos.y) * go / dd;
+            f.dest = creature->pos;
+        }
+    }
     --f.timer;
     if (d->continuous) {
         applyEffects(w, c, *d, target, creature);
@@ -306,7 +319,15 @@ Start startAction(World& w, Character& c, std::string& why) {
         }
         std::string fw;
         EntityId t = kNone;
-        if (d->targetsCharacter()) {
+        // AL-108: a goto put before an act that found itself out of reach
+        // leads to that act's own target
+        const WorldObject* pinned = next.target != kNone ? w.object(next.target) : nullptr;
+        const Character* pinnedC = next.target != kNone ? w.character(next.target) : nullptr;
+        if (pinned && d->targetsObject() && pinned->type == d->targetType && !pinned->reservedFor(c.id, w.now()))
+            t = next.target;
+        else if (pinnedC && d->targetsCreature() && pinnedC->body.alive && pinnedC->species == d->targetType)
+            t = next.target;
+        else if (d->targetsCharacter()) {
             const Character* pc = w.character(next.target);
             t = pc && pc->body.alive ? next.target : findPerson(w, c, *d, c.ai.goal.target, &fw, c.ai.goal.source == "player");
         } else {
@@ -333,14 +354,15 @@ Start startAction(World& w, Character& c, std::string& why) {
         }
         Vec2 tp;
         targetPos(w, t, tp);
-        // Stop at the act's reach (a hunter stays a spear throw away).
-        const double reach = std::max(1.0, reachOf(w, *d) * 0.8);
+        // Stop at the act's reach (a hunter stays a spear throw away; AL-108:
+        // one pets the goats, talks to a neighbour, from a step away).
+        const double reach = approachOf(w, *d, o);
         const double dd = dist(c.pos, tp);
-        if (dd <= reachOf(w, *d)) {
+        if (dd <= workReachOf(w, *d, o)) {
             p.actionIndex++;
             return Start::Instant;
         }
-        if (d->targetsCreature() && dd > reach) {
+        if ((d->targetsCreature() || d->targetsCharacter()) && dd > reach) {
             tp.x = c.pos.x + (tp.x - c.pos.x) * (dd - reach) / dd;
             tp.y = c.pos.y + (tp.y - c.pos.y) * (dd - reach) / dd;
         }
@@ -430,6 +452,7 @@ void executePlan(World& w, Character& c) {
         if (!tickFsm(w, c)) return;
     }
     if (!ai.goal.valid()) return;
+    bool healed = false;
     for (int guard = 0; guard < 6 && ai.goal.valid(); ++guard) {
         Plan& p = ai.plan;
         if (p.stepIndex >= p.steps.size()) {
@@ -467,7 +490,19 @@ void executePlan(World& w, Character& c) {
             continue;
         }
         std::string why;
-        const Start s = startAction(w, c, why);
+        Start s = startAction(w, c, why);
+        // AL-108: an act whose target is out of reach (the plan thought it near,
+        // the person stepped off) walks there first instead of failing.
+        if (s == Start::Failed && why.rfind("out_of_range:", 0) == 0 && !healed && p.actionIndex < p.actions.size() &&
+            p.actions[p.actionIndex].interaction != "goto" && p.actions[p.actionIndex].target != kNone) {
+            healed = true;
+            const PlanAction act = p.actions[p.actionIndex];
+            p.actions.insert(p.actions.begin() + static_cast<std::ptrdiff_t>(p.actionIndex),
+                             PlanAction{"goto", act.target, act.targetType, 0.0});
+            trace(w, c, 'F', "fsm.approach", {{"action", act.interaction}, {"target", act.target}});
+            why.clear();
+            s = startAction(w, c, why);
+        }
         if (s == Start::Started || s == Start::Wait) return;
         if (s == Start::Failed) {
             replanStep(w, c, why);
@@ -593,6 +628,53 @@ void thinkCharacter(World& w, Character& c) {
     executePlan(w, c);
 }
 
+void faceAll(World& w) {
+    for (auto& [id, c] : w.characters()) {
+        if (c.isAnimal()) {   // a herd looks the way it goes
+            const Vec2 was = c.seenPos;
+            c.seenPos = c.pos;
+            const double d = dist(c.pos, was);
+            if (d > 1e-3) c.facing = {(c.pos.x - was.x) / d, (c.pos.y - was.y) / d};
+            continue;
+        }
+        const Vec2 was = c.seenPos;
+        c.seenPos = c.pos;
+        if (!c.body.alive) continue;
+        const FsmState& f = c.ai.fsm;
+        Vec2 to;
+        bool have = false;
+        // at work: toward what one works at, or the one one talks to
+        const bool acting = f.state != "Idle" && f.state != "Move" && f.state != "Wait" && f.interaction != "goto";
+        if (acting && f.target != kNone && f.target != c.id) {
+            have = targetPos(w, f.target, to);
+            // one keeps by a person or a herd that moved after one's own turn this tick
+            const InteractionDef* d = w.content().interaction(f.interaction);
+            const Character* t = w.character(f.target);
+            if (d && t && t->body.alive && !isRanged(w, *d) && !c.captivity.held()) {
+                const double dd = dist(c.pos, t->pos), keep = approachOf(w, *d);
+                if (dd > workReachOf(w, *d) && dd > keep) {
+                    const double go = std::min(dd - keep, w.content().config.walkMPerTick);
+                    c.pos.x += (t->pos.x - c.pos.x) * go / dd;
+                    c.pos.y += (t->pos.y - c.pos.y) * go / dd;
+                    c.seenPos = c.pos;
+                }
+            }
+        }
+        // walking: the way one goes
+        if (!have && dist(c.pos, was) > 1e-3) {
+            to = {c.pos.x + (c.pos.x - was.x), c.pos.y + (c.pos.y - was.y)};
+            have = true;
+        }
+        if (!have && f.state == "Move" && dist(f.dest, c.pos) > 1e-3) {
+            to = f.dest;
+            have = true;
+        }
+        if (!have) continue;
+        const double d = dist(to, c.pos);
+        if (d > 1e-3) c.facing = {(to.x - c.pos.x) / d, (to.y - c.pos.y) / d};
+    }
+}
+
 void installAi(World& w) {
     installConsequences(w);
     installVillageLife(w);
@@ -623,6 +705,7 @@ void installAi(World& w) {
             if (c.isAnimal()) animalThink(world, c, tick);
             else thinkCharacter(world, c);
         }
+        faceAll(world); // AL-108
     });
     installControl(w);
     installSocial(w);

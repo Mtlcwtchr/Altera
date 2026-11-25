@@ -223,10 +223,12 @@
     for (const p of people) {
       let v = vis.get(p.id);
       if (!v) { v = { x: p.x, y: p.y, face: 'S', bob: 0, moving: false }; vis.set(p.id, v); }
-      if (v.driven) continue;   // the player's person walking under the player's hand (play.js)
+      // AL-108: standing still, one looks where the sim turned one (at the act's target)
+      const lookSim = () => { if (p.fx || p.fy) v.face = Math.abs(p.fx) > Math.abs(p.fy) ? (p.fx > 0 ? 'E' : 'W') : (p.fy > 0 ? 'S' : 'N'); };
+      if (v.driven) { if (!v.moving) lookSim(); continue; }   // the player's person walking under the player's hand (play.js)
       const dx = p.x - v.x, dy = p.y - v.y, d = Math.hypot(dx, dy);
-      if (d > 80) { v.x = p.x; v.y = p.y; v.moving = false; continue; }
-      if (d < 0.02) { v.moving = false; continue; }
+      if (d > 80) { v.x = p.x; v.y = p.y; v.moving = false; lookSim(); continue; }
+      if (d < 0.02) { v.moving = false; lookSim(); continue; }
       const speed = Math.max(3.5, d * 1.6);                  // tiles per second
       const s = Math.min(d, speed * dt);
       const cellBefore = Math.floor(v.x) + Math.floor(v.y);
