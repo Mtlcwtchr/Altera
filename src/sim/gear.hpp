@@ -22,7 +22,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -111,4 +111,4 @@ void dressTick(World& w);
 // Commands: wear {id, item}, take_off {id, item}, gear_pin {id, item, grid, x, y, turned?} | {id, item, clear: true}.
 void installGear(World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

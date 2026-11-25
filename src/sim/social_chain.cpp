@@ -18,7 +18,7 @@
 #include "sim/tones.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -799,4 +799,4 @@ bool handle(World& w, Command& cmd) {
 
 void installSocial(World& w) { w.addCommandHandler(handle); }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -10,7 +10,7 @@
 
 #include "sim/craft/craft.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 struct AspectDose {
     std::string aspect;  // aspect id (fire)
@@ -49,4 +49,4 @@ void rechargeRune(Item& it, double amount);
 // A notable deed with the thing: history, resonance. Returns the new resonance.
 double noteDeed(const CraftData& d, Item& it, const std::string& what);
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

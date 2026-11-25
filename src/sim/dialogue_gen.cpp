@@ -12,7 +12,7 @@
 
 #include "sim/loc.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -557,4 +557,4 @@ bool checkProp(const DialogueGenData& d, const Prop& p, std::string* e) {
     return true;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -1,6 +1,6 @@
-// altera_game_2d - the 2D client (gdd/ui/client_2d/CLIENT_2D.md): the Altera
+// lr_game_2d - the 2D client (gdd/ui/client_2d/CLIENT_2D.md): the LivelyRealms
 // life-sim seen from above, tiles 16x16, people as layered pawns.
-//   altera_game_2d [--seed N] [--season spring|summer|autumn|winter] [--world FILE]
+//   lr_game_2d [--seed N] [--season spring|summer|autumn|winter] [--world FILE]
 //                  [--content DIR] [--loc DIR] [--lang ru|en] [--port 8766]
 //                  [--no-browser] [--run-hours H] [--paused] [--observe] [--autosave-min M]
 // AL-99: the page opens on the main menu: a new game (seed, world size, season,
@@ -50,7 +50,7 @@ using socket_t = int;
 #include <string>
 
 #include "client2d/acts2d.hpp"
-#ifdef ALTERA_GAME2D_NATIVE
+#ifdef LR_GAME2D_NATIVE
 #include "native/window2d.hpp"
 #endif
 #include "client2d/craft2d.hpp"
@@ -68,8 +68,8 @@ using socket_t = int;
 #include "sim/speech_feed.hpp"
 #include "sim/worldgen.hpp"
 
-using namespace altera::sim;
-namespace c2 = altera::client2d;
+using namespace lr::sim;
+namespace c2 = lr::client2d;
 
 namespace {
 
@@ -193,7 +193,7 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     j["paused"] = a.paused;
     j["tps"] = a.tps;
     // AL-110: the sky of this tick and the next (the window blends between them)
-    static const char* forced = std::getenv("ALTERA_2D_WEATHER");   // frames: clear|cloudy|rain|storm|snow|sleet|fog|snowy
+    static const char* forced = std::getenv("LR_2D_WEATHER");   // frames: clear|cloudy|rain|storm|snow|sleet|fog|snowy
     const std::string wx = forced ? forced : "";
     j["sky"] = c2::skyJson(c2::withWeather(c2::skyAt(*a.world, a.sky, a.world->now()), a.sky, wx));
     j["sky_next"] = c2::skyJson(c2::withWeather(c2::skyAt(*a.world, a.sky, a.world->now() + 1), a.sky, wx));
@@ -204,7 +204,7 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     j["speech"] = speechJson(a, near);
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
     // AL-115: fire, smoke and magic as point lights / fx for the 2D renderer (src/sim/world_fields.hpp)
-    j["world_fx"] = altera::sim::fieldsViewJson(*a.world, near, r);
+    j["world_fx"] = lr::sim::fieldsViewJson(*a.world, near, r);
     return j;
 }
 
@@ -427,10 +427,10 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             respond(s, 200, "application/json", c2::toJson(grid).dump());
         } else if (path.rfind("/api/fields", 0) == 0) {
             // AL-115: one field of the cells as bytes for an overlay (?f=heat&x=&y=&w=&h=)
-            altera::sim::Field f = altera::sim::Field::heat;
-            altera::sim::fieldFromName(queryParam(path, "f"), f);
+            lr::sim::Field f = lr::sim::Field::heat;
+            lr::sim::fieldFromName(queryParam(path, "f"), f);
             respond(s, 200, "application/json",
-                    altera::sim::fieldRasterJson(*a.world, f, intParam(path, "x", 0), intParam(path, "y", 0), intParam(path, "w", 64),
+                    lr::sim::fieldRasterJson(*a.world, f, intParam(path, "x", 0), intParam(path, "y", 0), intParam(path, "w", 64),
                                                  intParam(path, "h", 64))
                         .dump());
         } else if (path.rfind("/api/state", 0) == 0) {
@@ -551,7 +551,7 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
 
 int main(int argc, char** argv) {
     App app;
-    app.root = ALTERA_SIM_SOURCE_DIR;
+    app.root = LR_SIM_SOURCE_DIR;
     std::string contentDir, worldFile, locDir, season, lang = "ru";
     std::uint64_t seed = 7;
     int port = 8766;
@@ -591,7 +591,7 @@ int main(int argc, char** argv) {
     if (locDir.empty()) locDir = app.root + "/content/loc";
     app.webDir = app.root + "/tools/game_2d/web";
     app.spritesDir = app.root + "/content/sprites_2d";
-#ifdef ALTERA_GAME2D_NATIVE
+#ifdef LR_GAME2D_NATIVE
     // the game's own window (tools/game_2d/native), up before the world is made
     game2d::attachConsole(web);
     std::unique_ptr<game2d::Window> window;
@@ -688,7 +688,7 @@ int main(int argc, char** argv) {
             ls = INVALID_SOCKET;
         }
         const std::string url = "http://127.0.0.1:" + std::to_string(port) + "/";
-        std::cout << "Altera 2D: " << (ls != INVALID_SOCKET ? url : std::string("no server")) << "  ("
+        std::cout << "LivelyRealms 2D: " << (ls != INVALID_SOCKET ? url : std::string("no server")) << "  ("
                   << world0.characters().size() << " characters; Ctrl+C to quit)" << std::endl;
 #ifdef _WIN32
         if (web && openBrowser) ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
@@ -744,7 +744,7 @@ int main(int argc, char** argv) {
             }
             if (owed > 1.0 && Clock::now() >= budgetEnd) owed = std::min(owed, 1.0 + app.tps * 0.1);
         };
-#ifdef ALTERA_GAME2D_NATIVE
+#ifdef LR_GAME2D_NATIVE
         if (window) {
             game2d::Host host;
             host.call = [&](const std::string& method, const std::string& path, const std::string& body, int* code) {
@@ -765,7 +765,7 @@ int main(int argc, char** argv) {
         if (ls != INVALID_SOCKET) CLOSESOCK(ls);
     } catch (const std::exception& e) {
         std::cerr << "error: " << e.what() << "\n";
-#ifdef ALTERA_GAME2D_NATIVE
+#ifdef LR_GAME2D_NATIVE
         if (window) window->fail(e.what());
 #endif
         return 1;

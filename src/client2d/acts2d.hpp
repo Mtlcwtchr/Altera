@@ -11,7 +11,7 @@
 #include "client2d/view2d.hpp"
 #include "sim/world.hpp"
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 struct ActCatalog {
     std::vector<std::string> personActs;                       // content/ui/wheel.json: the acts on a person
@@ -31,4 +31,4 @@ sim::Json barJson(const sim::World& w, const ViewText& t, sim::EntityId me, sim:
 // A command's result ("", "rejected:<code>[:<why>]") in the player's words ("" when it went through).
 std::string resultText(const ViewText& t, const std::string& result);
 
-} // namespace altera::client2d
+} // namespace lr::client2d

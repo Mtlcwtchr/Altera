@@ -15,7 +15,7 @@
 
 #include "sim/dialogue_gen.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -1114,4 +1114,4 @@ ValidationReport validateLocGen(const Loc& loc, const std::vector<std::string>& 
     return r;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

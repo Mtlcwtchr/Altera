@@ -17,7 +17,7 @@
 
 #include "sim/combat/combat.hpp"
 
-namespace altera::combat {
+namespace lr::combat {
 
 struct LodConfig {
     int samples = 800;
@@ -58,4 +58,4 @@ private:
     std::map<std::string, std::unique_ptr<std::vector<DuelSample>>> cells_;
 };
 
-} // namespace altera::combat
+} // namespace lr::combat

@@ -14,7 +14,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 class Loc;
@@ -60,4 +60,4 @@ private:
     bool primed_ = false;
 };
 
-} // namespace altera::sim
+} // namespace lr::sim

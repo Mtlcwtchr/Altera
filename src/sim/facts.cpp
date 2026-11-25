@@ -15,7 +15,7 @@
 
 namespace fs = std::filesystem;
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -258,4 +258,4 @@ Json truthReport(const World& w) {
     return {{"facts", facts}, {"unlinked_beliefs", unlinked}};
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

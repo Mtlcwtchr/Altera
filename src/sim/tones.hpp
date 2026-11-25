@@ -11,7 +11,7 @@
 
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -60,4 +60,4 @@ bool receptionRolls(const ToneRules& R, const InteractionDef& d);
 double receptionChance(const World& w, const ToneRules& R, const Character& actor, const InteractionDef& d,
                        const Character& target, const std::string& tone);
 
-} // namespace altera::sim
+} // namespace lr::sim

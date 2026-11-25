@@ -1,5 +1,5 @@
 {
- "_doc": "The new-game backstory screen (hud.cpp backstory): icons from assets/altera_game/ui/icons.json for belongings and start places; stubs until the real icons are drawn.",
+ "_doc": "The new-game backstory screen (hud.cpp backstory): icons from assets/lr_game/ui/icons.json for belongings and start places; stubs until the real icons are drawn.",
  "item_icons": {
   "axe": "i_tool", "digging_stick": "i_tool", "stone_blade": "i_knife", "spear": "w_violence", "snare": "c_twist",
   "fishing_line": "c_twist", "needle": "c_sew", "tunic": "i_cloth", "cloak": "i_cloth", "cloth": "i_cloth",

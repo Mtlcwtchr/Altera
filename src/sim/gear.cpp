@@ -11,7 +11,7 @@
 #include "sim/content.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -343,4 +343,4 @@ bool handle(World& w, Command& cmd) {
 
 void installGear(World& w) { w.addCommandHandler(handle); }
 
-} // namespace altera::sim
+} // namespace lr::sim

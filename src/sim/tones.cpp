@@ -14,7 +14,7 @@
 #include "sim/social_chain.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -143,4 +143,4 @@ ActChance actChance(World& w, Character& actor, const InteractionDef& d, Charact
     return a;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -1,7 +1,7 @@
 #pragma once
 // The village's buildings and works as static meshes: one bake
 // (tools/game_assets/bake_buildings.py, ASTM v1) of pieces assembled from the
-// kit, drawn instanced per piece with assets/shaders/altera_game/statics.hlsl.
+// kit, drawn instanced per piece with assets/shaders/lr_game/statics.hlsl.
 
 #include <cstdint>
 #include <filesystem>
@@ -11,7 +11,7 @@
 #include "engine/render/device.hpp"
 #include "terrain_core/lighting.hpp"
 
-namespace altera::game {
+namespace lr::game {
 
 struct Placed {
     int piece = 0;
@@ -72,4 +72,4 @@ private:
 engine::Texture uploadRgbaArray(engine::Device& device, const std::uint8_t* rgba, std::uint32_t width,
                                 std::uint32_t height, std::uint32_t layers);
 
-} // namespace altera::game
+} // namespace lr::game

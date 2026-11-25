@@ -37,7 +37,7 @@
 
 #include "sim/dialogue_gen.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class Loc;
 
@@ -125,4 +125,4 @@ Json corpusJson(const std::vector<CorpusLine>& lines);
 Json toJson(const CorpusReport& r);
 std::string reportText(const CorpusReport& r, size_t maxIssues = 60);
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -9,7 +9,7 @@
 #include "sim/ai.hpp"
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -806,4 +806,4 @@ std::string craftItemName(const Loc& loc, const std::string& lang, const craft::
     return loc.text(lang, matKey, Json{{"form", shape}});
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

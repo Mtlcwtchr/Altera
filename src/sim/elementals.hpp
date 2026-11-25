@@ -11,7 +11,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 
@@ -22,4 +22,4 @@ bool isElemental(const World& w, const std::string& species);
 // Every tick (fieldsTick): feeding, writing into the cells, dying; once a day: wild births.
 void elementalsTick(World& w, bool daily);
 
-} // namespace altera::sim
+} // namespace lr::sim

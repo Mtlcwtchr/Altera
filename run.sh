@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Launch Altera (or any other target) in its current state, from a terminal.
+# Launch LivelyRealms (or any other target) in its current state, from a terminal.
 # Mirrors the CLion run configurations in .idea/runConfigurations.
 #
 #   ./run.sh                 the game
@@ -24,15 +24,15 @@ mode="${1:-game}"
 shift || true
 
 # Reuse a GPU build when present: a second directory would rebuild DXC from scratch.
-# CAMPFIRE_ENGINE_EDITOR_GPU=OFF keeps an independent, DXC-free CPU editor.
+# REALSIM_EDITOR_GPU=OFF keeps an independent, DXC-free CPU editor.
 if [ "$mode" = engine-editor ]; then
-    EDITOR_GPU="${CAMPFIRE_ENGINE_EDITOR_GPU:-ON}"
+    EDITOR_GPU="${REALSIM_EDITOR_GPU:-ON}"
     DEFAULT_BUILD="cmake-build-engine-editor"
     if [ "$EDITOR_GPU" = ON ] && [ -f cmake-build-relwithdebinfo/CMakeCache.txt ] &&
             grep -q '^ASR_BUILD_CLIENT:BOOL=ON$' cmake-build-relwithdebinfo/CMakeCache.txt; then
         DEFAULT_BUILD="cmake-build-relwithdebinfo"
     fi
-    BUILD_DIR="${CAMPFIRE_ENGINE_EDITOR_BUILD_DIR:-$DEFAULT_BUILD}"
+    BUILD_DIR="${REALSIM_EDITOR_BUILD_DIR:-$DEFAULT_BUILD}"
     if [ ! -f "$BUILD_DIR/CMakeCache.txt" ]; then
         GENERATOR=()
         command -v ninja >/dev/null 2>&1 && GENERATOR=(-G Ninja)
@@ -51,11 +51,11 @@ if [ "$mode" = engine-editor ]; then
             ! grep -q '^ASR_BUILD_ENGINE_EDITOR:BOOL=ON$' "$BUILD_DIR/CMakeCache.txt"; then
         nice cmake -S . -B "$BUILD_DIR" -DASR_BUILD_ENGINE_EDITOR=ON -DASR_ENGINE_EDITOR_GPU="$EDITOR_GPU"
     fi
-    nice cmake --build "$BUILD_DIR" -j 2 --target campfire_engine_editor
-    exec "$BUILD_DIR/campfire_engine_editor" "$@"
+    nice cmake --build "$BUILD_DIR" -j 2 --target realsim_editor
+    exec "$BUILD_DIR/realsim_editor" "$@"
 fi
 
-BUILD_DIR="${ALTERA_BUILD_DIR:-${CAMPFIRE_BUILD_DIR:-${ASR_BUILD_DIR:-cmake-build-relwithdebinfo}}}"
+BUILD_DIR="${LR_BUILD_DIR:-${REALSIM_BUILD_DIR:-${ASR_BUILD_DIR:-cmake-build-relwithdebinfo}}}"
 
 # RelWithDebInfo, not Debug: an unoptimised simulation is about ten times slower,
 # which puts the 10x game speed out of reach.
@@ -69,19 +69,19 @@ fi
 case "$mode" in
     game)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/altera_client" --seed "${1:-11}" --map "${2:-140}" --pop "${3:-10}"
+        exec "$BUILD_DIR/lr_client" --seed "${1:-11}" --map "${2:-140}" --pop "${3:-10}"
         ;;
     client)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/altera_client" --client "$@"
+        exec "$BUILD_DIR/lr_client" --client "$@"
         ;;
     explore)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/altera_client" --explore "$@"
+        exec "$BUILD_DIR/lr_client" --explore "$@"
         ;;
     edit)
         nice cmake --build "$BUILD_DIR" -j 2 --target asr_client
-        exec "$BUILD_DIR/altera_client" --explore --edit --world-file "${1:-worlds/world.json}"
+        exec "$BUILD_DIR/lr_client" --explore --edit --world-file "${1:-worlds/world.json}"
         ;;
     headless)
         nice cmake --build "$BUILD_DIR" -j 2 --target sim_runner

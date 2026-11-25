@@ -10,7 +10,7 @@
 #include "sim/core.hpp"
 #include "sim/craft/craft_expr.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 // The ~16 numeric properties of §2.1, plus derived ones the data may give a
 // material directly (warmth, cover, waterproof).
@@ -343,4 +343,4 @@ void loadAspects(CraftData& d, const Json& aspects);
 // Every loc key the crafting content needs in the base language.
 std::vector<std::string> craftLocKeys(const CraftData& d);
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

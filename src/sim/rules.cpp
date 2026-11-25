@@ -4,7 +4,7 @@
 #include <cstdlib>
 #include <stdexcept>
 
-namespace altera::sim {
+namespace lr::sim {
 namespace {
 
 bool keyChar(char c) { return std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '.'; }
@@ -117,4 +117,4 @@ Effect bindEffect(const Effect& e, const ParamBinding& b) {
     return r;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

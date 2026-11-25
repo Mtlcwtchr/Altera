@@ -15,7 +15,7 @@
 #include "sim/realm.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -834,9 +834,9 @@ int askAndAnswer(World& w, Character& asker, Character& answerer, const MenuTopi
     return n;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim
 
-namespace altera::sim {
+namespace lr::sim {
 
 bool newsFactKey(const std::string& k) {
     for (const char* p : {"news", "person", "place"})
@@ -910,4 +910,4 @@ void sampleNewsArgs(const Loc& loc, const std::string& lang, Json& args) {
     args["spouse"] = other;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -12,7 +12,7 @@
 #include "sim/combat/combat.hpp"
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -68,4 +68,4 @@ void addCombatWounds(World& w, Character& c, const std::vector<WoundHit>& hits, 
 // 10-minute tick: first aid, treatment, infection, recovery, injuries, deaths.
 void healWounds(World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

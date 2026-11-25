@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace altera::combat {
+namespace lr::combat {
 
 namespace {
 
@@ -223,4 +223,4 @@ std::vector<AnimCue> AnimBinder::bind(const std::vector<Event>& batch) {
     return out;
 }
 
-} // namespace altera::combat
+} // namespace lr::combat

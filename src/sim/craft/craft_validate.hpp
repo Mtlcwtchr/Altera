@@ -4,13 +4,13 @@
 // every archetype needs are producible, every name in a formula is known,
 // every archetype has a starter design, materials have a source in the world.
 
-namespace altera::sim {
+namespace lr::sim {
 struct Content;
 struct ValidationReport;
-} // namespace altera::sim
+} // namespace lr::sim
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 void validateCraft(const Content& c, ValidationReport& r);
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

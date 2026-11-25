@@ -16,7 +16,7 @@
 
 namespace fs = std::filesystem;
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -1135,4 +1135,4 @@ void seedVillageLife(World& w, std::uint64_t seed) {
     }
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

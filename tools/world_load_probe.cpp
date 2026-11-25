@@ -156,7 +156,7 @@ int main(int argc, char** argv) {
         // Into a world of its own when asked (--save worlds/name.json: the
         // layout written there and the source in its history root, as the
         // client keeps them); a scratch one otherwise.
-        const auto root = saveTo.empty() ? std::filesystem::temp_directory_path() / "altera_probe" / "source"
+        const auto root = saveTo.empty() ? std::filesystem::temp_directory_path() / "lr_probe" / "source"
                                          : std::filesystem::path(saveTo).parent_path() /
                                                    std::filesystem::path(saveTo).stem() / "source";
         std::filesystem::remove_all(root.parent_path());

@@ -7,7 +7,7 @@ from our own people; the Skyrim stand-ins (actors.py) had none, so the HUD
 kept showing the old faces. This renders each look of people_sky.askin in its
 rest pose with the same framing (orthographic, 0.42 m, from the front-right,
 128 px) in plain numpy, plus the class mask (red skin, green hair, blue cloth)
-the HUD tints by, to assets/altera_game/people/portrait_<look>_sky.png and
+the HUD tints by, to assets/lr_game/people/portrait_<look>_sky.png and
 portrait_<look>_sky_id.png (git-ignored, replace_before_prod), which the HUD
 prefers when present.
 """
@@ -106,7 +106,7 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument('--repo', default='D:/AlteraGame/altera')
     a = ap.parse_args()
-    d = os.path.join(a.repo, 'assets', 'altera_game', 'people')
+    d = os.path.join(a.repo, 'assets', 'lr_game', 'people')
     sk = Askin.read(os.path.join(d, 'people_sky.askin'))
     for look in sk.looks:
         pic, ids = render(sk, look)

@@ -18,7 +18,7 @@ struct TempDir {
     std::filesystem::path path;
     explicit TempDir(const std::string& name) {
         std::random_device rd;
-        path = std::filesystem::temp_directory_path() / ("altera_store_" + name + "_" + std::to_string(rd()));
+        path = std::filesystem::temp_directory_path() / ("lr_store_" + name + "_" + std::to_string(rd()));
         std::filesystem::remove_all(path);
         std::filesystem::create_directories(path);
     }

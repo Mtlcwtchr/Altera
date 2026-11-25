@@ -10,9 +10,9 @@
 #include "sim/alchemy.hpp"
 #include "sim/craft_sim.hpp"
 
-using namespace altera::sim;
+using namespace lr::sim;
 
-namespace altera::client2d {
+namespace lr::client2d {
 
 namespace {
 
@@ -506,4 +506,4 @@ void craftKit(World& w, Character& c) {
     c.skills["carpentry"] = std::max(c.skills["carpentry"], 0.4);
 }
 
-} // namespace altera::client2d
+} // namespace lr::client2d

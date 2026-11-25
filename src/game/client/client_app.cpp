@@ -47,10 +47,10 @@ namespace {
 namespace fs = std::filesystem;
 using Clock = std::chrono::steady_clock;
 
-// ALTERA_<name> from the environment, or the old CAMPFIRE_<name> spelling.
+// LR_<name> from the environment, or the old REALSIM_<name> spelling.
 const char* gameEnv(const char* name) {
-    if (const char* v = std::getenv((std::string("ALTERA_") + name).c_str())) return v;
-    return std::getenv((std::string("CAMPFIRE_") + name).c_str());
+    if (const char* v = std::getenv((std::string("LR_") + name).c_str())) return v;
+    return std::getenv((std::string("REALSIM_") + name).c_str());
 }
 
 fs::path contentDirectory() {
@@ -120,7 +120,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
     const fs::path content = root / "content";
     const bool touring = !options.tour.empty();
     fs::path worldsDir = options.worlds.empty() ? root / "worlds" : options.worlds;
-    // A tour of a world that is already made (ALTERA_TOUR_OPEN) reads the
+    // A tour of a world that is already made (LR_TOUR_OPEN) reads the
     // worlds where it was told to; every other tour makes its own afresh.
     if (touring && gameEnv("TOUR_OPEN") && !options.worlds.empty()) {
         std::error_code ec;
@@ -138,7 +138,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
     const auto regular = ui::FontFace::load(fonts / "NotoSans-Regular.ttf");
     const auto bold = ui::FontFace::load(fonts / "NotoSans-Bold.ttf");
     if (!regular) std::cerr << "no interface font in " << fonts.string() << "; falling back to the debug font\n";
-    if (window) SDL_SetWindowTitle(window, "Altera");
+    if (window) SDL_SetWindowTitle(window, "LivelyRealms");
 
     // --- the world behind the menu -------------------------------------------
     // Something to look at while choosing: a small world, raised in a moment.
@@ -1292,7 +1292,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
             ClientActions scripted;
             const float cx = pointsW * 0.5f, cy = pointsH * 0.55f;
             // The stages of making a world by hand, end to end through the
-            // pointer as a person drives it (ALTERA_TOUR_AUTHORING=1): an
+            // pointer as a person drives it (LR_TOUR_AUTHORING=1): an
             // empty world the reference size, land painted across a region
             // border, worked out, a range painted on it, the water.
             static const bool authoringTour = gameEnv("TOUR_AUTHORING") != nullptr;
@@ -1313,7 +1313,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
             quietFrames = build || menu.editor().wanted() ? 0 : quietFrames + 1;
             const auto waitBuilt = [&] { return quietFrames > 90 && groundReady() && tourFrames > 30; };
             // An existing world looked at in Edit from far and near
-            // (ALTERA_TOUR_OPEN=name): what the sea and the region grid do
+            // (LR_TOUR_OPEN=name): what the sea and the region grid do
             // at the scale of a continent.
             static const char* openTour = gameEnv("TOUR_OPEN");
             const auto worldCentre = [&] {
@@ -1381,7 +1381,7 @@ int runClientApp(SDL_Window* window, const fs::path& assets, const ClientOptions
                         spec.empty = true;
                         spec.regionsX = world::saves::kReferenceRegionsX;
                         spec.regionsY = world::saves::kReferenceRegionsY;
-                        // ALTERA_TOUR_REGIONS=16x16: the tour on another
+                        // LR_TOUR_REGIONS=16x16: the tour on another
                         // size of world (a profile of the largest one, say).
                         if (const char* size = gameEnv("TOUR_REGIONS"))
                             std::sscanf(size, "%dx%d", &spec.regionsX, &spec.regionsY);

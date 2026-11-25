@@ -1,13 +1,13 @@
-"""Rasterise the HUD's line icons (the stroke paths of the design canvas "Altera UI и HUD",
+"""Rasterise the HUD's line icons (the stroke paths of the design canvas "LivelyRealms UI и HUD",
 viewBox 0 0 20 20) into one atlas for the game: white strokes on transparent, tinted at run time.
 
 python make_icons.py <repo>
-Writes assets/altera_game/ui/icons.png (CELL px cells in a row) and icons.json {name: index}."""
+Writes assets/lr_game/ui/icons.png (CELL px cells in a row) and icons.json {name: index}."""
 import json, math, os, re, sys
 from PIL import Image, ImageDraw
 
 REPO = sys.argv[1] if len(sys.argv) > 1 else 'D:/AlteraGame/altera'
-OUT = os.path.join(REPO, 'assets/altera_game/ui')
+OUT = os.path.join(REPO, 'assets/lr_game/ui')
 CELL, SS = 48, 4   # cell px, supersampling
 
 ICONS = {

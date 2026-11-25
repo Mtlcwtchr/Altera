@@ -5,7 +5,7 @@
 
 #include "sim/content.hpp"
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 namespace {
 
@@ -289,4 +289,4 @@ void validateCraft(const Content& c, ValidationReport& r) {
     for (const auto& x : xerr) E(x);
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

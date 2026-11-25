@@ -17,7 +17,7 @@
 
 #include "sim/rules.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 class World;
 struct Character;
@@ -110,4 +110,4 @@ std::vector<EntityId> followersOf(const World& w, EntityId leader);
 // Commands: answer_social {id, accept}, dismiss_follower {id, follower?}.
 void installSocial(World& w);
 
-} // namespace altera::sim
+} // namespace lr::sim

@@ -1,6 +1,6 @@
 {
  "_doc": "Меню игры (src/game_view/hud_menu.cpp): главное меню, пауза, сохранения, настройки.",
- "menu.title": "Altera",
+ "menu.title": "LivelyRealms",
  "menu.tagline": "Жизнь одной деревни на краю старого мира",
  "menu.continue": "Продолжить",
  "menu.new": "Новая игра",

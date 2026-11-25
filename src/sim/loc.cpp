@@ -18,7 +18,7 @@
 #include "sim/loc_gen.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -675,4 +675,4 @@ void localizeReport(Json& report, const Loc& loc, const std::string& lang, const
     report["lang"] = lang;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

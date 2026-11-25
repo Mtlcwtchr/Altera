@@ -14,7 +14,7 @@
 #include "sim/building.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 // Something a room's rules read: an object of the world (or a test's).
 struct RoomThing {
@@ -42,4 +42,4 @@ void roomsTick(World& w);
 // The room holding a point of a storey (nullptr: none).
 const Room* roomAt(const World& w, Vec2 p, int storey = 0);
 
-}  // namespace altera::sim
+}  // namespace lr::sim

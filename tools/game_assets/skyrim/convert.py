@@ -1,4 +1,4 @@
-"""AL-11: the dev-only Skyrim stand-ins -> assets/altera_game/props/props.astm.
+"""AL-11: the dev-only Skyrim stand-ins -> assets/lr_game/props/props.astm.
 
     python convert.py --data "D:/Steam/steamapps/common/Skyrim Special Edition/Data" --repo D:/AlteraGame/altera
 
@@ -59,7 +59,7 @@ def main():
     here = os.path.dirname(os.path.abspath(__file__))
     reg = json.load(open(os.path.join(here, 'registry.json'), encoding='utf-8'))
     lib = Library(a.data)
-    out_dir = os.path.join(a.repo, 'assets', 'altera_game', 'props')
+    out_dir = os.path.join(a.repo, 'assets', 'lr_game', 'props')
     os.makedirs(out_dir, exist_ok=True)
     meshes, verts, idx, layers, cache = [], [], [], [], {}
     nv = 0

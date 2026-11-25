@@ -6,7 +6,7 @@
 #include <set>
 #include <sstream>
 
-namespace altera::sim::craft {
+namespace lr::sim::craft {
 
 namespace {
 
@@ -476,4 +476,4 @@ double breakthroughChance(const CraftData& d, const Actor& a, double skill, doub
     return std::min(d.cfg.brCap, p);
 }
 
-} // namespace altera::sim::craft
+} // namespace lr::sim::craft

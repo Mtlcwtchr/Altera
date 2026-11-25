@@ -11,7 +11,7 @@
 
 #include "sim/core.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 struct Condition {
     enum class Op { Truthy, Ge, Le, Gt, Lt, Eq, Ne };
@@ -63,4 +63,4 @@ Effect parseEffect(const std::string& text);
 Condition bindCondition(const Condition& k, const ParamBinding& b);
 Effect bindEffect(const Effect& e, const ParamBinding& b);
 
-} // namespace altera::sim
+} // namespace lr::sim

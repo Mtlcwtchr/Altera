@@ -11,7 +11,7 @@
 
 #include "sim/ai.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace {
 
@@ -318,4 +318,4 @@ GoapResult planStep(const World& w, const Character& c, const PlanStep& step) {
     return res;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim

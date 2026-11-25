@@ -1,5 +1,5 @@
 {
- "_doc": "The workshop's look (boards 10-15 of the design canvas, style G): icons of processes, stations, shapes and materials (assets/altera_game/ui/icons.json names), which stations carry a heat gauge, and the novice helper's wishes (board 10b): a wish matches a design whose form needs one of `needs` (forms.json needs keys) or is in one of `categories`. Read by src/game_view (hud.cpp, sim_game.cpp).",
+ "_doc": "The workshop's look (boards 10-15 of the design canvas, style G): icons of processes, stations, shapes and materials (assets/lr_game/ui/icons.json names), which stations carry a heat gauge, and the novice helper's wishes (board 10b): a wish matches a design whose form needs one of `needs` (forms.json needs keys) or is in one of `categories`. Read by src/game_view (hud.cpp, sim_game.cpp).",
  "process_icons": {
   "heat": "c_flame", "smelt": "c_smelt", "cut": "c_cut", "carve": "c_carve", "knap": "c_knap",
   "hammer": "c_hammer", "quench": "c_drop", "link": "c_link", "grind": "c_grind", "mill": "c_mill",

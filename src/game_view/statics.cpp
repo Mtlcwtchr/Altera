@@ -5,7 +5,7 @@
 #include <cstring>
 #include <fstream>
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 namespace fs = std::filesystem;
@@ -127,7 +127,7 @@ bool StaticSet::load(engine::Device& device, const fs::path& file, std::string* 
     sampler_ = device.makeSampler(s);
 
     engine::PipelineWanted w;
-    w.shaderFile = "altera_game/statics.hlsl";
+    w.shaderFile = "lr_game/statics.hlsl";
     w.vertexEntry = "staticsVs";
     w.fragmentEntry = "staticsPs";
     w.depthClip = true;
@@ -218,4 +218,4 @@ void StaticSet::draw(SDL_GPUCommandBuffer* commands, SDL_GPURenderPass* pass, co
     }
 }
 
-} // namespace altera::game
+} // namespace lr::game

@@ -89,7 +89,7 @@ PATCH = {
 }
 
 # ------------------------------------------------------------- new materials
-# raw ones have no source yet (pending in tests/test_altera_sim_resources.cpp):
+# raw ones have no source yet (pending in tests/test_lr_sim_resources.cpp):
 # monster parts come with the monsters (M5), rare minerals with the caravans (realm),
 # the mosses with their forage places (worldgen).
 NEW_MATERIALS = [

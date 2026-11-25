@@ -14,7 +14,7 @@
 #include "game_view/hud.hpp"
 #include "game_view/hud_style.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 
 using ui::Colour;
@@ -787,4 +787,4 @@ void Hud::talkStrip(const Snapshot& s, float W, float H) {
     (void)kw;
 }
 
-} // namespace altera::game
+} // namespace lr::game

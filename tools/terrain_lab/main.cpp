@@ -164,7 +164,7 @@ struct Options {
     int debugLevels = 0;
     double startX = -1, startY = -1;    // fractions of the world; <0: auto (land near centre)
     bool map = false;                   // start in the strategic map view
-    bool game = false;                  // the life-sim and its HUD on this world (altera_game)
+    bool game = false;                  // the life-sim and its HUD on this world (lr_game)
     std::uint64_t gameSeed = 7;         // the sim's world seed
     std::string gameSeason;             // spring | summer | autumn | winter
     bool levelsGiven = false;
@@ -173,7 +173,7 @@ struct Options {
     // made into `worldCache`/<key>/ the first time and opened from there
     WorldSpec worldSpec;
     bool worldSpecGiven = false;
-    bool lore = false;              // --lore: the game on the imported world of Altera
+    bool lore = false;              // --lore: the game on the imported world of LivelyRealms
     fs::path worldCache;            // --world-cache; empty: <out>/worlds
     std::string begin;              // --begin new | load:N: what the game does once open
 };
@@ -487,8 +487,8 @@ struct Lab {
     double ground = 0;      // last known height under the eye
     bool groundKnown = false;
     bool eroded = false;      // --erode ran; nothing else to do
-    altera::game::GameLayer* game = nullptr;   // --game: the life-sim drawn into this view
-    altera::game::LoadingScreen* loading = nullptr;   // a window: what open() is doing, while it does it
+    lr::game::GameLayer* game = nullptr;   // --game: the life-sim drawn into this view
+    lr::game::LoadingScreen* loading = nullptr;   // a window: what open() is doing, while it does it
     void step(const char* key, float fraction) { if (loading) loading->stage(key, fraction); }
 
     explicit Lab(Options& o) : options(o) {}
@@ -1427,7 +1427,7 @@ int runGame(Lab& lab, SDL_Window* window) {
         }
         const double dt = std::min(0.1, std::chrono::duration<double>(Clock::now() - last).count());
         last = Clock::now();
-        altera::game::CameraRig rig;
+        lr::game::CameraRig rig;
         rig.eye[0] = lab.camera.eye.x; rig.eye[1] = lab.camera.eye.y; rig.eye[2] = lab.camera.eye.z;
         rig.yaw = lab.camera.yaw; rig.pitch = lab.camera.pitch; rig.fovY = lab.camera.fovY;
         lab.game->update(dt, rig, lab.options.light.timeOfDay);
@@ -1437,7 +1437,7 @@ int runGame(Lab& lab, SDL_Window* window) {
         ++frames;
         if (msSince(titleAt) > 1000) {
             char title[96];
-            std::snprintf(title, sizeof title, "Altera | %.0f fps", 1000.0 * frames / std::max(1.0, frameMs));
+            std::snprintf(title, sizeof title, "LivelyRealms | %.0f fps", 1000.0 * frames / std::max(1.0, frameMs));
             SDL_SetWindowTitle(window, title);
             frameMs = 0;
             frames = 0;
@@ -1644,8 +1644,8 @@ int runInteractive(Lab& lab, SDL_Window* window) {
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     Options options;
-#ifdef ALTERA_GAME_DEFAULT
-    // altera_game: the game on the imported world unless told otherwise, run
+#ifdef LR_GAME_DEFAULT
+    // lr_game: the game on the imported world unless told otherwise, run
     // from the repository whatever the working folder.
     options.game = true;
     std::vector<char*> args(argv, argv + argc);
@@ -1662,8 +1662,8 @@ int main(int argc, char** argv) {
                                    "--water-skeleton", "terrain_lab_out/world_water_skeleton.png"};
     // AL-69: the worlds live beside the saves; with none given the game opens
     // the one played last (worlds/current.json), the very first time a
-    // procedural one. The imported world of Altera only when asked (--lore).
-    static std::string worldsDir = (altera::game::saveDir().parent_path() / "worlds").string();
+    // procedural one. The imported world of LivelyRealms only when asked (--lore).
+    static std::string worldsDir = (lr::game::saveDir().parent_path() / "worlds").string();
     static std::string currentSpec = (fs::path(worldsDir) / "current.json").string();
     static const char* kCache[] = {"--world-cache", worldsDir.c_str()};
     for (std::size_t i = 0; i < std::size(kCache); ++i)
@@ -1682,7 +1682,7 @@ int main(int argc, char** argv) {
         for (std::size_t i = 0; i < std::size(kWorld); ++i)
             args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kWorld[i]));
     std::error_code cwdError;
-    fs::current_path(ALTERA_SOURCE_DIR, cwdError);
+    fs::current_path(LR_SOURCE_DIR, cwdError);
     argc = int(args.size());
     argv = args.data();
 #endif
@@ -1693,17 +1693,17 @@ int main(int argc, char** argv) {
     if (!options.headless) {
         // AL-29: the game's window is called by the game's name
         // the targets follow the window's pixel size every frame, so the game's window may be resized
-        window = SDL_CreateWindow(options.game ? "Altera" : "terrain_lab", int(options.width), int(options.height),
+        window = SDL_CreateWindow(options.game ? "LivelyRealms" : "terrain_lab", int(options.width), int(options.height),
                                   options.game ? SDL_WINDOW_RESIZABLE : 0);
         if (!window) { std::fprintf(stderr, "window: %s\n", SDL_GetError()); return 1; }
     }
     int code = 0;
     {
         Lab lab(options);
-        altera::game::LoadingScreen loading;   // the window says what the lab is opening, and stays alive
+        lr::game::LoadingScreen loading;   // the window says what the lab is opening, and stays alive
         if (window && options.shot.empty() && options.bench.empty()) {
-#ifdef ALTERA_SOURCE_DIR
-            loading.setup(ALTERA_SOURCE_DIR, "ru");
+#ifdef LR_SOURCE_DIR
+            loading.setup(LR_SOURCE_DIR, "ru");
 #else
             loading.setup(".", "ru");
 #endif
@@ -1711,11 +1711,11 @@ int main(int argc, char** argv) {
         }
         if (!lab.open(window)) return 1;
         if (lab.eroded) return 0;
-        std::unique_ptr<altera::game::GameLayer> game;   // released before the lab's device
+        std::unique_ptr<lr::game::GameLayer> game;   // released before the lab's device
         if (options.game && window) {
             double gx = options.startX, gy = options.startY;
             if (gx < 0 || gy < 0) lab.findLand(gx, gy);
-            altera::game::GameOptions go;
+            lr::game::GameOptions go;
             go.seed = options.gameSeed;
             go.season = options.gameSeason;
             go.biomes = &lab.biomes;
@@ -1733,18 +1733,18 @@ int main(int argc, char** argv) {
 #endif
                 go.exe = exe.string();
             }
-#ifdef ALTERA_SOURCE_DIR
-            go.root = ALTERA_SOURCE_DIR;
+#ifdef LR_SOURCE_DIR
+            go.root = LR_SOURCE_DIR;
 #else
             go.root = ".";
 #endif
             std::string why;
             lab.step("sim", 0.92f);
-            game = altera::game::makeSimGame(lab.device, window, lab.macro, options.params,
+            game = lr::game::makeSimGame(lab.device, window, lab.macro, options.params,
                                              gx * options.params.worldSize, gy * options.params.worldSize, go, &why);
             if (!game) { std::fprintf(stderr, "game: %s\n", why.c_str()); return 1; }
             lab.game = game.get();
-            SDL_SetWindowTitle(window, "Altera");
+            SDL_SetWindowTitle(window, "LivelyRealms");
         }
         loading.finish();
         lab.loading = nullptr;

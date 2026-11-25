@@ -2,7 +2,7 @@
 
 #include <algorithm>
 
-namespace altera::sim {
+namespace lr::sim {
 
 bool Character::hasTrait(const std::string& t) const { return std::find(traits.begin(), traits.end(), t) != traits.end(); }
 
@@ -193,4 +193,4 @@ NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Standing, role, life, house, dra
                                                 wanderlust, renown, purse, at, travelTo, arrive, leaveDay, deathDay,
                                                 quest, claim, captor, aptitudes, deeds)
 
-} // namespace altera::sim
+} // namespace lr::sim

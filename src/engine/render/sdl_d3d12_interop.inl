@@ -1,4 +1,4 @@
-// Campfire extension to SDL 3.2.8's D3D12 backend. Included after the original
+// RealSimEngine extension to SDL 3.2.8's D3D12 backend. Included after the original
 // translation unit by CMake, without changing the fetched SDL checkout.
 #ifdef SDL_GPU_D3D12
 void *Campfire_D3D12Device(SDL_GPUDevice *device)

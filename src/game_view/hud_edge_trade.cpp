@@ -13,7 +13,7 @@
 #include "game_view/hud.hpp"
 #include "game_view/hud_style.hpp"
 
-namespace altera::game {
+namespace lr::game {
 namespace {
 using ui::Colour;
 using ui::Rect;
@@ -166,4 +166,4 @@ void Hud::tradePanel(const Snapshot& s, float W, float H) {
     ui_->claim(P);
 }
 
-} // namespace altera::game
+} // namespace lr::game

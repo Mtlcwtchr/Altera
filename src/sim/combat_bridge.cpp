@@ -10,7 +10,7 @@
 #include "sim/gear.hpp"
 #include "sim/world.hpp"
 
-namespace altera::sim {
+namespace lr::sim {
 
 namespace fs = std::filesystem;
 
@@ -275,4 +275,4 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     return r;
 }
 
-} // namespace altera::sim
+} // namespace lr::sim
