@@ -28,6 +28,7 @@ struct Pixels {
 class SpriteSet {
 public:
     void load(const nlohmann::json& spritesJson);   // {pal: {letter: "#hex"}, sprites: {name: [rows]}}
+    void merge(const nlohmann::json& more);          // more grids in the same palette ({sprites: {...}})
     bool has(const std::string& name) const { return grids_.count(name) != 0; }
     Rgba colour(char letter) const;
     Rgba colour(const std::string& letter) const { return letter.empty() ? colour('?') : colour(letter[0]); }

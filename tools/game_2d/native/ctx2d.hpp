@@ -71,6 +71,9 @@ public:
     // --- the game
     virtual const Json& statics() const = 0;   // /api/static
     virtual const Json& map2d() const = 0;     // content/sprites_2d/map2d.json
+    virtual const Json& craftLook() const = 0; // content/sprites_2d/craft2d.json
+    virtual const Json& resources() const = 0; // content/sprites_2d/resources.json
+    virtual void walkTo(double x, double y) = 0;   // the led person walks there by the cells
     virtual const Json* person(long long id) const = 0;
     virtual const std::vector<Json>& peopleList() const = 0;
     virtual long long meId() const = 0;

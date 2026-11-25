@@ -275,6 +275,16 @@ void SpriteSet::load(const nlohmann::json& j) {
     }
 }
 
+void SpriteSet::merge(const nlohmann::json& j) {
+    const nlohmann::json grids = j.value("sprites", nlohmann::json::object());
+    for (const auto& [k, v] : grids.items()) {
+        std::vector<std::string> rows;
+        if (v.is_array())
+            for (const auto& r : v) rows.push_back(r.is_string() ? r.get<std::string>() : std::string());
+        grids_[k] = std::move(rows);
+    }
+}
+
 Rgba SpriteSet::colour(char letter) const {
     const auto it = pal_.find(letter);
     return it == pal_.end() ? 0xffff00ffu : it->second;
