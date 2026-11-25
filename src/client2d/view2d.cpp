@@ -223,13 +223,52 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
               {"role", c.status.role},
               {"occ", c.occupation},
               {"pl", c.controller.isPlayer()}};
+    // LR-137: the names to show for the family and the trade (the raw ids stay above)
+    if (f && t.loc) d["famn"] = t.loc->personNoun(t.lang, f->name, 'm').value("nom", f->name);
+    if (!c.occupation.empty() && t.loc) {
+        const std::string k = "news.trade." + c.occupation + (c.body.sex == 'f' ? ".f" : ".m");
+        d["occn"] = t.loc->has(t.lang, k) ? t.loc->text(t.lang, k) : c.occupation;
+    }
     Json needs = Json::array();
     for (const auto& nd : w.content().needs) {
         auto it = c.needs.find(nd.id);
         if (it == c.needs.end()) continue;
-        needs.push_back({{"id", nd.id}, {"name", t.name("need", nd.id)}, {"v", r2(it->second)}});
+        needs.push_back({{"id", nd.id}, {"name", t.name("need", nd.id)}, {"v", r2(it->second)}, {"crit", r2(nd.critical)}});
     }
     d["needs"] = needs;
+    // LR-137: what the pixel HUD shows of a person at a glance (the hero frame, the column)
+    d["blood"] = r2(c.body.blood / 100.0);
+    Json attrs = Json::array();
+    for (const auto& [aid, v] : c.attrs) attrs.push_back({{"id", aid}, {"name", t.name("attr", aid)}, {"v", r2(v)}});
+    d["attrs"] = attrs;
+    Json moodlets = Json::array();
+    const Tick now = w.now();
+    for (const Moodlet& m : c.moodlets) {
+        if (m.until != 0 && m.until <= now) continue;
+        moodlets.push_back({{"id", m.id},
+                            {"name", t.name("moodlet", m.id)},
+                            {"v", r2(m.value)},
+                            {"h", m.until == 0 ? -1.0 : std::round(double(m.until - now) / (kTicksPerDay / 24.0) * 10) / 10}});
+    }
+    std::stable_sort(moodlets.begin(), moodlets.end(),
+                     [](const Json& a, const Json& b) { return std::abs(a["v"].get<double>()) > std::abs(b["v"].get<double>()); });
+    d["moodlets"] = moodlets;
+    Json skills = Json::array();
+    for (const auto& [kid, v] : c.skills) skills.push_back({{"id", kid}, {"name", t.name("knowledge", kid)}, {"v", r2(v)}});
+    std::stable_sort(skills.begin(), skills.end(), [](const Json& a, const Json& b) { return a["v"].get<double>() > b["v"].get<double>(); });
+    d["nskills"] = skills.size();
+    if (skills.size() > 6) skills.erase(skills.begin() + 6, skills.end());
+    d["skills"] = skills;
+    Json wounds = Json::array();
+    for (const Wound& wd : c.wounds)
+        wounds.push_back({{"zone", t.loc && t.loc->has(t.lang, "ui2d.sheet.zone." + wd.zone) ? t.loc->text(t.lang, "ui2d.sheet.zone." + wd.zone) : wd.zone},
+                          {"sev", t.loc && t.loc->has(t.lang, "ui2d.sheet.sev." + wd.severity) ? t.loc->text(t.lang, "ui2d.sheet.sev." + wd.severity) : wd.severity},
+                          {"bleeding", wd.bleeding}});
+    d["wounds"] = wounds;
+    Json plan = Json::array();
+    for (std::size_t i = c.ai.plan.actionIndex; i < c.ai.plan.actions.size() && plan.size() < 4; ++i)
+        if (c.ai.plan.actions[i].interaction != "goto") plan.push_back(t.name("interaction", c.ai.plan.actions[i].interaction));
+    d["plan"] = plan;
     Json inv = Json::array();
     for (const auto& [item, n] : c.inventory)
         if (n > 0) inv.push_back({{"id", item}, {"name", t.name("item", item)}, {"n", n}});

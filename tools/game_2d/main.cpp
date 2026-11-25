@@ -203,6 +203,8 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     j["me"] = controlled(*a.world);
     j["speech"] = speechJson(a, near);
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
+    // LR-137: the hero frame shows the led person even while another one is selected
+    if (const EntityId m = controlled(*a.world); m != kNone && m != sel) j["me_card"] = c2::personJson(*a.world, a.text, m);
     // AL-115: fire, smoke and magic as point lights / fx for the 2D renderer (src/sim/world_fields.hpp)
     j["world_fx"] = lr::sim::fieldsViewJson(*a.world, near, r);
     return j;
