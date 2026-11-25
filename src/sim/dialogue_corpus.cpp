@@ -11,6 +11,7 @@
 #include "sim/dialogue_rules.hpp"
 #include "sim/dialogue_say.hpp"
 #include "sim/loc.hpp"
+#include "sim/news.hpp"
 #include "sim/loc_gen.hpp"
 #include "sim/world.hpp"
 
@@ -724,6 +725,7 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
         u.stance.politeness = r.range(0.0, 1.0);
 
         ContextFacts f = dialogueFacts(d, &cw.w, &said, u);
+        sampleNewsFacts(u.act, target, f); // AL-111: news, people, places, the speaker's life
         f.set("time", r.chance(0.3) ? std::string("night") : std::string("day"));
         for (const auto& [k, vals] : callerVals) {
             if (k == "tone") continue;
@@ -800,6 +802,7 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
         args["text"] = tidyLine((u.content ? realizeProp(loc, lang, args["prop"], "clause", "", args, u.seed)
                                            : loc.text(lang, "thing.something")) + ".", true);
         args["deadline"] = loc.noun(lang, "hud.daypart.evening", "");
+        sampleNewsArgs(loc, lang, args); // AL-111
         if (L.caller.count("reason") && L.caller["reason"] == "misdeed") {
             Prop deed = makeProp(r, d, cw, pools, d.predicate("theft") ? "theft" : pick(r, pools.preds), li, sp);
             deed.roles["doer"] = charRef(li);

@@ -1,0 +1,490 @@
+{
+ "_doc": "AL-111: news, stories about oneself, people and places, the player's questions (content/ai/dialogue_rules/news.json, src/sim/news.hpp). {news} is a chronicle line, {news_lc} the same for mid-sentence.",
+ "dialogue.menu.tell_news": "news: {news_lc}",
+ "dialogue.menu.ask_news": "what's new?",
+ "dialogue.menu.ask_self": "how they live, who they are",
+ "dialogue.menu.ask_person": "about {person}",
+ "dialogue.menu.ask_place": "about {place}",
+ "hud.talk.act.tell_news": "tell",
+ "hud.talk.act.ask_news": "ask",
+ "hud.talk.act.ask_self": "ask",
+ "hud.talk.act.ask_person": "ask",
+ "hud.talk.act.ask_place": "ask",
+ "say.news.ask_news": [
+  "What news, {listener}?",
+  "So, what are people saying?",
+  "Heard anything new?"
+ ],
+ "say.news.ask_news.vy": [
+  "What news, {listener}?",
+  "What is heard about the land, {listener}?"
+ ],
+ "say.news.ask_self": [
+  "Tell me about yourself, {listener}.",
+  "How do you get by, {listener}?"
+ ],
+ "say.news.ask_person": [
+  "What do you make of {person}?",
+  "{person} - what sort are they?",
+  "Do you know {person}?"
+ ],
+ "say.news.ask_person.kin": [
+  "How is {person}?",
+  "How is {person} keeping?"
+ ],
+ "say.news.ask_place": [
+  "What do you know of {place}?",
+  "{place} - what kind of place is it?"
+ ],
+ "say.news.tell": [
+  "Heard? {news}.",
+  "Here's news: {news_lc}.",
+  "Did you know? {news}."
+ ],
+ "say.news.tell.sad": [
+  "Sad news: {news_lc}.",
+  "Bad tidings, {listener}. {news}."
+ ],
+ "say.news.tell.glad": [
+  "Good news: {news_lc}!",
+  "Glad tidings, {listener}: {news_lc}."
+ ],
+ "say.news.tell.alarm": [
+  "Trouble, {listener}! {news}.",
+  "Keep your eyes open. {news}."
+ ],
+ "say.news.tell.spicy": [
+  "Just between us, {listener}: {news_lc}.",
+  "You won't believe it: {news_lc}."
+ ],
+ "say.news.tell.rumor": [
+  "Don't know if it's true, but they say {news_lc}.",
+  "There's a rumour: {news_lc}."
+ ],
+ "say.news.tell.rumor_far": [
+  "Third-hand, mind you: {news_lc}.",
+  "Someone told someone who told me: {news_lc}."
+ ],
+ "say.news.tell.told": [
+  "{src} told me: {news_lc}.",
+  "According to {src}, {news_lc}."
+ ],
+ "say.news.tell.seen": [
+  "I was there myself: {news_lc}.",
+  "Saw it with my own eyes. {news}."
+ ],
+ "say.news.tell.realm": [
+  "Word came up the road: {news_lc}.",
+  "Travellers say {news_lc}."
+ ],
+ "say.news.tell.road": "Folk off the road carry all sorts. For one: {news_lc}.",
+ "say.news.tell.mine_sad": [
+  "There's grief in our house, {listener}. {news}.",
+  "Hard times for us: {news_lc}."
+ ],
+ "say.news.tell.mine_glad": [
+  "We're overjoyed, {listener}! {news}.",
+  "Be glad for us: {news_lc}!"
+ ],
+ "say.news.tell.kind.death": [
+  "Heard? {news}. May they rest easy.",
+  "A sad day: {news_lc}."
+ ],
+ "say.news.tell.kind.war": [
+  "War, {listener}! {news}.",
+  "Bad business: {news_lc}. Let's hope it doesn't reach us."
+ ],
+ "say.news.tell.kind.raid": [
+  "A raid, {listener}! {news}.",
+  "Heard? {news}. Lock the granary."
+ ],
+ "say.news.tell.kind.wedding": [
+  "A wedding! {news}.",
+  "Heard? {news}. About time, too."
+ ],
+ "say.news.tell.kind.birth": [
+  "A new mouth to feed: {news_lc}.",
+  "Heard? {news}. May the child grow strong."
+ ],
+ "say.news.tell.kind.stranger": [
+  "Strangers among us, {listener}. {news}.",
+  "Heard? {news}. We'll see what sort they are."
+ ],
+ "say.news.tell.kind.famine": [
+  "Hunger in the land, {listener}. {news}.",
+  "Heard? {news}. Mind your grain."
+ ],
+ "say.news.tell.kind.court": [
+  "There was a trial, {listener}. {news}.",
+  "Heard how it ended? {news}."
+ ],
+ "say.news.tell.kind.gossip": [
+  "Know what people say? {news}.",
+  "Oh, the goings-on: {news_lc}."
+ ],
+ "say.news.tell.gossip_secret": [
+  "Not a word to anyone, right? {news}.",
+  "You didn't hear it from me, but {news_lc}."
+ ],
+ "say.news.tell.kind.outlaws": [
+  "Outlaws again, {listener}. {news}.",
+  "The roads aren't safe: {news_lc}."
+ ],
+ "say.news.tell.kind.power": [
+  "Changes up top, {listener}: {news_lc}.",
+  "Heard? {news}. We'll see what comes of it."
+ ],
+ "say.news.tell.fresh_alarm": [
+  "{listener}, word just came! {news}!",
+  "Did you hear?! {news}!"
+ ],
+ "say.news.no_news": [
+  "Same as ever, {listener}. Haven't heard a thing.",
+  "Quiet here. Work and sleep.",
+  "No news, and thank the gods for that."
+ ],
+ "say.news.no_news.keeper": [
+  "Odd thing: even the tavern is quiet these days.",
+  "Nothing, {listener}. As if the whole land fell asleep."
+ ],
+ "say.news.tell_story": [
+  "There was a time...",
+  "I remember one thing..."
+ ],
+ "say.news.tell_story.news": [
+  "I remember: {news_lc}.",
+  "There was a time: {news_lc}."
+ ],
+ "say.news.tell_story.sad": [
+  "Hard to remember: {news_lc}.",
+  "We had our grief: {news_lc}. I still think of it."
+ ],
+ "say.news.tell_story.glad": [
+  "Good things too: {news_lc}.",
+  "I remember that day: {news_lc}. What a joy it was."
+ ],
+ "say.news.tell_self": [
+  "I'm a {self_trade}, {years} {years:plural|year|years} old. That's my life.",
+  "Not much to tell. I'm a {self_trade}, I work, I live."
+ ],
+ "say.news.tell_self.married": [
+  "I'm a {self_trade}. Me, {spouse} and {children} {children:plural|child|children}. Can't complain.",
+  "A house, {spouse}, {children} {children:plural|child|children}. I work as a {self_trade} to feed them all."
+ ],
+ "say.news.tell_self.married_nokids": [
+  "I'm a {self_trade}. {spouse} and I, no children yet.",
+  "{spouse} and I get on well. No children yet."
+ ],
+ "say.news.tell_self.widowed": [
+  "I lost my {speaker:g|wife|husband}. Only memories now.",
+  "I'm on my own now. Work keeps my mind off it."
+ ],
+ "say.news.tell_self.chief": [
+  "I'm the one in charge here. All of it's on me.",
+  "The village is mine to answer for, {listener}."
+ ],
+ "say.news.tell_self.trader": [
+  "I trade a little: what comes in, I sell. I hear the news, too.",
+  "A trader. Buying, selling, that's me."
+ ],
+ "say.news.tell_self.keeper": [
+  "I keep the tavern. All the news ends up with me first.",
+  "I pour and I listen, {listener}."
+ ],
+ "say.news.tell_self.elder": [
+  "I'm old now, {years} years. I've seen a lot.",
+  "I've lived a while, {listener}. I remember things you young ones never heard of."
+ ],
+ "say.news.tell_self.child": [
+  "I'm still little! I'm {years}.",
+  "I'm {years} and I help a lot at home!"
+ ],
+ "say.news.tell_person": "{person}? A {person_trade}.",
+ "say.news.tell_person.known": [
+  "{person} is a {person_trade}.",
+  "{person}? Sure, a {person_trade}.",
+  "Ah, {person}. A {person_trade}, lives here."
+ ],
+ "say.news.tell_person.unknown": [
+  "{person}? Never heard of them.",
+  "Don't know any {person}."
+ ],
+ "say.news.tell_person.listener": [
+  "About you? You know yourself.",
+  "Ha! You want me to tell you about you?"
+ ],
+ "say.news.tell_person.dead": "{person}... is no longer with us.",
+ "say.news.tell_person.kin.spouse": [
+  "{person}? That's my {person:g|husband|wife}!",
+  "My {person}? Hale and hearty, thank you."
+ ],
+ "say.news.tell_person.kin.child": "{person}? My {person:g|son|daughter}! Growing like a weed.",
+ "say.news.tell_person.kin.parent": "{person}? That's my {person:g|father|mother}.",
+ "say.news.tell_person.chief": [
+  "{person} is our head here.",
+  "{person}? Our chief."
+ ],
+ "say.news.person_remark.plain": [
+  "Nothing bad to say.",
+  "A person like any other.",
+  "Keeps to themselves, bothers no one."
+ ],
+ "say.news.person_remark.liked": [
+  "A good soul, I respect {person:g|him|her}.",
+  "One of the kindest, you won't find better."
+ ],
+ "say.news.person_remark.disliked": [
+  "I don't like {person:g|him|her}, I'll say it plainly.",
+  "{person} and I don't see eye to eye."
+ ],
+ "say.news.person_remark.feared": [
+  "Better not to cross {person:g|him|her}.",
+  "I'm a little afraid of {person:g|him|her}, truth be told."
+ ],
+ "say.news.person_remark.distrust": [
+  "But don't trust {person:g|him|her}. Watch yourself.",
+  "I wouldn't trust {person:g|him|her} with a copper."
+ ],
+ "say.news.person_remark.enemy": [
+  "{person:g|He|She} is my enemy. Nothing more to say.",
+  "Don't mention {person} to me."
+ ],
+ "say.news.person_remark.trusted": [
+  "You can rely on {person:g|him|her}, I know it.",
+  "{person} won't let you down."
+ ],
+ "say.news.person_remark.chief_good": "A sound head, life's good under {person:g|him|her}.",
+ "say.news.person_remark.chief_bad": "Not much use, though, between us.",
+ "say.news.person_remark.kin": [
+  "You don't speak ill of your own.",
+  "Blood is blood, what can I say."
+ ],
+ "say.news.tell_place": [
+  "{place} is a {place_size}, {place_km} {place_km:plural|mile|miles} {place_dir}.",
+  "{place}? That's {place_dir}, {place_km} {place_km:plural|mile|miles} from here, a {place_size}."
+ ],
+ "say.news.tell_place.ruler": [
+  "{place} is a {place_size}, {place_km} {place_km:plural|mile|miles} {place_dir}. {ruler} rules there.",
+  "{place}? A {place_size} {place_dir}, {place_km} {place_km:plural|mile|miles} off. {ruler} is the master there."
+ ],
+ "say.news.tell_place.camp": [
+  "{place}? A nest of bandits {place_dir}, {place_km} {place_km:plural|mile|miles} away. Don't go there.",
+  "{place} is an outlaw camp {place_dir}. {ruler} leads them."
+ ],
+ "say.news.place_remark.war": [
+  "We're at war with them. Don't set foot there.",
+  "We're fighting them, {listener}. Watch yourself."
+ ],
+ "say.news.place_remark.ally": [
+  "We're allied with them, good people.",
+  "Friends of ours, they won't leave us in trouble."
+ ],
+ "say.news.place_remark.pays_us": [
+  "They pay us tribute.",
+  "They're under our hand, they bring tribute."
+ ],
+ "say.news.place_remark.we_pay": [
+  "We pay them tribute, curse them.",
+  "We pay them every month. Galling, but what can you do."
+ ],
+ "say.news.place_remark.liege": "Our lord is from there. We bow to them.",
+ "say.news.place_remark.grudge": [
+  "Folk here don't like them: too many wrongs.",
+  "They've brought us nothing but trouble."
+ ],
+ "say.news.place_remark.friendly": [
+  "Good folk, we get on.",
+  "Kind neighbours."
+ ],
+ "say.news.place_remark.trade": [
+  "There's a big market, you can buy anything.",
+  "Their merchants come our way."
+ ],
+ "say.news.place_remark.fortified": [
+  "They sit behind strong walls.",
+  "High walls, you'd never take it."
+ ],
+ "say.news.place_remark.cult": [
+  "Strange folk, they pray to something of their own.",
+  "I wouldn't bow to their gods."
+ ],
+ "say.news.place_remark.farming": [
+  "Ploughmen, they live by bread.",
+  "Good land, fine harvests."
+ ],
+ "say.news.place_remark.raiders": [
+  "They come raiding us from there.",
+  "Rough folk. Guard your goods."
+ ],
+ "say.news.decline_ask": [
+  "None of your business.",
+  "Go your way, {listener}.",
+  "I've nothing to say to you."
+ ],
+ "say.news.decline_ask.enemy": [
+  "After all that, you ask me? Get lost.",
+  "I'll tell you nothing."
+ ],
+ "news.dir.n": "to the north",
+ "news.dir.ne": "to the north-east",
+ "news.dir.e": "to the east",
+ "news.dir.se": "to the south-east",
+ "news.dir.s": "to the south",
+ "news.dir.sw": "to the south-west",
+ "news.dir.w": "to the west",
+ "news.dir.nw": "to the north-west",
+ "news.dir.here": "close by",
+ "news.size.hamlet": "hamlet",
+ "news.size.village": "village",
+ "news.size.town": "town",
+ "news.size.city": "city",
+ "news.nobody": "nobody",
+ "news.trade.none.m": "farmer",
+ "news.trade.none.f": "farmer",
+ "news.trade.child.m": "boy",
+ "news.trade.child.f": "girl",
+ "news.trade.elder.m": "old-timer",
+ "news.trade.elder.f": "old woman",
+ "news.trade.trader.m": "trader",
+ "news.trade.trader.f": "trader",
+ "news.trade.tavernkeeper.m": "tavernkeeper",
+ "news.trade.tavernkeeper.f": "tavernkeeper",
+ "news.trade.smithing.m": "smith",
+ "news.trade.smithing.f": "smith",
+ "news.trade.carpentry.m": "carpenter",
+ "news.trade.carpentry.f": "carpenter",
+ "news.trade.building.m": "builder",
+ "news.trade.building.f": "builder",
+ "news.trade.hunting.m": "hunter",
+ "news.trade.hunting.f": "hunter",
+ "news.trade.trapping.m": "trapper",
+ "news.trade.trapping.f": "trapper",
+ "news.trade.fishing.m": "fisher",
+ "news.trade.fishing.f": "fisher",
+ "news.trade.farming.m": "ploughman",
+ "news.trade.farming.f": "ploughman",
+ "news.trade.cooking.m": "cook",
+ "news.trade.cooking.f": "cook",
+ "news.trade.brewing.m": "brewer",
+ "news.trade.brewing.f": "brewer",
+ "news.trade.sewing.m": "tailor",
+ "news.trade.sewing.f": "tailor",
+ "news.trade.weaving.m": "weaver",
+ "news.trade.weaving.f": "weaver",
+ "news.trade.spinning.m": "spinner",
+ "news.trade.spinning.f": "spinner",
+ "news.trade.pottery.m": "potter",
+ "news.trade.pottery.f": "potter",
+ "news.trade.tanning.m": "tanner",
+ "news.trade.tanning.f": "tanner",
+ "news.trade.medicine.m": "healer",
+ "news.trade.medicine.f": "healer",
+ "news.trade.herbalism.m": "herbalist",
+ "news.trade.herbalism.f": "herbalist",
+ "news.trade.toolmaking.m": "toolmaker",
+ "news.trade.toolmaking.f": "toolmaker",
+ "news.trade.storytelling.m": "storyteller",
+ "news.trade.storytelling.f": "storyteller",
+ "news.trade.singing.m": "singer",
+ "news.trade.singing.f": "singer",
+ "news.trade.combat.m": "warrior",
+ "news.trade.combat.f": "warrior",
+ "news.sample_place": "Riverside",
+ "say.news.person_remark": [
+  "That's all I know.",
+  "Not much more to say."
+ ],
+ "say.news.place_remark": [
+  "I don't know much more about them.",
+  "Haven't been there in a long while."
+ ],
+ "say.news.discuss": [
+  "You've heard, surely: {news_lc}?",
+  "Everyone's talking about it: {news_lc}.",
+  "What a business: {news_lc}."
+ ],
+ "say.news.discuss.sad": [
+  "I still can't get over it: {news_lc}.",
+  "Heavy heart, {listener}. {news}."
+ ],
+ "say.news.discuss.glad": [
+  "Good to hear, though: {news_lc}.",
+  "Something good at last: {news_lc}."
+ ],
+ "say.news.discuss.alarm": [
+  "What now, {listener}? {news}.",
+  "It unsettles me: {news_lc}."
+ ],
+ "say.news.discuss.spicy": [
+  "What a business: {news_lc}. Who'd have thought!",
+  "I keep thinking: {news_lc}. People, eh?"
+ ],
+ "say.news.discuss.kind.death": [
+  "Such a pity: {news_lc}.",
+  "I still can't believe it: {news_lc}."
+ ],
+ "say.news.discuss.kind.raid": [
+  "My heart still jumps when I think of the raid. {news}.",
+  "Since the raid I can't sleep. {news}."
+ ],
+ "say.news.discuss.kind.war": [
+  "This war... {news}. Hope they don't take us too.",
+  "Heard about the war? {news}. Uneasy times."
+ ],
+ "say.news.discuss.kind.wedding": [
+  "Remember the wedding? {news}. A fine pair.",
+  "{news}. May the gods bless them."
+ ],
+ "say.news.discuss.kind.birth": [
+  "{news}. May the child grow healthy.",
+  "The little one, eh? {news}."
+ ],
+ "say.news.discuss.kind.stranger": [
+  "These strangers... {news}. What do you make of them?",
+  "{news}. Will they fit in?"
+ ],
+ "say.news.discuss.mine_sad": [
+  "I can't forget it: {news_lc}.",
+  "I keep thinking of our grief: {news_lc}."
+ ],
+ "say.news.react": [
+  "Aye...",
+  "Just so.",
+  "Don't I know it."
+ ],
+ "say.news.react.sad": [
+  "A sad thing, yes.",
+  "Hard, what can you say."
+ ],
+ "say.news.react.glad": [
+  "That's good!",
+  "A fine thing."
+ ],
+ "say.news.react.alarm": [
+  "That's all we needed.",
+  "Take care, {listener}."
+ ],
+ "say.news.react.spicy": [
+  "No! It can't be.",
+  "Oh, people, people..."
+ ],
+ "say.news.react.rumor": [
+  "Idle talk, I'd say.",
+  "I don't trust those rumours."
+ ],
+ "say.news.react.mine_sad": [
+  "My own heart's not easy either.",
+  "Don't open the wound, {listener}."
+ ],
+ "say.news.react.story": [
+  "What a life...",
+  "Well, I never knew.",
+  "Aye, I remember those days too."
+ ],
+ "say.news.react.story_sad": [
+  "Hold on, {listener}. What's done is done.",
+  "Oh... sorry I brought it up."
+ ],
+ "goal.share_news.name": "Share the news",
+ "goal.share_news.thought": "Someone ought to hear what I heard."
+}

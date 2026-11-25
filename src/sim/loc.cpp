@@ -629,7 +629,10 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
         } else if (v.is_number_integer() &&
                    (k == "who" || k == "speaker" || k == "listener" || k == "actor" || k == "target" || k == "a" ||
                     k == "b" || k == "doer" || k == "suspect" || k == "owner" || k == "victim" || k == "from" ||
-                    k == "object" || k == "fig" || k == "fig2" || k == "pol" || k == "pol2" || k == "giver")) {
+                    k == "object" || k == "fig" || k == "fig2" || k == "pol" || k == "pol2" || k == "giver" ||
+                    // AL-111: the persons of the chronicle lines (spoken as news now)
+                    k == "mother" || k == "father" || k == "child" || k == "captor" || k == "captive" || k == "judge" ||
+                    k == "accused" || k == "accuser" || k == "heir" || k == "spouse" || k == "witness" || k == "real_doer")) {
             const EntityId id = v.get<EntityId>();
             if (const Character* c = w.character(id)) a[k] = characterNoun(loc, lang, *c);
             else if (const WorldObject* o = w.object(id)) a[k] = ref("object", o->type);

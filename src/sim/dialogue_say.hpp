@@ -63,7 +63,10 @@ struct MenuTopic {
     Epistemic epi;
     std::string topic;
     double weight = 0.0;
+    // AL-111: the line's own arguments (news: the chronicle entry; person, place of a question)
+    std::map<std::string, Ref> args;
 };
+// AL-111: after the deeds, the news `speaker` knows and `listener` does not (act tell_news).
 std::vector<MenuTopic> dialogueTopics(const World& w, const Character& speaker, const Character& listener,
                                       size_t max = 6);
 // The menu caption: dialogue.menu.<act> ("Рассказать о краже муки у мельника").
