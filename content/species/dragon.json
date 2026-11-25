@@ -92,12 +92,13 @@
      "+"
     ]
    ],
-   "form": "cone",
+   "form": "wave",
    "mods": {
     "power": 4,
     "radius": 6
    },
-   "name_key": "spell.innate.dragon_breath"
+   "name_key": "spell.innate.dragon_breath",
+   "chance": 0.6
   }
  ],
  "variants": {

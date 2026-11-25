@@ -404,5 +404,6 @@
  "realm.place.sootwarren.name": "Сажевые Норы",
  "realm.place.emberpeak.name": "Угольный Пик",
  "realm.place.wyrmcrag.name": "Змеиный Утёс",
- "realm.place.ashen_spire.name": "Пепельный Шпиль"
+ "realm.place.ashen_spire.name": "Пепельный Шпиль",
+ "chronicle.realm.dragon_breath": "{fig} из {pol:gen} дохнул огнём на {pol2:acc}"
 }

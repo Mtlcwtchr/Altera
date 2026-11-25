@@ -26,6 +26,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/world_reactions.hpp"
+#include "sim/elementals.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/group_combat.hpp"
 
@@ -86,6 +87,8 @@ void bite(World& w, Character& wolf, Character& victim, const SpeciesDef& s) {
         return;
     }
     const double dmg = r.range(s.attackLo, s.attackHi);
+    const EntityId vid = victim.id;
+    innateStrike(w, &wolf, s.innateSpells, vid, nullptr, "bite"); // AL-114: the basilisk's gaze
     victim.body.health = clamp01(victim.body.health - dmg);
     w.remember(victim, MemoryEntry{0, "attacked_by_beast", {wolf.id}, kNone, -0.7, 0.0, "seen", 1.0});
     auto md = w.content().moodlets.find("mauled");
@@ -464,7 +467,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     if (s.speedMPerTick <= 0.0) return; // fish: no movement drivers
     if (s.domestic) return livestockThink(w, a, s);
     // AL-115: beasts run from fire, heat and poison in the cells' fields
-    if (Vec2 away; fieldDanger(w, a.pos, 60.0, &away)) {
+    if (Vec2 away; !isElemental(w, a.species) && fieldDanger(w, a.pos, 60.0, &away)) {
         moveToward(a, clampToMap(w, away), s.speedMPerTick * 1.4);
         if (!a.hasMoodlet("alarmed", w.now())) a.moodlets.push_back({"alarmed", 0.0, w.now() + 6});
         return;
