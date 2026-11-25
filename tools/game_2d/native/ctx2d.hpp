@@ -118,6 +118,9 @@ struct Win {
     // LR-137: a window sized by its content: wantW its width in pixels, fitH its body's height
     // (render sets it; the next frame's box hugs it). 0: the fractions above.
     float wantW = 0, fitH = 0;
+    // LR-143: the frame hugs what the window drew last frame (it is laid out at full height,
+    // so the measure does not feed back); a long list still gets the full height
+    bool autoFit = false;
     std::function<void(Ctx&, Win&, const ui::Rect& body)> render;
     std::function<void(Ctx&, Win&)> onClose;
     std::function<void(Ctx&, Win&)> onPoll;   // with the state's poll

@@ -185,6 +185,10 @@ public:
     // bug nobody has to see.
     struct TextBox { Rect box; std::string text; };
     void audit(std::vector<TextBox>* sink) { audit_ = sink; }
+    // LR-143: while set, the lowest y anything is drawn at (what shows of a scrolled region
+    // only) goes there; a window that hugs its content measures itself with it
+    void inkTo(float* bottom) { ink_ = bottom; }
+    void ink(const Rect& r);   // a draw that bypassed the Ui (the window's own fills and sprites)
     void unfocus() { focus_ = 0; }
     void focus(std::uint64_t id) { focus_ = id; }
 
@@ -328,6 +332,7 @@ private:
     bool focusSeen_ = false;       // it was built this frame
     std::uint64_t signature_ = 0;
     std::vector<TextBox>* audit_ = nullptr;
+    float* ink_ = nullptr;
     // Tiles and the clip.
     float tile_ = 0;
     int tileColumns_ = 0, tileRows_ = 0;

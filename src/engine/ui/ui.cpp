@@ -165,6 +165,17 @@ void Ui::mix(std::uint64_t value) {
     signature_ ^= value + 0x9e3779b97f4a7c15ULL + (signature_ << 6) + (signature_ >> 2);
 }
 
+void Ui::ink(const Rect& r) {
+    if (!ink_) return;
+    float bottom = r.bottom();
+    if (!open_.empty()) {
+        const Rect& c = open_.back().clip;
+        if (!overlaps(r, c)) return;
+        bottom = std::min(bottom, c.bottom());
+    }
+    *ink_ = std::max(*ink_, bottom);
+}
+
 bool Ui::record(const Rect& bounds, std::uint64_t hash) {
     mix(hash);
     // A point of slack all round: the renderer rounds to whole pixels, and a
@@ -179,6 +190,7 @@ bool Ui::record(const Rect& bounds, std::uint64_t hash) {
         const float x0 = std::max(b.x, c.x), y0 = std::max(b.y, c.y);
         b = {x0, y0, std::min(b.right(), c.right()) - x0, std::min(b.bottom(), c.bottom()) - y0};
     }
+    if (ink_) *ink_ = std::max(*ink_, b.bottom() - 1.0f);
     if (tile_ > 0 && !tiles_.empty() && b.right() > 0 && b.bottom() > 0 && b.x < float(width_) &&
         b.y < float(height_)) {
         const int c0 = std::clamp(int(std::floor(b.x / tile_)), 0, tileColumns_ - 1);
