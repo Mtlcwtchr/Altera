@@ -1,0 +1,47 @@
+{
+ "id": "elemental_earth",
+ "habitat": "land",
+ "biomes": [
+  "meadow",
+  "forest",
+  "marsh",
+  "river",
+  "steppe",
+  "desert",
+  "mountain",
+  "badlands",
+  "canyon"
+ ],
+ "per_km2": 0,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "flee_m": 0,
+ "diet": "graze",
+ "aggression": 0.2,
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 0,
+ "leave_heads": 0,
+ "starve_days": 100000,
+ "sapience": 0.1,
+ "speed_m_per_tick": 15,
+ "notice_m": 20,
+ "attack": {
+  "damage": [
+   0.3,
+   0.6
+  ],
+  "chance": 0.4,
+  "sated_days_after_kill": 10
+ },
+ "tags": [
+  "elemental",
+  "earth",
+  "magical"
+ ],
+ "_doc": "Земляной элементаль: медленный, живёт на суше в местах силы, плавится в сильном жару."
+}

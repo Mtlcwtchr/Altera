@@ -1,0 +1,39 @@
+{
+ "id": "elemental_air",
+ "habitat": "land",
+ "biomes": [
+  "meadow",
+  "forest",
+  "marsh",
+  "river",
+  "steppe",
+  "desert",
+  "mountain",
+  "badlands",
+  "canyon"
+ ],
+ "per_km2": 0,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "flee_m": 0,
+ "diet": "graze",
+ "aggression": 0.0,
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 0,
+ "leave_heads": 0,
+ "starve_days": 100000,
+ "sapience": 0.1,
+ "speed_m_per_tick": 120,
+ "notice_m": 60,
+ "tags": [
+  "elemental",
+  "air",
+  "magical"
+ ],
+ "_doc": "Воздушный элементаль: держится, пока дует сильный ветер, в штиль рассеивается."
+}

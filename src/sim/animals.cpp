@@ -26,6 +26,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/world_reactions.hpp"
+#include "sim/elementals.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/group_combat.hpp"
 
@@ -464,7 +465,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     if (s.speedMPerTick <= 0.0) return; // fish: no movement drivers
     if (s.domestic) return livestockThink(w, a, s);
     // AL-115: beasts run from fire, heat and poison in the cells' fields
-    if (Vec2 away; fieldDanger(w, a.pos, 60.0, &away)) {
+    if (Vec2 away; !isElemental(w, a.species) && fieldDanger(w, a.pos, 60.0, &away)) {
         moveToward(a, clampToMap(w, away), s.speedMPerTick * 1.4);
         if (!a.hasMoodlet("alarmed", w.now())) a.moodlets.push_back({"alarmed", 0.0, w.now() + 6});
         return;
