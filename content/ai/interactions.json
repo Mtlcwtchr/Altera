@@ -3270,6 +3270,22 @@
       "t.body:health<=0"
      ]
     }
+   ],
+   "legal_unless": [
+    {
+     "tag": "assault_armed",
+     "if": [
+      "t.trait:undead"
+     ],
+     "mult": -1
+    },
+    {
+     "tag": "murder",
+     "if": [
+      "t.trait:undead"
+     ],
+     "mult": -1
+    }
    ]
   },
   {
@@ -6864,6 +6880,90 @@
    "mvp": true,
    "_doc": "AL-75: Поесть за плату (у тавернщика): купить еду и съесть на месте",
    "_part": "AL-75"
+  },
+  {
+   "id": "cast_grow",
+   "category": "work",
+   "target": "object:field",
+   "pre": [],
+   "eff": [
+    "body:fatigue+0.03",
+    "need:purpose+0.05"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Cast",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [],
+   "mvp": false,
+   "_doc": "AL-118: заклинание в обычной работе; ставит в очередь sim/magic_society (решение по пользе, цене маны, риску и закону), каст — magicAfterAct. Жизнь+ на голодное поле: плодородие растёт (поле клетки и почва поля)",
+   "_part": "magic"
+  },
+  {
+   "id": "cast_rain",
+   "category": "work",
+   "target": "object:field",
+   "pre": [],
+   "eff": [
+    "body:fatigue+0.03",
+    "need:purpose+0.05"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Cast",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [],
+   "mvp": false,
+   "_doc": "AL-118: заклинание в обычной работе; ставит в очередь sim/magic_society (решение по пользе, цене маны, риску и закону), каст — magicAfterAct. Вода+ на сухое поле: влага растёт",
+   "_part": "magic"
+  },
+  {
+   "id": "cast_mend",
+   "category": "work",
+   "target": "object:house",
+   "pre": [],
+   "eff": [
+    "body:fatigue+0.03",
+    "need:purpose+0.05"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Cast",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [],
+   "mvp": false,
+   "_doc": "AL-118: заклинание в обычной работе; ставит в очередь sim/magic_society (решение по пользе, цене маны, риску и закону), каст — magicAfterAct. Земля+ на треснувший дом: целостность растёт",
+   "_part": "magic"
+  },
+  {
+   "id": "cast_cleanse",
+   "category": "work",
+   "target": "object:well",
+   "pre": [],
+   "eff": [
+    "body:fatigue+0.03",
+    "need:purpose+0.05"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Cast",
+   "goap": false,
+   "legal": [],
+   "visibility": "public",
+   "social": null,
+   "speech": [],
+   "mvp": false,
+   "_doc": "AL-118: заклинание в обычной работе; ставит в очередь sim/magic_society (решение по пользе, цене маны, риску и закону), каст — magicAfterAct. Жизнь+ у отравленного колодца: скверна уходит",
+   "_part": "magic"
   }
  ]
 }

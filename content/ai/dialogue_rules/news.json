@@ -237,6 +237,78 @@
    "say": "say.news.tell.kind.court"
   },
   {
+   "id": "news.tell.kind.magic",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=magic"
+   ],
+   "say": "say.news.tell.kind.magic"
+  },
+  {
+   "id": "news.discuss.kind.magic",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=magic"
+   ],
+   "say": "say.news.discuss.kind.magic"
+  },
+  {
+   "id": "news.tell.kind.dark_magic",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=dark_magic"
+   ],
+   "say": "say.news.tell.kind.dark_magic"
+  },
+  {
+   "id": "news.discuss.kind.dark_magic",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=dark_magic"
+   ],
+   "say": "say.news.discuss.kind.dark_magic"
+  },
+  {
+   "id": "news.tell.kind.witch_trial",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=witch_trial"
+   ],
+   "say": "say.news.tell.kind.witch_trial"
+  },
+  {
+   "id": "news.discuss.kind.witch_trial",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=witch_trial"
+   ],
+   "say": "say.news.discuss.kind.witch_trial"
+  },
+  {
+   "id": "news.tell.kind.dragon",
+   "when": [
+    "act=tell_news",
+    "news",
+    "news.kind=dragon"
+   ],
+   "say": "say.news.tell.kind.dragon"
+  },
+  {
+   "id": "news.discuss.kind.dragon",
+   "when": [
+    "act=discuss_news",
+    "news",
+    "news.kind=dragon"
+   ],
+   "say": "say.news.discuss.kind.dragon"
+  },
+  {
    "id": "news.tell.kind.gossip",
    "when": [
     "act=tell_news",

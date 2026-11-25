@@ -1,9 +1,7 @@
 {
  "_doc": "AL-85, AL-92: the realm beyond the village map and the village in it (src/sim/realm.cpp, gdd/realm/REALM_v0.2_unified.md). One kind of settlement and one kind of person: templates only seed the start numbers, what a settlement is (size, tags) is classified each season by 'classify'. Food in person-days, wealth in coin, distances in km (the village map at 0,0).",
  "enabled": true,
- "disabled_tags": [
-  "magic"
- ],
+ "disabled_tags": [],
  "region_km": [
   12,
   38
@@ -710,14 +708,60 @@
    "tags": []
   },
   "haunting": {
+   "_doc": "AL-118: нежить без хозяина (или запретного хозяина) у деревни; takers убивают цель на карте",
    "reward": [
-    50,
-    150
+    30,
+    90
    ],
-   "danger": 0.7,
+   "danger": 0.5,
    "days": 90,
    "takers": 2,
+   "renown": 0.12,
+   "hunt": true,
+   "tags": [
+    "magic"
+   ]
+  },
+  "necromancer_hunt": {
+   "_doc": "AL-118: бежавший или изгнанный некромант; на карте его ищут и убивают, вдали — проверка оружия",
+   "reward": [
+    40,
+    120
+   ],
+   "danger": 0.6,
+   "days": 180,
+   "takers": 2,
    "renown": 0.15,
+   "hunt": true,
+   "tags": [
+    "magic"
+   ]
+  },
+  "dragon_slay": {
+   "_doc": "AL-118: дракон берёт дань или жжёт; идут к логову (at_target), удача — дракон убит, половина клада героям, логово пустеет",
+   "reward": [
+    80,
+    300
+   ],
+   "danger": 0.85,
+   "days": 240,
+   "takers": 4,
+   "renown": 0.3,
+   "at_target": true,
+   "tags": [
+    "magic"
+   ]
+  },
+  "artifact_hunt": {
+   "_doc": "AL-118: гильдия магов ищет вещь силы; поход вдали",
+   "reward": [
+    30,
+    100
+   ],
+   "danger": 0.45,
+   "days": 120,
+   "takers": 2,
+   "renown": 0.1,
    "tags": [
     "magic"
    ]
