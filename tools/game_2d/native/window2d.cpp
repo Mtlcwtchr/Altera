@@ -1,0 +1,2054 @@
+// AL-94: the 2D client in its own window (see window2d.hpp). A port of the
+// page's map and play (tools/game_2d/web/game2d.js, play.js): ground chunks of
+// 64x64 cells painted once into textures, things and pawns sorted by their
+// foot, roofs lifted over the house one looks at, the walk's dots, names and
+// what people say over their heads, night and rain; a side column of the
+// households and the chosen one's card, a bar of the clock and the speeds; the
+// player's person led by WASD / a click on the ground (A* over the cells),
+// the act menu on RMB and the quick bar 1-8.
+#include "native/window2d.hpp"
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#define NOMINMAX
+#include <windows.h>
+#undef near
+#undef far
+#endif
+
+#include <algorithm>
+#include <cmath>
+#include <cstdio>
+#include <deque>
+#include <filesystem>
+#include <fstream>
+#include <iostream>
+#include <map>
+#include <queue>
+#include <regex>
+#include <set>
+#include <sstream>
+#include <tuple>
+#include <unordered_map>
+#include <unordered_set>
+#include <vector>
+
+#include <SDL3/SDL.h>
+#define SDL_MAIN_HANDLED
+#include <SDL3/SDL_main.h>
+#include <SDL3_image/SDL_image.h>
+#include <nlohmann/json.hpp>
+
+#include "engine/ui/font.hpp"
+#include "engine/ui/ui.hpp"
+#include "native/pixels2d.hpp"
+
+namespace game2d {
+
+using Json = nlohmann::json;
+
+void attachConsole(bool need) {
+#ifdef _WIN32
+    if (GetConsoleWindow()) return;
+    // stdout already goes somewhere (a file, a pipe): keep it
+    const HANDLE out = GetStdHandle(STD_OUTPUT_HANDLE);
+    if (out != nullptr && out != INVALID_HANDLE_VALUE && GetFileType(out) != FILE_TYPE_UNKNOWN) return;
+    if (AttachConsole(ATTACH_PARENT_PROCESS) || (need && AllocConsole())) {
+        FILE* f = nullptr;
+        freopen_s(&f, "CONOUT$", "w", stdout);
+        freopen_s(&f, "CONOUT$", "w", stderr);
+        std::ios::sync_with_stdio();
+    }
+#else
+    (void)need;
+#endif
+}
+
+namespace {
+
+constexpr int T = 16, CH = 64;
+constexpr int kPage = 1024, kCell = 22;   // atlas pages, one picture a cell with a gap round it
+
+double nowMs() { return double(SDL_GetTicks()); }
+
+std::string readText(const std::filesystem::path& p) {
+    std::ifstream f(p, std::ios::binary);
+    std::stringstream ss;
+    ss << f.rdbuf();
+    return ss.str();
+}
+
+Json parseOr(const std::string& s, Json fallback) {
+    try {
+        return Json::parse(s);
+    } catch (...) {
+        return fallback;
+    }
+}
+
+std::string str(const Json& j, const char* k) {
+    const auto it = j.find(k);
+    return it != j.end() && it->is_string() ? it->get<std::string>() : std::string();
+}
+double num(const Json& j, const char* k, double d = 0) {
+    const auto it = j.find(k);
+    return it != j.end() && it->is_number() ? it->get<double>() : d;
+}
+// A list in `j` by reference (pointers into it stay good while `j` does); an empty one when there is none.
+const Json& arr(const Json& j, const char* k) {
+    static const Json empty = Json::array();
+    const auto it = j.find(k);
+    return it != j.end() && it->is_array() ? *it : empty;
+}
+bool flag(const Json& j, const char* k) {
+    const auto it = j.find(k);
+    return it != j.end() && it->is_boolean() && it->get<bool>();
+}
+long long ident(const Json& j, const char* k) {
+    const auto it = j.find(k);
+    return it != j.end() && it->is_number() ? it->get<long long>() : -1;
+}
+
+ui::Colour col(Rgba c, float a = 1.0f) { return ui::Colour::rgb(int(c >> 16 & 0xff), int(c >> 8 & 0xff), int(c & 0xff), a); }
+ui::Colour hexc(const char* h, float a = 1.0f) { return col(parseHex(h), a); }
+
+// The frame's colours (tools/game_2d/web/style.css: "Резной рубеж").
+const ui::Colour kWalnut = hexc("#3a2416"), kWalnutD = hexc("#24160c"), kBronze = hexc("#b08a4a"),
+                 kBronzeL = hexc("#e0c080"), kLeather = hexc("#4a2e1c"), kLeatherD = hexc("#2e1c10"),
+                 kParch = hexc("#e8d8b0"), kInk = hexc("#3a2414"), kGold = hexc("#e8c060"), kText = hexc("#efe2c4"),
+                 kDim = hexc("#b8a07a"), kBad = hexc("#b83a28"), kMid = hexc("#c89a30"), kGood = hexc("#5a9a3a"),
+                 kPlayer = hexc("#c03028"), kOut = hexc("#1a1410");
+
+ui::Colour tone(double v) { return v < 0.3 ? kBad : v < 0.6 ? kMid : kGood; }
+
+// --- the atlas: every small picture once on the card --------------------------
+struct Sprite {
+    SDL_Texture* tex = nullptr;
+    SDL_FRect src{};
+    explicit operator bool() const { return tex != nullptr; }
+};
+
+class Atlas {
+public:
+    void attach(SDL_Renderer* r) { ren_ = r; }
+    void clear() {
+        for (SDL_Texture* t : pages_) SDL_DestroyTexture(t);
+        pages_.clear();
+        map_.clear();
+        next_ = 0;
+    }
+    const Sprite* find(const std::string& key) const {
+        const auto it = map_.find(key);
+        return it == map_.end() ? nullptr : &it->second;
+    }
+    Sprite put(const std::string& key, const Pixels& p) {
+        Sprite s;
+        if (p.size <= 0 || p.size > kCell - 2) {
+            map_[key] = s;
+            return s;
+        }
+        const int perRow = kPage / kCell, perPage = perRow * perRow;
+        if (pages_.empty() || next_ >= perPage) {
+            SDL_Texture* t = SDL_CreateTexture(ren_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, kPage, kPage);
+            if (!t) return s;
+            SDL_SetTextureBlendMode(t, SDL_BLENDMODE_BLEND);
+            SDL_SetTextureScaleMode(t, SDL_SCALEMODE_NEAREST);
+            std::vector<Rgba> zero(std::size_t(kPage) * kPage, 0);
+            SDL_UpdateTexture(t, nullptr, zero.data(), kPage * 4);
+            pages_.push_back(t);
+            next_ = 0;
+        }
+        const int cx = (next_ % perRow) * kCell + 1, cy = (next_ / perRow) * kCell + 1;
+        ++next_;
+        const SDL_Rect r{cx, cy, p.size, p.size};
+        SDL_UpdateTexture(pages_.back(), &r, p.px.data(), p.size * 4);
+        s.tex = pages_.back();
+        s.src = {float(cx), float(cy), float(p.size), float(p.size)};
+        map_[key] = s;
+        return s;
+    }
+
+private:
+    SDL_Renderer* ren_ = nullptr;
+    std::vector<SDL_Texture*> pages_;
+    std::unordered_map<std::string, Sprite> map_;
+    int next_ = 0;
+};
+
+struct Chunk {
+    Json j;
+    std::string body;
+    SDL_Texture* tex = nullptr;
+    bool painted = false, glyph = false;
+    double at = 0;
+};
+
+struct Vis {
+    double x = 0, y = 0;
+    char face = 'S';
+    int bob = 0;
+    bool moving = false, driven = false;
+};
+
+struct Bubble {
+    std::string line;
+    double until = 0;
+    bool bark = false;
+};
+
+struct Slot {
+    std::string kind, id;   // kind "act" | "goal"; empty: an empty slot
+    bool target = false;
+};
+
+std::string utf8Cut(const std::string& s, std::size_t maxCodepoints) {
+    std::size_t at = 0, n = 0;
+    while (at < s.size() && n < maxCodepoints) {
+        ui::nextCodepoint(s, at);
+        ++n;
+    }
+    return at >= s.size() ? s : s.substr(0, at) + "…";
+}
+
+} // namespace
+
+struct Window::Impl {
+    std::filesystem::path root;
+    std::string err;
+    SDL_Window* win = nullptr;
+    SDL_Renderer* ren = nullptr;
+    ui::Ui ui;
+    std::shared_ptr<ui::FontFace> face;
+    Atlas atlas;
+    Host* host = nullptr;
+    float U = 1.0f;          // the interface's scale (the display's)
+    int W = 1280, H = 720;   // the output in pixels
+    float mouseK = 1.0f;     // window coordinates -> output pixels
+
+    // --- the game as the routes tell it ---------------------------------------
+    Json ST, MAP, RES;
+    std::map<std::string, std::string> UI;
+    SpriteSet sprites;
+    std::vector<std::pair<std::regex, std::string>> actsRe;
+    std::unordered_set<std::string> hidden;
+    std::unordered_map<std::string, Chunk> chunks;
+    int chunkVersion = 0;
+    std::vector<Json> people;
+    std::unordered_map<long long, std::size_t> byId;
+    std::unordered_map<long long, Vis> vis;
+    Json clock = Json::object();
+    bool paused = false;
+    double tps = 2;
+    long long selId = -1, hoverId = -1, me = -1;
+    Json selCard;
+    bool haveHover = false;
+    double hoverX = 0, hoverY = 0;
+    double camX = 0, camY = 0;
+    int zoom = 2;
+    bool follow = false, glyphs = false, altDown = false, fullscreen = false;
+    std::string roofMode = "auto";
+    double lastFrame = 0, lastPoll = -1e9, lastBar = -1e9;
+    bool selectedMe = false;
+
+    // --- leading ------------------------------------------------------------------
+    std::vector<std::pair<double, double>> path;
+    double lastSteer = 0, lastMove = 0;
+    bool haveSteer = false;
+    double steerX = 0, steerY = 0;
+    double markerX = 0, markerY = 0, markerAt = -1e9;
+    std::unordered_set<long long> walls;   // wall lines of the ground storey
+    int wallsVersion = -1;
+    std::array<Slot, 8> slots{};
+    Json checked = Json::array();
+    long long barFor = -2;
+
+    // --- interface ------------------------------------------------------------------
+    std::string toastText;
+    double toastUntil = 0;
+    std::unordered_map<long long, Bubble> bubbles;
+    std::deque<std::pair<std::string, double>> lines;
+    bool menuOpen = false;
+    float menuX = 0, menuY = 0;
+    std::string menuTitle;
+    long long menuTarget = -1;
+    Json menuActs = Json::array();
+    ui::Input in;
+    bool dragging = false;
+    float dragX = 0, dragY = 0;
+    double dragCamX = 0, dragCamY = 0;
+    bool clickedWorld = false, rclickedWorld = false;
+    float clickX = 0, clickY = 0;
+    bool shift = false;
+
+    // --- shots (--shot) --------------------------------------------------------------
+    std::string shotPath;
+    double shotAfter = 6.0;
+    int selectIndex = -1;
+
+    // ======================================================================
+    std::string L(const std::string& k, const std::map<std::string, std::string>& args = {}) const {
+        const auto it = UI.find(k);
+        std::string s = it == UI.end() ? k : it->second;
+        for (const auto& [a, v] : args) {
+            const std::string tag = "{" + a + "}";
+            for (std::size_t p = s.find(tag); p != std::string::npos; p = s.find(tag, p + v.size())) s.replace(p, tag.size(), v);
+        }
+        return s;
+    }
+    Json get(const std::string& path) {
+        int code = 0;
+        const std::string b = host->call("GET", path, "", &code);
+        return code == 200 ? parseOr(b, Json()) : Json();
+    }
+    Json post(const std::string& path, const Json& body) {
+        int code = 0;
+        const std::string b = host->call("POST", path, body.dump(), &code);
+        return code == 200 ? parseOr(b, Json()) : Json();
+    }
+    Json cmd(const Json& body) { return post("/api/cmd", body); }
+    void toast(const std::string& t) {
+        if (t.empty()) return;
+        toastText = t;
+        toastUntil = nowMs() + 3200;
+    }
+    void cmdToast(const Json& body) {
+        const Json r = cmd(body);
+        const std::string res = str(r, "result");
+        if (!res.empty() && res != "ok") toast(str(r, "text").empty() ? res : str(r, "text"));
+    }
+
+    // --- view math ---------------------------------------------------------------------
+    float mapW() const { return float(W) - sideW(); }
+    float mapH() const { return float(H) - barH(); }
+    float sideW() const { return std::round(340 * U); }
+    float barH() const { return std::round(44 * U); }
+    double dpr() const { return std::max(1.0, std::round(double(U))); }
+    double scale() const { return zoom * dpr(); }
+    double tilePx() const { return T * scale(); }
+    void toScreen(double wx, double wy, float& sx, float& sy) const {
+        sx = float(std::round((wx - camX) * tilePx() + mapW() / 2));
+        sy = float(std::round((wy - camY) * tilePx() + mapH() / 2));
+    }
+    void toWorld(double sx, double sy, double& wx, double& wy) const {
+        wx = (sx - mapW() / 2) / tilePx() + camX;
+        wy = (sy - mapH() / 2) / tilePx() + camY;
+    }
+    const Json* person(long long id) const {
+        const auto it = byId.find(id);
+        return it == byId.end() ? nullptr : &people[it->second];
+    }
+
+    // --- drawing primitives --------------------------------------------------------------
+    void fill(float x, float y, float w, float h, const ui::Colour& c) {
+        SDL_SetRenderDrawColorFloat(ren, c.r, c.g, c.b, c.a);
+        const SDL_FRect r{x, y, w, h};
+        SDL_RenderFillRect(ren, &r);
+    }
+    void frame(float x, float y, float w, float h, const ui::Colour& c, float t) {
+        fill(x, y, w, t, c);
+        fill(x, y + h - t, w, t, c);
+        fill(x, y, t, h, c);
+        fill(x + w - t, y, t, h, c);
+    }
+    void ellipse(float cx, float cy, float rx, float ry, const ui::Colour& c) {
+        SDL_SetRenderDrawColorFloat(ren, c.r, c.g, c.b, c.a);
+        for (int dy = int(-ry); dy <= int(ry); ++dy) {
+            const float k = 1.0f - float(dy * dy) / (ry * ry);
+            if (k < 0) continue;
+            const float hw = rx * std::sqrt(k);
+            const SDL_FRect r{cx - hw, cy + float(dy), hw * 2, 1};
+            SDL_RenderFillRect(ren, &r);
+        }
+    }
+    void ring(float cx, float cy, float rx, float ry, float t, const ui::Colour& c) {
+        SDL_SetRenderDrawColorFloat(ren, c.r, c.g, c.b, c.a);
+        const int n = 64;
+        for (int i = 0; i < n; ++i) {
+            const double a = i * 2 * 3.14159265358979 / n;
+            const SDL_FRect r{float(cx + rx * std::cos(a) - t / 2), float(cy + ry * std::sin(a) - t / 2), t, t};
+            SDL_RenderFillRect(ren, &r);
+        }
+    }
+    // a carved frame: walnut, a bronze bevel lit from the top left
+    void carved(const ui::Rect& r) {
+        fill(r.x, r.y, r.w, r.h, kWalnut);
+        frame(r.x, r.y, r.w, r.h, kWalnutD, std::max(1.0f, U));
+        frame(r.x + U, r.y + U, r.w - 2 * U, r.h - 2 * U, kBronze, std::max(1.0f, U));
+        fill(r.x + U, r.y + U, r.w - 2 * U, std::max(1.0f, U), kBronzeL);
+        ui.claim(r);
+    }
+    void parchBox(const ui::Rect& r) {
+        fill(r.x - U, r.y - U, r.w + 2 * U, r.h + 2 * U, kOut);
+        fill(r.x, r.y, r.w, r.h, kParch);
+    }
+    float fs(float px) const { return px / (15.0f * U); }   // a text scale for a size in pixels
+    void text(float x, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) {
+        if (shadow) ui.text(x + std::max(1.0f, U), y + std::max(1.0f, U), s, ui::Colour(0, 0, 0, c.a), fs(px));
+        ui.text(x, y, s, c, fs(px));
+    }
+    float textW(const std::string& s, float px) const { return ui.textWidth(s, fs(px)); }
+    float textH(float px) const { return ui.textHeight(fs(px)); }
+    void textC(float cx, float y, const std::string& s, const ui::Colour& c, float px, bool shadow = false) {
+        text(cx - textW(s, px) / 2, y, s, c, px, shadow);
+    }
+    // a gauge: a dark track, a filled part
+    void gauge(const ui::Rect& r, double v, const ui::Colour& c) {
+        fill(r.x, r.y, r.w, r.h, kLeatherD);
+        fill(r.x, r.y, float(r.w * std::clamp(v, 0.0, 1.0)), r.h, c);
+        frame(r.x, r.y, r.w, r.h, kOut, 1);
+    }
+
+    // --- pictures ------------------------------------------------------------------------
+    Sprite sprite(const std::string& name, const Json& recolour = Json()) {
+        std::string k = "s:" + name;
+        std::map<char, char> rc;
+        if (recolour.is_object())
+            for (const auto& [a, b] : recolour.items())
+                if (!a.empty() && b.is_string() && !b.get<std::string>().empty()) {
+                    rc[a[0]] = b.get<std::string>()[0];
+                    k += "|" + a + b.get<std::string>();
+                }
+        if (const Sprite* s = atlas.find(k)) return *s;
+        return atlas.put(k, sprites.get(name, rc));
+    }
+    Sprite pawnSprite(const PawnSpec& spec, char side, int bob) {
+        const std::string k = "p:" + spec.key() + side + char('0' + bob);
+        if (const Sprite* s = atlas.find(k)) return *s;
+        return atlas.put(k, pawnPixels(spec, side, bob));
+    }
+    Sprite beastSprite(const std::string& sp, char face) {
+        const std::string k = std::string("b:") + sp + face;
+        if (const Sprite* s = atlas.find(k)) return *s;
+        return atlas.put(k, beastPixels(sp, face));
+    }
+    void blit(const Sprite& s, float x, float y, float w, float h, float alpha = 1.0f, double angle = 0) {
+        if (!s) return;
+        SDL_SetTextureAlphaModFloat(s.tex, alpha);
+        const SDL_FRect d{x, y, w, h};
+        if (angle != 0) SDL_RenderTextureRotated(ren, s.tex, &s.src, &d, angle, nullptr, SDL_FLIP_NONE);
+        else SDL_RenderTexture(ren, s.tex, &s.src, &d);
+        if (alpha != 1.0f) SDL_SetTextureAlphaModFloat(s.tex, 1.0f);
+    }
+
+    // --- pawns from what the sim says the person wears and holds ------------------------
+    std::string famColour(const Json& p) const {
+        const Json list = MAP.value("family_colours", Json::array({"#8a6a48"}));
+        if (!list.is_array() || list.empty()) return "#8a6a48";
+        return list[idHash(std::max(0.0, num(p, "famId")), 3) % list.size()].get<std::string>();
+    }
+    PawnSpec pawnSpec(const Json& p) const {
+        static const char* HAIR[] = {"#5a3a20", "#2a1a10", "#7a5030", "#d8a848", "#a85a30", "#3a2818"};
+        const std::uint32_t h = idHash(num(p, "id"), 1);
+        const double age = num(p, "age", 30);
+        const bool child = age < 13, f = str(p, "sex") == "f";
+        PawnSpec spec;
+        spec.child = child;
+        static const char* BODY[] = {"norm", "norm", "thin", "fat"};
+        spec.body = f ? "fem" : BODY[h % 4];
+        static const char* SKIN[] = {"light", "light", "light", "mid", "light", "mid", "light", "dark"};
+        spec.skin = SKIN[(h >> 3) % 8];
+        std::string hc = HAIR[(h >> 6) % 6];
+        if (age >= 55) hc = "#b0b0a8";
+        static const char* FH[] = {"long", "bun", "braids", "long"};
+        spec.hair = {f ? FH[(h >> 9) % 4] : "short", hc};
+        if (!f && !child && age >= 18 && ((h >> 12) % 3)) spec.beard = true;
+        std::vector<std::pair<std::string, std::string>> wear;
+        std::set<std::string> kinds;
+        const Json& W = MAP.contains("wear") ? MAP["wear"] : Json::object();
+        if (p.contains("worn") && p["worn"].is_array())
+            for (const auto& it : p["worn"]) {
+                if (!it.is_string() || !W.contains(it.get<std::string>())) continue;
+                const Json& w = W[it.get<std::string>()];
+                const std::string layer = str(w, "layer"), c = str(w, "colour");
+                kinds.insert(layer);
+                if (layer == "cloak") spec.cloak = c;
+                else if (layer == "cap" || layer == "helmet" || layer == "hood") spec.hat = {layer, c};
+                else wear.push_back({layer, c});
+            }
+        if (!kinds.count("shirt") && !kinds.count("robe") && !kinds.count("mail") && !kinds.count("tabard")) {
+            const Json of = MAP.value("outfit", Json::object()).value(child ? "child" : (f ? "f" : "m"), Json::array());
+            std::vector<std::pair<std::string, std::string>> base;
+            for (const auto& kc : of)
+                if (kc.is_array() && kc.size() >= 2) {
+                    std::string c = kc[1].get<std::string>();
+                    base.push_back({kc[0].get<std::string>(), c == "family" ? famColour(p) : c});
+                }
+            // unshift one by one: the last of the outfit ends first
+            for (const auto& b : base) wear.insert(wear.begin(), b);
+        }
+        static const std::vector<std::string> order = {"shirt", "robe", "mail", "pants", "tabard", "apron", "belt"};
+        auto rank = [&](const std::string& k) {
+            const auto it = std::find(order.begin(), order.end(), k);
+            return it == order.end() ? -1 : int(it - order.begin());
+        };
+        std::stable_sort(wear.begin(), wear.end(), [&](const auto& a, const auto& b) { return rank(a.first) < rank(b.first); });
+        spec.wear = wear;
+        if (spec.hat.first.empty() && f && !child && ((h >> 15) % 5) < 2) spec.hat = {"kerchief", "#e8e0d0"};
+        if (MAP.contains("tools") && p.contains("inv") && p["inv"].is_array())
+            for (const auto& pt : MAP["tools"]) {
+                const std::string pat = pt[0].get<std::string>();
+                bool has = false;
+                for (const auto& i : p["inv"])
+                    if (i.is_string() && i.get<std::string>().find(pat) != std::string::npos) has = true;
+                if (has) {
+                    spec.tool = pt[1].get<std::string>();
+                    break;
+                }
+            }
+        return spec;
+    }
+    std::string actIcon(const Json& p) const {
+        if (!flag(p, "alive")) return "";
+        if (str(p, "st") == "Sleep") return "ic_sleep";
+        const std::string ia = str(p, "ia");
+        for (const auto& [re, sp] : actsRe)
+            if (std::regex_search(ia, re)) return sp;
+        return "";
+    }
+    const Json& thingLook(const std::string& type) const {
+        static const Json none = Json::object();
+        const Json& mo = MAP.contains("objects") ? MAP["objects"] : none;
+        if (mo.contains(type)) return mo[type];
+        if (RES.is_object() && RES.contains("objects") && RES["objects"].contains(type)) return RES["objects"][type];
+        return mo.contains("_default") ? mo["_default"] : none;
+    }
+
+    // ======================================================================
+    // start
+    bool open() {
+        SDL_SetMainReady();
+        SDL_SetHint(SDL_HINT_RENDER_DRIVER, "direct3d12,direct3d11,opengl,software");
+        if (!SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS)) {
+            err = SDL_GetError();
+            return false;
+        }
+        win = SDL_CreateWindow("Altera", 1600, 900, SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIDDEN);
+        if (!win) {
+            err = SDL_GetError();
+            return false;
+        }
+        ren = SDL_CreateRenderer(win, nullptr);
+        if (!ren) {
+            err = SDL_GetError();
+            return false;
+        }
+        SDL_SetRenderVSync(ren, 1);
+        std::cout << "renderer: " << SDL_GetRendererName(ren) << std::endl;
+        atlas.attach(ren);
+        ui.init(ren);
+        face = ui::FontFace::load(root / "assets/fonts/Kurale-Regular.ttf");
+        measure();
+        if (face) ui.setFont(face, face, 15.0f * U, 1.0f);
+        SDL_MaximizeWindow(win);
+        SDL_ShowWindow(win);
+        loadingFrame("");
+        return true;
+    }
+    void measure() {
+        SDL_GetRenderOutputSize(ren, &W, &H);
+        int ww = 1, wh = 1;
+        SDL_GetWindowSize(win, &ww, &wh);
+        mouseK = ww > 0 ? float(W) / float(ww) : 1.0f;
+        U = std::clamp(SDL_GetWindowDisplayScale(win), 1.0f, 3.0f);
+        if (face) ui.setFont(face, face, 15.0f * U, 1.0f);
+    }
+    void loadingFrame(const std::string& why) {
+        for (int i = 0; i < 2; ++i) {
+            SDL_PumpEvents();
+            measure();
+            SDL_SetRenderDrawColorFloat(ren, 0.07f, 0.04f, 0.02f, 1);
+            SDL_RenderClear(ren);
+            ui::Input none;
+            ui.begin(none, W, H);
+            textC(W / 2.0f, H / 2.0f - 60 * U, "Altera", kGold, 40 * U, true);
+            if (why.empty()) textC(W / 2.0f, H / 2.0f + 10 * U, "…", kText, 22 * U, true);
+            else ui.paragraph(W / 2.0f - 300 * U, H / 2.0f, 600 * U, why, kBad, fs(16 * U));
+            ui.end();
+            SDL_RenderPresent(ren);
+        }
+    }
+    void fail(const std::string& why) {
+        if (!ren) return;
+        for (;;) {
+            SDL_Event e;
+            while (SDL_PollEvent(&e))
+                if (e.type == SDL_EVENT_QUIT || e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED ||
+                    (e.type == SDL_EVENT_KEY_DOWN && e.key.scancode == SDL_SCANCODE_ESCAPE))
+                    return;
+            loadingFrame(why);
+            SDL_Delay(30);
+        }
+    }
+
+    void loadStatic() {
+        ST = get("/api/static");
+        if (!ST.is_object()) ST = Json::object();
+        const Json strings = ST.value("ui", Json::object());   // kept: items() of a temporary dangles
+        for (const auto& [k, v] : strings.items())
+            if (v.is_string()) UI[k] = v.get<std::string>();
+        const auto dir = root / "content/sprites_2d";
+        sprites.load(parseOr(readText(dir / "sprites.json"), Json::object()));
+        MAP = parseOr(readText(dir / "map2d.json"), Json::object());
+        RES = parseOr(readText(dir / "resources.json"), Json());
+        for (const auto& a : MAP.value("acts", Json::array()))
+            if (a.is_array() && a.size() >= 2) try {
+                    actsRe.push_back({std::regex(a[0].get<std::string>(), std::regex::ECMAScript), a[1].get<std::string>()});
+                } catch (...) {
+                }
+        for (const auto& h : MAP.value("hidden", Json::array()))
+            if (h.is_string()) hidden.insert(h.get<std::string>());
+        SDL_SetWindowTitle(win, L("ui2d.title").c_str());
+        std::cout << "window: static " << ST.size() << " keys, " << UI.size() << " strings, map " << MAP.size() << " keys" << std::endl;
+        for (const auto& s : ST.value("settlements", Json::array()))
+            if (str(s, "mode") == "full" || camX == 0) {
+                camX = num(s, "x");
+                camY = num(s, "y");
+                if (str(s, "mode") == "full") break;
+            }
+        slots = {Slot{"act", "chat", true}, Slot{"goal", "eat"}, Slot{"goal", "drink"}, Slot{"goal", "rest"}, Slot{}, Slot{}, Slot{}, Slot{}};
+    }
+
+    // --- ground chunks --------------------------------------------------------------------
+    std::string tileSprite(const std::string& g, int v) const {
+        const Json tiles = MAP.value("tiles", Json::object());
+        if (tiles.contains(g) && tiles[g].is_array() && !tiles[g].empty()) return tiles[g][std::size_t(v) % tiles[g].size()].get<std::string>();
+        return "tl_grass";
+    }
+    void paintChunk(Chunk& c) {
+        if (!c.tex) {
+            c.tex = SDL_CreateTexture(ren, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_TARGET, CH * T, CH * T);
+            if (!c.tex) return;
+            SDL_SetTextureScaleMode(c.tex, SDL_SCALEMODE_NEAREST);
+            SDL_SetTextureBlendMode(c.tex, SDL_BLENDMODE_BLEND);
+        }
+        SDL_Texture* was = SDL_GetRenderTarget(ren);
+        SDL_SetRenderTarget(ren, c.tex);
+        SDL_SetRenderDrawColor(ren, 0, 0, 0, 0);
+        SDL_RenderClear(ren);
+        const Json& j = c.j;
+        const int w = int(num(j, "w")), h = int(num(j, "h")), x0 = int(num(j, "x0")), y0 = int(num(j, "y0"));
+        const std::string ground = str(j, "ground"), var = str(j, "var");
+        const Json names = ST.value("ground", Json::array());
+        const Json gg = MAP.value("glyph_ground", Json::object());
+        for (int y = 0; y < h; ++y)
+            for (int x = 0; x < w; ++x) {
+                const std::size_t i = std::size_t(y * w + x);
+                const int gi = i < ground.size() ? ground[i] - 97 : 0;
+                int v = 0;
+                if (i * 2 + 1 < var.size()) v = std::stoi(var.substr(i * 2, 2), nullptr, 16);
+                const std::string gname = gi >= 0 && gi < int(names.size()) ? names[std::size_t(gi)].get<std::string>() : "grass";
+                if (glyphs) {
+                    fill(float(x * T), float(y * T), T, T, hexc("#100c08"));
+                    const std::string cl = gg.contains(gname) ? gg[gname][1].get<std::string>() : "l";
+                    fill(float(x * T + 6), float(y * T + 6), 4, 4, col(sprites.colour(cl), 0.55f));
+                    continue;
+                }
+                const Sprite sp = sprite(tileSprite(gname, v));
+                const bool turn = gname == "grass" || gname == "meadow" || gname == "forest" || gname == "marsh" || gname == "sand";
+                const int rot = turn ? (v >> 4) & 3 : 0;
+                blit(sp, float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
+            }
+        // walls, doors, windows of the ground storey on the cell lines (4 px strips)
+        auto pc = [&](char l) { return col(sprites.colour(l)); };
+        for (const auto& e : arr(j, "edges")) {
+            if (num(e, "z") != 0 || str(e, "kind") == "gable") continue;
+            const std::string piece = str(e, "piece"), kind = str(e, "kind");
+            char a = 'n', b = 'N';
+            if (piece.find("daub") != std::string::npos) a = 'w', b = 'e';
+            else if (piece.find("stone") != std::string::npos) a = 'W', b = 'M';
+            const float lx = float((num(e, "x") - x0) * T), ly = float((num(e, "y") - y0) * T), len = float(num(e, "len") * T);
+            const bool hz = str(e, "axis") == "h";
+            const float rx = hz ? lx : lx - 2, ry = hz ? ly - 2 : ly, rw = hz ? len : 4, rh = hz ? 4 : len;
+            const float al = flag(e, "built") ? 1.0f : 0.45f;
+            if (glyphs) {
+                fill(rx, ry, rw, rh, col(sprites.colour(kind == "door" ? 'o' : 'w'), al));
+                continue;
+            }
+            fill(rx - 1, ry - 1, rw + 2, rh + 2, kOut.withAlpha(al));
+            fill(rx, ry, rw, rh, pc(a).withAlpha(al));
+            for (float k = 3; k < len; k += 6)
+                if (hz) fill(lx + k, ly - 2, 1, 4, pc(b).withAlpha(al));
+                else fill(lx - 2, ly + k, 4, 1, pc(b).withAlpha(al));
+            if (kind == "door") {
+                if (hz) {
+                    fill(lx + 6, ly - 2, len - 12, 4, pc('n').withAlpha(al));
+                    fill(lx + 6, ly - 2, 1, 4, kOut.withAlpha(al));
+                    fill(lx + len - 7, ly - 2, 1, 4, kOut.withAlpha(al));
+                    fill(lx + 8, ly - 1, len - 16, 2, pc('t').withAlpha(al));
+                } else {
+                    fill(lx - 2, ly + 6, 4, len - 12, pc('n').withAlpha(al));
+                    fill(lx - 2, ly + 6, 4, 1, kOut.withAlpha(al));
+                    fill(lx - 2, ly + len - 7, 4, 1, kOut.withAlpha(al));
+                    fill(lx - 1, ly + 8, 2, len - 16, pc('t').withAlpha(al));
+                }
+            } else if (kind == "window") {
+                if (hz) fill(lx + 10, ly - 1, len - 20, 2, pc('U').withAlpha(al));
+                else fill(lx - 1, ly + 10, 2, len - 20, pc('U').withAlpha(al));
+            }
+        }
+        SDL_SetRenderTarget(ren, was);
+        c.painted = true;
+        c.glyph = glyphs;
+    }
+    void requestChunk(int cx, int cy) {
+        const std::string k = std::to_string(cx) + "," + std::to_string(cy);
+        int code = 0;
+        const std::string b = host->call("GET", "/api/grid?x=" + std::to_string(cx * CH) + "&y=" + std::to_string(cy * CH) +
+                                                    "&w=" + std::to_string(CH) + "&h=" + std::to_string(CH),
+                                         "", &code);
+        if (code != 200) return;
+        Chunk& c = chunks[k];
+        c.at = nowMs();
+        if (c.painted && c.body == b) return;
+        c.body = b;
+        c.j = parseOr(b, Json::object());
+        c.painted = false;
+        ++chunkVersion;
+    }
+    std::vector<std::pair<int, int>> visibleChunks() const {
+        double x0, y0, x1, y1;
+        toWorld(0, 0, x0, y0);
+        toWorld(mapW(), mapH(), x1, y1);
+        const double size = num(ST, "size", 12000);
+        std::vector<std::pair<int, int>> out;
+        for (int cy = int(std::floor(y0 / CH)); cy <= int(std::floor(y1 / CH)); ++cy)
+            for (int cx = int(std::floor(x0 / CH)); cx <= int(std::floor(x1 / CH)); ++cx)
+                if (cx >= 0 && cy >= 0 && cx * CH < size && cy * CH < size) out.push_back({cx, cy});
+        return out;
+    }
+    void forgetFarChunks() {
+        if (chunks.size() < 72) return;
+        std::vector<std::pair<double, std::string>> far;
+        for (const auto& [k, c] : chunks) {
+            const double cx = num(c.j, "x0") + CH / 2.0, cy = num(c.j, "y0") + CH / 2.0;
+            far.push_back({std::hypot(cx - camX, cy - camY), k});
+        }
+        std::sort(far.begin(), far.end(), [](const auto& a, const auto& b) { return a.first > b.first; });
+        for (std::size_t i = 0; i < far.size() && chunks.size() > 48; ++i) {
+            if (chunks[far[i].second].tex) SDL_DestroyTexture(chunks[far[i].second].tex);
+            chunks.erase(far[i].second);
+            ++chunkVersion;
+        }
+    }
+
+    // --- polling -----------------------------------------------------------------------------
+    void poll() {
+        lastPoll = nowMs();
+        const int r = int(std::ceil(std::hypot(mapW(), mapH()) / tilePx())) + 30;
+        std::string q = "/api/state?vx=" + std::to_string(int(std::lround(camX))) + "&vy=" + std::to_string(int(std::lround(camY))) +
+                        "&vr=" + std::to_string(r);
+        if (selId >= 0) q += "&sel=" + std::to_string(selId);
+        const Json s = get(q);
+        if (!s.is_object()) return;
+        clock = s;
+        paused = flag(s, "paused");
+        tps = num(s, "tps", 2);
+        const long long m = s.contains("me") && s["me"].is_number() && s["me"].get<long long>() > 0 ? s["me"].get<long long>() : -1;
+        if (m >= 0 && m != me) follow = true;
+        me = m;
+        people.clear();
+        byId.clear();
+        for (const auto& p : s.value("people", Json::array())) {
+            byId[ident(p, "id")] = people.size();
+            people.push_back(p);
+        }
+        for (auto it = vis.begin(); it != vis.end();)
+            if (!byId.count(it->first)) it = vis.erase(it);
+            else ++it;
+        selCard = s.contains("sel") ? s["sel"] : Json();
+        if (selId >= 0 && !byId.count(selId)) selId = -1;
+        if (me != barFor) {
+            barFor = me;
+            checkBar();
+        }
+        if (me >= 0 && !selectedMe && selId < 0) {
+            selectedMe = true;
+            selId = me;
+        }
+        const double t = nowMs();
+        for (const auto& e : s.value("speech", Json::array())) {
+            const bool bark = flag(e, "bark");
+            bubbles[ident(e, "who")] = {str(e, "line"), t + (bark ? 3500 : 5000), bark};
+            if (!bark) {
+                lines.push_back({str(e, "full"), t});
+                if (lines.size() > 7) lines.pop_front();
+            }
+        }
+    }
+    void select(long long id) {
+        selId = id;
+        selCard = Json();
+        poll();
+    }
+    void checkBar() {
+        lastBar = nowMs();
+        if (me < 0) return;
+        Json list = Json::array();
+        for (const Slot& s : slots) list.push_back({{"kind", s.kind}, {"id", s.id}, {"target", s.target}});
+        const Json c = post("/api/bar", {{"slots", list}, {"target", selId >= 0 && selId != me ? selId : 0}});
+        if (c.is_array()) checked = c;
+    }
+
+    // --- smoothing: pawns slide over the cells toward where the sim puts them --------------
+    void stepVis(double dt) {
+        for (const Json& p : people) {
+            const long long id = ident(p, "id");
+            const double px = num(p, "x"), py = num(p, "y");
+            auto [it, fresh] = vis.try_emplace(id);
+            Vis& v = it->second;
+            if (fresh) {
+                v.x = px;
+                v.y = py;
+            }
+            if (v.driven) continue;
+            const double dx = px - v.x, dy = py - v.y, d = std::hypot(dx, dy);
+            if (d > 80) {
+                v.x = px, v.y = py, v.moving = false;
+                continue;
+            }
+            if (d < 0.02) {
+                v.moving = false;
+                continue;
+            }
+            const double speed = std::max(3.5, d * 1.6), s = std::min(d, speed * dt);
+            const int before = int(std::floor(v.x)) + int(std::floor(v.y));
+            v.x += dx / d * s;
+            v.y += dy / d * s;
+            v.moving = true;
+            if (int(std::floor(v.x)) + int(std::floor(v.y)) != before) v.bob ^= 1;
+            v.face = std::abs(dx) > std::abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
+        }
+    }
+
+    // --- the map as the walk sees it (play.js) ---------------------------------------------
+    const Chunk* chunkAt(double x, double y) const {
+        const auto it = chunks.find(std::to_string(int(std::floor(x / CH))) + "," + std::to_string(int(std::floor(y / CH))));
+        return it == chunks.end() ? nullptr : &it->second;
+    }
+    std::string groundAt(double x, double y) const {
+        const Chunk* c = chunkAt(x, y);
+        if (!c) return "";
+        const Json& j = c->j;
+        const int w = int(num(j, "w"));
+        const long i = long(std::floor(y) - num(j, "y0")) * w + long(std::floor(x) - num(j, "x0"));
+        const std::string g = str(j, "ground");
+        if (i < 0 || i >= long(g.size())) return "";
+        const int gi = g[std::size_t(i)] - 97;
+        const Json names = ST.value("ground", Json::array());
+        return gi >= 0 && gi < int(names.size()) ? names[std::size_t(gi)].get<std::string>() : "";
+    }
+    static long long wallKey(char axis, int x, int y) { return (long long)(axis == 'h') << 62 | (long long)(x & 0xfffffff) << 30 | (y & 0x3fffffff); }
+    void rebuildWalls() {
+        if (wallsVersion == chunkVersion) return;
+        wallsVersion = chunkVersion;
+        walls.clear();
+        for (const auto& [k, c] : chunks)
+            for (const auto& e : arr(c.j, "edges")) {
+                if (num(e, "z") != 0 || str(e, "kind") == "door" || !flag(e, "built")) continue;
+                const int ex = int(num(e, "x")), ey = int(num(e, "y")), len = int(num(e, "len"));
+                const bool hz = str(e, "axis") == "h";
+                for (int i = 0; i < len; ++i) walls.insert(hz ? wallKey('h', ex + i, ey) : wallKey('v', ex, ey + i));
+            }
+    }
+    bool passCell(double x, double y) const {
+        const std::string g = groundAt(x, y);
+        return !g.empty() && g != "water";
+    }
+    bool stepOk(int ax, int ay, int bx, int by) const {
+        if (!passCell(bx + 0.5, by + 0.5)) return false;
+        if (bx != ax) return !walls.count(wallKey('v', std::max(ax, bx), ay));
+        if (by != ay) return !walls.count(wallKey('h', ax, std::max(ay, by)));
+        return true;
+    }
+    bool moveOk(double ax, double ay, double bx, double by) const {
+        const int cx0 = int(std::floor(ax)), cy0 = int(std::floor(ay)), cx1 = int(std::floor(bx)), cy1 = int(std::floor(by));
+        if (cx0 == cx1 && cy0 == cy1) return true;
+        if (cx0 != cx1 && cy0 != cy1)
+            return (stepOk(cx0, cy0, cx1, cy0) && stepOk(cx1, cy0, cx1, cy1)) || (stepOk(cx0, cy0, cx0, cy1) && stepOk(cx0, cy1, cx1, cy1));
+        return stepOk(cx0, cy0, cx1, cy1);
+    }
+    bool sight(double ax, double ay, double bx, double by) const {
+        const double d = std::hypot(bx - ax, by - ay);
+        const int n = int(std::ceil(d * 3));
+        double px = ax, py = ay;
+        for (int i = 1; i <= n; ++i) {
+            const double x = ax + (bx - ax) * i / n, y = ay + (by - ay) * i / n;
+            if (!moveOk(px, py, x, y)) return false;
+            px = x, py = y;
+        }
+        return true;
+    }
+    bool findPath(double fsx, double fsy, double ftx, double fty, std::vector<std::pair<double, double>>& out) const {
+        const int sx = int(std::floor(fsx)), sy = int(std::floor(fsy)), tx = int(std::floor(ftx)), ty = int(std::floor(fty));
+        if (!passCell(tx + 0.5, ty + 0.5)) return false;
+        auto key = [](int x, int y) { return (long long)x * 100003 + y; };
+        using Node = std::tuple<int, int, int, int>;   // f, g, x, y
+        std::priority_queue<Node, std::vector<Node>, std::greater<Node>> open;
+        std::unordered_map<long long, std::pair<int, int>> came;
+        std::unordered_map<long long, int> cost;
+        open.push({std::abs(tx - sx) + std::abs(ty - sy), 0, sx, sy});
+        cost[key(sx, sy)] = 0;
+        int n = 0;
+        while (!open.empty() && n++ < 40000) {
+            const auto [f, g, x, y] = open.top();
+            open.pop();
+            (void)f;
+            if (x == tx && y == ty) {
+                std::vector<std::pair<double, double>> pts;
+                int cx = x, cy = y;
+                while (came.count(key(cx, cy))) {
+                    pts.push_back({cx + 0.5, cy + 0.5});
+                    const auto pr = came.at(key(cx, cy));
+                    cx = pr.first, cy = pr.second;
+                }
+                std::reverse(pts.begin(), pts.end());
+                // drop the cells a straight walk passes anyway
+                out.clear();
+                double ax = sx + 0.5, ay = sy + 0.5;
+                std::size_t i = 0;
+                while (i < pts.size()) {
+                    std::size_t j = pts.size() - 1;
+                    while (j > i && !sight(ax, ay, pts[j].first, pts[j].second)) --j;
+                    out.push_back(pts[j]);
+                    ax = pts[j].first, ay = pts[j].second;
+                    i = j + 1;
+                }
+                return true;
+            }
+            const auto ci = cost.find(key(x, y));
+            if (ci != cost.end() && g > ci->second) continue;
+            const int d4[4][2] = {{1, 0}, {-1, 0}, {0, 1}, {0, -1}};
+            for (auto& d : d4) {
+                const int nx = x + d[0], ny = y + d[1];
+                if (!stepOk(x, y, nx, ny)) continue;
+                const int ng = g + 1;
+                const auto nk = key(nx, ny);
+                const auto old = cost.find(nk);
+                if (old != cost.end() && ng >= old->second) continue;
+                cost[nk] = ng;
+                came[nk] = {x, y};
+                open.push({ng + std::abs(tx - nx) + std::abs(ty - ny), ng, nx, ny});
+            }
+        }
+        return false;
+    }
+
+    // --- walking the player's person (play.js) ------------------------------------------------
+    void walkMe(double dt) {
+        if (me < 0) return;
+        const auto it = vis.find(me);
+        if (it == vis.end()) return;
+        Vis& v = it->second;
+        rebuildWalls();
+        const bool* k = SDL_GetKeyboardState(nullptr);
+        const bool typing = ui.typing();
+        double dx = 0, dy = 0;
+        if (!typing) {
+            dx = (k[SDL_SCANCODE_D] ? 1 : 0) - (k[SDL_SCANCODE_A] ? 1 : 0);
+            dy = (k[SDL_SCANCODE_S] ? 1 : 0) - (k[SDL_SCANCODE_W] ? 1 : 0);
+        }
+        const double t = nowMs();
+        const bool run = k[SDL_SCANCODE_LSHIFT] || k[SDL_SCANCODE_RSHIFT];
+        if (dx || dy) path.clear();
+        if (!dx && !dy && !path.empty()) {
+            const auto [px, py] = path.front();
+            const double d = std::hypot(px - v.x, py - v.y);
+            if (d < 0.15) path.erase(path.begin());
+            else dx = (px - v.x) / d, dy = (py - v.y) / d;
+        }
+        if (dx || dy) {
+            const double len = std::hypot(dx, dy), sp = (run ? 7.5 : 4.2) * dt;
+            double s = sp;
+            if (!path.empty()) s = std::min(sp, std::hypot(path.front().first - v.x, path.front().second - v.y));
+            const double nx = v.x + dx / len * s, ny = v.y + dy / len * s;
+            const int before = int(std::floor(v.x)) + int(std::floor(v.y));
+            if (moveOk(v.x, v.y, nx, ny)) v.x = nx, v.y = ny;
+            else if (moveOk(v.x, v.y, nx, v.y)) v.x = nx;
+            else if (moveOk(v.x, v.y, v.x, ny)) v.y = ny;
+            else path.clear();
+            if (int(std::floor(v.x)) + int(std::floor(v.y)) != before) v.bob ^= 1;
+            v.face = std::abs(dx) > std::abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
+            v.moving = true;
+            v.driven = true;
+            lastMove = t;
+            follow = true;
+        } else if (v.driven) v.moving = false;
+        if (v.driven && t - lastSteer > 120 && (!haveSteer || std::hypot(steerX - v.x, steerY - v.y) > 0.05)) {
+            lastSteer = t;
+            haveSteer = true;
+            steerX = v.x, steerY = v.y;
+            const Json r = cmd({{"op", "cmd"}, {"type", "steer"}, {"args", {{"id", me}, {"x", v.x}, {"y", v.y}, {"run", run}}}});
+            const std::string res = str(r, "result");
+            if (!res.empty() && res != "ok") toast(str(r, "text").empty() ? res : str(r, "text"));
+        }
+        if (v.driven && t - lastMove > 700 && t - lastSteer > 300) v.driven = false;
+    }
+
+    // --- picking ---------------------------------------------------------------------------------
+    const Json* pickPerson(double wx, double wy) const {
+        const Json* best = nullptr;
+        double bd = 1.1;
+        for (const Json& p : people) {
+            const auto it = vis.find(ident(p, "id"));
+            if (it == vis.end()) continue;
+            const double d = std::hypot(it->second.x - wx, (it->second.y - 0.5) - wy);
+            if (d < bd || (d == bd && str(p, "sp").empty())) bd = d, best = &p;
+        }
+        return best;
+    }
+    const Json* thingAt(double wx, double wy) const {
+        const Json* best = nullptr;
+        double bd = 0.9;
+        for (const auto& [k, c] : chunks)
+            for (const auto& t : arr(c.j, "things")) {
+                if (!t.is_array() || t.size() < 4 || hidden.count(t[1].get<std::string>())) continue;
+                const double d = std::hypot(t[2].get<double>() - wx, t[3].get<double>() - wy);
+                if (d < bd) bd = d, best = &t;
+            }
+        return best;
+    }
+    std::vector<long long> openBuildings() const {
+        std::vector<long long> open;
+        auto mark = [&](double x, double y) {
+            for (const auto& [k, c] : chunks)
+                for (const auto& r : arr(c.j, "rooms"))
+                    if (x >= num(r, "x0") && x < num(r, "x1") && y >= num(r, "y0") && y < num(r, "y1"))
+                        open.push_back(ident(r, "building"));
+        };
+        if (selId >= 0 && vis.count(selId)) mark(vis.at(selId).x, vis.at(selId).y);
+        if (haveHover) mark(hoverX, hoverY);
+        return open;
+    }
+
+    // ======================================================================
+    // the map
+    void drawMap() {
+        const double sc = scale(), tp = tilePx();
+        fill(0, 0, float(W), float(H), glyphs ? hexc("#100c08") : hexc("#1a2a12"));
+        const auto vc = visibleChunks();
+        int asked = 0;
+        const double t = nowMs();
+        for (const auto& [cx, cy] : vc) {
+            const std::string k = std::to_string(cx) + "," + std::to_string(cy);
+            auto it = chunks.find(k);
+            if (it == chunks.end()) {
+                if (asked++ < 3) requestChunk(cx, cy);
+                continue;
+            }
+            Chunk& c = it->second;
+            if (t - c.at > 8000 && asked < 3) {
+                ++asked;
+                requestChunk(cx, cy);   // things change: felled trees, new pieces
+            }
+            if (!c.painted || c.glyph != glyphs) paintChunk(c);
+            if (!c.tex) continue;
+            float sx, sy;
+            toScreen(num(c.j, "x0"), num(c.j, "y0"), sx, sy);
+            const SDL_FRect d{sx, sy, float(num(c.j, "w") * tp), float(num(c.j, "h") * tp)};
+            const SDL_FRect s{0, 0, float(num(c.j, "w") * T), float(num(c.j, "h") * T)};
+            SDL_RenderTexture(ren, c.tex, &s, &d);
+        }
+        forgetFarChunks();
+        // drawables sorted by their foot: things, pawns
+        double wx0, wy0, wx1, wy1;
+        toWorld(-tp * 2, -tp * 2, wx0, wy0);
+        toWorld(mapW() + tp * 2, mapH() + tp * 2, wx1, wy1);
+        struct Item {
+            double y;
+            const Json* thing;
+            const Json* person;
+        };
+        std::vector<Item> items;
+        const Json thin = MAP.value("thin", Json::object());
+        for (const auto& [cx, cy] : vc) {
+            const auto it = chunks.find(std::to_string(cx) + "," + std::to_string(cy));
+            if (it == chunks.end()) continue;
+            const Json& j = it->second.j;
+            const double x0 = num(j, "x0"), y0 = num(j, "y0"), w = num(j, "w"), h = num(j, "h");
+            for (const auto& th : arr(j, "things")) {
+                if (!th.is_array() || th.size() < 5) continue;
+                const std::string type = th[1].get<std::string>();
+                const double x = th[2].get<double>(), y = th[3].get<double>();
+                if (th[4].get<double>() > 0 || hidden.count(type)) continue;
+                if (x < x0 || x >= x0 + w || y < y0 || y >= y0 + h) continue;
+                if (x < wx0 || x > wx1 || y < wy0 || y > wy1) continue;
+                if (thin.contains(type) && thin[type].get<int>() > 1 && th[0].get<long long>() % thin[type].get<int>()) continue;
+                items.push_back({y, &th, nullptr});
+            }
+        }
+        for (const Json& p : people) {
+            const auto it = vis.find(ident(p, "id"));
+            if (it == vis.end() || it->second.x < wx0 || it->second.x > wx1 || it->second.y < wy0 || it->second.y > wy1) continue;
+            items.push_back({it->second.y, nullptr, &p});
+        }
+        std::stable_sort(items.begin(), items.end(), [](const Item& a, const Item& b) { return a.y < b.y; });
+        for (const Item& it : items)
+            if (it.thing) guard("thing", [&] { drawThing(*it.thing, sc); });
+            else guard("pawn", [&] { drawPawn(*it.person, vis[ident(*it.person, "id")], sc); });
+        guard("drawRoofs", [&] { drawRoofs(tp); });
+        guard("drawRoomLabels", [&] { drawRoomLabels(); });
+        guard("drawPlay", [&] { drawPlay(sc); });
+        guard("drawSelection", [&] { drawSelection(sc); });
+        guard("drawOverheads", [&] { drawOverheads(sc); });
+        guard("drawBubbles", [&] { drawBubbles(sc); });
+        guard("drawNight", [&] { drawNight(); });
+    }
+    void drawThing(const Json& th, double sc) {
+        const std::string type = th[1].get<std::string>();
+        const Json& look = thingLook(type);
+        float sx, sy;
+        toScreen(th[2].get<double>(), th[3].get<double>(), sx, sy);
+        if (glyphs) {
+            textC(sx, sy - float(7 * sc), str(look, "glyph").empty() ? "?" : str(look, "glyph"), col(sprites.colour(str(look, "colour").empty() ? "w" : str(look, "colour"))), float(13 * sc));
+            return;
+        }
+        const Sprite sp = sprite(str(look, "sprite"), look.value("recolour", Json()));
+        if (!sp) return;
+        const std::string sn = str(look, "sprite");
+        static const std::regex tree("tree|grove|pine");
+        const bool isTree = std::regex_search(type, tree) || sn == "ob_tree" || sn == "ob_pine";
+        const float s = float(sc);
+        if (isTree) {
+            ellipse(sx, sy - s, 6 * s, 2.5f * s, ui::Colour(0, 0, 0, 0.22f));
+            blit(sp, sx - 8 * s, sy - 15 * s, 16 * s, 16 * s);
+        } else blit(sp, sx - 8 * s, sy - 8 * s, 16 * s, 16 * s);
+    }
+    void drawPawn(const Json& p, const Vis& v, double scd) {
+        float sx, sy;
+        toScreen(v.x, v.y, sx, sy);
+        const float sc = float(scd);
+        const long long id = ident(p, "id");
+        const std::string sp = str(p, "sp");
+        const bool alive = flag(p, "alive");
+        if (glyphs) {
+            std::string g = alive ? "@" : "%";
+            if (!sp.empty()) {
+                std::size_t at = 0;
+                const std::string nm = str(p, "name").empty() ? sp : str(p, "name");
+                ui::nextCodepoint(nm, at);
+                g = nm.substr(0, at);
+            }
+            const ui::Colour c = !sp.empty() ? col(sprites.colour('t')) : (id == selId ? hexc("#ffe080") : hexc(famColour(p).c_str()));
+            textC(sx, sy - 7 * sc, g, c, 14 * sc);
+            return;
+        }
+        ellipse(sx, sy + sc, (sp.empty() ? 5 : 4) * sc, 2 * sc, ui::Colour(0, 0, 0, 0.25f));
+        const std::string st = str(p, "st");
+        const bool lying = !alive || flag(p, "down") || st == "Sleep" || st == "Incapacitated";
+        if (!sp.empty()) {
+            blit(beastSprite(sp, v.face == 'W' ? 'W' : 'E'), sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
+            return;
+        }
+        int bob = v.moving ? v.bob : 0;
+        if (!v.moving && st == "Work") bob = int((long long)(nowMs() / 350) + id) % 2;
+        const Sprite img = pawnSprite(pawnSpec(p), lying ? 'S' : v.face, lying ? 0 : bob);
+        if (lying) {
+            const float cx = sx, cy = sy - 3 * sc;
+            blit(img, cx - 10 * sc, cy - 10 * sc, kPawn * sc, kPawn * sc, alive ? 1.0f : 0.6f, -90);
+        } else blit(img, sx - 10 * sc, sy - 18 * sc, kPawn * sc, kPawn * sc);
+    }
+    void drawRoofs(double tp) {
+        if (roofMode == "none") return;
+        const auto open = roofMode == "auto" ? openBuildings() : std::vector<long long>{};
+        const Sprite roof = sprite("tl_roof");
+        std::unordered_set<long long> seen;
+        for (const auto& [k, c] : chunks)
+            for (const auto& r : arr(c.j, "roofs")) {
+                const long long b = ident(r, "building");
+                if (b >= 0 && std::find(open.begin(), open.end(), b) != open.end()) continue;
+                const long long key = (long long)num(r, "x") * 100003 + (long long)num(r, "y");
+                if (!seen.insert(key).second) continue;
+                float sx, sy;
+                toScreen(num(r, "x"), num(r, "y"), sx, sy);
+                const float len = float(num(r, "len")), t = float(tp);
+                if (sx > mapW() || sy > mapH() || sx + len * t < 0 || sy + len * t < 0) continue;
+                if (glyphs) {
+                    fill(sx, sy, len * t, len * t, hexc("#a82820", 0.55f));
+                    continue;
+                }
+                for (int dy = 0; dy < int(len); ++dy)
+                    for (int dx = 0; dx < int(len); ++dx) blit(roof, sx + dx * t, sy + dy * t, t, t);
+            }
+    }
+    void drawRoomLabels() {
+        if (zoom < 2) return;
+        const bool none = roofMode == "none";
+        const auto open = roofMode == "auto" ? openBuildings() : std::vector<long long>{};
+        std::unordered_set<long long> done;
+        const Json rooms = ST.value("rooms", Json::object());
+        const float s = float(scale());
+        for (const auto& [k, c] : chunks)
+            for (const auto& r : arr(c.j, "rooms")) {
+                if (num(r, "z") != 0 || !done.insert(ident(r, "id")).second) continue;
+                if (!none && std::find(open.begin(), open.end(), ident(r, "building")) == open.end()) continue;
+                float sx, sy;
+                toScreen((num(r, "x0") + num(r, "x1")) / 2, num(r, "y0") + 0.55, sx, sy);
+                const std::string type = str(r, "type");
+                const std::string name = rooms.contains(type) ? rooms[type].get<std::string>() : type;
+                const float px = std::round(5.5f * s);
+                const float w = textW(name, px) + 8 * float(dpr());
+                fill(sx - w / 2, sy - 5 * s, w, 10 * s, hexc("#e8d8b0", 0.88f));
+                textC(sx, sy - textH(px) / 2, name, hexc("#3a2414"), px);
+            }
+    }
+    void drawSelection(double scd) {
+        const Json* p = person(selId);
+        if (!p || !vis.count(selId)) return;
+        const Vis& v = vis.at(selId);
+        const float sc = float(scd);
+        float sx, sy;
+        toScreen(v.x, v.y, sx, sy);
+        if (p->contains("dest") && (*p)["dest"].is_array() && (*p)["dest"].size() >= 2) {
+            const double dx = (*p)["dest"][0].get<double>(), dy = (*p)["dest"][1].get<double>(), d = std::hypot(dx - v.x, dy - v.y);
+            for (int k = 1; k < d && k < 400; ++k) {
+                float px, py;
+                toScreen(v.x + (dx - v.x) * k / d, v.y + (dy - v.y) * k / d, px, py);
+                fill(px - sc, py - sc, 2 * sc, 2 * sc, kGold);
+            }
+            float ex, ey;
+            toScreen(dx, dy, ex, ey);
+            frame(ex - 4 * sc, ey - 4 * sc, 8 * sc, 8 * sc, kGold, sc);
+        }
+        const float x0 = sx - 11 * sc, y0 = sy - 19 * sc, w = 22 * sc, h = 22 * sc, l = 5 * sc;
+        for (int pass = 0; pass < 2; ++pass) {
+            const float off = pass == 0 ? sc : 0;
+            const ui::Colour c = pass == 0 ? kOut : kGold;
+            fill(x0 + off, y0 + off, l, sc, c);
+            fill(x0 + off, y0 + off, sc, l, c);
+            fill(x0 + w - l + off, y0 + off, l, sc, c);
+            fill(x0 + w - sc + off, y0 + off, sc, l, c);
+            fill(x0 + off, y0 + h - sc + off, l, sc, c);
+            fill(x0 + off, y0 + h - l + off, sc, l, c);
+            fill(x0 + w - l + off, y0 + h - sc + off, l, sc, c);
+            fill(x0 + w - sc + off, y0 + h - l + off, sc, l, c);
+        }
+    }
+    void drawOverheads(double scd) {
+        const float sc = float(scd);
+        for (const Json& p : people) {
+            if (!str(p, "sp").empty()) continue;
+            const long long id = ident(p, "id");
+            const auto it = vis.find(id);
+            if (it == vis.end()) continue;
+            float sx, sy;
+            toScreen(it->second.x, it->second.y, sx, sy);
+            if (sx < -50 || sy < -50 || sx > mapW() + 50 || sy > mapH() + 50) continue;
+            const bool sel = id == selId, hov = id == hoverId;
+            const std::string icon = actIcon(p);
+            const bool showIcon = !icon.empty() && !glyphs && (zoom >= 2 || sel || hov);
+            const float s = std::max(1.0f, std::floor(sc / 2));
+            if (showIcon) {
+                const float box = 18 * s, bx = sx - box / 2, by = sy - 20 * sc - box - 2 * s;
+                fill(bx - s, by - s, box + 2 * s, box + 2 * s, kOut);
+                fill(bx, by, box, box, kParch);
+                blit(sprite(icon), bx + s, by + s, 16 * s, 16 * s);
+            }
+            if (altDown || sel || hov) {
+                const float px = std::round(6 * std::max(2.0f, sc));
+                const float y = sy - 20 * sc - (showIcon ? 20 * s + 2 : 0) - textH(px) - 2;
+                const std::string name = str(p, "name");
+                textC(sx + 1, y + 1, name, ui::Colour(0, 0, 0, 1), px);
+                textC(sx, y, name, sel ? kGold : kText, px);
+            }
+        }
+    }
+    void drawBubbles(double scd) {
+        const float sc = float(scd);
+        const double t = nowMs();
+        const float px = std::round(5.5f * std::max(2.0f, sc));
+        for (auto it = bubbles.begin(); it != bubbles.end();) {
+            if (t > it->second.until) {
+                it = bubbles.erase(it);
+                continue;
+            }
+            const auto pv = vis.find(it->first);
+            if (pv == vis.end()) {
+                ++it;
+                continue;
+            }
+            float sx, sy;
+            toScreen(pv->second.x, pv->second.y, sx, sy);
+            const std::string text = utf8Cut(it->second.line, 58);
+            const float w = textW(text, px) + 10 * float(dpr()), h = 9 * std::max(2.0f, sc) * 0.75f, y = sy - 26 * sc;
+            const float a = it->second.bark ? 0.75f : 0.95f;
+            fill(sx - w / 2 - 1, y - h - 1, w + 2, h + 2, kOut.withAlpha(a));
+            fill(sx - w / 2, y - h, w, h, (it->second.bark ? hexc("#d8ccb0") : kParch).withAlpha(a));
+            textC(sx, y - h + (h - textH(px)) / 2, text, kInk.withAlpha(a), px);
+            ++it;
+        }
+    }
+    void drawPlay(double scd) {
+        const float sc = float(scd);
+        const double t = nowMs();
+        if (t - markerAt < 1500 && !path.empty()) {
+            float x, y;
+            toScreen(markerX, markerY, x, y);
+            const float r = float((4 + (t - markerAt) / 300) * sc);
+            frame(x - r, y - r, 2 * r, 2 * r, kGold, sc);
+        }
+        if (!path.empty() && me >= 0)
+            for (const auto& [x, y] : path) {
+                float sx, sy;
+                toScreen(x, y, sx, sy);
+                fill(sx - sc, sy - sc, 2 * sc, 2 * sc, kGold.withAlpha(0.7f));
+            }
+        if (me >= 0 && vis.count(me)) {
+            float sx, sy;
+            toScreen(vis[me].x, vis[me].y, sx, sy);
+            ring(sx, sy + sc, 7 * sc, 3 * sc, std::max(1.0f, sc * 0.75f), kPlayer);
+        }
+    }
+    void drawNight() {
+        const std::string tm = str(clock, "time");
+        int hh = 12, mm = 0;
+        if (const auto colon = tm.find(':'); colon != std::string::npos) hh = std::atoi(tm.c_str()), mm = std::atoi(tm.c_str() + colon + 1);
+        const double h = hh + mm / 60.0;
+        double a = 0;
+        if (h >= 21 || h < 4.5) a = 0.55;
+        else if (h >= 19.5) a = 0.55 * (h - 19.5) / 1.5;
+        else if (h < 6) a = 0.55 * (6 - h) / 1.5;
+        if (a > 0) fill(0, 0, mapW(), mapH(), ui::Colour::rgb(14, 18, 48, float(a)));
+        const Json w = clock.value("weather", Json::object());
+        if (num(w, "rain") > 0.5 && !glyphs) {
+            SDL_SetRenderDrawColorFloat(ren, 170 / 255.f, 190 / 255.f, 220 / 255.f, 0.35f);
+            const double t = nowMs() / 40;
+            const float d = float(dpr());
+            for (int i = 0; i < 160; ++i) {
+                const float x = float(std::fmod(idHash(i, 9) % std::max(1, int(mapW())) + t * 3, mapW()));
+                const float y = float(std::fmod(idHash(i, 5) % std::max(1, int(mapH())) + t * 9, mapH()));
+                SDL_RenderLine(ren, x, y, x - 4 * d, y + 10 * d);
+            }
+        }
+    }
+
+    // ======================================================================
+    // the interface
+    void portrait(const Json& p, float x, float y, float size) {
+        fill(x, y, size, size, kLeatherD);
+        if (!str(p, "sp").empty()) {
+            blit(beastSprite(str(p, "sp"), 'E'), x + size * 0.1f, y + size * 0.1f, size * 0.8f, size * 0.8f);
+            return;
+        }
+        blit(pawnSprite(pawnSpec(p), 'S', 0), x, y, size, size);
+    }
+    std::string actOf(const Json& p) const {
+        if (!str(p, "act").empty()) return str(p, "act");
+        if (!str(p, "goal").empty()) return str(p, "goal");
+        return L("ui2d.idle");
+    }
+    void drawSide() {
+        const ui::Rect side{mapW(), 0, sideW(), mapH()};
+        carved(side);
+        const float pad = 10 * U, x = side.x + pad, w = side.w - 2 * pad;
+        // households
+        const float hy = pad, hh = std::round(side.h * 0.38f);
+        fill(x - 2 * U, hy - 2 * U, w + 4 * U, hh + 4 * U, kLeather);
+        text(x + 4 * U, hy + 2 * U, L("ui2d.house"), kGold, 19 * U, true);
+        const ui::Rect listR{x, hy + 30 * U, w, hh - 32 * U};
+        const ui::Rect content = ui.beginScroll(ui::widgetId("side.houses"), listR);
+        std::map<std::string, std::vector<const Json*>> fams;
+        std::vector<std::string> order;
+        for (const Json& p : people) {
+            if (!str(p, "sp").empty()) continue;
+            std::string f = str(p, "fam");
+            if (f.empty()) f = "—";
+            if (!fams.count(f)) order.push_back(f);
+            fams[f].push_back(&p);
+        }
+        float y = content.y;
+        const float row = 44 * U;
+        int index = 0;
+        for (const std::string& f : order) {
+            text(x + 2 * U, y + 2 * U, f, kDim, 14 * U);
+            y += 22 * U;
+            auto& list = fams[f];
+            std::stable_sort(list.begin(), list.end(), [](const Json* a, const Json* b) { return num(*a, "age") > num(*b, "age"); });
+            for (const Json* p : list) {
+                const long long id = ident(*p, "id");
+                const ui::Rect r{x, y, content.w, row - 4 * U};
+                if (ui.selectable(ui::widgetId("side.who", index++), r, id == selId)) {
+                    select(id);
+                    if (vis.count(id)) camX = vis[id].x, camY = vis[id].y;
+                }
+                if (id == selId) frame(r.x, r.y, r.w, r.h, kGold, std::max(1.0f, U));
+                portrait(*p, r.x + 2 * U, r.y + 1 * U, r.h - 2 * U);
+                const float tx = r.x + r.h + 6 * U, tw = r.w - r.h - 40 * U;
+                text(tx, r.y + 3 * U, ui.fit(str(*p, "name"), tw, fs(14 * U)), flag(*p, "alive") ? kText : kDim, 14 * U);
+                text(tx, r.y + 21 * U, ui.fit(actOf(*p), tw, fs(12 * U)), kDim, 12 * U);
+                gauge({r.right() - 30 * U, r.y + r.h / 2 - 3 * U, 26 * U, 6 * U}, num(*p, "hp", 1), tone(num(*p, "hp", 1)));
+                y += row;
+            }
+        }
+        ui.endScroll(y);
+        // the card
+        const float cy = hy + hh + 10 * U;
+        const ui::Rect cardR{x - 2 * U, cy, w + 4 * U, side.bottom() - cy - pad};
+        fill(cardR.x, cardR.y, cardR.w, cardR.h, kLeather);
+        drawCard({cardR.x + 6 * U, cardR.y + 6 * U, cardR.w - 12 * U, cardR.h - 12 * U});
+    }
+    // words over as many lines as they need inside `width`
+    std::vector<std::string> wrap(const std::string& s, float width, float px) const {
+        std::vector<std::string> out;
+        std::string line, word;
+        std::istringstream ws(s);
+        while (ws >> word) {
+            const std::string tried = line.empty() ? word : line + " " + word;
+            if (!line.empty() && textW(tried, px) > width) {
+                out.push_back(line);
+                line = word;
+            } else line = tried;
+        }
+        if (!line.empty() || out.empty()) out.push_back(line);
+        for (auto& l : out) l = ui.fit(l, width, fs(px));
+        return out;
+    }
+    float parchLines(float x, float y, float w, const std::vector<std::string>& ls, float px) {
+        std::vector<std::string> rows;
+        for (const auto& l : ls)
+            for (auto& r : wrap(l, w - 16 * U, px)) rows.push_back(r);
+        const float lh = textH(px) + 5 * U, h = rows.size() * lh + 8 * U;
+        parchBox({x, y, w, h});
+        float yy = y + 5 * U;
+        for (const auto& r : rows) {
+            text(x + 8 * U, yy, r, kInk, px);
+            yy += lh;
+        }
+        return h;
+    }
+    float chips(float x, float y, float w, const std::vector<std::string>& items) {
+        float cx = x, cy = y;
+        const float px = 13 * U, h = textH(px) + 8 * U;
+        for (const auto& it : items) {
+            const float cw = std::min(w, textW(it, px) + 12 * U);
+            if (cx + cw > x + w && cx > x) cx = x, cy += h + 4 * U;
+            fill(cx, cy, cw, h, kLeatherD);
+            frame(cx, cy, cw, h, kBronze.withAlpha(0.6f), 1);
+            text(cx + 6 * U, cy + 4 * U, ui.fit(it, cw - 12 * U, fs(px)), kText, px);
+            cx += cw + 4 * U;
+        }
+        return cy + h - y;
+    }
+    void drawCard(const ui::Rect& r) {
+        const Json& d = selCard;
+        const Json* p = person(selId);
+        if (!d.is_object() || !p) {
+            parchLines(r.x, r.y, r.w, {L("ui2d.nobody")}, 14 * U);
+            return;
+        }
+        const ui::Rect c = ui.beginScroll(ui::widgetId("side.card"), r);
+        float y = c.y;
+        const float w = c.w, x = c.x;
+        if (str(*p, "sp").empty()) portrait(*p, x, y, 72 * U);
+        const float tx = x + 80 * U;
+        text(tx, y + 4 * U, ui.fit(str(d, "name"), w - 80 * U, fs(20 * U)), kGold, 20 * U, true);
+        std::string sub = str(d, "fam").empty() ? str(d, "spn") : str(d, "fam");
+        if (d.contains("age") && d["age"].is_number()) sub += (sub.empty() ? "" : " · ") + L("ui2d.age", {{"n", std::to_string(int(num(d, "age")))}});
+        text(tx, y + 32 * U, ui.fit(sub, w - 80 * U, fs(14 * U)), kDim, 14 * U);
+        y += 78 * U;
+        if (!flag(d, "alive")) {
+            std::string dead = L("ui2d.dead");
+            if (!str(d, "cause").empty()) dead += ": " + str(d, "cause");
+            y += parchLines(x, y, w, {dead}, 14 * U) + 6 * U;
+        }
+        if (str(d, "sp").empty() && flag(d, "alive")) {
+            const long long id = ident(d, "id");
+            if (ui.button(ui::widgetId("card.lead"), {x, y, w, 30 * U}, L(id == me ? "ui2d.release" : "ui2d.lead"))) {
+                if (id == me) cmdToast({{"op", "cmd"}, {"type", "release_control"}, {"args", Json::object()}});
+                else cmdToast({{"op", "cmd"}, {"type", "take_control"}, {"args", {{"id", id}}}});
+                poll();
+            }
+            y += 36 * U;
+        }
+        std::vector<std::string> doing = {L("ui2d.doing") + ": " + (str(d, "act").empty() ? L("ui2d.idle") : str(d, "act"))};
+        if (!str(d, "goal").empty()) doing.push_back(L("ui2d.wants") + ": " + str(d, "goal"));
+        y += parchLines(x, y, w, doing, 14 * U) + 8 * U;
+        auto bar = [&](const std::string& label, double v, double shown, const ui::Colour& c) {
+            const float px = 13 * U, lw = 110 * U;
+            text(x, y, ui.fit(label, lw - 4 * U, fs(px)), kText, px);
+            gauge({x + lw, y + 3 * U, w - lw - 40 * U, 10 * U}, v, c);
+            const std::string n = std::to_string(int(std::lround(shown * 100)));
+            text(x + w - textW(n, px), y, n, kDim, px);
+            y += 20 * U;
+        };
+        const double hp = num(d, "hp", 1), mood = (num(d, "mood") + 1) / 2, fat = num(d, "fatigue");
+        bar(L("ui2d.health"), hp, hp, tone(hp));
+        bar(L("ui2d.mood"), mood, num(d, "mood"), tone(mood));
+        bar(L("ui2d.fatigue"), fat, fat, tone(1 - fat));
+        auto head = [&](const std::string& h) {
+            y += 6 * U;
+            text(x, y, h, kGold, 15 * U, true);
+            y += 22 * U;
+        };
+        if (d.contains("needs") && !d["needs"].empty()) {
+            head(L("ui2d.needs"));
+            for (const auto& n : d["needs"]) bar(str(n, "name"), num(n, "v"), num(n, "v"), tone(num(n, "v")));
+        }
+        auto list = [&](const char* key, const std::string& h, bool counted) {
+            if (!d.contains(key) || !d[key].is_array() || d[key].empty()) return;
+            head(h);
+            std::vector<std::string> items;
+            for (const auto& i : d[key]) {
+                if (i.is_string()) items.push_back(i.get<std::string>());
+                else {
+                    std::string s = str(i, "name");
+                    if (counted && num(i, "n") > 1) s += " ×" + std::to_string(int(num(i, "n")));
+                    items.push_back(s);
+                }
+            }
+            y += chips(x, y, w, items) + 4 * U;
+        };
+        list("worn", L("ui2d.wears"), false);
+        list("inv", L("ui2d.carries"), true);
+        list("traits", L("ui2d.traits"), false);
+        if (d.contains("trace") && d["trace"].is_array() && !d["trace"].empty()) {
+            head(L("ui2d.thoughts"));
+            std::vector<std::string> ls;
+            for (const auto& t : d["trace"]) ls.push_back(str(t, "t") + "  " + str(t, "text"));
+            y += parchLines(x, y, w, ls, 12 * U) + 4 * U;
+        }
+        ui.endScroll(y);
+    }
+    void drawBar() {
+        const ui::Rect b{0, mapH(), float(W), barH()};
+        carved(b);
+        const float pad = 8 * U, h = b.h - 2 * pad, y = b.y + pad;
+        float x = b.right() - pad;
+        auto btn = [&](const char* id, const std::string& label, float w, bool on) {
+            x -= w;
+            const bool hit = ui.toggle(ui::widgetId(id), {x, y, w, h}, label, on);
+            x -= 4 * U;
+            return hit;
+        };
+        if (btn("bar.follow", L("ui2d.follow"), 100 * U, follow)) follow = !follow && (selId >= 0 || me >= 0);
+        if (btn("bar.mode", L(glyphs ? "ui2d.mode.glyphs" : "ui2d.mode.sprites"), 110 * U, false)) glyphs = !glyphs;
+        if (btn("bar.roofs", L("ui2d.roofs." + roofMode), 120 * U, false)) cycleRoofs();
+        if (btn("bar.zoom", L("ui2d.zoom", {{"n", std::to_string(zoom)}}), 80 * U, false)) zoom = zoom % 3 + 1;
+        if (btn("bar.faster", "+", 32 * U, false)) setSpeed(1);
+        {
+            const std::string sp = paused ? L("ui2d.paused") : L("ui2d.speed", {{"n", tpsText()}});
+            const float w = 90 * U;
+            x -= w;
+            ui.textCentred({x, y, w, h}, sp, kText, fs(14 * U));
+            x -= 4 * U;
+        }
+        if (btn("bar.slower", "−", 32 * U, false)) setSpeed(-1);
+        if (btn("bar.pause", paused ? "▶" : "||", 40 * U, paused)) togglePause();
+        // the clock and the hint on parchment
+        std::string clk;
+        if (clock.contains("day")) {
+            clk = L("ui2d.day", {{"n", std::to_string(int(num(clock, "day")) + 1)}}) + " · " + L("ui2d.season." + str(clock, "season")) + " · " +
+                  str(clock, "time");
+            const Json w = clock.value("weather", Json::object());
+            if (w.is_object() && w.contains("t"))
+                clk += " · " + std::to_string(int(std::lround(num(w, "t")))) + "° " + (num(w, "rain") > 0.5 ? L("ui2d.rain") : L("ui2d.dry"));
+        }
+        const float cw = textW(clk, 14 * U) + 20 * U;
+        x -= cw;
+        parchBox({x, y, cw, h});
+        text(x + 10 * U, y + (h - textH(14 * U)) / 2, clk, kInk, 14 * U);
+        x -= 8 * U;
+        const ui::Rect hr{b.x + pad, y, x - b.x - pad, h};
+        parchBox(hr);
+        text(hr.x + 10 * U, y + (h - textH(13 * U)) / 2, ui.fit(hintText(), hr.w - 20 * U, fs(13 * U)), kInk, 13 * U);
+    }
+    std::string tpsText() const {
+        char b[32];
+        std::snprintf(b, sizeof b, tps == std::floor(tps) ? "%.0f" : "%.1f", tps);
+        return b;
+    }
+    std::string hintText() const {
+        if (const Json* p = person(hoverId)) {
+            std::string s = L("ui2d.hint.person", {{"name", str(*p, "name")}, {"act", actOf(*p)}});
+            if (p->contains("dest") && (*p)["dest"].is_array() && (*p)["dest"].size() >= 2)
+                s += " · " + L("ui2d.hint.walk", {{"m", std::to_string(int(std::lround(std::hypot((*p)["dest"][0].get<double>() - num(*p, "x"),
+                                                                                                  (*p)["dest"][1].get<double>() - num(*p, "y")))))}});
+            return s;
+        }
+        if (haveHover) {
+            const Json* thing = nullptr;
+            const Json* room = nullptr;
+            for (const auto& [k, c] : chunks) {
+                for (const auto& t : arr(c.j, "things"))
+                    if (t.is_array() && t.size() >= 4 && !hidden.count(t[1].get<std::string>()) && std::abs(t[2].get<double>() - hoverX) < 0.6 &&
+                        std::abs(t[3].get<double>() - hoverY) < 0.6)
+                        thing = &t;
+                for (const auto& r : arr(c.j, "rooms"))
+                    if (num(r, "z") == 0 && hoverX >= num(r, "x0") && hoverX < num(r, "x1") && hoverY >= num(r, "y0") && hoverY < num(r, "y1")) room = &r;
+            }
+            std::string s;
+            const Json objs = ST.value("objects", Json::object()), rooms = ST.value("rooms", Json::object());
+            if (thing) {
+                const std::string ty = (*thing)[1].get<std::string>();
+                s = L("ui2d.hint.thing", {{"name", objs.contains(ty) ? objs[ty].get<std::string>() : ty}});
+            }
+            if (room) {
+                const std::string ty = str(*room, "type");
+                if (!s.empty()) s += " · ";
+                s += L("ui2d.hint.room", {{"room", rooms.contains(ty) ? rooms[ty].get<std::string>() : ty}});
+            }
+            if (!s.empty()) return s;
+        }
+        return L("ui2d.hint.keys");
+    }
+    void drawOverlay() {
+        const double t = nowMs();
+        // toast
+        if (t < toastUntil && !toastText.empty()) {
+            const float px = 15 * U, w = textW(toastText, px) + 28 * U, h = textH(px) + 12 * U;
+            const float x = mapW() / 2 - w / 2, y = 18 * U;
+            fill(x, y, w, h, kLeather);
+            frame(x, y, w, h, kBronze, std::max(1.0f, 2 * U));
+            textC(mapW() / 2, y + 6 * U, toastText, kGold, px);
+        }
+        // what people said, bottom left
+        {
+            float y = mapH() - (me >= 0 ? 70 : 16) * U;   // over the quick bar when it is there
+            const float px = 14 * U;
+            for (auto it = lines.rbegin(); it != lines.rend(); ++it) {
+                if (t - it->second > 40000) continue;
+                y -= textH(px) + 6 * U;
+                const float a = t - it->second > 15000 ? 0.55f : 1.0f;
+                const std::string s = ui.fit(it->first, mapW() * 0.45f, fs(px));
+                fill(12 * U, y - 2 * U, textW(s, px) + 16 * U, textH(px) + 4 * U, ui::Colour(0, 0, 0, 0.45f * a));
+                text(20 * U, y, s, kText.withAlpha(a), px, true);
+            }
+        }
+        // the dock: the act going on and the quick bar
+        if (me >= 0) {
+            const float sw = 92 * U, sh = 42 * U, gap = 4 * U, total = 8 * sw + 7 * gap;
+            const float x0 = mapW() / 2 - total / 2, y0 = mapH() - sh - 12 * U;
+            const Json* mp = person(me);
+            if (mp && mp->contains("prog") && (*mp)["prog"].is_number() && !str(*mp, "act").empty()) {
+                const float cw = 320 * U, ch = 16 * U, cx = mapW() / 2 - cw / 2, cy = y0 - ch - 26 * U;
+                textC(mapW() / 2, cy - textH(14 * U) - 3 * U, str(*mp, "act"), kGold, 14 * U, true);
+                gauge({cx, cy, cw, ch}, num(*mp, "prog"), kGold);
+            }
+            for (int i = 0; i < 8; ++i) {
+                const ui::Rect r{x0 + i * (sw + gap), y0, sw, sh};
+                const Slot& s = slots[std::size_t(i)];
+                const Json c = i < int(checked.size()) ? checked[std::size_t(i)] : Json();
+                const bool off = !s.id.empty() && c.is_object() && !flag(c, "can");
+                fill(r.x, r.y, r.w, r.h, kLeatherD.withAlpha(0.92f));
+                frame(r.x, r.y, r.w, r.h, off ? kBad.withAlpha(0.6f) : kBronze, std::max(1.0f, U));
+                ui.claim(r);
+                text(r.x + 4 * U, r.y + 2 * U, std::to_string(i + 1), kGold, 12 * U);
+                if (!s.id.empty()) {
+                    const std::string name = c.is_object() && !str(c, "name").empty() ? str(c, "name") : s.id;
+                    auto rows = wrap(name, r.w - 10 * U, 12 * U);
+                    for (std::size_t k = 0; k < rows.size() && k < 2; ++k)
+                        text(r.x + 6 * U, r.y + 14 * U + k * (textH(12 * U) + 2 * U), rows[k], off ? kDim : kText, 12 * U);
+                }
+                if (r.contains(in.mouseX, in.mouseY)) {
+                    if (in.pressed) useSlot(i);
+                    if (in.rightPressed) {
+                        slots[std::size_t(i)] = Slot{};
+                        checkBar();
+                    }
+                }
+            }
+        }
+        drawMenu();
+    }
+    void drawMenu() {
+        if (!menuOpen) return;
+        const float w = 340 * U, rowH = 40 * U, pad = 8 * U;
+        std::size_t n = menuActs.size();
+        float h = 34 * U + std::max<std::size_t>(n, 1) * (rowH + 2 * U) + pad;
+        h = std::min(h, mapH() - 20 * U);
+        float x = std::min(menuX + 14 * U, mapW() - w - 10 * U), y = std::max(10 * U, std::min(menuY - 20 * U, mapH() - h - 10 * U));
+        const ui::Rect box{x, y, w, h};
+        fill(box.x, box.y, box.w, box.h, kLeather);
+        frame(box.x, box.y, box.w, box.h, kBronze, std::max(1.0f, 2 * U));
+        ui.claim(box);
+        text(x + pad, y + 6 * U, ui.fit(menuTitle, w - 2 * pad, fs(16 * U)), kGold, 16 * U, true);
+        const ui::Rect listR{x + pad, y + 32 * U, w - 2 * pad, h - 36 * U};
+        const ui::Rect c = ui.beginScroll(ui::widgetId("menu.acts"), listR);
+        float yy = c.y;
+        if (menuActs.empty()) {
+            parchLines(c.x, yy, c.w, {L("ui2d.no_acts")}, 14 * U);
+            yy += 30 * U;
+        }
+        int i = 0;
+        std::string chosen;
+        for (const auto& a : menuActs) {
+            const bool can = flag(a, "can");
+            const ui::Rect r{c.x, yy, c.w, rowH};
+            const bool hit = ui.selectable(ui::widgetId("menu.act", i++), r, false);
+            const float mins = float(num(a, "minutes"));
+            const std::string tm = mins >= 60 ? L("ui2d.hours", {{"n", std::to_string(int(std::lround(mins / 60)))}})
+                                              : L("ui2d.minutes", {{"n", std::to_string(int(mins))}});
+            text(r.x + 6 * U, r.y + 3 * U, ui.fit(str(a, "name"), r.w - 90 * U, fs(14 * U)), can ? kText : kDim, 14 * U);
+            text(r.right() - textW(tm, 12 * U) - 30 * U, r.y + 4 * U, tm, kDim, 12 * U);
+            // pin to the quick bar
+            const ui::Rect pin{r.right() - 24 * U, r.y + 2 * U, 22 * U, 18 * U};
+            text(pin.x + 4 * U, pin.y, "+", kGold, 15 * U);
+            std::string sub;
+            for (const auto& g : a.value("gains", Json::array())) sub += (sub.empty() ? "" : ", ") + g.get<std::string>();
+            for (const auto& g : a.value("to_target", Json::array())) sub += (sub.empty() ? "→ " : ", → ") + g.get<std::string>();
+            if (!can && !str(a, "why").empty()) sub = str(a, "why");
+            for (const auto& g : a.value("legal", Json::array())) sub += (sub.empty() ? "" : " · ") + g.get<std::string>();
+            text(r.x + 6 * U, r.y + 21 * U, ui.fit(sub, r.w - 12 * U, fs(11 * U)), !can ? kBad : kDim, 11 * U);
+            if (hit) {
+                if (pin.contains(in.mouseX, in.mouseY)) pinToBar(Slot{"act", str(a, "id"), menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty()});
+                else if (can) chosen = str(a, "id");
+            }
+            yy += rowH + 2 * U;
+        }
+        ui.endScroll(yy);
+        if (!chosen.empty()) {
+            menuOpen = false;
+            perform(chosen, menuTarget);
+        }
+        if (in.pressed && !box.contains(in.mouseX, in.mouseY)) menuOpen = false;
+    }
+    void openMenu(long long target, const std::string& title, float sx, float sy) {
+        if (me < 0) {
+            toast(L("ui2d.lead_first"));
+            return;
+        }
+        Json acts = get("/api/acts" + (target >= 0 ? "?target=" + std::to_string(target) : std::string()));
+        if (!acts.is_array()) acts = Json::array();
+        std::stable_sort(acts.begin(), acts.end(), [](const Json& a, const Json& b) { return flag(a, "can") > flag(b, "can"); });
+        menuActs = acts;
+        menuTarget = target;
+        menuTitle = title;
+        menuX = sx, menuY = sy;
+        menuOpen = true;
+    }
+    void perform(const std::string& id, long long target) {
+        path.clear();
+        if (vis.count(me)) vis[me].driven = false;
+        Json args = {{"id", me}, {"interaction", id}};
+        if (target >= 0) args["target"] = target;
+        cmdToast({{"op", "cmd"}, {"type", "perform"}, {"args", args}});
+        poll();
+    }
+    void pinToBar(const Slot& s) {
+        for (std::size_t i = 0; i < slots.size(); ++i)
+            if (slots[i].id.empty()) {
+                slots[i] = s;
+                checkBar();
+                toast(L("ui2d.pinned", {{"n", std::to_string(i + 1)}}));
+                return;
+            }
+        toast(L("ui2d.bar_full"));
+    }
+    void useSlot(int i) {
+        const Slot& s = slots[std::size_t(i)];
+        if (s.id.empty() || me < 0) return;
+        const Json c = i < int(checked.size()) ? checked[std::size_t(i)] : Json();
+        if (c.is_object() && !flag(c, "can")) {
+            toast(str(c, "why").empty() ? L("ui2d.cannot") : str(c, "why"));
+            return;
+        }
+        if (s.kind == "goal") {
+            path.clear();
+            cmdToast({{"op", "cmd"}, {"type", "set_goal"}, {"args", {{"id", me}, {"goal", s.id}}}});
+        } else perform(s.id, c.is_object() && flag(c, "needs_target") ? selId : -1);
+    }
+
+    // --- controls ------------------------------------------------------------------------
+    static constexpr double SPEEDS[] = {0.5, 1, 2, 4, 8, 16, 48};
+    void setSpeed(int dir) {
+        int i = 0;
+        while (i < 7 && SPEEDS[i] < tps) ++i;
+        if (i >= 7) i = 6;
+        i = std::clamp(i + dir, 0, 6);
+        tps = SPEEDS[i];
+        cmd({{"op", "speed"}, {"tps", tps}});
+    }
+    void togglePause() {
+        paused = !paused;
+        cmd({{"op", "pause"}, {"on", paused}});
+    }
+    void cycleRoofs() { roofMode = roofMode == "auto" ? "all" : roofMode == "all" ? "none" : "auto"; }
+    void toggleFullscreen() {
+        fullscreen = !fullscreen;
+        SDL_SetWindowFullscreen(win, fullscreen);
+    }
+    bool key(SDL_Scancode sc) {
+        if (ui.typing()) return false;
+        const bool leading = me >= 0;
+        if (leading && sc >= SDL_SCANCODE_1 && sc <= SDL_SCANCODE_8 && !altDown) {
+            useSlot(int(sc - SDL_SCANCODE_1));
+            return true;
+        }
+        switch (sc) {
+        case SDL_SCANCODE_X:
+            if (leading) {
+                path.clear();
+                cmd({{"op", "cmd"}, {"type", "cancel_goal"}, {"args", {{"id", me}}}});
+                poll();
+            }
+            return true;
+        case SDL_SCANCODE_SPACE: togglePause(); return true;
+        case SDL_SCANCODE_Z: zoom = zoom % 3 + 1; return true;
+        case SDL_SCANCODE_R: cycleRoofs(); return true;
+        case SDL_SCANCODE_G: glyphs = !glyphs; return true;
+        case SDL_SCANCODE_F: follow = !follow && (selId >= 0 || me >= 0); return true;
+        case SDL_SCANCODE_F11: toggleFullscreen(); return true;
+        case SDL_SCANCODE_ESCAPE:
+            if (menuOpen) menuOpen = false;
+            else select(-1);
+            return true;
+        case SDL_SCANCODE_MINUS:
+        case SDL_SCANCODE_KP_MINUS: setSpeed(-1); return true;
+        case SDL_SCANCODE_EQUALS:
+        case SDL_SCANCODE_KP_PLUS: setSpeed(1); return true;
+        default: return false;
+        }
+    }
+
+    // --- one frame -------------------------------------------------------------------------
+    bool events() {
+        in.pressed = in.released = in.rightPressed = in.doubleClick = false;
+        in.wheel = 0;
+        in.text.clear();
+        in.backspace = in.enter = in.escape = in.tab = false;
+        SDL_Event e;
+        while (SDL_PollEvent(&e)) {
+            switch (e.type) {
+            case SDL_EVENT_QUIT:
+            case SDL_EVENT_WINDOW_CLOSE_REQUESTED: return false;
+            case SDL_EVENT_RENDER_TARGETS_RESET:
+            case SDL_EVENT_RENDER_DEVICE_RESET:
+                for (auto& [k, c] : chunks) c.painted = false;
+                if (e.type == SDL_EVENT_RENDER_DEVICE_RESET) {
+                    for (auto& [k, c] : chunks) c.tex = nullptr;
+                    atlas.clear();
+                    ui.shutdown();
+                    ui.init(ren);
+                }
+                break;
+            case SDL_EVENT_WINDOW_FOCUS_LOST: altDown = false; break;
+            case SDL_EVENT_KEY_DOWN: {
+                const SDL_Scancode sc = e.key.scancode;
+                if (sc == SDL_SCANCODE_LALT || sc == SDL_SCANCODE_RALT) altDown = true;
+                if (sc == SDL_SCANCODE_RETURN && (e.key.mod & SDL_KMOD_ALT)) {
+                    toggleFullscreen();
+                    break;
+                }
+                if (sc == SDL_SCANCODE_BACKSPACE) in.backspace = true;
+                if (sc == SDL_SCANCODE_RETURN) in.enter = true;
+                if (sc == SDL_SCANCODE_ESCAPE) in.escape = true;
+                if (!e.key.repeat) key(sc);
+                break;
+            }
+            case SDL_EVENT_KEY_UP:
+                if (e.key.scancode == SDL_SCANCODE_LALT || e.key.scancode == SDL_SCANCODE_RALT) altDown = false;
+                break;
+            case SDL_EVENT_TEXT_INPUT: in.text += e.text.text; break;
+            case SDL_EVENT_MOUSE_MOTION:
+                in.mouseX = e.motion.x * mouseK;
+                in.mouseY = e.motion.y * mouseK;
+                if (dragging) {
+                    camX = dragCamX - (in.mouseX - dragX) / tilePx();
+                    camY = dragCamY - (in.mouseY - dragY) / tilePx();
+                    follow = false;
+                }
+                break;
+            case SDL_EVENT_MOUSE_BUTTON_DOWN: {
+                const float mx = e.button.x * mouseK, my = e.button.y * mouseK;
+                shift = (SDL_GetModState() & SDL_KMOD_SHIFT) != 0;
+                if (e.button.button == SDL_BUTTON_LEFT) {
+                    in.down = true;
+                    in.pressed = true;
+                    in.doubleClick = e.button.clicks >= 2;
+                    clickedWorld = true;
+                    clickX = mx, clickY = my;
+                } else if (e.button.button == SDL_BUTTON_RIGHT) {
+                    in.rightDown = true;
+                    in.rightPressed = true;
+                    if (shift) startDrag(mx, my);
+                    else rclickedWorld = true, clickX = mx, clickY = my;
+                } else if (e.button.button == SDL_BUTTON_MIDDLE) {
+                    in.middleDown = true;
+                    startDrag(mx, my);
+                }
+                break;
+            }
+            case SDL_EVENT_MOUSE_BUTTON_UP:
+                if (e.button.button == SDL_BUTTON_LEFT) in.down = false, in.released = true;
+                if (e.button.button == SDL_BUTTON_RIGHT) in.rightDown = false, dragging = false;
+                if (e.button.button == SDL_BUTTON_MIDDLE) in.middleDown = false, dragging = false;
+                break;
+            case SDL_EVENT_MOUSE_WHEEL: in.wheel += e.wheel.y; break;
+            default: break;
+            }
+        }
+        const SDL_Keymod mod = SDL_GetModState();
+        in.shift = (mod & SDL_KMOD_SHIFT) != 0;
+        in.ctrl = (mod & SDL_KMOD_CTRL) != 0;
+        return true;
+    }
+    void startDrag(float mx, float my) {
+        dragging = true;
+        dragX = mx, dragY = my;
+        dragCamX = camX, dragCamY = camY;
+    }
+    void worldInput() {
+        const bool overUi = in.overUi || in.mouseX >= mapW() || in.mouseY >= mapH();
+        if (!overUi && !dragging) {
+            toWorld(in.mouseX, in.mouseY, hoverX, hoverY);
+            haveHover = true;
+            const Json* p = pickPerson(hoverX, hoverY);
+            hoverId = p ? ident(*p, "id") : -1;
+        } else {
+            haveHover = false;
+            hoverId = -1;
+        }
+        if (!overUi && in.wheel != 0) {
+            double bx, by, ax, ay;
+            toWorld(in.mouseX, in.mouseY, bx, by);
+            zoom = std::clamp(zoom + (in.wheel > 0 ? 1 : -1), 1, 3);
+            toWorld(in.mouseX, in.mouseY, ax, ay);
+            camX += bx - ax;
+            camY += by - ay;
+        }
+        if (clickedWorld && !overUi && !menuOpen) {
+            double wx, wy;
+            toWorld(clickX, clickY, wx, wy);
+            const Json* p = pickPerson(wx, wy);
+            bool done = false;
+            if (me >= 0 && !shift && !p && vis.count(me)) {
+                rebuildWalls();
+                std::vector<std::pair<double, double>> found;
+                if (findPath(vis[me].x, vis[me].y, wx, wy, found)) {
+                    path = found;
+                    markerX = std::floor(wx) + 0.5, markerY = std::floor(wy) + 0.5, markerAt = nowMs();
+                } else toast(L("ui2d.no_way"));
+                done = true;
+            }
+            if (!done) select(p ? ident(*p, "id") : -1);
+        }
+        if (rclickedWorld && !overUi) {
+            double wx, wy;
+            toWorld(clickX, clickY, wx, wy);
+            if (const Json* p = pickPerson(wx, wy)) {
+                const long long id = ident(*p, "id");
+                openMenu(id == me ? -1 : id, id == me ? L("ui2d.self") : str(*p, "name"), clickX, clickY);
+            } else if (const Json* t = thingAt(wx, wy)) {
+                const std::string ty = (*t)[1].get<std::string>();
+                const Json objs = ST.value("objects", Json::object());
+                openMenu((*t)[0].get<long long>(), objs.contains(ty) ? objs[ty].get<std::string>() : ty, clickX, clickY);
+            } else menuOpen = false;
+        }
+        clickedWorld = rclickedWorld = false;
+    }
+    void camera(double dt) {
+        const bool* k = SDL_GetKeyboardState(nullptr);
+        if (ui.typing()) return;
+        const double pan = 18 * dt * (k[SDL_SCANCODE_LSHIFT] ? 3 : 1) / std::max(1.0, zoom * 0.6) * 3;
+        const bool wasd = me < 0;
+        if ((wasd && k[SDL_SCANCODE_A]) || k[SDL_SCANCODE_LEFT]) camX -= pan, follow = false;
+        if ((wasd && k[SDL_SCANCODE_D]) || k[SDL_SCANCODE_RIGHT]) camX += pan, follow = false;
+        if ((wasd && k[SDL_SCANCODE_W]) || k[SDL_SCANCODE_UP]) camY -= pan, follow = false;
+        if ((wasd && k[SDL_SCANCODE_S]) || k[SDL_SCANCODE_DOWN]) camY += pan, follow = false;
+        const long long fid = follow ? (me >= 0 ? me : selId) : -1;
+        if (fid >= 0 && vis.count(fid)) {
+            const Vis& v = vis[fid];
+            camX += (v.x - camX) * std::min(1.0, dt * 6);
+            camY += (v.y - camY) * std::min(1.0, dt * 6);
+        }
+    }
+    void shotScript(double elapsed) {
+        if (selectIndex >= 0 && selId < 0 && !people.empty()) {
+            std::vector<const Json*> humans;
+            for (const Json& p : people)
+                if (str(p, "sp").empty() && flag(p, "alive")) humans.push_back(&p);
+            if (!humans.empty()) {
+                const Json* p = humans[std::min(humans.size() - 1, std::size_t(selectIndex))];
+                selId = ident(*p, "id");
+                camX = num(*p, "x"), camY = num(*p, "y");
+                follow = true;
+                selectIndex = -1;
+            }
+        }
+        (void)elapsed;
+    }
+
+    // A broken answer costs that part of one frame, not the game: said once a second at most.
+    double lastComplaint = -1e9;
+    template <class F>
+    void guard(const char* what, F&& f) {
+        try {
+            f();
+        } catch (const std::exception& e) {
+            if (nowMs() - lastComplaint > 1000) {
+                lastComplaint = nowMs();
+                std::cerr << "window: " << what << ": " << e.what() << std::endl;
+            }
+        }
+    }
+
+    void run(Host& h) {
+        host = &h;
+        loadingFrame("");
+        loadStatic();
+        if (const char* s = SDL_getenv("ALTERA_2D_SHOT")) shotPath = s;
+        if (const char* s = SDL_getenv("ALTERA_2D_SHOT_AFTER")) shotAfter = std::atof(s);
+        if (const char* s = SDL_getenv("ALTERA_2D_SELECT")) selectIndex = std::atoi(s);
+        if (const char* s = SDL_getenv("ALTERA_2D_ZOOM")) zoom = std::clamp(std::atoi(s), 1, 3);
+        SDL_StartTextInput(win);
+        poll();
+        const double start = nowMs();
+        lastFrame = start;
+        while (!host->quitting()) {
+            if (!events()) {
+                post("/api/quit", {{"autosave", true}});
+                break;
+            }
+            measure();
+            const double t = nowMs(), dt = std::min(0.1, (t - lastFrame) / 1000);
+            lastFrame = t;
+            host->pump(8);
+            if (t - lastPoll > 250) guard("poll", [&] { poll(); });
+            if (t - lastBar > 1200) guard("bar", [&] { checkBar(); });
+            camera(dt);
+            stepVis(dt);
+            guard("walk", [&] { walkMe(dt); });
+            shotScript((t - start) / 1000);
+            SDL_SetRenderDrawColor(ren, 0, 0, 0, 255);
+            SDL_RenderClear(ren);
+            ui.begin(in, W, H);
+            guard("map", [&] { drawMap(); });
+            guard("overlay", [&] { drawOverlay(); });
+            guard("side", [&] { drawSide(); });
+            guard("bar", [&] { drawBar(); });
+            ui.end();
+            guard("input", [&] { worldInput(); });
+            if (!shotPath.empty() && (t - start) / 1000 > shotAfter) {
+                if (SDL_Surface* s = SDL_RenderReadPixels(ren, nullptr)) {
+                    if (!IMG_SavePNG(s, shotPath.c_str())) std::cerr << "shot: " << SDL_GetError() << "\n";
+                    else std::cout << "shot " << shotPath << std::endl;
+                    SDL_DestroySurface(s);
+                }
+                shotPath.clear();
+                if (const char* q = SDL_getenv("ALTERA_2D_SHOT_QUIT"); q && *q == '1') {
+                    post("/api/quit", {{"autosave", false}});
+                }
+            }
+            SDL_RenderPresent(ren);
+        }
+        SDL_StopTextInput(win);
+    }
+
+    ~Impl() {
+        for (auto& [k, c] : chunks)
+            if (c.tex) SDL_DestroyTexture(c.tex);
+        atlas.clear();
+        ui.shutdown();
+        if (ren) SDL_DestroyRenderer(ren);
+        if (win) SDL_DestroyWindow(win);
+        SDL_Quit();
+    }
+};
+
+Window::Window(std::string root) : impl_(std::make_unique<Impl>()) { impl_->root = std::move(root); }
+Window::~Window() = default;
+bool Window::open() { return impl_->open(); }
+const std::string& Window::error() const { return impl_->err; }
+void Window::run(Host& host) { impl_->run(host); }
+void Window::fail(const std::string& why) { impl_->fail(why); }
+
+} // namespace game2d
