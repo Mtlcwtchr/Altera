@@ -1,0 +1,248 @@
+{
+ "_doc": "LR-171: обряды культа (сеттинг v0.3 §6.5). Обряд принадлежит вере (faiths) или ликам (liks: id ликов пантеона; обряд годится вере, у которой есть такой лик в deities/liks). when: holy_day (id праздника веры или \"any\"), every_days+offset, on (death|wedding|birth|drought|war|illness|sowing|harvest), season [день_от, день_до], chance — шанс в подходящий день. time: dawn|day|dusk|night. participants.who: faith|settlement|household|initiates|mourners; age: adult|any. leader: clergy|pious|head. offering: any — что подойдёт (берётся из запасов поселения или у вожака), n. steps: шаги по порядку, all/leader — акты (первый, чья цель есть рядом), ticks — длительность, fx — эффект клиента (content/sprites_2d/rites2d.json). effects: all/leader — эффекты как в interactions, piety, memory (типы памяти), channels (каналы мира у места × вес), aim (обряд — общая молитва о цели). aftermath: последствия {p, eff, who: any|intimate|spouse_of_intimate|leader}. intimacy (только экстатические): только взрослые (min_life_years) и по согласию (взаимное affinity и attraction выше порогов), показ — облачко «вуху» с сердечками. secret + grades — таинство по ступеням. Имена: rites.rite.<id>.name / .desc.",
+ "group": "love",
+ "liks": [
+  "aphrodite",
+  "hathor",
+  "freyja",
+  "lada",
+  "umay"
+ ],
+ "faiths": [
+  "love_feasts"
+ ],
+ "rites": [
+  {
+   "id": "wedding_rite",
+   "kind": "wedding",
+   "open": true,
+   "when": {
+    "on": "wedding"
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "any",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "offering": {
+    "any": [
+     "mead",
+     "wine",
+     "honey"
+    ],
+    "n": 2
+   },
+   "steps": [
+    {
+     "all": [
+      "rite_procession"
+     ],
+     "ticks": 2,
+     "fx": "flower_petals"
+    },
+    {
+     "all": [
+      "rite_oath"
+     ],
+     "ticks": 1,
+     "fx": "hearts"
+    },
+    {
+     "all": [
+      "rite_feast"
+     ],
+     "ticks": 3,
+     "fx": "feast"
+    },
+    {
+     "all": [
+      "rite_dance"
+     ],
+     "ticks": 2,
+     "fx": "flower_petals"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.35",
+     "need:social+0.35",
+     "moodlet:rite_joy"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "danced"
+    ]
+   },
+   "aftermath": [
+    {
+     "p": 0.15,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    }
+   ]
+  },
+  {
+   "id": "spring_feast",
+   "kind": "festival",
+   "open": true,
+   "when": {
+    "season": [
+     80,
+     100
+    ],
+    "chance": 0.6
+   },
+   "time": "dusk",
+   "participants": {
+    "who": "settlement",
+    "age": "any",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "steps": [
+    {
+     "all": [
+      "rite_grove"
+     ],
+     "ticks": 2,
+     "fx": "flower_petals"
+    },
+    {
+     "all": [
+      "rite_dance"
+     ],
+     "ticks": 3,
+     "fx": "hearts"
+    },
+    {
+     "all": [
+      "rite_feast"
+     ],
+     "ticks": 2,
+     "fx": "feast"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.45",
+     "need:social+0.35",
+     "moodlet:rite_joy"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "danced"
+    ],
+    "channels": {
+     "fertility": "+1*power"
+    },
+    "aim": "love"
+   }
+  },
+  {
+   "id": "temple_feast",
+   "kind": "ecstatic",
+   "open": true,
+   "when": {
+    "holy_day": "any",
+    "chance": 0.5
+   },
+   "time": "night",
+   "participants": {
+    "who": "faith",
+    "age": "adult",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "offering": {
+    "any": [
+     "wine",
+     "honey",
+     "mead"
+    ],
+    "n": 2
+   },
+   "steps": [
+    {
+     "all": [
+      "rite_hymn"
+     ],
+     "ticks": 2,
+     "fx": "rose_light"
+    },
+    {
+     "all": [
+      "rite_feast"
+     ],
+     "ticks": 2,
+     "fx": "feast"
+    },
+    {
+     "all": [
+      "rite_revel"
+     ],
+     "ticks": 3,
+     "fx": "rose_light"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.5",
+     "need:social+0.4",
+     "moodlet:ecstasy"
+    ],
+    "piety": 0.05,
+    "memory": [
+     "rite",
+     "revel"
+    ],
+    "channels": {
+     "fertility": "+1*power"
+    }
+   },
+   "aftermath": [
+    {
+     "p": 0.3,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    },
+    {
+     "p": 0.5,
+     "who": "spouse_of_intimate",
+     "eff": [
+      "moodlet:jealous",
+      "rel:affinity-0.1"
+     ]
+    },
+    {
+     "p": 0.2,
+     "who": "intimate",
+     "eff": [
+      "memory:scandal"
+     ]
+    }
+   ],
+   "intimacy": {
+    "adults_only": true,
+    "consent": true,
+    "min_life_years": 18,
+    "pairs_share": 0.3,
+    "affinity": 0.3,
+    "attraction": 0.25,
+    "act": "intimacy",
+    "show": "woohoo_cloud"
+   }
+  }
+ ]
+}

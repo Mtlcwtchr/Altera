@@ -1,0 +1,123 @@
+{
+ "_doc": "LR-171: обряды культа (сеттинг v0.3 §6.5). Обряд принадлежит вере (faiths) или ликам (liks: id ликов пантеона; обряд годится вере, у которой есть такой лик в deities/liks). when: holy_day (id праздника веры или \"any\"), every_days+offset, on (death|wedding|birth|drought|war|illness|sowing|harvest), season [день_от, день_до], chance — шанс в подходящий день. time: dawn|day|dusk|night. participants.who: faith|settlement|household|initiates|mourners; age: adult|any. leader: clergy|pious|head. offering: any — что подойдёт (берётся из запасов поселения или у вожака), n. steps: шаги по порядку, all/leader — акты (первый, чья цель есть рядом), ticks — длительность, fx — эффект клиента (content/sprites_2d/rites2d.json). effects: all/leader — эффекты как в interactions, piety, memory (типы памяти), channels (каналы мира у места × вес), aim (обряд — общая молитва о цели). aftermath: последствия {p, eff, who: any|intimate|spouse_of_intimate|leader}. intimacy (только экстатические): только взрослые (min_life_years) и по согласию (взаимное affinity и attraction выше порогов), показ — облачко «вуху» с сердечками. secret + grades — таинство по ступеням. Имена: rites.rite.<id>.name / .desc.",
+ "group": "knowledge",
+ "liks": [
+  "athena",
+  "odin",
+  "thoth",
+  "ogma"
+ ],
+ "faiths": [
+  "knowledge_runes"
+ ],
+ "rites": [
+  {
+   "id": "contest_of_wits",
+   "kind": "contest",
+   "open": true,
+   "when": {
+    "every_days": 45,
+    "offset": 30
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "adult",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "steps": [
+    {
+     "all": [
+      "rite_gather"
+     ],
+     "ticks": 1,
+     "fx": "scroll"
+    },
+    {
+     "all": [
+      "rite_contest"
+     ],
+     "ticks": 3,
+     "fx": "riddles"
+    },
+    {
+     "all": [
+      "rite_feast"
+     ],
+     "ticks": 2,
+     "fx": "feast"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.25",
+     "need:purpose+0.2",
+     "moodlet:inspired"
+    ],
+    "leader": [
+     "skill:eloquence+0.01"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "won_contest"
+    ]
+   }
+  },
+  {
+   "id": "rune_ordeal",
+   "kind": "vigil",
+   "open": false,
+   "when": {
+    "holy_day": "any"
+   },
+   "time": "night",
+   "participants": {
+    "who": "initiates",
+    "age": "adult",
+    "min": 1,
+    "max": 6,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "steps": [
+    {
+     "all": [
+      "rite_vigil"
+     ],
+     "ticks": 4,
+     "fx": "runes_glow"
+    },
+    {
+     "all": [
+      "rite_mystery"
+     ],
+     "ticks": 2,
+     "fx": "runes_glow"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.5",
+     "body:fatigue+0.2",
+     "moodlet:initiated"
+    ],
+    "piety": 0.08,
+    "memory": [
+     "rite",
+     "initiated"
+    ],
+    "aim": "wisdom"
+   },
+   "grades": [
+    "seeker",
+    "rune_reader",
+    "sage"
+   ],
+   "secret": true
+  }
+ ]
+}

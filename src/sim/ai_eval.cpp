@@ -19,6 +19,7 @@
 #include "sim/gear.hpp"
 #include "sim/group_combat.hpp"
 #include "sim/magic_society.hpp"
+#include "sim/rites.hpp"
 #include "sim/tones.hpp"
 #include "sim/village_life.hpp"
 
@@ -1094,6 +1095,7 @@ void applyEffectsInner(World& w, Character& c, const InteractionDef& d, WorldObj
     afterDeed(w, c, d, target, targetChar, success, tags, wit);
     villageAfterAct(w, c, d, targetChar, success); // AL-39: courtship, wedding, conception, quarrels
     magicAfterAct(w, c, d, target, targetChar, success); // AL-118: a work spell is cast at the place
+    ritesAfterAct(w, c, d, target, targetChar, success); // LR-171: a prayer is answered, a rite step counts
     okOut = success;
 }
 

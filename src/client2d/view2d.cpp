@@ -12,6 +12,7 @@
 #include "sim/need_tiers.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/transport.hpp"
+#include "sim/rites.hpp"
 
 namespace lr::client2d {
 
@@ -232,6 +233,10 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
             p["occ"] = c.occupation;
             p["role"] = c.status.role;
             raceJson(w, c, p); // AL-114
+            // LR-171: the rite one takes part in (the client's fx, sway, attire); intimacy shows as the
+            // pixel cloud with hearts (content/sprites_2d/rites2d.json woohoo), never more (§1.1)
+            if (Json r = riteOf(w, id); !r.is_null()) p["rite"] = std::move(r);
+            if (c.ai.fsm.interaction == "intimacy") p["woohoo"] = true;
             lookJson(c, p);    // AL-136
         }
         transportJson(w, c, p); // LR-159
