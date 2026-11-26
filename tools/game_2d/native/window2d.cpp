@@ -245,6 +245,7 @@ struct Window::Impl : Ctx {
 
     // --- the game as the routes tell it ---------------------------------------
     Json ST, MAP, RES, LOOK;
+    Json CLIFFS = Json::object();   // LR-156: cliffs2d.json (rules + tiles)
     std::map<std::string, std::string> UI;
     SpriteSet sprites;
     std::vector<std::pair<std::regex, std::string>> actsRe;
@@ -939,6 +940,8 @@ struct Window::Impl : Ctx {
         sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
         sprites.merge(parseOr(readText(dir / "transport2d.json"), Json::object()));   // LR-159: mounts and vehicles
         trSize.clear();
+        CLIFFS = parseOr(readText(dir / "cliffs2d.json"), Json::object());   // LR-156: cliffs of the relief
+        sprites.merge(CLIFFS);
         HUD = parseOr(readText(dir / "hud2d.json"), Json::object());   // LR-137: the pixel HUD
         FIGHT = parseOr(readText(dir / "combat2d.json"), Json::object());   // LR-152: the combat state
         fights.configure(FIGHT);
@@ -981,6 +984,26 @@ struct Window::Impl : Ctx {
     }
 
     // --- ground chunks --------------------------------------------------------------------
+    // LR-156: the cliff pieces a cell shows, bottom first (as web/game2d.js cliffPieces): the mask
+    // of its higher neighbours (1 N, 2 E, 4 S, 8 W, 16 NE, 32 SE, 64 SW, 128 NW), style, ramp, variant
+    static std::vector<std::string> cliffPieces(int m, const std::string& style, bool ramp, int v) {
+        const std::string p = "cf_" + style + "_";
+        std::vector<std::string> out;
+        auto side = [&](const char* d) { out.push_back(ramp ? p + "ramp_" + d : p + d + "_" + std::to_string(v)); };
+        if (m & 4) side("s");
+        else {
+            if ((m & 32) && !(m & 2)) out.push_back(p + "c_se");
+            if ((m & 64) && !(m & 8)) out.push_back(p + "c_sw");
+        }
+        if (m & 2) side("e");
+        if (m & 8) side("w");
+        if (m & 1) side("n");
+        else {
+            if ((m & 16) && !(m & 2)) out.push_back(p + "c_ne");
+            if ((m & 128) && !(m & 8)) out.push_back(p + "c_nw");
+        }
+        return out;
+    }
     std::string tileSprite(const std::string& g, int v) const {
         const Json tiles = MAP.value("tiles", Json::object());
         if (tiles.contains(g) && tiles[g].is_array() && !tiles[g].empty()) return tiles[g][std::size_t(v) % tiles[g].size()].get<std::string>();
@@ -1020,6 +1043,18 @@ struct Window::Impl : Ctx {
                 const int rot = turn ? (v >> 4) & 3 : 0;
                 blit(sp, float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
             }
+        // LR-156: the relief: lower ground a little darker (the cliffs come over the crops)
+        const std::string level = str(j, "level");
+        const Json crules = CLIFFS.value("rules", Json::object());
+        if (!level.empty() && !glyphs) {
+            const double low = num(crules, "shade_low", 0.16), per = num(crules, "shade_per_level", 0.02);
+            for (int y = 0; y < h; ++y)
+                for (int x = 0; x < w; ++x) {
+                    const std::size_t i = std::size_t(y * w + x);
+                    const double a = i < level.size() ? low - per * double(level[i] - '0') : 0.0;
+                    if (a > 0.005) fill(float(x * T), float(y * T), T, T, hexc("#000000").withAlpha(float(a)));
+                }
+        }
         // AL-112: fields and gardens over the ground (one char per cell, '.' none)
         const std::string crop = str(j, "crop");
         const Json cropTiles = j.value("crop_tiles", Json::array());
@@ -1046,6 +1081,30 @@ struct Window::Impl : Ctx {
                     }
                     blit(sprite(name), float(x * T), float(y * T), T, T, 1.0f, rot * 90.0);
                 }
+        // LR-156: cliffs of the higher neighbours (mask, style, ramp per cell; web/game2d.js cliffPieces)
+        const std::string cliff = str(j, "cliff"), cstyle = str(j, "cliff_style");
+        const Json cstyles = j.value("cliff_styles", Json::array());
+        if (!cliff.empty() && cstyle.size() * 2 == cliff.size()) {
+            const int nv = std::max(1, int(num(crules, "variants", 1)));
+            for (int y = 0; y < h; ++y)
+                for (int x = 0; x < w; ++x) {
+                    const std::size_t i = std::size_t(y * w + x);
+                    if (i >= cstyle.size()) break;
+                    const int m = std::stoi(cliff.substr(i * 2, 2), nullptr, 16);
+                    if (!m) continue;
+                    const char sc = cstyle[i];
+                    const bool ramp = sc < 'a';
+                    const std::size_t si = std::size_t(sc - (ramp ? 'A' : 'a'));
+                    const std::string style = si < cstyles.size() && cstyles[si].is_string() ? cstyles[si].get<std::string>() : "stone";
+                    if (glyphs) {
+                        fill(float(x * T + 2), float(y * T + ((m & 1) ? 2 : 11)), T - 4, 3, col(sprites.colour('x'), 0.8f));
+                        continue;
+                    }
+                    int v = 0;
+                    if (i * 2 + 1 < var.size()) v = std::stoi(var.substr(i * 2, 2), nullptr, 16) % nv;
+                    for (const std::string& nm : cliffPieces(m, style, ramp, v)) blit(sprite(nm), float(x * T), float(y * T), T, T, 1.0f, 0.0);
+                }
+        }
         // walls, doors, windows of the ground storey on the cell lines (4 px strips)
         auto pc = [&](char l) { return col(sprites.colour(l)); };
         for (const auto& e : arr(j, "edges")) {
@@ -1149,6 +1208,8 @@ struct Window::Impl : Ctx {
     }
 
     // --- polling -----------------------------------------------------------------------------
+    std::set<std::string> shownOutcomes;   // LR-125
+    bool outcomesPrimed = false;
     void poll() {
         lastPoll = nowMs();
         const int r = int(std::ceil(std::hypot(mapW(), mapH()) / tilePx())) + 30;
@@ -1187,6 +1248,14 @@ struct Window::Impl : Ctx {
             else ++it;
         selCard = s.contains("sel") ? s["sel"] : Json();
         meCard = s.contains("me_card") ? s["me_card"] : Json();
+        // LR-125: how the acts of the led person came out, each told once
+        for (const auto& o : s.value("outcomes", Json::array())) {
+            const std::string k = str(o, "key");
+            if (k.empty() || shownOutcomes.count(k)) continue;
+            shownOutcomes.insert(k);
+            if (outcomesPrimed) toast(str(o, "text"));
+        }
+        outcomesPrimed = true;
         // LR-152: new fights near the view play as the combat state; the led person's holds the world
         for (const auto& f : s.value("fights", Json::array())) {
             auto nameOf = [&](long long id) {
@@ -2823,6 +2892,8 @@ struct Window::Impl : Ctx {
         }
         int i = 0;
         std::string chosen;
+        Json expand;   // LR-123: a parametric act's choices replace the list
+        Json direct;   // LR-122: a sim command of its own (wear / take_off)
         for (const auto& a : menuActs) {
             const bool can = flag(a, "can");
             const ui::Rect r{c.x, yy, c.w, rowH};
@@ -2851,11 +2922,31 @@ struct Window::Impl : Ctx {
             text(tx, r.y + 21 * U, ui.fit(sub, r.right() - 6 * U - tx, fs(11 * U)), !can ? kBad : kDim, 11 * U);
             if (hit) {
                 if (pin.contains(in.mouseX, in.mouseY)) pinToBar(Slot{"act", str(a, "id"), menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty()});
+                else if (can && a.contains("choices") && a["choices"].is_array()) expand = a;
+                else if (can && !str(a, "cmd").empty()) direct = a;   // LR-122: put on / take off
                 else if (can) chosen = str(a, "id");
             }
             yy += rowH + 2 * U;
         }
         ui.endScroll(yy);
+        if (direct.is_object()) {
+            menuOpen = false;
+            cmdToast({{"op", "cmd"}, {"type", str(direct, "cmd")}, {"args", {{"id", me}, {"item", str(direct, "item")}}}});
+            poll();
+            return;
+        }
+        if (expand.is_object()) {
+            Json list = Json::array();
+            for (Json ch : expand["choices"]) {
+                ch["minutes"] = expand.value("minutes", 0);
+                ch["to_target"] = Json::array();
+                ch["legal"] = Json::array();
+                list.push_back(ch);
+            }
+            menuActs = list;
+            menuTitle = str(expand, "name");
+            return;
+        }
         if (!chosen.empty()) {
             menuOpen = false;
             perform(chosen, menuTarget);

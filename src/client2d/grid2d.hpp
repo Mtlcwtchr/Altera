@@ -99,6 +99,12 @@ struct Grid2d {
     std::vector<std::uint16_t> crop;
     std::vector<CropTile> cropTiles;
     std::vector<Plot2d> plots;
+    // LR-156 (relief2d.cpp, paintRelief): the relief's level of each cell, the mask of its
+    // higher neighbours (1 N, 2 E, 4 S, 8 W, 16 NE, 32 SE, 64 SW, 128 NW: the cliff faces this
+    // cell shows), the cliff style (index into cliffStyles; | 0x80: a ramp, a road goes up there).
+    // Empty on a flat world.
+    std::vector<std::uint8_t> level, cliff, cliffStyle;
+    std::vector<std::string> cliffStyles;
     Ground at(int x, int y) const { return Ground(ground[std::size_t(y - y0) * std::size_t(w) + std::size_t(x - x0)]); }
 };
 
@@ -106,6 +112,8 @@ struct Grid2d {
 Grid2d buildGrid(const sim::World& w, const GroundRules& rules, int x0, int y0, int wCells, int hCells);
 // The ground of one cell, as buildGrid gives it (without pieces' floors).
 Ground groundAt(const sim::World& w, const GroundRules& rules, int x, int y);
+// LR-156: is the point on a settlement's road or square?
+bool roadAt(const sim::World& w, double x, double y);
 
 Json toJson(const Grid2d& g);
 

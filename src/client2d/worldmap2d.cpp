@@ -6,6 +6,7 @@
 #include <cmath>
 #include <map>
 
+#include "sim/caravan.hpp"
 #include "sim/loc.hpp"
 #include "sim/realm.hpp"
 #include "sim/world.hpp"
@@ -162,6 +163,27 @@ Json worldMapJson(sim::World& w, const ViewText& t, EntityId viewer) {
         if (q.status == "open" && q.polity != sim::kNone)
             quests.push_back({{"at", q.polity}, {"name", say(t, "realm.quest." + q.kind + ".name", Json::object(), q.kind)}, {"reward", q.reward}});
     out["quests"] = quests;
+
+    // LR-163: the caravans, peddlers and supply trains on the road or at a market (sim/caravan.hpp)
+    Json cars = Json::array();
+    for (const auto& v : sim::caravansJson(w)) {
+        const std::string state = v.value("state", std::string());
+        if (state != "road" && state != "market") continue;
+        const std::string kind = v.value("kind", std::string());
+        std::string leader;
+        if (const sim::Character* l = w.person(v.value("leader", sim::kNone)))
+            leader = t.loc ? nounCase(t.loc->personNoun(t.lang, *l), "nom") : l->name;
+        Json cargo = Json::array();
+        const Json load = v.value("cargo", Json::object());   // kept: items() of a temporary dangles
+        for (const auto& [item, n] : load.items())
+            cargo.push_back(t.name("item", item) + " ×" + std::to_string(n.get<int>()));
+        cars.push_back({{"id", v.value("id", 0)}, {"kind", kind},
+                        {"kind_name", say(t, "caravan.kind." + kind + ".name", Json::object(), kind)},
+                        {"leader", leader}, {"from", v.value("from", sim::kNone)}, {"to", v.value("to", sim::kNone)},
+                        {"km", v["km"]}, {"state", state}, {"n", v.value("members", Json::array()).size()},
+                        {"guards", v.value("guards", 0)}, {"cargo", cargo}});
+    }
+    out["caravans"] = cars;
 
     Json me = {{"at", here}, {"name", meName}};
     if (auto it = w.settlements().find(here); it != w.settlements().end()) me["km"] = it->second.km;

@@ -1,6 +1,7 @@
 // Backstories: parse, validate, apply (see backstory.hpp).
 
 #include "sim/backstory.hpp"
+#include "sim/village_life.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -9,6 +10,7 @@
 #include "sim/ai.hpp"
 #include "sim/craft/craft_chain.hpp"
 #include "sim/craft_sim.hpp"
+#include "sim/gear.hpp"
 
 namespace lr::sim {
 
@@ -58,6 +60,7 @@ void parseBackstories(const Json& j, Content& c) {
         b.id = e.value("id", "");
         b.icon = e.value("icon", "");
         b.start = e.value("start", "home");
+        b.newcomer = e.value("newcomer", b.start != "home");   // LR-121: from elsewhere = a newcomer
         if (e.contains("skills") && e["skills"].is_object())
             for (auto it = e["skills"].begin(); it != e["skills"].end(); ++it)
                 if (it.value().is_number()) b.skills.emplace_back(it.key(), it.value().get<double>());
@@ -205,6 +208,11 @@ bool applyBackstory(World& w, Character& c, const BackstoryDef& b, std::string& 
     c.inventory.clear();
     for (const auto& [it, n] : b.items) c.inventory[it] += n;
     if (b.coins > 0) c.inventory["coin"] += b.coins;
+    // LR-122: what was worn went with the old belongings; the new ones are put on
+    // (plain clothes for what the backstory does not bring)
+    pruneGear(c);
+    giveBaseClothes(w, c);
+    if (const GearRules* G = gearRules(ct)) wearAll(*G, c);
 
     // recipes and own made things
     const auto& cd = ct.craft;
@@ -276,7 +284,17 @@ bool handleBackstoryCommand(World& w, Command& cmd, int player) {
     if (cmd.type != "start_backstory") return false;
     const BackstoryDef* b = w.content().backstory(cmd.args.value("backstory", std::string()));
     if (!b) return cmd.result = "rejected:unknown_backstory", true;
-    const EntityId who = cmd.args.value("id", kNone) != kNone ? cmd.args.value("id", kNone) : backstoryCandidate(w);
+    EntityId who = cmd.args.value("id", kNone);
+    if (who == kNone && b->newcomer) {
+        // LR-121: a hunter from the woods, a soldier off the road - a person new to the village
+        EntityId home = kNone;
+        for (const auto& [id, s] : w.settlements())
+            if (home == kNone || s.families.size() > w.settlements().at(home).families.size()) home = id;
+        const std::string sx = cmd.args.value("sex", std::string("m"));
+        Rng rng = w.rng(home, "backstory:newcomer_age:" + b->id);
+        who = newcomerArrives(w, home, sx == "f" ? 'f' : 'm', rng.irange(20, 34));
+    }
+    if (who == kNone) who = backstoryCandidate(w);
     Character* c = w.character(who);
     if (!c) return cmd.result = "rejected:nobody", true;
     std::string why;

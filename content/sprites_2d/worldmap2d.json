@@ -397,6 +397,60 @@
    "................",
    "................"
   ],
+  "wm_peddler": [
+   "................",
+   "................",
+   ".....kk.........",
+   "....kssk........",
+   "....kssk..kkk...",
+   ".....kk..keeek..",
+   "....kNNk.keEek..",
+   "...kNNNNkkeeek..",
+   "...kNNNNk.kkk...",
+   "....kNNk........",
+   "....kPkPk.......",
+   "....kk.kk.......",
+   "................",
+   "................",
+   "................",
+   "................"
+  ],
+  "wm_caravan": [
+   "................",
+   "................",
+   "...kkkkkkk......",
+   "..kwwwwwwwk.....",
+   ".kwwwwwwwwwk....",
+   ".kwwwwwwwwwk.kk.",
+   ".kNNNNNNNNNkkNNk",
+   ".kNNNNNNNNNNNNNk",
+   ".kkkkkkkkkkkkkk.",
+   "..kNk....kNk.kk.",
+   "..kkk....kkk.kk.",
+   "................",
+   "................",
+   "................",
+   "................",
+   "................"
+  ],
+  "wm_train": [
+   "................",
+   ".....k..........",
+   ".....kRk........",
+   ".....kRRk.......",
+   ".....k..........",
+   "..kkkkkkkkkk....",
+   ".kNNNNNNNNNNk...",
+   ".keeeeeeeeeek.kk",
+   ".kNNNNNNNNNNkkNk",
+   ".kkkkkkkkkkkkkk.",
+   "..kNk.....kNk...",
+   "..kkk.....kkk...",
+   "................",
+   "................",
+   "................",
+   "................"
+  ],
   "wm_you": [
    "................",
    ".....kkkkk......",
@@ -548,6 +602,12 @@
   "spring": "wm_spring",
   "battlefield": "wm_battle"
  },
+ "caravan_icons": {
+  "peddler": "wm_peddler",
+  "caravan": "wm_caravan",
+  "supply_train": "wm_train"
+ },
+ "caravan_route": "#e0c890",
  "domain_colours": [
   "#d8b048",
   "#a83c30",

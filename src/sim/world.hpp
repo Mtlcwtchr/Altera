@@ -6,6 +6,7 @@
 #include <deque>
 #include <functional>
 #include <map>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -163,6 +164,8 @@ struct RoomBuilding {
     int x0 = 0, y0 = 0, x1 = 0, y1 = 0;       // bounds in grid cells
 };
 
+struct Relief;   // sim/relief.hpp
+
 // A coarse grid: biome per cell, water flags. A stub of the real world's
 // interfaces (world -> poi/resources -> settlements, AI_ARCHITECTURE §11.1).
 struct MapGrid {
@@ -172,6 +175,10 @@ struct MapGrid {
     std::vector<std::string> biomeNames;
     std::vector<std::uint8_t> biome;
     std::vector<std::uint8_t> water;
+    // LR-156: the settings the relief was made with (sim/relief.hpp; saved) and its
+    // heights, made again from them on load (not saved). Empty: a flat world.
+    Json relief = Json::object();
+    std::shared_ptr<const Relief> reliefData;
     int cellIndex(Vec2 p) const;
     const std::string& biomeAt(Vec2 p) const;
     bool waterAt(Vec2 p) const;

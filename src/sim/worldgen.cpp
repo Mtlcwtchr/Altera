@@ -2,6 +2,7 @@
 #include <functional>
 #include "sim/gear.hpp"
 #include "sim/worldgen.hpp"
+#include "sim/relief.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/village_life.hpp"
 #include "sim/ai.hpp"
@@ -947,6 +948,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                     if (oid > before && dist(o.pos, center) <= knowRadius) ca->knownObjects.insert(oid);
     }
     spawnTransport(w, seed); // LR-159: the households' horses, oxen, carts (last: the ids before stay as they were)
+    makeRelief(w, cfg);   // LR-156: the lie of the land, level round the settlements
     return w;
 }
 

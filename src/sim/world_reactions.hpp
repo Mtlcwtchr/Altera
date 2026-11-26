@@ -64,6 +64,8 @@ double moveFactorAt(const World& w, Vec2 at);
 // The same for a step of `step` metres from `from` toward `to`: time-weighted along
 // the way (only cells something wrote count; untouched ground is the norm).
 double stepMoveFactor(const World& w, Vec2 from, Vec2 to, double step);
+// The same without the relief's climbs (LR-156): mud, ice, steep dug ground.
+double groundMoveFactor(const World& w, Vec2 from, Vec2 to, double step);
 // Is it dangerous to stand here (flames, heat near burning, strong taint)?
 // If so, `away` is the nearest safer place within lookM (upwind first).
 bool fieldDanger(const World& w, Vec2 at, double lookM, Vec2* away);
