@@ -39,7 +39,7 @@ const StaminaRules* staminaRules(const Content& c) {
     std::unique_ptr<StaminaRules> r;
     const fs::path p = fs::path(c.dir) / "stamina.json";
     if (data::exists(p)) {
-        const Json j = data::readJson(p);
+        const Json j = data::readJson(p.string());
         r = std::make_unique<StaminaRules>();
         r->enabled = j.value("enabled", true);
         r->maxFormula = j.value("max_formula", r->maxFormula);
