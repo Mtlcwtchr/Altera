@@ -25,14 +25,15 @@
 
   const loadMenu = () => G.getJson('/api/menu').then(m => { M = m; return m; });
   function hold() {
-    if (heldPause === null) { heldPause = lastPaused; if (!lastPaused) G.cmd({ op: 'pause', on: true }); }
+    // LR-160: a menu's pause (menu: true) - the server holds the world only for a player alone in it
+    if (heldPause === null) { heldPause = lastPaused; if (!lastPaused) G.cmd({ op: 'pause', on: true, menu: true }); }
   }
   function release() {
     if (heldPause === null) return;
     const was = heldPause; heldPause = null;
-    if (!was) G.cmd({ op: 'pause', on: false });
+    if (!was) G.cmd({ op: 'pause', on: false, menu: true });
   }
-  const anyMenuOpen = () => ['menu', 'newgame', 'saves', 'pick'].some(id => G.win.isOpen(id));
+  const anyMenuOpen = () => ['menu', 'newgame', 'saves', 'pick', 'net'].some(id => G.win.isOpen(id));
   function closed() { setTimeout(() => { if (!anyMenuOpen()) release(); }, 0); }
   function busy(body, text) { body.innerHTML = `<div class="mn-busy">${esc(text)}</div>`; }
   function sizeName(id) { const s = M && M.options.sizes.find(x => x.id === id); return s ? s.name : id; }
@@ -60,9 +61,12 @@
         const inGame = M.me != null && M.me !== 0;
         const items = [
           ['continue', inGame, () => { w.close(); }],
+          // LR-160: a game others play in already: come in as a person of a dynasty nobody leads
+          ...(!inGame && M.players_online > 1 ? [['join', true, () => { w.close(); openPick(); }]] : []),
           ['new', true, () => { w.close(); openNew(); }],
           ['save', inGame, () => { w.close(); openSaves('save'); }],
           ['load', M.saves.some(s => s.used), () => { w.close(); openSaves('load'); }],
+          ['net', true, () => { w.close(); openNet(); }],
           ['quit', true, () => quit()],
         ];
         body.innerHTML = `<div class="mn-crest"><div class="mn-gem"></div><div class="mn-name">${esc(G.L('ui2d.menu.crest'))}</div>
@@ -83,6 +87,36 @@
     return w;
   }
   G.screens.menu = openMain;
+
+  // --- LR-160: the network game -------------------------------------------------------
+  function openNet() {
+    hold();
+    let N = null;
+    const w = G.win.open({
+      id: 'net', small: true, title: G.L('ui2d.net.title'),
+      render(body) {
+        if (!N) { busy(body, G.L('ui2d.loading')); return; }
+        const net = window.LRNet || {};
+        const addrs = (N.addrs || []).map(a => `<div class="net-addr parch">http://${esc(a)}/</div>`).join('') ||
+          `<div class="mn-note">${esc(G.L('ui2d.net.noaddr', { port: N.port }))}</div>`;
+        const players = (N.players || []).map(p => `<div class="net-p${p.online ? '' : ' away'}"><b>${esc(p.name)}</b>${p.you ? ' (' + esc(G.L('ui2d.net.you')) + ')' : ''}
+          <small>${esc(G.L('ui2d.net.kind.' + p.kind))} · ${esc(p.person || G.L('ui2d.net.watching'))}${p.online ? '' : ' · ' + esc(G.L('ui2d.net.away'))}</small></div>`).join('');
+        body.innerHTML = `<h3>${esc(G.L('ui2d.net.host'))}</h3><div class="mn-note">${esc(G.L('ui2d.net.host.hint'))}</div>${addrs}
+          <h3>${esc(G.L('ui2d.net.players', { n: (N.players || []).length, max: N.max }))}</h3>${players}
+          <h3>${esc(G.L('ui2d.net.name'))}</h3><div class="mn-seed"><input id="net-name" class="parch" maxlength="32" value="${esc(net.name || '')}"></div>
+          <div class="mn-note">${esc(G.L('ui2d.net.web.hint'))}</div>
+          <div class="mn-actions"><button class="btn mn-big" id="net-back">${esc(G.L('ui2d.menu.back'))}</button></div>`;
+        const nm = body.querySelector('#net-name');
+        nm.onkeydown = e => e.stopPropagation();
+        nm.onchange = () => { if (net.setName) net.setName(nm.value.trim()); G.getJson('/api/net').then(n => { N = n; w.refresh(); }); };
+        body.querySelector('#net-back').onclick = () => { w.close(); openMain(); };
+      },
+      onClose: closed,
+    });
+    G.getJson('/api/net').then(n => { N = n; w.refresh(); });
+    return w;
+  }
+  G.screens.net = openNet;
 
   function quit() {
     post('/api/quit', { autosave: true }).catch(() => {}).finally(() => {
@@ -277,7 +311,7 @@
     if (q.get('ng') === 'pick') openPick();
     else if (m === 'new') openNew();
     else if (m === 'save' || m === 'load') openSaves(m);
-    else if (m || !location.search) openMain();
+    else if (m || [...q.keys()].every(k => k === 'name' || k === 'player')) openMain();   // LR-160: ?name= / ?player= are no screen
     else if (q.get('loaded') != null) G.toast && G.toast(G.L('ui2d.saves.loaded', { n: q.get('loaded') }));
     if (q.get('ng') || q.get('loaded') != null) history.replaceState(null, '', '/');
   });

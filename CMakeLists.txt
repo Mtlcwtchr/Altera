@@ -433,12 +433,14 @@ target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the cha
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
-add_executable(lr_game_2d tools/game_2d/main.cpp)
+target_sources(lr_client2d PRIVATE src/client2d/lobby2d.cpp)  # LR-160: the players of a multiplayer game
+add_executable(lr_game_2d tools/game_2d/main.cpp tools/game_2d/net2d.cpp)   # LR-160: net2d - the client side of multiplayer
 target_link_libraries(lr_game_2d PRIVATE lr_client2d asr_warnings)
 if(WIN32)
     target_link_libraries(lr_game_2d PRIVATE ws2_32)
 endif()
 target_compile_definitions(lr_game_2d PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_include_directories(lr_game_2d PRIVATE tools/game_2d)
 
 if(NOT LR_SIM_ONLY)
 # ---------------------------------------------------------------------------
@@ -885,7 +887,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_trade.cpp tests/test_lr_sim_species.cpp
             tests/test_lr_cutaway.cpp tests/test_lr_ui_theme.cpp tests/test_lr_locomotion.cpp tests/test_lr_hotbar.cpp
             tests/test_lr_sim_dialogue_corpus.cpp tests/test_lr_client2d.cpp
-            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp
+            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp tests/test_lr_client2d_net.cpp
             tests/test_lr_client2d_craft.cpp
             tests/test_lr_build2d.cpp
             tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp

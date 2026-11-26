@@ -152,6 +152,7 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
                   {"alive", c.body.alive},
                   {"down", c.body.downUntil > w.now()},
                   {"pl", c.controller.isPlayer()},
+                  {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
                   {"sex", std::string(1, c.body.sex)},
                   {"age", c.body.ageDays / kDaysPerYear},
                   {"fam", f ? f->name : ""},
@@ -229,7 +230,8 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
               {"role", c.status.role},
               {"occ", c.occupation},
               {"pl", c.controller.isPlayer()},
-              {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
+              {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
+              {"lead", mayLead(w, t.player, c)}}; // LR-138: only one's own kin
     // LR-137: the names to show for the family and the trade (the raw ids stay above)
     if (f && t.loc) d["famn"] = t.loc->personNoun(t.lang, f->name, 'm').value("nom", f->name);
     if (!c.occupation.empty() && t.loc) {

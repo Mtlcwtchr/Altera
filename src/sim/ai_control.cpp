@@ -159,6 +159,16 @@ bool inHouse(const World& w, const Json& h, const Character& c) {
     return (fam != kNone && c.status.family == fam) || (dyn != kNone && c.status.dynasty == dyn);
 }
 
+// LR-160: another player's house holds `c` (each player leads a dynasty of their own).
+bool heldByOtherHouse(const World& w, int player, const Character& c) {
+    const Json* all = w.moduleState(kHouseKey);
+    if (!all || !all->is_object()) return false;
+    const std::string mine = std::to_string(player);
+    for (const auto& [k, h] : all->items())
+        if (k != mine && h.is_object() && !h.value("free", false) && inHouse(w, h, c)) return true;
+    return false;
+}
+
 } // namespace
 
 bool mayLead(const World& w, int player, const Character& c, std::string* why) {
@@ -170,6 +180,7 @@ bool mayLead(const World& w, int player, const Character& c, std::string* why) {
     if (c.isAnimal()) return no("animal"); // AL-25: people only
     if (c.controller.isPlayer() && c.controller.playerId != player) return no("controlled_by_other");
     const Json* h = houseOf(w, player);
+    if (!(h && !h->value("free", false) && inHouse(w, *h, c)) && heldByOtherHouse(w, player, c)) return no("dynasty_of_other");
     if (!h) {
         // a world from before LR-138: the person the player leads is the house
         for (const auto& [id, o] : w.characters())
