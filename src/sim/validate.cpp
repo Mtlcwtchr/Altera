@@ -10,6 +10,7 @@
 #include "sim/stats.hpp"
 #include "sim/culture.hpp"
 #include "sim/rites.hpp"
+#include "sim/pantheon.hpp"
 #include "sim/craft/craft_validate.hpp"
 
 namespace lr::sim {
@@ -311,6 +312,7 @@ ValidationReport validate(const Content& c) {
     validateStats(c, r);   // LR-141
     validateCulture(c, r); // LR-155
     validateRites(c, r);   // LR-171
+    validatePantheon(c, r); // LR-169
     validateActChecks(c, r);
 
     // Needs / traits.

@@ -345,6 +345,7 @@ add_library(lr_sim STATIC
         src/sim/magic.cpp
         src/sim/magic_society.cpp
         src/sim/culture.cpp
+        src/sim/pantheon.cpp
         src/sim/rites.cpp
         src/sim/species.cpp
         src/sim/stats.cpp
@@ -587,7 +588,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     add_library(RealSimEngine::Gui ALIAS asr_engine_gui)
     # AL-94: the 2D client in its own window (tools/game_2d/native): SDL3's GPU renderer (D3D12)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
-    target_sources(lr_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
+    target_sources(lr_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp tools/game_2d/native/figure2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp tools/game_2d/native/dynasty2d_view.cpp tools/game_2d/native/culture2d_view.cpp
             tools/game_2d/native/worldmap2d_view.cpp
             tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
@@ -897,6 +898,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_magic_society.cpp
             tests/test_lr_sim_culture.cpp
             tests/test_lr_sim_rites.cpp
+            tests/test_lr_sim_pantheon.cpp
             tests/test_lr_sim_ecology.cpp
             tests/test_lr_sim_social.cpp
             tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp

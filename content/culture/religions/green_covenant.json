@@ -1,17 +1,1 @@
-{
- "id": "green_covenant",
- "_doc": "LR-155: Зелёный Завет — эльфийская вера в круг жизни леса; мёртвых отдают лесу.",
- "kind": "animism",
- "deities": [{"id": "elder_tree", "domain": "life"}, {"id": "moon_doe", "domain": "water"}, {"id": "wind_singer", "domain": "air"}],
- "values": {"nature": 0.7, "learning": 0.4, "freedom": 0.3, "tradition": 0.4, "martial": -0.1},
- "rites": {"prayed": 0.03, "rite": 0.05, "sang_together": 0.02, "read_omen": 0.03, "buried": 0.04},
- "sins": {"necromancy": 0.25, "stole": 0.03, "attacked_by_beast": 0.0},
- "holy_days": [{"id": "first_leaf", "day": 10}, {"id": "moon_dance", "day": 160}, {"id": "falling_leaf", "day": 230}],
- "burial": "expose",
- "clergy": "warden",
- "sacred": ["shrine"],
- "magic": {"blessed": ["life", "water", "air"], "forbidden": ["death", "blood"]},
- "zeal": 0.1,
- "tolerance": 0.6,
- "goals": {"pray": 0.08, "tend_garden": 0.04}
-}
+{"id": "green_covenant", "_doc": "LR-155: Зелёный Завет — эльфийская вера в круг жизни леса; мёртвых отдают лесу. LR-169: power — главная Сила веры, liks — лики по поясам (пояс культуры верующего; \"*\" — где пояса нет), первый лик — покровитель. deities для окна строятся из liks.", "power": "harvest", "liks": {"mediterranean": ["demeter", "persephone", "pan"], "forest": ["danu", "cernunnos", "dagda", "lugh"], "*": ["danu", "cernunnos"]}, "kind": "animism", "values": {"nature": 0.7, "learning": 0.4, "freedom": 0.3, "tradition": 0.4, "martial": -0.1}, "rites": {"prayed": 0.03, "rite": 0.05, "sang_together": 0.02, "read_omen": 0.03, "buried": 0.04}, "sins": {"necromancy": 0.25, "stole": 0.03, "attacked_by_beast": 0.0}, "holy_days": [{"id": "first_leaf", "day": 10}, {"id": "moon_dance", "day": 160}, {"id": "falling_leaf", "day": 230}], "burial": "expose", "clergy": "warden", "sacred": ["shrine"], "magic": {"blessed": ["life", "water", "air"], "forbidden": ["death", "blood"]}, "zeal": 0.1, "tolerance": 0.6, "goals": {"pray": 0.08, "tend_garden": 0.04}}

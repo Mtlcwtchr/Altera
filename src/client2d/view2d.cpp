@@ -179,6 +179,7 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
                   {"pl", c.controller.isPlayer()},
                   {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
                   {"sex", std::string(1, c.body.sex)},
+                  {"cul", c.culture},   // LR-165: the 2D figure's dress by culture
                   {"age", c.body.ageDays / kDaysPerYear},
                   {"fam", f ? f->name : ""},
                   {"famId", f ? f->id : kNone},
