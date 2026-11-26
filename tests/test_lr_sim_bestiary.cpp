@@ -134,7 +134,7 @@ TEST(lr_bestiary_belts) {
 TEST(lr_bestiary_night_creature_keeps_to_its_lair_by_day) {
     World w = beastWorld();
     Vec2 den{w.map().w * w.map().cellM * 0.5, w.map().h * w.map().cellM * 0.5};
-    Character& u = addBeast(w, "upyr", den, 2);
+    Character& u = addBeast(w, "upyr", den, 8);   // heads to spare: the sun may take some on the way home (rng by id)
     stepTo(w, false);
     u.pos = {den.x + 400.0, den.y};
     const double far = dist(u.pos, den);
