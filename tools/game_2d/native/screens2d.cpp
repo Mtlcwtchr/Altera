@@ -115,6 +115,7 @@ void Screens::open(const std::string& id, const Json& args) {
     else if (id == "build") openBuild(c_, *this);
     else if (id == "colony") openColony(c_, *this);
     else if (id == "dynasty") openDynasty(c_, *this);
+    else if (id == "map") openWorldMap(c_, *this);
     else if (id == "sheet") openSheet(c_, *this, args.is_number() ? args.get<long long>() : -1);
     else if (id == "talk" || id == "trade") openTalk(c_, *this, args.is_number() ? args.get<long long>() : c_.selected(), id == "trade");
     else c_.toast(c_.L("ui2d.soon", {{"what", c_.L("ui2d.screen." + id)}}));

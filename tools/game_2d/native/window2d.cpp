@@ -260,6 +260,7 @@ struct Window::Impl : Ctx {
     Json selCard;
     Json meCard;                       // LR-137: the led person while another is selected
     Json HUD;                          // content/sprites_2d/hud2d.json
+    Json WLOOK = Json::object();       // LR-153: content/sprites_2d/worldmap2d.json
     std::set<std::string> folded{"tier.safety", "tier.esteem", "tier.purpose", "tier.spirit", "tier.other"};
     std::string tipText;               // what the pointer is over in the HUD (shown in the bar)
     bool haveHover = false;
@@ -374,6 +375,7 @@ struct Window::Impl : Ctx {
         for (auto& [k, c] : chunks) c.at = 0;
     }
     const Json& resources() const override { return RES; }
+    const Json& worldLook() const override { return WLOOK; }
     void walkTo(double x, double y) override {
         if (me < 0 || !vis.count(me)) return;
         rebuildWalls();
@@ -891,6 +893,8 @@ struct Window::Impl : Ctx {
         sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
         HUD = parseOr(readText(dir / "hud2d.json"), Json::object());   // LR-137: the pixel HUD
         sprites.merge(HUD);
+        WLOOK = parseOr(readText(dir / "worldmap2d.json"), Json::object());   // LR-153: the world map
+        sprites.merge(WLOOK);
         for (const auto& a : MAP.value("acts", Json::array()))
             if (a.is_array() && a.size() >= 2) try {
                     actsRe.push_back({std::regex(a[0].get<std::string>(), std::regex::ECMAScript), a[1].get<std::string>()});
