@@ -9,6 +9,8 @@
 #include "client2d/worldmap2d.hpp"
 #include "framework.hpp"
 #include "sim/ai.hpp"
+#include "sim/caravan.hpp"
+#include "sim/trade.hpp"
 #include "sim/loc.hpp"
 #include "sim/realm.hpp"
 #include "sim/worldgen.hpp"
@@ -182,4 +184,48 @@ TEST(lr_worldmap_window_json) {
         CHECK(near.find("worldmap.") == std::string::npos && near.find('{') == std::string::npos);
     }
     for (const auto& k : d["kinds"]) CHECK(k["name"].get<std::string>().find("worldmap.") == std::string::npos);
+}
+
+// LR-163: a caravan on the road shows on the map, named, between the settlements it goes by
+TEST(lr_worldmap_caravans) {
+    static const Json cfg = loadJsonFile(kRoot + "/content/sim/test_world.json");
+    World w = makeTestWorld(mapContent(), cfg, 7);
+    installRealm(w);
+    installWorldMap(w);
+    installCaravans(w);
+    installTrade(w);
+    w.run(kTicksPerDay);
+    realmDaily(w);
+    Settlement* local = realmLocal(w);
+    CHECK(local != nullptr);
+    if (!local) return;
+    Character* t = nullptr;
+    for (auto& [id, c] : w.offstage())
+        if (c.body.alive && !c.isAnimal() && c.standing.role.empty() && c.standing.life == "settled" && c.body.lifeYears() >= 20 &&
+            c.body.lifeYears() <= 45 && c.occupation.empty() && c.status.settlement != kNone && c.status.settlement == c.standing.at) {
+            t = &c;
+            break;
+        }
+    CHECK(t != nullptr);
+    if (!t) return;
+    t->standing.purse = 200;
+    t->inventory["cloth"] += 20;
+    const int id = caravanSetOut(w, t->id, local->id);
+    CHECK(id > 0);
+    c2::ViewText vt;
+    vt.loc = &mapLoc();
+    const Json d = c2::worldMapJson(w, vt, kNone);
+    CHECK(d["caravans"].is_array());
+    bool found = false;
+    for (const auto& v : d["caravans"]) {
+        if (v["id"].get<int>() != id) continue;
+        found = true;
+        CHECK(v["to"].get<EntityId>() == local->id);
+        const std::string k = v["kind_name"].get<std::string>();
+        CHECK(!k.empty() && k.find("caravan.") == std::string::npos);
+        CHECK(!v["leader"].get<std::string>().empty());
+        CHECK(v["km"].is_array() && v["km"].size() == 2);
+        for (const auto& g : v["cargo"]) CHECK(g.get<std::string>().find("item.") == std::string::npos);
+    }
+    CHECK(found);
 }

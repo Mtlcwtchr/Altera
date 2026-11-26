@@ -27,5 +27,13 @@
  "ui2d.wmap.no_wars": "Мир",
  "ui2d.wmap.culture": "Культура: {name}",
  "ui2d.wmap.scale": "{n} км",
- "ui2d.wmap.center": "К себе"
+ "ui2d.wmap.center": "К себе",
+ "ui2d.wmap.caravans": "Обозы",
+ "ui2d.wmap.no_caravans": "Сейчас на дорогах никого.",
+ "ui2d.wmap.route": "{from} → {to}",
+ "ui2d.wmap.crew": "{n} чел., охрана {g}",
+ "ui2d.wmap.cargo": "Везёт: {list}",
+ "ui2d.wmap.at_market": "торгует на рынке",
+ "ui2d.wmap.on_road": "в пути",
+ "ui2d.wmap.leader": "Ведёт: {name}"
 }

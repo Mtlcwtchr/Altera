@@ -301,6 +301,47 @@ S['wm_spring'] = pad([
  '..kMMMMMMMMk....',
  '...kkkkkkkk.....',
 ])
+S['wm_peddler'] = pad([
+ '................',
+ '................',
+ '.....kk.........',
+ '....kssk........',
+ '....kssk..kkk...',
+ '.....kk..keeek..',
+ '....kNNk.keEek..',
+ '...kNNNNkkeeek..',
+ '...kNNNNk.kkk...',
+ '....kNNk........',
+ '....kPkPk.......',
+ '....kk.kk.......',
+])
+S['wm_caravan'] = pad([
+ '................',
+ '................',
+ '...kkkkkkk......',
+ '..kwwwwwwwk.....',
+ '.kwwwwwwwwwk....',
+ '.kwwwwwwwwwk.kk.',
+ '.kNNNNNNNNNkkNNk',
+ '.kNNNNNNNNNNNNNk',
+ '.kkkkkkkkkkkkkk.',
+ '..kNk....kNk.kk.',
+ '..kkk....kkk.kk.',
+])
+S['wm_train'] = pad([
+ '................',
+ '.....k..........',
+ '.....kRk........',
+ '.....kRRk.......',
+ '.....k..........',
+ '..kkkkkkkkkk....',
+ '.kNNNNNNNNNNk...',
+ '.keeeeeeeeeek.kk',
+ '.kNNNNNNNNNNkkNk',
+ '.kkkkkkkkkkkkkk.',
+ '..kNk.....kNk...',
+ '..kkk.....kkk...',
+])
 S['wm_you'] = pad([
  '................',
  '.....kkkkk......',
@@ -349,6 +390,8 @@ out = {
   "standing_stones": "wm_stones", "shrine": "wm_shrine", "beast_lair": "wm_beast", "witch_hut": "wm_witch",
   "old_battlefield": "wm_oldbattle", "spring": "wm_spring", "battlefield": "wm_battle"
  },
+ "caravan_icons": {"peddler": "wm_peddler", "caravan": "wm_caravan", "supply_train": "wm_train"},
+ "caravan_route": "#e0c890",
  "domain_colours": ["#d8b048", "#a83c30", "#4a78b8", "#5a9a48", "#8a5ab0", "#c87830", "#48a0a0", "#b05a80", "#909090", "#706040"],
  "reach_km": {"hamlet": 5, "village": 7, "town": 11, "city": 15},
  "zooms": [1.0, 1.6, 2.5, 4.0]

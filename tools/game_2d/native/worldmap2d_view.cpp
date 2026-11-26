@@ -64,6 +64,17 @@ const Json* poi(const Json& d, long long id) {
         if (jid(p, "id") == id) return &p;
     return nullptr;
 }
+// LR-163: a caravan's pick key (settlements >= 0, places -(id)-10, caravans below kCaravanKey)
+constexpr long long kCaravanKey = -1000000;
+const Json* caravan(const Json& d, long long key) {
+    for (const auto& v : jarr(d, "caravans"))
+        if (kCaravanKey - jid(v, "id") == key) return &v;
+    return nullptr;
+}
+std::string caravanIcon(Ctx& c, const Json& v) {
+    return c.worldLook().value("caravan_icons", Json::object()).value(jstr(v, "kind"), std::string("wm_caravan"));
+}
+
 const Json* domain(const Json& d, long long id) {
     for (const auto& x : jarr(d, "domains"))
         if (jid(x, "id") == id) return &x;
@@ -336,6 +347,20 @@ void drawMap(Ctx& c, Win& w, View& v, const Json& d, const ui::Rect& R) {
             c.textC(x, y + sz / 2, nm, col, 16 * U, true);
         }
     }
+    // LR-163: who is on the road: a route to where they go, the wagon or the pack
+    const ui::Colour route = pal::hex(look.value("caravan_route", std::string("#e0c890")).c_str(), 0.8f);
+    for (const auto& cv : jarr(d, "caravans")) {
+        const float x = sx(kmx(cv)), y = sy(kmy(cv));
+        const long long key = kCaravanKey - jid(cv, "id");
+        if (jstr(cv, "state") == "road")
+            if (const Json* to = settlement(d, jid(cv, "to"))) dotted(c, x, y, sx(kmx(*to)), sy(kmy(*to)), route, p, 2 * p, R);
+        if (!R.inset(iconPx / 2).contains(x, y)) continue;
+        const float s = iconPx * 0.8f;
+        const float ox2 = jstr(cv, "state") == "market" ? s * 0.6f : 0;   // at a market: beside the settlement
+        if (v.pick == key) c.frame(x + ox2 - s / 2 - p, y - s / 2 - p, s + 2 * p, s + 2 * p, pal::gold, p);
+        c.spriteAt(caravanIcon(c, cv), Json(), x + ox2 - s / 2, y - s / 2, s);
+        near(x + ox2, y, key);
+    }
     if (const Json* at = settlement(d, jid(me, "at"))) {
         const float x = sx(kmx(*at)), y = sy(kmy(*at));
         const float bob = std::round(std::sin(now() / 260.0) * 2) * p;
@@ -399,6 +424,21 @@ float card(Ctx& c, const Json& d, long long id, const ui::Rect& r) {
         for (const auto& t : jarr(*s, "tags")) tags += (tags.empty() ? "" : ", ") + t.get<std::string>();
         if (!tags.empty()) line(tags, pal::dim);
         if (jflag(*s, "here")) line(W(c, "you"), pal::gold);
+    } else if (const Json* cv = caravan(d, id)) {
+        const float ic = 48 * U;
+        c.well({r.x, y, ic, ic});
+        c.spriteAt(caravanIcon(c, *cv), Json(), r.x + 4 * U, y + 4 * U, ic - 8 * U);
+        c.text(r.x + ic + 8 * U, y + 2 * U, c.fit(jstr(*cv, "kind_name"), r.w - ic - 10 * U, 16 * U), pal::gold, 16 * U);
+        c.text(r.x + ic + 8 * U, y + 24 * U, c.fit(W(c, jstr(*cv, "state") == "market" ? "at_market" : "on_road"), r.w - ic - 10 * U, 16 * U), pal::dim, 16 * U);
+        y += ic + 6 * U;
+        if (!jstr(*cv, "leader").empty()) line(W(c, "leader", {{"name", jstr(*cv, "leader")}}), pal::text);
+        const Json* from = settlement(d, jid(*cv, "from"));
+        const Json* to = settlement(d, jid(*cv, "to"));
+        if (from && to) line(W(c, "route", {{"from", jstr(*from, "name")}, {"to", jstr(*to, "name")}}), pal::text);
+        line(W(c, "crew", {{"n", num0(jnum(*cv, "n"))}, {"g", num0(jnum(*cv, "guards"))}}), pal::dim);
+        std::string cargo;
+        for (const auto& g : jarr(*cv, "cargo")) cargo += (cargo.empty() ? "" : ", ") + g.get<std::string>();
+        if (!cargo.empty()) line(W(c, "cargo", {{"list", cargo}}), pal::dim);
     } else {
         const Json* q = poi(d, -(id + 10));
         if (!q) return 0;
@@ -440,7 +480,7 @@ void render(Ctx& c, Win& w, const ui::Rect& body) {
         if (const Json* at = settlement(d, jid(d.value("me", Json::object()), "at"))) centreOn(v, *at), v.pick = jid(*at, "id");
         else v.cx = d["origin"][0].get<double>() + jnum(d, "grid") * jnum(d, "cell_km") / 2, v.cy = d["origin"][1].get<double>() + jnum(d, "grid") * jnum(d, "cell_km") / 2;
         v.zoom = 1;
-        if (w.tab == "places") v.list = "places";   // LR_2D_TAB=places: a shot of the places' list
+        if (w.tab == "places" || w.tab == "caravans") v.list = w.tab;   // LR_2D_TAB=places|caravans: a shot of a list
         if (w.tab == "near") v.zoom = 3;            // LR_2D_TAB=near: the land close up
         v.centred = true;
     }
@@ -480,9 +520,10 @@ void render(Ctx& c, Win& w, const ui::Rect& body) {
     }
     const float ty = body.y + cardH + gap;
     {
-        const float tw = (colW - 4 * U) / 2;
+        const float tw = (colW - 8 * U) / 3;
         if (g.tab(ui::widgetId("wm.tab", 0), {x, ty, tw, 28 * U}, W(c, "domains"), v.list == "domains")) v.list = "domains";
         if (g.tab(ui::widgetId("wm.tab", 1), {x + tw + 4 * U, ty, tw, 28 * U}, W(c, "places"), v.list == "places")) v.list = "places";
+        if (g.tab(ui::widgetId("wm.tab", 2), {x + 2 * (tw + 4 * U), ty, tw, 28 * U}, W(c, "caravans"), v.list == "caravans")) v.list = "caravans";
     }
     const ui::Rect lr{x, ty + 32 * U, colW, body.bottom() - ty - 32 * U};
     c.well(lr);
@@ -511,6 +552,21 @@ void render(Ctx& c, Win& w, const ui::Rect& body) {
                 yy += 24 * U;
             }
             yy += 6 * U;
+        }
+    } else if (v.list == "caravans") {
+        if (jarr(d, "caravans").empty()) c.text(sc.x + 2 * U, yy, W(c, "no_caravans"), pal::dim, 16 * U), yy += 20 * U;
+        for (const auto& cv : jarr(d, "caravans")) {
+            const ui::Rect row{sc.x, yy, sc.w, 40 * U};
+            const long long key = kCaravanKey - jid(cv, "id");
+            if (g.selectable(ui::widgetId("wm.crow", idx++), row, v.pick == key)) v.pick = key, centreOn(v, cv);
+            c.spriteAt(caravanIcon(c, cv), Json(), row.x + 2 * U, row.y + 4 * U, 32 * U);
+            std::string where;
+            const Json* from = settlement(d, jid(cv, "from"));
+            const Json* to = settlement(d, jid(cv, "to"));
+            if (from && to) where = W(c, "route", {{"from", jstr(*from, "name")}, {"to", jstr(*to, "name")}});
+            c.text(row.x + 40 * U, row.y + 1 * U, c.fit(jstr(cv, "kind_name") + (jstr(cv, "leader").empty() ? "" : " · " + jstr(cv, "leader")), row.w - 44 * U, 16 * U), pal::text, 16 * U);
+            c.text(row.x + 40 * U, row.y + 20 * U, c.fit(where, row.w - 44 * U, 12 * U), pal::dim, 12 * U);
+            yy += 44 * U;
         }
     } else {
         for (const auto& q : jarr(d, "pois")) {
