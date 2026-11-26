@@ -1,0 +1,72 @@
+{
+ "_doc": "LR-171: молитва как действие с параметрами (сеттинг v0.3 §6.5). Кому (вера / лик), о чём (aim), чем (offering), как (rite), где (place), когда. Ответ даёт бог (тред пантеона: setPrayerAnswerHook), без хука отвечает fallback ниже. aims: when — выражение (char_expr: need.*, attr.*, trait.*, age, arg.*; arg.sick, arg.grief, arg.drought, arg.war, arg.travel, arg.foe, arg.childless, arg.sea, arg.hunter, arg.sown, arg.single, arg.guilt — их считает rites.cpp) > 0 значит цель годится, pick — вес выбора цели; granted — эффекты на того, кто молится (eff) и на того, за кого (target_eff), каналы мира у поселения (channels: rain/sun/growth/... как aspects.json, × strength), моудлет. Имена: rites.aim.<id>.name. Ключи причин: pantheon.refuse.* (тред пантеона) и rites.refuse.*.",
+ "acts": ["pray_at_shrine", "pray_alone"],
+ "weight": {
+  "base": 0.4,
+  "piety": 0.8,
+  "acts": {"pray_at_shrine": 0.5, "pray_alone": 0.0},
+  "rite": 0.6,
+  "holy_day": 0.3,
+  "max": 3.0
+ },
+ "offerings": {
+  "_doc": "item id -> вес приношения; одно приношение за молитву, берётся у молящегося. Лучшее из того, что есть, если игрок не указал.",
+  "gold": 1.2, "silver": 0.9, "coin": 0.5, "artifact": 1.5, "household_idol": 0.7,
+  "carcass": 1.1, "meat": 0.6, "dried_meat": 0.4, "fish": 0.35, "smoked_fish": 0.35,
+  "wine": 0.6, "mead": 0.55, "ale": 0.35, "cider": 0.35, "milk": 0.3, "honey": 0.45, "cheese": 0.3,
+  "bread": 0.3, "grain": 0.25, "sheaf": 0.4, "apples": 0.2, "berries": 0.15, "eggs": 0.2,
+  "spear": 0.6, "axe": 0.5, "cloth": 0.4, "thread": 0.2, "herbs": 0.25, "horn": 0.4, "antler": 0.4
+ },
+ "fallback": {
+  "_doc": "ответ без пантеона: p(исполнил) = clamp(grant_base + grant_per_weight × weight), отложил — defer_share от оставшегося (ответ через defer_days), отказ — если цель запрещена верой (sins цели) или месть против родни; иначе молчание.",
+  "grant_base": 0.12,
+  "grant_per_weight": 0.22,
+  "grant_max": 0.85,
+  "defer_share": 0.45,
+  "defer_days": [1, 5],
+  "strength_base": 0.5,
+  "strength_per_weight": 0.2
+ },
+ "answers": {
+  "granted": {"moodlet": "prayer_granted", "memory": "prayer_granted", "piety": 0.04, "chronicle": "rites.prayer.granted"},
+  "refused": {"moodlet": "prayer_refused", "piety": -0.01, "chronicle": "rites.prayer.refused"},
+  "deferred": {"moodlet": "prayer_heard", "chronicle": "rites.prayer.deferred"},
+  "silent": {"moodlet": "prayer_unanswered", "piety": -0.02}
+ },
+ "aims": [
+  {"id": "heal", "when": "arg.sick", "pick": 3.0, "for": "sick",
+   "granted": {"target_eff": ["body:health+0.35", "moodlet:healed_by_god"]}},
+  {"id": "rain", "when": "arg.drought", "pick": 2.5,
+   "granted": {"channels": {"rain": "+1*power", "moisture": "+2*power"}, "radius_m": 500}},
+  {"id": "harvest", "when": "arg.sown", "pick": 1.2,
+   "granted": {"channels": {"growth": "+1*power", "fertility": "+1*power"}, "radius_m": 450}},
+  {"id": "safe_road", "when": "arg.travel", "pick": 1.5,
+   "granted": {"eff": ["moodlet:blessed_road"]}},
+  {"id": "safe_sea", "when": "arg.sea", "pick": 1.5,
+   "granted": {"eff": ["moodlet:blessed_sea"]}},
+  {"id": "protect", "when": "arg.war", "pick": 2.0,
+   "granted": {"eff": ["moodlet:god_shield"], "household_eff": ["moodlet:god_shield"]}},
+  {"id": "victory", "when": "arg.war * 0.6", "pick": 1.0,
+   "granted": {"eff": ["moodlet:god_shield", "need:purpose+0.1"]}},
+  {"id": "revenge", "when": "arg.foe", "pick": 1.0, "for": "foe",
+   "refuse_if_kin": true,
+   "granted": {"target_eff": ["moodlet:cursed", "body:health-0.05"], "eff": ["need:purpose+0.1"]}},
+  {"id": "love", "when": "arg.single", "pick": 0.8,
+   "granted": {"eff": ["moodlet:blessed_love"]}},
+  {"id": "child", "when": "arg.childless", "pick": 1.0,
+   "granted": {"eff": ["moodlet:blessed_womb"], "household_eff": ["moodlet:blessed_womb"]}},
+  {"id": "forgive", "when": "arg.guilt", "pick": 1.4,
+   "granted": {"eff": ["moodlet:forgiven", "need:purpose+0.2"]}},
+  {"id": "wisdom", "when": "0.2 + trait.curious * 0.4", "pick": 0.4,
+   "granted": {"eff": ["moodlet:inspired", "skill:faith+0.01"]}},
+  {"id": "good_hunt", "when": "arg.hunter", "pick": 1.0,
+   "granted": {"eff": ["moodlet:blessed_hunt"]}},
+  {"id": "rest_dead", "when": "arg.grief", "pick": 2.0,
+   "granted": {"eff": ["moodlet:dead_at_rest", "need:purpose+0.15"]}},
+  {"id": "thanks", "when": "0.15", "pick": 0.5,
+   "granted": {"eff": ["need:purpose+0.1"]}}
+ ],
+ "grief_days": 30,
+ "guilt_types": ["stole", "attacked", "insulted_someone", "stole_food", "surrendered", "necromancy"],
+ "foe_types": ["was_robbed", "was_insulted", "was_punished"]
+}

@@ -1,0 +1,718 @@
+{
+ "_doc": "LR-171: как 2D-клиент показывает обряды и близость (src/sim/rites.hpp riteOf -> пешка \"rite\": {rite, kind, step, fx, attire, leader, pair}; \"woohoo\" у пешки в акте близости). Всё данными, перечитывается без пересборки. fx: эффект шага обряда у пешки (kind: rise — частицы вверх (дым, искры, лепестки), fall — вниз (лепестки, капли), ring — кольцо вокруг, glow — пятно света, column — столб над вожаком (только leader_only или у вожака сильнее), burst — вспышка раз в период). colours — палитра, n — частиц, size — пикселей арта, speed — пикселей в секунду, spread — разлёт, height — высота подъёма, period_s — цикл, leader_only — только у вожака. poses: качание пешки по акту шага (bob — подпрыгивание, sway — покачивание, hz). woohoo: облачко как в Sims — пиксельное облако цензуры (cells × cell пикселей, мерцает jitter_hz), над ним сердечки (hearts) и ноты; закрывает пару целиком; одно для всех видов и культур (§1.1). Размеры в пикселях арта (×масштаб карты).",
+ "fx": {
+  "torches": {
+   "kind": "rise",
+   "colours": [
+    "#ffb347",
+    "#ff7a1a",
+    "#ffe27a"
+   ],
+   "n": 4,
+   "size": 1,
+   "speed": 14,
+   "spread": 4,
+   "height": 14,
+   "period_s": 0.9
+  },
+  "torches_masks": {
+   "kind": "rise",
+   "colours": [
+    "#ffb347",
+    "#d94cff",
+    "#ffe27a"
+   ],
+   "n": 5,
+   "size": 1,
+   "speed": 14,
+   "spread": 5,
+   "height": 14,
+   "period_s": 0.9
+  },
+  "smoke_column": {
+   "kind": "column",
+   "colours": [
+    "#bfb6a8",
+    "#8f877c",
+    "#e0d8cc"
+   ],
+   "n": 10,
+   "size": 2,
+   "speed": 10,
+   "spread": 3,
+   "height": 40,
+   "period_s": 3.0,
+   "leader_only": true
+  },
+  "feast": {
+   "kind": "rise",
+   "colours": [
+    "#f6d36b",
+    "#e98b4a"
+   ],
+   "n": 2,
+   "size": 1,
+   "speed": 6,
+   "spread": 6,
+   "height": 8,
+   "period_s": 2.0
+  },
+  "wake_feast": {
+   "kind": "rise",
+   "colours": [
+    "#c8b88a",
+    "#8a7d5a"
+   ],
+   "n": 2,
+   "size": 1,
+   "speed": 5,
+   "spread": 6,
+   "height": 8,
+   "period_s": 2.4
+  },
+  "thunder": {
+   "kind": "burst",
+   "colours": [
+    "#e9f2ff",
+    "#9cc3ff"
+   ],
+   "n": 8,
+   "size": 1,
+   "speed": 40,
+   "spread": 10,
+   "height": 30,
+   "period_s": 2.5
+  },
+  "lightning_mark": {
+   "kind": "glow",
+   "colours": [
+    "#bcd8ff"
+   ],
+   "n": 1,
+   "size": 8,
+   "period_s": 1.2
+  },
+  "ribbons": {
+   "kind": "ring",
+   "colours": [
+    "#3d7bff",
+    "#ffffff",
+    "#e8c02d"
+   ],
+   "n": 6,
+   "size": 1,
+   "spread": 9,
+   "period_s": 3.0
+  },
+  "drum": {
+   "kind": "ring",
+   "colours": [
+    "#e0c080",
+    "#a57040"
+   ],
+   "n": 4,
+   "size": 1,
+   "spread": 7,
+   "period_s": 0.6
+  },
+  "splash_gold": {
+   "kind": "burst",
+   "colours": [
+    "#f2c84b",
+    "#7fc8ff",
+    "#d8f0ff"
+   ],
+   "n": 7,
+   "size": 1,
+   "speed": 22,
+   "spread": 6,
+   "height": 10,
+   "period_s": 1.8
+  },
+  "splash": {
+   "kind": "burst",
+   "colours": [
+    "#7fc8ff",
+    "#d8f0ff"
+   ],
+   "n": 6,
+   "size": 1,
+   "speed": 20,
+   "spread": 6,
+   "height": 9,
+   "period_s": 1.8
+  },
+  "waves": {
+   "kind": "ring",
+   "colours": [
+    "#5fa8e8",
+    "#bfe3ff"
+   ],
+   "n": 6,
+   "size": 1,
+   "spread": 10,
+   "period_s": 2.2
+  },
+  "dark_mist": {
+   "kind": "rise",
+   "colours": [
+    "#3a2f45",
+    "#5a4a6a",
+    "#20182a"
+   ],
+   "n": 6,
+   "size": 2,
+   "speed": 5,
+   "spread": 7,
+   "height": 10,
+   "period_s": 3.0
+  },
+  "blood_pit": {
+   "kind": "fall",
+   "colours": [
+    "#9c1c1c",
+    "#5e0f0f"
+   ],
+   "n": 4,
+   "size": 1,
+   "speed": 10,
+   "spread": 3,
+   "height": 8,
+   "period_s": 1.4,
+   "leader_only": true
+  },
+  "lament": {
+   "kind": "fall",
+   "colours": [
+    "#a8c4e0"
+   ],
+   "n": 2,
+   "size": 1,
+   "speed": 6,
+   "spread": 2,
+   "height": 6,
+   "period_s": 2.0
+  },
+  "candles": {
+   "kind": "glow",
+   "colours": [
+    "#ffd37a"
+   ],
+   "n": 1,
+   "size": 5,
+   "period_s": 1.6
+  },
+  "veil": {
+   "kind": "glow",
+   "colours": [
+    "#6a4fa0"
+   ],
+   "n": 1,
+   "size": 10,
+   "period_s": 3.0
+  },
+  "sparkles_green": {
+   "kind": "rise",
+   "colours": [
+    "#8fe36b",
+    "#d6ff9a"
+   ],
+   "n": 5,
+   "size": 1,
+   "speed": 8,
+   "spread": 7,
+   "height": 12,
+   "period_s": 2.0
+  },
+  "sparkles_gold": {
+   "kind": "rise",
+   "colours": [
+    "#f2c84b",
+    "#fff1a8"
+   ],
+   "n": 5,
+   "size": 1,
+   "speed": 8,
+   "spread": 7,
+   "height": 12,
+   "period_s": 2.0
+  },
+  "sheaf": {
+   "kind": "glow",
+   "colours": [
+    "#e8c060"
+   ],
+   "n": 1,
+   "size": 6,
+   "period_s": 2.0
+  },
+  "hearth_glow": {
+   "kind": "glow",
+   "colours": [
+    "#ff9a40"
+   ],
+   "n": 1,
+   "size": 7,
+   "period_s": 1.0
+  },
+  "darkness": {
+   "kind": "glow",
+   "colours": [
+    "#101018"
+   ],
+   "n": 1,
+   "size": 10,
+   "period_s": 4.0
+  },
+  "new_flame": {
+   "kind": "burst",
+   "colours": [
+    "#ffe27a",
+    "#ff7a1a"
+   ],
+   "n": 10,
+   "size": 1,
+   "speed": 26,
+   "spread": 8,
+   "height": 16,
+   "period_s": 2.0,
+   "leader_only": true
+  },
+  "sparks": {
+   "kind": "burst",
+   "colours": [
+    "#ffd060",
+    "#ff8a2a",
+    "#ffffff"
+   ],
+   "n": 8,
+   "size": 1,
+   "speed": 30,
+   "spread": 8,
+   "height": 10,
+   "period_s": 0.8
+  },
+  "steam": {
+   "kind": "rise",
+   "colours": [
+    "#e8eef2",
+    "#c4ccd2"
+   ],
+   "n": 5,
+   "size": 2,
+   "speed": 12,
+   "spread": 4,
+   "height": 16,
+   "period_s": 1.6
+  },
+  "hammer_ring": {
+   "kind": "ring",
+   "colours": [
+    "#d0d8e0"
+   ],
+   "n": 5,
+   "size": 1,
+   "spread": 7,
+   "period_s": 0.5
+  },
+  "scroll": {
+   "kind": "glow",
+   "colours": [
+    "#f0e2b0"
+   ],
+   "n": 1,
+   "size": 5,
+   "period_s": 2.0
+  },
+  "riddles": {
+   "kind": "rise",
+   "colours": [
+    "#ffffff",
+    "#bcd8ff"
+   ],
+   "n": 2,
+   "size": 1,
+   "speed": 6,
+   "spread": 4,
+   "height": 10,
+   "period_s": 2.0
+  },
+  "runes_glow": {
+   "kind": "ring",
+   "colours": [
+    "#7ad0ff",
+    "#c0f0ff"
+   ],
+   "n": 6,
+   "size": 1,
+   "spread": 8,
+   "period_s": 3.0
+  },
+  "sunrise_rays": {
+   "kind": "column",
+   "colours": [
+    "#ffe08a",
+    "#fff4c0"
+   ],
+   "n": 6,
+   "size": 1,
+   "speed": 16,
+   "spread": 5,
+   "height": 26,
+   "period_s": 2.4
+  },
+  "banners": {
+   "kind": "ring",
+   "colours": [
+    "#d04040",
+    "#f0d060"
+   ],
+   "n": 4,
+   "size": 1,
+   "spread": 7,
+   "period_s": 2.4
+  },
+  "oracle_smoke": {
+   "kind": "column",
+   "colours": [
+    "#d8c8f0",
+    "#a898c8"
+   ],
+   "n": 8,
+   "size": 2,
+   "speed": 9,
+   "spread": 4,
+   "height": 30,
+   "period_s": 3.0,
+   "leader_only": true
+  },
+  "moonlight": {
+   "kind": "glow",
+   "colours": [
+    "#c8d8ff"
+   ],
+   "n": 1,
+   "size": 9,
+   "period_s": 3.0
+  },
+  "antler_glow": {
+   "kind": "glow",
+   "colours": [
+    "#e0f0c0"
+   ],
+   "n": 1,
+   "size": 6,
+   "period_s": 2.0
+  },
+  "cairn": {
+   "kind": "fall",
+   "colours": [
+    "#9a9488"
+   ],
+   "n": 1,
+   "size": 2,
+   "speed": 12,
+   "spread": 2,
+   "height": 6,
+   "period_s": 1.5
+  },
+  "handshake_glow": {
+   "kind": "glow",
+   "colours": [
+    "#f2c84b"
+   ],
+   "n": 1,
+   "size": 5,
+   "period_s": 1.5
+  },
+  "masks": {
+   "kind": "ring",
+   "colours": [
+    "#ff5aa0",
+    "#5ad0ff",
+    "#ffe04a"
+   ],
+   "n": 5,
+   "size": 1,
+   "spread": 8,
+   "period_s": 1.4
+  },
+  "confetti": {
+   "kind": "fall",
+   "colours": [
+    "#ff5aa0",
+    "#5ad0ff",
+    "#ffe04a",
+    "#8fe36b"
+   ],
+   "n": 7,
+   "size": 1,
+   "speed": 10,
+   "spread": 9,
+   "height": 16,
+   "period_s": 2.0
+  },
+  "wine_haze": {
+   "kind": "rise",
+   "colours": [
+    "#8a2a5a",
+    "#c04a80",
+    "#e090b0"
+   ],
+   "n": 5,
+   "size": 2,
+   "speed": 5,
+   "spread": 9,
+   "height": 10,
+   "period_s": 3.0
+  },
+  "spear_clash": {
+   "kind": "burst",
+   "colours": [
+    "#e0e0e0",
+    "#ffd060"
+   ],
+   "n": 4,
+   "size": 1,
+   "speed": 28,
+   "spread": 5,
+   "height": 8,
+   "period_s": 0.7
+  },
+  "blood_mark": {
+   "kind": "fall",
+   "colours": [
+    "#9c1c1c"
+   ],
+   "n": 2,
+   "size": 1,
+   "speed": 8,
+   "spread": 2,
+   "height": 6,
+   "period_s": 1.6,
+   "leader_only": true
+  },
+  "blade_glow": {
+   "kind": "glow",
+   "colours": [
+    "#d8e8ff"
+   ],
+   "n": 1,
+   "size": 5,
+   "period_s": 1.2
+  },
+  "ring": {
+   "kind": "ring",
+   "colours": [
+    "#c0a060"
+   ],
+   "n": 8,
+   "size": 1,
+   "spread": 12,
+   "period_s": 4.0
+  },
+  "flower_petals": {
+   "kind": "fall",
+   "colours": [
+    "#ff9ac0",
+    "#ffffff",
+    "#ffd0e0"
+   ],
+   "n": 6,
+   "size": 1,
+   "speed": 8,
+   "spread": 9,
+   "height": 16,
+   "period_s": 2.4
+  },
+  "hearts": {
+   "kind": "rise",
+   "colours": [
+    "#ff5a7a",
+    "#ff9ab0"
+   ],
+   "n": 3,
+   "size": 1,
+   "speed": 8,
+   "spread": 5,
+   "height": 14,
+   "period_s": 2.0,
+   "shape": "heart"
+  },
+  "rose_light": {
+   "kind": "glow",
+   "colours": [
+    "#ff8ab0"
+   ],
+   "n": 1,
+   "size": 9,
+   "period_s": 2.4
+  },
+  "threads": {
+   "kind": "ring",
+   "colours": [
+    "#e8e0c8",
+    "#c0402a",
+    "#3a3a3a"
+   ],
+   "n": 3,
+   "size": 1,
+   "spread": 6,
+   "period_s": 3.6
+  },
+  "leaves": {
+   "kind": "fall",
+   "colours": [
+    "#6aa84f",
+    "#a8d06a",
+    "#d0b040"
+   ],
+   "n": 5,
+   "size": 1,
+   "speed": 7,
+   "spread": 9,
+   "height": 16,
+   "period_s": 2.6
+  },
+  "dust": {
+   "kind": "rise",
+   "colours": [
+    "#c8a878",
+    "#a88858"
+   ],
+   "n": 5,
+   "size": 1,
+   "speed": 10,
+   "spread": 8,
+   "height": 6,
+   "period_s": 1.2
+  },
+  "herb_smoke": {
+   "kind": "rise",
+   "colours": [
+    "#b8d0a8",
+    "#8aa078"
+   ],
+   "n": 4,
+   "size": 2,
+   "speed": 6,
+   "spread": 4,
+   "height": 14,
+   "period_s": 2.4
+  },
+  "dream_motes": {
+   "kind": "rise",
+   "colours": [
+    "#b8a8ff",
+    "#e0d8ff"
+   ],
+   "n": 3,
+   "size": 1,
+   "speed": 4,
+   "spread": 5,
+   "height": 10,
+   "period_s": 3.0
+  },
+  "fire_sparks": {
+   "kind": "rise",
+   "colours": [
+    "#ffb347",
+    "#ff7a1a"
+   ],
+   "n": 5,
+   "size": 1,
+   "speed": 16,
+   "spread": 6,
+   "height": 14,
+   "period_s": 1.0
+  },
+  "ancestor_shades": {
+   "kind": "rise",
+   "colours": [
+    "#a8b8c8",
+    "#6a7a8a"
+   ],
+   "n": 3,
+   "size": 2,
+   "speed": 4,
+   "spread": 8,
+   "height": 16,
+   "period_s": 4.0
+  }
+ },
+ "poses": {
+  "rite_dance": {
+   "bob": 2,
+   "sway": 2,
+   "hz": 2.2
+  },
+  "rite_revel": {
+   "bob": 1,
+   "sway": 2,
+   "hz": 1.6
+  },
+  "rite_procession": {
+   "bob": 1,
+   "sway": 0,
+   "hz": 1.4
+  },
+  "rite_trance": {
+   "bob": 1,
+   "sway": 1,
+   "hz": 3.0
+  },
+  "rite_contest": {
+   "bob": 1,
+   "sway": 1,
+   "hz": 2.5
+  },
+  "rite_hymn": {
+   "bob": 0,
+   "sway": 1,
+   "hz": 0.7
+  },
+  "rite_mourn": {
+   "bob": 0,
+   "sway": 1,
+   "hz": 0.5
+  }
+ },
+ "woohoo": {
+  "acts": [
+   "intimacy"
+  ],
+  "cloud": {
+   "w": 36,
+   "h": 24,
+   "cell": 3,
+   "lift": -2,
+   "jitter_hz": 6,
+   "colours": [
+    "#f2b8c6",
+    "#e88aa4",
+    "#fbd6df",
+    "#c86a8a",
+    "#ffffff"
+   ],
+   "outline": "#5a2a3a"
+  },
+  "hearts": {
+   "n": 3,
+   "colour": "#ff4a6e",
+   "light": "#ffb0c0",
+   "size": 1,
+   "rise": 16,
+   "period_s": 1.6
+  },
+  "notes": {
+   "n": 1,
+   "colour": "#ffffff",
+   "period_s": 2.2
+  }
+ },
+ "attire_tint": {
+  "black": "#202028",
+  "mask": "#ff5aa0",
+  "ribbons": "#3d7bff"
+ }
+}

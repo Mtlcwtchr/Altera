@@ -477,8 +477,8 @@ def check_peoples(L):
                 if k not in races: r.err(f"cultures/{id} peoples.{kind}: {k} неизвестен")
                 elif races[k].get("settles") is False: r.err(f"cultures/{id} peoples.{kind}: {k} — только база (settles: false)")
         inti = c.get("intimacy")
-        if inti is not None and (not inti.get("adults_only") or inti.get("min_age_years", 0) < 14):
-            r.err(f"cultures/{id}: intimacy только для взрослых (adults_only: true, min_age_years ≥ 14) — §1.1")
+        if inti is not None and (not inti.get("adults_only") or inti.get("min_age_years", 0) < 18):
+            r.err(f"cultures/{id}: intimacy только для взрослых (adults_only: true, min_age_years ≥ 18) — §1.1")
         dump = json.dumps(c, ensure_ascii=False)
         for banned in ("pederast", "harem", "child_bride", "child_marriage", "concubine_girl"):
             if banned in dump: r.err(f"cultures/{id}: {banned} исключено из сеттинга (§1.1)")
@@ -859,6 +859,51 @@ def check_figures(L):
 
 
 CHECKS["figures"] = check_figures  # LR-165
+
+# ---------------------------------------------------------------- LR-171: rites and prayers, §1.1 adults only
+def check_rites(L):
+    """LR-171: обряды (culture/rites/*.json) и молитвы (culture/prayers.json): у каждого обряда шаги и когда;
+    §1.1: обряд с близостью только для взрослых (participants.age adult, intimacy.adults_only, consent, min_life_years >= 18,
+    пороги согласия affinity/attraction); у каждого акта близости и ухаживания (rite_rules.json adult_acts) проверка возраста
+    обеих сторон (age:adult или !age:child у себя и t.age у цели)."""
+    r = Report("rites")
+    root = L["root"]
+    cdir = root / "culture"
+    if not (cdir / "rites").is_dir():
+        r.warn("нет culture/rites, пропуск"); return r
+    rules = jload(cdir / "rite_rules.json") if (cdir / "rite_rules.json").exists() else {}
+    n = 0
+    adult = set(rules.get("adult_acts", []))
+    for fp in sorted((cdir / "rites").glob("*.json")):
+        F = jload(fp)
+        for rd in F.get("rites", []):
+            n += 1
+            w = f"rites/{fp.name}:{rd.get('id')}"
+            if not rd.get("steps"): r.err(f"{w}: нет шагов")
+            if not rd.get("when"): r.err(f"{w}: нет when")
+            i = rd.get("intimacy")
+            if i:
+                adult.add(i.get("act", "intimacy"))
+                if not i.get("adults_only"): r.err(f"{w}: близость без adults_only (§1.1)")
+                if not i.get("consent"): r.err(f"{w}: близость без consent (§1.1)")
+                if i.get("min_life_years", 0) < 18: r.err(f"{w}: близость с min_life_years < 18 (§1.1)")
+                if (rd.get("participants") or {}).get("age") != "adult": r.err(f"{w}: обряд с близостью не только для взрослых (§1.1)")
+                if i.get("affinity", 0) <= 0 or i.get("attraction", 0) <= 0: r.err(f"{w}: близость без порогов согласия (§1.1)")
+    ia_path = root / "ai" / "interactions.json"
+    if ia_path.exists():
+        for x in jload(ia_path).get("interactions", []):
+            if x.get("id") not in adult: continue
+            pre = x.get("pre") or []
+            me = any(c in ("age:adult", "!age:child") for c in pre)
+            other = any(c in ("t.age:adult", "!t.age:child") for c in pre)
+            if not me or (x.get("target") == "character" and not other):
+                r.err(f"interactions.{x['id']}: акт близости без проверки возраста обеих сторон (§1.1)")
+    r.info = f"обрядов {n}, актов близости {len(adult)}"
+    return r
+
+
+CHECKS["rites"] = check_rites  # LR-171
+
 
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)

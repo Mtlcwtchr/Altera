@@ -1,0 +1,168 @@
+{
+ "_doc": "LR-171: обряды культа (сеттинг v0.3 §6.5). Обряд принадлежит вере (faiths) или ликам (liks: id ликов пантеона; обряд годится вере, у которой есть такой лик в deities/liks). when: holy_day (id праздника веры или \"any\"), every_days+offset, on (death|wedding|birth|drought|war|illness|sowing|harvest), season [день_от, день_до], chance — шанс в подходящий день. time: dawn|day|dusk|night. participants.who: faith|settlement|household|initiates|mourners; age: adult|any. leader: clergy|pious|head. offering: any — что подойдёт (берётся из запасов поселения или у вожака), n. steps: шаги по порядку, all/leader — акты (первый, чья цель есть рядом), ticks — длительность, fx — эффект клиента (content/sprites_2d/rites2d.json). effects: all/leader — эффекты как в interactions, piety, memory (типы памяти), channels (каналы мира у места × вес), aim (обряд — общая молитва о цели). aftermath: последствия {p, eff, who: any|intimate|spouse_of_intimate|leader}. intimacy (только экстатические): только взрослые (min_life_years) и по согласию (взаимное affinity и attraction выше порогов), показ — облачко «вуху» с сердечками. secret + grades — таинство по ступеням. Имена: rites.rite.<id>.name / .desc.",
+ "group": "wild",
+ "liks": [
+  "pan",
+  "cernunnos",
+  "leshy",
+  "bereginya",
+  "yer_sub"
+ ],
+ "faiths": [
+  "many_spirits",
+  "green_covenant"
+ ],
+ "rites": [
+  {
+   "id": "grove_gifts",
+   "kind": "offering",
+   "open": true,
+   "when": {
+    "every_days": 12,
+    "offset": 6
+   },
+   "time": "day",
+   "participants": {
+    "who": "faith",
+    "age": "any",
+    "min": 1,
+    "max": 10,
+    "radius_m": 900
+   },
+   "leader": "pious",
+   "offering": {
+    "any": [
+     "bread",
+     "honey",
+     "berries",
+     "milk"
+    ],
+    "n": 1
+   },
+   "steps": [
+    {
+     "all": [
+      "rite_grove"
+     ],
+     "ticks": 2,
+     "fx": "leaves"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.2",
+     "moodlet:prayed"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite"
+    ],
+    "channels": {
+     "fertility": "+1*power"
+    }
+   }
+  },
+  {
+   "id": "spring_waters",
+   "kind": "offering",
+   "open": true,
+   "when": {
+    "season": [
+     70,
+     90
+    ],
+    "chance": 0.6
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "any",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "offering": {
+    "any": [
+     "milk",
+     "honey",
+     "bread"
+    ],
+    "n": 1
+   },
+   "steps": [
+    {
+     "all": [
+      "rite_libation_water"
+     ],
+     "ticks": 2,
+     "fx": "splash"
+    },
+    {
+     "all": [
+      "rite_dance"
+     ],
+     "ticks": 2,
+     "fx": "leaves"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.25",
+     "need:fun+0.15",
+     "moodlet:rite_joy"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "danced"
+    ],
+    "aim": "rain"
+   }
+  },
+  {
+   "id": "drought_dance",
+   "kind": "dance",
+   "open": true,
+   "when": {
+    "on": "drought"
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "any",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "steps": [
+    {
+     "all": [
+      "rite_dance"
+     ],
+     "ticks": 3,
+     "fx": "dust"
+    },
+    {
+     "all": [
+      "rite_libation_water"
+     ],
+     "ticks": 1,
+     "fx": "splash"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.3"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "danced"
+    ],
+    "aim": "rain"
+   }
+  }
+ ]
+}

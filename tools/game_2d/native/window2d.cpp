@@ -250,6 +250,7 @@ struct Window::Impl : Ctx {
     // --- the game as the routes tell it ---------------------------------------
     Json ST, MAP, RES, LOOK;
     Json CLIFFS = Json::object();   // LR-156: cliffs2d.json (rules + tiles)
+    Json BEASTS = Json::object();   // LR-170: beasts2d.json (the bestiary's 48x64-style beasts)
     std::map<std::string, std::string> UI;
     SpriteSet sprites;
     std::vector<std::pair<std::regex, std::string>> actsRe;
@@ -268,6 +269,7 @@ struct Window::Impl : Ctx {
     Json HUD;                          // content/sprites_2d/hud2d.json
     Json WLOOK = Json::object();       // LR-153: content/sprites_2d/worldmap2d.json
     Json FIGHT;                        // LR-152: content/sprites_2d/combat2d.json
+    Json RITES = Json::object();       // LR-171: content/sprites_2d/rites2d.json (rite fx, sway, the woohoo cloud)
     Fight2d fights;                    // LR-152: the combat state (fights played back over the map)
     long long fightSeen = -1;          // the last fight id the state route handed over
     std::set<std::string> folded{"tier.safety", "tier.esteem", "tier.purpose", "tier.spirit", "tier.other"};
@@ -645,6 +647,25 @@ struct Window::Impl : Ctx {
     static float heightK(const Json& p) {
         const std::uint32_t h = idHash(num(p, "id"), 11);
         return 0.94f + float(h % 13) * 0.01f;
+    }
+    // LR-170: a beast of beasts2d.json, `n` x `n` art pixels with the feet on the last row; empty: none
+    Sprite beastArt(const std::string& sp, char face, int& n) {
+        const Json& all = BEASTS.contains("beasts") && BEASTS["beasts"].is_object() ? BEASTS["beasts"] : BEASTS;
+        if (sp.empty() || !all.contains(sp)) return Sprite{};
+        const std::string k = std::string("ba:") + sp + face;
+        if (const Sprite* s = bigAtlas.find(k); s && beastN.count(k)) {
+            n = beastN[k];
+            return *s;
+        }
+        const Pixels px = beastArtPixels(all[sp], face);
+        n = beastN[k] = px.size;
+        return bigAtlas.put(k, px);
+    }
+    std::map<std::string, int> beastN;
+    // the square a beast of beasts2d.json is drawn into, its feet at (sx, sy + sc), at the people's scale
+    SDL_FRect beastArtRect(int n, float sx, float sy, float sc) const {
+        const float u = sc * float(figureData().value("world_px_per_art_px", 1.0 / 3.0)), w = float(n) * u;
+        return {sx - w / 2, sy + sc - w, w, w};
     }
     Sprite beastSprite(const std::string& sp, char face) {
         const std::string k = std::string("b:") + sp + face;
@@ -1049,6 +1070,7 @@ struct Window::Impl : Ctx {
         sprites.merge(CLIFFS);
         HUD = parseOr(readText(dir / "hud2d.json"), Json::object());   // LR-137: the pixel HUD
         FIGHT = parseOr(readText(dir / "combat2d.json"), Json::object());   // LR-152: the combat state
+        RITES = parseOr(readText(dir / "rites2d.json"), Json::object());   // LR-171: rites and intimacy shown
         fights.configure(FIGHT);
         sprites.merge(HUD);
         WLOOK = parseOr(readText(dir / "worldmap2d.json"), Json::object());   // LR-153: the world map
@@ -1750,6 +1772,7 @@ struct Window::Impl : Ctx {
             if (it.thing) guard("thing", [&] { drawThing(*it.thing, sc); });
             else guard("pawn", [&] { drawPawn(*it.person, vis[ident(*it.person, "id")], sc); });
         guard("fights", [&] { fights.drawWorld(*this, t, float(sc)); });   // LR-152: weapons, sparks, blood, words
+        guard("rites", [&] { drawRites(sc); });   // LR-171: the rites' smoke, sparks, petals; the woohoo cloud
         guard("stamina", [&] { drawStaminaPawn(sc); });
         guard("drawRoofs", [&] { drawRoofs(tp); });
         guard("atmosLight", [&] { atmosEnd(sc); });
@@ -1785,6 +1808,7 @@ struct Window::Impl : Ctx {
         float sx, sy;
         toScreen(v.x, v.y, sx, sy);
         const float sc = float(scd);
+        riteSway(p, sx, sy, sc);   // LR-171: a dance, a procession, a trance sway the pawn
         const long long id = ident(p, "id");
         const std::string sp = str(p, "sp");
         const bool alive = flag(p, "alive");
@@ -1807,6 +1831,12 @@ struct Window::Impl : Ctx {
             // LR-159: a ridden beast is drawn under its rider, a driven vehicle with its driver
             if (p.contains("rider") || (flag(p, "veh") && p.contains("driver"))) return;
             if (drawTr(sp, trFace(p, v), trFrame(v), sx, sy, sc)) return;
+            int n = 0;
+            if (const Sprite b = beastArt(sp, v.face == 'W' ? 'W' : 'E', n)) {   // LR-170
+                const SDL_FRect d = beastArtRect(n, sx, sy, sc);
+                blit(b, d.x, d.y, d.w, d.h, alive ? 1.0f : 0.6f);
+                return;
+            }
             blit(beastSprite(sp, v.face == 'W' ? 'W' : 'E'), sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
             return;
         }
@@ -1941,6 +1971,153 @@ struct Window::Impl : Ctx {
             fill(x0 + w - sc + off, y0 + h - l + off, sc, l, c);
         }
     }
+    // --- LR-171: rites and intimacy (content/sprites_2d/rites2d.json) ---------------------------
+    // The step act's sway (rites2d.json poses): a dance hops, a procession bobs, a trance shakes.
+    void riteSway(const Json& p, float& sx, float& sy, float sc) const {
+        if (!p.contains("rite") || !RITES.contains("poses")) return;
+        const std::string ia = str(p, "ia");
+        const Json& P = RITES["poses"];
+        if (!P.contains(ia)) return;
+        const Json& q = P[ia];
+        const double t = nowMs() / 1000.0, hz = q.value("hz", 1.0);
+        const double ph = t * hz * 6.2831853 + double(idHash(num(p, "id"), 41) % 628) / 100.0;
+        sy -= float(std::abs(std::sin(ph)) * q.value("bob", 0.0)) * sc;
+        sx += float(std::sin(ph * 0.5) * q.value("sway", 0.0)) * sc;
+    }
+    // One particle effect of a step at a pawn's feet (sx, sy) in map pixels x sc.
+    void riteFx(const Json& fx, long long id, bool leader, float sx, float sy, float sc, double t) {
+        if (fx.value("leader_only", false) && !leader) return;
+        const std::string kind = fx.value("kind", std::string("rise"));
+        std::vector<ui::Colour> cols;
+        for (const auto& c : fx.value("colours", Json::array()))
+            if (c.is_string()) cols.push_back(hexc(c.get<std::string>().c_str()));
+        if (cols.empty()) cols.push_back(kGold);
+        const int n = std::max(1, fx.value("n", 4)) * (leader && kind == "column" ? 2 : 1);
+        const float size = float(fx.value("size", 1.0)) * sc, spread = float(fx.value("spread", 4.0)),
+                    height = float(fx.value("height", 10.0));
+        const double period = std::max(0.1, fx.value("period_s", 1.5));
+        const bool heart = fx.value("shape", std::string()) == "heart";
+        const float head = sy - 18 * sc;
+        for (int i = 0; i < n; ++i) {
+            const std::uint32_t h = idHash(double(std::max(0LL, id)) * 31 + i, 53);
+            double ph = t / period + double(h % 1000) / 1000.0;
+            ph -= std::floor(ph);
+            const float off = (float(h % 2001) / 1000.0f - 1.0f) * spread;
+            const ui::Colour& c0 = cols[h % cols.size()];
+            float x = sx + off * sc, y = head;
+            float a = 1.0f;
+            if (kind == "rise" || kind == "column") {
+                y = (kind == "column" ? head - 4 * sc : head + 6 * sc) - float(ph) * height * sc;
+                x = sx + off * sc * (kind == "column" ? 0.4f + float(ph) : 1.0f);
+                a = 1.0f - float(ph);
+            } else if (kind == "fall") {
+                y = head - height * sc + float(ph) * (height + 16) * sc;
+                x += float(std::sin(ph * 9.0 + i)) * 1.5f * sc;
+                a = ph < 0.85 ? 1.0f : float((1.0 - ph) / 0.15);
+            } else if (kind == "ring") {
+                const double ang = 6.2831853 * (double(i) / n + ph);
+                x = sx + float(std::cos(ang)) * spread * sc;
+                y = sy - 2 * sc + float(std::sin(ang)) * spread * 0.4f * sc;
+            } else if (kind == "burst") {
+                const double ang = double(h % 628) / 100.0;
+                const float r = float(ph) * spread * sc;
+                x = sx + float(std::cos(ang)) * r;
+                y = head + 4 * sc - float(std::abs(std::sin(ang))) * r - float(ph) * height * 0.3f * sc;
+                a = 1.0f - float(ph);
+            } else if (kind == "glow") {
+                const float g = float(fx.value("size", 6.0)) * sc;
+                const float pulse = 0.55f + 0.45f * float(std::sin(t * 6.2831853 / period));
+                ui::Colour c = c0;
+                c.a *= 0.22f * pulse;
+                fill(sx - g, sy - 10 * sc - g * 0.6f, 2 * g, 1.2f * g, c);
+                c.a *= 1.6f;
+                fill(sx - g * 0.5f, sy - 10 * sc - g * 0.3f, g, 0.6f * g, c);
+                return;
+            }
+            ui::Colour c = c0;
+            c.a *= std::clamp(a, 0.0f, 1.0f);
+            if (heart) {   // a 5x4 pixel heart
+                static const char* kHeart[4] = {".#.#.", "#####", ".###.", "..#.."};
+                for (int yy = 0; yy < 4; ++yy)
+                    for (int xx = 0; xx < 5; ++xx)
+                        if (kHeart[yy][xx] == '#') fill(x + (xx - 2) * size * 0.5f, y + yy * size * 0.5f, size * 0.5f, size * 0.5f, c);
+            } else
+                fill(std::round(x), std::round(y), size, size, c);
+        }
+    }
+    // §1.1: intimacy is never shown: the pair goes under a pixel cloud (as the woohoo of the
+    // Sims) with hearts rising over it; the same for every kind and culture.
+    void woohooCloud(long long id, float sx, float sy, float sc, double t) {
+        const Json& W = RITES.value("woohoo", Json::object());
+        const Json& C = W.value("cloud", Json::object());
+        const int cell = std::max(1, C.value("cell", 3)), cw = std::max(2, C.value("w", 30) / cell), ch = std::max(2, C.value("h", 18) / cell);
+        std::vector<ui::Colour> cols;
+        for (const auto& c : C.value("colours", Json::array()))
+            if (c.is_string()) cols.push_back(hexc(c.get<std::string>().c_str()));
+        if (cols.empty()) cols.push_back(hexc("#f2b8c6"));
+        const ui::Colour edge = hexc(C.value("outline", std::string("#5a2a3a")).c_str());
+        const float u = float(cell) * sc, x0 = sx - cw * u / 2, y0 = sy - (ch * u) - float(C.value("lift", 6)) * sc;
+        const long long frame = (long long)(t * C.value("jitter_hz", 6.0));
+        auto inside = [&](int x, int y) {
+            const double dx = (x + 0.5 - cw / 2.0) / (cw / 2.0), dy = (y + 0.5 - ch / 2.0) / (ch / 2.0);
+            // a lumpy cloud: an ellipse with a wobbling rim
+            const double rim = 1.0 + 0.12 * std::sin(x * 1.7 + frame * 0.9) * std::cos(y * 2.3);
+            return dx * dx + dy * dy <= rim;
+        };
+        for (int y = -1; y <= ch; ++y)
+            for (int x = -1; x <= cw; ++x) {
+                const bool in = inside(x, y);
+                if (!in) {
+                    const bool rim = inside(x - 1, y) || inside(x + 1, y) || inside(x, y - 1) || inside(x, y + 1);
+                    if (rim) fill(x0 + x * u, y0 + y * u, u, u, edge);
+                    continue;
+                }
+                const std::uint32_t h = idHash(double(std::max(0LL, id)) * 977 + x * 31 + y * 7 + frame, 67);
+                fill(x0 + x * u, y0 + y * u, u, u, cols[h % cols.size()]);
+            }
+        const Json& H = W.value("hearts", Json::object());
+        Json hf = {{"kind", "rise"}, {"colours", Json::array({H.value("colour", std::string("#ff4a6e")), H.value("light", std::string("#ffb0c0"))})},
+                   {"n", H.value("n", 3)}, {"size", H.value("size", 1) * 2}, {"spread", cw * cell / 3}, {"height", H.value("rise", 16)},
+                   {"period_s", H.value("period_s", 1.6)}, {"shape", "heart"}};
+        riteFx(hf, id, false, sx, y0 + 12 * sc, sc, t);
+        const Json& N = W.value("notes", Json::object());
+        if (N.value("n", 0) > 0) {
+            Json nf = {{"kind", "rise"}, {"colours", Json::array({N.value("colour", std::string("#ffffff"))})}, {"n", N.value("n", 1)},
+                       {"size", 1}, {"spread", cw * cell / 2}, {"height", 10}, {"period_s", N.value("period_s", 2.2)}};
+            riteFx(nf, id + 1, false, sx, y0 + 10 * sc, sc, t);
+        }
+    }
+    void drawRites(double scd) {
+        if (glyphs || !RITES.is_object()) return;
+        const float sc = float(scd);
+        const double t = nowMs() / 1000.0;
+        const Json& FX = RITES.value("fx", Json::object());
+        std::set<long long> clouded;
+        for (const Json& p : people) {
+            if (!str(p, "sp").empty() || !flag(p, "alive")) continue;
+            const long long id = ident(p, "id");
+            const auto it = vis.find(id);
+            if (it == vis.end()) continue;
+            float sx, sy;
+            toScreen(it->second.x, it->second.y, sx, sy);
+            if (sx < -60 || sy < -60 || sx > mapW() + 60 || sy > mapH() + 60) continue;
+            if (flag(p, "woohoo")) {
+                // one cloud for the pair: at the one who leads the act, over both
+                const long long other = p.contains("rite") && p["rite"].contains("pair") ? p["rite"]["pair"].get<long long>() : -1;
+                if (clouded.count(id) || (other >= 0 && clouded.count(other))) continue;
+                clouded.insert(id);
+                float ox = sx, oy = sy;
+                if (other >= 0)
+                    if (const auto o = vis.find(other); o != vis.end()) toScreen(o->second.x, o->second.y, ox, oy);
+                woohooCloud(id, (sx + ox) / 2, std::max(sy, oy), sc, t);
+                continue;
+            }
+            if (!p.contains("rite") || !p["rite"].is_object()) continue;
+            const std::string fx = p["rite"].value("fx", std::string());
+            if (fx.empty() || !FX.contains(fx)) continue;
+            riteFx(FX[fx], id, p["rite"].value("leader", false), sx, sy, sc, t);
+        }
+    }
     void drawOverheads(double scd) {
         const float sc = float(scd);
         for (const Json& p : people) {
@@ -2061,6 +2238,12 @@ struct Window::Impl : Ctx {
                 img = t;
                 dst = {sx - float(n) / 2 * sc, sy - float(n - 3) * sc, float(n) * sc, float(n) * sc};
                 foot = sy + 3 * sc;
+                return true;
+            }
+            if (const Sprite b = beastArt(sp, v.face == 'W' ? 'W' : 'E', n)) {   // LR-170
+                img = b;
+                dst = beastArtRect(n, sx, sy, sc);
+                foot = sy + 1 * sc;
                 return true;
             }
             img = beastSprite(sp, v.face == 'W' ? 'W' : 'E');
@@ -2367,7 +2550,9 @@ struct Window::Impl : Ctx {
     void portrait(const Json& p, float x, float y, float size) {
         fill(x, y, size, size, kLeatherD);
         if (!str(p, "sp").empty()) {
-            blit(beastSprite(str(p, "sp"), 'E'), x + size * 0.1f, y + size * 0.1f, size * 0.8f, size * 0.8f);
+            int n = 0;
+            if (const Sprite b = beastArt(str(p, "sp"), 'E', n)) blit(b, x + size * 0.05f, y + size * 0.05f, size * 0.9f, size * 0.9f);   // LR-170
+            else blit(beastSprite(str(p, "sp"), 'E'), x + size * 0.1f, y + size * 0.1f, size * 0.8f, size * 0.8f);
             return;
         }
         if (FigureSpec fig; figureSpec(p, fig)) {   // LR-165: the head and shoulders of the figure
@@ -3212,7 +3397,7 @@ struct Window::Impl : Ctx {
 
     // LR-139: pawns2d.json is read at the start and again whenever it changes on disk, so
     // a new cut or a kind's ears show at once, without a rebuild or a restart.
-    std::filesystem::file_time_type partsTime{}, figuresTime{};
+    std::filesystem::file_time_type partsTime{}, figuresTime{}, beastsTime{};
     double partsChecked = 0;
     void loadPawnParts() {
         const auto path = root / "content/sprites_2d/pawns2d.json";
@@ -3223,6 +3408,9 @@ struct Window::Impl : Ctx {
         const auto fp = root / "content/sprites_2d/figures2d.json";
         figuresTime = std::filesystem::last_write_time(fp, ec);
         setFigureData(parseOr(readText(fp), Json::object()));
+        const auto bp = root / "content/sprites_2d/beasts2d.json";   // LR-170: the bestiary's beasts
+        beastsTime = std::filesystem::last_write_time(bp, ec);
+        BEASTS = parseOr(readText(bp), Json::object());
     }
     void watchPawnParts() {
         if (nowMs() - partsChecked < 1000) return;
@@ -3230,7 +3418,9 @@ struct Window::Impl : Ctx {
         std::error_code ec, ec2;
         const auto t = std::filesystem::last_write_time(root / "content/sprites_2d/pawns2d.json", ec);
         const auto tf = std::filesystem::last_write_time(root / "content/sprites_2d/figures2d.json", ec2);
-        if ((ec || t == partsTime) && (ec2 || tf == figuresTime)) return;
+        std::error_code ec3;
+        const auto tb = std::filesystem::last_write_time(root / "content/sprites_2d/beasts2d.json", ec3);
+        if ((ec || t == partsTime) && (ec2 || tf == figuresTime) && (ec3 || tb == beastsTime)) return;
         loadPawnParts();
         atlas.clear();
         bigAtlas.clear();   // every sprite is drawn again on demand

@@ -24,6 +24,7 @@
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/culture.hpp"
+#include "sim/rites.hpp"
 #include "sim/pantheon.hpp"
 #include "sim/wounds.hpp"
 #include "sim/firefight.hpp"
@@ -711,6 +712,7 @@ void installAi(World& w) {
             magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
             societyDaily(world); // AL-118: laws and witch trials, guilds, magic at work
             cultureDaily(world); // LR-155: bonds to culture, piety and conversion, the settlements' traditions
+            ritesDaily(world);   // LR-171: the rites of the day per settlement, deferred prayers come due
             pantheonDaily(world); // LR-169: the gods' standing and favour, prayers due, the world laws, identification
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
@@ -718,6 +720,7 @@ void installAi(World& w) {
         healWounds(world); // wounds in the profile heal in the ordinary ticks
         buildingTick(world);  // finished sites leave, a dead chief's mandate passes on
         captivityTick(world); // captives follow, escape, meet their fate; a dead player's heir takes over
+        ritesTick(world);     // LR-171: the rites going on lead their steps
         undeadTick(world);    // AL-118: mindless undead follow their master, the unbound go for the living
         tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
         dressTick(world);     // AL-109: people put on what they carry and can wear
@@ -750,6 +753,7 @@ void installAi(World& w) {
     installMagic(w);
     installMagicSociety(w);
     installCulture(w);
+    installRites(w); // LR-171
     installPantheon(w); // LR-169
 }
 

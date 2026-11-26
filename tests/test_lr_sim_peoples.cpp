@@ -193,7 +193,7 @@ TEST(lr_sim_peoples_cultures_adults_only) {
     for (const auto& [id, cu] : c.peoples.cultures) {
         CHECK(cu.data.contains("intimacy"));
         CHECK(cu.data["intimacy"].value("adults_only", false));
-        CHECK(cu.data["intimacy"].value("min_age_years", 0.0) >= 14.0);
+        CHECK(cu.data["intimacy"].value("min_age_years", 0.0) >= 18.0);
     }
     // a culture that let children in is refused
     Json bad = Json{{"id", "bad"}, {"species", "human"}, {"intimacy", {{"adults_only", false}}}};

@@ -11,6 +11,7 @@
 #include "sim/act_check.hpp"
 #include "sim/stats.hpp"
 #include "sim/culture.hpp"
+#include "sim/rites.hpp"
 #include "sim/pantheon.hpp"
 #include "sim/craft/craft_validate.hpp"
 
@@ -314,6 +315,7 @@ ValidationReport validate(const Content& c) {
     for (auto& e : checkWorldMap(c)) r.errors.push_back(e);  // LR-153 / LR-170
     validateStats(c, r);   // LR-141
     validateCulture(c, r); // LR-155
+    validateRites(c, r);   // LR-171
     validatePantheon(c, r); // LR-169
     validateActChecks(c, r);
 
