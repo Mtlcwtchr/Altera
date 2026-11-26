@@ -210,6 +210,17 @@
    "...nnn...",
    "........."
   ],
+  "hud_shrine": [
+   "....o....",
+   "...oyo...",
+   "...oyo...",
+   "..wwwww..",
+   "...wWw...",
+   "...wWw...",
+   "..wwwww..",
+   ".wwwwwww.",
+   "........."
+  ],
   "hud_sun": [
    "....y....",
    ".y..y..y.",
@@ -747,9 +758,14 @@
   "build": "hud_hammer",
   "map": "hud_map",
   "workshop": "hud_anvil",
-  "chronicle": "hud_scroll"
+  "chronicle": "hud_scroll",
+  "culture": "hud_shrine"
  },
  "moodlets": [
+  [
+   "holy_day|kept_custom",
+   "hud_shrine"
+  ],
   [
    "potion_poison",
    "hud_skull"

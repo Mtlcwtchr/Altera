@@ -116,6 +116,8 @@ void Screens::open(const std::string& id, const Json& args) {
     else if (id == "colony") openColony(c_, *this);
     else if (id == "dynasty") openDynasty(c_, *this);
     else if (id == "map") openWorldMap(c_, *this);
+    else if (id == "culture") openCulture(c_, *this, args.is_number() ? args.get<long long>() : -1);
+    else if (id == "inspect") openInspect(c_, *this, args.is_number() ? args.get<long long>() : c_.selected());
     else if (id == "sheet") openSheet(c_, *this, args.is_number() ? args.get<long long>() : -1);
     else if (id == "talk" || id == "trade") openTalk(c_, *this, args.is_number() ? args.get<long long>() : c_.selected(), id == "trade");
     else c_.toast(c_.L("ui2d.soon", {{"what", c_.L("ui2d.screen." + id)}}));
@@ -130,7 +132,7 @@ void Screens::openScreen(const std::string& id) {
 }
 
 std::vector<std::pair<std::string, std::string>> Screens::columnScreens() const {
-    return {{"sheet", "C"}, {"dynasty", "Y"}, {"colony", "O"}, {"build", "B"}, {"map", "M"}, {"workshop", "K"}, {"chronicle", "J"}, {"menu", "Esc"}};
+    return {{"sheet", "C"}, {"dynasty", "Y"}, {"colony", "O"}, {"build", "B"}, {"map", "M"}, {"culture", "V"}, {"workshop", "K"}, {"chronicle", "J"}, {"menu", "Esc"}};
 }
 
 void Screens::start() { open("menu"); }
