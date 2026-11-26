@@ -62,6 +62,7 @@ using socket_t = int;
 #include "client2d/talk2d.hpp"
 #include "client2d/session2d.hpp"
 #include "client2d/view2d.hpp"
+#include "client2d/worldmap2d.hpp"
 #include "sim/ai.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/building.hpp"
@@ -519,6 +520,9 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
         } else if (path.rfind("/api/dynasty", 0) == 0) {
             // LR-145: the dynasty window (src/client2d/sheet2d dynastyJson)
             respond(s, 200, "application/json", c2::dynastyJson(*a.world, a.text, controlled(*a.world)).dump());
+        } else if (path.rfind("/api/worldmap", 0) == 0) {
+            // LR-153: the world map window (src/client2d/worldmap2d)
+            respond(s, 200, "application/json", c2::worldMapJson(*a.world, a.text, controlled(*a.world)).dump());
         } else if (path.rfind("/api/sheet", 0) == 0) {
             // AL-100: the character sheet (src/client2d/sheet2d)
             respond(s, 200, "application/json", c2::sheetJson(*a.world, a.text, EntityId(std::max(0, intParam(path, "id", 0)))).dump());
