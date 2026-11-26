@@ -149,7 +149,7 @@ void Atmos::ensure() {
         disc_ = makeTexture(ren_, n, px, SDL_BLENDMODE_ADD);
         puff_ = makeTexture(ren_, n, px, SDL_BLENDMODE_BLEND);
     }
-    if (!noise_) {   // tileable value noise, three octaves: fog banks, cloud shadows, snow patches
+    if (!noise_) {   // tileable value noise, three octaves: fog banks, snow patches
         const int n = 128;
         std::vector<double> v(std::size_t(n) * n, 0);
         double norm = 0;
@@ -345,13 +345,7 @@ void Atmos::drawAir() {
         SDL_SetTextureColorModFloat(puff_, 1, 1, 1);
         SDL_SetTextureAlphaModFloat(puff_, 1);
     }
-    // cloud shadows on a broken-cloud day, drifting with the wind
-    const double broken = 4.0 * now_.cloud * (1.0 - now_.cloud);
-    const double drift = t_ * (1.0 + now_.wind * 0.6);
-    if (now_.sunAlt > 0) {
-        const float a = float(std::clamp(broken * 0.34 * std::min(1.0, now_.sunAlt / 10.0) * (1 - now_.fog), 0.0, 0.32));
-        tiled(noise_, 90.0, -now_.windX * drift, -now_.windY * drift, 0.05f, 0.06f, 0.1f, a);
-    }
+    // no cloud shadows on the ground (LR-151: removed, they looked bad)
     // fog: a veil and two banks moving at different speeds
     if (now_.fog > 0.02) {
         SDL_SetRenderDrawBlendMode(ren_, SDL_BLENDMODE_BLEND);
