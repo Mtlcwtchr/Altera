@@ -701,6 +701,13 @@ def sprites_json():
         sprites["objects"][o["id"]] = sprite_of(o["id"], [])
     for (iid, mat, tags, *_rest) in ITEMS:
         sprites["items"][iid] = sprite_of(iid, tags)
+    # LR-168: records of other packs (gen_regional.py marks them "pack") stay
+    old = P("content/sprites_2d/resources.json")
+    if os.path.exists(old):
+        for kind in ("objects", "items"):
+            for k, v in load(old).get(kind, {}).items():
+                if isinstance(v, dict) and v.get("pack") and k not in sprites[kind]:
+                    sprites[kind][k] = v
     save(P("content/sprites_2d/resources.json"), sprites)
 
 

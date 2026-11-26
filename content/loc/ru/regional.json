@@ -1,0 +1,929 @@
+{
+ "_doc": "LR-168: things of the belts (gen_regional.py).",
+ "item.chiton.name": {
+  "nom": "хитон",
+  "gen": "хитона",
+  "dat": "хитону",
+  "acc": "хитон",
+  "ins": "хитоном",
+  "pre": "хитоне",
+  "g": "m"
+ },
+ "item.peplos.name": {
+  "nom": "пеплос",
+  "gen": "пеплоса",
+  "dat": "пеплосу",
+  "acc": "пеплос",
+  "ins": "пеплосом",
+  "pre": "пеплосе",
+  "g": "m"
+ },
+ "item.himation.name": {
+  "nom": "гиматий",
+  "gen": "гиматия",
+  "dat": "гиматию",
+  "acc": "гиматий",
+  "ins": "гиматием",
+  "pre": "гиматии",
+  "g": "m"
+ },
+ "item.chlamys.name": {
+  "nom": "хламида",
+  "gen": "хламиды",
+  "dat": "хламиде",
+  "acc": "хламиду",
+  "ins": "хламидой",
+  "pre": "хламиде",
+  "g": "f"
+ },
+ "item.sandals.name": {
+  "nom": "сандалии",
+  "gen": "сандалий",
+  "dat": "сандалиям",
+  "acc": "сандалии",
+  "ins": "сандалиями",
+  "pre": "сандалиях",
+  "g": "pl"
+ },
+ "item.petasos.name": {
+  "nom": "петас",
+  "gen": "петаса",
+  "dat": "петасу",
+  "acc": "петас",
+  "ins": "петасом",
+  "pre": "петасе",
+  "g": "m"
+ },
+ "item.shendyt.name": {
+  "nom": "схенти",
+  "gen": "схенти",
+  "dat": "схенти",
+  "acc": "схенти",
+  "ins": "схенти",
+  "pre": "схенти",
+  "g": "n"
+ },
+ "item.kalasiris.name": {
+  "nom": "калазирис",
+  "gen": "калазириса",
+  "dat": "калазирису",
+  "acc": "калазирис",
+  "ins": "калазирисом",
+  "pre": "калазирисе",
+  "g": "m"
+ },
+ "item.broad_collar.name": {
+  "nom": "ожерелье-воротник",
+  "gen": "ожерелья-воротника",
+  "dat": "ожерелью-воротнику",
+  "acc": "ожерелье-воротник",
+  "ins": "ожерельем-воротником",
+  "pre": "ожерелье-воротнике",
+  "g": "n"
+ },
+ "item.sarafan.name": {
+  "nom": "сарафан",
+  "gen": "сарафана",
+  "dat": "сарафану",
+  "acc": "сарафан",
+  "ins": "сарафаном",
+  "pre": "сарафане",
+  "g": "m"
+ },
+ "item.bast_shoes.name": {
+  "nom": "лапти",
+  "gen": "лаптей",
+  "dat": "лаптям",
+  "acc": "лапти",
+  "ins": "лаптями",
+  "pre": "лаптях",
+  "g": "pl"
+ },
+ "item.plaid_cloak.name": {
+  "nom": "клетчатый плащ",
+  "gen": "клетчатого плаща",
+  "dat": "клетчатому плащу",
+  "acc": "клетчатый плащ",
+  "ins": "клетчатым плащом",
+  "pre": "клетчатом плаще",
+  "g": "m"
+ },
+ "item.flower_wreath.name": {
+  "nom": "венок",
+  "gen": "венка",
+  "dat": "венку",
+  "acc": "венок",
+  "ins": "венком",
+  "pre": "венке",
+  "g": "m"
+ },
+ "item.fur_cloak.name": {
+  "nom": "меховой плащ",
+  "gen": "мехового плаща",
+  "dat": "меховому плащу",
+  "acc": "меховой плащ",
+  "ins": "меховым плащом",
+  "pre": "меховом плаще",
+  "g": "m"
+ },
+ "item.fur_hat.name": {
+  "nom": "меховая шапка",
+  "gen": "меховой шапки",
+  "dat": "меховой шапке",
+  "acc": "меховую шапку",
+  "ins": "меховой шапкой",
+  "pre": "меховой шапке",
+  "g": "f"
+ },
+ "item.apron_dress.name": {
+  "nom": "сарафан-фартук",
+  "gen": "сарафана-фартука",
+  "dat": "сарафану-фартуку",
+  "acc": "сарафан-фартук",
+  "ins": "сарафаном-фартуком",
+  "pre": "сарафане-фартуке",
+  "g": "m"
+ },
+ "item.brooch.name": {
+  "nom": "фибула",
+  "gen": "фибулы",
+  "dat": "фибуле",
+  "acc": "фибулу",
+  "ins": "фибулой",
+  "pre": "фибуле",
+  "g": "f"
+ },
+ "item.kaftan.name": {
+  "nom": "кафтан",
+  "gen": "кафтана",
+  "dat": "кафтану",
+  "acc": "кафтан",
+  "ins": "кафтаном",
+  "pre": "кафтане",
+  "g": "m"
+ },
+ "item.felt_hood.name": {
+  "nom": "башлык",
+  "gen": "башлыка",
+  "dat": "башлыку",
+  "acc": "башлык",
+  "ins": "башлыком",
+  "pre": "башлыке",
+  "g": "m"
+ },
+ "item.riding_trousers.name": {
+  "nom": "шаровары",
+  "gen": "шаровар",
+  "dat": "шароварам",
+  "acc": "шаровары",
+  "ins": "шароварами",
+  "pre": "шароварах",
+  "g": "pl"
+ },
+ "item.soft_boots.name": {
+  "nom": "ичиги",
+  "gen": "ичигов",
+  "dat": "ичигам",
+  "acc": "ичиги",
+  "ins": "ичигами",
+  "pre": "ичигах",
+  "g": "pl"
+ },
+ "item.linothorax.name": {
+  "nom": "льняной панцирь",
+  "gen": "льняного панциря",
+  "dat": "льняному панцирю",
+  "acc": "льняной панцирь",
+  "ins": "льняным панцирем",
+  "pre": "льняном панцире",
+  "g": "m"
+ },
+ "item.bronze_cuirass.name": {
+  "nom": "бронзовый панцирь",
+  "gen": "бронзового панциря",
+  "dat": "бронзовому панцирю",
+  "acc": "бронзовый панцирь",
+  "ins": "бронзовым панцирем",
+  "pre": "бронзовом панцире",
+  "g": "m"
+ },
+ "item.bronze_greaves.name": {
+  "nom": "поножи",
+  "gen": "поножей",
+  "dat": "поножам",
+  "acc": "поножи",
+  "ins": "поножами",
+  "pre": "поножах",
+  "g": "pl"
+ },
+ "item.crested_helm.name": {
+  "nom": "гребенчатый шлем",
+  "gen": "гребенчатого шлема",
+  "dat": "гребенчатому шлему",
+  "acc": "гребенчатый шлем",
+  "ins": "гребенчатым шлемом",
+  "pre": "гребенчатом шлеме",
+  "g": "m"
+ },
+ "item.scale_armour.name": {
+  "nom": "чешуйчатый доспех",
+  "gen": "чешуйчатого доспеха",
+  "dat": "чешуйчатому доспеху",
+  "acc": "чешуйчатый доспех",
+  "ins": "чешуйчатым доспехом",
+  "pre": "чешуйчатом доспехе",
+  "g": "m"
+ },
+ "item.nasal_helm.name": {
+  "nom": "шлем с наносником",
+  "gen": "шлема с наносником",
+  "dat": "шлему с наносником",
+  "acc": "шлем с наносником",
+  "ins": "шлемом с наносником",
+  "pre": "шлеме с наносником",
+  "g": "m"
+ },
+ "item.pointed_helm.name": {
+  "nom": "остроконечный шлем",
+  "gen": "остроконечного шлема",
+  "dat": "остроконечному шлему",
+  "acc": "остроконечный шлем",
+  "ins": "остроконечным шлемом",
+  "pre": "остроконечном шлеме",
+  "g": "m"
+ },
+ "item.hoplon.name": {
+  "nom": "гоплон",
+  "gen": "гоплона",
+  "dat": "гоплону",
+  "acc": "гоплон",
+  "ins": "гоплоном",
+  "pre": "гоплоне",
+  "g": "m"
+ },
+ "item.round_shield.name": {
+  "nom": "круглый щит",
+  "gen": "круглого щита",
+  "dat": "круглому щиту",
+  "acc": "круглый щит",
+  "ins": "круглым щитом",
+  "pre": "круглом щите",
+  "g": "m"
+ },
+ "item.oval_shield.name": {
+  "nom": "овальный щит",
+  "gen": "овального щита",
+  "dat": "овальному щиту",
+  "acc": "овальный щит",
+  "ins": "овальным щитом",
+  "pre": "овальном щите",
+  "g": "m"
+ },
+ "item.wicker_shield.name": {
+  "nom": "плетёный щит",
+  "gen": "плетёного щита",
+  "dat": "плетёному щиту",
+  "acc": "плетёный щит",
+  "ins": "плетёным щитом",
+  "pre": "плетёном щите",
+  "g": "m"
+ },
+ "item.dory.name": {
+  "nom": "копьё-дори",
+  "gen": "копья-дори",
+  "dat": "копью-дори",
+  "acc": "копьё-дори",
+  "ins": "копьём-дори",
+  "pre": "копье-дори",
+  "g": "n"
+ },
+ "item.xiphos.name": {
+  "nom": "ксифос",
+  "gen": "ксифоса",
+  "dat": "ксифосу",
+  "acc": "ксифос",
+  "ins": "ксифосом",
+  "pre": "ксифосе",
+  "g": "m"
+ },
+ "item.kopis.name": {
+  "nom": "копис",
+  "gen": "кописа",
+  "dat": "копису",
+  "acc": "копис",
+  "ins": "кописом",
+  "pre": "кописе",
+  "g": "m"
+ },
+ "item.sling.name": {
+  "nom": "праща",
+  "gen": "пращи",
+  "dat": "праще",
+  "acc": "пращу",
+  "ins": "пращой",
+  "pre": "праще",
+  "g": "f"
+ },
+ "item.khopesh.name": {
+  "nom": "хопеш",
+  "gen": "хопеша",
+  "dat": "хопешу",
+  "acc": "хопеш",
+  "ins": "хопешем",
+  "pre": "хопеше",
+  "g": "m"
+ },
+ "item.seax.name": {
+  "nom": "скрамасакс",
+  "gen": "скрамасакса",
+  "dat": "скрамасаксу",
+  "acc": "скрамасакс",
+  "ins": "скрамасаксом",
+  "pre": "скрамасаксе",
+  "g": "m"
+ },
+ "item.bearded_axe.name": {
+  "nom": "бородовидная секира",
+  "gen": "бородовидной секиры",
+  "dat": "бородовидной секире",
+  "acc": "бородовидную секиру",
+  "ins": "бородовидной секирой",
+  "pre": "бородовидной секире",
+  "g": "f"
+ },
+ "item.akinakes.name": {
+  "nom": "акинак",
+  "gen": "акинака",
+  "dat": "акинаку",
+  "acc": "акинак",
+  "ins": "акинаком",
+  "pre": "акинаке",
+  "g": "m"
+ },
+ "item.sagaris.name": {
+  "nom": "сагарис",
+  "gen": "сагариса",
+  "dat": "сагарису",
+  "acc": "сагарис",
+  "ins": "сагарисом",
+  "pre": "сагарисе",
+  "g": "m"
+ },
+ "item.composite_bow.name": {
+  "nom": "сложный лук",
+  "gen": "сложного лука",
+  "dat": "сложному луку",
+  "acc": "сложный лук",
+  "ins": "сложным луком",
+  "pre": "сложном луке",
+  "g": "m"
+ },
+ "item.bronze_ingot.name": {
+  "nom": "бронзовый слиток",
+  "gen": "бронзового слитка",
+  "dat": "бронзовому слитку",
+  "acc": "бронзовый слиток",
+  "ins": "бронзовым слитком",
+  "pre": "бронзовом слитке",
+  "g": "m"
+ },
+ "item.iron_bar.name": {
+  "nom": "железная крица",
+  "gen": "железной крицы",
+  "dat": "железной крице",
+  "acc": "железную крицу",
+  "ins": "железной крицей",
+  "pre": "железной крице",
+  "g": "f"
+ },
+ "item.olives.name": {
+  "nom": "оливки",
+  "gen": "оливок",
+  "dat": "оливкам",
+  "acc": "оливки",
+  "ins": "оливками",
+  "pre": "оливках",
+  "g": "pl"
+ },
+ "item.olive_oil.name": {
+  "nom": "оливковое масло",
+  "gen": "оливкового масла",
+  "dat": "оливковому маслу",
+  "acc": "оливковое масло",
+  "ins": "оливковым маслом",
+  "pre": "оливковом масле",
+  "g": "n"
+ },
+ "item.grapes.name": {
+  "nom": "виноград",
+  "gen": "винограда",
+  "dat": "винограду",
+  "acc": "виноград",
+  "ins": "виноградом",
+  "pre": "винограде",
+  "g": "m"
+ },
+ "item.figs.name": {
+  "nom": "смоквы",
+  "gen": "смокв",
+  "dat": "смоквам",
+  "acc": "смоквы",
+  "ins": "смоквами",
+  "pre": "смоквах",
+  "g": "pl"
+ },
+ "item.dates.name": {
+  "nom": "финики",
+  "gen": "фиников",
+  "dat": "финикам",
+  "acc": "финики",
+  "ins": "финиками",
+  "pre": "финиках",
+  "g": "pl"
+ },
+ "item.flatbread.name": {
+  "nom": "лепёшка",
+  "gen": "лепёшки",
+  "dat": "лепёшке",
+  "acc": "лепёшку",
+  "ins": "лепёшкой",
+  "pre": "лепёшке",
+  "g": "f"
+ },
+ "item.barley_beer.name": {
+  "nom": "ячменное пиво",
+  "gen": "ячменного пива",
+  "dat": "ячменному пиву",
+  "acc": "ячменное пиво",
+  "ins": "ячменным пивом",
+  "pre": "ячменном пиве",
+  "g": "n"
+ },
+ "item.kumis.name": {
+  "nom": "кумыс",
+  "gen": "кумыса",
+  "dat": "кумысу",
+  "acc": "кумыс",
+  "ins": "кумысом",
+  "pre": "кумысе",
+  "g": "m"
+ },
+ "item.kvass.name": {
+  "nom": "квас",
+  "gen": "кваса",
+  "dat": "квасу",
+  "acc": "квас",
+  "ins": "квасом",
+  "pre": "квасе",
+  "g": "m"
+ },
+ "item.amphora.name": {
+  "nom": "амфора",
+  "gen": "амфоры",
+  "dat": "амфоре",
+  "acc": "амфору",
+  "ins": "амфорой",
+  "pre": "амфоре",
+  "g": "f"
+ },
+ "item.kylix.name": {
+  "nom": "килик",
+  "gen": "килика",
+  "dat": "килику",
+  "acc": "килик",
+  "ins": "киликом",
+  "pre": "килике",
+  "g": "m"
+ },
+ "item.drinking_horn.name": {
+  "nom": "турий рог",
+  "gen": "турьего рога",
+  "dat": "турьему рогу",
+  "acc": "турий рог",
+  "ins": "турьим рогом",
+  "pre": "турьем роге",
+  "g": "m"
+ },
+ "item.purple_dye.name": {
+  "nom": "пурпур",
+  "gen": "пурпура",
+  "dat": "пурпуру",
+  "acc": "пурпур",
+  "ins": "пурпуром",
+  "pre": "пурпуре",
+  "g": "m"
+ },
+ "item.papyrus.name": {
+  "nom": "папирус",
+  "gen": "папируса",
+  "dat": "папирусу",
+  "acc": "папирус",
+  "ins": "папирусом",
+  "pre": "папирусе",
+  "g": "m"
+ },
+ "item.felt.name": {
+  "nom": "войлок",
+  "gen": "войлока",
+  "dat": "войлоку",
+  "acc": "войлок",
+  "ins": "войлоком",
+  "pre": "войлоке",
+  "g": "m"
+ },
+ "item.sable_fur.name": {
+  "nom": "соболья шкурка",
+  "gen": "собольей шкурки",
+  "dat": "собольей шкурке",
+  "acc": "собольную шкурку",
+  "ins": "собольей шкуркой",
+  "pre": "собольей шкурке",
+  "g": "f"
+ },
+ "item.amber.name": {
+  "nom": "янтарь",
+  "gen": "янтаря",
+  "dat": "янтарю",
+  "acc": "янтарь",
+  "ins": "янтарём",
+  "pre": "янтаре",
+  "g": "m"
+ },
+ "item.natron.name": {
+  "nom": "натрон",
+  "gen": "натрона",
+  "dat": "натрону",
+  "acc": "натрон",
+  "ins": "натроном",
+  "pre": "натроне",
+  "g": "m"
+ },
+ "item.frankincense.name": {
+  "nom": "ладан",
+  "gen": "ладана",
+  "dat": "ладану",
+  "acc": "ладан",
+  "ins": "ладаном",
+  "pre": "ладане",
+  "g": "m"
+ },
+ "item.myrrh.name": {
+  "nom": "смирна",
+  "gen": "смирны",
+  "dat": "смирне",
+  "acc": "смирну",
+  "ins": "смирной",
+  "pre": "смирне",
+  "g": "f"
+ },
+ "item.silphium.name": {
+  "nom": "сильфий",
+  "gen": "сильфия",
+  "dat": "сильфию",
+  "acc": "сильфий",
+  "ins": "сильфием",
+  "pre": "сильфии",
+  "g": "m"
+ },
+ "item.mandrake.name": {
+  "nom": "мандрагора",
+  "gen": "мандрагоры",
+  "dat": "мандрагоре",
+  "acc": "мандрагору",
+  "ins": "мандрагорой",
+  "pre": "мандрагоре",
+  "g": "f"
+ },
+ "item.mistletoe.name": {
+  "nom": "омела",
+  "gen": "омелы",
+  "dat": "омеле",
+  "acc": "омелу",
+  "ins": "омелой",
+  "pre": "омеле",
+  "g": "f"
+ },
+ "item.henbane.name": {
+  "nom": "белена",
+  "gen": "белены",
+  "dat": "белене",
+  "acc": "белену",
+  "ins": "беленой",
+  "pre": "белене",
+  "g": "f"
+ },
+ "item.wormwood.name": {
+  "nom": "полынь",
+  "gen": "полыни",
+  "dat": "полыни",
+  "acc": "полынь",
+  "ins": "полынью",
+  "pre": "полыни",
+  "g": "f"
+ },
+ "item.lyre.name": {
+  "nom": "лира",
+  "gen": "лиры",
+  "dat": "лире",
+  "acc": "лиру",
+  "ins": "лирой",
+  "pre": "лире",
+  "g": "f"
+ },
+ "item.gusli.name": {
+  "nom": "гусли",
+  "gen": "гуслей",
+  "dat": "гуслям",
+  "acc": "гусли",
+  "ins": "гуслями",
+  "pre": "гуслях",
+  "g": "pl"
+ },
+ "item.kobyz.name": {
+  "nom": "кобыз",
+  "gen": "кобыза",
+  "dat": "кобызу",
+  "acc": "кобыз",
+  "ins": "кобызом",
+  "pre": "кобызе",
+  "g": "m"
+ },
+ "item.votive_figurine.name": {
+  "nom": "обетная фигурка",
+  "gen": "обетной фигурки",
+  "dat": "обетной фигурке",
+  "acc": "обетную фигурку",
+  "ins": "обетной фигуркой",
+  "pre": "обетной фигурке",
+  "g": "f"
+ },
+ "item.kyphi.name": {
+  "nom": "кифи",
+  "gen": "кифи",
+  "dat": "кифи",
+  "acc": "кифи",
+  "ins": "кифи",
+  "pre": "кифи",
+  "g": "n"
+ },
+ "item.scarab_amulet.name": {
+  "nom": "амулет-скарабей",
+  "gen": "амулета-скарабея",
+  "dat": "амулету-скарабею",
+  "acc": "амулет-скарабей",
+  "ins": "амулетом-скарабеем",
+  "pre": "амулете-скарабее",
+  "g": "m"
+ },
+ "item.silver_torc.name": {
+  "nom": "серебряная гривна",
+  "gen": "серебряной гривны",
+  "dat": "серебряной гривне",
+  "acc": "серебряную гривну",
+  "ins": "серебряной гривной",
+  "pre": "серебряной гривне",
+  "g": "f"
+ },
+ "item.arm_ring.name": {
+  "nom": "клятвенное запястье",
+  "gen": "клятвенного запястья",
+  "dat": "клятвенному запястью",
+  "acc": "клятвенное запястье",
+  "ins": "клятвенным запястьем",
+  "pre": "клятвенном запястье",
+  "g": "n"
+ },
+ "item.rune_charm.name": {
+  "nom": "рунный оберег",
+  "gen": "рунного оберега",
+  "dat": "рунному оберегу",
+  "acc": "рунный оберег",
+  "ins": "рунным оберегом",
+  "pre": "рунном обереге",
+  "g": "m"
+ },
+ "item.obereg.name": {
+  "nom": "оберег",
+  "gen": "оберега",
+  "dat": "оберегу",
+  "acc": "оберег",
+  "ins": "оберегом",
+  "pre": "обереге",
+  "g": "m"
+ },
+ "item.gold_plaque.name": {
+  "nom": "золотая бляшка",
+  "gen": "золотой бляшки",
+  "dat": "золотой бляшке",
+  "acc": "золотую бляшку",
+  "ins": "золотой бляшкой",
+  "pre": "золотой бляшке",
+  "g": "f"
+ },
+ "item.sacrificial_cake.name": {
+  "nom": "жертвенная лепёшка",
+  "gen": "жертвенной лепёшки",
+  "dat": "жертвенной лепёшке",
+  "acc": "жертвенную лепёшку",
+  "ins": "жертвенной лепёшкой",
+  "pre": "жертвенной лепёшке",
+  "g": "f"
+ },
+ "interaction.make_chiton.name": "Сшить хитон",
+ "interaction.make_peplos.name": "Сшить пеплос",
+ "interaction.make_himation.name": "Сшить гиматий",
+ "interaction.make_chlamys.name": "Сшить хламиду",
+ "interaction.make_sandals.name": "Сделать сандалии",
+ "interaction.make_petasos.name": "Свалять петас",
+ "interaction.make_shendyt.name": "Сшить схенти",
+ "interaction.make_kalasiris.name": "Сшить калазирис",
+ "interaction.make_sarafan.name": "Сшить сарафан",
+ "interaction.make_bast_shoes.name": "Сплести лапти",
+ "interaction.make_plaid_cloak.name": "Сшить клетчатый плащ",
+ "interaction.make_flower_wreath.name": "Сплести венок",
+ "interaction.make_fur_cloak.name": "Сшить меховой плащ",
+ "interaction.make_fur_hat.name": "Сшить меховую шапку",
+ "interaction.make_apron_dress.name": "Сшить сарафан-фартук",
+ "interaction.make_kaftan.name": "Сшить кафтан",
+ "interaction.make_felt_hood.name": "Сшить башлык",
+ "interaction.make_riding_trousers.name": "Сшить шаровары",
+ "interaction.make_soft_boots.name": "Сшить ичиги",
+ "interaction.make_felt.name": "Свалять войлок",
+ "interaction.make_linothorax.name": "Склеить льняной панцирь",
+ "interaction.make_bronze_cuirass.name": "Выковать бронзовый панцирь",
+ "interaction.make_bronze_greaves.name": "Выковать поножи",
+ "interaction.make_crested_helm.name": "Выковать гребенчатый шлем",
+ "interaction.make_scale_armour.name": "Нашить чешуйчатый доспех",
+ "interaction.make_nasal_helm.name": "Выковать шлем с наносником",
+ "interaction.make_pointed_helm.name": "Выковать остроконечный шлем",
+ "interaction.make_hoplon.name": "Сделать гоплон",
+ "interaction.make_round_shield.name": "Сделать круглый щит",
+ "interaction.make_oval_shield.name": "Сделать овальный щит",
+ "interaction.make_wicker_shield.name": "Сплести щит",
+ "interaction.make_dory.name": "Сделать дори",
+ "interaction.make_xiphos.name": "Отлить ксифос",
+ "interaction.make_kopis.name": "Выковать копис",
+ "interaction.make_sling.name": "Сплести пращу",
+ "interaction.make_khopesh.name": "Отлить хопеш",
+ "interaction.make_seax.name": "Выковать скрамасакс",
+ "interaction.make_bearded_axe.name": "Выковать секиру",
+ "interaction.make_akinakes.name": "Выковать акинак",
+ "interaction.make_sagaris.name": "Сделать сагарис",
+ "interaction.make_composite_bow.name": "Склеить сложный лук",
+ "interaction.make_bronze_ingot.name": "Выплавить бронзу",
+ "interaction.make_iron_bar.name": "Выплавить крицу",
+ "interaction.make_olive_oil.name": "Выжать оливковое масло",
+ "interaction.make_flatbread.name": "Испечь лепёшки",
+ "interaction.make_barley_beer.name": "Сварить ячменное пиво",
+ "interaction.make_kumis.name": "Заквасить кумыс",
+ "interaction.make_kvass.name": "Поставить квас",
+ "interaction.make_sacrificial_cake.name": "Испечь жертвенную лепёшку",
+ "interaction.make_amphora.name": "Вылепить амфору",
+ "interaction.make_kylix.name": "Вылепить килик",
+ "interaction.make_drinking_horn.name": "Сделать питьевой рог",
+ "interaction.make_kyphi.name": "Смешать кифи",
+ "interaction.make_votive_figurine.name": "Вылепить обетную фигурку",
+ "interaction.make_scarab_amulet.name": "Вырезать скарабея",
+ "interaction.make_rune_charm.name": "Вырезать рунный оберег",
+ "interaction.make_obereg.name": "Сделать оберег",
+ "interaction.make_silver_torc.name": "Выковать гривну",
+ "interaction.make_arm_ring.name": "Выковать запястье",
+ "interaction.make_gold_plaque.name": "Вычеканить золотую бляшку",
+ "interaction.make_brooch.name": "Отлить фибулу",
+ "interaction.make_broad_collar.name": "Собрать ожерелье-воротник",
+ "interaction.make_lyre.name": "Сделать лиру",
+ "interaction.make_gusli.name": "Сделать гусли",
+ "interaction.make_kobyz.name": "Сделать кобыз",
+ "interaction.pick_olives.name": "Собрать оливки",
+ "interaction.pick_grapes.name": "Нарвать винограда",
+ "interaction.pick_figs.name": "Нарвать смокв",
+ "interaction.pick_dates.name": "Собрать финики",
+ "interaction.dig_natron_ore.name": "Наскрести натрона",
+ "interaction.gather_wormwood_herb.name": "Нарезать полыни",
+ "interaction.gather_silphium.name": "Собрать сильфий",
+ "interaction.make_wine.name": "Надавить вина",
+ "interaction.eat_olives.name": "Поесть оливок",
+ "interaction.eat_figs.name": "Поесть смокв",
+ "interaction.eat_dates.name": "Поесть фиников",
+ "interaction.eat_grapes.name": "Поесть винограда",
+ "interaction.eat_flatbread.name": "Съесть лепёшку",
+ "object.olive_grove.name": {
+  "nom": "оливковая роща",
+  "gen": "оливковой рощи",
+  "dat": "оливковой роще",
+  "acc": "оливковую рощу",
+  "ins": "оливковой рощей",
+  "pre": "оливковой роще",
+  "g": "f"
+ },
+ "object.grapevine.name": {
+  "nom": "виноградная лоза",
+  "gen": "виноградной лозы",
+  "dat": "виноградной лозе",
+  "acc": "виноградную лозу",
+  "ins": "виноградной лозой",
+  "pre": "виноградной лозе",
+  "g": "f"
+ },
+ "object.fig_tree.name": {
+  "nom": "смоковница",
+  "gen": "смоковницы",
+  "dat": "смоковнице",
+  "acc": "смоковницу",
+  "ins": "смоковницей",
+  "pre": "смоковнице",
+  "g": "f"
+ },
+ "object.date_palm.name": {
+  "nom": "финиковая пальма",
+  "gen": "финиковой пальмы",
+  "dat": "финиковой пальме",
+  "acc": "финиковую пальму",
+  "ins": "финиковой пальмой",
+  "pre": "финиковой пальме",
+  "g": "f"
+ },
+ "object.natron_flat.name": {
+  "nom": "натроновое озерцо",
+  "gen": "натронового озерца",
+  "dat": "натроновому озерцу",
+  "acc": "натроновое озерцо",
+  "ins": "натроновым озерцом",
+  "pre": "натроновом озерце",
+  "g": "n"
+ },
+ "object.wormwood_steppe.name": {
+  "nom": "полынник",
+  "gen": "полынника",
+  "dat": "полыннику",
+  "acc": "полынник",
+  "ins": "полынником",
+  "pre": "полыннике",
+  "g": "m"
+ },
+ "object.silphium_patch.name": {
+  "nom": "заросль сильфия",
+  "gen": "заросли сильфия",
+  "dat": "заросли сильфия",
+  "acc": "заросль сильфия",
+  "ins": "зарослью сильфия",
+  "pre": "заросли сильфия",
+  "g": "f"
+ },
+ "material.natron.name": {
+  "nom": "натрон",
+  "g": "m"
+ },
+ "material.natron.made": "{form} с натроном",
+ "material.frankincense.name": {
+  "nom": "ладан",
+  "g": "m"
+ },
+ "material.frankincense.made": "{form} с ладаном",
+ "material.myrrh.name": {
+  "nom": "смирна",
+  "g": "f"
+ },
+ "material.myrrh.made": "{form} со смирной",
+ "material.silphium.name": {
+  "nom": "сильфий",
+  "g": "m"
+ },
+ "material.silphium.made": "{form} из сильфия",
+ "material.mandrake.name": {
+  "nom": "мандрагора",
+  "g": "f"
+ },
+ "material.mandrake.made": "{form} из мандрагоры",
+ "material.mistletoe.name": {
+  "nom": "омела",
+  "g": "f"
+ },
+ "material.mistletoe.made": "{form} из омелы",
+ "material.henbane.name": {
+  "nom": "белена",
+  "g": "f"
+ },
+ "material.henbane.made": "{form} из белены",
+ "material.wormwood.name": {
+  "nom": "полынь",
+  "g": "f"
+ },
+ "material.wormwood.made": "полынн{form:g|ый|ая|ое|ые} {form}",
+ "knowledge.craft_mediterranean.name": "ремёсла Срединного моря",
+ "skill.craft_mediterranean.name": "ремёсла Срединного моря",
+ "knowledge.craft_nile.name": "ремёсла Нила",
+ "skill.craft_nile.name": "ремёсла Нила",
+ "knowledge.craft_forest.name": "ремёсла Средних лесов",
+ "skill.craft_forest.name": "ремёсла Средних лесов",
+ "knowledge.craft_north.name": "ремёсла Севера",
+ "skill.craft_north.name": "ремёсла Севера",
+ "knowledge.craft_steppe.name": "ремёсла Степи",
+ "skill.craft_steppe.name": "ремёсла Степи",
+ "armor.linen.name": "льняной панцирь",
+ "armor.bronze_plate.name": "бронзовый панцирь",
+ "armor.greaves.name": "поножи",
+ "armor.scale.name": "чешуя",
+ "shield.hoplon.name": "гоплон",
+ "shield.wicker.name": "плетёный щит"
+}

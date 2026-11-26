@@ -153,6 +153,69 @@
    "recolour": {},
    "glyph": "\"",
    "colour": "l"
+  },
+  "olive_grove": {
+   "sprite": "ob_tree",
+   "recolour": {
+    "G": "W",
+    "D": "x"
+   },
+   "glyph": "♣",
+   "colour": "W",
+   "pack": "regional"
+  },
+  "grapevine": {
+   "sprite": "ob_bush",
+   "recolour": {
+    "G": "v",
+    "l": "V"
+   },
+   "glyph": "\"",
+   "colour": "v",
+   "pack": "regional"
+  },
+  "fig_tree": {
+   "sprite": "ob_tree",
+   "recolour": {},
+   "glyph": "♣",
+   "colour": "G",
+   "pack": "regional"
+  },
+  "date_palm": {
+   "sprite": "ob_pine",
+   "recolour": {
+    "G": "o",
+    "D": "n"
+   },
+   "glyph": "♠",
+   "colour": "o",
+   "pack": "regional"
+  },
+  "natron_flat": {
+   "sprite": "tl_sand",
+   "recolour": {},
+   "glyph": "≈",
+   "colour": "w",
+   "pack": "regional"
+  },
+  "wormwood_steppe": {
+   "sprite": "ob_bush",
+   "recolour": {
+    "G": "W",
+    "l": "g"
+   },
+   "glyph": "\"",
+   "colour": "W",
+   "pack": "regional"
+  },
+  "silphium_patch": {
+   "sprite": "ob_bush",
+   "recolour": {
+    "G": "y"
+   },
+   "glyph": "\"",
+   "colour": "y",
+   "pack": "regional"
   }
  },
  "items": {
@@ -651,6 +714,741 @@
    },
    "glyph": "%",
    "colour": "o"
+  },
+  "chiton": {
+   "sprite": "it_tunic",
+   "recolour": {
+    "e": "w",
+    "E": "g"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "peplos": {
+   "sprite": "it_tunic",
+   "recolour": {
+    "e": "u",
+    "E": "B"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "himation": {
+   "sprite": "it_cloak",
+   "recolour": {
+    "r": "w",
+    "R": "g"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "chlamys": {
+   "sprite": "it_cloak",
+   "recolour": {},
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "sandals": {
+   "sprite": "it_boots",
+   "recolour": {
+    "e": "t",
+    "E": "T"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "petasos": {
+   "sprite": "it_cap",
+   "recolour": {
+    "e": "t",
+    "E": "T"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "shendyt": {
+   "sprite": "it_trousers",
+   "recolour": {
+    "e": "w",
+    "E": "g"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kalasiris": {
+   "sprite": "it_tunic",
+   "recolour": {
+    "e": "w",
+    "E": "w"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "broad_collar": {
+   "sprite": "it_charm",
+   "recolour": {
+    "r": "u",
+    "R": "H"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "sarafan": {
+   "sprite": "it_cloak",
+   "recolour": {
+    "r": "r",
+    "R": "R"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "bast_shoes": {
+   "sprite": "it_boots",
+   "recolour": {
+    "e": "t",
+    "E": "o"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "plaid_cloak": {
+   "sprite": "it_cloak",
+   "recolour": {
+    "r": "G",
+    "R": "b"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "flower_wreath": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "y",
+    "l": "r"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "fur_cloak": {
+   "sprite": "it_cloak",
+   "recolour": {
+    "r": "e",
+    "R": "E"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "fur_hat": {
+   "sprite": "it_cap",
+   "recolour": {
+    "e": "e",
+    "E": "E"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "apron_dress": {
+   "sprite": "it_tunic",
+   "recolour": {
+    "e": "b",
+    "E": "B"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "brooch": {
+   "sprite": "it_coin",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kaftan": {
+   "sprite": "it_cloak",
+   "recolour": {
+    "r": "o",
+    "R": "n"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "felt_hood": {
+   "sprite": "it_cap",
+   "recolour": {
+    "e": "r",
+    "E": "R"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "riding_trousers": {
+   "sprite": "it_trousers",
+   "recolour": {
+    "e": "o",
+    "E": "n"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "soft_boots": {
+   "sprite": "it_boots",
+   "recolour": {
+    "e": "r",
+    "E": "R"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "linothorax": {
+   "sprite": "it_mail",
+   "recolour": {
+    "m": "w",
+    "M": "g"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "bronze_cuirass": {
+   "sprite": "it_mail",
+   "recolour": {
+    "m": "y",
+    "M": "o"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "bronze_greaves": {
+   "sprite": "it_boots",
+   "recolour": {
+    "e": "y",
+    "E": "o"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "crested_helm": {
+   "sprite": "it_helmet",
+   "recolour": {
+    "m": "y",
+    "M": "o"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "scale_armour": {
+   "sprite": "it_scale",
+   "recolour": {},
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "nasal_helm": {
+   "sprite": "it_helmet",
+   "recolour": {},
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "pointed_helm": {
+   "sprite": "it_helmet",
+   "recolour": {
+    "m": "o",
+    "M": "n"
+   },
+   "glyph": "[",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "hoplon": {
+   "sprite": "ic_shield",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "round_shield": {
+   "sprite": "ic_shield",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "oval_shield": {
+   "sprite": "ic_shield",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "wicker_shield": {
+   "sprite": "ic_shield",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "dory": {
+   "sprite": "it_spear",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "xiphos": {
+   "sprite": "it_sword",
+   "recolour": {
+    "m": "y",
+    "M": "o"
+   },
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kopis": {
+   "sprite": "it_sword",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "sling": {
+   "sprite": "it_rope",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "khopesh": {
+   "sprite": "it_sickle",
+   "recolour": {
+    "m": "y",
+    "M": "o"
+   },
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "seax": {
+   "sprite": "it_knife",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "bearded_axe": {
+   "sprite": "it_axe",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "akinakes": {
+   "sprite": "it_knife",
+   "recolour": {
+    "m": "H"
+   },
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "sagaris": {
+   "sprite": "it_axe",
+   "recolour": {
+    "m": "o"
+   },
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "composite_bow": {
+   "sprite": "ic_bow",
+   "recolour": {},
+   "glyph": "†",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "bronze_ingot": {
+   "sprite": "it_ingot",
+   "recolour": {
+    "m": "y",
+    "M": "o"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "iron_bar": {
+   "sprite": "it_ingot",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "olives": {
+   "sprite": "it_berries",
+   "recolour": {
+    "v": "D",
+    "V": "K"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "olive_oil": {
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "l"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "grapes": {
+   "sprite": "it_berries",
+   "recolour": {
+    "v": "v",
+    "V": "V"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "figs": {
+   "sprite": "it_apple",
+   "recolour": {
+    "r": "v",
+    "R": "V"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "dates": {
+   "sprite": "it_berries",
+   "recolour": {
+    "v": "n",
+    "V": "N"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "flatbread": {
+   "sprite": "it_bread",
+   "recolour": {
+    "y": "t"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "barley_beer": {
+   "sprite": "it_ale",
+   "recolour": {},
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kumis": {
+   "sprite": "it_bottle",
+   "recolour": {
+    "D": "w",
+    "l": "w",
+    "K": "g"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kvass": {
+   "sprite": "it_ale",
+   "recolour": {
+    "y": "n"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "amphora": {
+   "sprite": "it_jug",
+   "recolour": {
+    "e": "z",
+    "E": "Z"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kylix": {
+   "sprite": "it_cup",
+   "recolour": {
+    "e": "z",
+    "E": "x"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "drinking_horn": {
+   "sprite": "it_horn",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "purple_dye": {
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "v"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "papyrus": {
+   "sprite": "it_scroll",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "felt": {
+   "sprite": "it_cloth",
+   "recolour": {
+    "w": "t",
+    "g": "T"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "sable_fur": {
+   "sprite": "it_pelt",
+   "recolour": {
+    "W": "N",
+    "g": "p",
+    "M": "P"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "amber": {
+   "sprite": "it_gem",
+   "recolour": {
+    "r": "o",
+    "R": "f"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "natron": {
+   "sprite": "it_flour",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "frankincense": {
+   "sprite": "it_gem",
+   "recolour": {
+    "r": "t",
+    "R": "T"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "myrrh": {
+   "sprite": "it_gem",
+   "recolour": {
+    "r": "z",
+    "R": "Z"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "silphium": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "y",
+    "D": "o"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "mandrake": {
+   "sprite": "it_root",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "mistletoe": {
+   "sprite": "it_herb",
+   "recolour": {
+    "l": "w"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "henbane": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "W",
+    "l": "v"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "wormwood": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "W",
+    "l": "g"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "lyre": {
+   "sprite": "it_horn",
+   "recolour": {
+    "e": "t"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "gusli": {
+   "sprite": "it_drum",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kobyz": {
+   "sprite": "it_flute",
+   "recolour": {
+    "w": "n"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "votive_figurine": {
+   "sprite": "it_idol",
+   "recolour": {},
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "kyphi": {
+   "sprite": "it_gem",
+   "recolour": {
+    "r": "N",
+    "R": "P"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "scarab_amulet": {
+   "sprite": "it_charm",
+   "recolour": {
+    "r": "u",
+    "R": "B"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "silver_torc": {
+   "sprite": "it_charm",
+   "recolour": {
+    "r": "m",
+    "R": "M"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "arm_ring": {
+   "sprite": "it_charm",
+   "recolour": {
+    "r": "m",
+    "R": "M"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "rune_charm": {
+   "sprite": "it_charm",
+   "recolour": {
+    "r": "W",
+    "R": "x"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "obereg": {
+   "sprite": "it_charm",
+   "recolour": {
+    "r": "r",
+    "R": "R"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "gold_plaque": {
+   "sprite": "it_coin",
+   "recolour": {
+    "y": "H"
+   },
+   "glyph": "•",
+   "colour": "t",
+   "pack": "regional"
+  },
+  "sacrificial_cake": {
+   "sprite": "it_bread",
+   "recolour": {
+    "y": "H"
+   },
+   "glyph": "%",
+   "colour": "t",
+   "pack": "regional"
   }
  }
 }

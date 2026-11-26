@@ -10,6 +10,7 @@
 
 #include "sim/character.hpp"
 #include "sim/content.hpp"
+#include "sim/regional.hpp"
 #include "sim/world.hpp"
 
 namespace lr::sim {
@@ -297,11 +298,18 @@ void giveBaseClothes(World& w, Character& c) {
     const GearRules* R = gearRules(w.content());
     if (!R || R->baseClothes.empty()) return;
     const std::string who = c.body.stage() == "child" ? "child" : (c.body.sex == 'f' ? "f" : "m");
-    const auto set = R->baseClothes.find(who);
-    if (set == R->baseClothes.end()) return;
-    for (const auto& [item, n] : set->second) {
+    giveRegionalKnowledge(w, c);   // LR-168: the crafts of one's belt come with one's first clothes
+    // LR-168: the clothes of one's culture or belt (regional/regions.json), else the plain ones
+    const std::map<std::string, int>* clothes = regionalClothes(w, c, who);
+    if (!clothes) {
+        const auto set = R->baseClothes.find(who);
+        if (set == R->baseClothes.end()) return;
+        clothes = &set->second;
+    }
+    for (const auto& [item, n] : *clothes) {
         const GearItem& g = R->item(item);
         if (g.slot.empty() || n <= 0) continue;
+        if (regionalSkipsSlot(w.content(), c, g.slot)) continue;   // no trousers on a centaur
         if (c.worn.count(g.slot + ":" + g.layer)) continue;   // already dressed there
         bool has = false;                                      // or carries something for that layer
         for (const auto& [k, m] : c.inventory)

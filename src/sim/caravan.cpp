@@ -1,6 +1,7 @@
 // LR-154: caravans, peddlers and supply trains - see caravan.hpp.
 
 #include "sim/caravan.hpp"
+#include "sim/regional.hpp"
 
 #include <algorithm>
 #include <array>
@@ -169,7 +170,8 @@ struct PolCtx : ExprCtx {
     const Settlement& p;
     const Rules& r;
     double deposit = 0.0;
-    PolCtx(const Settlement& p_, const Rules& r_) : p(p_), r(r_) {}
+    std::string belt;   // LR-168: the belt of the settlement's culture (regional.hpp)
+    PolCtx(const Content& c, const Settlement& p_, const Rules& r_) : p(p_), r(r_), belt(beltOfCulture(c, p_.culture)) {}
     double var(const std::string& n) const override {
         const double heads = std::max(1.0, p.pop);
         if (n == "pop") return p.pop;
@@ -181,6 +183,8 @@ struct PolCtx : ExprCtx {
         if (n == "food_days") return p.food / heads;
         if (n == "deposit") return deposit;
         if (n.rfind("cfg.", 0) == 0) return r.c(n.substr(4));
+        if (n.rfind("belt.", 0) == 0) return n.compare(5, std::string::npos, belt) == 0 && !belt.empty() ? 1.0 : 0.0;
+        if (n.rfind("culture.", 0) == 0) return n.compare(8, std::string::npos, p.culture) == 0 && !p.culture.empty() ? 1.0 : 0.0;
         if (n.rfind("people.", 0) == 0) {
             const std::string k = n.substr(7);
             double sum = 0.0, mine = 0.0;
@@ -244,7 +248,7 @@ double stockOf(const World& w, const CaravanState& s, const Rules& r, const Sett
 // What the settlement wants to hold: its need over target_days (food: its people's days).
 double targetOf(const World& w, const CaravanState& s, const Rules& r, const Settlement& p, const Good& g) {
     if (g.food) return std::max(1.0, p.pop) * r.c("target_days", 240) / nutritionOf(w.content(), g.id);
-    PolCtx pc(p, r);
+    PolCtx pc(w.content(), p, r);
     pc.deposit = hasDeposit(s, p, g.id) ? 1.0 : 0.0;
     return perDay(g.use, pc) * r.c("target_days", 240);
 }
@@ -282,7 +286,7 @@ void rollDeposits(Ctx& x, const Settlement& p) {
         if (g.deposit > 0.0 && x.w.rng(p.id, "caravan:deposit:" + id).chance(g.deposit)) d.push_back(id);
     // the market's first stock: a part of a year's making
     if (!p.full()) {
-        PolCtx pc(p, x.r);
+        PolCtx pc(x.w.content(), p, x.r);
         auto& m = x.s.markets[key(p.id)];
         for (const auto& [id, g] : x.r.goods) {
             if (g.food) continue;
@@ -297,7 +301,7 @@ void marketsDaily(Ctx& x) {
         if (p.ruined) continue;
         rollDeposits(x, p);
         if (p.full()) continue;
-        PolCtx pc(p, x.r);
+        PolCtx pc(x.w.content(), p, x.r);
         auto& m = x.s.markets[key(p.id)];
         for (const auto& [gid, g] : x.r.goods) {
             if (g.food) continue;
@@ -347,7 +351,7 @@ std::vector<Character*> tradersOf(Ctx& x, EntityId p) {
 
 // New traders where the settlement's numbers call for them (caravans.json traders).
 void recruit(Ctx& x, Settlement& p) {
-    PolCtx pc(p, x.r);
+    PolCtx pc(x.w.content(), p, x.r);
     const int want = std::min(static_cast<int>(x.r.c("max_traders", 6)), static_cast<int>(std::floor(x.r.traders.eval(pc, 0.0) + 0.5)));
     int have = static_cast<int>(tradersOf(x, p.id).size());
     if (have >= want) return;

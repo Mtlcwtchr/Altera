@@ -2,6 +2,7 @@
 #include <functional>
 #include "sim/gear.hpp"
 #include "sim/worldgen.hpp"
+#include "sim/regional.hpp"
 #include "sim/relief.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/village_life.hpp"
@@ -410,8 +411,13 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 }
             }
     };
+    // LR-168: a source of some belts only (olive groves, date palms) grows where the map's culture lives
+    const std::string mapBelt = beltOfCulture(content, mapCulture);
+    auto beltOk = [&](const ObjectDef& def) {
+        return def.belts.empty() || std::find(def.belts.begin(), def.belts.end(), mapBelt) != def.belts.end();
+    };
     for (const auto& [id, def] : content.objects)
-        if (!def.biomes.empty() && def.perKm2 > 0.0 && !def.placedLast) placeNatural(id, def);
+        if (!def.biomes.empty() && def.perKm2 > 0.0 && !def.placedLast && beltOk(def)) placeNatural(id, def);
 
     // --- families -----------------------------------------------------------
     const int families = cfg.value("families", 3);
@@ -941,7 +947,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
         EntityId before = 0;
         for (const auto& [oid, o] : w.objects()) before = std::max(before, oid);
         for (const auto& [id, def] : content.objects)
-            if (!def.biomes.empty() && def.perKm2 > 0.0 && def.placedLast) placeNatural(id, def);
+            if (!def.biomes.empty() && def.perKm2 > 0.0 && def.placedLast && beltOk(def)) placeNatural(id, def);
         for (EntityId a : everyone)
             if (Character* ca = w.character(a))
                 for (const auto& [oid, o] : w.objects())
