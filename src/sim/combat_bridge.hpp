@@ -31,6 +31,7 @@ struct CombatBridge {
     double skillScale = 100.0, defaultSkill = 0.2, healthMinAfter = 0.05;
     std::vector<std::string> weaponItems;                 // preference order
     std::map<std::string, std::string> weaponOfItem, armorOfItem;
+    std::map<std::string, std::string> shieldOfItem;      // LR-168: a carried shield item -> shields.json id
     // AL-109: armour counts only when it is worn. The crafting form of a made thing ->
     // its inventory item, and the items gear.json can wear (those must be on the body).
     std::map<std::string, std::string> itemOfForm;

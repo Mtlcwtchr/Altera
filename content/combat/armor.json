@@ -126,5 +126,9 @@
     },
     "stamina_pen": 1.6,
     "gap": 0.12
-  }
+  },
+  "linen": {"cover": ["torso"], "pen": {"slash": 0.45, "thrust": 0.3}, "trans": {"slash": 0.88, "thrust": 0.9, "blunt": 0.85}, "stamina_pen": 0.4},
+  "bronze_plate": {"cover": ["torso"], "pen": {"slash": 0.85, "thrust": 0.75}, "trans": {"slash": 0.82, "thrust": 0.82, "blunt": 0.8}, "stamina_pen": 1.0, "gap": 0.15},
+  "greaves": {"cover": ["leg_l", "leg_r"], "pen": {"slash": 0.8, "thrust": 0.7}, "trans": {"slash": 0.85, "thrust": 0.85, "blunt": 0.8}, "stamina_pen": 0.4, "gap": 0.2},
+  "scale": {"cover": ["torso", "arm_l", "arm_r"], "pen": {"slash": 0.65, "thrust": 0.45}, "trans": {"slash": 0.9, "thrust": 0.9, "blunt": 0.85}, "stamina_pen": 0.8, "gap": 0.1}
 }

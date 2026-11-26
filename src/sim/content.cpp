@@ -236,7 +236,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     auto& W = c.warnings;
 
     for (const auto& j : items.value("items", Json::array())) {
-        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days", "material", "value", "quality"}, "items", W);
+        warnUnknown(j, {"id", "tags", "nutrition", "stack", "warmth", "tool_wear", "spoil_days", "material", "value", "quality", "belts"}, "items", W);
         ItemDef d;
         d.id = j.at("id").get<std::string>();
         d.tags = strings(j, "tags");
@@ -253,7 +253,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     for (const auto& j : objects.value("objects", Json::array())) {
         warnUnknown(j, {"id", "stock", "max_stock", "regrow", "regrow_every", "biomes", "per_km2", "owned",
                         "settlement", "per_family", "per_person", "warmth", "shelter", "per_settlement", "season", "placed_last", "crop", "station",
-                        "own_seed", "stand_m"},
+                        "own_seed", "stand_m", "belts"},
                     "objects", W);
         ObjectDef d;
         d.id = j.at("id").get<std::string>();
@@ -274,6 +274,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         d.perSettlement = opt(j, "per_settlement", 0);
         d.ownSeed = opt(j, "own_seed", false);
         d.placedLast = opt(j, "placed_last", false);
+        d.belts = strings(j, "belts");
         d.seasons = strings(j, "season");
         if (j.contains("crop")) {
             const Json& k = j.at("crop");
@@ -970,6 +971,9 @@ Content Content::load(const std::string& dir) {
     // AL-117: the alchemy pack (potions, scrolls, alembic and crucible, reagents, alchemy and runecraft)
     ExpansionData alchemy =
         mergeExpansion(dir + "/alchemy", items, objects, needs, traits, htn, interactions, config, knowledge);
+    // LR-168: the regional pack (things of the belts: clothes, arms, goods, offerings, their crafts)
+    ExpansionData regional =
+        mergeExpansion(dir + "/regional", items, objects, needs, traits, htn, interactions, config, knowledge);
     ExpansionData expansion =
         mergeExpansion(dir + "/expansion", items, objects, needs, traits, htn, interactions, config, knowledge);
     for (const auto& e : cuisine.errors) expansion.errors.push_back("cuisine: " + e);
@@ -978,9 +982,11 @@ Content Content::load(const std::string& dir) {
     for (const auto& k : resources.kept) expansion.kept.push_back("resources:" + k);
     for (const auto& e : alchemy.errors) expansion.errors.push_back("alchemy: " + e);
     for (const auto& k : alchemy.kept) expansion.kept.push_back("alchemy:" + k);
+    for (const auto& e : regional.errors) expansion.errors.push_back("regional: " + e);
+    for (const auto& k : regional.kept) expansion.kept.push_back("regional:" + k);
     // A pack may annotate items it does not add (base and expansion ones): its category tags
     // join theirs, other fields (worth, quality, material) fill in where the item has none.
-    for (const char* pack : {"cuisine", "resources"}) {
+    for (const char* pack : {"cuisine", "resources", "regional"}) {
         const std::string path = dir + "/" + pack + "/items.json";
         if (!data::exists(path)) continue;
         const Json cu = readJson(path);

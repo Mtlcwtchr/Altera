@@ -37,6 +37,7 @@ const CombatBridge* combatBridge(const Content& c) {
         b->weaponItems = j.value("weapon_items", std::vector<std::string>{});
         b->weaponOfItem = j.value("weapon_of_item", std::map<std::string, std::string>{});
         b->armorOfItem = j.value("armor_of_item", std::map<std::string, std::string>{});
+        b->shieldOfItem = j.value("shield_of_item", std::map<std::string, std::string>{});
         for (const auto& f : c.craft.forms)
             if (!f.item.empty()) b->itemOfForm[f.id] = f.item;
         if (const GearRules* R = gearRules(c))
@@ -66,6 +67,10 @@ const CombatBridge* combatBridge(const Content& c) {
         }
         for (const auto& item : b->weaponItems)
             if (!b->weaponOfItem.count(item)) err.push_back("sim_bridge.weapon_items: '" + item + "' has no weapon_of_item");
+        for (const auto& [item, sh] : b->shieldOfItem) {
+            if (!d.shieldIx.count(sh)) err.push_back("sim_bridge.shield_of_item." + item + ": unknown shield '" + sh + "'");
+            if (!c.items.count(item)) err.push_back("sim_bridge.shield_of_item: unknown item '" + item + "'");
+        }
         for (const auto& [item, a] : b->armorOfItem) {
             if (!d.armorIx.count(a)) err.push_back("sim_bridge.armor_of_item." + item + ": unknown armor '" + a + "'");
             if (!c.items.count(item)) err.push_back("sim_bridge.armor_of_item: unknown item '" + item + "'");
@@ -133,6 +138,13 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
         if (inv == c.inventory.end() || inv->second <= 0) continue;
         if (b.wearable.count(item) && wornCount(c, item) == 0) continue;   // in the bag, not on the body
         s.armor.push_back(armor);
+    }
+    for (const auto& [item, shield] : b.shieldOfItem) {   // LR-168: a shield in hand
+        auto inv = c.inventory.find(item);
+        if (inv != c.inventory.end() && inv->second > 0) {
+            s.shield = shield;
+            break;
+        }
     }
     applyMadeGear(b, c, s);
     // LR-152: the fight starts from the stamina the body has now, under its own cap
