@@ -388,7 +388,8 @@ add_library(lr_sim STATIC
         src/sim/craft_sim.cpp
         src/sim/alchemy.cpp
         src/sim/building.cpp
-        src/sim/need_tiers.cpp)
+        src/sim/need_tiers.cpp
+        src/sim/caravan.cpp)
 target_include_directories(lr_sim PUBLIC src)
 target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat PRIVATE asr_warnings)
 
@@ -880,6 +881,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_speech_feed.cpp tests/test_lr_sim_news.cpp tests/test_lr_sim_memory_talk.cpp
             tests/test_lr_sim_village_life.cpp tests/test_lr_sim_memory_budget.cpp
             tests/test_lr_sim_realm.cpp
+            tests/test_lr_sim_caravan.cpp
             tests/test_lr_sim_magic.cpp
             tests/test_lr_sim_magic_society.cpp
             tests/test_lr_sim_ecology.cpp
