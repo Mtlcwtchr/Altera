@@ -2855,7 +2855,7 @@ struct Window::Impl : Ctx {
         const float w = 340 * U, rowH = 40 * U, pad = 8 * U;
         std::size_t n = menuActs.size();
         const bool withPerson = menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty();
-        const float extra = withPerson ? 38 * U : 0;   // talk / trade over the acts
+        const float extra = withPerson ? 38 * U : 0;   // talk / trade / inspect over the acts
         float h = 34 * U + extra + std::max<std::size_t>(n, 1) * (rowH + 2 * U) + pad;
         h = std::min(h, mapH() - 20 * U);
         float x = std::min(menuX + 14 * U, mapW() - w - 10 * U), y = std::max(10 * U, std::min(menuY - 20 * U, mapH() - h - 10 * U));
@@ -2865,7 +2865,8 @@ struct Window::Impl : Ctx {
         ui.claim(box);
         text(x + pad, y + 6 * U, ui.fit(menuTitle, w - 2 * pad, fs(16 * U)), kGold, 16 * U, true);
         if (withPerson) {
-            const float bw = (w - 2 * pad - 6 * U) / 2;
+            // LR-162: talk / trade / inspect (what this house knows of them)
+            const float bw = (w - 2 * pad - 12 * U) / 3;
             if (ui.button(ui::widgetId("menu.talk"), {x + pad, y + 32 * U, bw, 30 * U}, L("ui2d.talk.open"))) {
                 menuOpen = false;
                 screens->open("talk", Json(menuTarget));
@@ -2874,6 +2875,11 @@ struct Window::Impl : Ctx {
             if (ui.button(ui::widgetId("menu.trade"), {x + pad + bw + 6 * U, y + 32 * U, bw, 30 * U}, L("ui2d.talk.trade"))) {
                 menuOpen = false;
                 screens->open("trade", Json(menuTarget));
+                return;
+            }
+            if (ui.button(ui::widgetId("menu.inspect"), {x + pad + 2 * (bw + 6 * U), y + 32 * U, bw, 30 * U}, L("ui2d.insp.open"))) {
+                menuOpen = false;
+                screens->open("inspect", Json(menuTarget));
                 return;
             }
         }
