@@ -165,7 +165,8 @@ Fighter Engine::make(const FighterSpec& s, std::int64_t id, int team) const {
         if (i < s.armorGap.size()) f.armorGap[i] = s.armorGap[i];
     }
     f.hp = d_.zoneHp;
-    f.stam = d_.staminaMax;
+    f.stamCap = s.staminaCap > 0 ? s.staminaCap : d_.staminaMax;
+    f.stam = s.stamina >= 0 ? std::min(s.stamina, f.stamCap) : f.stamCap;
     f.blood = d_.bloodMax;
     f.morale = d_.morale.start;
     return f;
@@ -236,7 +237,7 @@ void Engine::wearArmor(Fighter& f, int zone) {
 }
 
 void Engine::regen(Fighter& f) {
-    f.stam = clampd(f.stam + d_.staminaRegen - armorPen(f) * d_.core.regenArmorStamina, 0.0, d_.staminaMax);
+    f.stam = clampd(f.stam + d_.staminaRegen - armorPen(f) * d_.core.regenArmorStamina, 0.0, f.stamCap);
     f.ap += d_.weapons[f.weapon].speed;
 }
 
@@ -649,7 +650,7 @@ void Engine::rangedDuel(Fighter& a, Fighter& d, int rangedWeapon, double distM) 
             }
         }
         cur -= speed;
-        a.stam = clampd(a.stam + d_.staminaRegen, 0.0, d_.staminaMax);
+        a.stam = clampd(a.stam + d_.staminaRegen, 0.0, a.stamCap);
         if (ev_) ev_->flush();
     }
     if (d.fighting() && a.fighting()) fight(a, d);

@@ -75,6 +75,7 @@ using socket_t = int;
 #include "sim/loc.hpp"
 #include "sim/social_chain.hpp"
 #include "sim/speech_feed.hpp"
+#include "sim/combat_show.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace lr::sim;
@@ -94,6 +95,8 @@ struct App {
     double tps = 2.0;   // sim ticks per real second (1 tick = 10 game minutes)
     double lastStepMs = 0.0;
     std::map<int, std::string> lastResult;   // LR-160: per player
+    // LR-152: the combat state: while the led person's fight plays in the window the world waits
+    std::chrono::steady_clock::time_point holdUntil{};
     c2::ActCatalog acts;        // AL-96: the act menu's catalog
     std::map<int, SpeechFeed> speech;   // AL-96: what people said (lines) and mutter (barks); LR-160: a feed per player
     c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
@@ -280,7 +283,7 @@ std::string mimeOf(const std::string& p) {
     return "application/octet-stream";
 }
 
-Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
+Json stateJson(App& a, EntityId sel, const Vec2* near, double r, std::uint64_t fsSince = 0) {
     Json j = c2::clockJson(*a.world);
     j["paused"] = a.paused;
     j["tps"] = a.tps;
@@ -311,6 +314,9 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     // LR-160: who plays, who you are, what the others did to the shared things
     j["net"] = {{"you", a.text.player}, {"players", a.lobby.toJson(*a.world, a.text, nowSec(a))}, {"events", Json(a.events)},
                 {"menu_pause", a.menuPaused}};
+    // LR-152: fights played in full since the client's last one (their rounds, for the combat state)
+    j["fights"] = lr::sim::fightsSince(*a.world, fsSince, near ? near->x : 0, near ? near->y : 0, near ? r : 0);
+    j["holding"] = std::chrono::steady_clock::now() < a.holdUntil;
     return j;
 }
 
@@ -334,6 +340,12 @@ std::string handleCmd(App& a, const Json& body) {
     } else if (op == "speed") {
         a.tps = std::clamp(body.value("tps", 2.0), 0.25, 600.0);
         shared(a, "speed");
+    } else if (op == "hold") {
+        // LR-152: the window plays the led person's fight; the world waits that long (alone in it only:
+        // with others in, their game goes on, as with the menu's pause)
+        const double ms = std::clamp(body.value("ms", 0.0), 0.0, 120000.0);
+        if (a.lobby.onlineCount(nowSec(a)) <= 1)
+            a.holdUntil = std::chrono::steady_clock::now() + std::chrono::milliseconds(long(ms));
     } else if (op == "step") {
         const int n = std::clamp(body.value("ticks", 1), 1, int(kTicksPerDay * 30));
         for (int i = 0; i < n; ++i) w.step();
@@ -646,7 +658,10 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             // beasts only round the view (vx, vy, vr metres); people always
             Vec2 near{double(intParam(path, "vx", 0)), double(intParam(path, "vy", 0))};
             const int vr = intParam(path, "vr", 0);
-            respond(s, 200, "application/json", stateJson(a, id, vr > 0 ? &near : nullptr, vr).dump());
+            const int fs = intParam(path, "fs", -1);   // LR-152: fights after this id (-1: none, only the newest id)
+            Json st = stateJson(a, id, vr > 0 ? &near : nullptr, vr, fs < 0 ? ~std::uint64_t{0} : std::uint64_t(fs));
+            st["fight_last"] = a.world->client.nextFight - 1;
+            respond(s, 200, "application/json", st.dump());
         } else if (path.rfind("/api/cmd", 0) == 0 && method == "POST") {
             std::string r;
             try {
@@ -1156,7 +1171,10 @@ int main(int argc, char** argv) {
             lastTick = now;
             if (app.autosaveMin > 0 && now - app.lastAutosave > std::chrono::minutes(app.autosaveMin)) autosave(app);
             holdForTalk(app);   // LR-157
-            if (app.paused) {
+            // LR-152: the client's clock for the led body's stamina, the fights it watches
+            app.world->client.recordFights = true;
+            app.world->client.realSecPerTick = app.tps > 0 ? 1.0 / app.tps : 0.0;
+            if (app.paused || now < app.holdUntil) {
                 owed = 0.0;
                 return;
             }

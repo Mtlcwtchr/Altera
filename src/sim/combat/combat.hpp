@@ -76,6 +76,9 @@ struct FighterSpec {
     double damageMult = 1.0, durabilityMult = 1.0;
     std::vector<double> armorEff;   // per armour layer: effectiveness multiplier (empty = 1)
     std::vector<double> armorGap;   // per armour layer: extra gap (badly riveted plates)
+    // LR-152: the body's stamina going in and its cap (fatigue, sleep, hunger, wounds lower it);
+    // < 0 = the data's stamina.max (a rested fighter of the reference).
+    double stamina = -1.0, staminaCap = -1.0;
 };
 
 struct Fighter {
@@ -86,6 +89,7 @@ struct Fighter {
     std::vector<int> armor;
     std::vector<double> armorCond; // per layer, 1..0
     std::vector<double> hp;        // per zone
+    double stamCap = 100.0; // LR-152: regen stops here (the body's cap, <= data stamina.max as a rule)
     double stam = 100.0, blood = 100.0, pain = 0.0, morale = 100.0, bleed = 0.0, ap = 0.0;
     int down = 0;
     double weaponCond = 1.0;

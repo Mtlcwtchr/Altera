@@ -13,6 +13,7 @@
 #include "sim/building.hpp"
 #include "sim/captivity.hpp"
 #include "sim/combat_bridge.hpp"
+#include "sim/combat_show.hpp"
 #include "sim/consequences.hpp"
 #include "sim/dialogue_memory.hpp"
 #include "sim/gear.hpp"
@@ -800,6 +801,10 @@ void applyCombatResult(World& w, Character& c, Character& t, const InteractionDe
     };
     hurt(c, cr.actorHealth, cr.actorDead, cr.actorHits, cr.actorBlood);
     hurt(t, cr.targetHealth, cr.targetDead, cr.targetHits, cr.targetBlood);
+    // LR-152: the fight leaves the stamina it left; a client watching gets the rounds
+    if (cr.actorStamina >= 0 && c.body.staminaMax > 0) c.body.stamina = std::min(cr.actorStamina, c.body.staminaMax);
+    if (cr.targetStamina >= 0 && t.body.staminaMax > 0) t.body.stamina = std::min(cr.targetStamina, t.body.staminaMax);
+    recordFight(w, c, t, d.id, cr);
     // AL-117: runes that fire on a hit strike the other side (through the magic core)
     fireHitRunes(w, c, t);
     fireHitRunes(w, t, c);

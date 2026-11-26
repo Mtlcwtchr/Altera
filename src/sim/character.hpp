@@ -26,6 +26,14 @@ struct Body {
     // AL-114: the kind's life (sim/species.hpp setRace): when it grows up and old.
     int adultYears = 14, elderYears = 60;
     bool petrified = false; // a troll asleep as stone in the sun (species.cpp)
+    // LR-152 (sim/stamina.hpp): the strength for actions right now, spent by every act,
+    // by running and by blows, and back within seconds; the cap falls with fatigue,
+    // lack of sleep, hunger, thirst, wounds. Combat units (combat_config stamina.max).
+    // Not saved: a loaded body starts rested (stamina < 0 = full at the next tick).
+    double stamina = -1.0, staminaMax = 0.0;
+    bool winded = false; // spent to the bottom: no run until back above stamina.json move.run_min_share
+    Tick stalledAt = -1; // the tick a spent body's act stood still while it caught its breath
+    Tick steeredAt = -1; // the last tick the player walked this body by hand (its stamina runs in real seconds then)
     std::string stage() const {
         const int years = ageDays / kDaysPerYear;
         return years < adultYears ? "child" : (years >= elderYears ? "elder" : "adult");

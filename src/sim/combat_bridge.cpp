@@ -112,6 +112,10 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
         auto it = c.skills.find(b.animalSkillKey);
         s.skill = b.skillScale * (it == c.skills.end() ? b.animalDefaultSkill : it->second);
         s.weapon = b.animalWeapon;
+        if (c.body.staminaMax > 0) {   // LR-152
+            s.staminaCap = c.body.staminaMax;
+            s.stamina = c.body.stamina < 0 ? c.body.staminaMax : c.body.stamina;
+        }
         return s;
     }
     auto it = c.skills.find(skillKey);
@@ -131,6 +135,11 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
         s.armor.push_back(armor);
     }
     applyMadeGear(b, c, s);
+    // LR-152: the fight starts from the stamina the body has now, under its own cap
+    if (c.body.staminaMax > 0) {
+        s.staminaCap = c.body.staminaMax;
+        s.stamina = c.body.stamina < 0 ? c.body.staminaMax : c.body.stamina;
+    }
     return s;
 }
 
@@ -232,14 +241,22 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     if (!b) return r;
     const combat::CombatData& cd = *b->data;
     const std::uint64_t pair = (static_cast<std::uint64_t>(actor.id) << 32) ^ static_cast<std::uint64_t>(target.id);
-    combat::Engine e(cd, combat::combatSeed(w.seed(), pair, static_cast<std::uint64_t>(w.now())), events);
+    const bool full = mode == "full" || (mode != "stat" && (events || combatNeedsFullMode(w, *b, actor, target)));
+    // LR-152: a game client watches the fights played in full: their round events go
+    // with the result (combat_show.cpp), the fight itself is the same.
+    combat::EventStream shown;
+    if (full && !events && w.client.recordFights)
+        shown.subscribe([&r, &cd](const std::vector<combat::Event>& batch) {
+            for (const auto& ev : batch) r.eventLines.push_back(combat::eventLine(cd, ev));
+        });
+    combat::EventStream* stream = events ? events : (shown.active() ? &shown : nullptr);
+    combat::Engine e(cd, combat::combatSeed(w.seed(), pair, static_cast<std::uint64_t>(w.now())), stream);
     combat::Fighter a = e.make(fighterOf(*b, actor, d.combat.attackSkill), static_cast<std::int64_t>(actor.id), 0);
     combat::Fighter t = e.make(fighterOf(*b, target, d.combat.defenseSkill), static_cast<std::int64_t>(target.id), 1);
     carryWounds(cd, b->recovery, actor, a);
     carryWounds(cd, b->recovery, target, t);
     const std::vector<double> hpA = a.hp, hpT = t.hp;
     r.ran = true;
-    const bool full = mode == "full" || (mode != "stat" && (events || combatNeedsFullMode(w, *b, actor, target)));
     if (full || !b->lod) {
         r.rounds = e.fight(a, t);
     } else {
@@ -265,6 +282,8 @@ CombatResolution resolveCombat(const World& w, const Character& actor, const Int
     r.targetHits = woundHits(t);
     r.actorBlood = a.blood;
     r.targetBlood = t.blood;
+    r.actorStamina = a.stam;
+    r.targetStamina = t.stam;
     for (int s : a.wounds) r.actorWounds.push_back(cd.severity[s].id);
     for (int s : t.wounds) r.targetWounds.push_back(cd.severity[s].id);
     r.actorWeapon = cd.weapons[a.weapon].id;
