@@ -561,18 +561,32 @@ EntityId pickLeader(const World& w, const RiteDef& d, const std::string& faith, 
     return best ? best->id : kNone;
 }
 
+bool offeringMatches(const Content& c, const std::string& want, const std::string& item) {
+    if (want.rfind("tag:", 0) != 0) return want == item;
+    auto it = c.items.find(item);
+    if (it == c.items.end()) return false;
+    const std::string t = want.substr(4);
+    for (const auto& x : it->second.tags)
+        if (x == t) return true;
+    return false;
+}
+
 bool takeOffering(World& w, const RiteDef& d, EntityId leader, Json& rec) {
     if (d.offerAny.empty()) return true;
     int need = std::max(1, d.offerN);
     Character* L = w.character(leader);
     Json given = Json::object();
     auto take = [&](std::map<std::string, int>& stock) {
-        for (const auto& item : d.offerAny) {
-            auto it = stock.find(item);
-            while (need > 0 && it != stock.end() && it->second > 0) {
-                --it->second;
-                --need;
-                given[item] = given.value(item, 0) + 1;
+        for (const auto& want : d.offerAny) {
+            // an item id, or "tag:<t>" (LR-168 tags offerings: offering, offering_libation...)
+            for (auto& [item, n] : stock) {
+                if (need <= 0) break;
+                if (!offeringMatches(w.content(), want, item)) continue;
+                while (need > 0 && n > 0) {
+                    --n;
+                    --need;
+                    given[item] = given.value(item, 0) + 1;
+                }
             }
         }
     };
@@ -1341,7 +1355,11 @@ void validateRites(const Content& c, ValidationReport& rep) {
             if (!afterWho.count(af.who)) rep.errors.push_back(where + ".aftermath: unknown who " + af.who);
         }
         bool anyOffer = d.offerAny.empty();
-        for (const auto& o : d.offerAny) anyOffer |= c.items.count(o) > 0;
+        for (const auto& o : d.offerAny) {
+            if (o.rfind("tag:", 0) == 0) {
+                for (const auto& [id, it] : c.items) anyOffer |= offeringMatches(c, o, id);
+            } else anyOffer |= c.items.count(o) > 0;
+        }
         if (!anyOffer) rep.errors.push_back(where + ": no offering is a known item");
         // §1.1: intimacy in a rite only between adults and only by consent
         if (d.intimacy.on) {

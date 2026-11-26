@@ -169,7 +169,8 @@ TEST(lr_sim_pantheon_deferred_is_fulfilled_or_owed) {
     const std::string aim = pantheonRules(w.content()).power(pantheonRules(w.content()).lik(god)->power)->aims.front();
     int fulfilled = 0;
     setPrayerFulfill([&](World&, const PrayerAsk& p, double s) {
-        CHECK(p.who == c->id && s > 0.0);
+        if (p.who != c->id) return; // the NPCs pray too now (LR-171 rites): count only ours
+        CHECK(s > 0.0);
         ++fulfilled;
     });
     // ask until the god defers (budget spent today pushes it there)
