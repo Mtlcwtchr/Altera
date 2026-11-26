@@ -1,0 +1,104 @@
+{
+ "id": "satyr_vine",
+ "species": "satyr",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Silenos",
+   "Marsyas",
+   "Komos",
+   "Krotos",
+   "Oinopion",
+   "Ampelos",
+   "Lenaios",
+   "Phales"
+  ],
+  "f": [
+   "Mainas",
+   "Methe",
+   "Bakche",
+   "Thyia",
+   "Oinone",
+   "Ampelis"
+  ]
+ },
+ "speech": "lilting",
+ "build_style": "grove",
+ "teach_aspects": [
+  "life",
+  "air"
+ ],
+ "forbid_aspects": [
+  "death"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "allowed",
+  "drunkenness": "allowed"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "free_union",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "allowed",
+  "divorce": "allowed"
+ },
+ "peoples": {
+  "default": {
+   "satyr": 0.55,
+   "nymph": 0.35,
+   "hellene": 0.1
+  }
+ },
+ "welcome": {
+  "satyr": 1.0,
+  "nymph": 1.0,
+  "vila": 0.9,
+  "hellene": 0.75,
+  "human": 0.7,
+  "centaur": 0.85,
+  "cyclops": 0.2
+ },
+ "welcome_other": 0.55,
+ "faith": "wine_mysteries",
+ "values": {
+  "freedom": 0.7,
+  "hospitality": 0.5,
+  "nature": 0.5,
+  "order": -0.5,
+  "tradition": -0.2,
+  "wealth": -0.2
+ },
+ "traditions": [
+  "wine_feast",
+  "festive_gatherings",
+  "storytelling",
+  "hospitality"
+ ],
+ "rites": {
+  "coming_of_age": "first_vintage",
+  "marriage": "none",
+  "burial": "inter"
+ },
+ "food": {
+  "likes": [
+   "wine",
+   "grapes",
+   "figs",
+   "cheese",
+   "honey"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Nysa",
+  "Maroneia",
+  "Ismaros",
+  "Lenaion",
+  "Oinoe"
+ ],
+ "_doc": "LR-166: сатиры виноградников с нимфами: музыка, вино, праздник сбора лозы. Вакханалии только у взрослых и по доброй воле, показ облачком «вуху» (§1.1).",
+ "desc": "culture.satyr_vine.desc"
+}

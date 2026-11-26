@@ -1,0 +1,134 @@
+{
+ "id": "centaur",
+ "tags": [
+  "folk",
+  "beastfolk",
+  "fourlegged"
+ ],
+ "sapience": 1.0,
+ "glyph": "C",
+ "region": [
+  "mediterranean"
+ ],
+ "culture_default": "pastoral_hills",
+ "body": {
+  "height_m": 2.1,
+  "mass_kg": 420,
+  "sprite_px": 26,
+  "night_vision": 0.1,
+  "speed_mult": 1.35,
+  "reach_mult": 1.2,
+  "skin": "#c89870",
+  "pawn": {
+   "build": "broad",
+   "figure": "centaur",
+   "hair_m": "long long ponytail curly",
+   "hair_f": "long long braids curly",
+   "beards": "full full long"
+  }
+ },
+ "life": {
+  "adult_years": 18,
+  "elder_years": 90,
+  "lifespan_years": 110,
+  "fertility": 0.5,
+  "pregnancy_mult": 1.2,
+  "interbreed": {}
+ },
+ "needs": {
+  "hunger": 1.6,
+  "thirst": 1.4,
+  "energy": 0.9
+ },
+ "stats": {
+  "strength": 0.15,
+  "endurance": 0.12,
+  "agility": 0.04,
+  "dexterity": -0.03,
+  "composure": -0.05,
+  "wisdom": 0.03
+ },
+ "diet": [
+  "any"
+ ],
+ "aptitudes": {
+  "archery": {
+   "learn": 1.4,
+   "cap": 1.15
+  },
+  "hunting": {
+   "learn": 1.3,
+   "cap": 1.1
+  },
+  "athletics": {
+   "learn": 1.3,
+   "cap": 1.1
+  },
+  "herbalism": {
+   "learn": 1.2,
+   "cap": 1.1
+  },
+  "medicine": {
+   "learn": 1.25,
+   "cap": 1.1
+  },
+  "history_lore": {
+   "learn": 1.1,
+   "cap": 1.05
+  },
+  "carpentry": {
+   "learn": 0.7,
+   "cap": 0.8
+  },
+  "smithing": {
+   "learn": 0.6,
+   "cap": 0.75
+  },
+  "masonry": {
+   "learn": 0.6,
+   "cap": 0.75
+  },
+  "stealth": {
+   "learn": 0.6,
+   "cap": 0.7
+  },
+  "swim": {
+   "learn": 0.8,
+   "cap": 0.9
+  }
+ },
+ "affinity": {
+  "air": 1.2,
+  "life": 1.2,
+  "earth": 1.1
+ },
+ "traits_pool": {
+  "hot_tempered": 1.5,
+  "proud": 1.4,
+  "hard_drinker": 1.6,
+  "curious": 1.1
+ },
+ "resist": {},
+ "weak": {
+  "falling": 1.4
+ },
+ "mobility": {
+  "_doc": "§5.3: четыре ноги: не лезет на корабль и по лестницам, не садится верхом",
+  "ship": false,
+  "ladder": false,
+  "ride": false,
+  "steep_stairs": false
+ },
+ "relations_bias": {
+  "human": 0.0,
+  "satyr": 0.1,
+  "nymph": 0.1,
+  "minotaur": -0.15,
+  "cyclops": -0.2,
+  "steppe_centaur": 0.05
+ },
+ "gifted_chance": 0.06,
+ "settlement_tag": "centaur",
+ "_doc": "LR-166: горные кентавры Срединного моря: наставники и лекари (как Хирон), лучники; во хмелю буйны. Четыре ноги: mobility. Мужские и женские (кентавриды).",
+ "desc": "species.centaur.desc"
+}

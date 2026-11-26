@@ -1,0 +1,70 @@
+{
+ "id": "alv",
+ "base": "elf",
+ "glyph": "a",
+ "region": [
+  "north"
+ ],
+ "culture_default": "alv_hall",
+ "body": {
+  "skin": "#f4ece8",
+  "height_m": 1.84,
+  "pawn": {
+   "ears": "pointed",
+   "head": "long",
+   "build": "slim",
+   "beard": "never",
+   "eyes": "#9ad0f0",
+   "hair_m": "long long ponytail",
+   "hair_f": "long long braids"
+  }
+ },
+ "stats": {
+  "attunement": 0.15,
+  "perception": 0.08,
+  "wisdom": 0.05,
+  "agility": 0.06,
+  "vitality": -0.04,
+  "strength": -0.04
+ },
+ "aptitudes": {
+  "runecraft": {
+   "learn": 1.45,
+   "cap": 1.2
+  },
+  "music": {
+   "learn": 1.3,
+   "cap": 1.1
+  },
+  "smithing": {
+   "learn": 1.1,
+   "cap": 1.05
+  },
+  "archery": {
+   "learn": 1.25,
+   "cap": 1.1
+  }
+ },
+ "affinity": {
+  "light": 1.7,
+  "air": 1.3,
+  "life": 1.0,
+  "fire": 0.8
+ },
+ "resist": {
+  "cold": 0.5
+ },
+ "weak": {
+  "heat": 1.2,
+  "iron": 1.2
+ },
+ "relations_bias": {
+  "dwarf": -0.1,
+  "troll": -0.5,
+  "northman": 0.05,
+  "elf": 0.1
+ },
+ "settlement_tag": "alv",
+ "_doc": "LR-166: альвы Севера (светлые эльфы Эдды): свет, холод и северные сияния, мастера рун. Отдельный народ на базе эльфа.",
+ "desc": "species.alv.desc"
+}

@@ -7,7 +7,7 @@
  "glyph": "e",
  "settlement_tag": "",
  "_doc": "Полуэльф = blend(human, elf): числа усреднены, списки и словари слиты (среднее). Свои поля перекрывают смесь.",
- "culture_default": "fantasy_european",
+ "culture_default": "forest_elf",
  "life": {
   "interbreed": {
    "human": "half_elf",
@@ -24,5 +24,8 @@
    "hair_f": "long braids bun ponytail curly",
    "beards": "stubble moustache goatee"
   }
- }
+ },
+ "region": [
+  "forest"
+ ]
 }

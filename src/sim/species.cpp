@@ -6,6 +6,7 @@
 #include <cmath>
 #include <filesystem>
 #include <fstream>
+#include <functional>
 
 #include "sim/content.hpp"
 #include "sim/magic.hpp"
@@ -98,8 +99,26 @@ RaceDef blendOf(const RaceDef& a, const RaceDef& b) {
     return r;
 }
 
+// LR-166: `over` laid on `base`: objects merge key by key, anything else replaces.
+Json mergeOver(const Json& base, const Json& over) {
+    if (!base.is_object() || !over.is_object()) return over;
+    Json out = base;
+    for (auto it = over.begin(); it != over.end(); ++it)
+        out[it.key()] = out.contains(it.key()) ? mergeOver(out[it.key()], it.value()) : it.value();
+    return out;
+}
+
 void readRace(const Json& j, RaceDef& r) {
     if (j.contains("tags")) r.tags = strs(j, "tags");
+    r.base = j.value("base", r.base);
+    r.kin = j.value("kin", r.kin);
+    if (j.contains("region")) {
+        if (j["region"].is_string()) r.region = {j["region"].get<std::string>()};
+        else r.region = strs(j, "region");
+    }
+    r.settles = j.value("settles", r.settles);
+    if (j.contains("anchor") && j["anchor"].is_object()) r.anchor = j["anchor"];
+    if (j.contains("mobility") && j["mobility"].is_object()) r.mobility = j["mobility"];
     r.sapience = num(j, "sapience", r.sapience);
     if (j.contains("glyph")) r.glyph = j.value("glyph", r.glyph);
     const Json b = j.value("body", Json::object());
@@ -122,6 +141,8 @@ void readRace(const Json& j, RaceDef& r) {
     r.pregnancyMult = num(l, "pregnancy_mult", r.pregnancyMult);
     if (l.contains("interbreed") && l["interbreed"].is_object())
         r.interbreed = l["interbreed"].get<std::map<std::string, std::string>>();
+    r.sexes = l.value("sexes", r.sexes);
+    r.otherSex = l.value("other_sex", r.otherSex);
     if (j.contains("needs")) r.needMult = dmap(j, "needs");
     if (j.contains("stats")) r.statMods = dmap(j, "stats"); // LR-141
     if (j.contains("diet")) r.diet = strs(j, "diet");
@@ -163,11 +184,30 @@ const RaceDef& builtinHuman() {
 
 } // namespace
 
-SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Json>& cultures, const Json& settle) {
+SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Json>& cultures, const Json& settle,
+                            const Json& migrate, const Json& belts) {
     SpeciesCatalog c;
     c.loaded = !races.empty();
     // plain kinds first, blends after (a blend reads its parents' numbers, then its own fields)
     std::vector<const Json*> blends;
+    // LR-166: a kind on a base reads the base's file with its own over it (chains allowed)
+    std::map<std::string, const Json*> byId;
+    for (const Json& j : races)
+        if (!j.value("id", std::string()).empty() && !j.contains("blend")) byId[j.value("id", std::string())] = &j;
+    std::function<Json(const std::string&, int)> resolved = [&](const std::string& id, int depth) -> Json {
+        const Json& j = *byId.at(id);
+        const std::string b = j.value("base", std::string());
+        if (b.empty()) return j;
+        if (depth > 8 || !byId.count(b) || b == id) {
+            c.errors.push_back("species " + id + ": base '" + b + "' unknown or circular");
+            return j;
+        }
+        Json parent = resolved(b, depth + 1);
+        for (const char* k : {"_doc", "settles", "kin"}) parent.erase(k); // not inherited
+        Json out = mergeOver(parent, j);
+        out["base"] = b;
+        return out;
+    };
     for (const Json& j : races) {
         const std::string id = j.value("id", std::string());
         if (id.empty()) {
@@ -180,9 +220,17 @@ SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Js
         }
         RaceDef r;
         r.id = id;
-        readRace(j, r);
+        readRace(j.contains("base") ? resolved(id, 0) : j, r);
         if (!c.races.emplace(id, r).second) c.errors.push_back("species: duplicate id " + id);
     }
+    // the kin: written, else the base's (to the root), else the kind itself
+    std::function<std::string(const std::string&, int)> kinFor = [&](const std::string& id, int depth) -> std::string {
+        const RaceDef& r = c.races.at(id);
+        if (!r.kin.empty()) return r.kin;
+        if (!r.base.empty() && c.races.count(r.base) && depth < 8) return kinFor(r.base, depth + 1);
+        return id;
+    };
+    for (auto& [id, r] : c.races) r.kin = kinFor(id, 0);
     for (const Json* jp : blends) {
         const Json& j = *jp;
         const std::string id = j.value("id", std::string());
@@ -195,6 +243,7 @@ SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Js
         r.id = id;
         r.blend = parents;
         readRace(j, r);
+        if (r.kin.empty()) r.kin = id;
         if (!c.races.emplace(id, r).second) c.errors.push_back("species: duplicate id " + id);
     }
     for (const Json& j : cultures) {
@@ -221,10 +270,46 @@ SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Js
         }
         d.welcome = dmap(j, "welcome");
         d.welcomeOther = num(j, "welcome_other", d.welcomeOther);
+        d.belt = j.value("belt", std::string());
+        d.placeNames = strs(j, "place_names");
         d.data = j;
         if (!d.id.empty()) c.cultures[d.id] = d;
     }
     c.defaultRace = settle.value("default_race", c.defaultRace);
+    // LR-166: old ids to new
+    auto smap = [](const Json& j, const char* k) {
+        std::map<std::string, std::string> out;
+        if (j.is_object() && j.contains(k) && j[k].is_object())
+            for (auto it = j[k].begin(); it != j[k].end(); ++it)
+                if (it.value().is_string()) out[it.key()] = it.value().get<std::string>();
+        return out;
+    };
+    c.kinChildMother = settle.value("kin_child", std::string("father")) == "mother";
+    c.migrateRace = smap(migrate, "races");
+    c.migrateCulture = smap(migrate, "cultures");
+    c.migrateFaith = smap(migrate, "faiths");
+    c.raceByCulture = smap(migrate, "default_race_by_culture");
+    // LR-166: the belts of the continent
+    if (belts.is_object()) {
+        c.beltKm = num(belts, "belt_km", c.beltKm);
+        c.homeBelt = belts.value("home", std::string());
+        const Json bl = belts.value("belts", Json::object());
+        for (auto it = bl.begin(); it != bl.end(); ++it) {
+            if (!it.value().is_object()) continue;
+            const Json& b = it.value();
+            SpeciesCatalog::Belt d;
+            d.id = it.key();
+            if (b.contains("at") && b["at"].is_array() && b["at"].size() >= 2)
+                d.at = {b["at"][0].get<double>(), b["at"][1].get<double>()};
+            d.radiusKm = num(b, "radius_km", d.radiusKm);
+            d.mapCulture = b.value("map_culture", std::string());
+            d.cultures = strs(b, "cultures");
+            d.layout = b.value("layout", Json::array());
+            d.data = b;
+            c.belts[d.id] = d;
+        }
+        if (!c.belts.empty() && !c.belts.count(c.homeBelt)) c.homeBelt = c.belts.begin()->first;
+    }
     // AL-136: a settlement's mix is either written out {kind: share} or names a culture:
     // {culture, kind?, peoples?} - the culture's mix for that kind of settlement, with
     // `peoples` (if any) over it.
@@ -268,14 +353,29 @@ double cultureWelcome(const SpeciesCatalog& s, const std::string& culture, const
     const std::string r = race.empty() ? s.defaultRace : race;
     if (auto it = cu->second.welcome.find(r); it != cu->second.welcome.end()) return std::clamp(it->second, 0.0, 1.0);
     if (r == cu->second.species) return 1.0;
+    // LR-166: a people of a kin the culture names (human for a hellene)
+    const std::string k = kinOf(s, r);
+    if (k != r)
+        if (auto it = cu->second.welcome.find(k); it != cu->second.welcome.end()) return std::clamp(it->second, 0.0, 1.0);
     return std::clamp(cu->second.welcomeOther, 0.0, 1.0);
+}
+
+std::string kinOf(const SpeciesCatalog& s, const std::string& race) {
+    const std::string r = race.empty() ? s.defaultRace : race;
+    auto it = s.races.find(r);
+    return it == s.races.end() || it->second.kin.empty() ? r : it->second.kin;
+}
+
+std::string cultureBelt(const SpeciesCatalog& s, const std::string& culture) {
+    auto it = s.cultures.find(culture);
+    return it == s.cultures.end() ? std::string() : it->second.belt;
 }
 
 SpeciesCatalog loadSpecies(const std::string& dir) {
     std::vector<std::string> errors;
     std::vector<Json> races, cultures;
     for (const auto& p : jsonFiles(dir)) {
-        if (p.filename() == "settle.json") continue;
+        if (p.filename() == "settle.json" || p.filename() == "migrate.json") continue;
         Json j = readFile(p, errors);
         if (j.is_object()) races.push_back(std::move(j));
     }
@@ -285,7 +385,11 @@ SpeciesCatalog loadSpecies(const std::string& dir) {
     }
     Json settle = readFile(fs::path(dir) / "settle.json", errors);
     if (!settle.is_object()) settle = Json::object();
-    SpeciesCatalog c = parseSpecies(races, cultures, settle);
+    Json migrate = readFile(fs::path(dir) / "migrate.json", errors);
+    if (!migrate.is_object()) migrate = Json::object();
+    Json belts = readFile(fs::path(dir) / ".." / "world" / "belts.json", errors);
+    if (!belts.is_object()) belts = Json::object();
+    SpeciesCatalog c = parseSpecies(races, cultures, settle, migrate, belts);
     for (auto& e : errors) c.errors.push_back(e);
     return c;
 }
@@ -385,7 +489,59 @@ void validateSpecies(const Content& c, ValidationReport& r) {
     auto mix = [&](const std::string& where, const std::map<std::string, double>& m) {
         for (const auto& [k, v] : m)
             if (!s.races.count(k)) r.errors.push_back("settle.json " + where + ": unknown kind '" + k + "'");
+            else if (!s.races.at(k).settles)
+                r.errors.push_back("settle.json " + where + ": kind '" + k + "' is a base only (settles: false)");
     };
+    // LR-166: regions, one-sex kinds, belts, the migration table
+    for (const auto& [id, d] : s.races) {
+        for (const auto& b : d.region)
+            if (!s.belts.empty() && !s.belts.count(b)) r.errors.push_back("species " + id + ": region names unknown belt '" + b + "'");
+        if (d.sexes != "" && d.sexes != "f" && d.sexes != "m" && d.sexes != "fm" && d.sexes != "mf")
+            r.errors.push_back("species " + id + ": life.sexes must be f, m or empty");
+        if (!d.otherSex.empty()) {
+            const auto o = s.races.find(d.otherSex);
+            if (o == s.races.end()) r.errors.push_back("species " + id + ": other_sex '" + d.otherSex + "' unknown");
+            else if (!o->second.sexes.empty() && o->second.sexes == d.sexes)
+                r.errors.push_back("species " + id + ": other_sex '" + d.otherSex + "' is of the same one sex");
+        }
+        if (d.sexes.size() == 1 && d.otherSex.empty())
+            r.warnings.push_back("species " + id + ": a one-sex kind without other_sex");
+        if (!d.kin.empty() && !s.races.count(d.kin)) r.errors.push_back("species " + id + ": kin '" + d.kin + "' unknown");
+    }
+    for (const auto& [id, cu] : s.cultures) {
+        if (!s.belts.empty() && !cu.belt.empty() && !s.belts.count(cu.belt))
+            r.errors.push_back("culture " + id + ": belt '" + cu.belt + "' unknown");
+        // §1.1 (the user's rule above every culture): intimacy, marriage and courtship are for
+        // adults only, and no custom of a culture may sexualise children
+        if (cu.data.contains("intimacy")) {
+            const Json& in = cu.data["intimacy"];
+            if (!in.is_object() || !in.value("adults_only", false))
+                r.errors.push_back("culture " + id + ": intimacy must have adults_only: true");
+            else if (in.value("min_age_years", 0.0) < 14.0)
+                r.errors.push_back("culture " + id + ": intimacy.min_age_years must be at least 14 (the human measure of adulthood)");
+        }
+        const std::string dump = cu.data.dump();
+        for (const char* banned : {"pederast", "harem", "child_bride", "child_marriage", "concubine_girl"})
+            if (dump.find(banned) != std::string::npos)
+                r.errors.push_back("culture " + id + ": '" + banned + "' is excluded from the setting (adults only, §1.1)");
+    }
+    for (const auto& [bid, b] : s.belts) {
+        if (!b.mapCulture.empty() && !s.cultures.count(b.mapCulture))
+            r.errors.push_back("belts.json " + bid + ": map_culture '" + b.mapCulture + "' unknown");
+        for (const auto& e : b.layout) {
+            const std::string cu = e.value("culture", b.mapCulture);
+            if (!s.cultures.count(cu)) r.errors.push_back("belts.json " + bid + ": layout culture '" + cu + "' unknown");
+        }
+        for (const auto& cu : b.cultures)
+            if (!s.cultures.count(cu)) r.errors.push_back("belts.json " + bid + ": culture '" + cu + "' unknown");
+    }
+    if (!s.belts.empty() && !s.belts.count(s.homeBelt)) r.errors.push_back("belts.json: home belt unknown");
+    for (const auto& [o, n] : s.migrateRace)
+        if (!s.races.count(n)) r.errors.push_back("migrate.json races: '" + o + "' -> unknown kind '" + n + "'");
+    for (const auto& [o, n] : s.raceByCulture)
+        if (!s.races.count(n)) r.errors.push_back("migrate.json default_race_by_culture: '" + o + "' -> unknown kind '" + n + "'");
+    for (const auto& [o, n] : s.migrateCulture)
+        if (!s.cultures.count(n)) r.errors.push_back("migrate.json cultures: '" + o + "' -> unknown culture '" + n + "'");
     mix("map", s.mapMix);
     for (const auto& [id, cu] : s.cultures) {
         for (const auto& [kind, m] : cu.peoples) mix("culture " + id + " peoples." + kind, m);
@@ -421,7 +577,9 @@ int raceAgeDays(const RaceDef& r, double humanYears) {
     return std::max(0, static_cast<int>(std::lround(y * kDaysPerYear)));
 }
 
-void setRace(const Content& ct, Character& c, const std::string& race) {
+void setRace(const Content& ct, Character& c, const std::string& race0) {
+    // LR-166: a one-sex kind's person of the other sex is of its other_sex (a nymph's brother: a satyr)
+    const std::string race = c.body.sex ? raceForSex(ct, race0, c.body.sex) : race0;
     const std::string id = race == ct.peoples.defaultRace ? std::string() : race;
     c.race = id;
     const RaceDef& r = raceOf(ct, c);
@@ -462,14 +620,47 @@ double raceTraitWeight(const RaceDef& r, const std::string& trait) {
 
 double raceConceiveMult(const Content& ct, const Character& c) { return raceOf(ct, c).fertility; }
 
+std::string kinOf(const Content& ct, const std::string& race) { return kinOf(ct.peoples, race); }
+
 std::string childRace(const Content& ct, const std::string& mother, const std::string& father) {
     const std::string m = mother.empty() ? ct.peoples.defaultRace : mother;
     const std::string f = father.empty() ? ct.peoples.defaultRace : father;
     if (m == f) return m;
     const RaceDef* rm = ct.raceOf(m);
     if (!rm) return m;
-    auto it = rm->interbreed.find(f);
-    return it == rm->interbreed.end() ? std::string() : it->second;
+    if (auto it = rm->interbreed.find(f); it != rm->interbreed.end()) return it->second;
+    // LR-166: two peoples of one kin: the father's (or the mother's) people
+    const std::string km = kinOf(ct, m), kf = kinOf(ct, f);
+    if (km == kf) return ct.peoples.kinChildMother ? m : f;
+    // a kind written for the kin (elf x human) holds for each of its peoples
+    if (auto it = rm->interbreed.find(kf); it != rm->interbreed.end()) return it->second;
+    if (const RaceDef* rk = ct.raceOf(km); rk && km != m) {
+        if (auto it = rk->interbreed.find(f); it != rk->interbreed.end()) return it->second;
+        if (auto it = rk->interbreed.find(kf); it != rk->interbreed.end()) return it->second;
+    }
+    return std::string();
+}
+
+std::string raceForSex(const Content& ct, const std::string& race, char sex) {
+    const RaceDef* r = ct.raceOf(race.empty() ? ct.peoples.defaultRace : race);
+    if (!r || r->sexes.empty() || r->sexes.find(sex) != std::string::npos) return race;
+    if (!r->otherSex.empty() && ct.raceOf(r->otherSex)) return r->otherSex;
+    return race;
+}
+
+std::string childRace(const Content& ct, const std::string& mother, const std::string& father, char sex) {
+    const std::string kind = childRace(ct, mother, father);
+    if (kind.empty()) return kind;
+    const RaceDef* r = ct.raceOf(kind);
+    if (!r || r->sexes.empty() || r->sexes.find(sex) != std::string::npos) return kind;
+    // a son of a nymph and a man is a man: the other parent's kind when it fits this sex
+    for (const std::string& p : {father, mother}) {
+        const std::string pk = p.empty() ? ct.peoples.defaultRace : p;
+        if (pk == kind) continue;
+        const RaceDef* pr = ct.raceOf(pk);
+        if (pr && (pr->sexes.empty() || pr->sexes.find(sex) != std::string::npos)) return raceForSex(ct, pk, sex);
+    }
+    return raceForSex(ct, kind, sex);
 }
 
 std::string cultureName(const Content& ct, const std::string& race, Rng& rng, bool female, bool withFamily) {
@@ -491,8 +682,12 @@ double raceBias(const Content& ct, const std::string& from, const std::string& t
     if (a == b) return 0.0;
     const RaceDef* r = ct.raceOf(a);
     if (!r) return 0.0;
-    auto it = r->relationsBias.find(b);
-    return it == r->relationsBias.end() ? 0.0 : it->second;
+    if (auto it = r->relationsBias.find(b); it != r->relationsBias.end()) return it->second;
+    // LR-166: what the kind holds of a kin holds of its peoples (an elf of any human people)
+    const std::string kb = kinOf(ct, b);
+    if (kb == kinOf(ct, a)) return 0.0;
+    if (auto it = r->relationsBias.find(kb); it != r->relationsBias.end()) return it->second;
+    return 0.0;
 }
 
 std::vector<std::string> peoplesTags(const Content& ct, const std::map<std::string, int>& count, double major, double minor) {
@@ -590,6 +785,62 @@ bool raceBodyTick(World& w, Character& c, bool underRoof) {
         if (!blocked) c.body.health = std::min(1.0, c.body.health + r->regen.healthPerDay / kTicksPerDay);
     }
     return true;
+}
+
+// --- LR-166: old saves -------------------------------------------------------------
+
+int migratePeoples(World& w) {
+    const SpeciesCatalog& s = w.content().peoples;
+    if (!s.loaded) return 0;
+    int changed = 0;
+    auto remap = [&](std::string& v, const std::map<std::string, std::string>& m) {
+        if (v.empty()) return;
+        if (auto it = m.find(v); it != m.end() && it->second != v) v = it->second, ++changed;
+    };
+    for (auto& [id, st] : w.settlements()) {
+        remap(st.culture, s.migrateCulture);
+        std::map<std::string, double> mix;
+        bool moved = false;
+        for (const auto& [k, v] : st.peoples) {
+            std::string nk = k;
+            if (auto it = s.migrateRace.find(k); it != s.migrateRace.end()) nk = it->second, moved = true;
+            const RaceDef* r = w.content().raceOf(nk);
+            if (r && !r->settles)
+                if (auto bc = s.raceByCulture.find(st.culture); bc != s.raceByCulture.end()) nk = bc->second, moved = true;
+            mix[nk] += v;
+        }
+        if (moved) st.peoples = mix, ++changed;
+    }
+    // the bare default kind (an old save's human, race "") does not live in the world any more:
+    // a person becomes the people of their culture, else of their settlement's, else "*"
+    const RaceDef* def = w.content().raceOf(s.defaultRace);
+    const bool defaultSettles = !def || def->settles;
+    auto person = [&](Character& c) {
+        if (c.isAnimal()) return;
+        remap(c.culture, s.migrateCulture);
+        remap(c.faith, s.migrateFaith);
+        std::string r = c.race;
+        if (!r.empty())
+            if (auto it = s.migrateRace.find(r); it != s.migrateRace.end()) r = it->second;
+        const RaceDef* rd = w.content().raceOf(r.empty() ? s.defaultRace : r);
+        if ((r.empty() && !defaultSettles) || (rd && !rd->settles)) {
+            std::string cu = c.culture;
+            if (cu.empty())
+                if (auto st = w.settlements().find(c.status.settlement); st != w.settlements().end()) cu = st->second.culture;
+            auto bc = s.raceByCulture.find(cu);
+            if (bc == s.raceByCulture.end()) bc = s.raceByCulture.find("*");
+            if (bc != s.raceByCulture.end()) r = bc->second;
+        }
+        if (r != c.race) {
+            const int age = c.body.ageDays;
+            setRace(w.content(), c, r);
+            c.body.ageDays = age;
+            ++changed;
+        }
+    };
+    for (auto& [id, c] : w.characters()) person(c);
+    for (auto& [id, c] : w.offstage()) person(c);
+    return changed;
 }
 
 } // namespace lr::sim

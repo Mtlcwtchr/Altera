@@ -1,0 +1,113 @@
+{
+ "id": "pastoral_hills",
+ "species": "hellene",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Daphnis",
+   "Tityros",
+   "Menalkas",
+   "Korydon",
+   "Lykidas",
+   "Thyrsis"
+  ],
+  "f": [
+   "Chloe",
+   "Amaryllis",
+   "Galatea",
+   "Phyllis",
+   "Neaira",
+   "Echo"
+  ]
+ },
+ "speech": "plain",
+ "build_style": "hellenic",
+ "teach_aspects": [
+  "life",
+  "earth",
+  "air",
+  "water"
+ ],
+ "forbid_aspects": [
+  "blood",
+  "death"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "suspect",
+  "inhospitality": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "village": {
+   "hellene": 0.7,
+   "centaur": 0.22,
+   "satyr": 0.05,
+   "nymph": 0.03
+  },
+  "default": {
+   "hellene": 0.6,
+   "centaur": 0.35,
+   "satyr": 0.05
+  }
+ },
+ "welcome": {
+  "human": 0.8,
+  "hellene": 1.0,
+  "centaur": 1.0,
+  "satyr": 0.9,
+  "nymph": 0.95,
+  "minotaur": 0.2,
+  "cyclops": 0.1
+ },
+ "welcome_other": 0.5,
+ "faith": "green_covenant",
+ "values": {
+  "nature": 0.5,
+  "kinship": 0.4,
+  "hospitality": 0.4,
+  "tradition": 0.3,
+  "freedom": 0.3
+ },
+ "traditions": [
+  "xenia",
+  "hunt_honour",
+  "festive_gatherings",
+  "storytelling",
+  "rite_of_passage",
+  "omen_reading"
+ ],
+ "rites": {
+  "coming_of_age": "centaur_tutelage",
+  "marriage": "hearth_wedding",
+  "burial": "inter"
+ },
+ "food": {
+  "likes": [
+   "cheese",
+   "milk",
+   "honey",
+   "figs",
+   "wine"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Pelion",
+  "Arkadia",
+  "Ossa",
+  "Lykaion",
+  "Kyllene",
+  "Pholoe"
+ ],
+ "_doc": "LR-166: пастухи горной Аркадии и Пелиона: люди и горные кентавры одним селом, кентавры учат детей охоте и травам.",
+ "desc": "culture.pastoral_hills.desc"
+}

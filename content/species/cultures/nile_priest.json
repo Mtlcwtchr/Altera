@@ -1,0 +1,110 @@
+{
+ "id": "nile_priest",
+ "species": "nilote",
+ "belt": "nile",
+ "names": {
+  "m": [
+   "Khaemwaset",
+   "Amenmose",
+   "Sennefer",
+   "Nakht",
+   "Ptahhotep",
+   "Ramose",
+   "Intef",
+   "Meryre"
+  ],
+  "f": [
+   "Nefertari",
+   "Meritamun",
+   "Tiye",
+   "Ankhesen",
+   "Henut",
+   "Nebet",
+   "Sitre",
+   "Iset"
+  ]
+ },
+ "speech": "formal",
+ "build_style": "nilotic",
+ "teach_aspects": [
+  "light",
+  "earth",
+  "water",
+  "death"
+ ],
+ "forbid_aspects": [
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "suspect",
+  "tomb_robbing": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "nilote": 0.95,
+   "hellene": 0.03,
+   "goblin": 0.02
+  }
+ },
+ "welcome": {
+  "nilote": 1.0,
+  "hellene": 0.6,
+  "human": 0.55,
+  "steppe_folk": 0.4
+ },
+ "welcome_other": 0.35,
+ "faith": "sun_oracle",
+ "values": {
+  "piety": 0.7,
+  "order": 0.6,
+  "tradition": 0.5,
+  "learning": 0.5,
+  "kinship": 0.3,
+  "freedom": -0.2
+ },
+ "traditions": [
+  "daily_prayer",
+  "ancestor_rites",
+  "fasting_days",
+  "council_of_elders",
+  "craft_pride"
+ ],
+ "rites": {
+  "coming_of_age": "temple_naming",
+  "marriage": "hearth_wedding",
+  "burial": "entomb"
+ },
+ "food": {
+  "likes": [
+   "dates",
+   "flatbread",
+   "barley_beer",
+   "fish",
+   "bread"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Waset",
+  "Abdju",
+  "Iunu",
+  "Men-nefer",
+  "Nekhen",
+  "Djeba"
+ ],
+ "_doc": "LR-166: люди Нила (фаза 2): писцы, жрецы, строители гробниц; загробный культ и разлив реки. Мёртвых бальзамируют и хоронят в гробницах.",
+ "desc": "culture.nile_priest.desc",
+ "rites_forbidden": [
+  "ecstatic"
+ ]
+}

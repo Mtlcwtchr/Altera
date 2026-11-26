@@ -768,6 +768,13 @@ Character& childOf(Ctx& x, Rng& rng, Character& father, Character& mother, int a
     const std::string house = father.standing.house;
     const EntityId fid = father.id, mid = mother.id, home = father.status.settlement;
     Character& k = newFigure(x, rng, home, "kin", rng.chance(0.5) ? 'm' : 'f', ageYears, house);
+    // LR-166: the parents' kind, not the settlement's draw (a satyr's son of a nymph mother)
+    if (const Content& ct = x.w.content(); ct.peoples.loaded)
+        if (const Character* f = fig(x, fid), *m = fig(x, mid); f && m)
+            if (const std::string kind = childRace(ct, m->race, f->race, k.body.sex); !kind.empty() && kind != raceId(ct, k)) {
+                setRace(ct, k, kind);
+                k.body.ageDays = raceAgeDays(raceOf(ct, k), ageYears + 0.5);
+            }
     k.status.father = fid;
     k.status.mother = mid;
     const EntityId kid = k.id;
@@ -960,7 +967,8 @@ Character* fromCrowd(Ctx& x, Rng& rng, EntityId p, int minAge, int maxAge, char 
 // --- genesis ---------------------------------------------------------------------
 
 // A settlement laid out from a start template: the numbers only, the rest it earns.
-Settlement& newSettlement(Ctx& x, Rng& rng, const std::string& tpl, const std::string& name, Vec2 km) {
+Settlement& newSettlement(Ctx& x, Rng& rng, const std::string& tpl, const std::string& name, Vec2 km,
+                          const std::string& culture = std::string()) {
     const RealmTemplate& t = x.r.templates.count(tpl) ? x.r.templates.at(tpl) : RealmTemplate{};
     Settlement p;
     p.id = x.w.newId();
@@ -980,6 +988,10 @@ Settlement& newSettlement(Ctx& x, Rng& rng, const std::string& tpl, const std::s
         p.peoples = mx->second; // AL-114: who lives there
     if (auto cu = x.w.content().peoples.templateCulture.find(tpl); cu != x.w.content().peoples.templateCulture.end())
         p.culture = cu->second; // AL-136
+    if (!culture.empty() && x.w.content().peoples.cultures.count(culture)) { // LR-166: a belt's culture
+        p.culture = culture;
+        p.peoples = culturePeoples(x.w.content().peoples, culture, tpl);
+    }
     // what it has lived by so far (the last half-year): fields and work, as the numbers say
     p.income["fields"] = 0.5 * p.pop * num(x.r.eco, "year_yield_days", 400) * p.land * num(x.r.eco, "grain_price", 0.05);
     classify(x.r, p, x.day);
@@ -1009,27 +1021,73 @@ void genesis(Ctx& x) {
         places.insert(st.name);
     }
     // the region around it
-    std::vector<std::pair<std::string, int>> layout = x.r.layout;
+    // LR-166: with belts (content/world/belts.json) each belt lays out its own settlements around
+    // its centre (the map's belt round the village, as before); without, the one region of realm.json
+    struct Slot {
+        std::string tpl, culture;
+        Vec2 centre{0, 0};
+        double radius = 0;
+        bool home = true;
+    };
+    std::vector<Slot> layout;
+    const SpeciesCatalog& sp = x.w.content().peoples;
+    if (!sp.belts.empty()) {
+        std::string home;
+        for (const auto& [sid, st] : x.w.settlements())
+            if (home.empty()) home = cultureBelt(sp, st.culture);
+        if (!sp.belts.count(home)) home = sp.homeBelt;
+        const Vec2 h0 = sp.belts.at(home).at;
+        for (const auto& [bid, b] : sp.belts)
+            for (const auto& e : b.layout) {
+                Slot sl;
+                sl.tpl = e.value("template", std::string("village"));
+                sl.culture = e.value("culture", b.mapCulture);
+                sl.home = bid == home;
+                sl.centre = {(b.at.x - h0.x) * sp.beltKm, (b.at.y - h0.y) * sp.beltKm};
+                sl.radius = b.radiusKm;
+                for (int i = 0, n = e.value("n", 1); i < n; ++i) layout.push_back(sl);
+            }
+    } else
+        for (const auto& [tpl, n] : x.r.layout)
+            for (int i = 0; i < n; ++i) layout.push_back({tpl, "", {0, 0}, 0, true});
     const double tau = 6.283185307179586;
     double ang0 = rng.range(0, tau);
-    int slot = 0, total = 0;
-    for (const auto& [k, n] : layout) total += n;
+    int slot = 0, total = 0, homeSlot = 0;
+    for (const Slot& sl : layout) total += sl.home ? 1 : 0;
     std::vector<EntityId> made;
-    for (const auto& [tpl, n] : layout)
-        for (int i = 0; i < n; ++i, ++slot) {
+    for (const Slot& sl : layout) {
+        {
+            const std::string& tpl = sl.tpl;
             const RealmTemplate& t = x.r.templates.count(tpl) ? x.r.templates.at(tpl) : RealmTemplate{};
             const std::string poolKey = t.names.empty() ? "*" : t.names;
-            const auto& pool = x.r.names.count(poolKey) ? x.r.names.at(poolKey) : x.r.names.at("*");
+            const auto& pool0 = x.r.names.count(poolKey) ? x.r.names.at(poolKey) : x.r.names.at("*");
+            // a culture's own place names first (LR-166)
+            const std::vector<std::string>* own = nullptr;
+            if (auto cu = sp.cultures.find(sl.culture); cu != sp.cultures.end() && !cu->second.placeNames.empty())
+                own = &cu->second.placeNames;
             std::string nm;
-            for (int k = 0; k < 10 && !pool.empty(); ++k) {
-                nm = pool[static_cast<size_t>(rng.irange(0, static_cast<int>(pool.size()) - 1))];
-                if (!places.count(nm)) break;
+            for (const auto* pool : {own, &pool0}) {
+                if (!pool || pool->empty()) continue;
+                for (int k = 0; k < 10; ++k) {
+                    nm = (*pool)[static_cast<size_t>(rng.irange(0, static_cast<int>(pool->size()) - 1))];
+                    if (!places.count(nm)) break;
+                }
+                if (!nm.empty() && !places.count(nm)) break;
             }
             if (nm.empty() || places.count(nm)) nm = tpl + std::to_string(slot);
             places.insert(nm);
-            const double ang = ang0 + tau * slot / std::max(1, total) + rng.range(-0.35, 0.35);
-            const double d = rng.range(x.r.regionKm[0], x.r.regionKm[1]);
-            Settlement& p = newSettlement(x, rng, tpl, nm, {std::cos(ang) * d, std::sin(ang) * d});
+            Vec2 at;
+            if (sl.home) {
+                const double ang = ang0 + tau * homeSlot / std::max(1, total) + rng.range(-0.35, 0.35);
+                const double d = rng.range(x.r.regionKm[0], x.r.regionKm[1]);
+                at = {sl.centre.x + std::cos(ang) * d, sl.centre.y + std::sin(ang) * d};
+                ++homeSlot;
+            } else {
+                const double ang = rng.range(0, tau), d = sl.radius * std::sqrt(rng.uniform());
+                at = {sl.centre.x + std::cos(ang) * d, sl.centre.y + std::sin(ang) * d};
+            }
+            ++slot;
+            Settlement& p = newSettlement(x, rng, tpl, nm, at, sl.culture);
             const EntityId pid = p.id;
             made.push_back(pid);
             const RealmInstitution& in = institutionOf(x.r, p);
@@ -1076,6 +1134,7 @@ void genesis(Ctx& x) {
                 if (lawless) f.standing.life = "outlaw", f.standing.honor = clamp01(f.standing.honor - 0.3);
             }
         }
+    }
     // views: neighbours start mildly wary or friendly; the lawless are everyone's enemy, a cult everyone's friend
     for (Settlement& a : polities(x))
         for (Settlement& b : polities(x)) {
@@ -1636,7 +1695,7 @@ void birthOffstage(Ctx& x, Character& mother, const VillageLifeRules& vl) {
             Character& k = newResident(x, rng, mo->status.settlement, rng.chance(0.5) ? 'm' : 'f', 0, house);
             k.body.ageDays = 0;
             if (x.w.content().peoples.loaded) { // AL-114: the parents' kind, not the settlement's draw
-                std::string kind = childRace(x.w.content(), mo->race, fa ? fa->race : mo->race);
+                std::string kind = childRace(x.w.content(), mo->race, fa ? fa->race : mo->race, k.body.sex);
                 setRace(x.w.content(), k, kind.empty() ? mo->race : kind);
                 raceAtBirth(x.w, k);
             }

@@ -1,0 +1,62 @@
+{
+ "id": "steppe_centaur",
+ "base": "centaur",
+ "glyph": "C",
+ "region": [
+  "steppe"
+ ],
+ "culture_default": "steppe_rider",
+ "body": {
+  "skin": "#a87850",
+  "speed_mult": 1.45,
+  "pawn": {
+   "build": "broad",
+   "figure": "centaur",
+   "hair_m": "topknot braids long",
+   "hair_f": "braids braids long",
+   "beards": "moustache goatee"
+  }
+ },
+ "stats": {
+  "strength": 0.12,
+  "endurance": 0.15,
+  "agility": 0.06,
+  "wisdom": 0.0,
+  "composure": -0.06,
+  "perception": 0.04
+ },
+ "aptitudes": {
+  "archery": {
+   "learn": 1.55,
+   "cap": 1.2
+  },
+  "tanning": {
+   "learn": 1.2,
+   "cap": 1.05
+  },
+  "medicine": {
+   "learn": 1.0,
+   "cap": 1.0
+  },
+  "herbalism": {
+   "learn": 1.0,
+   "cap": 1.0
+  }
+ },
+ "traits_pool": {
+  "hot_tempered": 1.7,
+  "proud": 1.4,
+  "hardy": 1.5
+ },
+ "resist": {
+  "cold": 0.85
+ },
+ "relations_bias": {
+  "orc": 0.15,
+  "steppe_folk": 0.1,
+  "centaur": 0.05
+ },
+ "settlement_tag": "centaur",
+ "_doc": "LR-166: степные кентавры: быстрые конные лучники кочевий, в союзе с орками-всадниками.",
+ "desc": "species.steppe_centaur.desc"
+}
