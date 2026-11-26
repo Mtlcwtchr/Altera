@@ -58,9 +58,9 @@ TEST(lr_client2d_culture_window) {
     CHECK(d["faith"]["name"].get<std::string>() != d["faith"]["id"].get<std::string>());
     CHECK(d["faith"]["deities"][0]["name"].get<std::string>() != d["faith"]["deities"][0]["id"].get<std::string>());
     // another faith picked to browse
-    const Json o = c2::cultureJson(w, t, me, me, "green_covenant", "sylvan");
+    const Json o = c2::cultureJson(w, t, me, me, "green_covenant", "forest_elf");
     CHECK_EQ(o["faith"]["id"].get<std::string>(), std::string("green_covenant"));
-    CHECK_EQ(o["culture"]["id"].get<std::string>(), std::string("sylvan"));
+    CHECK_EQ(o["culture"]["id"].get<std::string>(), std::string("forest_elf"));
     // the sheet shows the person's culture and faith
     const Json s = c2::sheetJson(w, t, me);
     CHECK(s.contains("belief") && !s["belief"]["faithName"].get<std::string>().empty());

@@ -122,7 +122,7 @@ void openNew(Ctx& c, Screens& s) {
     w->width = 0.56f;
     w->height = 0.72f;
     w->autoFit = true;   // LR-143
-    w->data = {{"M", c.get("/api/menu")}, {"seed", randomSeed()}, {"season", ""}};
+    w->data = {{"M", c.get("/api/menu")}, {"seed", randomSeed()}, {"season", ""}, {"belt", ""}};
     w->data["size"] = jstr(w->data["M"].value("options", Json::object()).value("defaults", Json::object()), "size");
     w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) {
         if (busy(c, w, body)) return;
@@ -171,6 +171,22 @@ void openNew(Ctx& c, Screens& s) {
                 w.data["season"] = jstr(se, "id");
             x += bw + 6 * U;
         }
+        // LR-166: the belt of the world to start in (its village's culture under the name)
+        if (!jarr(o, "belts").empty()) {
+            y += 40 * U;
+            c.text(body.x, y, c.L("ui2d.ng.belt"), pal::gold, 16 * U, true);
+            y += 26 * U;
+            x = body.x;
+            i = 0;
+            for (const auto& be : jarr(o, "belts")) {
+                const bool on = jstr(be, "id") == jstr(w.data, "belt") || (jstr(w.data, "belt").empty() && be.value("home", false));
+                const float bw = std::max(c.textW(jstr(be, "name"), 14 * U), c.textW(jstr(be, "culture_name"), 11 * U)) + 28 * U;
+                if (x + bw > body.right()) x = body.x, y += 52 * U;
+                if (g.toggle(ui::widgetId("ng.belt", i++), {x, y, bw, 30 * U}, jstr(be, "name"), on)) w.data["belt"] = jstr(be, "id");
+                c.text(x + 6 * U, y + 33 * U, c.fit(jstr(be, "culture_name"), bw - 8 * U, 11 * U), pal::dim, 11 * U);
+                x += bw + 6 * U;
+            }
+        }
         const float bw = 200 * U, bh = 42 * U, by = body.bottom() - bh;
         if (big(c, "ng.back", 0, {body.x, by, bw, bh}, c.L("ui2d.menu.back"))) {
             w.closing = true;
@@ -182,7 +198,7 @@ void openNew(Ctx& c, Screens& s) {
             s.later([&c, &s, wp] {
                 std::string seed = jstr(wp->data, "seed");
                 while (!seed.empty() && seed.back() == ' ') seed.pop_back();
-                const Json r = c.post("/api/newgame", {{"seed", seed}, {"size", jstr(wp->data, "size")}, {"season", jstr(wp->data, "season")}});
+                const Json r = c.post("/api/newgame", {{"seed", seed}, {"size", jstr(wp->data, "size")}, {"season", jstr(wp->data, "season")}, {"belt", jstr(wp->data, "belt")}});
                 if (jstr(r, "result") != "ok") {
                     c.toast(jstr(r, "text").empty() ? jstr(r, "result") : jstr(r, "text"));
                     if (s.isOpen("new")) wp->data.erase("busy");

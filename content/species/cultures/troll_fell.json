@@ -1,0 +1,68 @@
+{
+ "id": "troll_fell",
+ "species": "troll",
+ "belt": "north",
+ "names": {},
+ "speech": "growl",
+ "build_style": "cave",
+ "teach_aspects": [
+  "life",
+  "water",
+  "earth"
+ ],
+ "forbid_aspects": [
+  "light"
+ ],
+ "norms": {},
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "allowed",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "troll": 1.0
+  }
+ },
+ "welcome": {
+  "troll": 1.0,
+  "ogre": 0.5,
+  "goblin": 0.3
+ },
+ "welcome_other": 0.05,
+ "faith": "moon_mother",
+ "values": {
+  "kinship": 0.3,
+  "nature": 0.3,
+  "learning": -0.4,
+  "order": -0.4,
+  "hospitality": -0.4
+ },
+ "traditions": [
+  "hunt_honour",
+  "raiding"
+ ],
+ "rites": {
+  "coming_of_age": "none",
+  "marriage": "none",
+  "burial": "entomb"
+ },
+ "food": {
+  "likes": [
+   "meat"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Dovrefjell",
+  "Trollheimen",
+  "Jotunfjell",
+  "Ymisberg"
+ ],
+ "_doc": "LR-166: тролли северных фьеллов: на солнце каменеют (на полярном дне спят всё лето), в полярную ночь опасны.",
+ "desc": "culture.troll_fell.desc"
+}

@@ -1,0 +1,38 @@
+{
+ "_doc": "LR-166: старые сейвы и моды -> id сборного мира (src/sim/species.cpp migratePeoples, при загрузке снимка). races: вид -> вид; cultures: культура -> культура (у поселений и людей); faiths: вера -> вера; default_race_by_culture: человек без народа (race пусто или human, settles: false) становится народом своей культуры (иначе культуры поселения, иначе \"*\").",
+ "races": {},
+ "cultures": {
+  "fantasy_european": "slav_village",
+  "dwarven": "dwarf_hold",
+  "sylvan": "forest_elf",
+  "orcish": "steppe_rider",
+  "goblin": "port_kobal",
+  "ogre": "jotun_hold",
+  "troll": "troll_fell"
+ },
+ "faiths": {},
+ "default_race_by_culture": {
+  "polis_hellene": "hellene",
+  "isle_sailor": "hellene",
+  "pastoral_hills": "hellene",
+  "labyrinth": "hellene",
+  "port_kobal": "hellene",
+  "satyr_vine": "hellene",
+  "grove_nymph": "hellene",
+  "smith_cyclops": "hellene",
+  "nile_priest": "nilote",
+  "slav_village": "woodfolk",
+  "celtic_grove": "woodfolk",
+  "forest_elf": "woodfolk",
+  "vila_glade": "woodfolk",
+  "north_folk": "northman",
+  "dwarf_hold": "northman",
+  "alv_hall": "northman",
+  "jotun_hold": "northman",
+  "troll_fell": "northman",
+  "draconic": "northman",
+  "steppe_clan": "steppe_folk",
+  "steppe_rider": "steppe_folk",
+  "*": "woodfolk"
+ }
+}

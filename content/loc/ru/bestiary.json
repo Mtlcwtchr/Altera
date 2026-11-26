@@ -1,4 +1,10 @@
 {
+ "species.nereid.name": "нереида",
+ "worldmap.poi.nereid_grotto.name": "грот нереид",
+ "worldmap.poi.nereid_grotto.n1": "Грот Нереид",
+ "worldmap.poi.nereid_grotto.n2": "Пенная Пещера",
+ "worldmap.poi.nereid_grotto.n3": "Жемчужный Грот",
+ "worldmap.poi.nereid_grotto.n4": "Скала Дорид",
  "_doc": "LR-170: мифические существа по поясам (content/creatures, sim/bestiary.hpp)",
  "chronicle.lair_raid.albasty": "Албасты загнала табун {place:gen}",
  "chronicle.lair_raid.aydahar": "Айдахар задушил табун {place:gen}",

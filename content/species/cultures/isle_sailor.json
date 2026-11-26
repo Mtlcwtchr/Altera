@@ -1,0 +1,112 @@
+{
+ "id": "isle_sailor",
+ "species": "hellene",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Nauklos",
+   "Ladon",
+   "Glaukos",
+   "Phorkys",
+   "Euphemos",
+   "Kreon",
+   "Peleus",
+   "Talos"
+  ],
+  "f": [
+   "Thetis",
+   "Galene",
+   "Doris",
+   "Amphitrite",
+   "Halia",
+   "Kymo",
+   "Nerine",
+   "Psamathe"
+  ]
+ },
+ "speech": "eloquent",
+ "build_style": "hellenic",
+ "teach_aspects": [
+  "water",
+  "air",
+  "light",
+  "life"
+ ],
+ "forbid_aspects": [
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "suspect",
+  "witchcraft": "frowned",
+  "inhospitality": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "hellene": 0.9,
+   "goblin": 0.05,
+   "nymph": 0.05
+  }
+ },
+ "welcome": {
+  "human": 0.75,
+  "hellene": 1.0,
+  "nymph": 0.9,
+  "goblin": 0.55,
+  "satyr": 0.7,
+  "nilote": 0.8
+ },
+ "welcome_other": 0.5,
+ "faith": "sea_lord",
+ "values": {
+  "hospitality": 0.5,
+  "freedom": 0.5,
+  "wealth": 0.35,
+  "nature": 0.25,
+  "piety": 0.25,
+  "kinship": 0.2
+ },
+ "traditions": [
+  "xenia",
+  "hospitality",
+  "storytelling",
+  "festive_gatherings",
+  "omen_reading",
+  "wedding_customs"
+ ],
+ "rites": {
+  "coming_of_age": "first_voyage",
+  "marriage": "hearth_wedding",
+  "burial": "sea_burial"
+ },
+ "food": {
+  "likes": [
+   "fish",
+   "olives",
+   "wine",
+   "figs",
+   "smoked_fish"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Naxos",
+  "Kythera",
+  "Skyros",
+  "Ithake",
+  "Aiaia",
+  "Ogygia",
+  "Lemnos",
+  "Samos"
+ ],
+ "_doc": "LR-166: островитяне-мореходы: торговля, пиратство и долгая дорога домой; вольнее полиса, ближе к морю и его Силе.",
+ "desc": "culture.isle_sailor.desc"
+}

@@ -111,7 +111,10 @@ TEST(lr_sim_magic_society_norms_by_culture) {
     CHECK(c != nullptr);
     const EntityId sid = c->status.settlement;
     CHECK(!settlementCulture(w, sid).empty());
-    // the default people (fantasy Europeans): necromancy a crime, witchcraft suspect, magic allowed
+    // LR-166: the hellenes of the start only suspect necromancy (the oracle of the dead)
+    CHECK(settlementNorm(w, sid, "necromancy") > settlementNorm(w, sid, "witchcraft"));
+    // a Slavic village: necromancy a crime, witchcraft suspect, magic allowed
+    w.settlements().at(sid).culture = "slav_village";
     CHECK(settlementNorm(w, sid, "necromancy") >= 0.7);
     CHECK(settlementNorm(w, sid, "witchcraft") > 0.2);
     CHECK(settlementNorm(w, sid, "magic") < 1e-9);

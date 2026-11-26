@@ -28,7 +28,8 @@
    "elf": "half_elf",
    "orc": "half_orc",
    "half_elf": "half_elf",
-   "half_orc": "half_orc"
+   "half_orc": "half_orc",
+   "satyr": "satyr"
   }
  },
  "needs": {},
@@ -40,7 +41,7 @@
  "traits_pool": {},
  "resist": {},
  "weak": {},
- "culture_default": "fantasy_european",
+ "culture_default": "polis_hellene",
  "relations_bias": {
   "elf": 0.0,
   "dwarf": 0.05,
@@ -48,9 +49,18 @@
   "goblin": -0.25,
   "ogre": -0.1,
   "troll": -0.35,
-  "dragon": -0.5
+  "dragon": -0.5,
+  "centaur": 0.0,
+  "satyr": 0.05,
+  "nymph": 0.1,
+  "vila": 0.0,
+  "minotaur": -0.3,
+  "cyclops": -0.3,
+  "alv": 0.0
  },
  "gifted_chance": 0.05,
  "settlement_tag": "human",
- "_doc": "Люди: эталон, все множители 1, взросление 14, старость 60. Самые плодовитые, учатся новому быстрее (quick_learner чаще)."
+ "_doc": "LR-166: база людских народов (эллины, северяне, люди лесов, степи, Нила: base human). Сам в мир не селится (settles: false): старые сейвы переводятся в народ по культуре (migrate.json). Числа эталонные: множители 1, взросление 14, старость 60.",
+ "settles": false,
+ "region": []
 }

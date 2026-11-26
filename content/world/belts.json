@@ -1,0 +1,231 @@
+{
+ "_doc": "LR-166: пояса сборного мира (gdd/setting/LIVELYREALMS_SETTING_v0.3_MYTHIC_WORLD_PROPOSAL.md §2). Континент в единицах поясов (at: [x, y], север = +y), belt_km км на единицу. Деревня карты стоит в своём поясе (home или world cfg \"belt\"; её культура map_culture), её пояс раскладывает поселения realm кольцом вокруг неё (realm.json region_km), остальные пояса — в своих центрах в радиусе radius_km. layout: [{template (realm.json templates), culture, n}]. cultures: какие культуры живут в поясе (пантеон, вещи и монстры берут пояс культуры из поля belt культуры). Нагрузка realm: ~6–8 поселений на пояс.",
+ "home": "mediterranean",
+ "belt_km": 70,
+ "belts": {
+  "mediterranean": {
+   "order": 1,
+   "at": [
+    0,
+    0
+   ],
+   "radius_km": 26,
+   "map_culture": "polis_hellene",
+   "climate": "warm",
+   "cultures": [
+    "polis_hellene",
+    "isle_sailor",
+    "pastoral_hills",
+    "labyrinth",
+    "grove_nymph",
+    "satyr_vine",
+    "smith_cyclops",
+    "port_kobal"
+   ],
+   "layout": [
+    {
+     "template": "town",
+     "culture": "polis_hellene"
+    },
+    {
+     "template": "village",
+     "culture": "isle_sailor"
+    },
+    {
+     "template": "village",
+     "culture": "pastoral_hills"
+    },
+    {
+     "template": "keep",
+     "culture": "polis_hellene"
+    },
+    {
+     "template": "monastery",
+     "culture": "grove_nymph"
+    },
+    {
+     "template": "village",
+     "culture": "satyr_vine"
+    },
+    {
+     "template": "dwarf_hold",
+     "culture": "smith_cyclops"
+    },
+    {
+     "template": "orc_hold",
+     "culture": "labyrinth"
+    },
+    {
+     "template": "bandit_camp",
+     "culture": "port_kobal"
+    }
+   ]
+  },
+  "forest": {
+   "order": 2,
+   "at": [
+    0,
+    1
+   ],
+   "radius_km": 26,
+   "map_culture": "slav_village",
+   "climate": "temperate",
+   "cultures": [
+    "slav_village",
+    "celtic_grove",
+    "forest_elf",
+    "vila_glade"
+   ],
+   "layout": [
+    {
+     "template": "town",
+     "culture": "slav_village"
+    },
+    {
+     "template": "village",
+     "culture": "slav_village"
+    },
+    {
+     "template": "village",
+     "culture": "celtic_grove"
+    },
+    {
+     "template": "monastery",
+     "culture": "celtic_grove"
+    },
+    {
+     "template": "elf_grove",
+     "culture": "forest_elf"
+    },
+    {
+     "template": "elf_grove",
+     "culture": "vila_glade"
+    },
+    {
+     "template": "bandit_camp",
+     "culture": "slav_village"
+    }
+   ]
+  },
+  "north": {
+   "order": 3,
+   "at": [
+    -0.2,
+    2.1
+   ],
+   "radius_km": 28,
+   "map_culture": "north_folk",
+   "climate": "cold",
+   "cultures": [
+    "north_folk",
+    "dwarf_hold",
+    "alv_hall",
+    "jotun_hold",
+    "troll_fell",
+    "draconic"
+   ],
+   "layout": [
+    {
+     "template": "town",
+     "culture": "north_folk"
+    },
+    {
+     "template": "village",
+     "culture": "north_folk"
+    },
+    {
+     "template": "keep",
+     "culture": "north_folk"
+    },
+    {
+     "template": "dwarf_hold",
+     "culture": "dwarf_hold"
+    },
+    {
+     "template": "elf_grove",
+     "culture": "alv_hall"
+    },
+    {
+     "template": "orc_hold",
+     "culture": "jotun_hold"
+    },
+    {
+     "template": "goblin_warren",
+     "culture": "troll_fell"
+    },
+    {
+     "template": "dragon_lair",
+     "culture": "draconic"
+    }
+   ]
+  },
+  "steppe": {
+   "order": 4,
+   "at": [
+    1.5,
+    0.9
+   ],
+   "radius_km": 30,
+   "map_culture": "steppe_clan",
+   "climate": "dry",
+   "cultures": [
+    "steppe_clan",
+    "steppe_rider"
+   ],
+   "layout": [
+    {
+     "template": "town",
+     "culture": "steppe_clan"
+    },
+    {
+     "template": "village",
+     "culture": "steppe_clan"
+    },
+    {
+     "template": "village",
+     "culture": "steppe_clan"
+    },
+    {
+     "template": "orc_hold",
+     "culture": "steppe_rider"
+    },
+    {
+     "template": "orc_hold",
+     "culture": "steppe_rider"
+    },
+    {
+     "template": "bandit_camp",
+     "culture": "steppe_rider"
+    }
+   ]
+  },
+  "nile": {
+   "order": 5,
+   "at": [
+    1.1,
+    -1.0
+   ],
+   "radius_km": 24,
+   "map_culture": "nile_priest",
+   "climate": "hot",
+   "phase": 2,
+   "cultures": [
+    "nile_priest"
+   ],
+   "layout": [
+    {
+     "template": "town",
+     "culture": "nile_priest"
+    },
+    {
+     "template": "village",
+     "culture": "nile_priest"
+    },
+    {
+     "template": "monastery",
+     "culture": "nile_priest"
+    }
+   ]
+  }
+ }
+}

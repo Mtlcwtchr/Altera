@@ -1,0 +1,102 @@
+{
+ "id": "vila_glade",
+ "species": "vila",
+ "belt": "forest",
+ "names": {
+  "f": [
+   "Ravijojla",
+   "Zora",
+   "Dana",
+   "Lada",
+   "Vesna",
+   "Mila",
+   "Zlata",
+   "Rusalia"
+  ],
+  "m": [
+   "Bogdan",
+   "Radim",
+   "Velimir",
+   "Dobrynya",
+   "Stribor"
+  ]
+ },
+ "speech": "lilting",
+ "build_style": "grove",
+ "teach_aspects": [
+  "air",
+  "water",
+  "life"
+ ],
+ "forbid_aspects": [
+  "death",
+  "fire"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "allowed",
+  "woodcutting": "frowned",
+  "oathbreaking": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "free_union",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "allowed"
+ },
+ "peoples": {
+  "default": {
+   "vila": 0.8,
+   "woodfolk": 0.2
+  }
+ },
+ "welcome": {
+  "vila": 1.0,
+  "nymph": 0.95,
+  "elf": 0.9,
+  "woodfolk": 0.65,
+  "human": 0.55,
+  "goblin": 0.15
+ },
+ "welcome_other": 0.3,
+ "faith": "many_spirits",
+ "values": {
+  "nature": 0.7,
+  "freedom": 0.6,
+  "honor": 0.4,
+  "martial": 0.3,
+  "order": -0.3
+ },
+ "traditions": [
+  "spring_offerings",
+  "festive_gatherings",
+  "hunt_honour",
+  "oath_keeping"
+ ],
+ "rites": {
+  "coming_of_age": "naming_at_spring",
+  "marriage": "moon_vow",
+  "burial": "return_to_spring"
+ },
+ "food": {
+  "likes": [
+   "berries",
+   "honey",
+   "mead"
+  ],
+  "avoids": [
+   "meat"
+  ]
+ },
+ "place_names": [
+  "Vilino kolo",
+  "Zlatna poljana",
+  "Oblak-gora",
+  "Ruseva voda"
+ ],
+ "_doc": "LR-166: вилы лесных полян и облачных гор: девы-воительницы ветра и вод, водят коло. С ними живут их мужья и сыновья из людей лесов.",
+ "desc": "culture.vila_glade.desc"
+}

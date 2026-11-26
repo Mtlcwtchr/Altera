@@ -1,0 +1,170 @@
+{
+ "id": "polis_hellene",
+ "species": "hellene",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Odysseus",
+   "Nikias",
+   "Theron",
+   "Lykos",
+   "Kleon",
+   "Demetrios",
+   "Alkimos",
+   "Philon",
+   "Mentor",
+   "Doros",
+   "Iason",
+   "Laertes"
+  ],
+  "f": [
+   "Penelope",
+   "Kallisto",
+   "Ione",
+   "Theano",
+   "Melitta",
+   "Nausikaa",
+   "Arete",
+   "Eurykleia",
+   "Xanthe",
+   "Lysandra",
+   "Phaidra",
+   "Korinna"
+  ]
+ },
+ "speech": "eloquent",
+ "build_style": "hellenic",
+ "teach_aspects": [
+  "fire",
+  "water",
+  "air",
+  "light",
+  "life",
+  "earth"
+ ],
+ "forbid_aspects": [
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "suspect",
+  "witchcraft": "frowned",
+  "oathbreaking": "crime",
+  "inhospitality": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned",
+  "dowry": true
+ },
+ "peoples": {
+  "village": {
+   "hellene": 0.88,
+   "goblin": 0.04,
+   "satyr": 0.03,
+   "nymph": 0.03,
+   "centaur": 0.02
+  },
+  "town": {
+   "hellene": 0.9,
+   "goblin": 0.05,
+   "nilote": 0.02,
+   "satyr": 0.02,
+   "steppe_folk": 0.01
+  },
+  "keep": {
+   "hellene": 0.96,
+   "centaur": 0.04
+  },
+  "monastery": {
+   "hellene": 0.9,
+   "nymph": 0.1
+  },
+  "bandit_camp": {
+   "hellene": 0.7,
+   "goblin": 0.15,
+   "satyr": 0.1,
+   "minotaur": 0.05
+  },
+  "default": {
+   "hellene": 0.92,
+   "goblin": 0.04,
+   "satyr": 0.04
+  }
+ },
+ "welcome": {
+  "human": 0.7,
+  "hellene": 1.0,
+  "nilote": 0.75,
+  "satyr": 0.7,
+  "nymph": 0.85,
+  "centaur": 0.6,
+  "goblin": 0.45,
+  "elf": 0.5,
+  "dwarf": 0.5,
+  "minotaur": 0.15,
+  "cyclops": 0.1,
+  "orc": 0.2,
+  "troll": 0.05,
+  "dragon": 0.0
+ },
+ "welcome_other": 0.45,
+ "faith": "hearth_faith",
+ "values": {
+  "hospitality": 0.6,
+  "honor": 0.4,
+  "learning": 0.35,
+  "piety": 0.3,
+  "freedom": 0.3,
+  "kinship": 0.3,
+  "order": 0.2,
+  "tradition": 0.2
+ },
+ "traditions": [
+  "xenia",
+  "symposium",
+  "agon_games",
+  "daily_prayer",
+  "wedding_customs",
+  "rite_of_passage",
+  "storytelling",
+  "council_of_elders"
+ ],
+ "rites": {
+  "coming_of_age": "ephebeia",
+  "marriage": "hearth_wedding",
+  "burial": "inter"
+ },
+ "food": {
+  "likes": [
+   "olives",
+   "olive_oil",
+   "wine",
+   "figs",
+   "bread",
+   "cheese",
+   "fish"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Ithake",
+  "Pylos",
+  "Kirrha",
+  "Melos",
+  "Thera",
+  "Argos",
+  "Korinthos",
+  "Delos",
+  "Aulis",
+  "Tiryns",
+  "Elatea",
+  "Mykenai"
+ ],
+ "_doc": "LR-166: полисы эллинов: агора, симпосий, состязания, ксения (законы гостеприимства святы и карают даже богов). Деревня и город: люди-эллины с кобалами портов, сатирами и нимфами окрестных рощ.",
+ "desc": "culture.polis_hellene.desc"
+}

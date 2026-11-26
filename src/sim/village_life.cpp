@@ -444,7 +444,7 @@ EntityId bear(World& w, Character& mother, Character* father, Rng& rng, const Vi
     k.name = randomPersonName(rng, k.body.sex == 'f', &ct) + (famName.empty() ? "" : " " + famName);
     // AL-114: the child's kind (a half-elf of a man and an elf), a name of its culture
     if (!mother.race.empty() || (father && !father->race.empty())) {
-        std::string kind = childRace(ct, mother.race, father ? father->race : mother.race);
+        std::string kind = childRace(ct, mother.race, father ? father->race : mother.race, k.body.sex);
         if (kind.empty()) kind = mother.race;
         setRace(ct, k, kind);
         Rng nr = w.rng(mother.id, "race:name");

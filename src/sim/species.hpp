@@ -40,6 +40,20 @@ struct RaceDef {
     std::string id;
     std::vector<std::string> tags;
     std::vector<std::string> blend; // two parents: the numbers are their average (half_elf = human + elf)
+    // LR-166: a regional people built on another kind (hellene on human): the base's file
+    // with this one's fields over it (objects merge key by key, the rest replaces).
+    std::string base;
+    // Peoples of one kin (every human people) have children together, and another kind's
+    // interbreed / relations_bias / a culture's welcome written for the kin holds for each
+    // of them. "" in the file = the base's kin, or the kind itself.
+    std::string kin;
+    std::vector<std::string> region; // the belts (content/world/belts.json) it is at home in
+    // One-sex kinds (nymphs, satyrs): "f" or "m" ("" = both). A person of this kind of the
+    // other sex is of `otherSex` instead (a nymph's son is a satyr).
+    std::string sexes, otherSex;
+    bool settles = true;             // false: a base only (human), never drawn into a settlement
+    Json anchor = Json::object();    // §5.3: bound to a place (spring, tree): {object, km, away_moodlet}
+    Json mobility = Json::object();  // §5.3: what the body cannot do (ship, ladder, ride)
     double sapience = 1.0;
     std::string glyph;
     // body
@@ -94,6 +108,8 @@ struct CultureDef {
     // kind -> 0..1 (1 = as one of their own, 0 = a stranger; absent = `welcomeOther`).
     std::map<std::string, double> welcome;
     double welcomeOther = 0.5;
+    std::string belt;                    // LR-166: the belt it belongs to (content/world/belts.json)
+    std::vector<std::string> placeNames; // LR-166: names its realm settlements take first
     // LR-155: the whole file (faith, values, traditions, rites, food, desc: sim/culture.hpp reads them)
     Json data = Json::object();
 };
@@ -108,12 +124,31 @@ struct SpeciesCatalog {
     // AL-136: the culture of the map's village and of each realm template ("" = none named)
     std::string mapCulture;
     std::map<std::string, std::string> templateCulture;
+    // LR-166: old ids -> new (content/species/migrate.json): kinds, cultures, faiths; and the
+    // people a person of the bare default kind (an old save's human) becomes by culture.
+    std::map<std::string, std::string> migrateRace, migrateCulture, migrateFaith, raceByCulture;
+    // LR-166: the belts of the world (content/world/belts.json, absent = one region as before)
+    struct Belt {
+        std::string id;
+        Vec2 at{0, 0};          // its centre on the continent, in belt units (north = +y)
+        double radiusKm = 18;   // how far around its centre its settlements lie
+        std::string mapCulture; // the culture of a starting village in this belt
+        std::vector<std::string> cultures;
+        Json layout = Json::array(); // [{template, culture, n}] realm settlements it starts with
+        Json data = Json::object();
+    };
+    std::map<std::string, Belt> belts;
+    std::string homeBelt;  // the belt the map's village stands in (a world may name another)
+    double beltKm = 70;    // km per belt unit
+    bool kinChildMother = false; // settle.json kin_child: "mother" (default the father's people)
     std::vector<std::string> errors;
 };
 
-// content/species (the directory) - races (*.json), cultures/*.json, settle.json.
+// content/species (the directory) - races (*.json), cultures/*.json, settle.json,
+// migrate.json; and ../world/belts.json (LR-166).
 SpeciesCatalog loadSpecies(const std::string& dir);
-SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Json>& cultures, const Json& settle);
+SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Json>& cultures, const Json& settle,
+                            const Json& migrate = Json::object(), const Json& belts = Json::object());
 void validateSpecies(const Content& c, ValidationReport& r);
 // content/creatures/*.json (monsters: the species.json format + sapience, loot, tags),
 // _items.json and _interactions.json there join the catalog's JSON before parsing.
@@ -136,8 +171,23 @@ double raceLearnMult(const Content& ct, const Character& c, const std::string& s
 double raceCapMult(const Content& ct, const Character& c, const std::string& skill);
 double raceTraitWeight(const RaceDef& r, const std::string& trait);
 double raceConceiveMult(const Content& ct, const Character& c);
-// The child's kind, "" when these two have none together.
+// The child's kind, "" when these two have none together. Two peoples of one kin (a
+// hellene and a northman) have the father's people's child (settle.json kin_child).
 std::string childRace(const Content& ct, const std::string& mother, const std::string& father);
+// LR-166: the same for a child of this sex: a son of a one-sex kind (a nymph's son) takes
+// the other parent's kind when it fits him, else the kind's other_sex.
+std::string childRace(const Content& ct, const std::string& mother, const std::string& father, char sex);
+// The kind a person of this sex may be: `race` itself, or its other_sex for the wrong sex.
+std::string raceForSex(const Content& ct, const std::string& race, char sex);
+// LR-166: the kin of a kind (human for every human people; the kind itself otherwise).
+std::string kinOf(const Content& ct, const std::string& race);
+std::string kinOf(const SpeciesCatalog& s, const std::string& race);
+// LR-166: the belt a culture belongs to ("" = none named).
+std::string cultureBelt(const SpeciesCatalog& s, const std::string& culture);
+// LR-166: an old save's kinds, cultures and faiths to today's ids (content/species/migrate.json):
+// a person of the bare default kind becomes the people of their (or their settlement's)
+// culture. Run once after a snapshot is loaded; returns how many records changed.
+int migratePeoples(World& w);
 // A name from the kind's culture, "" when it uses the common pool.
 std::string cultureName(const Content& ct, const std::string& race, Rng& rng, bool female, bool withFamily);
 // Starting relations between kinds (relations_bias), for two people meeting the first time.

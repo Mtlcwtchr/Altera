@@ -1,0 +1,132 @@
+{
+ "id": "celtic_grove",
+ "species": "woodfolk",
+ "belt": "forest",
+ "names": {
+  "m": [
+   "Brennos",
+   "Cathal",
+   "Fergus",
+   "Conall",
+   "Bran",
+   "Cormac",
+   "Dughall",
+   "Lugaid",
+   "Eogan",
+   "Ronan"
+  ],
+  "f": [
+   "Brigid",
+   "Deirdre",
+   "Emer",
+   "Grainne",
+   "Maeve",
+   "Una",
+   "Ailbe",
+   "Fedelm",
+   "Sadb",
+   "Orla"
+  ]
+ },
+ "speech": "plain",
+ "build_style": "celtic",
+ "teach_aspects": [
+  "life",
+  "earth",
+  "water",
+  "air",
+  "light"
+ ],
+ "forbid_aspects": [
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "allowed",
+  "oathbreaking": "crime",
+  "geis_breaking": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "allowed"
+ },
+ "peoples": {
+  "village": {
+   "woodfolk": 0.85,
+   "elf": 0.05,
+   "half_elf": 0.05,
+   "goblin": 0.05
+  },
+  "monastery": {
+   "woodfolk": 0.85,
+   "half_elf": 0.1,
+   "elf": 0.05
+  },
+  "default": {
+   "woodfolk": 0.88,
+   "goblin": 0.06,
+   "half_elf": 0.06
+  }
+ },
+ "welcome": {
+  "human": 0.8,
+  "woodfolk": 1.0,
+  "elf": 0.75,
+  "half_elf": 0.85,
+  "vila": 0.7,
+  "goblin": 0.5,
+  "northman": 0.5,
+  "hellene": 0.6
+ },
+ "welcome_other": 0.4,
+ "faith": "green_covenant",
+ "values": {
+  "nature": 0.5,
+  "honor": 0.5,
+  "kinship": 0.4,
+  "learning": 0.3,
+  "piety": 0.3,
+  "freedom": 0.3
+ },
+ "traditions": [
+  "druid_council",
+  "oath_keeping",
+  "storytelling",
+  "festive_gatherings",
+  "hospitality",
+  "blood_feud",
+  "rite_of_passage"
+ ],
+ "rites": {
+  "coming_of_age": "geis_naming",
+  "marriage": "handfasting",
+  "burial": "barrow"
+ },
+ "food": {
+  "likes": [
+   "mead",
+   "ale",
+   "meat",
+   "cheese",
+   "bread",
+   "apples"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Dun Aillinne",
+  "Emain Macha",
+  "Tara",
+  "Cruachan",
+  "Bibracte",
+  "Alesia",
+  "Dun Sobairche"
+ ],
+ "_doc": "LR-166: кельтские роды Средних лесов: друиды, гейсы (личные зароки), барды, курганы и холмы сидов по соседству.",
+ "desc": "culture.celtic_grove.desc"
+}

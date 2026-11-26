@@ -87,6 +87,7 @@ NewGame NewGame::fromJson(const Json& j, std::uint64_t fallbackSeed) {
     const std::string season = j.value("season", std::string());
     for (const char* s : kSeasons)
         if (season == s) g.season = season;
+    g.belt = j.value("belt", std::string()); // checked against the belts by worldgen (unknown = home)
     return g;
 }
 
@@ -111,6 +112,14 @@ Json newGameOptions(const Content& c, const ViewText& t, const NewGame& d) {
     }
     Json seasons = Json::array();
     for (const char* s : kSeasons) seasons.push_back({{"id", s}, {"name", uiText(t, std::string("ui2d.season.") + s)}});
+    // LR-166: the belts a new game may start in, with the culture of the village there
+    Json belts = Json::array();
+    for (const auto& [id, b] : c.peoples.belts)
+        if (!b.mapCulture.empty())
+            belts.push_back({{"id", id}, {"name", uiText(t, "world.belt." + id + ".name")}, {"desc", uiText(t, "world.belt." + id + ".desc")},
+                             {"culture", b.mapCulture}, {"culture_name", t.name("culture", b.mapCulture)},
+                             {"order", b.data.value("order", 99)}, {"home", id == c.peoples.homeBelt}});
+    std::stable_sort(belts.begin(), belts.end(), [](const Json& a, const Json& b) { return a["order"].get<int>() < b["order"].get<int>(); });
     Json backs = Json::array();
     for (const BackstoryDef& b : c.backstories) {
         Json skills = Json::array();
@@ -129,7 +138,7 @@ Json newGameOptions(const Content& c, const ViewText& t, const NewGame& d) {
                          {"gear", gear},
                          {"coins", b.coins}});
     }
-    return {{"sizes", sizes}, {"seasons", seasons}, {"backstories", backs}, {"defaults", d.toJson()}, {"create", creationJson(c, t)}};
+    return {{"sizes", sizes}, {"seasons", seasons}, {"belts", belts}, {"backstories", backs}, {"defaults", d.toJson()}, {"create", creationJson(c, t)}};
 }
 
 Json creationJson(const Content& c, const ViewText& t) {
@@ -189,6 +198,7 @@ Json worldConfig(const Json& base, const NewGame& g) {
         cfg.erase("start_day");
         cfg["season"] = g.season;
     }
+    if (!g.belt.empty()) cfg["belt"] = g.belt; // LR-166
     cfg["seed"] = g.seed;
     if (!cfg.contains("village_site")) cfg["village_plan"] = true;   // roads, lots, houses of pieces
     return cfg;

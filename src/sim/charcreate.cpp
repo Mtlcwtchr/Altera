@@ -144,6 +144,11 @@ Json creationRules(const Content& c, const std::string& culture) {
             e["px"] = r->spritePx;
             if (!r->pawn.empty()) e["pawn"] = r->pawn;   // LR-139: ears, head, tusks... for the preview
             e["gifted_chance"] = r->giftedChance;
+            // LR-166: the kind's belts and kin, and the one sex of a one-sex kind
+            e["region"] = r->region;
+            e["kin"] = r->kin;
+            if (!r->sexes.empty()) e["sexes"] = r->sexes;
+            e["stats"] = r->statMods;
             // the kind's strongest and weakest aptitudes, for the card
             std::vector<std::pair<std::string, RaceAptitude>> ap(r->aptitudes.begin(), r->aptitudes.end());
             std::stable_sort(ap.begin(), ap.end(), [](const auto& a, const auto& b) { return a.second.learn > b.second.learn; });
@@ -184,6 +189,7 @@ int creationCost(const Content& c, const Json& ch, std::string* why) {
     if (std::find(pr.begin(), pr.end(), race) == pr.end()) return fail("race_not_playable");
     const std::string sex = ch.value("sex", std::string("m"));
     if (sex != "m" && sex != "f") return fail("bad_sex");
+    if (raceForSex(c, race, sex[0]) != race) return fail("sex_not_for_race"); // LR-166: nymphs, satyrs
     // the age (human measure)
     const Json age = cfg.value("age", Json::object());
     if (ch.contains("age")) {

@@ -119,7 +119,7 @@ TEST(lr_sim_culture_newcomer_takes_the_place_ways) {
     w.run(kTicksPerDay + 1);
     const std::string sc = settlementCulture(w, sid);
     Character* c = villagers(w, sid).front();
-    c->culture = sc == "orcish" ? "dwarven" : "orcish";
+    c->culture = sc == "steppe_rider" ? "dwarf_hold" : "steppe_rider";
     c->cultureBond = cultureRules(w.content()).person.switchBelow + 0.0001;
     cultureDaily(w);
     CHECK_EQ(c->culture, sc);

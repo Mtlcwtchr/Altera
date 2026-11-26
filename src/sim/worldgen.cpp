@@ -120,6 +120,13 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
     // AL-136: or a culture of the world file / test ("culture"), its mix for a village
     std::map<std::string, double> peoplesMix = content.peoples.mapMix;
     std::string mapCulture = content.peoples.mapCulture;
+    // LR-166: a belt of the world file ("belt": north) starts the village in that belt's culture
+    if (cfg.contains("belt") && cfg["belt"].is_string())
+        if (auto b = content.peoples.belts.find(cfg["belt"].get<std::string>()); b != content.peoples.belts.end() &&
+                                                                                !b->second.mapCulture.empty()) {
+            mapCulture = b->second.mapCulture;
+            peoplesMix = culturePeoples(content.peoples, mapCulture, "village");
+        }
     if (cfg.contains("culture") && cfg["culture"].is_string()) {
         mapCulture = cfg["culture"].get<std::string>();
         peoplesMix = culturePeoples(content.peoples, mapCulture, "village");

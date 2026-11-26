@@ -1,0 +1,97 @@
+{
+ "id": "smith_cyclops",
+ "species": "cyclops",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Brontes",
+   "Steropes",
+   "Arges",
+   "Polyphemos",
+   "Akmon",
+   "Pyrakmon"
+  ],
+  "f": [
+   "Aitna",
+   "Thoosa",
+   "Lipara",
+   "Hephaistia"
+  ]
+ },
+ "speech": "slow",
+ "build_style": "cyclopean",
+ "teach_aspects": [
+  "fire",
+  "earth",
+  "metal"
+ ],
+ "forbid_aspects": [
+  "water"
+ ],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "allowed",
+  "theft_from_forge": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "cyclops": 0.95,
+   "goblin": 0.05
+  }
+ },
+ "welcome": {
+  "cyclops": 1.0,
+  "dwarf": 0.6,
+  "goblin": 0.4,
+  "hellene": 0.25,
+  "human": 0.2,
+  "satyr": 0.15
+ },
+ "welcome_other": 0.2,
+ "faith": "hoard_flame",
+ "values": {
+  "craft": 0.8,
+  "tradition": 0.4,
+  "kinship": 0.3,
+  "hospitality": -0.1,
+  "learning": 0.1
+ },
+ "traditions": [
+  "craft_pride",
+  "forge_vigil",
+  "ancestor_rites",
+  "oath_keeping"
+ ],
+ "rites": {
+  "coming_of_age": "first_forging",
+  "marriage": "oath_binding",
+  "burial": "burn"
+ },
+ "food": {
+  "likes": [
+   "meat",
+   "cheese",
+   "milk",
+   "wine"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Aitna",
+  "Lipara",
+  "Strongyle",
+  "Hiera",
+  "Thermessa"
+ ],
+ "_doc": "LR-166: циклопы вулканических островов: кузни в огненных горах, киклопическая кладка. Гостеприимство для них испытание: за обиду гостю их карают законы (§6.4).",
+ "desc": "culture.smith_cyclops.desc"
+}
