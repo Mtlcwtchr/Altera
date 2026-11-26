@@ -1,0 +1,1805 @@
+{
+ "_doc": "LR-165: the 48x64 people of the mythic world (pilot sheet v5), drawn by tools/game_2d/web/figures.js and native/figure2d.cpp (pixel-equal; check: node tools/game_2d/figure_sheet.js out.png --check). Figure space: x 0..48 with the middle at mirror_x 24, the ground at y 66, the neck at 22; a people stretches the body below the neck by t {sx, sy} (the head only in width, (sx+1)/2). canvas: the picture (square) and where figure space sits in it (ox, oy), anchor = the feet. Drawing goes by `order` (a layer name, dy: a shift) and in each layer through: base, the people's layers, the outfit's layers, the hair style, the beard, the tool. An op = {s: shape, c: colour, m: \"soft flat rim1\", pat: [{if: expr over x y, c}], when: expr, sides: \"S E N\"} | {dot: [x, y, w, h], c} | {ops: name, with: {var: expr}, cwith: {colour: colour}}. A shape = {ell: [cx, cy, rx, ry]} | {cap: [x0, y0, x1, y1, r0, r1]} | {poly: [[x, y]...]} | {rect: [x0, y0, x1, y1]} | {torso: [hem y, flare]} (the torso profile, mirrored) | {or | and: [shapes]} | {sub: [a, b]} | {mir: s} | {both: s} | \"@name\" | {use: name, with: {var: expr}} | {where: expr}. Numbers are expressions over the variables: v (the variant), fem cen child adult hide kit dressed covered helm bare haschest modest, S E N (the side), step bob swing dip blink (the pose), the people's and the outfit's flags, numbers and vars below; with + - * / % < <= > >= == != && || ! abs min max trunc floor sel(c,a,b). Colours: \"#hex\", a name (skin hair iris fur coat coat_d chest c c2 ..., colours, the people's and the outfit's colours: a list is picked by v), \"a*k\" (k<1 darker, >1 toward white), mix(a,b,k), tint(a,r,g,b). The people of a person: races[race] or peoples[race], else cultures_people[culture]; the outfit: cultures[culture][slot] (slot by what the sim says is worn: outfit_by_worn), no torso thing: bare (the hide-nudity option and every child: a plain shift instead). Only adults have a chest: children are drawn without any of it.",
+ "enabled": true,
+ "world_px_per_art_px": 0.3333,
+ "hide_nudity": false,
+ "canvas": {"w": 96, "h": 96, "ox": 24, "oy": 24, "anchor": [48, 90]},
+ "canvas_cen": {"w": 96, "h": 96, "ox": 40, "oy": 20, "anchor": [46, 88]},
+ "ground": 66,
+ "neck": 22,
+ "mirror_x": 24,
+ "torso": {"m": [[34.5, 22], [36, 26], [32.5, 34], [31, 40], [32.5, 46]], "f": [[32.5, 22], [33.3, 26], [30.5, 33], [28.8, 37], [33, 46]], "hem_y": 46},
+ "shade": {"light": 1.32, "shadow": 0.76, "dark": 0.5, "outline": 0.3},
+ "child": {"sx": 0.8, "sy": 0.62},
+ "views": {"E": {"sx": 0.74, "hx": 0.86}, "E_cen": {"sx": 1, "hx": 0.9}},
+ "colours": {
+  "gold": "#e0b030",
+  "bronze": "#b8873a",
+  "lin": "#e6dcc4",
+  "red": "#a8322b",
+  "silver": "#cfd3d6",
+  "leather": "#8a5a2b",
+  "boot": "#3b2a1e",
+  "wood": "#8a6a3d",
+  "dwood": "#6b4a2e",
+  "steel": "#c8ccd0",
+  "iron": "#8a8e94",
+  "iron2": "#9aa3ab",
+  "straw": "#c8a050",
+  "mail": "#9aa3ab",
+  "mail_d": "#6d767d",
+  "ivy": "#4e8a3b"
+ },
+ "numbers": {"two_eyes": 1, "own_head": 0, "one_eye": 0, "goat": 0, "leaf": 0, "wreath": 0, "big_nose": 0, "hastool": 0},
+ "vars": [
+  ["two_eyes", "!own_head && !one_eye"],
+  ["fdx", "E*2.4"],
+  ["ll", "(step==1)*2"],
+  ["lr", "(step==3)*2"],
+  ["lxl", "E*((step==1)*2-(step==3)*2)"],
+  ["al", "(step==1)-(step==3)"],
+  ["ar", "(step==3)-(step==1)-3*swing"],
+  ["thx", "35.2+E*1.5"],
+  ["thy", "44.6+ar"]
+ ],
+ "order": [
+  "back",
+  "hairback",
+  "legs",
+  "torso",
+  "dress",
+  "chest",
+  "arms",
+  {"l": "head", "dy": "dip"},
+  {"l": "face", "dy": "dip"},
+  {"l": "beard", "dy": "dip"},
+  {"l": "hair", "dy": "dip"},
+  {"l": "headwear", "dy": "dip"},
+  "held"
+ ],
+ "shapes": {
+  "leg": {
+   "or": [
+    {"cap": ["20.5+lx", 44, "20+lx", "54-lift*0.5", "sel(fem,3.9,4.4)", 3.2]},
+    {"cap": ["20+lx", "54-lift*0.5", "19.8+lx", "63-lift", 3.1, 2.2]},
+    {"ell": ["20+lx", "64-lift", 3.8, 1.7]}
+   ]
+  },
+  "foot": {"ell": ["20+lx", "64.4-lift", 3.9, 1.8]},
+  "pant": {"or": [{"cap": ["20.5+lx", 44, "20+lx", "54-lift*0.5", "sel(fem,4,4.5)", 3.4]}, {"cap": ["20+lx", "54-lift*0.5", "19.8+lx", "62-lift", 3.3, 2.8]}]},
+  "boot": {"or": [{"cap": ["20+lx", "56-lift", "19.9+lx", "63.5-lift", 3.2, 2.9]}, {"ell": ["20+lx", "64.4-lift", 4, 1.9]}]},
+  "greave": {"cap": ["20.2+lx", "52-lift*0.7", "19.9+lx", "60.5-lift", 3.2, 2.5]},
+  "goatleg": {
+   "or": [
+    {"cap": ["20.5+lx", 44, "20.5+lx", "51-lift*0.4", 4.2, 3.4]},
+    {"cap": ["20.5+lx", "51-lift*0.4", "20.5+lx", "56-lift*0.7", 2, 1.6]},
+    {"cap": ["20.5+lx", "56-lift*0.7", "20.5+lx", "62.5-lift", 1.8, 1.5]},
+    {"ell": ["20.5+lx", "64-lift", 3.2, 1.6]}
+   ]
+  },
+  "hoof": {"poly": [["18+lx", "63-lift"], ["23+lx", "63-lift"], ["23+lx", "66-lift"], ["18+lx", "66-lift"]]},
+  "arm": {"or": [{"cap": [14.6, 24, 12.6, 34, 3.3, 2.7]}, {"cap": [12.6, 34, 12.9, "43+ay", 2.6, 2.0]}, {"ell": [12.9, "44.8+ay", 2.1, 2.6]}]},
+  "forearm": {"or": [{"cap": [12.7, 39.5, 12.9, "43.5+ay", 2.3, 2.0]}, {"ell": [12.9, "44.8+ay", 2.1, 2.6]}]},
+  "sleeve": {"or": [{"cap": [14.6, 24, 12.6, 34, 3.5, 2.9]}, {"cap": [12.6, 34, 12.9, "len", 2.9, 2.5]}]},
+  "bracer": {"cap": [12.5, 37, 12.8, 43.4, 2.9, 2.5]},
+  "head": {"or": [{"ell": [24, 10, 6.4, 7.2]}, {"ell": [24, 14, 5, 4.7]}]},
+  "blanket": {"poly": [[-8, 34], [16, 33], [18, 41], [-9, 43]]},
+  "hleg": {"or": [{"cap": ["hx0", "50", "hx0-0.5", "57-lift*0.5", 3.1, 2.3]}, {"cap": ["hx0-0.5", "57-lift*0.5", "hx0-0.8", "64.6-lift", 2.3, 1.8]}]},
+  "hhoof": {"ell": ["hx0-0.8", "66-lift", 3.1, 1.6]},
+  "cloak_back": {"poly": [[14, 22], [34, 22], [37, 40], [34, 56], [14, 56], [11, 40]]},
+  "fringe": {"sub": [{"ell": [24, 7.2, 7.3, 5.6]}, {"ell": [24, 12.4, 5.4, 5.8]}]},
+  "locks": {"or": [{"cap": [18.4, 6.2, 17, "len", 1.8, 1.2]}, {"cap": [29.6, 6.2, 31, "len", 1.8, 1.2]}]},
+  "hair_long_back": {"or": [{"ell": [24, 9, 7.8, 8.4]}, {"poly": [[16, 11], [32, 11], ["ha", "hb"], [30, "hc"], [18, "hc"], ["48-ha", "hb"]]}]},
+  "hood_cut": {"ell": [24, 11.4, 5.6, 6.4]}
+ },
+ "ops": {
+  "feet_bare": [
+   {"s": {"use": "foot", "with": {"lift": "ll", "lx": "lxl"}}, "c": "fc", "m": "rim1", "when": "!cen && !goat"},
+   {"s": {"mir": {"use": "foot", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "fc", "m": "rim1", "when": "!cen && !goat"}
+  ],
+  "pants": [
+   {"s": {"use": "pant", "with": {"lift": "ll", "lx": "lxl"}}, "c": "pc", "when": "!cen && !goat"},
+   {"s": {"mir": {"use": "pant", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "pc", "when": "!cen && !goat"},
+   {"s": {"use": "boot", "with": {"lift": "ll", "lx": "lxl"}}, "c": "bc", "m": "rim1", "when": "!cen && !goat"},
+   {"s": {"mir": {"use": "boot", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "bc", "m": "rim1", "when": "!cen && !goat"},
+   {"s": {"poly": [[16, 44], [32, 44], [33, 51], [15, 51]]}, "c": "pc", "m": "soft", "when": "!cen && goat"}
+  ],
+  "blanket": [{"s": "@blanket", "c": "bc", "m": "soft", "when": "cen", "pat": [{"if": "y>40", "c": "tr"}]}],
+  "belt": [{"s": {"cap": ["sel(fem,b0f,b0m)", "sel(fem,byf,bym)", "sel(fem,48-b0f,48-b0m)", "sel(fem,byf,bym)", "bw", "bw"]}, "c": "bc", "m": "soft"}],
+  "shield": [
+   {"s": {"ell": [9, 40, 9.6, 9.6]}, "c": "sh0"},
+   {"s": {"ell": [9, 40, 7.2, 7.2]}, "c": "sh1", "m": "soft"},
+   {"s": {"ell": [9, 40, 2.3, 2.3]}, "c": "sh2", "m": "soft"}
+  ],
+  "spear": [
+   {"s": {"cap": [39.5, 6, 39.5, 67, 0.8, 0.8]}, "c": "wood", "m": "flat rim1"},
+   {"s": {"poly": [[38, 7], [41, 7], [39.5, -1]]}, "c": "silver", "m": "soft"},
+   {"s": {"ell": [35.6, 43.8, 2.4, 2.8]}, "c": "skin", "m": "soft"}
+  ],
+  "bow": [
+   {"s": {"cap": ["bx", 13, "bx-3", 24, 0.9, 0.9]}, "c": "wood", "m": "rim1 soft"},
+   {"s": {"cap": ["bx-3", 24, "bx-3", 36, 0.9, 0.9]}, "c": "wood", "m": "rim1 soft"},
+   {"s": {"cap": ["bx-3", 36, "bx", 47, 0.9, 0.9]}, "c": "wood", "m": "rim1 soft"},
+   {"s": {"cap": ["bx", 13, "bx", 47, 0.3, 0.3]}, "c": "#e6e2d2", "m": "flat"},
+   {"s": {"ell": [12.4, 40.6, 2.1, 2.5]}, "c": "skin", "m": "soft"}
+  ],
+  "staff": [{"s": {"cap": [40, 6, 40, 67, 0.8, 0.8]}, "c": "dwood", "m": "flat"}, {"s": {"ell": [35.8, 43.6, 2.4, 2.8]}, "c": "skin", "m": "soft"}],
+  "hand": [{"s": {"ell": ["thx", "thy", 2.2, 2.6]}, "c": "skin", "m": "soft"}],
+  "wreath_laurel": [
+   {"s": {"ell": [16.4, 8.4, 1.9, 1.2]}, "c": "#3a7030", "m": "soft rim1"},
+   {"s": {"ell": [16.77, 6.42, 1.9, 1.2]}, "c": "#4e8a3b", "m": "soft rim1"},
+   {"dot": [16.27, 4.92], "c": "#c0392b"},
+   {"s": {"ell": [17.85, 4.64, 1.9, 1.2]}, "c": "#3a7030", "m": "soft rim1"},
+   {"s": {"ell": [19.53, 3.22, 1.9, 1.2]}, "c": "#4e8a3b", "m": "soft rim1"},
+   {"s": {"ell": [21.65, 2.31, 1.9, 1.2]}, "c": "#3a7030", "m": "soft rim1"},
+   {"dot": [21.15, 0.81], "c": "#c0392b"},
+   {"s": {"ell": [24.0, 2.0, 1.9, 1.2]}, "c": "#4e8a3b", "m": "soft rim1"},
+   {"s": {"ell": [26.35, 2.31, 1.9, 1.2]}, "c": "#3a7030", "m": "soft rim1"},
+   {"s": {"ell": [28.47, 3.22, 1.9, 1.2]}, "c": "#4e8a3b", "m": "soft rim1"},
+   {"dot": [27.97, 1.72], "c": "#c0392b"},
+   {"s": {"ell": [30.15, 4.64, 1.9, 1.2]}, "c": "#3a7030", "m": "soft rim1"},
+   {"s": {"ell": [31.23, 6.42, 1.9, 1.2]}, "c": "#4e8a3b", "m": "soft rim1"},
+   {"s": {"ell": [31.6, 8.4, 1.9, 1.2]}, "c": "#3a7030", "m": "soft rim1"},
+   {"dot": [31.1, 6.9], "c": "#c0392b"}
+  ],
+  "wreath_ivy": [
+   {"s": {"ell": [16.4, 8.4, 1.9, 1.2]}, "c": "#3f7a2b", "m": "soft rim1"},
+   {"s": {"ell": [16.77, 6.42, 1.9, 1.2]}, "c": "#5a9a3b", "m": "soft rim1"},
+   {"dot": [16.27, 4.92], "c": "#7a4a8a"},
+   {"s": {"ell": [17.85, 4.64, 1.9, 1.2]}, "c": "#3f7a2b", "m": "soft rim1"},
+   {"s": {"ell": [19.53, 3.22, 1.9, 1.2]}, "c": "#5a9a3b", "m": "soft rim1"},
+   {"s": {"ell": [21.65, 2.31, 1.9, 1.2]}, "c": "#3f7a2b", "m": "soft rim1"},
+   {"dot": [21.15, 0.81], "c": "#7a4a8a"},
+   {"s": {"ell": [24.0, 2.0, 1.9, 1.2]}, "c": "#5a9a3b", "m": "soft rim1"},
+   {"s": {"ell": [26.35, 2.31, 1.9, 1.2]}, "c": "#3f7a2b", "m": "soft rim1"},
+   {"s": {"ell": [28.47, 3.22, 1.9, 1.2]}, "c": "#5a9a3b", "m": "soft rim1"},
+   {"dot": [27.97, 1.72], "c": "#7a4a8a"},
+   {"s": {"ell": [30.15, 4.64, 1.9, 1.2]}, "c": "#3f7a2b", "m": "soft rim1"},
+   {"s": {"ell": [31.23, 6.42, 1.9, 1.2]}, "c": "#5a9a3b", "m": "soft rim1"},
+   {"s": {"ell": [31.6, 8.4, 1.9, 1.2]}, "c": "#3f7a2b", "m": "soft rim1"},
+   {"dot": [31.1, 6.9], "c": "#7a4a8a"}
+  ],
+  "ivy_sash": [
+   {"s": {"ell": [15.5, 24.5, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [17.5, 26.4, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [19.5, 28.3, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [21.5, 30.2, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [23.5, 32.1, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [25.5, 34.0, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [27.5, 35.9, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [29.5, 37.8, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"},
+   {"s": {"ell": [31.5, 39.7, 1.3, 1.1]}, "c": "ivy", "m": "soft rim1 flat"}
+  ],
+  "horse": [
+   {"s": {"poly": [[-14, 40], [-19, 46], [-22, 58], [-17, 65], [-14, 56], [-12, 46]]}, "c": "hair", "m": "soft"},
+   {"s": {"use": "hleg", "with": {"hx0": -8, "lift": "lr"}}, "c": "coat*0.8", "m": "rim1"},
+   {"s": {"use": "hhoof", "with": {"hx0": -8, "lift": "lr"}}, "c": "coat_d", "m": "rim1 soft"},
+   {"s": {"use": "hleg", "with": {"hx0": -2, "lift": "ll"}}, "c": "coat*0.8", "m": "rim1"},
+   {"s": {"use": "hhoof", "with": {"hx0": -2, "lift": "ll"}}, "c": "coat_d", "m": "rim1 soft"},
+   {"s": {"use": "hleg", "with": {"hx0": 21, "lift": "ll"}}, "c": "coat", "m": "rim1"},
+   {"s": {"use": "hhoof", "with": {"hx0": 21, "lift": "ll"}}, "c": "coat_d", "m": "rim1 soft"},
+   {"s": {"use": "hleg", "with": {"hx0": 27, "lift": "lr"}}, "c": "coat", "m": "rim1"},
+   {"s": {"use": "hhoof", "with": {"hx0": 27, "lift": "lr"}}, "c": "coat_d", "m": "rim1 soft"},
+   {"s": {"ell": [6, 44, 21, 9.5]}, "c": "coat"},
+   {"s": {"ell": [24, 43, 8.6, 11]}, "c": "coat"},
+   {"s": {"ell": [2, 50, 14, 3]}, "c": "coat*0.7", "m": "soft flat"},
+   {"s": {"cap": [-14, 38, 24, 34, 1.2, 1.2]}, "c": "coat_d", "m": "soft flat"}
+  ]
+ },
+ "base": {
+  "legs": [
+   {"ops": "horse", "when": "cen"},
+   {"s": {"use": "leg", "with": {"lift": "ll", "lx": "lxl"}}, "c": "skin", "when": "!cen && !goat"},
+   {"s": {"mir": {"use": "leg", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "skin", "when": "!cen && !goat"},
+   {"s": {"use": "goatleg", "with": {"lift": "ll", "lx": "lxl"}}, "c": "fur", "m": "rim1", "when": "!cen && goat"},
+   {"s": {"mir": {"use": "goatleg", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "fur", "m": "rim1", "when": "!cen && goat"},
+   {"s": {"use": "hoof", "with": {"lift": "ll", "lx": "lxl"}}, "c": "#2a1d14", "m": "soft flat", "when": "!cen && goat"},
+   {"s": {"mir": {"use": "hoof", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "#2a1d14", "m": "soft flat", "when": "!cen && goat"}
+  ],
+  "torso": [{"s": {"or": [{"cap": [24, 15, 24, 22, 2.6, 3.4]}, {"torso": ["sel(cen,38,45)", 0]}]}, "c": "skin", "m": "soft"}],
+  "dress": [
+   {"ops": "feet_bare", "cwith": {"fc": "skin*0.86"}, "when": "!dressed"},
+   {
+    "s": {"torso": ["sel(cen,38,sel(child,56,sel(fem,52,48)))", "sel(fem,2.5,1)"]},
+    "c": "chest",
+    "when": "modest",
+    "pat": [{"if": "y>sel(child,55,sel(fem,51,47))", "c": "chest*0.72"}]
+   },
+   {
+    "s": {"cap": ["sel(fem,18.6,16.8)", "sel(fem,31.6,38.4)", "sel(fem,29.4,31.2)", "sel(fem,31.6,38.4)", 1, 1]},
+    "c": "chest*0.6",
+    "m": "soft",
+    "when": "modest"
+   }
+  ],
+  "chest": [
+   {"s": {"cap": [24, 24, 24, 36, 0.5, 0.5]}, "c": "chest*0.65", "m": "flat", "when": "haschest && !fem && adult", "sides": "S"},
+   {"s": {"both": {"ell": [20.4, 28.4, 3.7, 3.4]}}, "c": "skin*1.1", "m": "soft", "when": "fem && adult && bare", "sides": "SE"},
+   {"s": {"both": {"ell": [20.4, 28.4, 3.7, 3.4]}}, "c": "chest*1.12", "m": "soft", "when": "fem && adult && !bare", "sides": "SE"},
+   {"dot": [19.5, 29, 2, 1], "c": "tint(skin,0.8,0.58,0.58)", "when": "fem && adult && bare", "sides": "S"},
+   {"dot": [27.5, 29, 2, 1], "c": "tint(skin,0.8,0.58,0.58)", "when": "fem && adult && bare", "sides": "S"},
+   {"dot": [19.6, 28.4], "c": "tint(skin,0.8,0.58,0.58)", "when": "!fem && adult && bare", "sides": "S"},
+   {"dot": [27.8, 28.4], "c": "tint(skin,0.8,0.58,0.58)", "when": "!fem && adult && bare", "sides": "S"},
+   {"dot": [23.8, 38], "c": "skin*0.66", "when": "bare && !cen", "sides": "S"}
+  ],
+  "arms": [
+   {"s": {"use": "arm", "with": {"ay": "al"}}, "c": "skin", "when": "!covered"},
+   {"s": {"mir": {"use": "arm", "with": {"ay": "ar"}}}, "c": "skin", "when": "!covered"},
+   {"s": {"use": "forearm", "with": {"ay": "al"}}, "c": "skin", "when": "covered"},
+   {"s": {"mir": {"use": "forearm", "with": {"ay": "ar"}}}, "c": "skin", "when": "covered"}
+  ],
+  "head": [{"s": "@head", "c": "skin", "when": "!own_head"}],
+  "face": [
+   {"dot": [20, 9, 3, 1], "c": "#1a120e", "when": "!blink && two_eyes", "sides": "S"},
+   {"dot": ["25+fdx", 9, 3, 1], "c": "#1a120e", "when": "!blink && two_eyes", "sides": "S E"},
+   {"dot": [20, 10], "c": "#f4efe6", "when": "!blink && two_eyes", "sides": "S"},
+   {"dot": [21, 10], "c": "#14100c", "when": "!blink && two_eyes", "sides": "S"},
+   {"dot": [22, 10], "c": "iris", "when": "!blink && two_eyes", "sides": "S"},
+   {"dot": [21, 11, 2, 1], "c": "iris*0.7", "when": "!blink && two_eyes", "sides": "S"},
+   {"dot": ["25+fdx", 10], "c": "iris", "when": "!blink && two_eyes", "sides": "S E"},
+   {"dot": ["26+fdx", 10], "c": "#14100c", "when": "!blink && two_eyes", "sides": "S E"},
+   {"dot": ["27+fdx", 10], "c": "#f4efe6", "when": "!blink && two_eyes", "sides": "S E"},
+   {"dot": ["25+fdx", 11, 2, 1], "c": "iris*0.7", "when": "!blink && two_eyes", "sides": "S E"},
+   {"dot": [20, 10, 3, 1], "c": "skin*0.55", "when": "blink && two_eyes", "sides": "S"},
+   {"dot": ["25+fdx", 10, 3, 1], "c": "skin*0.55", "when": "blink && two_eyes", "sides": "S E"},
+   {"dot": [20, 8, 3, 1], "c": "hair*1.1", "when": "fem && two_eyes", "sides": "S"},
+   {"dot": ["25+fdx", 8, 3, 1], "c": "hair*1.1", "when": "fem && two_eyes", "sides": "S E"},
+   {"dot": [19.5, 8, 4, 1], "c": "hair*0.85", "when": "!fem && two_eyes", "sides": "S"},
+   {"dot": ["24.5+fdx", 8, 4, 1], "c": "hair*0.85", "when": "!fem && two_eyes", "sides": "S E"},
+   {"dot": ["23.5+fdx", 15, 3, 1], "c": "#b5453f", "when": "fem && adult && !own_head", "sides": "S E"},
+   {"dot": ["23+fdx", 15], "c": "#d96a63", "when": "fem && adult && !own_head", "sides": "S E"},
+   {"dot": ["23.5+fdx", 15, 3, 1], "c": "skin*0.55", "when": "(!fem || child) && !own_head", "sides": "S E"},
+   {"dot": [18.5, 13, 2, 1], "c": "#e9a39a", "when": "fem && !own_head", "sides": "S"},
+   {"dot": ["28+fdx", 13, 2, 1], "c": "#e9a39a", "when": "fem && !own_head", "sides": "S E"},
+   {"dot": ["24+fdx", 12, 1, 2], "c": "skin*0.8", "when": "!own_head", "sides": "S E"},
+   {"dot": ["23+fdx", 13], "c": "skin*0.7", "when": "!own_head", "sides": "S E"},
+   {"dot": ["30.4", 12, 1, 2], "c": "skin", "when": "!own_head && !big_nose", "sides": "E"}
+  ],
+  "hair": [],
+  "headwear": [],
+  "held": []
+ },
+ "hairs": {
+  "none": {},
+  "bald": {},
+  "short": {
+   "hair": [
+    {"s": "@fringe", "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"ell": [24, 9.2, 7, 7.8]}, "c": "hair", "m": "soft", "sides": "N"}
+   ],
+   "hairback": [{"s": {"ell": [24, 9, 7.5, 8]}, "c": "hair", "m": "soft", "when": "!helm"}]
+  },
+  "long": {
+   "hair": [
+    {"s": "@fringe", "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"use": "locks", "with": {"len": 22}}, "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"use": "hair_long_back", "with": {"ha": 35, "hb": 32, "hc": 46}}, "c": "hair", "m": "soft", "sides": "N"}
+   ],
+   "hairback": [{"s": {"use": "hair_long_back", "with": {"ha": 35, "hb": 32, "hc": 46}}, "c": "hair", "m": "soft", "sides": "S E"}]
+  },
+  "shoulder": {
+   "hair": [
+    {"s": "@fringe", "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"use": "locks", "with": {"len": 16}}, "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"use": "hair_long_back", "with": {"ha": 33.5, "hb": 26, "hc": 34}}, "c": "hair", "m": "soft", "sides": "N"}
+   ],
+   "hairback": [{"s": {"use": "hair_long_back", "with": {"ha": 33.5, "hb": 26, "hc": 34}}, "c": "hair", "m": "soft", "sides": "S E"}]
+  },
+  "braids": {
+   "hair": [
+    {"s": "@fringe", "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"use": "locks", "with": {"len": 22}}, "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {
+     "s": {"or": [{"cap": [17.6, 16, 16.6, 30, 1.4, 1.2]}, {"cap": [30.4, 16, 31.4, 30, 1.4, 1.2]}]},
+     "c": "hair",
+     "m": "soft",
+     "sides": "S E",
+     "pat": [{"if": "floor(y)%3==0", "c": "hair*0.75"}]
+    },
+    {"s": {"both": {"ell": [16.6, 30.4, 1.5, 1.2]}}, "c": "gold", "m": "soft flat", "sides": "S E"},
+    {"s": {"use": "hair_long_back", "with": {"ha": 35, "hb": 32, "hc": 46}}, "c": "hair", "m": "soft", "sides": "N"}
+   ],
+   "hairback": [{"s": {"use": "hair_long_back", "with": {"ha": 35, "hb": 32, "hc": 46}}, "c": "hair", "m": "soft", "sides": "S E"}]
+  },
+  "bun": {
+   "hair": [
+    {"s": "@fringe", "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"use": "locks", "with": {"len": 15}}, "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"ell": [24, 9.2, 7, 7.8]}, "c": "hair", "m": "soft", "sides": "N"},
+    {"s": {"ell": [24, 1.6, 3.8, 3.1]}, "c": "hair", "m": "soft", "when": "!helm", "pat": [{"if": "floor(x+y)%3==0", "c": "hair*0.8"}]}
+   ],
+   "hairback": [{"s": {"ell": [24, 9, 7.8, 8.4]}, "c": "hair", "m": "soft"}]
+  },
+  "topknot": {
+   "hair": [
+    {"s": {"sub": [{"ell": [24, 7.6, 7.1, 5]}, {"ell": [24, 12.4, 5.4, 5.8]}]}, "c": "hair", "m": "soft", "when": "!helm", "sides": "S E"},
+    {"s": {"ell": [24, 9.2, 7, 7.8]}, "c": "hair", "m": "soft", "sides": "N"},
+    {"s": {"ell": [24, 0.8, 2.2, 2]}, "c": "hair", "m": "soft", "when": "!helm"},
+    {"s": {"cap": [25, 1, 29, 8, 1, 0.6]}, "c": "hair", "m": "soft", "when": "!helm", "sides": "SN"}
+   ],
+   "hairback": [{"s": {"ell": [24, 9, 7.4, 8]}, "c": "hair", "m": "soft", "when": "!helm"}]
+  },
+  "curly": {
+   "hair": [
+    {
+     "s": {"sub": [{"ell": [24, 6.8, 7.8, 5.8]}, {"ell": [24, 12.6, 5.4, 5.6]}]},
+     "c": "hair",
+     "m": "soft",
+     "when": "!helm",
+     "sides": "S E",
+     "pat": [{"if": "(floor(x)+2*floor(y))%3==0", "c": "hair*0.78"}]
+    },
+    {"s": {"ell": [24, 9, 7.6, 8]}, "c": "hair", "m": "soft", "sides": "N", "pat": [{"if": "(floor(x)+2*floor(y))%3==0", "c": "hair*0.78"}]}
+   ],
+   "hairback": [{"s": {"ell": [24, 9, 8.2, 8.4]}, "c": "hair", "m": "soft", "when": "!helm", "pat": [{"if": "(floor(x)+2*floor(y))%3==0", "c": "hair*0.78"}]}]
+  },
+  "tuft": {
+   "hair": [
+    {
+     "s": {"or": [{"cap": [23, 3.4, 21.6, -0.6, 1.2, 0.5]}, {"cap": [25, 3.4, 26.6, -0.8, 1.2, 0.5]}, {"cap": [24, 3, 24, -1.8, 1.3, 0.5]}]},
+     "c": "hair",
+     "m": "soft",
+     "when": "!helm"
+    }
+   ]
+  }
+ },
+ "hair_alias": {"ponytail": "long", "cropped": "short", "mohawk": "tuft"},
+ "beards": {
+  "none": {},
+  "full": {
+   "beard": [
+    {"s": {"poly": [[17, 14], [31, 14], [30, 22], [26, 28], [24, 30], [22, 28], [18, 22]]}, "c": "hair", "m": "soft", "sides": "S E"},
+    {"dot": ["22.5+fdx", 15, 3, 1], "c": "hair*0.5", "sides": "S E"}
+   ]
+  },
+  "long": {
+   "beard": [
+    {
+     "s": {"poly": [[17, 14], [31, 14], [30.6, 24], [27, 32], [24, 35], [21, 32], [17.4, 24]]},
+     "c": "hair",
+     "m": "soft",
+     "sides": "S E",
+     "pat": [{"if": "floor(x)%3==0 && y>22", "c": "hair*0.8"}]
+    },
+    {"dot": ["22.5+fdx", 15, 3, 1], "c": "hair*0.5", "sides": "S E"}
+   ]
+  },
+  "braided": {
+   "beard": [
+    {"s": {"poly": [[17, 14], [31, 14], [30, 22], [26, 27], [22, 27], [18, 22]]}, "c": "hair", "m": "soft", "sides": "S E"},
+    {
+     "s": {"or": [{"cap": [22.4, 26, 22.4, 33, 1.3, 1]}, {"cap": [25.6, 26, 25.6, 33, 1.3, 1]}]},
+     "c": "hair",
+     "m": "soft",
+     "sides": "S E",
+     "pat": [{"if": "floor(y)%2==0", "c": "hair*0.72"}]
+    },
+    {"s": {"or": [{"ell": [22.4, 33.6, 1.2, 1]}, {"ell": [25.6, 33.6, 1.2, 1]}]}, "c": "gold", "m": "soft flat", "sides": "S E"},
+    {"dot": ["22.5+fdx", 15, 3, 1], "c": "hair*0.5", "sides": "S E"}
+   ]
+  },
+  "stubble": {
+   "beard": [
+    {
+     "s": {"and": [{"poly": [[17.4, 12.5], [30.6, 12.5], [29.6, 18], [24, 21.6], [18.4, 18]]}, {"where": "(floor(x)+floor(y))%2==0"}]},
+     "c": "mix(skin,hair,0.5)",
+     "m": "flat",
+     "sides": "S E"
+    }
+   ]
+  },
+  "moustache": {
+   "beard": [{"s": {"or": [{"cap": [20, 15, 24, 16, 0.7, 0.7]}, {"cap": [28, 15, 24, 16, 0.7, 0.7]}]}, "c": "hair", "m": "soft flat", "sides": "S E"}]
+  },
+  "goatee": {
+   "beard": [
+    {"s": {"poly": [[21.6, 16.4], [26.4, 16.4], [25.6, 22], [24, 23.4], [22.4, 22]]}, "c": "hair", "m": "soft", "sides": "S E"},
+    {"s": {"or": [{"cap": [20.4, 15, 24, 15.6, 0.6, 0.6]}, {"cap": [27.6, 15, 24, 15.6, 0.6, 0.6]}]}, "c": "hair", "m": "soft flat", "sides": "S E"}
+   ]
+  }
+ },
+ "beard_alias": {"yes": "full", "no": "none"},
+ "tools": {
+  "spear": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-40", "thx", "thy+22", 0.8, 0.8]}, "c": "wood", "m": "flat rim1", "sides": "S E"},
+    {"s": {"poly": [["thx-1.5", "thy-39"], ["thx+1.5", "thy-39"], ["thx", "thy-47"]]}, "c": "steel", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "hammer": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-10", "thx", "thy+4", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"rect": ["thx-3", "thy-13", "thx+3", "thy-9"]}, "c": "iron", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "staff": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-38", "thx", "thy+22", 0.9, 0.9]}, "c": "dwood", "m": "flat", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy-39", 1.6, 1.8]}, "c": "#c8a848", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "bread": {
+   "held": [
+    {"s": {"ell": ["thx", "thy+1.4", 3, 2]}, "c": "#d89848", "m": "soft", "pat": [{"if": "floor(x)%2==0 && y<thy+1", "c": "#b87a38"}], "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "sickle": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-2", "thx", "thy+4", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"cap": ["thx", "thy-3", "thx+3", "thy-7", 0.7, 0.6]}, "c": "steel", "m": "soft", "sides": "S E"},
+    {"s": {"cap": ["thx+3", "thy-7", "thx+1", "thy-11", 0.6, 0.4]}, "c": "steel", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "axe": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-12", "thx", "thy+4", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {
+     "s": {"poly": [["thx+0.5", "thy-13"], ["thx+5", "thy-15"], ["thx+5", "thy-8"], ["thx+0.5", "thy-10"]]},
+     "c": "steel",
+     "m": "soft",
+     "sides": "S E"
+    },
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "knife": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-1", "thx", "thy+1.5", 0.7, 0.7]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"poly": [["thx-0.8", "thy-1.5"], ["thx+0.8", "thy-1.5"], ["thx", "thy-7"]]}, "c": "steel", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "sword": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-20", "thx", "thy-2", 0.9, 0.6]}, "c": "steel", "m": "soft", "sides": "S E"},
+    {"s": {"cap": ["thx-3", "thy-2", "thx+3", "thy-2", 0.7, 0.7]}, "c": "#b89040", "m": "soft", "sides": "S E"},
+    {"s": {"cap": ["thx", "thy-1", "thx", "thy+2", 0.7, 0.7]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy+3", 1, 1]}, "c": "#b89040", "m": "soft flat", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "bow": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-17", "thx+3", "thy-8", 0.9, 0.9]}, "c": "wood", "m": "soft rim1", "sides": "S E"},
+    {"s": {"cap": ["thx+3", "thy-8", "thx+3", "thy+6", 0.9, 0.9]}, "c": "wood", "m": "soft rim1", "sides": "S E"},
+    {"s": {"cap": ["thx+3", "thy+6", "thx", "thy+15", 0.9, 0.9]}, "c": "wood", "m": "soft rim1", "sides": "S E"},
+    {"s": {"cap": ["thx", "thy-17", "thx", "thy+15", 0.3, 0.3]}, "c": "#e6e2d2", "m": "flat", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "stick": {"held": [{"s": {"cap": ["thx", "thy-14", "thx", "thy+12", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"}, {"ops": "hand", "sides": "S E"}]},
+  "pick": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-12", "thx", "thy+4", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"poly": [["thx-6", "thy-10"], ["thx", "thy-14"], ["thx+6", "thy-10"], ["thx", "thy-12.4"]]}, "c": "iron", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "spade": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-14", "thx", "thy+6", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy+9", 2.6, 3.4]}, "c": "iron", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "fork": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-16", "thx", "thy+12", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"cap": ["thx-2.5", "thy-17", "thx+2.5", "thy-17", 0.5, 0.5]}, "c": "iron", "m": "flat", "sides": "S E"},
+    {"s": {"cap": ["thx-2.5", "thy-17", "thx-2.5", "thy-22", 0.45, 0.45]}, "c": "iron", "m": "flat", "sides": "S E"},
+    {"s": {"cap": ["thx", "thy-17", "thx", "thy-22", 0.45, 0.45]}, "c": "iron", "m": "flat", "sides": "S E"},
+    {"s": {"cap": ["thx+2.5", "thy-17", "thx+2.5", "thy-22", 0.45, 0.45]}, "c": "iron", "m": "flat", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "rod": {
+   "held": [
+    {"s": {"cap": ["thx", "thy+4", "thx+8", "thy-26", 0.6, 0.4]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"cap": ["thx+8", "thy-26", "thx+10", "thy+4", 0.25, 0.25]}, "c": "#d8e0e8", "m": "flat", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "needle": {
+   "held": [{"s": {"cap": ["thx", "thy-1", "thx", "thy-4.5", 0.35, 0.35]}, "c": "steel", "m": "flat", "sides": "S E"}, {"ops": "hand", "sides": "S E"}]
+  },
+  "spindle": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-6", "thx", "thy+4", 0.6, 0.6]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy+4", 2, 1]}, "c": "#a06a38", "m": "soft", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy-6", 1.6, 2]}, "c": "#e8e0d0", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "saw": {
+   "held": [
+    {"s": {"rect": ["thx-1", "thy-1", "thx+1.5", "thy+2"]}, "c": "wood", "sides": "S E"},
+    {
+     "s": {"poly": [["thx-1", "thy-1"], ["thx+2", "thy-1"], ["thx+1", "thy-14"], ["thx-1", "thy-14"]]},
+     "c": "steel",
+     "pat": [{"if": "floor(y)%2==0 && x>thx+0.6", "c": "steel*0.7"}],
+     "sides": "S E"
+    },
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "torch": {
+   "held": [
+    {"s": {"cap": ["thx", "thy-8", "thx", "thy+5", 0.8, 0.8]}, "c": "wood", "m": "flat", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy-10", 1.8, 2.4]}, "c": "#e87828", "m": "soft flat", "sides": "S E"},
+    {"s": {"ell": ["thx", "thy-11", 1, 1.4]}, "c": "#f8d848", "m": "flat", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "basket": {
+   "held": [
+    {"s": {"ell": ["thx", "thy+4", 4, 3]}, "c": "straw", "pat": [{"if": "(floor(x)+floor(y))%2==1", "c": "straw*0.8"}], "sides": "S E"},
+    {"s": {"sub": [{"ell": ["thx", "thy+2", 3.4, 3.4]}, {"ell": ["thx", "thy+2", 2.4, 2.6]}]}, "c": "straw*0.8", "m": "flat", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  },
+  "bucket": {
+   "held": [
+    {"s": {"poly": [["thx-3.5", "thy+1"], ["thx+3.5", "thy+1"], ["thx+2.8", "thy+8"], ["thx-2.8", "thy+8"]]}, "c": "wood", "sides": "S E"},
+    {"s": {"cap": ["thx-3.5", "thy+1", "thx+3.5", "thy+1", 0.6, 0.6]}, "c": "iron", "m": "soft", "sides": "S E"},
+    {"ops": "hand", "sides": "S E"}
+   ]
+  }
+ },
+ "modest_f": "#e6dcc4",
+ "modest_m": "#e6dcc4",
+ "child_age": 13,
+ "grey_age": 55,
+ "grey": "#b0b0a8",
+ "stone": "#8c8c86",
+ "peoples": {
+  "hellene": {
+   "name": "Эллины",
+   "skins": ["#e6b995", "#d09a70", "#c68f68", "#eac19c"],
+   "hairs": ["#3a2418", "#7a5230", "#1b1b1f", "#5a3a22"],
+   "irises": ["#4a3a2a", "#3a5a7a", "#3f6a3a"],
+   "hair_m": ["short", "curly", "short"],
+   "hair_f": ["bun", "long", "curly"],
+   "beards": ["full", "none", "full", "stubble"],
+   "culture": "polis_hellene"
+  },
+  "northman": {
+   "name": "Северяне",
+   "skins": ["#f0d4b8", "#e8c4a4", "#f4dcc4", "#dcb894"],
+   "hairs": ["#d9b25a", "#b5522a", "#e8d9a0", "#5a3a22"],
+   "irises": ["#4a7aa8", "#3a5a7a", "#6a8a6a"],
+   "t": {"sx": 1.04, "sy": 1.02},
+   "hair_m": ["shoulder", "short", "shoulder"],
+   "hair_f": ["braids", "long"],
+   "beards": ["full", "braided", "long", "full"],
+   "culture": "north_folk"
+  },
+  "woodfolk": {
+   "name": "Люди лесов",
+   "skins": ["#eccdb0", "#e0b997", "#f0d5bd", "#d8b08e"],
+   "hairs": ["#c8a050", "#8a5a30", "#e0c070", "#6a4a2a"],
+   "irises": ["#4a7aa8", "#4a6a3a", "#6a5a3a"],
+   "hair_m": ["short", "shoulder"],
+   "hair_f": ["braids", "long"],
+   "beards": ["full", "none", "stubble", "long"],
+   "culture": "slav_village"
+  },
+  "steppe_folk": {
+   "name": "Люди степи",
+   "skins": ["#cf9a68", "#bb8658", "#d9a878", "#a8774b"],
+   "hairs": ["#1b1b1f", "#2a1f1a", "#3b2a1e", "#14141a"],
+   "irises": ["#2a1d14", "#3a2a1a"],
+   "t": {"sx": 1, "sy": 0.98},
+   "hair_m": ["topknot", "short"],
+   "hair_f": ["braids", "long"],
+   "beards": ["moustache", "goatee", "moustache", "none"],
+   "culture": "steppe_clan"
+  },
+  "nilote": {
+   "name": "Люди Нила",
+   "skins": ["#9a6a44", "#8a5a3a", "#a8774b", "#7a4a2e"],
+   "hairs": ["#14141a", "#1b1b1f", "#2a1f1a"],
+   "irises": ["#2a1d14", "#3a2a1a"],
+   "hair_m": ["short", "bald"],
+   "hair_f": ["long", "bun"],
+   "beards": ["none", "none", "goatee"],
+   "culture": "nile_priest"
+  },
+  "elf": {
+   "name": "Лесные эльфы",
+   "skins": ["#eed7ba", "#dcc29f", "#d3dfbd", "#e8d2b4"],
+   "hairs": ["#d9c27a", "#b9b9c2", "#4a6a3a", "#e8e1cf"],
+   "irises": ["#3f8a4a", "#3a7aa8", "#8a6a2a"],
+   "t": {"sx": 0.92, "sy": 1.08},
+   "hair_m": ["shoulder"],
+   "hair_f": ["long"],
+   "beards": ["none"],
+   "layers": {"head": [{"s": {"both": {"poly": [[17.6, 9.4], [9.6, 4.6], [10.4, 6.8], [17.6, 14]]}}, "c": "skin", "m": "soft rim1"}]},
+   "culture": "forest_elf"
+  },
+  "alv": {
+   "name": "Альвы",
+   "skins": ["#eef2f4", "#e4ecf0", "#f2eef0", "#e8eef2"],
+   "hairs": ["#f4f4f0", "#d8e0e8", "#f0e6c0", "#c8d4e0"],
+   "irises": ["#7ad0e8", "#a8c8f0", "#e8e0a0"],
+   "t": {"sx": 0.94, "sy": 1.1},
+   "hair_m": ["shoulder", "long"],
+   "hair_f": ["long", "braids"],
+   "beards": ["none"],
+   "layers": {"head": [{"s": {"both": {"poly": [[17.6, 9.4], [9.6, 4.6], [10.4, 6.8], [17.6, 14]]}}, "c": "skin", "m": "soft rim1"}]},
+   "culture": "alv_hall"
+  },
+  "half_elf": {
+   "name": "Полуэльфы",
+   "skins": ["#ecd0b2", "#dcc0a0", "#e6c8a8", "#d8b894"],
+   "hairs": ["#c8a050", "#7a5230", "#d9c27a", "#3a2418"],
+   "irises": ["#3f8a4a", "#4a7aa8"],
+   "t": {"sx": 0.96, "sy": 1.04},
+   "hair_m": ["shoulder", "short"],
+   "hair_f": ["long", "braids"],
+   "beards": ["none", "stubble"],
+   "layers": {"head": [{"s": {"both": {"poly": [[17.6, 9.4], [13, 6.8], [13.8, 9], [17.6, 13]]}}, "c": "skin", "m": "soft rim1"}]},
+   "culture": "forest_elf"
+  },
+  "dwarf": {
+   "name": "Гномы",
+   "skins": ["#dba17c", "#bb7e5b", "#c98d6a", "#e0a98a"],
+   "hairs": ["#a0521d", "#6a3b1a", "#b8b8b8", "#d08a2a"],
+   "irises": ["#3a2a1a", "#4a5a3a"],
+   "t": {"sx": 1.2, "sy": 0.78},
+   "hair_m": ["short", "bald", "shoulder"],
+   "hair_f": ["braids"],
+   "beards": ["long", "braided", "full"],
+   "layers": {
+    "face": [
+     {"dot": ["22.5+fdx", 12, 3, 2], "c": "skin*0.78", "sides": "S E"},
+     {"dot": ["22+fdx", 13], "c": "skin*0.66", "sides": "S E"},
+     {"dot": ["26+fdx", 13], "c": "skin*0.66", "sides": "S E"},
+     {"dot": [30.6, 12, 1, 2], "c": "skin", "sides": "E"}
+    ]
+   },
+   "flags": {"big_nose": 1},
+   "culture": "dwarf_hold"
+  },
+  "troll": {
+   "name": "Тролли",
+   "skins": ["#6e8a72", "#7a8a6a", "#6a7a78", "#7e8e70"],
+   "hairs": ["#2a2a24", "#4a4a38", "#3a3a30"],
+   "irises": ["#e8d040", "#d8a020"],
+   "t": {"sx": 1.42, "sy": 1.28},
+   "scale": 1.25,
+   "hair_m": ["tuft", "none"],
+   "hair_f": ["tuft", "long"],
+   "beards": ["none"],
+   "layers": {
+    "head": [
+     {"s": {"both": {"poly": [[17.6, 9.4], [11, 10.4], [11.8, 12.6], [17.6, 13.4]]}}, "c": "skin", "m": "soft rim1"},
+     {"s": "@head", "c": "skin", "pat": [{"if": "(floor(x)*5+floor(y)*7)%13==0", "c": "skin*0.78"}]}
+    ],
+    "face": [
+     {"s": {"poly": [["23+fdx", 10.6], ["25+fdx", 10.6], ["25.8+fdx", 16.6], ["22.2+fdx", 16.6]]}, "c": "skin", "m": "soft", "sides": "S E"},
+     {"dot": [31, 13, 2, 3], "c": "skin", "sides": "E"},
+     {"dot": [19.5, 7.6, 9, 1], "c": "skin*0.5", "sides": "S E"},
+     {"dot": ["21+fdx", 17, 1, 2], "c": "#e8e0c8", "sides": "S E"},
+     {"dot": ["27+fdx", 17, 1, 2], "c": "#e8e0c8", "sides": "S E"}
+    ]
+   },
+   "flags": {"big_nose": 1},
+   "culture": "troll_fell"
+  },
+  "ogre": {
+   "name": "Йотуны",
+   "skins": ["#c8a088", "#b8907a", "#a8a0a0", "#c0a898"],
+   "hairs": ["#8a8a88", "#d8d0c0", "#5a3a22", "#a85a30"],
+   "irises": ["#6a8aa8", "#4a3a2a"],
+   "t": {"sx": 1.36, "sy": 1.25},
+   "scale": 1.3,
+   "hair_m": ["shoulder", "long"],
+   "hair_f": ["braids", "long"],
+   "beards": ["long", "full", "braided"],
+   "layers": {
+    "head": [{"s": {"ell": [24, 15.4, 6.2, 4.8]}, "c": "skin", "m": "soft"}],
+    "face": [{"dot": [19, 7.6, 10, 1], "c": "skin*0.5", "sides": "S E"}, {"dot": ["23+fdx", 12, 2, 2], "c": "skin*0.75", "sides": "S E"}]
+   },
+   "culture": "jotun_hold"
+  },
+  "orc": {
+   "name": "Орки",
+   "skins": ["#7a9a52", "#668646", "#85a35e", "#6f8f4a"],
+   "hairs": ["#14141a", "#3a2a20", "#7a3a1f", "#2a2a30"],
+   "irises": ["#c9302c", "#d9a521"],
+   "t": {"sx": 1.22, "sy": 1.05},
+   "hair_m": ["topknot", "shoulder"],
+   "hair_f": ["braids", "long"],
+   "beards": ["none", "moustache"],
+   "layers": {
+    "head": [{"s": {"both": {"poly": [[17.6, 9.4], [13.6, 6.6], [14.4, 10], [17.6, 13]]}}, "c": "skin", "m": "soft rim1"}],
+    "face": [
+     {"dot": [19.5, 7.4, 9, 1], "c": "skin*0.5", "sides": "S E"},
+     {"dot": ["20+fdx", 15.6, 1, 3], "c": "#efe8d6", "when": "adult", "sides": "S"},
+     {"dot": ["27+fdx", 15.6, 1, 3], "c": "#efe8d6", "sides": "S E"},
+     {"dot": ["20+fdx", 15.6, 1, 2], "c": "#efe8d6", "when": "child", "sides": "S"}
+    ]
+   },
+   "culture": "steppe_rider"
+  },
+  "half_orc": {
+   "name": "Полуорки",
+   "skins": ["#a8a068", "#9a9a5a", "#b0a070", "#8f9a5e"],
+   "hairs": ["#14141a", "#3a2a20", "#2a2a30"],
+   "irises": ["#8a6a2a", "#c9302c"],
+   "t": {"sx": 1.1, "sy": 1.02},
+   "hair_m": ["topknot", "short"],
+   "hair_f": ["braids", "long"],
+   "beards": ["none", "moustache", "stubble"],
+   "layers": {
+    "head": [{"s": {"both": {"poly": [[17.6, 9.4], [13, 6.8], [13.8, 9], [17.6, 13]]}}, "c": "skin", "m": "soft rim1"}],
+    "face": [
+     {"dot": ["20+fdx", 15.6, 1, 2], "c": "#efe8d6", "when": "adult", "sides": "S"},
+     {"dot": ["27+fdx", 15.6, 1, 2], "c": "#efe8d6", "when": "adult", "sides": "S E"}
+    ]
+   },
+   "culture": "steppe_rider"
+  },
+  "goblin": {
+   "name": "Кобалы",
+   "skins": ["#9aa85a", "#b0a060", "#8a9a62", "#a89a58"],
+   "hairs": ["#2a2a20", "#5a3a22", "#7a5230"],
+   "irises": ["#d9a521", "#c9302c", "#3f8a4a"],
+   "t": {"sx": 0.92, "sy": 0.72},
+   "scale": 0.95,
+   "hair_m": ["tuft", "short", "none"],
+   "hair_f": ["bun", "long"],
+   "beards": ["none"],
+   "layers": {
+    "head": [{"s": {"both": {"poly": [[17.6, 9], [8.6, 6.6], [10.4, 10.4], [17.6, 12.6]]}}, "c": "skin", "m": "soft rim1"}],
+    "face": [
+     {"dot": ["22.5+fdx", 12, 3, 2], "c": "skin*0.78", "sides": "S E"},
+     {"dot": ["22+fdx", 13], "c": "skin*0.66", "sides": "S E"},
+     {"dot": ["26+fdx", 13], "c": "skin*0.66", "sides": "S E"},
+     {"dot": [30.6, 12, 1, 2], "c": "skin", "sides": "E"}
+    ]
+   },
+   "flags": {"big_nose": 1},
+   "culture": "port_kobal"
+  },
+  "centaur": {
+   "name": "Кентавры",
+   "cen": true,
+   "skins": ["#d9a77f", "#b7835c", "#e2b48c", "#c4936a"],
+   "hairs": ["#3b2a1e", "#1b1b1f", "#7a5230", "#2a2a30"],
+   "irises": ["#3a5a7a", "#4a3a2a"],
+   "coats": [["#8a4b2a", "#2a1d14"], ["#9a9a9a", "#3a3a3e"], ["#2d2a2a", "#111111"], ["#d2a45a", "#6a4a22"]],
+   "hair_m": ["shoulder", "curly"],
+   "hair_f": ["long", "braids"],
+   "beards": ["full", "long", "none"],
+   "culture": "pastoral_hills"
+  },
+  "steppe_centaur": {
+   "name": "Степные кентавры",
+   "cen": true,
+   "skins": ["#cf9a68", "#bb8658", "#d9a878", "#a8774b"],
+   "hairs": ["#1b1b1f", "#2a1f1a", "#3b2a1e", "#14141a"],
+   "irises": ["#2a1d14", "#3a2a1a"],
+   "coats": [["#b08a58", "#3a2a18"], ["#7a3a24", "#2a1a10"], ["#e0d8c8", "#6a4a2a"], ["#5a5048", "#1a1816"]],
+   "hair_m": ["topknot", "shoulder"],
+   "hair_f": ["braids"],
+   "beards": ["moustache", "none"],
+   "culture": "steppe_rider"
+  },
+  "minotaur": {
+   "name": "Минотавры",
+   "skins": ["#5a3a24", "#3a2a20", "#6b4a2f", "#2a2220"],
+   "hairs": ["#1a1410", "#2a1d14", "#3a2a1a"],
+   "irises": ["#2a1d14"],
+   "t": {"sx": 1.28, "sy": 1.12},
+   "scale": 1.1,
+   "hair_m": ["none"],
+   "hair_f": ["none"],
+   "beards": ["none"],
+   "layers": {
+    "head": [
+     {"s": {"or": [{"cap": [24, 14, 24, 23, 4.6, 5.6]}]}, "c": "skin", "m": "soft"},
+     {
+      "s": {"both": {"or": [{"cap": [18.5, 4, 13, 1.5, 1.6, 1.1]}, {"cap": [13, 1.5, 10.5, "sel(fem,-1.5,-4)", 1.1, 0.6]}]}},
+      "c": "#e8e1cf",
+      "m": "soft rim1"
+     },
+     {"s": {"both": {"poly": [[17.4, 7.6], [10.6, 6.4], [11.8, 10], [17.2, 11]]}}, "c": "skin", "m": "soft rim1"},
+     {"s": {"or": [{"ell": [24, 9, 7.2, 7.4]}, {"ell": [24, 15.5, 5.4, 4.2]}]}, "c": "skin"},
+     {"s": {"ell": [24, 16.4, 4.6, 3.2]}, "c": "skin*1.3", "m": "soft", "sides": "S E"},
+     {"s": {"ell": [24, 3.4, 3, 2]}, "c": "hair", "m": "soft", "pat": [{"if": "floor(x)%2==0", "c": "hair*0.8"}]}
+    ],
+    "face": [
+     {"dot": [19, 9, 2, 1], "c": "#f4efe6", "when": "!blink", "sides": "S"},
+     {"dot": [20, 9], "c": "#14100c", "when": "!blink", "sides": "S"},
+     {"dot": ["27+fdx", 9], "c": "#14100c", "when": "!blink", "sides": "S E"},
+     {"dot": ["28+fdx", 9], "c": "#f4efe6", "when": "!blink", "sides": "S E"},
+     {"dot": [18.6, 8, 3, 1], "c": "skin*0.55", "sides": "S"},
+     {"dot": ["26.4+fdx", 8, 3, 1], "c": "skin*0.55", "sides": "S E"},
+     {"dot": [22, 16], "c": "skin*0.4", "sides": "S"},
+     {"dot": ["26+fdx", 16], "c": "skin*0.4", "sides": "S E"},
+     {"dot": [30, 15, 2, 3], "c": "skin*1.3", "sides": "E"},
+     {"s": {"cap": [22.6, 18.4, 25.4, 18.4, 0.5, 0.5]}, "c": "gold", "m": "flat soft", "when": "adult", "sides": "S"}
+    ]
+   },
+   "flags": {"own_head": 1},
+   "culture": "labyrinth"
+  },
+  "cyclops": {
+   "name": "Циклопы",
+   "skins": ["#d0946a", "#c08560", "#d8a070", "#b87a58"],
+   "hairs": ["#2a1d14", "#4a2c1a", "#1b1b1f"],
+   "irises": ["#6a4a2a", "#3a5a7a"],
+   "t": {"sx": 1.32, "sy": 1.24},
+   "scale": 1.2,
+   "hair_m": ["curly", "short", "bald"],
+   "hair_f": ["curly", "long"],
+   "beards": ["full", "long"],
+   "layers": {
+    "face": [
+     {"dot": ["21+fdx", 8, 6, 1], "c": "skin*0.5", "sides": "S E"},
+     {"dot": ["22+fdx", 9, 4, 3], "c": "#f4efe6", "when": "!blink", "sides": "S E"},
+     {"dot": ["23+fdx", 9.6, 2, 2], "c": "iris", "when": "!blink", "sides": "S E"},
+     {"dot": ["23.4+fdx", 10], "c": "#14100c", "when": "!blink", "sides": "S E"},
+     {"dot": ["22+fdx", 10, 4, 1], "c": "skin*0.55", "when": "blink", "sides": "S E"}
+    ]
+   },
+   "flags": {"one_eye": 1},
+   "culture": "smith_cyclops"
+  },
+  "satyr": {
+   "name": "Сатиры",
+   "sex": "m",
+   "skins": ["#c58f60", "#a8703f", "#d0a070", "#b57c4c"],
+   "hairs": ["#4a2c1a", "#2a1b12", "#7a4a22", "#3a2a20"],
+   "irises": ["#b8872a", "#3a2a1a"],
+   "t": {"sx": 1, "sy": 0.97},
+   "fur": ["#6b4a2f", "#4a3524", "#8a6a45", "#5a3f2a"],
+   "hair_m": ["curly"],
+   "beards": ["goatee", "full"],
+   "layers": {
+    "head": [
+     {"s": {"both": {"poly": [[17.6, 9], [12.4, 5.4], [13.6, 10.6], [17.6, 12]]}}, "c": "skin", "m": "soft rim1"},
+     {
+      "s": {"both": {"or": [{"cap": [19, 3.6, 15.6, -1.2, 1.3, 0.7]}, {"cap": [15.6, -1.2, 17.4, -4.4, 0.8, 0.5]}]}},
+      "c": "#e8e1cf",
+      "m": "soft rim1"
+     }
+    ],
+    "back": [{"s": {"ell": [33, 44, 2, 3]}, "c": "fur", "m": "soft"}]
+   },
+   "flags": {"goat": 1},
+   "culture": "satyr_vine"
+  },
+  "nymph": {
+   "name": "Нимфы",
+   "sex": "f",
+   "skins": ["#d6e6c8", "#bfe0d0", "#e6d2bd", "#c9dfb0"],
+   "hairs": ["#2f8a5e", "#3aa88a", "#7a4a8a", "#c98aa0"],
+   "irises": ["#2f6b4a", "#3a7aa8"],
+   "t": {"sx": 0.95, "sy": 1},
+   "hair_f": ["long", "curly"],
+   "layers": {
+    "headwear": [
+     {"s": {"cap": [17.4, 5.8, 30.6, 5.8, 0.9, 0.9]}, "c": "band", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [19, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [22, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [26, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [29, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"}
+    ]
+   },
+   "colours": {"band": "#3f8a4a", "petal": "#e87aa0"},
+   "flags": {"leaf": 1},
+   "culture": "grove_nymph"
+  },
+  "vila": {
+   "name": "Вилы",
+   "sex": "f",
+   "skins": ["#e8eee6", "#dde8ee", "#efe6e0", "#e0ece0"],
+   "hairs": ["#efe6c8", "#e8e1cf", "#f2d9a0", "#d8e8f0"],
+   "irises": ["#7ad0c4", "#4a7aa8"],
+   "t": {"sx": 0.95, "sy": 1.02},
+   "hair_f": ["long"],
+   "layers": {
+    "headwear": [
+     {"s": {"cap": [17.4, 5.8, 30.6, 5.8, 0.9, 0.9]}, "c": "band", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [19, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [22, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [26, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"},
+     {"s": {"ell": [29, 4.6, 1.1, 1.1]}, "c": "petal", "m": "soft flat", "when": "!wreath"}
+    ]
+   },
+   "colours": {"band": "#7ad0c4", "petal": "#ffffff"},
+   "culture": "vila_glade"
+  },
+  "human": {
+   "name": "Люди",
+   "skins": ["#eccdb0", "#e0b997", "#f0d5bd", "#d8b08e"],
+   "hairs": ["#c8a050", "#8a5a30", "#e0c070", "#6a4a2a"],
+   "irises": ["#4a7aa8", "#4a6a3a", "#6a5a3a"],
+   "hair_m": ["short", "shoulder"],
+   "hair_f": ["braids", "long"],
+   "beards": ["full", "none", "stubble", "long"],
+   "culture": "slav_village"
+  }
+ },
+ "default_people": "woodfolk",
+ "races": {},
+ "outfits": {
+  "south_chiton": {
+   "name": "Хитон",
+   "colours": {"c": ["#e8e1cf", "#d9c07a", "#a9c7cc", "#d98c6a"]},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#a07a4a"}},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "gold"}},
+     {"s": {"torso": [54, "sel(fem,3,1)"]}, "c": "c", "when": "!cen", "pat": [{"if": "y>53", "c": "c*0.7"}]},
+     {"s": {"cap": [20.5, "sel(fem,34,40)", 19.3, "sel(cen,37,52)", 0.5, 0.7]}, "c": "c*0.72", "m": "flat", "sides": "SN"},
+     {"s": {"cap": [24, "sel(fem,34,40)", 24.0, "sel(cen,37,52)", 0.5, 0.7]}, "c": "c*0.72", "m": "flat", "sides": "SN"},
+     {"s": {"cap": [28, "sel(fem,34,40)", 29.2, "sel(cen,37,52)", 0.5, 0.7]}, "c": "c*0.72", "m": "flat", "sides": "SN"},
+     {"s": {"cap": ["sel(fem,18.6,16.8)", "sel(fem,31.6,38.4)", "sel(fem,29.4,31.2)", "sel(fem,31.6,38.4)", 1, 1]}, "c": "c*0.6", "m": "soft"},
+     {"s": {"both": {"ell": [14.2, 23.4, 1.6, 1.6]}}, "c": "gold", "m": "soft flat"},
+     {"s": {"poly": [[20.6, 22], [27.4, 22], [24, 27.2]]}, "c": "skin", "m": "soft flat", "sides": "S"}
+    ]
+   },
+   "dye": "c"
+  },
+  "south_peplos": {
+   "name": "Пеплос и венок",
+   "colours": {"c": ["#6b2d5c", "#2f5d8a", "#8a2f3a", "#2f6b4a"], "c2": ["#2f5d8a", "#8a2f3a", "#2f6b4a", "#6b2d5c"]},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#a07a4a"}},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c2", "tr": "gold"}},
+     {
+      "s": {"torso": [61.5, "sel(fem,3.8,1.6)"]},
+      "c": "c",
+      "when": "!cen",
+      "pat": [{"if": "y>=58.2 && y<59.6 && floor(x)%4<2", "c": "gold"}, {"if": "y>=59.6 && y<60.6", "c": "gold"}, {"if": "y>=60.6", "c": "#7a5a14"}]
+     },
+     {"s": {"cap": [20.5, 38, 18.8, 59, 0.5, 0.8]}, "c": "c*0.7", "m": "flat", "when": "!cen", "sides": "SN"},
+     {"s": {"cap": [24, 38, 24, 59.5, 0.5, 0.8]}, "c": "c*0.7", "m": "flat", "when": "!cen", "sides": "SN"},
+     {"s": {"cap": [28, 38, 29.6, 59, 0.5, 0.8]}, "c": "c*0.7", "m": "flat", "when": "!cen", "sides": "SN"},
+     {
+      "s": {"poly": [[13.4, 38], [34.6, 34], [36.8, 51], [31, 57], [13, 52]]},
+      "c": "c2",
+      "when": "!cen",
+      "pat": [{"if": "y>50.6 && y<51.8 && floor(x)%3==0", "c": "gold"}]
+     },
+     {"s": {"poly": [[20, 22], [28, 22], [24, 27.4]]}, "c": "skin", "m": "soft flat", "sides": "S"},
+     {"s": {"cap": ["sel(fem,18.4,16.6)", "sel(fem,31.6,38)", "sel(fem,29.6,31.4)", "sel(fem,31.6,38)", 1.1, 1.1]}, "c": "gold", "m": "soft"}
+    ],
+    "headwear": [{"ops": "wreath_laurel"}]
+   },
+   "dye": "c",
+   "flags": {"wreath": 1}
+  },
+  "south_hoplite": {
+   "name": "Гоплит",
+   "colours": {"sh0": "#b8873a", "sh1": "#a8322b", "sh2": "#e0b030"},
+   "chest": "bronze",
+   "layers": {
+    "dress": [
+     {
+      "s": {"poly": [[15.4, 40], [32.6, 40], [36, 52], [12, 52]]},
+      "c": "red",
+      "when": "!cen",
+      "pat": [{"if": "y>41 && floor(x*1.3)%4==0", "c": "red*0.7"}]
+     },
+     {"s": {"cap": [16, 42, 16, 51, 1.6, 1.1]}, "c": "leather", "m": "soft rim1", "when": "!cen"},
+     {"s": {"cap": [20, 44, 20, 53, 1.6, 1.1]}, "c": "leather", "m": "soft rim1", "when": "!cen"},
+     {"s": {"cap": [24, 44, 24, 53, 1.6, 1.1]}, "c": "leather", "m": "soft rim1", "when": "!cen"},
+     {"s": {"cap": [28, 44, 28, 53, 1.6, 1.1]}, "c": "leather", "m": "soft rim1", "when": "!cen"},
+     {"s": {"cap": [32, 42, 32, 51, 1.6, 1.1]}, "c": "leather", "m": "soft rim1", "when": "!cen"},
+     {"s": {"use": "greave", "with": {"lift": "ll", "lx": "lxl"}}, "c": "bronze", "m": "rim1", "when": "!cen && !goat"},
+     {"s": {"mir": {"use": "greave", "with": {"lift": "lr", "lx": "lxl"}}}, "c": "bronze", "m": "rim1", "when": "!cen && !goat"},
+     {"ops": "feet_bare", "cwith": {"fc": "#7a5230"}},
+     {"s": {"torso": ["sel(cen,38,41.5)", 0]}, "c": "bronze"},
+     {"s": {"both": {"ell": [12.6, 25.5, 3.4, 3.8]}}, "c": "leather", "m": "soft"},
+     {"s": {"cap": [18.5, 33, 29.5, 33, 0.45, 0.45]}, "c": "bronze*0.62", "m": "flat"},
+     {"s": {"cap": [18.5, 36.5, 29.5, 36.5, 0.45, 0.45]}, "c": "bronze*0.62", "m": "flat"},
+     {"s": "@blanket", "c": "red", "m": "soft", "when": "cen"},
+     {"s": {"cap": [-9, 36, 16, 35, 1, 1]}, "c": "bronze", "m": "soft", "when": "cen"}
+    ],
+    "headwear": [
+     {
+      "s": {
+       "sub": [
+        {
+         "or": [
+          {"ell": [24, 8, 7.6, 7.4]},
+          {"poly": [[16.6, 9], [21, 12], [21.6, 18.5], [18, 17.5]]},
+          {"poly": [[31.4, 9], [27, 12], [26.4, 18.5], [30, 17.5]]}
+         ]
+        },
+        {"or": [{"ell": [24, 12.6, 5.2, 5.6]}, {"where": "y>9.5 && abs(x-24)<5"}]}
+       ]
+      },
+      "c": "bronze",
+      "when": "!own_head",
+      "sides": "S E"
+     },
+     {"s": {"ell": [24, 8.4, 7.6, 7.8]}, "c": "bronze", "when": "!own_head", "sides": "N"},
+     {"s": {"poly": [[16.6, 9], [21, 12], [21.6, 18.5], [18, 17.5]]}, "c": "bronze", "m": "rim1", "when": "!own_head", "sides": "S"},
+     {"s": {"poly": [[31.4, 9], [27, 12], [26.4, 18.5], [30, 17.5]]}, "c": "bronze", "m": "rim1", "when": "!own_head", "sides": "S E"},
+     {"s": {"poly": [[22.6, 9], [25.4, 9], [25.2, 15.6], [22.8, 15.6]]}, "c": "bronze*0.9", "m": "soft rim1", "when": "!own_head", "sides": "S"},
+     {
+      "s": {"poly": [[15.4, 3.4], [24, -3.2], [32.6, 3.4], [30.6, 5.4], [24, 0.4], [17.4, 5.4]]},
+      "c": "red",
+      "pat": [{"if": "floor(x*1.6)%3==0", "c": "red*0.65"}]
+     },
+     {"s": {"cap": [16.5, 3.6, 31.5, 3.6, 1.1, 1.1]}, "c": "bronze*1.2", "m": "soft", "when": "!own_head"}
+    ],
+    "held": [
+     {"ops": "shield", "when": "kit", "sides": "S E"},
+     {"s": {"cap": [9, 40, 12.13, 44.88, 0.6, 0.5]}, "c": "#f0e2b0", "m": "flat", "when": "kit", "sides": "S E"},
+     {"s": {"cap": [9, 40, 3.21, 40.24, 0.6, 0.5]}, "c": "#f0e2b0", "m": "flat", "when": "kit", "sides": "S E"},
+     {"s": {"cap": [9, 40, 11.72, 34.88, 0.6, 0.5]}, "c": "#f0e2b0", "m": "flat", "when": "kit", "sides": "S E"},
+     {"ops": "spear", "when": "kit && !hastool", "sides": "S E"}
+    ]
+   },
+   "dye": "sh1",
+   "helm": true
+  },
+  "south_light": {
+   "name": "Античный лёгкий",
+   "colours": {"c": ["#e8e1cf", "#c98a8a", "#9ac0a0", "#d9c07a"]},
+   "chest": [{"when": "leaf && hide", "c": "#3f8a4a"}, {"when": "leaf", "c": "skin"}, {"when": "hide", "c": "c"}, {"c": "skin"}],
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#a07a4a"}},
+     {
+      "s": {"poly": [[17, 41], [31, 41], [33, 49], [15, 49]]},
+      "c": "#3f8a4a",
+      "m": "soft",
+      "when": "leaf",
+      "pat": [{"if": "y>46 && floor(x)%2==0", "c": "#4fa65a"}]
+     },
+     {"s": {"torso": [32, 0]}, "c": "#3f8a4a", "m": "soft", "when": "leaf && hide"},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "!leaf && hide && cen"},
+     {"s": {"torso": [52, "sel(fem,3,1)"]}, "c": "c", "when": "!leaf && hide && !cen"},
+     {"s": {"poly": [[16.6, 41], [31.4, 41], [33, 50], [15, 50]]}, "c": "c", "m": "soft", "when": "!leaf && !hide && !cen"},
+     {"ops": "ivy_sash", "cwith": {"ivy": "#4e8a3b"}, "sides": "S E"}
+    ],
+    "headwear": [{"ops": "wreath_ivy"}],
+    "held": [
+     {"s": {"cap": [40, 16, 40, 66, 0.7, 0.7]}, "c": "wood", "m": "flat", "when": "kit && !cen && !hastool", "sides": "S E"},
+     {"s": {"ell": [40, 14, 2, 2.8]}, "c": "#7a8a3a", "m": "soft", "when": "kit && !cen && !hastool", "sides": "S E"}
+    ]
+   },
+   "dye": "c",
+   "flags": {"wreath": 1}
+  },
+  "south_exomis": {
+   "name": "Эксомида кузнеца",
+   "colours": {"c": ["#a8957a", "#8a7a62", "#b8a888", "#7a6a58"], "felt": ["#8a6a48", "#6a5a48", "#9a7a50", "#5a4a3a"]},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#7a5230"}},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {
+      "s": {"sub": [{"torso": [51, "sel(fem,2.4,1)"]}, {"poly": [[26, 21], [36, 21], [36, 30], [26, 28]]}]},
+      "c": "c",
+      "when": "!cen && !fem",
+      "pat": [{"if": "y>50", "c": "c*0.7"}]
+     },
+     {"s": {"torso": [51, 2.4]}, "c": "c", "when": "!cen && fem", "pat": [{"if": "y>50", "c": "c*0.7"}]},
+     {"s": {"cap": [15.4, 24, 28.6, 40, 0.9, 0.9]}, "c": "c*0.7", "m": "soft", "when": "!fem"},
+     {
+      "s": {"poly": [[17, 33], [31, 33], [32, 53], [16, 53]]},
+      "c": "leather",
+      "m": "soft",
+      "when": "!cen",
+      "pat": [{"if": "floor(y)%5==0", "c": "leather*0.8"}]
+     },
+     {"s": {"cap": [16.8, 38.4, 31.2, 38.4, 1, 1]}, "c": "boot", "m": "soft"}
+    ],
+    "headwear": [
+     {"s": {"sub": [{"ell": [24, 6.4, 7.2, 5.6]}, {"where": "y>6.4"}]}, "c": "felt", "m": "soft", "when": "!own_head"},
+     {"s": {"cap": [16.8, 6.4, 31.2, 6.4, 0.9, 0.9]}, "c": "felt*0.8", "m": "soft", "when": "!own_head"}
+    ]
+   },
+   "dye": "c"
+  },
+  "south_sailor": {
+   "name": "Моряк",
+   "colours": {"c": ["#e6dcc4", "#c8d4dc", "#d9c07a", "#a9c7cc"], "felt": ["#a8322b", "#2f5d8a", "#e6dcc4", "#6a5a48"], "rope": "#c8a050"},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#a07a4a"}},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "felt"}},
+     {"s": {"torso": [48, "sel(fem,2.4,1)"]}, "c": "c", "when": "!cen", "pat": [{"if": "y>46.6 || floor(y)%6==0", "c": "felt"}]},
+     {"s": {"cap": ["sel(fem,18.4,16.6)", "sel(fem,33,38.4)", "sel(fem,29.6,31.4)", "sel(fem,33,38.4)", 1, 1]}, "c": "rope", "m": "soft"}
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"ell": [24, 6.2, 6.8, 6]}, {"where": "y>6.6"}]},
+      "c": "felt",
+      "m": "soft",
+      "when": "!own_head",
+      "pat": [{"if": "y<1.6", "c": "felt*0.8"}]
+     }
+    ]
+   },
+   "dye": "c"
+  },
+  "south_bull": {
+   "name": "Бронзовый пояс Лабиринта",
+   "colours": {"c": ["#a8322b", "#2f5d8a", "#d9c07a", "#6b2d5c"]},
+   "chest": [{"when": "fem", "c": "c"}, {"c": "skin"}],
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#7a5230"}},
+     {"s": {"poly": [[15.4, 40], [32.6, 40], [34, 51], [14, 51]]}, "c": "c", "when": "!cen", "pat": [{"if": "y>48.6 && floor(x)%3==0", "c": "gold"}]},
+     {"s": {"cap": [15.6, 40.4, 32.4, 40.4, 1.6, 1.6]}, "c": "bronze", "m": "soft"},
+     {"s": {"torso": [32, 0]}, "c": "c", "m": "soft", "when": "fem"},
+     {"s": {"both": {"ell": [12.6, 41, 2.6, 1.6]}}, "c": "bronze", "m": "soft flat", "when": "!covered"},
+     {"s": {"both": {"cap": [13.6, 30, 13, 33, 2.4, 2.2]}}, "c": "bronze*0.9", "m": "soft flat"}
+    ],
+    "headwear": [{"s": {"both": {"ell": [13.5, 1.2, 1.2, 1.2]}}, "c": "gold", "m": "soft flat", "when": "own_head"}]
+   },
+   "dye": "c"
+  },
+  "south_nebris": {
+   "name": "Небрида сатира",
+   "colours": {"c": ["#b08a58", "#a07a48", "#c49a68", "#8a6a3a"]},
+   "chest": "skin",
+   "layers": {
+    "dress": [
+     {
+      "s": {"poly": [[14.6, 22], [21, 22], [31, 38], [33, 46], [28, 47], [18, 31]]},
+      "c": "c",
+      "m": "soft",
+      "pat": [{"if": "(floor(x)*3+floor(y)*5)%7==0", "c": "#f0e2c8"}]
+     },
+     {"s": {"cap": [31, 44, 33, 50, 1.2, 0.8]}, "c": "c*0.8", "m": "soft"},
+     {"ops": "ivy_sash", "cwith": {"ivy": "#4e8a3b"}, "sides": "S E"}
+    ],
+    "headwear": [{"ops": "wreath_ivy"}],
+    "held": [
+     {"s": {"poly": [[37, 38], [42, 38], [41, 46], [38, 46]]}, "c": "#c98a4a", "m": "soft", "when": "kit && !hastool", "sides": "S E"},
+     {"s": {"cap": [37, 38, 42, 38, 0.7, 0.7]}, "c": "#7a4a2a", "m": "soft", "when": "kit && !hastool", "sides": "S E"}
+    ]
+   },
+   "dye": "c",
+   "flags": {"wreath": 1}
+  },
+  "north_shirt": {
+   "name": "Рубаха и штаны",
+   "colours": {"c": ["#5d6b46", "#7a4b2a", "#46607a", "#7a3a3a"]},
+   "chest": "c",
+   "layers": {
+    "back": [],
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,54,50))", "sel(fem,3,1.5)"]}, "c": "c", "pat": [{"if": "y>53", "c": "c*0.7"}]},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "c"},
+     {"s": {"cap": ["sel(fem,18,16.8)", "sel(fem,33,38.4)", "sel(fem,30,31.2)", "sel(fem,33,38.4)", 1, 1]}, "c": "boot", "m": "soft"},
+     {"s": {"ell": [24, "sel(fem,33,38.4)", 1.7, 1.4]}, "c": "gold", "m": "soft flat", "sides": "S"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "#d9c07a"}}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "north_fur": {
+   "name": "Меховой плащ",
+   "colours": {"c": ["#5d6b46", "#7a4b2a", "#46607a", "#7a3a3a"]},
+   "chest": "c",
+   "layers": {
+    "back": [{"s": "@cloak_back", "c": "#8c6a45", "m": "soft", "when": "!cen"}],
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,54,50))", "sel(fem,3,1.5)"]}, "c": "c", "pat": [{"if": "y>53", "c": "c*0.7"}]},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "c"},
+     {"s": {"cap": ["sel(fem,18,16.8)", "sel(fem,33,38.4)", "sel(fem,30,31.2)", "sel(fem,33,38.4)", 1, 1]}, "c": "boot", "m": "soft"},
+     {"s": {"ell": [24, "sel(fem,33,38.4)", 1.7, 1.4]}, "c": "gold", "m": "soft flat", "sides": "S"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "#d9c07a"}},
+     {"s": {"or": [{"ell": [17, 23.4, 3.2, 2]}, {"ell": [31, 23.4, 3.2, 2]}, {"ell": [24, 22.6, 7, 1.8]}]}, "c": "#eee8d8", "m": "soft"},
+     {"s": {"ell": [24, 25.4, 1.3, 1.3]}, "c": "gold", "m": "soft", "sides": "S"},
+     {"s": "@cloak_back", "c": "#8c6a45", "m": "soft", "when": "!cen", "sides": "N"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "north_mail": {
+   "name": "Кольчуга и щит",
+   "colours": {"sh0": "#7a2a1f", "sh1": "#a33b2a", "sh2": "#cfd3d6"},
+   "chest": "mail",
+   "layers": {
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,50,49))", "sel(fem,2,1)"]}, "c": "mail", "pat": [{"if": "(floor(x)+floor(y))%2==1", "c": "mail_d"}]},
+     {"s": {"use": "sleeve", "with": {"len": 36}}, "c": "mail"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 36}}}, "c": "mail"},
+     {"s": {"both": {"ell": [12.6, 24.5, 3.5, 2.4]}}, "c": "mail_d", "m": "soft"},
+     {"s": {"cap": [14.4, "sel(fem,33,41)", 33.6, "sel(fem,33,41)", 1, 1]}, "c": "boot", "m": "soft"}
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"or": [{"ell": [24, 8, 7.6, 7.2]}, {"cap": [24, 9, 24, 16, 1.1, 1.1]}]}, {"ell": [24, 13.4, 4.6, 4.4]}]},
+      "c": "iron2",
+      "when": "!own_head",
+      "sides": "S E"
+     },
+     {"s": {"ell": [24, 8.4, 7.6, 7.6]}, "c": "iron2", "when": "!own_head", "sides": "N"},
+     {"s": {"cap": [16.6, 5.4, 31.4, 5.4, 0.9, 0.9]}, "c": "iron2*1.3", "m": "soft", "when": "!own_head"},
+     {
+      "s": {"or": [{"cap": [17, 9, 17.6, 13, 1.1, 1.1]}, {"cap": [31, 9, 30.4, 13, 1.1, 1.1]}]},
+      "c": "iron2",
+      "m": "rim1",
+      "when": "!own_head",
+      "sides": "S E"
+     }
+    ],
+    "held": [{"ops": "shield", "when": "kit", "sides": "S E"}, {"ops": "spear", "when": "kit && !hastool", "sides": "S E"}]
+   },
+   "dye": "sh1",
+   "covered": true,
+   "helm": true
+  },
+  "north_shaman": {
+   "name": "Шаман",
+   "colours": {"c": ["#2c2a35", "#35303a", "#2a2e35", "#3a2e2a"], "antler": "#b59b72"},
+   "chest": "c*1.35",
+   "layers": {
+    "dress": [
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "c*1.4"}},
+     {"s": {"torso": [60, "sel(fem,3.5,2)"]}, "c": "c", "when": "!cen"},
+     {"ops": "feet_bare", "cwith": {"fc": "#3b2a1e"}},
+     {"s": {"use": "sleeve", "with": {"len": 41}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 41}}}, "c": "c"},
+     {"s": {"cap": [24, "sel(fem,33,38)", 24, 56, 0.7, 0.7]}, "c": "#e8e1cf", "m": "flat", "when": "!cen", "sides": "S"},
+     {"s": {"cap": [20, "sel(fem,36,41)", 28, "sel(fem,36,41)", 0.6, 0.6]}, "c": "#e8e1cf", "m": "flat", "sides": "S"},
+     {"s": {"cap": ["sel(fem,18,16.6)", "sel(fem,33,38.4)", "sel(fem,30,31.4)", "sel(fem,33,38.4)", 1, 1]}, "c": "#c98a4a", "m": "soft"}
+    ],
+    "headwear": [
+     {"s": {"cap": [16.6, 5.4, 31.4, 5.4, 1.3, 1.3]}, "c": "antler", "m": "soft"},
+     {"s": {"cap": [16, 4, 13, -4, 0.9, 0.6]}, "c": "antler", "m": "soft rim1"},
+     {"s": {"cap": [13, -4, 11, -8, 0.9, 0.6]}, "c": "antler", "m": "soft rim1"},
+     {"s": {"cap": [13, -1, 9, -3, 0.9, 0.6]}, "c": "antler", "m": "soft rim1"},
+     {"s": {"cap": [32, 4, 35, -4, 0.9, 0.6]}, "c": "antler", "m": "soft rim1"},
+     {"s": {"cap": [35, -4, 37, -8, 0.9, 0.6]}, "c": "antler", "m": "soft rim1"},
+     {"s": {"cap": [35, -1, 39, -3, 0.9, 0.6]}, "c": "antler", "m": "soft rim1"},
+     {"dot": [19, 10.4, 3, 1], "c": "#c33b2e", "when": "!own_head", "sides": "S"},
+     {"dot": ["25+fdx", 10.4, 3, 1], "c": "#c33b2e", "when": "!own_head", "sides": "S E"}
+    ],
+    "held": [
+     {"ops": "staff", "when": "kit && !hastool", "sides": "S E"},
+     {"s": {"ell": [40, 3.6, 1.8, 2.4]}, "c": "#7ad0c4", "m": "soft", "when": "kit && !hastool", "sides": "S E"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "north_hide": {
+   "name": "Шкуры",
+   "colours": {"c": ["#7a6a52", "#5a4a38", "#8a7a62", "#6a5a48"]},
+   "chest": [{"when": "fem", "c": "c"}, {"c": "skin"}],
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#5a4630"}},
+     {
+      "s": {"poly": [[15, 40], [33, 40], [35, 52], [29, 50], [24, 53], [19, 50], [13, 52]]},
+      "c": "c",
+      "m": "soft",
+      "when": "!cen",
+      "pat": [{"if": "(floor(x)*3+floor(y)*7)%5==0", "c": "c*0.75"}]
+     },
+     {"s": {"torso": [33, 0]}, "c": "c", "m": "soft", "when": "fem", "pat": [{"if": "(floor(x)*3+floor(y)*7)%5==0", "c": "c*0.75"}]},
+     {
+      "s": {"or": [{"ell": [14, 24.6, 4.4, 3.2]}, {"ell": [21, 22.8, 5, 2.4]}]},
+      "c": "c*1.15",
+      "m": "soft",
+      "pat": [{"if": "(floor(x)+floor(y))%3==0", "c": "c*0.8"}]
+     },
+     {"s": {"cap": [15.6, 40.6, 32.4, 40.6, 1, 1]}, "c": "boot", "m": "soft"}
+    ]
+   },
+   "dye": "c"
+  },
+  "forest_shirt": {
+   "name": "Рубаха и сарафан",
+   "colours": {"c": ["#2f5d8a", "#8a2f3a", "#2f6b4a", "#6b2d5c"]},
+   "chest": [{"when": "fem", "c": "c"}, {"c": "lin"}],
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#a58a5a"}},
+     {"s": {"torso": [62, 3.5]}, "c": "lin", "when": "fem && !cen"},
+     {"s": {"torso": [61, 3.4]}, "c": "c", "when": "fem && !cen", "pat": [{"if": "y>=58 && y<60", "c": "red"}]},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "lin", "when": "fem && !cen"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "lin", "when": "fem && !cen"},
+     {"s": {"poly": [[16.5, 22], [31.5, 22], [28, 28], [20, 28]]}, "c": "lin", "m": "soft", "when": "fem && !cen"},
+     {"ops": "pants", "cwith": {"pc": "#5a4a3a", "bc": "#a58a5a"}, "when": "!fem"},
+     {"s": {"torso": [50, 1.5]}, "c": "lin", "when": "!fem && !cen", "pat": [{"if": "y>=49", "c": "red"}]},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "lin", "when": "!fem && !cen"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "lin", "when": "!fem && !cen"},
+     {"s": {"cap": [16.6, 38.4, 31.4, 38.4, 1, 1]}, "c": "red", "m": "soft", "when": "!fem && !cen"},
+     {"s": {"cap": [20, 23, 28, 23, 0.8, 0.8]}, "c": "red", "m": "flat", "when": "!fem && !cen", "sides": "S"},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen && fem"},
+     {"s": {"torso": [38, 0]}, "c": "lin", "when": "cen && !fem"},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "lin", "when": "cen"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "lin", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "red"}}
+    ],
+    "headwear": [{"s": {"cap": [17, 5.6, 31, 5.6, 0.9, 0.9]}, "c": "red", "m": "flat soft", "when": "!own_head"}]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "forest_druid": {
+   "name": "Друид, знахарь",
+   "colours": {"c": ["#4f6b3a", "#6b5a3a", "#3a5a6b", "#5a4a6b"]},
+   "chest": "c*1.35",
+   "layers": {
+    "dress": [
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "c*1.4"}},
+     {"s": {"torso": [60, "sel(fem,3.5,2)"]}, "c": "c", "when": "!cen"},
+     {"ops": "feet_bare", "cwith": {"fc": "#3b2a1e"}},
+     {"s": {"use": "sleeve", "with": {"len": 41}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 41}}}, "c": "c"},
+     {"s": {"cap": [13, 60, 35, 60, 0.8, 0.8]}, "c": "#8aa84a", "m": "soft", "when": "!cen"},
+     {"s": {"cap": ["sel(fem,18,16.6)", "sel(fem,33,38.4)", "sel(fem,30,31.4)", "sel(fem,33,38.4)", 1, 1]}, "c": "#c9b27a", "m": "soft"}
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"poly": [[14.5, 6], [24, -4], [33.5, 6], [34.5, 22], [13.5, 22]]}, "@hood_cut"]},
+      "c": "c",
+      "m": "soft",
+      "when": "!own_head",
+      "sides": "S E"
+     },
+     {"s": {"poly": [[14.5, 6], [24, -4], [33.5, 6], [34.5, 22], [13.5, 22]]}, "c": "c", "m": "soft", "when": "!own_head", "sides": "N"}
+    ],
+    "held": [
+     {"ops": "staff", "when": "kit && !hastool", "sides": "S E"},
+     {
+      "s": {"or": [{"cap": [38, 4, 40, 2, 1, 1]}, {"cap": [40, 2, 42, 4, 1, 1]}]},
+      "c": "#e8e1cf",
+      "m": "soft",
+      "when": "kit && !hastool",
+      "sides": "S E"
+     }
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "forest_hunter": {
+   "name": "Охотник",
+   "colours": {},
+   "chest": "leather",
+   "layers": {
+    "back": [
+     {"s": "@cloak_back", "c": "#4a6a3a", "m": "soft", "when": "!cen"},
+     {"s": {"poly": [[31, 16], [36, 18], [38, 36], [33, 37]]}, "c": "#7a4a2a", "m": "soft", "when": "!cen"},
+     {"s": {"cap": [35.0, 16, 35.5, 11, 0.6, 0.6]}, "c": "#e8e1cf", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [36.3, 16, 36.8, 11, 0.6, 0.6]}, "c": "#e8e1cf", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [37.6, 16, 38.1, 11, 0.6, 0.6]}, "c": "#e8e1cf", "m": "flat", "when": "!cen"}
+    ],
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,50,48))", 0]}, "c": "lin"},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "lin"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "lin"},
+     {"s": {"torso": ["sel(cen,38,44)", 0]}, "c": "leather", "pat": [{"if": "abs(x-24)<1.1", "c": "lin"}]},
+     {"s": {"cap": [14.4, "sel(fem,33,41)", 33.6, "sel(fem,33,41)", 1, 1]}, "c": "boot", "m": "soft"},
+     {"s": {"use": "bracer", "with": {}}, "c": "leather", "m": "rim1"},
+     {"s": {"mir": {"use": "bracer", "with": {}}}, "c": "leather", "m": "rim1"},
+     {"ops": "blanket", "cwith": {"bc": "#4a6a3a", "tr": "gold"}},
+     {"s": "@cloak_back", "c": "#4a6a3a", "m": "soft", "when": "!cen", "sides": "N"}
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"poly": [[15.4, 7], [24, -2], [32.6, 7], [33.4, 19], [14.6, 19]]}, "@hood_cut"]},
+      "c": "#4a6a3a",
+      "m": "soft",
+      "when": "!own_head",
+      "sides": "S E"
+     },
+     {"s": {"poly": [[15.4, 7], [24, -2], [32.6, 7], [33.4, 19], [14.6, 19]]}, "c": "#4a6a3a", "m": "soft", "when": "!own_head", "sides": "N"},
+     {"s": {"cap": [30, 2, 32, -6, 0.7, 0.5]}, "c": "#cf5a2a", "m": "soft", "when": "!own_head"}
+    ],
+    "held": [{"ops": "bow", "with": {"bx": 9}, "when": "kit && !hastool", "sides": "S E"}]
+   },
+   "dye": "",
+   "covered": true
+  },
+  "forest_elven": {
+   "name": "Лесной наряд",
+   "colours": {"c": ["#3f8a4a", "#4a7aa8", "#7a4a8a", "#a8884a"]},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#5a4630"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,56,52))", "sel(fem,3,1.5)"]}, "c": "c", "pat": [{"if": "y>=55 && y<56.6", "c": "silver"}]},
+     {"s": {"use": "sleeve", "with": {"len": 36}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 36}}}, "c": "c"},
+     {"s": {"cap": ["sel(fem,18,16.6)", "sel(fem,33,38.4)", "sel(fem,30,31.4)", "sel(fem,33,38.4)", 1, 1]}, "c": "silver", "m": "soft"},
+     {"s": {"ell": [24, "sel(fem,33,38.4)", 1.5, 1.5]}, "c": "#7ad0c4", "m": "soft flat", "sides": "S"},
+     {"s": {"poly": [[20.6, 22], [27.4, 22], [24, 27.6]]}, "c": "skin", "m": "soft flat", "sides": "S"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "silver"}}
+    ],
+    "headwear": [
+     {"s": {"cap": [17.2, 6, 30.8, 6, 0.8, 0.8]}, "c": "silver", "m": "flat soft", "when": "!own_head"},
+     {"s": {"ell": [24, 4.8, 1.3, 1.8]}, "c": "#7ad0c4", "m": "flat soft", "when": "!own_head", "sides": "S"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "forest_leaf": {
+   "name": "Белая рубаха вилы",
+   "colours": {"c": ["#f4f0e6", "#e8eef0", "#f0e8f0", "#e6f0e6"]},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#c8b89a"}},
+     {"s": {"torso": ["sel(cen,38,60)", "sel(fem,4,2)"]}, "c": "c", "pat": [{"if": "y>=58.4", "c": "#7ad0c4"}]},
+     {"s": {"cap": [20, 34, 18.4, 58, 0.5, 0.7]}, "c": "c*0.85", "m": "flat", "when": "!cen", "sides": "SN"},
+     {"s": {"cap": [24, 34, 24.0, 58, 0.5, 0.7]}, "c": "c*0.85", "m": "flat", "when": "!cen", "sides": "SN"},
+     {"s": {"cap": [28, 34, 29.6, 58, 0.5, 0.7]}, "c": "c*0.85", "m": "flat", "when": "!cen", "sides": "SN"},
+     {"s": {"cap": [18.4, 31.6, 29.6, 31.6, 0.8, 0.8]}, "c": "#7ad0c4", "m": "soft"}
+    ],
+    "headwear": [
+     {"s": {"cap": [17.4, 5.8, 30.6, 5.8, 0.9, 0.9]}, "c": "#7ad0c4", "m": "soft flat", "when": "!own_head"},
+     {"s": {"ell": [19, 4.6, 1.1, 1.1]}, "c": "#ffffff", "m": "soft flat", "when": "!own_head"},
+     {"s": {"ell": [22, 4.6, 1.1, 1.1]}, "c": "#ffffff", "m": "soft flat", "when": "!own_head"},
+     {"s": {"ell": [26, 4.6, 1.1, 1.1]}, "c": "#ffffff", "m": "soft flat", "when": "!own_head"},
+     {"s": {"ell": [29, 4.6, 1.1, 1.1]}, "c": "#ffffff", "m": "soft flat", "when": "!own_head"}
+    ]
+   },
+   "dye": "c",
+   "flags": {"wreath": 1}
+  },
+  "steppe_kaftan": {
+   "name": "Кафтан",
+   "colours": {"c": ["#2f5d8a", "#8a2f3a", "#2f6b4a", "#8a6a2f"]},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,56,54))", "sel(fem,3,1.5)"]}, "c": "c"},
+     {"s": {"poly": [[22.6, 22], [25.4, 22], [26, "sel(cen,38,56)"], [22, "sel(cen,38,56)"]]}, "c": "c*1.35", "m": "soft", "sides": "S"},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "c"},
+     {"s": {"cap": ["sel(fem,18,16.6)", "sel(fem,33,38.4)", "sel(fem,30,31.4)", "sel(fem,33,38.4)", 1.3, 1.3]}, "c": "gold", "m": "soft"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "gold"}}
+    ],
+    "headwear": [
+     {"s": {"cap": [16.6, 5, 31.4, 5, 1.7, 1.7]}, "c": "#7a3a3a", "m": "soft", "when": "!own_head"},
+     {"s": {"poly": [[16.8, 5.6], [31.2, 5.6], [30.6, 8], [17.4, 8]]}, "c": "#e8e1cf", "m": "soft", "when": "!own_head"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "steppe_fur": {
+   "name": "Шуба и шапка",
+   "colours": {"c": "#7a5a3a", "fr": "#eee8d8"},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,56,54))", "sel(fem,3,1.5)"]}, "c": "c", "pat": [{"if": "y>=54.5 && !cen", "c": "fr"}]},
+     {"s": {"use": "sleeve", "with": {"len": 40}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 40}}}, "c": "c"},
+     {"s": {"or": [{"ell": [17, 23.4, 3.4, 2.2]}, {"ell": [31, 23.4, 3.4, 2.2]}, {"ell": [24, 22.6, 7, 1.9]}]}, "c": "fr", "m": "soft"},
+     {"s": {"cap": [18, 26, 30, 26, 0.7, 0.7]}, "c": "gold", "m": "soft", "sides": "S"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "fr"}}
+    ],
+    "headwear": [
+     {"s": {"poly": [[15.4, 6], [17.4, -2], [24, -6], [30.6, -2], [32.6, 6]]}, "c": "#6b4a2f", "m": "soft", "when": "!own_head"},
+     {"s": {"cap": [15.4, 6, 32.6, 6, 1.4, 1.4]}, "c": "#eee8d8", "m": "soft", "when": "!own_head"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "steppe_lamellar": {
+   "name": "Пластинчатый доспех",
+   "colours": {"ia": "#aab2ba", "ib": "#8a929a"},
+   "chest": "ia",
+   "layers": {
+    "dress": [
+     {"ops": "pants", "cwith": {"pc": "#4a3f35", "bc": "boot"}},
+     {
+      "s": {"torso": ["sel(cen,38,sel(fem,50,49))", "sel(fem,2,1)"]},
+      "c": "ia",
+      "pat": [{"if": "floor(y)%2==1", "c": "ib"}, {"if": "floor(x)%3==0", "c": "#6b4a2e"}]
+     },
+     {"s": {"use": "sleeve", "with": {"len": 38}}, "c": "leather"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 38}}}, "c": "leather"},
+     {"s": {"cap": [14.4, "sel(fem,33,41)", 33.6, "sel(fem,33,41)", 1, 1]}, "c": "boot", "m": "soft"},
+     {"s": "@blanket", "c": "ib", "m": "soft", "when": "cen", "pat": [{"if": "floor(x)%2==0", "c": "ia"}]}
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"or": [{"ell": [24, 8, 7.4, 6.8]}, {"poly": [[19, 4], [24, -8], [29, 4]]}]}, {"ell": [24, 13.4, 4.6, 4.4]}]},
+      "c": "iron2",
+      "when": "!own_head",
+      "sides": "S E"
+     },
+     {"s": {"or": [{"ell": [24, 8.4, 7.4, 7.4]}, {"poly": [[19, 4], [24, -8], [29, 4]]}]}, "c": "iron2", "when": "!own_head", "sides": "N"},
+     {"s": {"ell": [24, -8.6, 1.2, 2]}, "c": "red", "m": "soft", "when": "!own_head"},
+     {"s": {"cap": [24, -8, 26, 3, 1.1, 1.1]}, "c": "red", "m": "soft flat", "when": "!own_head"},
+     {"s": {"cap": [16.8, 5.4, 31.2, 5.4, 0.9, 0.9]}, "c": "iron2*1.3", "m": "soft", "when": "!own_head"}
+    ],
+    "held": [{"ops": "bow", "with": {"bx": 8}, "when": "kit && !hastool", "sides": "S E"}]
+   },
+   "dye": "",
+   "covered": true,
+   "helm": true
+  },
+  "steppe_kam": {
+   "name": "Кам (шаман)",
+   "colours": {"c": ["#2a3f66", "#2a3a58", "#33406a", "#26365a"]},
+   "chest": "c*1.35",
+   "layers": {
+    "dress": [
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"},
+     {"ops": "blanket", "cwith": {"bc": "c", "tr": "c*1.4"}},
+     {"s": {"torso": [60, "sel(fem,3.5,2)"]}, "c": "c", "when": "!cen"},
+     {"ops": "feet_bare", "cwith": {"fc": "#3b2a1e"}},
+     {"s": {"use": "sleeve", "with": {"len": 41}}, "c": "c"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 41}}}, "c": "c"},
+     {"s": {"ell": [24, 26.5, 1.5, 1.5]}, "c": "#c98a4a", "m": "soft flat", "sides": "S"},
+     {"s": {"cap": [13, 56, 13, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [15, 56, 15, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [17, 56, 17, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [19, 56, 19, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [21, 56, 21, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [23, 56, 23, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [25, 56, 25, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [27, 56, 27, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [29, 56, 29, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [31, 56, 31, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [33, 56, 33, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": [35, 56, 35, 60, 0.5, 0.5]}, "c": "#c98a4a", "m": "flat", "when": "!cen"},
+     {"s": {"cap": ["sel(fem,18,16.6)", "sel(fem,33,38.4)", "sel(fem,30,31.4)", "sel(fem,33,38.4)", 1, 1]}, "c": "#c98a4a", "m": "soft"}
+    ],
+    "headwear": [
+     {"s": {"cap": [16.6, 5.4, 31.4, 5.4, 1.3, 1.3]}, "c": "#2a3f66", "m": "soft", "when": "!own_head"},
+     {"s": {"cap": [17, 3, 15, -6, 0.8, 0.5]}, "c": "#e8e1cf", "m": "soft rim1"},
+     {"s": {"cap": [20, 3, 19, -8, 0.8, 0.5]}, "c": "#cfd3d6", "m": "soft rim1"},
+     {"s": {"cap": [24, 3, 24, -9, 0.8, 0.5]}, "c": "#e8e1cf", "m": "soft rim1"},
+     {"s": {"cap": [28, 3, 29, -8, 0.8, 0.5]}, "c": "#cfd3d6", "m": "soft rim1"},
+     {"s": {"cap": [31, 3, 33, -6, 0.8, 0.5]}, "c": "#e8e1cf", "m": "soft rim1"},
+     {"dot": [19, 10.4, 3, 1], "c": "#e8e1cf", "when": "!own_head", "sides": "S"},
+     {"dot": ["25+fdx", 10.4, 3, 1], "c": "#e8e1cf", "when": "!own_head", "sides": "S E"}
+    ],
+    "held": [
+     {"s": {"ell": [8, 40, 5, 5]}, "c": "#c98a4a", "when": "kit", "sides": "S E"},
+     {"s": {"ell": [8, 40, 3.8, 3.8]}, "c": "#e8dcc0", "m": "soft", "when": "kit", "sides": "S E"},
+     {"s": {"ell": [8, 40, 1.4, 1.4]}, "c": "red", "m": "soft flat", "when": "kit", "sides": "S E"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "nile_shenti": {
+   "name": "Шенти и калазирис",
+   "colours": {"c": ["#f2ecdc", "#ece4d0", "#f4f0e4", "#e6dcc4"]},
+   "chest": [{"when": "fem", "c": "c"}, {"c": "skin"}],
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#c8a86a"}},
+     {
+      "s": {"poly": [[15.6, 40], [32.4, 40], [33.4, 54], [14.6, 54]]},
+      "c": "c",
+      "when": "!fem && !cen",
+      "pat": [{"if": "floor(x)%2==0 && x>22", "c": "c*0.86"}]
+     },
+     {"s": {"and": [{"torso": [62, 1.2]}, {"where": "y>27"}]}, "c": "c", "when": "fem && !cen", "pat": [{"if": "floor(x)%3==0", "c": "c*0.9"}]},
+     {"s": {"both": {"cap": [20.4, 27, 18.6, 22, 0.5, 0.5]}}, "c": "c*0.8", "m": "flat", "when": "fem && !cen"},
+     {"s": {"cap": [15.6, 40.4, 32.4, 40.4, 0.9, 0.9]}, "c": "c*0.8", "m": "soft", "when": "!fem"},
+     {"s": {"torso": [38, 0]}, "c": "c", "when": "cen"}
+    ],
+    "headwear": [{"s": {"cap": [17.4, 5.4, 30.6, 5.4, 0.7, 0.7]}, "c": "gold", "m": "flat soft", "when": "fem && !own_head"}]
+   },
+   "dye": "c"
+  },
+  "nile_noble": {
+   "name": "Плиссе и ожерелье",
+   "colours": {"c": ["#f4f0e4", "#f2ecdc", "#ece6d6", "#f6f2ea"], "lapis": "#2a4a8a", "carnelian": "#b8452a", "wig": "#14141a"},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#c8a86a"}},
+     {"s": {"torso": ["sel(cen,38,sel(fem,62,58))", "sel(fem,3.4,2.4)"]}, "c": "c", "pat": [{"if": "floor(x)%2==0", "c": "c*0.88"}]},
+     {"s": {"use": "sleeve", "with": {"len": 34}}, "c": "c*0.94"},
+     {"s": {"mir": {"use": "sleeve", "with": {"len": 34}}}, "c": "c*0.94"},
+     {"s": {"cap": ["sel(fem,18.4,16.6)", "sel(fem,33,38.4)", "sel(fem,29.6,31.4)", "sel(fem,33,38.4)", 1.1, 1.1]}, "c": "gold", "m": "soft"},
+     {"s": {"cap": [24, "sel(fem,33,38.4)", 24, 56, 1, 1.4]}, "c": "carnelian", "m": "soft", "when": "!cen", "sides": "S"},
+     {
+      "s": {"and": [{"ell": [24, 22, 9.6, 6.4]}, {"where": "y>21.6"}]},
+      "c": "lapis",
+      "sides": "S E",
+      "pat": [{"if": "floor(y)%2==0", "c": "gold"}, {"if": "floor(y)%4==1", "c": "carnelian"}]
+     }
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"or": [{"ell": [24, 9, 8.2, 8.4]}, {"poly": [[16, 11], [32, 11], [32.6, 24], [15.4, 24]]}]}, "@hood_cut"]},
+      "c": "wig",
+      "m": "soft",
+      "when": "!own_head",
+      "sides": "S E",
+      "pat": [{"if": "floor(x)%2==0 && y>8", "c": "wig*0.7"}]
+     },
+     {
+      "s": {"or": [{"ell": [24, 9, 8.2, 8.4]}, {"poly": [[16, 11], [32, 11], [32.6, 24], [15.4, 24]]}]},
+      "c": "wig",
+      "m": "soft",
+      "when": "!own_head",
+      "sides": "N",
+      "pat": [{"if": "floor(x)%2==0", "c": "wig*0.7"}]
+     },
+     {"s": {"cap": [16.4, 6, 31.6, 6, 0.8, 0.8]}, "c": "gold", "m": "flat soft", "when": "!own_head"}
+    ]
+   },
+   "dye": "c",
+   "covered": true
+  },
+  "nile_guard": {
+   "name": "Немес и копьё",
+   "colours": {"c": ["#f2ecdc", "#e6dcc4"], "st1": "#2a4a8a", "st2": "#e0b030", "sh0": "#7a5a2a", "sh1": "#e6dcc4", "sh2": "#7a5a2a"},
+   "chest": "skin",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#c8a86a"}},
+     {"s": {"poly": [[15.6, 40], [32.4, 40], [34, 54], [14, 54]]}, "c": "c", "when": "!cen", "pat": [{"if": "abs(x-24)<3 && y>44", "c": "st1"}]},
+     {"s": {"cap": [15.6, 40.4, 32.4, 40.4, 1.1, 1.1]}, "c": "leather", "m": "soft"},
+     {"s": {"torso": [32, 0]}, "c": "c", "m": "soft", "when": "fem"},
+     {"s": {"both": {"ell": [12.6, 40, 2.4, 1.2]}}, "c": "gold", "m": "soft flat", "when": "!covered"}
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"or": [{"ell": [24, 8, 7.8, 7.6]}, {"poly": [[16.2, 9], [31.8, 9], [33.6, 24], [14.4, 24]]}]}, "@hood_cut"]},
+      "c": "st2",
+      "when": "!own_head",
+      "sides": "S E",
+      "pat": [{"if": "floor(y)%2==0", "c": "st1"}]
+     },
+     {
+      "s": {"or": [{"ell": [24, 8, 7.8, 7.6]}, {"poly": [[16.2, 9], [31.8, 9], [33.6, 24], [14.4, 24]]}]},
+      "c": "st2",
+      "when": "!own_head",
+      "sides": "N",
+      "pat": [{"if": "floor(y)%2==0", "c": "st1"}]
+     }
+    ],
+    "held": [{"ops": "shield", "when": "kit", "sides": "S E"}, {"ops": "spear", "when": "kit && !hastool", "sides": "S E"}]
+   },
+   "dye": "c",
+   "helm": true
+  },
+  "nile_priest": {
+   "name": "Жрец: лён и шкура",
+   "colours": {"c": ["#f6f2ea", "#f2ecdc"], "lapis": "#2a4a8a", "carnelian": "#b8452a", "pard": "#d8a848"},
+   "chest": "c",
+   "layers": {
+    "dress": [
+     {"ops": "feet_bare", "cwith": {"fc": "#c8a86a"}},
+     {"s": {"torso": ["sel(cen,38,60)", "sel(fem,3,2)"]}, "c": "c"},
+     {
+      "s": {"poly": [[14.6, 22], [22, 22], [32, 36], [33, 50], [26, 52], [16, 34]]},
+      "c": "pard",
+      "m": "soft",
+      "sides": "S E",
+      "pat": [{"if": "(floor(x)*5+floor(y)*3)%7==0", "c": "#5a3a1a"}]
+     },
+     {
+      "s": {"and": [{"ell": [24, 22, 9.6, 6.4]}, {"where": "y>21.6"}]},
+      "c": "lapis",
+      "sides": "S E",
+      "pat": [{"if": "floor(y)%2==0", "c": "gold"}, {"if": "floor(y)%4==1", "c": "carnelian"}]
+     }
+    ],
+    "headwear": [
+     {
+      "s": {"sub": [{"ell": [24, 7.4, 7, 6.6]}, {"where": "y>7.6"}]},
+      "c": "skin*0.92",
+      "m": "soft",
+      "when": "!own_head",
+      "pat": [{"if": "y<2", "c": "skin*0.85"}]
+     }
+    ],
+    "held": [
+     {"ops": "staff", "when": "kit && !hastool", "sides": "S E"},
+     {"s": {"ell": [40, 5, 2.2, 1.6]}, "c": "gold", "m": "soft", "when": "kit && !hastool", "sides": "S E"},
+     {"s": {"cap": [40, 3.4, 40, 6.6, 0.4, 0.4]}, "c": "#2a4a8a", "m": "flat", "when": "kit && !hastool", "sides": "S E"}
+    ]
+   },
+   "dye": "c"
+  }
+ },
+ "cultures": {
+  "polis_hellene": {"daily": "south_chiton", "festive": "south_peplos", "war": "south_hoplite", "rite": "south_light"},
+  "isle_sailor": {"daily": "south_sailor", "festive": "south_peplos", "war": "south_hoplite", "rite": "south_light"},
+  "pastoral_hills": {"daily": "south_chiton", "festive": "south_light", "war": "south_hoplite", "rite": "south_peplos"},
+  "labyrinth": {"daily": "south_bull", "festive": "south_bull", "war": "south_hoplite", "rite": "south_light"},
+  "grove_nymph": {"daily": "south_light", "festive": "south_light", "war": "south_light", "rite": "south_light"},
+  "satyr_vine": {"daily": "south_nebris", "festive": "south_light", "war": "south_hoplite", "rite": "south_light"},
+  "smith_cyclops": {"daily": "south_exomis", "festive": "south_peplos", "war": "south_hoplite", "rite": "south_exomis"},
+  "port_kobal": {"daily": "south_sailor", "festive": "south_chiton", "war": "south_hoplite", "rite": "south_light"},
+  "nile_priest": {"daily": "nile_shenti", "festive": "nile_noble", "war": "nile_guard", "rite": "nile_priest"},
+  "forest_elf": {"daily": "forest_elven", "festive": "forest_elven", "war": "forest_hunter", "rite": "forest_druid"},
+  "vila_glade": {"daily": "forest_leaf", "festive": "forest_leaf", "war": "forest_hunter", "rite": "forest_leaf"},
+  "celtic_grove": {
+   "daily": "forest_shirt",
+   "festive": "forest_elven",
+   "war": "forest_hunter",
+   "rite": "forest_druid",
+   "colours": {"c": ["#2f6b4a", "#7a4a2a", "#4a6a8a", "#8a6a2f"]}
+  },
+  "slav_village": {"daily": "forest_shirt", "festive": "forest_shirt", "war": "forest_hunter", "rite": "forest_druid"},
+  "north_folk": {"daily": "north_shirt", "festive": "north_fur", "war": "north_mail", "rite": "north_shaman", "warm": "north_fur"},
+  "dwarf_hold": {"daily": "north_shirt", "festive": "north_fur", "war": "north_mail", "rite": "north_shaman", "warm": "north_fur"},
+  "alv_hall": {
+   "daily": "forest_elven",
+   "festive": "forest_elven",
+   "war": "north_mail",
+   "rite": "north_shaman",
+   "warm": "north_fur",
+   "colours": {"c": ["#c8d8e8", "#a8c0d8", "#e0e8f0", "#8aa8c8"]}
+  },
+  "jotun_hold": {"daily": "north_hide", "festive": "north_fur", "war": "north_mail", "rite": "north_shaman", "warm": "north_fur"},
+  "troll_fell": {"daily": "north_hide", "festive": "north_hide", "war": "north_hide", "rite": "north_shaman"},
+  "steppe_clan": {"daily": "steppe_kaftan", "festive": "steppe_fur", "war": "steppe_lamellar", "rite": "steppe_kam", "warm": "steppe_fur"},
+  "steppe_rider": {"daily": "steppe_kaftan", "festive": "steppe_fur", "war": "steppe_lamellar", "rite": "steppe_kam", "warm": "steppe_fur"}
+ },
+ "cultures_legacy": {
+  "fantasy_european": "slav_village",
+  "dwarven": "dwarf_hold",
+  "sylvan": "forest_elf",
+  "orcish": "steppe_rider",
+  "goblin": "port_kobal",
+  "ogre": "jotun_hold",
+  "troll": "troll_fell"
+ },
+ "cultures_people": {
+  "polis_hellene": "hellene",
+  "isle_sailor": "hellene",
+  "pastoral_hills": "hellene",
+  "labyrinth": "minotaur",
+  "grove_nymph": "nymph",
+  "satyr_vine": "satyr",
+  "smith_cyclops": "cyclops",
+  "port_kobal": "goblin",
+  "nile_priest": "nilote",
+  "forest_elf": "elf",
+  "vila_glade": "vila",
+  "celtic_grove": "woodfolk",
+  "slav_village": "woodfolk",
+  "north_folk": "northman",
+  "dwarf_hold": "dwarf",
+  "alv_hall": "alv",
+  "jotun_hold": "ogre",
+  "troll_fell": "troll",
+  "steppe_clan": "steppe_folk",
+  "steppe_rider": "orc"
+ },
+ "outfit_by_worn": [{"has": ["mail", "helmet"], "slot": "war"}, {"has": ["cloak"], "slot": "warm"}, {"has": ["shirt", "robe", "tabard"], "slot": "daily"}],
+ "festive_one_in": 4,
+ "rite_acts": ["pray", "rite", "sacrifice", "bless", "offering"],
+ "kit_tools": ["spear", "sword", "bow", "axe", "staff"]
+}

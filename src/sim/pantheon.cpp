@@ -12,6 +12,7 @@
 #include "sim/culture.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/magic_society.hpp"
+#include "sim/rites.hpp"
 #include "sim/world.hpp"
 
 namespace lr::sim {
@@ -327,7 +328,7 @@ PrayerFulfillFn& fulfillHook() {
 
 Json askJson(const PrayerAsk& p) {
     return {{"who", p.who}, {"faith", p.faith}, {"lik", p.lik}, {"aim", p.aim}, {"offering", p.offering}, {"rite", p.rite},
-            {"place", p.place}, {"day", p.day}, {"weight", p.weight}};
+            {"place", p.place}, {"target", p.target}, {"day", p.day}, {"weight", p.weight}};
 }
 PrayerAsk askFrom(const Json& j) {
     PrayerAsk p;
@@ -338,6 +339,7 @@ PrayerAsk askFrom(const Json& j) {
     p.offering = j.value("offering", std::string());
     p.rite = j.value("rite", std::string());
     p.place = j.value("place", kNone);
+    p.target = j.value("target", kNone);
     p.day = j.value("day", -1);
     p.weight = j.value("weight", 1.0);
     return p;
@@ -1117,7 +1119,57 @@ bool handlePantheon(World& w, Command& cmd) {
 
 } // namespace
 
-void installPantheon(World& w) { w.addCommandHandler(handlePantheon); }
+namespace {
+PrayerAsk fromRites(const Prayer& p) {
+    PrayerAsk a;
+    a.who = p.who;
+    a.faith = p.faith;
+    a.lik = p.lik;
+    a.aim = p.aim;
+    a.offering = p.offering;
+    a.rite = p.rite;
+    a.place = p.place;
+    a.target = p.target;
+    a.day = p.day > 0 ? p.day : -1;
+    a.weight = p.weight > 0.0 ? p.weight : 1.0;
+    return a;
+}
+Prayer toRites(const PrayerAsk& a) {
+    Prayer p;
+    p.who = a.who;
+    p.faith = a.faith;
+    p.lik = a.lik;
+    p.aim = a.aim;
+    p.offering = a.offering;
+    p.rite = a.rite;
+    p.place = a.place;
+    p.target = a.target;
+    p.day = std::max(0, a.day);
+    p.weight = a.weight;
+    return p;
+}
+} // namespace
+
+void installPantheon(World& w) {
+    w.addCommandHandler(handlePantheon);
+    // LR-171: the rites module asks the gods through its hook; a deferred grant comes back to it
+    setPrayerAnswerHook([](World& world, const Prayer& p) {
+        const DivineAnswer a = answerPrayer(world, fromRites(p));
+        PrayerAnswer r;
+        r.kind = a.kind == DivineAnswerKind::Granted    ? PrayerAnswer::Granted
+                 : a.kind == DivineAnswerKind::Refused  ? PrayerAnswer::Refused
+                 : a.kind == DivineAnswerKind::Deferred ? PrayerAnswer::Deferred
+                                                        : PrayerAnswer::Silent;
+        r.reason = a.reason;
+        r.dueDay = std::max(0, a.dueDay);
+        r.strength = a.strength;
+        return r;
+    });
+    setPrayerFulfill([](World& world, const PrayerAsk& p, double s) { fulfillPrayer(world, toRites(p), s); });
+    setRiteDoneHook([](World& world, EntityId who, const std::string& faith, const std::string& rite, double weight) {
+        onRiteDone(world, who, faith, rite, weight);
+    });
+}
 
 // --- checks -------------------------------------------------------------------------------------------------
 void validatePantheon(const Content& c, ValidationReport& rep) {

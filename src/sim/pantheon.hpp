@@ -178,6 +178,7 @@ struct PrayerAsk {
     EntityId who = kNone;
     std::string faith, lik, aim, offering, rite; // lik "" = the faith's lik for the aim
     EntityId place = kNone;
+    EntityId target = kNone; // whom it is for (kNone = the one who prays)
     int day = -1;        // -1 = today
     double weight = 1.0; // the plea's strength: offering x rite x place x piety (0..~3)
     bool byRule() const { return !offering.empty() || !rite.empty(); } // obliges an answer
@@ -195,7 +196,8 @@ const char* answerName(DivineAnswerKind k); // granted | refused | deferred | si
 // a deferred promise, the chronicle, the petitioner's moodlet). Effects of a grant are the
 // caller's (the rites module); a deferred grant is fulfilled later through the hook below.
 DivineAnswer answerPrayer(World& w, const PrayerAsk& p);
-// Who applies a deferred grant when its day comes (the rites module registers it).
+// Who applies a deferred grant when its day comes. installPantheon wires the rites module
+// (rites.hpp: the answer hook -> answerPrayer, a due promise -> fulfillPrayer); tests may replace it.
 using PrayerFulfillFn = std::function<void(World&, const PrayerAsk&, double strength)>;
 void setPrayerFulfill(PrayerFulfillFn fn);
 // A rite done for a faith (the rites module may call it; memories of rites count anyway).
