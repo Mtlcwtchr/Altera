@@ -27,13 +27,13 @@ const std::set<std::string> kEffSubjects = {"has",        "need",           "tar
                                             "skill",      "attr",           "body",           "moodlet",        "memory",
                                             "rel",        "rel_back",       "spawn",          "target_need",
                                             "reputation", "status_pair",    "household_join", "household_adopt",
-                                            "household_leave", "household_found", "commitment", "death", "captivity", "site"};
-const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death",
+                                            "household_leave", "household_found", "commitment", "death", "captivity", "site", "exile", "help"};
+const std::set<std::string> kTargetEffSubjects = {"need", "skill", "body", "moodlet", "has", "reputation", "death", "exile", "help",
                                                   "group", "home", "memory"};
 // Flag effects: subject:key with no operator.
 const std::set<std::string> kFlagEffects = {"moodlet",         "memory",          "spawn",           "household_join",
                                             "household_adopt", "household_leave", "household_found", "commitment",
-                                            "death", "captivity", "site"};
+                                            "death", "captivity", "site", "exile", "help"};
 // Effects and conditions that need a target character.
 const std::set<std::string> kNeedsCharTarget = {"rel", "rel_back", "target_need", "status_pair", "household_join",
                                                 "household_adopt", "commitment", "captivity"};
@@ -115,7 +115,7 @@ struct V {
         if (k.subject == "moodlet" && !c.moodlets.count(k.key)) err(where + ": unknown moodlet '" + k.key + "'");
         if (k.subject == "age" && k.key != "child" && k.key != "adult" && k.key != "elder")
             err(where + ": bad age stage '" + k.key + "'");
-        if (k.subject == "body" && k.key != "health" && k.key != "fatigue")
+        if (k.subject == "body" && k.key != "health" && k.key != "fatigue" && k.key != "pregnant")
             err(where + ": bad body key '" + k.key + "'");
         if (k.subject == "time" && k.key != "night" && k.key != "day") err(where + ": bad time '" + k.key + "'");
         if (k.subject == "target_owner" && k.key != "self" && k.key != "family" && k.key != "other" && k.key != "none")

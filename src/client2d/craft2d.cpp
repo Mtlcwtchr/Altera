@@ -236,7 +236,10 @@ Json forecastJson(const World& w, const ViewText& t, const Character& c, const J
     cmd.process = draft.value("process", "");
     if (draft.contains("slots") && draft["slots"].is_object())
         for (auto it = draft["slots"].begin(); it != draft["slots"].end(); ++it)
-            if (it.value().is_array()) cmd.slots[it.key()] = it.value().get<std::vector<std::string>>();
+            if (it.value().is_string()) cmd.slots[it.key()] = {it.value().get<std::string>()};
+            else if (it.value().is_array())
+                for (const auto& r : it.value())
+                    if (r.is_string()) cmd.slots[it.key()].push_back(r.get<std::string>());
     cmd.target.shape = draft.value("shape", "");
     cmd.target.mode = draft.value("mode", "");
     cmd.target.heat = draft.value("heat", -1);
@@ -255,7 +258,11 @@ Json forecastJson(const World& w, const ViewText& t, const Character& c, const J
                        {{"tier", f["tier"]}, {"ruin", int(std::lround(pv.pRuin * 100))},
                         {"flaw", int(std::lround(pv.pFlaw * 100))}, {"time", pv.time}, {"likely", likely}});
     } else {
-        Json args = {{"slot", tx(t, "hud.craft.slot." + pv.reasonArg)}, {"tool", pv.reasonArg}, {"station", pv.reasonArg},
+        // LR-130: a bad ref (inv:nonexistent) is not a slot name
+        const std::string slotKey = "hud.craft.slot." + pv.reasonArg;
+        std::string slotName = t.loc && t.loc->has(t.lang, slotKey) ? tx(t, slotKey) : pv.reasonArg;
+        if (pv.reasonArg.rfind("inv:", 0) == 0) slotName = t.name("item", pv.reasonArg.substr(4));
+        Json args = {{"slot", slotName}, {"tool", pv.reasonArg}, {"station", pv.reasonArg},
                      {"need", pv.reasonArg}, {"level", pv.reasonArg}, {"mode", pv.reasonArg},
                      {"shape", tx(t, "shape." + pv.reasonArg + ".name")}};
         if (d.station(pv.reasonArg)) args["station"] = tx(t, "station." + pv.reasonArg + ".name");

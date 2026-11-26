@@ -4,6 +4,7 @@
 
 #include "framework.hpp"
 #include "sim/ai.hpp"
+#include "sim/trade.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace lr::sim;
@@ -98,4 +99,73 @@ TEST(lr_qa_lend_is_a_debt) {
     applyEffects(w, *t, *repay, nullptr, c);
     CHECK(c->relations[t->id].debt < 0.5);
     CHECK(!canPerform(w, *c, *collect, nullptr, &why, false, t));
+}
+
+// LR-130: healing is for the hurt; LR-135: one asked for help comes to help;
+// LR-127: exile drives the target out of the settlement.
+TEST(lr_qa_heal_help_exile) {
+    World w = qaWorld();
+    Character* c = parentWithSpouse(w);
+    CHECK(c != nullptr);
+    if (!c) return;
+    Character* other = w.character(c->status.spouse);
+    CHECK(other != nullptr);
+    if (!other) return;
+    c->inventory["bandage"] = 2;
+    c->inventory["remedy"] = 2;
+    other->body.health = 1.0;
+    for (const char* act : {"treat_wound", "give_remedy"}) {
+        const InteractionDef* d = w.content().interaction(act);
+        CHECK(d != nullptr);
+        if (!d) continue;
+        std::string why;
+        CHECK(!canPerform(w, *c, *d, nullptr, &why, false, other));
+        other->body.health = 0.5;
+        CHECK(canPerform(w, *c, *d, nullptr, &why, false, other));
+        other->body.health = 1.0;
+    }
+    const InteractionDef* help = w.content().interaction("ask_help");
+    CHECK(help != nullptr);
+    if (help) {
+        other->ai.queue.clear();
+        applyEffects(w, *c, *help, nullptr, other);
+        bool queued = false;
+        for (const auto& q : other->ai.queue) queued = queued || q.reason == "asked_help";
+        CHECK(queued);
+    }
+    const InteractionDef* exile = w.content().interaction("exile");
+    CHECK(exile != nullptr);
+    if (exile && other->status.settlement != kNone) {
+        const Vec2 was = other->pos;
+        applyEffects(w, *c, *exile, nullptr, other);
+        CHECK(other->status.settlement == kNone);
+        CHECK(dist(was, other->pos) > 300.0);
+    }
+}
+
+// LR-131: one selling for coin is not asked to pay coin on top.
+TEST(lr_qa_counter_never_asks_the_seller_to_pay) {
+    World w = qaWorld();
+    Character* a = parentWithSpouse(w);
+    CHECK(a != nullptr);
+    if (!a) return;
+    Character* b = nullptr;
+    for (auto& [id, c] : w.characters())
+        if (!c.isAnimal() && c.body.alive && c.body.stage() == "adult" && c.status.family != a->status.family) b = &c;
+    CHECK(b != nullptr);
+    if (!b) return;
+    a->inventory["coin"] = 20;
+    a->inventory["bread"] = 3;
+    b->inventory["coin"] = 50;
+    for (int price = 1; price <= 30; ++price) {
+        Offer o;
+        o.mode = "barter";
+        o.give["bread"] = 1;
+        o.take["coin"] = price;
+        const DealEval e = weighDeal(w, *a, *b, o);
+        if (e.verdict != "counter") continue;
+        const int gave = e.counter.give.count("coin") ? e.counter.give.at("coin") : 0;
+        CHECK(gave == 0);
+        CHECK(e.counter.take.count("coin") && e.counter.take.at("coin") < price);
+    }
 }

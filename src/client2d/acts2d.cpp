@@ -137,6 +137,8 @@ struct Words {
             return text(e.signedDelta() >= 0 ? "hud.gain.rel_up" : "hud.gain.rel_down", {{"axis", text("hud.axis." + e.key)}});
         if (e.subject == "reputation") return text("hud.gain.reputation", {{"what", name("reputation", e.key)}, {"sign", sign}});
         if (e.subject == "spawn") return text("hud.gain.spawn", {{"what", name("object", e.key)}});
+        if (e.subject == "help") return text("hud.gain.help");     // LR-135
+        if (e.subject == "exile") return text("hud.gain.exile");   // LR-127
         return "";
     }
 };
@@ -213,10 +215,19 @@ Json actJson(const World& w, const Words& W, const Character& me, const Interact
     for (const auto& r : a.pre) {
         const std::string s = W.condition(r.cond);
         needs.push_back(Json::array({s, r.ok}));
-        if (!r.ok && why.empty()) why = s;
+        if (!r.ok && why.empty()) {
+            why = s;
+            // LR-135: where such a thing comes from, when the data names it
+            const std::string hint = "hud.hint.source." + r.cond.key;
+            if (r.cond.subject == "has" && !r.cond.onTarget && W.t.loc && W.t.loc->has(W.t.lang, hint)) why += ". " + W.text(hint);
+        }
     }
     if (!a.can) {
         if (std::string s = W.why(a.why, d, obj, tc); !s.empty()) why = s;
+        // LR-135: name who holds the spot
+        if (obj && a.why.rfind("reserved", 0) == 0)
+            if (const Character* by = w.character(obj->reservedBy))
+                why = W.text("hud.why.reserved_by", {{"what", W.name("object", obj->type)}, {"who", by->name}});
         if (why.empty()) why = W.text("hud.why.unknown", {{"code", a.why}});
     }
     o["why"] = why;
@@ -391,14 +402,32 @@ Json outcomesJson(const World& w, const ViewText& t, EntityId meId) {
 }
 
 std::string resultText(const ViewText& t, const std::string& result) {
-    if (result.empty() || result == "ok") return "";
+    if (result.empty() || result == "ok" || result.rfind("ok:", 0) == 0) return "";
     const Words W{t};
     std::string r = result;
     if (r.rfind("rejected:", 0) == 0) r = r.substr(9);
     if (r.rfind("cannot:", 0) == 0) r = r.substr(7);
+    if (r.rfind("target:", 0) == 0) r = r.substr(7);
     const std::string head = r.substr(0, r.find(':'));
+    const std::string rest = r.size() > head.size() ? r.substr(head.size() + 1) : "";
+    // LR-130: no raw codes: wrong_target:hearth, missing:mat:garlic
+    if (head == "wrong_target" || head == "no_target") return W.text("hud.why.no_target", {{"what", W.name("object", rest)}});
+    if (head == "gear") return W.text(rest == "too_heavy" ? "hud.why.too_heavy" : "hud.why.no_room");
+    if (head == "missing" && rest.rfind("mat:", 0) == 0)
+        return W.text("ui2d.refused.missing_mat", {{"what", W.name("material", rest.substr(4))}});
     for (const std::string key : {"hud.why." + head, "ui2d.refused." + head})
         if (t.loc && t.loc->has(t.lang, key)) return W.text(key, {{"what", ""}});
+    // LR-130: a workshop refusal (no_station:rack, missing_input:work) reads as the forecast does
+    if (t.loc && t.loc->has(t.lang, "craft.reason." + head)) {
+        const std::string arg = r.size() > head.size() ? r.substr(head.size() + 1) : "";
+        auto named = [&](const std::string& key, const std::string& fallback) {
+            return t.loc->has(t.lang, key) ? W.text(key) : fallback;
+        };
+        const std::string station = named("station." + arg + ".name", arg);
+        const std::string slot = named("hud.craft.slot." + arg, arg);
+        return W.text("craft.reason." + head, {{"station", station}, {"slot", slot}, {"tool", arg}, {"need", arg},
+                                               {"level", arg}, {"mode", arg}, {"shape", named("shape." + arg + ".name", arg)}});
+    }
     return W.text("ui2d.refused", {{"code", r}});
 }
 

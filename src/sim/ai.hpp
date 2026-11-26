@@ -25,6 +25,7 @@ bool goapFact(const Condition& k);
 
 // The interaction catalog's executor. Players and NPCs both go through here.
 // `why` gets the first failing precondition.
+std::string gearRefusal(const World& w, const Character& c, const InteractionDef& d);
 bool canPerform(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
                 std::string* why, bool checkRange = true, const Character* targetChar = nullptr);
 // The person a character-targeted act is done with: `prefer` when valid

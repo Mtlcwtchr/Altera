@@ -284,6 +284,8 @@ std::string sayTopic(World& w, EntityId meId, EntityId targetId, int index) {
     std::vector<MenuTopic> topics = them->body.alive ? askTopics(w, *me, *them) : std::vector<MenuTopic>{};
     for (auto& tp : dialogueTopics(w, *me, *them)) topics.push_back(std::move(tp));
     if (index < 0 || index >= int(topics.size())) return "no_topic";
+    // LR-128: a topic is said within earshot, not across the village
+    if (dist(me->pos, them->pos) > w.content().config.talkRangeM) return "out_of_range";
     const MenuTopic& tp = topics[std::size_t(index)];
     if (ledTalkWith(*me) == them->id) keepLedTalk(w, *me); // LR-157: the talk goes on
     if (tp.act.rfind("ask_", 0) == 0) { // AL-111: they answer from what they know

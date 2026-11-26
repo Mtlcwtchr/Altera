@@ -403,14 +403,44 @@ std::vector<NewsItem> newsToTell(const World& w, const Character& teller, const 
     std::vector<NewsItem> out;
     if (teller.id == hearer.id) return out;
     const auto heard = heardOf(hearer);
+    // LR-124: the player learns by being told: what the player's person "knows" by the
+    // village's and the road's word alone is still news to tell them
+    auto hearerKnows = [&](size_t index) {
+        if (!hearer.controller.isPlayer()) return knownWith(w, hearer, index, heard).has_value();
+        const ChronicleEntry& e = w.chronicleLog()[index];
+        return heard.count(index) > 0 || newsInvolves(e, hearer.id) ||
+               std::find(e.who.begin(), e.who.end(), hearer.id) != e.who.end();
+    };
     for (auto& it : knownNews(w, teller, 64)) {
-        if (knownWith(w, hearer, it.index, heard)) continue;
+        if (hearerKnows(it.index)) continue;
         // one's own quarrels and scandals are not spread by oneself
         if (it.kind.mood == "spicy" && newsInvolves(w.chronicleLog()[it.index], teller.id)) continue;
         out.push_back(it);
         if (out.size() >= max) break;
     }
     return out;
+}
+
+static std::optional<NewsItem> rumourToTell(const World& w, const Character& teller, const Character& hearer) {
+    // LR-124: "слыхал краем уха": the freshest word from afar the teller has not had
+    // in full, told as a rumour (low confidence), never of the teller's or the hearer's own
+    const NewsRules& R = newsRules(w.content());
+    const auto& log = w.chronicleLog();
+    const auto heard = heardOf(hearer), tellerHeard = heardOf(teller);
+    const size_t first = firstWithin(w, R.maxAgeDays);
+    for (size_t i = log.size(); i-- > first;) {
+        const NewsKind* k = R.of(log[i]);
+        if (!k || k->interest <= 0.0 || k->scope == "who" || k->scope == "family" || disabled(R, *k)) continue;
+        if (k->mood == "spicy" || newsInvolves(log[i], teller.id) || newsInvolves(log[i], hearer.id)) continue;
+        if (heard.count(i) || knownWith(w, teller, i, tellerHeard)) continue;
+        if (w.now() - log[i].tick < static_cast<Tick>(R.villageDelay0 * kTicksPerDay)) continue;
+        Epistemic epi;
+        epi.source = "rumor";
+        epi.confidence = std::min(R.rumorBelow * 0.7, R.realmConf * 0.6);
+        epi.age = std::max<Tick>(0, w.now() - log[i].tick);
+        return itemOf(w, teller, i, *k, epi, R);
+    }
+    return std::nullopt;
 }
 
 std::vector<NewsItem> newsAbout(const World& w, const Character& teller, EntityId about, size_t max) {
@@ -801,7 +831,9 @@ int askAndAnswer(World& w, Character& asker, Character& answerer, const MenuTopi
     };
     if (ask.act == "ask_news") {
         const auto items = newsToTell(w, answerer, asker, 2);
-        if (items.empty()) n += say(w, answerer, asker, "no_news", std::nullopt, Epistemic{}, "", ask.act).ok();
+        const auto rumour = items.empty() ? rumourToTell(w, answerer, asker) : std::nullopt;
+        if (rumour) tell(*rumour, "tell_news");
+        else if (items.empty()) n += say(w, answerer, asker, "no_news", std::nullopt, Epistemic{}, "", ask.act).ok();
         for (const auto& it : items) tell(it, "tell_news");
     } else if (ask.act == "ask_self") {
         n += say(w, answerer, asker, "tell_self", std::nullopt, Epistemic{}, "", ask.act).ok();

@@ -329,10 +329,12 @@ Epistemic makeEpi(Rng& r, const CorpusWorld& cw, EntityId speaker, EntityId list
     return e;
 }
 
-Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId id, bool vy) {
+Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId id, bool vy, bool given = false) {
     const Character* c = w.character(id);
     if (!c) return Json::object();
-    Json n = loc.personNoun(lang, *c);
+    // LR-134: one is addressed by the given name ("Слышь, Мира"), not the full name
+    const std::string first = c->name.substr(0, c->name.find(' '));
+    Json n = given && c->nameForms.empty() && !first.empty() ? loc.personNoun(lang, first, c->body.sex) : loc.personNoun(lang, *c);
     n["id"] = id;
     if (vy) {
         n["reg"] = "vy";
@@ -761,7 +763,7 @@ std::vector<CorpusLine> generateDialogueCorpus(const Content& c, const Loc& loc,
         const bool vy = isNoble(cw.w.character(li));
         Json args = Json::object();
         args["speaker"] = personArg(loc, lang, cw.w, sp, false);
-        args["listener"] = personArg(loc, lang, cw.w, li, vy);
+        args["listener"] = personArg(loc, lang, cw.w, li, vy, true);
         args["self"] = args["speaker"]; // v0.1 lines (memory recall) call the speaker self
         L.listenerNoun = args["listener"];
         auto noun = [&](const Ref& ref) { return refNoun(loc, lang, cw, ref, li); };

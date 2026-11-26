@@ -495,7 +495,9 @@ DealEval weighDeal(const World& w, const Character& A, const Character& Rp, cons
     const std::string coin = coinItem(C);
     const int extra = static_cast<int>(std::ceil(need - e.gain - 1e-9));
     const int has = spare(A, coin) - (o.give.count(coin) ? o.give.at(coin) : 0);
-    if (extra > 0 && has >= extra) {
+    // LR-131: one who asks for coin is not asked to pay more coin: the counter then asks less coin
+    const bool asksCoin = o.take.count(coin) && o.take.at(coin) > 0;
+    if (extra > 0 && has >= extra && !asksCoin) {
         e.counter = o;
         e.counter.give[coin] += extra;
         e.verdict = "counter";

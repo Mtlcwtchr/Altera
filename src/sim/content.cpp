@@ -766,6 +766,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.switchMargin = opt(config, "switch_margin", a.switchMargin);
     a.failPenalty = opt(config, "fail_penalty", a.failPenalty);
     a.htnMaxDepth = opt(config, "htn_max_depth", a.htnMaxDepth);
+    a.htnCostPerKm = opt(config, "htn_cost_per_km", a.htnCostPerKm);
     a.methodMaxFails = opt(config, "method_max_fails", a.methodMaxFails);
     a.methodFailTicks = opt(config, "method_fail_ticks", a.methodFailTicks);
     a.goapMaxDepth = opt(config, "goap_max_depth", a.goapMaxDepth);
@@ -773,6 +774,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
     a.reserveTicks = opt(config, "reserve_ticks", a.reserveTicks);
     a.walkMPerTick = opt(config, "walk_m_per_tick", a.walkMPerTick);
     a.interactionRangeM = opt(config, "interaction_range_m", a.interactionRangeM);
+    a.talkRangeM = opt(config, "talk_range_m", a.talkRangeM);
     a.contactM = opt(config, "contact_m", a.contactM);
     a.contactSlackM = opt(config, "contact_slack_m", a.contactSlackM);
     a.rangedFromM = opt(config, "ranged_from_m", a.rangedFromM);

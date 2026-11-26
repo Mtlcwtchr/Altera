@@ -123,6 +123,21 @@ double methodScore(const World& w, const Character& c, const std::string& task, 
     for (const auto& tag : m.legal) s += legalPrice(w, c, tag);
     auto it = c.ai.methodFails.find(task + "/" + m.id);
     if (it != c.ai.methodFails.end()) s += it->second.count * 1.5;
+    // LR-132: the lake by one's feet before the well across the village: a method that needs
+    // a known thing (known:<type>) costs the way to the nearest one
+    if (ct.config.htnCostPerKm > 0.0)
+        for (const auto& k : m.pre) {
+            if (k.subject != "known" || k.negate || k.onTarget || ct.speciesOf(k.key)) continue;
+            double best = -1.0;
+            for (EntityId id : w.objectsOfType(k.key)) {
+                if (!c.knownObjects.count(id)) continue;
+                if (const WorldObject* o = w.object(id)) {
+                    const double d = dist(o->pos, c.pos);
+                    if (best < 0.0 || d < best) best = d;
+                }
+            }
+            if (best > 0.0) s += ct.config.htnCostPerKm * best / 1000.0;
+        }
     return s;
 }
 
