@@ -88,6 +88,9 @@ Pixels pawnPixels(const PawnSpec& spec, char side, const PawnPose& pose);
 PawnPose pawnPose(bool moving, double walkedM, bool working, double ms, long long id);
 // A beast of species `sp` as a 16x16 blob facing 'E' or 'W'.
 Pixels beastPixels(const std::string& sp, char face);
+// LR-170: a beast drawn as data (beasts2d.json: {pal: {letter: "#rrggbb[aa]"}, rows: [...]}) facing
+// 'E' or 'W', on a square of max(w, h) with the feet on the last row, centred across. Empty: bad entry.
+Pixels beastArtPixels(const nlohmann::json& beast, char face);
 
 // game2d.js's hash of an id, so the window picks the same hair and build as the page.
 std::uint32_t idHash(double n, int salt);

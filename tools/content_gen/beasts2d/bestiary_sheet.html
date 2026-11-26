@@ -1,0 +1,361 @@
+<title>Бестиарий поясов</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: как пилот-лист народов: шапка с опциями, по разделу на пояс, карточка = спрайт + имя + что он делает в симе */
+:root{--bg:#f3efe6;--panel:#fffdf7;--fg:#241f19;--muted:#6a6155;--line:#d8cfbd;--accent:#9c3d22;--chip:#e9e1d0;
+  --sand:#cdbf9b;--frost:#9fb0b6;--moss:#9fb08a;--steppe:#cfc08c;--nile:#d8c48a;--night:#3b4458;
+  --font-body:'Inter',system-ui,sans-serif;--font-head:'Space Grotesk','Inter',system-ui,sans-serif}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--bg:#171410;--panel:#211d17;--fg:#ece4d4;--muted:#a39884;--line:#3a3328;--accent:#e0794f;--chip:#2e281f;--sand:#8f8460;--frost:#5f7279;--moss:#5f7550;--steppe:#8c8456;--nile:#8f7f50;--night:#232a3a;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#171410;--panel:#211d17;--fg:#ece4d4;--muted:#a39884;--line:#3a3328;--accent:#e0794f;--chip:#2e281f;--sand:#8f8460;--frost:#5f7279;--moss:#5f7550;--steppe:#8c8456;--nile:#8f7f50;--night:#232a3a;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:15px;line-height:1.5;
+  padding-block:24px 56px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+main{max-width:1100px;margin:0 auto}
+h1{font:700 28px/1.2 var(--font-head);margin:0 0 6px;text-wrap:balance}
+h2{font:700 20px/1.25 var(--font-head);margin:36px 0 4px;text-wrap:balance}
+p{margin:0 0 10px;max-width:70ch}.muted{color:var(--muted)}
+.bar{display:flex;flex-wrap:wrap;gap:12px 20px;align-items:center;background:var(--panel);border:1px solid var(--line);padding:12px 14px;margin:18px 0 6px}
+.bar label{display:flex;align-items:center;gap:8px;cursor:pointer}
+.seg{display:flex;gap:4px}
+.seg button{font:inherit;background:var(--chip);color:var(--fg);border:1px solid var(--line);padding:3px 12px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--accent);color:#fff;border-color:var(--accent)}
+.seg button:focus-visible,.bar input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.grid{display:flex;flex-wrap:wrap;gap:12px;margin-top:10px}
+figure{margin:0;display:flex;flex-direction:column;background:var(--panel);border:1px solid var(--line);max-width:100%}
+.tile{background:var(--tile);display:flex;align-items:flex-end;justify-content:center;padding:6px;min-height:120px;overflow:hidden}
+.night .tile{background:var(--night)}
+canvas{display:block;image-rendering:pixelated;max-width:100%}
+figcaption{padding:6px 10px 8px;font-size:13px;max-width:260px;min-width:0}
+figcaption b{display:block;font:600 14px var(--font-body)}
+figcaption .size{font-variant-numeric:tabular-nums;color:var(--muted);font-size:12px}
+figcaption .how{color:var(--muted);font-size:12px;line-height:1.4}
+.mediterranean{--tile:var(--sand)}.north{--tile:var(--frost)}.forest{--tile:var(--moss)}.steppe{--tile:var(--steppe)}.nile{--tile:var(--nile)}
+</style>
+<main>
+<h1>Бестиарий поясов</h1>
+<p class="muted">Чудовища и нежить пяти поясов в стиле пилот-листа народов: плавные силуэты, три тона со светом сверху слева, цветной контур. Человекоподобные 48×64, крупные звери больше (до 96×72). Подпись под каждым говорит, как он ведёт себя в симуляции. Все женские фигуры взрослые, грудь закрыта перьями, волосами или тканью.</p>
+<div class="bar">
+  <label><input type="checkbox" id="night"> Ночной фон (нежить выходит ночью)</label>
+  <span class="seg" role="group" aria-label="Масштаб"><button data-s="2" aria-pressed="false">×2</button><button data-s="3" aria-pressed="true">×3</button><button data-s="4" aria-pressed="false">×4</button></span>
+</div>
+<div id="sheets"></div>
+</main>
+<script>
+/* ---------- растеризатор из пилот-листа (три тона, цветной контур) ---------- */
+const mk=(w,h)=>{const c=document.createElement('canvas');c.width=w;c.height=h;return c};
+const hex=h=>{const n=parseInt(h.slice(1),16);return [n>>16,(n>>8)&255,n&255]};
+const clamp=v=>Math.max(0,Math.min(255,Math.round(v)));
+const sh=(c,f)=>c.map(v=>clamp(f<1?v*f:v+(255-v)*(f-1)));
+const warm=c=>[clamp(c[0]*1.04),clamp(c[1]),clamp(c[2]*.94)];
+const cool=c=>[clamp(c[0]*.95),clamp(c[1]*.97),clamp(c[2]*1.07)];
+const RGB=c=>typeof c==='string'?hex(c):c;
+const ell=(cx,cy,rx,ry)=>(x,y)=>((x-cx)/rx)**2+((y-cy)/ry)**2<=1;
+const cap=(x0,y0,x1,y1,r0,r1)=>(x,y)=>{const dx=x1-x0,dy=y1-y0;let t=((x-x0)*dx+(y-y0)*dy)/(dx*dx+dy*dy||1);t=Math.max(0,Math.min(1,t));
+  const px=x0+dx*t,py=y0+dy*t,r=r0+(r1-r0)*t;return (x-px)**2+(y-py)**2<=r*r};
+const poly=pts=>(x,y)=>{let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const [xi,yi]=pts[i],[xj,yj]=pts[j];
+  if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)c=!c}return c};
+const or=(...f)=>(x,y)=>f.some(g=>g(x,y));
+const sub=(a,b)=>(x,y)=>a(x,y)&&!b(x,y);
+/* цепь капсул по точкам: шеи, хвосты, змеи */
+const chain=(pts,r0,r1)=>{const n=pts.length-1;return or(...pts.slice(0,-1).map((p,i)=>cap(p[0],p[1],pts[i+1][0],pts[i+1][1],r0+(r1-r0)*i/n,r0+(r1-r0)*(i+1)/n)))};
+function scene(w,h,ox,oy,cx){return {w,h,ox,oy,cx:cx||24,px:new Array(w*h).fill(null)}}
+function paint(sc,pred,base,o={}){
+  const {w,h}=sc;const m=new Uint8Array(w*h);const fl=o.flip;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let px=x+.5-sc.ox,py=y+.5-sc.oy;if(sc.flip)px=2*sc.cx-px;if(pred(px,py))m[y*w+x]=1}
+  const at=(x,y)=>(x<0||y<0||x>=w||y>=h)?0:m[y*w+x];
+  const B=RGB(base);const Lc=warm(sh(B,1.32)),Sc=cool(sh(B,.76)),Dc=cool(sh(B,.5));const rim=o.rim||2;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){if(!m[y*w+x])continue;let c=B;
+    if(!at(x-1,y-1)||(rim>1&&!at(x-2,y-2)&&at(x+2,y+2)))c=Lc;
+    if(!o.flat){if(!at(x+2,y+2))c=Sc;if(!at(x+1,y+1)||(!at(x,y+1)&&!o.soft))c=Dc}
+    if(o.fn){let px=x+.5-sc.ox,py=y+.5-sc.oy;if(sc.flip)px=2*sc.cx-px;const t=o.fn(px,py,c);if(t)c=RGB(t)}
+    if(o.alpha)c=c.concat([o.alpha]);
+    sc.px[y*w+x]=c}}
+function dot(sc,x,y,col,w=1,h=1){const c=RGB(col);for(let j=0;j<h;j++)for(let i=0;i<w;i++){let X=Math.round(x+sc.ox)+i;if(sc.flip)X=Math.round(2*sc.cx-x+sc.ox)-i;const Y=Math.round(y+sc.oy)+j;if(X>=0&&Y>=0&&X<sc.w&&Y<sc.h)sc.px[Y*sc.w+X]=c}}
+function finish(sc){const {w,h}=sc;const out=mk(w,h);const g=out.getContext('2d');
+  const get=(x,y)=>(x<0||y<0||x>=w||y>=h)?null:sc.px[y*w+x];
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++){let c=get(x,y);
+    if(!c){const n=[get(x,y-1),get(x-1,y),get(x+1,y),get(x,y+1)].find(Boolean);if(n)c=sh(n.slice(0,3),.3).concat(n.length>3?[n[3]]:[])}
+    if(c){g.fillStyle=c.length>3?'rgba('+c.slice(0,3)+','+c[3]+')':'rgb('+c+')';g.fillRect(x,y,1,1)}}
+  return out}
+const mirX=(f,cx=24)=>(x,y)=>f(2*cx-x,y);
+const both=(f,cx=24)=>or(f,mirX(f,cx));
+
+/* ---------- человекоподобная основа (геометрия пилот-листа, кадр 48×64) ---------- */
+function torso(fem,yb,flare){const R=fem?[[32.5,22],[33.3,26],[30.5,33],[28.8,37],[33,46]]:[[34.5,22],[36,26],[32.5,34],[31,40],[32.5,46]];
+  const pts=R.filter(p=>p[1]<=yb);const last=pts[pts.length-1];pts.push(yb>46?[last[0]+flare,yb]:[last[0]-.8,yb]);
+  return poly(pts.concat(pts.map(([x,y])=>[48-x,y]).reverse()))}
+const legs=fem=>both(or(cap(20.5,44,20,54,fem?3.9:4.4,3.2),cap(20,54,19.8,63,3.1,2.2),ell(20,64,3.8,1.7)));
+const arms=(lift)=>both(or(cap(14.6,24,12.6-lift,34-lift*2,3.3,2.7),cap(12.6-lift,34-lift*2,12.9-lift*1.5,43-lift*3,2.6,2.0),ell(12.9-lift*1.5,44.8-lift*3,2.1,2.6)));
+const head=()=>or(ell(24,10,6.4,7.2),ell(24,14,5,4.7));
+function eyes(sc,col,glow){[[20,10],[25,10]].forEach(([x,y])=>{dot(sc,x,y-1,[26,18,14],3,1);dot(sc,x,y,glow?col:[244,239,230],3,1);dot(sc,x+1,y,col,glow?1:2,1)})}
+const HUM={sc:()=>scene(52,80,2,10),hs:(w,h,ox,oy)=>scene(w,h,ox,oy)};
+
+/* ---------- существа ---------- */
+const B={};
+/* Сирена: птичье тело, женская голова и плечи, крылья; грудь в перьях */
+B.siren=()=>{const sc=scene(60,76,6,10);const feath='#c9a86a',dark='#7a5a34',skin='#e8c4a0',hair='#3a2418';
+  paint(sc,poly([[30,30],[50,22],[56,30],[46,44],[32,44]]),dark,{soft:true,fn:(x,y)=>Math.floor(x+y)%4===0?sh(hex(dark),1.25):null});
+  paint(sc,poly([[18,30],[-2,22],[-8,30],[2,44],[16,44]]),dark,{soft:true,fn:(x,y)=>Math.floor(x-y)%4===0?sh(hex(dark),1.25):null});
+  paint(sc,or(ell(24,10,7.6,8.2),poly([[17,11],[31,11],[33,26],[15,26]])),hair,{soft:true});
+  paint(sc,ell(24,40,11,12),feath,{fn:(x,y)=>(Math.floor(x*.9+y*.6)%3===0&&y>32)?sh(hex(feath),.75):null});
+  paint(sc,poly([[16,46],[32,46],[34,56],[14,56]]),feath,{soft:true});
+  [[18,56],[30,56]].forEach(([x,y])=>{paint(sc,cap(x,y,x,y+7,1.2,.9),'#b07a30',{rim:1});paint(sc,or(cap(x,y+7,x-3,y+9,.6,.5),cap(x,y+7,x+3,y+9,.6,.5),cap(x,y+7,x,y+10,.6,.5)),'#4a3020',{flat:true,soft:true})});
+  paint(sc,or(cap(24,15,24,22,2.6,3.4),torso(true,30,0)),skin,{soft:true});
+  paint(sc,poly([[15,26],[33,26],[35,36],[13,36]]),feath,{soft:true,fn:(x,y)=>Math.floor(x)%3===0?sh(hex(feath),.8):null});
+  paint(sc,head(),skin);eyes(sc,'#4a7aa8');dot(sc,23.5,15,'#b5453f',3,1);dot(sc,20,8,sh(hex(hair),1.1),3,1);dot(sc,25,8,sh(hex(hair),1.1),3,1);
+  paint(sc,sub(ell(24,7.2,7.3,5.6),ell(24,12.4,5.4,5.8)),hair,{soft:true});
+  return finish(sc)};
+/* Нереида: морская дева с рыбьим хвостом на прибрежном камне */
+B.nereid=()=>{const sc=scene(72,76,6,10);const scale='#3f8f8a',fin='#7fc6b8',skin='#f0d4b4',hair='#c8a050',rock='#6e6a66';
+  paint(sc,or(ell(26,62,22,8),ell(14,56,10,7)),rock,{soft:true,fn:(x,y)=>(Math.floor(x*.7+y)%5===0)?sh(hex(rock),.8):null});
+  paint(sc,or(poly([[15,12],[33,12],[37,40],[30,44],[18,44],[11,40]]),ell(24,10,8.4,8.4)),hair,{soft:true,fn:(x,y)=>Math.floor(x*1.3)%3===0?sh(hex(hair),.8):null});
+  paint(sc,or(poly([[48,46],[58,36],[56,48],[62,56],[50,54]])),fin,{soft:true,fn:(x,y)=>Math.floor(x-y)%2===0?sh(hex(fin),.85):null});
+  paint(sc,chain([[24,36],[22,46],[26,54],[36,57],[45,53],[50,49]],7.2,2.2),scale,{fn:(x,y)=>((Math.floor(x/2)+Math.floor(y/2))%2===0&&(Math.floor(x)+Math.floor(y))%2===0)?sh(hex(scale),1.3):null});
+  paint(sc,poly([[17,35],[31,35],[32,39],[16,39]]),fin,{soft:true});
+  paint(sc,or(cap(24,15,24,22,2.6,3.4),torso(true,30,0)),skin,{soft:true});
+  paint(sc,head(),skin);eyes(sc,'#3aa0a8');dot(sc,23.5,15,'#b5453f',3,1);
+  paint(sc,sub(ell(24,7.2,7.3,5.6),ell(24,12.4,5.4,5.8)),hair,{soft:true});
+  paint(sc,or(cap(17,12,14,26,1.6,1.2),cap(31,12,34,26,1.6,1.2)),hair,{soft:true});
+  dot(sc,30,9,'#f0e6d0',2,1);
+  return finish(sc)};
+/* Гарпия: крылья вместо рук, когтистые лапы, всклокоченные волосы */
+B.harpy=()=>{const sc=scene(60,80,6,10);const f='#6a5a4a',skin='#c9a88a',hair='#2a2420';
+  paint(sc,poly([[30,24],[54,14],[58,24],[50,40],[34,40]]),f,{soft:true,fn:(x,y)=>Math.floor(x+y)%3===0?sh(hex(f),1.3):null});
+  paint(sc,poly([[18,24],[-6,14],[-10,24],[-2,40],[14,40]]),f,{soft:true,fn:(x,y)=>Math.floor(x-y)%3===0?sh(hex(f),1.3):null});
+  paint(sc,or(ell(24,9,8.6,8.8),poly([[15,10],[33,10],[37,22],[31,30],[17,30],[11,22]])),hair,{soft:true});
+  paint(sc,ell(24,40,9,13),f,{fn:(x,y)=>(Math.floor(x+y*.7)%3===0)?sh(hex(f),.7):null});
+  both(()=>false);[[19,51],[29,51]].forEach(([x,y])=>{paint(sc,cap(x,y,x,y+10,2,1.2),'#8a7a60',{rim:1});paint(sc,or(cap(x,y+10,x-4,y+13,.7,.5),cap(x,y+10,x+4,y+13,.7,.5),cap(x,y+10,x,y+14,.7,.5)),'#2a1d14',{flat:true,soft:true})});
+  paint(sc,or(cap(24,15,24,22,2.4,3.2),torso(true,30,0)),skin,{soft:true});
+  paint(sc,poly([[15,24],[33,24],[34,34],[14,34]]),f,{soft:true,fn:(x,y)=>Math.floor(x)%2===0?sh(hex(f),.8):null});
+  paint(sc,head(),skin);eyes(sc,'#d9a521',true);dot(sc,19.5,8,'#1a1410',4,1);dot(sc,24.5,8,'#1a1410',4,1);dot(sc,22,15,'#5a2a2a',5,1);dot(sc,22,16,'#f0ead8',1,1);dot(sc,26,16,'#f0ead8',1,1);
+  return finish(sc)};
+/* Горгона: змеи вместо волос, бронзовые крылья, хитон, взгляд-луч */
+B.gorgon=()=>{const sc=scene(64,80,8,10);const skin='#9ab88a',ch='#6b2d5c',wing='#b8873a',snake='#4e8a3b';
+  paint(sc,poly([[30,24],[52,10],[54,20],[44,36],[32,34]]),wing,{fn:(x,y)=>Math.floor(y)%3===0?sh(hex(wing),.7):null});
+  paint(sc,poly([[18,24],[-4,10],[-6,20],[4,36],[16,34]]),wing,{fn:(x,y)=>Math.floor(y)%3===0?sh(hex(wing),.7):null});
+  paint(sc,legs(true),skin);
+  paint(sc,or(cap(24,15,24,22,2.6,3.4),torso(true,45,0)),skin,{soft:true,fn:(x,y)=>((Math.floor(x)+Math.floor(y))%4===0)?sh(hex(skin),.85):null});
+  paint(sc,torso(true,60,3.6),ch,{fn:(x,y)=>(y>=57&&y<58.6)?'#e0b030':null});
+  [[20.5,38,18.8,58],[24,36,24,59],[28,38,29.6,58]].forEach(([a,b,c,d])=>paint(sc,cap(a,b,c,d,.5,.8),sh(hex(ch),.7),{flat:true}));
+  paint(sc,cap(18,31.6,30,31.6,1.1,1.1),'#e0b030',{soft:true});
+  paint(sc,arms(0),skin);
+  paint(sc,head(),skin);eyes(sc,'#e8d040',true);dot(sc,23.5,15,'#3a5a2a',3,1);
+  for(let i=0;i<9;i++){const a=Math.PI*(1.05+i*.11);const x0=24+5*Math.cos(a),y0=8+5*Math.sin(a);const x1=24+11*Math.cos(a),y1=6+11*Math.sin(a);
+    paint(sc,chain([[x0,y0],[(x0+x1)/2+(i%2?2:-2),(y0+y1)/2],[x1,y1]],1.4,.9),snake,{rim:1});dot(sc,x1-.5,y1-.5,'#e8d040',1,1)}
+  return finish(sc)};
+/* Гидра: тело в чешуе, девять шей (сколько голов, столько в группе) */
+B.hydra=()=>{const sc=scene(96,72,0,0,48);const sc1='#4f7a4a',belly='#a8b070';
+  paint(sc,chain([[26,58],[12,62],[4,56],[2,48]],5,2),sc1);
+  const necks=[[-26,10],[-18,4],[-8,0],[2,-2],[12,0],[22,4],[30,10]];
+  necks.forEach(([dx,dy],i)=>{const hx=48+dx,hy=16+dy;paint(sc,chain([[48+dx*.25,44],[48+dx*.6,30+dy*.3],[hx,hy+6],[hx,hy]],3.2,2.2),sh(hex(sc1),i%2?1:.9),{rim:1});
+    paint(sc,or(ell(hx+(dx<0?-1:1),hy,4,2.8),poly([[hx,hy-2],[hx+(dx<0?-7:7),hy+.5],[hx,hy+2.4]])),sc1,{rim:1});dot(sc,hx+(dx<0?-2:1),hy-1,'#e0c030',1,1)});
+  paint(sc,ell(48,52,24,14),sc1,{fn:(x,y)=>y>56?belly:((Math.floor(x/2)+Math.floor(y/2))%3===0?sh(hex(sc1),.8):null)});
+  [[30,62],[40,64],[56,64],[66,62]].forEach(([x,y])=>{paint(sc,cap(x,58,x,y+4,3,2.4),sh(hex(sc1),.85),{rim:1});paint(sc,ell(x,y+5,3.4,1.6),'#2a3a20',{soft:true})});
+  return finish(sc)};
+/* Химера: лев, козья голова на спине, змей-хвост, огонь из пасти */
+B.chimera=()=>{const sc=scene(90,72,0,0,45);const fur='#c89a4a',mane='#8a4a20',goat='#a8a090',snake='#4e7a3b';
+  paint(sc,chain([[16,40],[8,34],[4,24],[10,16]],2.6,1.8),snake,{rim:1});paint(sc,ell(11,14,3.4,2.4),snake);dot(sc,10,13,'#e0c030');
+  [[22,1],[30,0],[54,1],[62,0]].forEach(([x,f])=>{paint(sc,or(cap(x,48,x-1,58,3.4,2.6),cap(x-1,58,x,66,2.6,2.2)),f?fur:sh(hex(fur),.8),{rim:1});paint(sc,ell(x,67,3.4,1.6),'#5a3a1a',{soft:true})});
+  paint(sc,ell(40,44,24,11),fur);
+  paint(sc,chain([[34,36],[32,26],[34,20]],2.6,2.2),goat,{rim:1});paint(sc,ell(34,18,4,3.4),goat);paint(sc,or(chain([[32,15],[28,10],[30,6]],1,.6),chain([[36,15],[39,10],[37,6]],1,.6)),'#e8e1cf',{rim:1});dot(sc,33,18,'#3a2a1a');
+  paint(sc,ell(64,36,11,12),mane,{fn:(x,y)=>Math.floor(x+y)%3===0?sh(hex(mane),1.3):null});
+  paint(sc,or(ell(68,36,7,6.4),ell(73,39,4.6,3.6)),fur);dot(sc,69,34,'#2a1d14',2,1);dot(sc,74,41,'#3a1a10',3,1);
+  paint(sc,poly([[77,38],[90,32],[88,40],[90,46],[77,42]]),'#e8803a',{soft:true,fn:(x,y)=>Math.abs(y-40)<2?'#f8d060':null});
+  return finish(sc)};
+/* Немейский лев: золотая шкура, клинок не берёт */
+B.nemean_lion=()=>{const sc=scene(90,66,0,0,45);const fur='#d8a848',mane='#a8682a';
+  paint(sc,chain([[16,36],[8,30],[6,22]],1.6,1.2),fur,{rim:1});paint(sc,ell(6,20,2.2,3),mane,{soft:true});
+  [[22,1],[30,0],[54,1],[62,0]].forEach(([x,f])=>{paint(sc,or(cap(x,44,x-1,54,3.8,3),cap(x-1,54,x,61,3,2.4)),f?fur:sh(hex(fur),.8),{rim:1});paint(sc,ell(x,62,3.8,1.7),sh(hex(fur),.6),{soft:true})});
+  paint(sc,ell(40,40,25,11),fur,{fn:(x,y)=>(y<34&&Math.floor(x*1.3)%5===0)?sh(hex(fur),1.15):null});
+  paint(sc,ell(64,32,13,14),mane,{fn:(x,y)=>Math.floor(x*.8+y)%3===0?sh(hex(mane),1.3):null});
+  paint(sc,or(ell(68,33,7.6,7),ell(74,37,5,4)),fur);dot(sc,69,30,'#2a1d14',2,1);dot(sc,72,30,'#2a1d14',1,1);dot(sc,76,36,'#3a2a1a',2,1);dot(sc,74,40,'#f0ead8',1,1);dot(sc,77,40,'#f0ead8',1,1);
+  return finish(sc)};
+/* Тень: бесплотный мертвец юга, полупрозрачный */
+B.shade=()=>{const sc=HUM.sc();const g='#7a8290';
+  paint(sc,or(torso(false,58,4),poly([[14,56],[34,56],[30,66],[24,62],[18,66]])),g,{alpha:.78,soft:true,fn:(x,y)=>y>54&&Math.floor(x+y)%3===0?sh(hex(g),.8):null});
+  paint(sc,arms(1.2),g,{alpha:.78});
+  paint(sc,sub(poly([[14,6],[24,-4],[34,6],[35,24],[13,24]]),ell(24,12,5.2,6.2)),sh(hex(g),.7),{alpha:.85});
+  paint(sc,ell(24,12,5,6),'#3a3f4a',{alpha:.9,soft:true});dot(sc,21,11,'#c8e0ff',2,1);dot(sc,26,11,'#c8e0ff',2,1);
+  return finish(sc)};
+/* Леший: высокий, кора, моховая борода, ветви-рога, глаза-огоньки */
+B.leshy=()=>{const sc=scene(56,84,4,14);const bark='#6a4a2e',moss='#5a7a3a';
+  paint(sc,or(chain([[20,-4],[16,-10],[12,-12]],1.4,.8),chain([[17,-8],[18,-13]],.9,.6),chain([[28,-4],[32,-10],[36,-12]],1.4,.8),chain([[31,-8],[30,-13]],.9,.6)),'#5a3e24',{rim:1});
+  [[19,1],[29,0]].forEach(([x,f])=>paint(sc,or(cap(x,44,x-1,56,4,3.2),cap(x-1,56,x-2,64,3.2,3.8)),f?bark:sh(hex(bark),.85),{fn:(X,Y)=>Math.floor(Y)%4===0?sh(hex(bark),.75):null}));
+  paint(sc,or(cap(24,14,24,22,3,3.8),torso(false,48,2)),bark,{fn:(x,y)=>Math.floor(x*1.4)%4===0?sh(hex(bark),.78):null});
+  paint(sc,both(or(cap(14.6,24,10,36,3.6,2.6),cap(10,36,8,46,2.6,1.6),cap(8,46,5,50,1,.6),cap(8,46,9,51,1,.6))),bark,{fn:(x,y)=>Math.floor(y)%3===0?sh(hex(bark),.75):null});
+  paint(sc,or(ell(24,8,6.6,7.4),ell(24,12,5.4,4.8)),sh(hex(bark),1.1));
+  paint(sc,poly([[17,12],[31,12],[33,26],[28,36],[24,40],[20,36],[15,26]]),moss,{soft:true,fn:(x,y)=>Math.floor(x+y*.5)%3===0?sh(hex(moss),1.3):null});
+  dot(sc,20,8,'#c8f070',2,1);dot(sc,26,8,'#c8f070',2,1);dot(sc,22,4,sh(hex(bark),.6),5,1);
+  paint(sc,ell(31,20,2,1.4),'#c03a2a',{soft:true,flat:true});
+  return finish(sc)};
+/* Русалка: бледная утопленница, мокрые зелёные волосы закрывают грудь, белая рубаха */
+B.rusalka=()=>{const sc=HUM.sc();const skin='#d8e6dc',hair='#2f6b4a',shirt='#e8eee6';
+  paint(sc,or(ell(24,9,7.8,8.4),poly([[16,11],[32,11],[35,40],[31,56],[17,56],[13,40]])),hair,{soft:true,fn:(x,y)=>Math.floor(x)%3===0?sh(hex(hair),1.25):null});
+  paint(sc,legs(true),skin);
+  paint(sc,or(cap(24,15,24,22,2.6,3.4),torso(true,45,0)),skin,{soft:true});
+  paint(sc,torso(true,62,3.6),shirt,{alpha:.9,fn:(x,y)=>y>58?sh(hex(shirt),.8):null});
+  paint(sc,arms(0),skin);
+  paint(sc,or(cap(18.4,6.2,17.4,40,1.8,2.8),cap(29.6,6.2,30.6,40,1.8,2.8)),hair,{soft:true,fn:(x,y)=>Math.floor(y)%4===0?sh(hex(hair),1.25):null});
+  paint(sc,head(),skin);eyes(sc,'#7ad0c4',true);dot(sc,23.5,15,'#6a8a8a',3,1);
+  paint(sc,sub(ell(24,7.2,7.3,5.6),ell(24,12.4,5.4,5.8)),hair,{soft:true});
+  [19,22,26,29].forEach(x=>paint(sc,ell(x,4.6,1.1,1.1),'#e8e0a0',{soft:true,flat:true}));
+  [[14,62],[34,60],[25,66]].forEach(([x,y])=>dot(sc,x,y,'#7ab0c8'));
+  return finish(sc)};
+/* Упырь: бледный, красные глаза, когти, саван, земля с могилы */
+B.upyr=()=>{const sc=HUM.sc();const skin='#c8c0b0',shroud='#4a4038';
+  paint(sc,legs(false),skin);
+  paint(sc,or(cap(24,15,24,22,2.6,3.4),torso(false,45,0)),skin,{soft:true});
+  paint(sc,poly([[12,22],[36,22],[38,60],[32,64],[16,64],[10,60]]),shroud,{soft:true,fn:(x,y)=>(Math.floor(x)%5===0)?sh(hex(shroud),.75):null});
+  paint(sc,sub(torso(false,44,0),poly([[20,22],[28,22],[24,40]])),shroud,{soft:true});
+  paint(sc,both(or(cap(14.6,24,10.4,33,3.1,2.5),cap(10.4,33,10,41,2.4,1.9),ell(10,42.6,2.2,2.4))),skin);
+  paint(sc,both(or(cap(9,43,7.6,47,.5,.4),cap(10.4,43.6,10,48,.5,.4),cap(11.6,43,12.4,47,.5,.4))),'#2a2420',{flat:true,soft:true});
+  paint(sc,head(),skin);eyes(sc,'#e8302c',true);dot(sc,22,15,'#5a1a1a',5,1);dot(sc,22,16,'#f0ead8',1,2);dot(sc,26,16,'#f0ead8',1,2);
+  paint(sc,sub(ell(24,7.2,7.3,5.6),ell(24,12.4,5.4,5.8)),'#1b1b1f',{soft:true});
+  [[20,60],[29,62]].forEach(([x,y])=>dot(sc,x,y,'#5a4030',2,1));
+  return finish(sc)};
+/* Змей Горыныч: три головы, крылья, огонь */
+B.zmey_gorynych=()=>{const sc=scene(96,76,0,0,48);const g='#3f7a4a',belly='#c8b060',wing='#2f5a3a';
+  paint(sc,poly([[44,34],[10,6],[4,18],[14,24],[8,32],[22,36],[38,44]]),wing,{fn:(x,y)=>(Math.floor((x-y)/5)%2===0)?sh(hex(wing),1.2):null});
+  paint(sc,poly([[52,34],[86,6],[92,18],[82,24],[88,32],[74,36],[58,44]]),wing,{fn:(x,y)=>(Math.floor((x+y)/5)%2===0)?sh(hex(wing),1.2):null});
+  paint(sc,chain([[34,56],[20,62],[8,58],[4,50]],5,1.6),g);
+  [[-16,-4],[0,-10],[16,-4]].forEach(([dx,dy])=>{const hx=48+dx,hy=18+dy;paint(sc,chain([[48+dx*.3,44],[48+dx*.8,32+dy*.4],[hx,hy+5]],3.6,2.8),g,{rim:1});
+    paint(sc,or(ell(hx,hy,4.6,3.4),poly([[hx-2,hy+1],[hx+(dx<0?-8:dx>0?8:0),hy+5],[hx+2,hy+2]])),g,{rim:1});
+    paint(sc,or(cap(hx-2,hy-3,hx-4,hy-7,.8,.5),cap(hx+2,hy-3,hx+4,hy-7,.8,.5)),'#e8e1cf',{rim:1});dot(sc,hx-2,hy-1,'#f0d040');dot(sc,hx+1,hy-1,'#f0d040')});
+  paint(sc,poly([[40,24],[34,32],[38,40],[42,32]]),'#e8803a',{soft:true,fn:(x,y)=>Math.abs(x-38)<1.5?'#f8d060':null});
+  paint(sc,ell(48,52,22,13),g,{fn:(x,y)=>y>56?belly:((Math.floor(x/2)+Math.floor(y/2))%3===0?sh(hex(g),.82):null)});
+  [[32,1],[64,1],[40,0],[56,0]].forEach(([x,f])=>{paint(sc,cap(x,58,x,68,3.4,2.6),f?g:sh(hex(g),.8),{rim:1});paint(sc,or(cap(x,69,x-3,71,.8,.5),cap(x,69,x+3,71,.8,.5)),'#e8e1cf',{flat:true,soft:true})});
+  return finish(sc)};
+/* Кельпи: водяной конь, грива из тины */
+B.kelpie=()=>{const sc=scene(80,70,0,0,40);const c='#4a5a5a',weed='#3f7a5a';
+  paint(sc,poly([[10,36],[4,44],[2,56],[6,62],[10,52],[14,42]]),weed,{soft:true});
+  [[16,0],[22,0],[50,1],[56,1]].forEach(([x,f])=>{paint(sc,or(cap(x,46,x-.5,54,3,2.3),cap(x-.5,54,x-.8,62,2.3,1.8)),f?c:sh(hex(c),.8),{rim:1});paint(sc,ell(x-.8,63.4,3,1.6),'#1a2020',{soft:true})});
+  paint(sc,ell(34,40,22,10),c,{fn:(x,y)=>(y>44&&Math.floor(x)%4===0)?sh(hex(c),1.3):null});
+  paint(sc,chain([[50,36],[56,24],[60,16]],7,5),c);paint(sc,or(ell(64,14,7,5),ell(70,17,4,3.4)),c);
+  paint(sc,chain([[48,30],[54,18],[58,10],[56,6]],3,2),weed,{soft:true,fn:(x,y)=>Math.floor(y)%3===0?sh(hex(weed),1.3):null});
+  dot(sc,64,12,'#c8f0e0',2,1);dot(sc,72,18,'#1a2020',1,1);
+  [[20,66],[44,64],[60,66]].forEach(([x,y])=>dot(sc,x,y,'#7ab0c8'));
+  return finish(sc)};
+/* Драугр: синюшный мертвец кургана, ржавый шлем и кольчуга, огни в глазницах, клад */
+B.draugr=()=>{const sc=HUM.sc();const skin='#7a8a9a',mail='#6a6a64',rust='#8a5a3a';
+  [0,1].forEach(i=>{const L=or(cap(20.5,44,20,54,4.6,3.6),cap(20,54,19.8,62,3.4,2.9));paint(sc,i?mirX(L):L,'#4a3f35');paint(sc,i?mirX(ell(20,64.2,4,1.9)):ell(20,64.2,4,1.9),'#2a2420',{rim:1})});
+  paint(sc,or(cap(24,15,24,22,2.8,3.6),torso(false,50,1.5)),mail,{fn:(x,y)=>((Math.floor(x)+Math.floor(y))&1)?sh(hex(mail),.75):((Math.floor(x*3+y)%11===0)?rust:null)});
+  paint(sc,both(or(cap(14.6,24,12.6,34,3.6,2.9),cap(12.6,34,12.9,41,2.9,2.4))),mail,{fn:(x,y)=>((Math.floor(x)+Math.floor(y))&1)?sh(hex(mail),.75):null});
+  paint(sc,both(or(cap(12.8,41,12.9,43.5,2.2,2.0),ell(12.9,44.8,2.2,2.6))),skin);
+  paint(sc,cap(14.4,41,33.6,41,1,1),'#3b2a1e',{soft:true});paint(sc,ell(24,41,1.8,1.5),'#e0b030',{soft:true,flat:true});
+  paint(sc,head(),skin);paint(sc,poly([[17,14],[31,14],[30,24],[24,28],[18,24]]),'#c8c8b8',{soft:true,fn:(x,y)=>Math.floor(x)%2===0?'#a8a898':null});
+  dot(sc,20,10,'#1a1a20',3,2);dot(sc,25,10,'#1a1a20',3,2);dot(sc,21,10,'#7ad0f0',1,1);dot(sc,26,10,'#7ad0f0',1,1);
+  paint(sc,sub(or(ell(24,8,7.6,7.2),cap(24,9,24,16,1.1,1.1)),ell(24,13.4,4.6,4.4)),rust);paint(sc,cap(16.6,5.4,31.4,5.4,.9,.9),sh(hex(rust),1.3),{soft:true});
+  paint(sc,cap(40,14,40,66,1,1),'#6a6a70',{rim:1});paint(sc,poly([[38,16],[42,16],[40,8]]),'#8a8a90',{soft:true});paint(sc,cap(36,46,44,46,.8,.8),'#3b2a1e',{soft:true});paint(sc,ell(35.8,43.6,2.4,2.8),skin,{soft:true});
+  return finish(sc)};
+/* Албасты: степная демоница, распущенные жёлтые волосы, тёмная рубаха, ступни назад, когти */
+B.albasty=()=>{const sc=HUM.sc();const skin='#c8a888',hair='#d8b040',robe='#3a2a2a';
+  paint(sc,or(ell(24,9,8.2,8.6),poly([[15,11],[33,11],[38,44],[32,60],[16,60],[10,44]])),hair,{soft:true,fn:(x,y)=>Math.floor(x+y*.3)%3===0?sh(hex(hair),.78):null});
+  paint(sc,torso(true,64,4),robe,{fn:(x,y)=>(y>60&&Math.floor(x)%3===0)?sh(hex(robe),.7):null});
+  paint(sc,both(ell(17,64.6,3.4,1.5)),skin,{rim:1});
+  paint(sc,both(or(cap(14.6,24,11,34,3,2.4),cap(11,34,10,42,2.4,1.8),ell(10,43.6,2,2.4))),skin);
+  paint(sc,both(or(cap(9,44,7,49,.5,.4),cap(10.6,44.6,10.4,50,.5,.4))),'#3a2420',{flat:true,soft:true});
+  paint(sc,head(),skin);eyes(sc,'#e8a030',true);dot(sc,23,15,'#6a2a2a',3,1);
+  paint(sc,or(cap(18.4,6.2,16,38,1.8,2.8),cap(29.6,6.2,32,38,1.8,2.8)),hair,{soft:true});
+  paint(sc,sub(ell(24,7.2,7.3,5.6),ell(24,12.4,5.4,5.8)),hair,{soft:true});
+  return finish(sc)};
+/* Дух кургана: призрачный предок в войлочной шапке, как каменная баба */
+B.kurgan_spirit=()=>{const sc=HUM.sc();const g='#9aa8b0',felt='#7a5a3a';
+  paint(sc,or(torso(false,60,3),poly([[13,58],[35,58],[32,66],[16,66]])),g,{alpha:.82,soft:true,fn:(x,y)=>Math.floor(y)%5===0?sh(hex(g),.85):null});
+  paint(sc,both(or(cap(14.6,24,13,34,3,2.6),cap(13,34,18,40,2.4,2))),g,{alpha:.82});
+  paint(sc,ell(24,40,3,2.4),'#c8a050',{soft:true});
+  paint(sc,head(),g,{alpha:.88});dot(sc,20,10,'#e8f0ff',3,1);dot(sc,25,10,'#e8f0ff',3,1);dot(sc,22,15,sh(hex(g),.6),5,1);
+  paint(sc,or(cap(20,15,24,17,.7,.7),cap(28,15,24,17,.7,.7)),'#e8e8e8',{soft:true,flat:true});
+  paint(sc,poly([[15.4,6],[17.4,-2],[24,-6],[30.6,-2],[32.6,6]]),felt,{soft:true});paint(sc,cap(15.4,6,32.6,6,1.4,1.4),'#eee8d8',{soft:true});
+  return finish(sc)};
+/* Айдахар: огромный степной змей в кольцах */
+B.aydahar=()=>{const sc=scene(84,64,0,0,42);const s='#8a7a3a',belly='#d8c88a';
+  paint(sc,ell(40,48,30,10),s,{fn:(x,y)=>y>52?belly:((Math.floor(x/3)+Math.floor(y/2))%2===0?sh(hex(s),.8):null)});
+  paint(sc,ell(36,38,22,8),sh(hex(s),1.05),{fn:(x,y)=>(Math.floor(x/3)+Math.floor(y/2))%2===0?sh(hex(s),.85):null});
+  paint(sc,chain([[52,36],[62,26],[66,16],[64,10]],6,4.6),s,{fn:(x,y)=>Math.abs(x-62)<2&&y>14?belly:null});
+  paint(sc,or(ell(68,8,8,5),ell(75,10,4,3)),s);dot(sc,68,6,'#e8302c',2,1);dot(sc,76,11,'#2a1d14',2,1);
+  paint(sc,or(cap(78,12,84,13,.4,.4),cap(84,13,86,11,.4,.4),cap(84,13,86,15,.4,.4)),'#c03a2a',{flat:true,soft:true});
+  paint(sc,chain([[12,50],[4,46],[2,40]],3,1),s);
+  return finish(sc)};
+/* Мумия: бинты, золотой воротник, медленная */
+B.mummy=()=>{const sc=HUM.sc();const lin='#d8ccaa',dl='#a89a78';
+  const band=(x,y)=>Math.floor(y*1.2+x*.35)%3===0?dl:null;
+  paint(sc,legs(false),lin,{fn:band});
+  paint(sc,or(cap(24,15,24,22,2.6,3.4),torso(false,46,0)),lin,{fn:band});
+  paint(sc,both(or(cap(14.6,24,10,30,3.1,2.6),cap(10,30,4,32,2.5,2.0),ell(2.4,32.4,2.2,2))),lin,{fn:band});
+  paint(sc,sub(ell(24,25,11,5),ell(24,22,8,4)),'#2a5a8a',{soft:true,fn:(x,y)=>Math.floor(x)%2===0?'#e0b030':null});
+  paint(sc,head(),lin,{fn:(x,y)=>Math.floor(y*1.3-x*.4)%3===0?dl:null});dot(sc,20,10,'#1a1410',3,1);dot(sc,25,10,'#1a1410',3,1);dot(sc,21,10,'#e0c040');dot(sc,26,10,'#e0c040');
+  [[30,48,34,56],[16,52,12,58]].forEach(([a,b,c,d])=>paint(sc,cap(a,b,c,d,.5,.4),dl,{flat:true,soft:true}));
+  return finish(sc)};
+/* Шакалий страж: поджарый чёрный шакал с золотым ошейником */
+B.jackal_guard=()=>{const sc=scene(60,48,0,0,30);const c='#2a2420',gold='#e0b030';
+  paint(sc,chain([[12,22],[6,18],[3,12]],2.4,1.2),c);
+  [[16,1],[21,0],[38,1],[43,0]].forEach(([x,f])=>{paint(sc,or(cap(x,26,x,34,2,1.6),cap(x,34,x+.5,42,1.6,1.2)),f?c:sh(hex(c),1.3),{rim:1});paint(sc,ell(x+.5,43,2.2,1.1),sh(hex(c),.8),{soft:true})});
+  paint(sc,ell(29,24,15,6),c,{fn:(x,y)=>y<21?sh(hex(c),1.4):null});
+  paint(sc,chain([[40,22],[45,14]],4,3),c);paint(sc,or(ell(48,12,4.4,3.6),poly([[48,11],[58,14],[48,16]])),c);
+  paint(sc,or(poly([[45,9],[46,0],[49,8]]),poly([[49,9],[52,1],[52,10]])),c,{rim:1});dot(sc,49,11,gold,2,1);
+  paint(sc,cap(41,16,46,19,1.1,1.1),gold,{soft:true});
+  return finish(sc)};
+/* Рой скарабеев: группа жуков (группа = десятки) */
+B.scarab_swarm=()=>{const sc=scene(48,30,0,0,24);const s='#2a5a6a';
+  const one=(x,y,r)=>{paint(sc,ell(x,y,r*1.4,r),s,{fn:(X,Y)=>Math.abs(X-x)<.6?sh(hex(s),.6):null});paint(sc,ell(x+r*1.4,y,r*.6,r*.6),'#1a2a30');
+    [-1,0,1].forEach(k=>{dot(sc,x+k*r*.7,y+r+.5,'#1a1410');dot(sc,x+k*r*.7,y-r-1,'#1a1410')})};
+  [[10,22,3],[22,14,3.6],[34,22,3],[16,8,2.4],[30,6,2.6],[40,12,2.2],[6,12,2]].forEach(a=>one(...a));
+  return finish(sc)};
+/* Грифон: орёл и лев, стережёт золото степи */
+B.griffin=()=>{const sc=scene(84,72,0,0,42);const f='#d0a860',fe='#e8e1cf',wing='#8a6a3a';
+  paint(sc,poly([[40,30],[16,4],[8,12],[14,20],[6,26],[24,32]]),wing,{fn:(x,y)=>(Math.floor((x-y)/4)%2===0)?sh(hex(wing),1.25):null});
+  paint(sc,chain([[16,46],[6,40],[4,32]],1.6,1),f);paint(sc,ell(4,30,2,3),sh(hex(f),.7),{soft:true});
+  [[20,1],[28,0],[52,1],[58,0]].forEach(([x,f2])=>{paint(sc,or(cap(x,50,x,60,3.2,2.6),cap(x,60,x,66,2.6,2.2)),f2?f:sh(hex(f),.82),{rim:1});paint(sc,ell(x,67,3.4,1.6),'#5a4020',{soft:true})});
+  paint(sc,ell(38,46,22,10),f);
+  paint(sc,poly([[40,38],[60,6],[68,12],[60,18],[64,24],[50,40]]),wing,{fn:(x,y)=>(Math.floor((x+y)/4)%2===0)?sh(hex(wing),1.25):null});
+  paint(sc,ell(58,36,10,11),fe,{fn:(x,y)=>Math.floor(x+y)%3===0?sh(hex(fe),.85):null});
+  paint(sc,ell(62,26,7,6),fe);paint(sc,poly([[67,24],[76,28],[70,32],[67,29]]),'#e0b030',{rim:1});dot(sc,63,24,'#2a1d14',2,1);
+  return finish(sc)};
+
+/* ---------- листы по поясам ---------- */
+const BELTS=[
+ {cls:'mediterranean',t:'Срединное море: греческая мифология',d:'Скалы у моря, сухие холмы и болота юга.',list:[
+  ['siren','Сирена','песней тянет одинокого к берегу (воля держит), рвёт когтями; стайка 2–4, логово на прибрежных скалах'],
+  ['nereid','Нереида','мирная морская дева Срединного моря, людей не трогает и уходит в воду; грот на карте без набегов'],
+  ['harpy','Гарпия','стаи на утёсах, таскают кур и коз; гнездовье на карте'],
+  ['gorgon','Горгона','одиночка, взгляд каменит, бросается на всякого у пещеры'],
+  ['hydra','Гидра','сколько голов, столько в группе (5–9); срубленная отрастает за 2 дня, если не прижечь огнём'],
+  ['chimera','Химера','дышит огнём, одиночка сухих холмов, жжёт стога соседей'],
+  ['nemean_lion','Немейский лев','шкура почти не берётся клинком (броня stone_hide); из неё доспех-артефакт'],
+  ['shade','Тень','нежить юга, ночью пьёт кровь скота; без обряда встаёт снова через 30 дней']]},
+ {cls:'forest',t:'Средние леса: кельтская и славянская мифология',d:'Чащи, болота, реки и курганы лесного пояса.',list:[
+  ['leshy','Леший','не убивает: зовом заводит одинокого в чащу, тот плутает полдня'],
+  ['rusalka','Русалка','ночью у воды зовёт и топит; утопленница, встаёт снова, пока не упокоят'],
+  ['upyr','Упырь','ночью из могилы, солнце жжёт; убитый им сам становится упырём'],
+  ['zmey_gorynych','Змей Горыныч','три головы = группа 3, срубленная отрастает; огонь, стережёт гору, налетает на сёла'],
+  ['kelpie','Кельпи','водяной конь у озёр, манит и уносит под воду']]},
+ {cls:'north',t:'Север: скандинавская мифология',d:'Курганы и фьорды. Тролли, йотуны и альвы у народов, тут только нежить.',list:[
+  ['draugr','Драугр','страж кургана и клада, днём тоже ходит, силён; разрушенный встаёт через 15 дней']]},
+ {cls:'steppe',t:'Восточная степь: тюрко-скифская мифология',d:'Сухая степь, балки, курганы предков.',list:[
+  ['albasty','Албасты','ночью нападает на одиноких у реки и в степи, загоняет табуны'],
+  ['kurgan_spirit','Дух кургана','предок-хранитель, сам не охотится; бьёт ночью того, кто подошёл к кургану'],
+  ['aydahar','Айдахар','огромный змей, душит кольцами, нападает на табуны'],
+  ['griffin','Грифон','стережёт золото гор, уносит коней']]},
+ {cls:'nile',t:'Нил: египетская мифология (вторая волна)',d:'Пустыня, гробницы, святилища.',list:[
+  ['mummy','Мумия','страж гробницы, медленная и стойкая; встаёт снова, пока гробницу не запечатают обрядом'],
+  ['jackal_guard','Шакалий страж','стая 3–6, ночью кидается на всякого у святилища'],
+  ['scarab_swarm','Рой скарабеев','падальщики, на живых идут только большим роем']]}
+];
+let SCALE=3;
+function build(){const root=document.getElementById('sheets');root.innerHTML='';const night=document.getElementById('night').checked;
+  BELTS.forEach(b=>{const h=document.createElement('h2');h.textContent=b.t;root.appendChild(h);
+    const p=document.createElement('p');p.className='muted';p.textContent=b.d;root.appendChild(p);
+    const g=document.createElement('div');g.className='grid '+b.cls+(night?' night':'');
+    b.list.forEach(([id,name,how])=>{const f=document.createElement('figure');const t=document.createElement('div');t.className='tile';let cv;
+      try{cv=B[id]()}catch(e){console.error(id,e.message);cv=mk(48,64)}
+      cv.dataset.w=cv.width;cv.dataset.h=cv.height;cv.setAttribute('role','img');cv.setAttribute('aria-label',name);t.appendChild(cv);f.appendChild(t);
+      const c=document.createElement('figcaption');c.innerHTML='<b>'+name+'</b><span class="size">'+cv.width+'×'+cv.height+' · '+id+'</span><div class="how">'+how+'</div>';f.appendChild(c);g.appendChild(f)});
+    root.appendChild(g)});
+  sizes()}
+function sizes(){document.querySelectorAll('.tile canvas').forEach(c=>{c.style.width=c.width*SCALE+'px';c.style.height=c.height*SCALE+'px'});
+  document.querySelectorAll('figure').forEach(f=>{const c=f.querySelector('canvas');f.style.width=Math.max(170,c.width*SCALE+12)+'px'})}
+document.getElementById('night').addEventListener('change',build);
+document.querySelectorAll('.seg button').forEach(b=>b.addEventListener('click',()=>{SCALE=+b.dataset.s;
+  document.querySelectorAll('.seg button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));sizes()}));
+build();
+</script>

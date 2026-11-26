@@ -311,6 +311,26 @@
     beastCache.set(k, c);
     return c;
   }
+  // LR-170: beasts as data (beasts2d.json: per beast pal + rows, facing east, feet on the last row),
+  // on a square of max(w, h) centred across, as pixels2d.cpp's beastArtPixels
+  let BEASTS = {};
+  const artCache = new Map();
+  function beastArt(sp, face) {
+    const b = BEASTS[sp];
+    if (!b || !Array.isArray(b.rows)) return null;
+    const k = sp + face;
+    if (artCache.has(k)) return artCache.get(k);
+    const h = b.rows.length, w = Math.max(0, ...b.rows.map(r => r.length)), n = Math.max(w, h);
+    const c = document.createElement('canvas'); c.width = c.height = n;
+    const g = c.getContext('2d'), ox = Math.floor((n - w) / 2), oy = n - h, pal = b.pal || {};
+    b.rows.forEach((r, y) => { for (let x = 0; x < r.length; x++) {
+      const col = pal[r[x]];
+      if (!col) continue;
+      g.fillStyle = col; g.fillRect(face === 'W' ? n - 1 - (ox + x) : ox + x, oy + y, 1, 1);
+    } });
+    artCache.set(k, c);
+    return c;
+  }
   function mulHex(c, k) { return '#' + [1, 3, 5].map(i => Math.round(parseInt(c.substr(i, 2), 16) * k).toString(16).padStart(2, '0')).join(''); }
   function actIcon(p) {
     if (!p.alive) return null;
@@ -508,6 +528,15 @@
       // LR-159: a ridden beast is drawn under its rider, a driven vehicle with its driver
       if (p.rider != null || (p.veh && p.driver != null)) return;
       if (drawTr(p.sp, trFace(p, v), trFrame(v), sx, sy, sc)) return;
+      const art = beastArt(p.sp, v.face === 'W' ? 'W' : 'E');
+      if (art) {   // LR-170: at the people's scale, feet on the shadow
+        const F = typeof Figures !== 'undefined' && Figures.data();
+        const w = art.width * sc * ((F && F.world_px_per_art_px) || 1 / 3);
+        if (!p.alive) ctx.globalAlpha = 0.6;
+        ctx.drawImage(art, sx - w / 2, sy + sc - w, w, w);
+        ctx.globalAlpha = 1;
+        return;
+      }
       const b = beastSprite(p.sp, v.face === 'W' ? 'W' : 'E');
       ctx.drawImage(b, sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
       return;
@@ -895,8 +924,10 @@
     getJson('/sprites/pawns2d.json').catch(() => null),
     getJson('/sprites/transport2d.json').catch(() => null),
     getJson('/sprites/cliffs2d.json').catch(() => null),
-    getJson('/sprites/figures2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport, cliffs, figures]) => {
+    getJson('/sprites/figures2d.json').catch(() => null),
+    getJson('/sprites/beasts2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport, cliffs, figures, beasts]) => {
     if (typeof Figures !== 'undefined') Figures.setData(figures);   // LR-165: the 48x64 people
+    BEASTS = (beasts && beasts.beasts) || {};   // LR-170: the bestiary's beasts
     CLIFFS = cliffs || {};
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
     Pawns.setParts(pawnParts);   // LR-139: hair, beards, ears, builds as data

@@ -677,6 +677,44 @@ Pixels beastPixels(const std::string& sp, char face) {
     return out;
 }
 
+Pixels beastArtPixels(const nlohmann::json& beast, char face) {
+    Pixels out;
+    if (!beast.is_object() || !beast.contains("rows") || !beast["rows"].is_array()) return out;
+    const nlohmann::json pal = beast.value("pal", nlohmann::json::object());
+    std::map<char, Rgba> colours;
+    for (const auto& [k, v] : pal.items()) {
+        if (k.size() != 1 || !v.is_string()) continue;
+        const std::string h = v.get<std::string>();
+        Rgba c = parseHex(h);
+        if (h.size() >= 9) {
+            const int a = hexDigit(h[7]), b = hexDigit(h[8]);
+            if (a >= 0 && b >= 0) c = (c & 0x00ffffffu) | (Rgba(a * 16 + b) << 24);
+        }
+        colours[k[0]] = c;
+    }
+    const auto& rows = beast["rows"];
+    const int h = int(rows.size());
+    int w = 0;
+    for (const auto& r : rows)
+        if (r.is_string()) w = std::max(w, int(r.get<std::string>().size()));
+    const int n = std::max(w, h);
+    if (n <= 0) return out;
+    out.size = n;
+    out.px.assign(std::size_t(n * n), 0);
+    const int ox = (n - w) / 2, oy = n - h;
+    for (int y = 0; y < h; ++y) {
+        if (!rows[std::size_t(y)].is_string()) continue;
+        const std::string r = rows[std::size_t(y)].get<std::string>();
+        for (int x = 0; x < int(r.size()); ++x) {
+            const auto it = colours.find(r[std::size_t(x)]);
+            if (it == colours.end()) continue;
+            const int X = face == 'W' ? n - 1 - (ox + x) : ox + x;
+            out.px[std::size_t((oy + y) * n + X)] = it->second;
+        }
+    }
+    return out;
+}
+
 std::uint32_t idHash(double n, int salt) {
     const std::uint64_t v = std::uint64_t(n) * 2654435761ull + std::uint64_t(salt) * 40503ull;
     std::uint32_t h = std::uint32_t(v);
