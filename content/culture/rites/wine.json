@@ -1,0 +1,235 @@
+{
+ "_doc": "LR-171: обряды культа (сеттинг v0.3 §6.5). Обряд принадлежит вере (faiths) или ликам (liks: id ликов пантеона; обряд годится вере, у которой есть такой лик в deities/liks). when: holy_day (id праздника веры или \"any\"), every_days+offset, on (death|wedding|birth|drought|war|illness|sowing|harvest), season [день_от, день_до], chance — шанс в подходящий день. time: dawn|day|dusk|night. participants.who: faith|settlement|household|initiates|mourners; age: adult|any. leader: clergy|pious|head. offering: any — что подойдёт (берётся из запасов поселения или у вожака), n. steps: шаги по порядку, all/leader — акты (первый, чья цель есть рядом), ticks — длительность, fx — эффект клиента (content/sprites_2d/rites2d.json). effects: all/leader — эффекты как в interactions, piety, memory (типы памяти), channels (каналы мира у места × вес), aim (обряд — общая молитва о цели). aftermath: последствия {p, eff, who: any|intimate|spouse_of_intimate|leader}. intimacy (только экстатические): только взрослые (min_life_years) и по согласию (взаимное affinity и attraction выше порогов), показ — облачко «вуху» с сердечками. secret + grades — таинство по ступеням. Имена: rites.rite.<id>.name / .desc.",
+ "group": "wine",
+ "liks": [
+  "dionysus",
+  "osiris",
+  "kvasir",
+  "corna"
+ ],
+ "faiths": [
+  "wine_mysteries"
+ ],
+ "rites": [
+  {
+   "id": "bacchanalia",
+   "kind": "ecstatic",
+   "open": true,
+   "when": {
+    "holy_day": "any"
+   },
+   "time": "night",
+   "participants": {
+    "who": "settlement",
+    "age": "adult",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "offering": {
+    "any": [
+     "wine",
+     "mead",
+     "ale",
+     "cider"
+    ],
+    "n": 4
+   },
+   "attire": "mask",
+   "steps": [
+    {
+     "all": [
+      "rite_procession"
+     ],
+     "ticks": 2,
+     "fx": "torches_masks"
+    },
+    {
+     "all": [
+      "rite_revel"
+     ],
+     "ticks": 4,
+     "fx": "wine_haze"
+    },
+    {
+     "all": [
+      "rite_dance"
+     ],
+     "ticks": 3,
+     "fx": "drum"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.6",
+     "need:social+0.4",
+     "need:energy-0.2",
+     "moodlet:ecstasy"
+    ],
+    "piety": 0.06,
+    "memory": [
+     "rite",
+     "danced",
+     "revel"
+    ],
+    "channels": {
+     "fertility": "+1*power"
+    }
+   },
+   "aftermath": [
+    {
+     "p": 0.45,
+     "eff": [
+      "moodlet:hungover"
+     ]
+    },
+    {
+     "p": 0.08,
+     "eff": [
+      "moodlet:craving_wine"
+     ]
+    },
+    {
+     "p": 0.6,
+     "who": "spouse_of_intimate",
+     "eff": [
+      "moodlet:jealous",
+      "rel:affinity-0.15"
+     ]
+    },
+    {
+     "p": 0.25,
+     "who": "intimate",
+     "eff": [
+      "memory:scandal"
+     ]
+    }
+   ],
+   "intimacy": {
+    "adults_only": true,
+    "consent": true,
+    "min_life_years": 18,
+    "pairs_share": 0.25,
+    "affinity": 0.3,
+    "attraction": 0.25,
+    "act": "intimacy",
+    "show": "woohoo_cloud"
+   }
+  },
+  {
+   "id": "wine_mystery",
+   "kind": "mystery",
+   "open": false,
+   "when": {
+    "season": [
+     240,
+     260
+    ],
+    "chance": 0.6
+   },
+   "time": "night",
+   "participants": {
+    "who": "initiates",
+    "age": "adult",
+    "min": 1,
+    "max": 12,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "offering": {
+    "any": [
+     "wine",
+     "mead"
+    ],
+    "n": 1
+   },
+   "steps": [
+    {
+     "all": [
+      "rite_mystery"
+     ],
+     "ticks": 3,
+     "fx": "veil"
+    },
+    {
+     "all": [
+      "rite_hymn"
+     ],
+     "ticks": 2,
+     "fx": "wine_haze"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.45",
+     "moodlet:initiated"
+    ],
+    "piety": 0.07,
+    "memory": [
+     "rite",
+     "initiated"
+    ]
+   },
+   "grades": [
+    "novice",
+    "bacchant",
+    "hierophant"
+   ],
+   "secret": true
+  },
+  {
+   "id": "mask_theatre",
+   "kind": "festival",
+   "open": true,
+   "when": {
+    "every_days": 60,
+    "offset": 40
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "any",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "attire": "mask",
+   "steps": [
+    {
+     "all": [
+      "rite_gather"
+     ],
+     "ticks": 1,
+     "fx": "masks"
+    },
+    {
+     "all": [
+      "rite_contest"
+     ],
+     "ticks": 3,
+     "fx": "masks"
+    },
+    {
+     "all": [
+      "rite_feast"
+     ],
+     "ticks": 2,
+     "fx": "feast"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.4",
+     "need:social+0.25",
+     "moodlet:rite_joy"
+    ],
+    "piety": 0.03,
+    "memory": [
+     "rite"
+    ]
+   }
+  }
+ ]
+}

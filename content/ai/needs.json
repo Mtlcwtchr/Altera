@@ -439,6 +439,174 @@
    "ttl": 2160,
    "_doc": "AL-116: ищет способ вернуть умершего",
    "_part": "magic"
+  },
+  {
+   "id": "rite_awe",
+   "value": 0.1,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "rite_joy",
+   "value": 0.12,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "rite_dread",
+   "value": 0.03,
+   "ttl": 96,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "mourned_together",
+   "value": 0.06,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "initiated",
+   "value": 0.15,
+   "ttl": 720,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "home_blessed",
+   "value": 0.06,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "overfed",
+   "value": -0.02,
+   "ttl": 24,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "inspired",
+   "value": 0.08,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "blessed_road",
+   "value": 0.06,
+   "ttl": 432,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "blessed_sea",
+   "value": 0.06,
+   "ttl": 432,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "god_shield",
+   "value": 0.08,
+   "ttl": 432,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "blessed_love",
+   "value": 0.06,
+   "ttl": 432,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "blessed_womb",
+   "value": 0.06,
+   "ttl": 720,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "forgiven",
+   "value": 0.1,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "blessed_hunt",
+   "value": 0.05,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "dead_at_rest",
+   "value": 0.08,
+   "ttl": 432,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "healed_by_god",
+   "value": 0.12,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "prayer_granted",
+   "value": 0.12,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "prayer_refused",
+   "value": -0.06,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "prayer_heard",
+   "value": 0.04,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "prayer_unanswered",
+   "value": -0.04,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "battle_ready",
+   "value": 0.08,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "fate_read",
+   "value": 0.05,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "dream_sign",
+   "value": 0.06,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "ecstasy",
+   "value": 0.16,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "craving_wine",
+   "value": -0.05,
+   "ttl": 432,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "jealous",
+   "value": -0.1,
+   "ttl": 288,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
+  },
+  {
+   "id": "embarrassed",
+   "value": -0.04,
+   "ttl": 144,
+   "_doc": "LR-171: молитвы и обряды (content/culture)"
   }
  ],
  "_doc_lr140": "LR-140: derived — нужды без собственного падения (gdd/motivation/motivation.json derived_needs): считаются из мира (взвешенное среднее входов) и плавно идут к расчётному значению (tier_gate.rate_per_day разрыва за сутки, пересчёт раз в step_ticks). Входы: body:health, has_shelter, threat_near (norm = радиус, м), home_food_days, home:<предмет>, household_avg:rel.<ось>, has_household, community_avg:rel_back.<ось>, reputation:<ось>, wealth_rank, has_office, has_heir, built_count, moodlet:<id>, need:<id>, trait:<id>; inv: = 1 − значение. season_norm умножает норму счётных входов по сезону (к зиме хочется больше). care — насколько персонажу это важно (base + 0.5·reputation:<ось>, не меньше traits[t]); тянет 1 − care·(1 − value). Благодати-запаса в симе пока нет: grace считается из молитвы и благословения. tiers — пирамида (order 1… снизу; 0 — дух сбоку, не гейтится и не гейтит), gate — по чему меряется ярус (минимум). tier_gate: балл цели яруса k × Π(floor + (1−floor)·logistic(sat_j)) по ярусам ниже.",

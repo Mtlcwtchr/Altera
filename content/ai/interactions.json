@@ -1842,7 +1842,8 @@
    "category": "social",
    "target": "character",
    "pre": [
-    "age:adult"
+    "age:adult",
+    "!t.age:child"
    ],
    "duration": 1,
    "cost": 1,
@@ -1943,7 +1944,8 @@
    "target": "character",
    "pre": [
     "age:adult",
-    "rel:affinity>0.4"
+    "rel:affinity>0.4",
+    "!t.age:child"
    ],
    "eff": [
     "need:social+0.3",
@@ -7180,6 +7182,315 @@
    "mvp": false,
    "_doc": "AL-118: заклинание в обычной работе; ставит в очередь sim/magic_society (решение по пользе, цене маны, риску и закону), каст — magicAfterAct. Жизнь+ у отравленного колодца: скверна уходит",
    "_part": "magic"
+  },
+  {
+   "id": "rite_gather",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). община стоит у святилища, гимн, смотрит на жертву"
+  },
+  {
+   "id": "rite_procession",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05",
+    "need:social+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Act",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). шествие к святилищу с факелами, лентами, масками"
+  },
+  {
+   "id": "rite_sacrifice",
+   "category": "faith",
+   "target": "object:shrine",
+   "pre": [
+    "!age:child"
+   ],
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). жрец приносит жертву на алтаре (приношение берёт обряд)"
+  },
+  {
+   "id": "rite_feast",
+   "category": "faith",
+   "target": "object:village_fire",
+   "eff": [
+    "need:hunger+0.15",
+    "need:social+0.1"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "fsm": "Eat",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). обрядовый пир у огня"
+  },
+  {
+   "id": "rite_dance",
+   "category": "faith",
+   "target": "object:village_fire",
+   "eff": [
+    "need:fun+0.1",
+    "need:energy-0.03"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Act",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). обрядовая пляска, хоровод"
+  },
+  {
+   "id": "rite_revel",
+   "category": "faith",
+   "target": "object:village_fire",
+   "pre": [
+    "!age:child"
+   ],
+   "eff": [
+    "need:fun+0.15",
+    "need:energy-0.05"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "fsm": "Act",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). экстатический пир: вино, музыка, маски; только взрослые. Близость по согласию идёт отдельным актом intimacy (облачко «вуху»)"
+  },
+  {
+   "id": "rite_mourn",
+   "category": "faith",
+   "target": "object:grave",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). плач и поминовение у могилы"
+  },
+  {
+   "id": "rite_hearth_offer",
+   "category": "faith",
+   "target": "object:hearth",
+   "eff": [
+    "need:purpose+0.05",
+    "need:warmth+0.05"
+   ],
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). приношение огню очага, хлеб на порог"
+  },
+  {
+   "id": "rite_forge",
+   "category": "faith",
+   "target": "object:forge",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). закалка клинка в честь бога кузни"
+  },
+  {
+   "id": "rite_vigil",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05",
+    "need:energy-0.03"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). бдение, ночная стража у святыни"
+  },
+  {
+   "id": "rite_oath",
+   "category": "faith",
+   "target": "object:shrine",
+   "pre": [
+    "!age:child"
+   ],
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 1,
+   "cost": 2,
+   "fsm": "Talk",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). клятва именем Силы"
+  },
+  {
+   "id": "rite_contest",
+   "category": "faith",
+   "target": "object:village_fire",
+   "eff": [
+    "need:fun+0.1"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Act",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). состязание, игры, театр в честь бога"
+  },
+  {
+   "id": "rite_grove",
+   "category": "faith",
+   "target": "object:oak_grove",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). священная роща: дары духам и богам"
+  },
+  {
+   "id": "rite_field",
+   "category": "faith",
+   "target": "object:field",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). обряд на поле: посев, первый сноп"
+  },
+  {
+   "id": "rite_spin",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). прядение нитей судьбы, гадание"
+  },
+  {
+   "id": "rite_incubation",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:energy+0.1"
+   ],
+   "duration": 4,
+   "cost": 2,
+   "fsm": "Rest",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). сон в храме ради исцеления и вещего сна"
+  },
+  {
+   "id": "rite_trance",
+   "category": "faith",
+   "target": "object:village_fire",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). шаманский бубен и транс, поездка по мирам"
+  },
+  {
+   "id": "rite_hymn",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). гимн, хор, рассветная песнь"
+  },
+  {
+   "id": "rite_libation_water",
+   "category": "faith",
+   "target": "object:water",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). дар в воду: золото, кубок, молоко"
+  },
+  {
+   "id": "rite_hunt_offer",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 2,
+   "cost": 2,
+   "fsm": "Work",
+   "visibility": "public",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). первая добыча ритуальной охоты в дар"
+  },
+  {
+   "id": "rite_mystery",
+   "category": "faith",
+   "target": "object:shrine",
+   "eff": [
+    "need:purpose+0.05"
+   ],
+   "duration": 3,
+   "cost": 2,
+   "fsm": "Pray",
+   "visibility": "secret",
+   "goap": false,
+   "_doc": "LR-171: шаг обряда (content/culture/rites). таинство для посвящённых по ступеням"
   }
  ]
 }

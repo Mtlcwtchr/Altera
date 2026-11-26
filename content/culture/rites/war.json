@@ -1,0 +1,173 @@
+{
+ "_doc": "LR-171: обряды культа (сеттинг v0.3 §6.5). Обряд принадлежит вере (faiths) или ликам (liks: id ликов пантеона; обряд годится вере, у которой есть такой лик в deities/liks). when: holy_day (id праздника веры или \"any\"), every_days+offset, on (death|wedding|birth|drought|war|illness|sowing|harvest), season [день_от, день_до], chance — шанс в подходящий день. time: dawn|day|dusk|night. participants.who: faith|settlement|household|initiates|mourners; age: adult|any. leader: clergy|pious|head. offering: any — что подойдёт (берётся из запасов поселения или у вожака), n. steps: шаги по порядку, all/leader — акты (первый, чья цель есть рядом), ticks — длительность, fx — эффект клиента (content/sprites_2d/rites2d.json). effects: all/leader — эффекты как в interactions, piety, memory (типы памяти), channels (каналы мира у места × вес), aim (обряд — общая молитва о цели). aftermath: последствия {p, eff, who: any|intimate|spouse_of_intimate|leader}. intimacy (только экстатические): только взрослые (min_life_years) и по согласию (взаимное affinity и attraction выше порогов), показ — облачко «вуху» с сердечками. secret + grades — таинство по ступеням. Имена: rites.rite.<id>.name / .desc.",
+ "group": "war",
+ "liks": [
+  "ares",
+  "enyo",
+  "tyr",
+  "morrigan",
+  "monthu",
+  "sekhmet",
+  "kun_khan"
+ ],
+ "faiths": [
+  "sky_blood"
+ ],
+ "rites": [
+  {
+   "id": "war_dance",
+   "kind": "dance",
+   "open": true,
+   "when": {
+    "on": "war"
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "adult",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "offering": {
+    "any": [
+     "meat",
+     "carcass"
+    ],
+    "n": 1
+   },
+   "steps": [
+    {
+     "all": [
+      "rite_dance"
+     ],
+     "ticks": 3,
+     "fx": "spear_clash"
+    },
+    {
+     "all": [
+      "rite_gather"
+     ],
+     "ticks": 1,
+     "fx": "blood_mark",
+     "leader": [
+      "rite_sacrifice"
+     ]
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.3",
+     "moodlet:battle_ready"
+    ],
+    "piety": 0.05,
+    "memory": [
+     "rite",
+     "danced"
+    ],
+    "aim": "victory"
+   }
+  },
+  {
+   "id": "weapon_consecration",
+   "kind": "offering",
+   "open": true,
+   "when": {
+    "every_days": 40,
+    "offset": 17
+   },
+   "time": "day",
+   "participants": {
+    "who": "faith",
+    "age": "adult",
+    "min": 1,
+    "max": 10,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "steps": [
+    {
+     "all": [
+      "rite_vigil"
+     ],
+     "ticks": 2,
+     "fx": "torches"
+    },
+    {
+     "all": [
+      "rite_oath"
+     ],
+     "ticks": 1,
+     "fx": "blade_glow"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:purpose+0.25",
+     "moodlet:battle_ready"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "oath"
+    ]
+   }
+  },
+  {
+   "id": "honour_duel",
+   "kind": "contest",
+   "open": true,
+   "when": {
+    "holy_day": "any"
+   },
+   "time": "day",
+   "participants": {
+    "who": "settlement",
+    "age": "adult",
+    "min": 2,
+    "max": 40,
+    "radius_m": 900
+   },
+   "leader": "clergy",
+   "steps": [
+    {
+     "all": [
+      "rite_gather"
+     ],
+     "ticks": 1,
+     "fx": "ring"
+    },
+    {
+     "all": [
+      "rite_contest"
+     ],
+     "ticks": 2,
+     "fx": "spear_clash"
+    },
+    {
+     "all": [
+      "rite_feast"
+     ],
+     "ticks": 2,
+     "fx": "feast"
+    }
+   ],
+   "effects": {
+    "all": [
+     "need:fun+0.3",
+     "need:social+0.2",
+     "moodlet:rite_joy"
+    ],
+    "leader": [
+     "rep:honor+0.02"
+    ],
+    "piety": 0.04,
+    "memory": [
+     "rite",
+     "won_contest"
+    ]
+   }
+  }
+ ]
+}

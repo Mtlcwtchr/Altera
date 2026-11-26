@@ -629,6 +629,10 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref("culture", s);
             } else if (k == "trad") {
                 a[k] = ref("culture.trad", s);
+            } else if (k == "rite") { // LR-171: rites and the aims of prayers
+                a[k] = ref("rites.rite", s);
+            } else if (k == "aim") {
+                a[k] = ref("rites.aim", s);
             } else if (k == "why" || k == "for") {
                 a[k] = reasonText(loc, lang, s);
             } else {

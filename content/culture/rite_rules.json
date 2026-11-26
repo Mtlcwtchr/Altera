@@ -1,0 +1,71 @@
+{
+ "_doc": "LR-171: общие правила проведения обрядов (content/culture/rites/*.json). time — тик дня начала (144 тика = сутки, 6 = час): dawn, day, dusk, night. clergy — занятия, что ведут обряды (иначе жрец веры по religions clergy, потом самый набожный взрослый). max_per_day — обрядов в день на поселение (домашние обряды household не считаются). event_days — сколько дней после события (смерть, свадьба, рождение, болезнь, война) обряд по нему ещё уместен. on — какие строки хроники считаются событием (type и, по желанию, часть code). drought_below — влажность у центра поселения (0..1), ниже которой засуха. queue_priority — приоритет актов шагов в очереди NPC. weight — сила обряда как молитвы: base + per_attendee×ln(1+n) + offering (вес приношений prayers.json, среднее) + holy_day.",
+ "time": {
+  "dawn": 36,
+  "day": 66,
+  "dusk": 108,
+  "night": 126
+ },
+ "clergy": [
+  "priest",
+  "priestess",
+  "shaman",
+  "druid",
+  "volkhv",
+  "godi",
+  "seer",
+  "oracle"
+ ],
+ "max_per_day": 2,
+ "event_days": 2,
+ "queue_priority": 0.9,
+ "drought_below": 0.25,
+ "weight": {
+  "base": 0.8,
+  "per_attendee": 0.25,
+  "holy_day": 0.4,
+  "no_offering": 0.5
+ },
+ "on": {
+  "death": {
+   "types": [
+    "death"
+   ]
+  },
+  "wedding": {
+   "types": [
+    "wedding"
+   ]
+  },
+  "birth": {
+   "types": [
+    "birth"
+   ]
+  },
+  "illness": {
+   "types": [
+    "illness"
+   ]
+  },
+  "war": {
+   "types": [
+    "realm",
+    "combat_group"
+   ],
+   "code_has": [
+    "war",
+    "raid",
+    "siege"
+   ]
+  }
+ },
+ "keep_finished": 6,
+ "_doc_adult_acts": "§1.1: акты близости и ухаживания; валидатор требует у каждого проверку возраста обеих сторон (age:adult или !age:child у себя и у цели).",
+ "adult_acts": [
+  "intimacy",
+  "kiss",
+  "flirt",
+  "propose_marriage",
+  "marry"
+ ]
+}

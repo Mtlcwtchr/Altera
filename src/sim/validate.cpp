@@ -9,6 +9,7 @@
 #include "sim/act_check.hpp"
 #include "sim/stats.hpp"
 #include "sim/culture.hpp"
+#include "sim/rites.hpp"
 #include "sim/craft/craft_validate.hpp"
 
 namespace lr::sim {
@@ -309,6 +310,7 @@ ValidationReport validate(const Content& c) {
     validateSpecies(c, r); // AL-114
     validateStats(c, r);   // LR-141
     validateCulture(c, r); // LR-155
+    validateRites(c, r);   // LR-171
     validateActChecks(c, r);
 
     // Needs / traits.
