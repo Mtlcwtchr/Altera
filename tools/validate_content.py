@@ -514,7 +514,7 @@ def _content_ids(L):
                     if isinstance(e, dict) and isinstance(e.get("id"), str): ids[kind].add(e["id"])
             except Exception: pass
     grab("knowledge.json", "knowledge", "skill"); grab("traits.json", "traits", "trait"); grab("needs.json", "needs", "need")
-    for sub in ("expansion", "cuisine", "resources", "alchemy"):
+    for sub in ("expansion", "cuisine", "resources", "alchemy", "regional"):
         grab(f"{sub}/knowledge.json", "knowledge", "skill"); grab(f"{sub}/traits.json", "traits", "trait"); grab(f"{sub}/needs.json", "needs", "need")
     p = ai / "expansion" / "attributes.json"
     if p.exists():
@@ -627,7 +627,7 @@ def check_templates(L):
     n = 0
     for fname, key in TEMPLATE_LISTS.items():
         lists = []
-        for p in [ai / fname] + [ai / sub / fname for sub in ("cuisine", "resources", "alchemy", "expansion")]:
+        for p in [ai / fname] + [ai / sub / fname for sub in ("cuisine", "resources", "alchemy", "regional", "expansion")]:
             if p.exists():
                 try: lists += [e for e in jload(p).get(key, []) if isinstance(e, dict)]
                 except Exception: pass

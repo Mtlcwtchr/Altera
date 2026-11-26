@@ -120,6 +120,7 @@ struct ObjectDef {
     bool shelter = false;              // a roof: needs.sheltered_mult applies nearby
     int perSettlement = 0;             // settlement objects shared by everyone
     bool ownSeed = false;              // placed by a random stream of its own (adding it leaves the rest of the world as it was)
+    std::vector<std::string> belts;    // LR-168: placed only on a map whose culture is of one of these belts (empty = any)
     bool placedLast = false;           // AL-91: a natural source placed after the rest of the world (its ids stay as they were)
     std::vector<std::string> seasons;  // empty = all year; out of season the stock is not gathered
 };

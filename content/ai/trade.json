@@ -99,7 +99,7 @@
   "trader": {
    "keep": 1.3, "taste": 0.25, "ignores_need": true, "buys_tags": [], "auto": 1,
    "pick_traits": ["unscrupulous", "curious", "sociable", "proud"],
-   "stock": {"coin": 40, "axe": 1, "needle": 2, "cloak": 1, "salt": 3, "candle": 3, "honey": 2, "carved_toy": 2, "moonstone": 1, "mithril": 1, "sulfur": 2, "quicksilver": 1, "dragon_blood": 1, "dragon_bone": 1, "troll_liver": 1}
+   "stock": {"coin": 40, "axe": 1, "needle": 2, "cloak": 1, "salt": 3, "candle": 3, "honey": 2, "carved_toy": 2, "moonstone": 1, "mithril": 1, "sulfur": 2, "quicksilver": 1, "dragon_blood": 1, "dragon_bone": 1, "troll_liver": 1, "frankincense": 1, "myrrh": 1, "mandrake": 1, "mistletoe": 1, "henbane": 1}
   },
   "tavernkeeper": {
    "keep": 1.2, "taste": 0.5, "ignores_need": true, "sells_tags": ["food", "drink"], "auto": 1,

@@ -359,6 +359,7 @@ add_library(lr_sim STATIC
         src/sim/dialogue_memory.cpp
         src/sim/dialogue_corpus.cpp
         src/sim/gear.cpp
+        src/sim/regional.cpp
         src/sim/validate.cpp
         src/sim/character.cpp
         src/sim/world.cpp
@@ -886,7 +887,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_stats.cpp tests/test_lr_sim_stamina.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
             tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_qa_al120.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
-            tests/test_lr_sim_gear.cpp tests/test_lr_sim_transport.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
+            tests/test_lr_sim_gear.cpp tests/test_lr_sim_regional.cpp tests/test_lr_sim_transport.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
             tests/test_lr_sim_consequences.cpp tests/test_lr_sim_dialogue_gen.cpp
             tests/test_lr_sim_dialogue_rules.cpp
             tests/test_lr_sim_rumor_noise.cpp tests/test_lr_sim_rumor_spread.cpp tests/test_lr_sim_dialogue_say.cpp

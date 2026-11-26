@@ -130,5 +130,9 @@
   "tough_hide": {"cover": ["head", "torso", "arm_l", "arm_r", "leg_l", "leg_r"], "pen": {"slash": 0.3, "thrust": 0.2}, "trans": {"slash": 0.9, "thrust": 0.92, "blunt": 0.9}, "stamina_pen": 0, "_doc": "LR-170: толстая шкура зверя"},
   "scales": {"cover": ["head", "torso", "arm_l", "arm_r", "leg_l", "leg_r"], "pen": {"slash": 0.6, "thrust": 0.4}, "trans": {"slash": 0.88, "thrust": 0.9, "blunt": 0.88}, "stamina_pen": 0, "gap": 0.1, "_doc": "LR-170: чешуя (гидра, змей, Горыныч)"},
   "stone_hide": {"cover": ["head", "torso", "arm_l", "arm_r", "leg_l", "leg_r"], "pen": {"slash": 1.0, "thrust": 0.95}, "trans": {"slash": 0.7, "thrust": 0.75, "blunt": 0.85}, "stamina_pen": 0, "gap": 0.04, "_doc": "LR-170: шкура немейского льва, клинок почти не берёт"},
-  "grave_wrap": {"cover": ["head", "torso", "arm_l", "arm_r", "leg_l", "leg_r"], "pen": {"slash": 0.25, "thrust": 0.15}, "trans": {"slash": 0.9, "thrust": 0.9, "blunt": 0.92}, "stamina_pen": 0, "_doc": "LR-170: бинты мумии, иссохшая плоть"}
+  "grave_wrap": {"cover": ["head", "torso", "arm_l", "arm_r", "leg_l", "leg_r"], "pen": {"slash": 0.25, "thrust": 0.15}, "trans": {"slash": 0.9, "thrust": 0.9, "blunt": 0.92}, "stamina_pen": 0, "_doc": "LR-170: бинты мумии, иссохшая плоть"},
+  "linen": {"cover": ["torso"], "pen": {"slash": 0.45, "thrust": 0.3}, "trans": {"slash": 0.88, "thrust": 0.9, "blunt": 0.85}, "stamina_pen": 0.4},
+  "bronze_plate": {"cover": ["torso"], "pen": {"slash": 0.85, "thrust": 0.75}, "trans": {"slash": 0.82, "thrust": 0.82, "blunt": 0.8}, "stamina_pen": 1.0, "gap": 0.15},
+  "greaves": {"cover": ["leg_l", "leg_r"], "pen": {"slash": 0.8, "thrust": 0.7}, "trans": {"slash": 0.85, "thrust": 0.85, "blunt": 0.8}, "stamina_pen": 0.4, "gap": 0.2},
+  "scale": {"cover": ["torso", "arm_l", "arm_r"], "pen": {"slash": 0.65, "thrust": 0.45}, "trans": {"slash": 0.9, "thrust": 0.9, "blunt": 0.85}, "stamina_pen": 0.8, "gap": 0.1}
 }
