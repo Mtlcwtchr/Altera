@@ -345,6 +345,7 @@ add_library(lr_sim STATIC
         src/sim/magic.cpp
         src/sim/magic_society.cpp
         src/sim/culture.cpp
+        src/sim/rites.cpp
         src/sim/species.cpp
         src/sim/stats.cpp
         src/sim/stamina.cpp
