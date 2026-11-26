@@ -214,6 +214,19 @@ std::unique_ptr<RitesRules> loadRules(const fs::path& dir) {
                 r->onCodes[k] = strs(v, "code_has");
             }
         }
+        for (const fs::path& fp : data::listPaths(dir / "religions")) {
+            const Json fj = data::readJson(fp.string());
+            const std::string id = fj.value("id", fp.stem().string());
+            auto& m = r->faithLiks[id];
+            if (fj.contains("liks") && fj["liks"].is_object()) {
+                for (const auto& [belt, v] : fj["liks"].items())
+                    for (const Json& x : v)
+                        if (x.is_string()) m[belt].insert(x.get<std::string>());
+            } else
+                for (const std::string& x : strs(fj, "liks")) m["*"].insert(x);
+            for (const Json& g : fj.value("deities", Json::array()))
+                if (g.is_object() && g.contains("id")) m["*"].insert(g["id"].get<std::string>());
+        }
         for (const fs::path& fpp : data::listPaths(dir / "rites")) {
             const std::string fp = fpp.string();
             const Json fj = data::readJson(fp);
@@ -413,13 +426,22 @@ bool takeItem(Character& c, const std::string& item) {
     return true;
 }
 
-std::string riteFaithOk(const Content& ct, const RiteDef& rd, const std::string& faith) {
+std::string riteFaithOk(const Content& ct, const RiteDef& rd, const std::string& faith, const std::string& belt = "") {
     if (std::find(rd.faiths.begin(), rd.faiths.end(), faith) != rd.faiths.end()) return faith;
-    const FaithDef* f = cultureRules(ct).faithDef(faith);
-    if (f)
-        for (const auto& d : f->deities)
-            if (std::find(rd.liks.begin(), rd.liks.end(), d.id) != rd.liks.end()) return faith;
+    const auto& fl = ritesRules(ct).faithLiks;
+    auto f = fl.find(faith);
+    if (f == fl.end()) return "";
+    for (const auto& [b, liks] : f->second) {
+        if (!belt.empty() && b != belt && b != "*") continue;
+        for (const auto& l : rd.liks)
+            if (liks.count(l)) return faith;
+    }
     return "";
+}
+
+std::string beltOf(const World& w, EntityId sid) {
+    const Json* cd = cultureData(w.content(), settlementCulture(w, sid));
+    return cd ? cd->value("belt", std::string()) : std::string();
 }
 
 bool cultureForbids(const World& w, EntityId sid, const RiteDef& rd) {
@@ -690,6 +712,7 @@ void finishRite(World& w, Json& rec) {
         for (const auto& m : d->memory) remember(w, *c, m, {leader}, "rite:" + d->id, 0.3);
         if (d->secret && !d->grades.empty()) {
             Json& g = st["grades"][std::to_string(id)];
+            if (!g.is_object()) g = Json::object();
             const int was = g.value(d->id, -1);
             const int now = std::min(static_cast<int>(d->grades.size()) - 1, was + 1);
             g[d->id] = now;
@@ -998,12 +1021,12 @@ PrayerAnswer offerPrayer(World& w, Prayer p) {
 }
 
 // --- rites ---------------------------------------------------------------------------------
-std::vector<const RiteDef*> ritesOfFaith(const Content& c, const std::string& faith) {
+std::vector<const RiteDef*> ritesOfFaith(const Content& c, const std::string& faith, const std::string& belt) {
     std::vector<const RiteDef*> out;
     const RitesRules& r = ritesRules(c);
     for (const auto& id : r.riteOrder) {
         const RiteDef& d = r.rites.at(id);
-        if (!riteFaithOk(c, d, faith).empty()) out.push_back(&d);
+        if (!riteFaithOk(c, d, faith, belt).empty()) out.push_back(&d);
     }
     return out;
 }
@@ -1063,7 +1086,7 @@ int riteGrade(const World& w, EntityId who, const std::string& rite) {
     const Json* st = stateC(w);
     if (!st || !st->contains("grades")) return -1;
     const std::string k = std::to_string(who);
-    if (!(*st)["grades"].contains(k)) return -1;
+    if (!(*st)["grades"].contains(k) || !(*st)["grades"][k].is_object()) return -1;
     return (*st)["grades"][k].value(rite, -1);
 }
 
@@ -1103,7 +1126,7 @@ void ritesDaily(World& w) {
         std::set<std::string> started;
         for (const auto& [faith, n] : faiths) {
             const FaithDef* f = cr.faithDef(faith);
-            for (const RiteDef* d : ritesOfFaith(w.content(), faith)) {
+            for (const RiteDef* d : ritesOfFaith(w.content(), faith, beltOf(w, sid))) {
                 if (started.count(d->id)) continue;
                 const bool household = d->who == "household" || d->who == "mourners";
                 if (!household && big >= r.maxPerDay) continue;
@@ -1277,6 +1300,17 @@ void validateRites(const Content& c, ValidationReport& rep) {
     }
     for (const auto& [k, a] : r.answers)
         if (!a.moodlet.empty() && !c.moodlets.count(a.moodlet)) rep.errors.push_back("prayers.answers." + k + ": unknown moodlet " + a.moodlet);
+    // the liks named by the rites are the pantheon's (content/pantheon/liks/*.json), when it is there
+    std::set<std::string> known;
+    for (const fs::path& fp : data::listPaths(fs::path(c.dir).parent_path() / "pantheon" / "liks")) {
+        const Json fj = data::readJson(fp.string());
+        for (const Json& l : fj.value("liks", Json::array()))
+            if (l.is_object() && l.contains("id")) known.insert(l["id"].get<std::string>());
+    }
+    if (!known.empty())
+        for (const auto& id : r.riteOrder)
+            for (const auto& l : r.rites.at(id).liks)
+                if (!known.count(l)) rep.errors.push_back("rites." + id + ": unknown lik " + l);
     static const std::set<std::string> who = {"faith", "settlement", "household", "initiates", "mourners"};
     static const std::set<std::string> leaders = {"clergy", "pious", "head"};
     static const std::set<std::string> afterWho = {"any", "intimate", "spouse_of_intimate", "leader"};

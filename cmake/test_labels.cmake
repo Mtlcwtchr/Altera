@@ -14,7 +14,8 @@ set(LR_SIM_SLOW_TESTS
         lr_sim_village_lives_over_two_months      # ~36 s (AL-39)
         lr_sim_realm_lives_three_years            # ~15 s (AL-85)
         lr_sim_ecology_holds_without_people       # AL-82, 3 years of beasts only
-        lr_sim_pantheon_worship_feeds_standing)   # LR-169, three weeks of worship
+        lr_sim_pantheon_worship_feeds_standing    # LR-169, three weeks of worship
+        lr_sim_rites_daily_schedules_by_calendar) # LR-171, twelve days of the rites calendar (~5 min)
 
 # Tests in the fast layer; any other test is labelled full.
 set(LR_FAST_TESTS lr_sim lr_combat lr_combat_golden)

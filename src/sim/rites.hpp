@@ -37,6 +37,7 @@
 
 #include <functional>
 #include <map>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -169,6 +170,8 @@ struct RitesRules {
     int maxPerDay = 2, eventDays = 2;
     double queuePriority = 0.9, droughtBelow = 0.25;
     std::map<std::string, std::vector<std::string>> onTypes, onCodes; // event -> chronicle types / code parts
+    // the liks a faith keeps by belt (religions/*.json "liks": {belt: [...], "*": [...]} or a list)
+    std::map<std::string, std::map<std::string, std::set<std::string>>> faithLiks;
     std::vector<std::string> errors;
 
     const AimDef* aim(const std::string& id) const;
@@ -187,8 +190,9 @@ double prayerWeight(const World& w, const Character& c, const std::string& act, 
                     const std::string& rite);
 
 // --- rites --------------------------------------------------------------------------------
-// The rites the faith keeps (by faith id or by the liks of its deities).
-std::vector<const RiteDef*> ritesOfFaith(const Content& c, const std::string& faith);
+// The rites the faith keeps: by faith id, or by the liks it reveres in the belt ("" = any
+// belt; the "*" liks always count).
+std::vector<const RiteDef*> ritesOfFaith(const Content& c, const std::string& faith, const std::string& belt = "");
 // Starts a rite in a settlement now (or at `at`); "" = ok, else a rejection code.
 std::string startRite(World& w, EntityId settlement, const std::string& rite, Tick at = -1, EntityId leader = kNone);
 // What the person is doing in a rite now (null when none): {rite, kind, step, fx, attire,

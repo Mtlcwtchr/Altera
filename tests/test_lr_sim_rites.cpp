@@ -208,7 +208,9 @@ TEST(lr_sim_rites_aim_fits_trouble) {
 }
 
 TEST(lr_sim_rites_fallback_deferred_come_true) {
+    HookGuard g;
     World w = realWorld();
+    setPrayerAnswerHook({}); // the fallback, not the pantheon
     Character* c = adultOf(w, firstSettlement(w));
     CHECK(c);
     int granted = 0, deferred = 0, silent = 0;
@@ -226,8 +228,9 @@ TEST(lr_sim_rites_fallback_deferred_come_true) {
     CHECK(granted > 0 && deferred > 0 && silent > 0);
     const Json* st = rs(w);
     CHECK(st && (*st)["deferred"].size() > 0);
-    w.run(kTicksPerDay * 6);
-    // the ones deferred by then came due (new prayers of the villagers may wait still)
+    // their day comes (moved to today, not waited for): the daily pass fulfils them
+    for (Json& d : w.moduleState("rites")["deferred"]) d["due"] = w.day();
+    ritesDaily(w);
     for (const Json& d : (*rs(w))["deferred"]) CHECK(d.value("due", 0) > w.day());
 }
 
@@ -279,11 +282,8 @@ TEST(lr_sim_rites_daily_schedules_by_calendar) {
     World w = realWorld();
     const EntityId sid = firstSettlement(w);
     for (Character* c : villagers(w, sid)) cmd(w, "set_faith", {{"id", c->id}, {"faith", "sun_oracle"}, {"piety", 0.6}});
-    if (!cultureRules(w.content()).faithDef("sun_oracle")) {
-        // the pantheon thread brings the new faiths: until then a dawn hymn of the old ones
-        for (Character* c : villagers(w, sid)) cmd(w, "set_faith", {{"id", c->id}, {"faith", "hearth_faith"}, {"piety", 0.6}});
-    }
-    // ten days: the every-N-days rites come
+    CHECK(cultureRules(w.content()).faithDef("sun_oracle"));
+    // twelve days: the every-N-days rites come (the dawn hymn every 5 days)
     std::set<std::string> held;
     for (int d = 0; d < 12; ++d) {
         w.run(kTicksPerDay);
@@ -322,9 +322,7 @@ TEST(lr_sim_rites_ecstatic_pairs_adults_consenting) {
     World w = realWorld();
     const EntityId sid = firstSettlement(w);
     auto ppl = villagers(w, sid);
-    for (Character* c : ppl) cmd(w, "set_faith", {{"id", c->id}, {"faith", "hearth_faith"}, {"piety", 0.7}});
-    // the temple feast needs a lik of love: give the faith's people a rite of the love group
-    // through the faith list (hearth_faith keeps the love rites)
+    for (Character* c : ppl) cmd(w, "set_faith", {{"id", c->id}, {"faith", "love_feasts"}, {"piety", 0.7}});
     // mutual liking among the adults: some pairs want each other, children get nothing
     std::vector<Character*> adults;
     for (Character* c : ppl)

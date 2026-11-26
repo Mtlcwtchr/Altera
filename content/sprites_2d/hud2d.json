@@ -763,6 +763,26 @@
  },
  "moodlets": [
   [
+   "rite_awe|rite_joy|rite_dread|ecstasy|initiated|mourned_together|dream_sign|fate_read",
+   "hud_shrine"
+  ],
+  [
+   "god_shield|battle_ready",
+   "hud_shield"
+  ],
+  [
+   "healed_by_god|forgiven|inspired",
+   "hud_sun"
+  ],
+  [
+   "jealous",
+   "hud_heartbreak"
+  ],
+  [
+   "overfed|craving_wine",
+   "hud_cup"
+  ],
+  [
    "holy_day|kept_custom",
    "hud_shrine"
   ],

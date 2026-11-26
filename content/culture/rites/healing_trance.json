@@ -3,12 +3,12 @@
  "group": "healing_trance",
  "liks": [
   "asclepius",
-  "imhotep",
   "eir",
   "dagda",
-  "shaman_healer"
+  "aruakh"
  ],
  "faiths": [
+  "healer_vows",
   "stone_ancestors",
   "many_spirits"
  ],
