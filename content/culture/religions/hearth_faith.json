@@ -1,0 +1,25 @@
+{
+ "id": "hearth_faith",
+ "_doc": "LR-155: Вера Семи Очагов — людская вера по умолчанию. Поля: kind (pantheon | ancestors | animism | spirits | cult | self), deities [{id, domain}] (имена faith.<id>.god.<god>.name), values (-1..1), rites {память: + набожности}, sins {память: − набожности}, holy_days [{id, day: день года 0..359}], burial (inter | burn | expose | entomb | sky | devour), clergy (кто служит: имя faith.clergy.<id>), sacred (типы объектов-святынь), magic {blessed, forbidden: аспекты}, zeal (рвение звать других 0..1), tolerance (терпимость 0..1), goals (сдвиг весов целей × набожность), drawn_by {память: шанс в день, что вера позовёт}.",
+ "kind": "pantheon",
+ "deities": [
+  {"id": "sun_father", "domain": "light"},
+  {"id": "field_mother", "domain": "life"},
+  {"id": "smith", "domain": "fire"},
+  {"id": "warden", "domain": "earth"},
+  {"id": "wanderer", "domain": "air"},
+  {"id": "judge", "domain": "water"},
+  {"id": "reaper", "domain": "death"}
+ ],
+ "values": {"kinship": 0.4, "piety": 0.5, "hospitality": 0.3, "order": 0.3, "tradition": 0.3},
+ "rites": {"prayed": 0.03, "rite": 0.06, "fasted": 0.04, "wedding": 0.05, "buried": 0.05, "helped": 0.01, "gave_food": 0.01},
+ "sins": {"stole": 0.05, "stole_food": 0.03, "lied": 0.02, "used_magic": 0.0, "necromancy": 0.2, "executed": 0.02, "insulted_someone": 0.01},
+ "holy_days": [{"id": "sowing", "day": 20}, {"id": "midsummer", "day": 135}, {"id": "harvest", "day": 200}, {"id": "long_night", "day": 315}],
+ "burial": "inter",
+ "clergy": "priest",
+ "sacred": ["shrine"],
+ "magic": {"blessed": ["light", "life"], "forbidden": ["death", "blood"]},
+ "zeal": 0.45,
+ "tolerance": 0.4,
+ "goals": {"pray": 0.1}
+}

@@ -72,5 +72,39 @@
   "dragon": 0.0
  },
  "welcome_other": 0.4,
+ "faith": "hearth_faith",
+ "values": {
+  "kinship": 0.4,
+  "honor": 0.3,
+  "piety": 0.4,
+  "hospitality": 0.3,
+  "craft": 0.2,
+  "order": 0.4,
+  "tradition": 0.3,
+  "freedom": 0.1
+ },
+ "traditions": [
+  "daily_prayer",
+  "hospitality",
+  "festive_gatherings",
+  "wedding_customs",
+  "rite_of_passage",
+  "storytelling",
+  "council_of_elders"
+ ],
+ "rites": {
+  "coming_of_age": "oath_at_shrine",
+  "marriage": "church_wedding",
+  "burial": "inter"
+ },
+ "food": {
+  "likes": [
+   "bread",
+   "ale",
+   "meat"
+  ],
+  "avoids": []
+ },
+ "desc": "culture.fantasy_european.desc",
  "_doc": "Людская культура по умолчанию: средневековые европейцы. names пусто = общий пул content/ai/names.json."
 }

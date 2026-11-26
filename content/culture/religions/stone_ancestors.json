@@ -1,0 +1,17 @@
+{
+ "id": "stone_ancestors",
+ "_doc": "LR-155: Камень Предков — гномы чтут предков и Горное Сердце, клятва священна, мёртвых замуровывают в скале.",
+ "kind": "ancestors",
+ "deities": [{"id": "mountain_heart", "domain": "earth"}, {"id": "first_smith", "domain": "fire"}, {"id": "ancestors", "domain": "life"}],
+ "values": {"kinship": 0.5, "honor": 0.6, "craft": 0.6, "tradition": 0.5, "order": 0.3},
+ "rites": {"rite": 0.06, "buried": 0.07, "oath": 0.05, "made_tool": 0.01, "prayed": 0.02},
+ "sins": {"lied": 0.05, "stole": 0.06, "disowned": 0.05, "necromancy": 0.2, "caught_lying": 0.05},
+ "holy_days": [{"id": "deep_fire", "day": 60}, {"id": "ancestor_night", "day": 300}],
+ "burial": "entomb",
+ "clergy": "runekeeper",
+ "sacred": ["shrine", "forge"],
+ "magic": {"blessed": ["earth", "fire"], "forbidden": ["death"]},
+ "zeal": 0.15,
+ "tolerance": 0.55,
+ "goals": {"pray": 0.06, "make_axe": 0.04}
+}

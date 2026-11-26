@@ -58,5 +58,38 @@
   "dragon": 0.0
  },
  "welcome_other": 0.25,
+ "faith": "green_covenant",
+ "values": {
+  "nature": 0.7,
+  "learning": 0.5,
+  "freedom": 0.3,
+  "tradition": 0.4,
+  "craft": 0.3,
+  "martial": -0.1,
+  "wealth": -0.2
+ },
+ "traditions": [
+  "festive_gatherings",
+  "storytelling",
+  "omen_reading",
+  "hunt_honour",
+  "daily_prayer"
+ ],
+ "rites": {
+  "coming_of_age": "naming_under_tree",
+  "marriage": "moon_vow",
+  "burial": "expose"
+ },
+ "food": {
+  "likes": [
+   "berries",
+   "vegetables",
+   "honey"
+  ],
+  "avoids": [
+   "meat"
+  ]
+ },
+ "desc": "culture.sylvan.desc",
  "_doc": "Эльфы: лесные рощи, певучая речь, вырубка леса осуждается."
 }

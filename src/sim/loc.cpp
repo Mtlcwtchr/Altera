@@ -623,6 +623,12 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref("aspect", s);
             } else if (k == "how" || k == "mind" || k == "class") { // AL-118: magic.class.<id>
                 a[k] = ref((std::string("magic.") + k).c_str(), s);
+            } else if (k == "faith" || k == "from_faith") { // LR-155
+                a[k] = ref("faith", s);
+            } else if (k == "culture" || k == "from_culture") {
+                a[k] = ref("culture", s);
+            } else if (k == "trad") {
+                a[k] = ref("culture.trad", s);
             } else if (k == "why" || k == "for") {
                 a[k] = reasonText(loc, lang, s);
             } else {

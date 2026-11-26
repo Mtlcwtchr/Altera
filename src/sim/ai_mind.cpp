@@ -21,6 +21,7 @@
 #include "sim/worldmap.hpp"
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
+#include "sim/culture.hpp"
 #include "sim/wounds.hpp"
 #include "sim/firefight.hpp"
 #include "sim/world_fields.hpp"
@@ -704,6 +705,7 @@ void installAi(World& w) {
             realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
             magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
             societyDaily(world); // AL-118: laws and witch trials, guilds, magic at work
+            cultureDaily(world); // LR-155: bonds to culture, piety and conversion, the settlements' traditions
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
@@ -739,6 +741,7 @@ void installAi(World& w) {
     installFields(w);
     installMagic(w);
     installMagicSociety(w);
+    installCulture(w);
 }
 
 } // namespace lr::sim

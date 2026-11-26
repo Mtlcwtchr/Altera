@@ -56,5 +56,37 @@
   "dragon": 0.0
  },
  "welcome_other": 0.3,
+ "faith": "stone_ancestors",
+ "values": {
+  "kinship": 0.5,
+  "honor": 0.6,
+  "craft": 0.7,
+  "tradition": 0.5,
+  "order": 0.4,
+  "wealth": 0.3,
+  "nature": -0.2
+ },
+ "traditions": [
+  "ancestor_rites",
+  "oath_keeping",
+  "craft_pride",
+  "rite_of_passage",
+  "council_of_elders",
+  "storytelling"
+ ],
+ "rites": {
+  "coming_of_age": "first_forging",
+  "marriage": "oath_binding",
+  "burial": "entomb"
+ },
+ "food": {
+  "likes": [
+   "ale",
+   "meat",
+   "bread"
+  ],
+  "avoids": []
+ },
+ "desc": "culture.dwarven.desc",
  "_doc": "Гномы: горные чертоги, прямая речь, клятва свята."
 }

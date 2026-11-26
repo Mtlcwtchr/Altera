@@ -338,6 +338,7 @@ add_library(lr_sim STATIC
         src/sim/village_life.cpp
         src/sim/magic.cpp
         src/sim/magic_society.cpp
+        src/sim/culture.cpp
         src/sim/species.cpp
         src/sim/stats.cpp
         src/sim/act_check.cpp
@@ -431,6 +432,7 @@ add_library(lr_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp s
 target_include_directories(lr_client2d PUBLIC src)
 target_link_libraries(lr_client2d PUBLIC lr_sim PRIVATE asr_warnings)
 target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
+target_sources(lr_client2d PRIVATE src/client2d/culture2d.cpp) # LR-155: culture and faith, inspect
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
@@ -882,6 +884,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_realm.cpp
             tests/test_lr_sim_magic.cpp
             tests/test_lr_sim_magic_society.cpp
+            tests/test_lr_sim_culture.cpp
             tests/test_lr_sim_ecology.cpp
             tests/test_lr_sim_social.cpp
             tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp
@@ -894,6 +897,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
             tests/test_lr_sim_relief_firefight.cpp)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_culture.cpp) # LR-155
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112

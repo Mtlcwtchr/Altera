@@ -253,6 +253,18 @@
    "ttl": 144
   },
   {
+   "id": "kept_custom",
+   "value": 0.05,
+   "ttl": 144,
+   "_doc": "LR-155: соблюл закреплённый обычай своего поселения (content/culture/traditions.json moodlet)"
+  },
+  {
+   "id": "holy_day",
+   "value": 0.08,
+   "ttl": 144,
+   "_doc": "LR-155: праздник своей веры (religions/*.json holy_days)"
+  },
+  {
    "id": "kissed",
    "value": 0.12,
    "ttl": 36

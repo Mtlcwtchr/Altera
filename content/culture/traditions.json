@@ -1,0 +1,20 @@
+{
+ "_doc": "LR-155: обычаи. practice — типы памяти (memory:*), которые считаются его соблюдением; goals — сдвиг весов целей Utility у жителей поселения, где обычай держится (× сила обычая); values — сдвиг ценностей поселения (× сила); moodlet — настроение тому, кто соблюдает закреплённый обычай. Имена: culture.trad.<id>.name / .desc. kind: rite | custom | festival | law | craft.",
+ "traditions": [
+  {"id": "daily_prayer", "kind": "rite", "practice": ["prayed", "rite"], "goals": {"pray": 0.12}, "values": {"piety": 0.2}, "moodlet": "kept_custom"},
+  {"id": "ancestor_rites", "kind": "rite", "practice": ["rite", "buried"], "goals": {"pray": 0.06}, "values": {"kinship": 0.2, "tradition": 0.2}, "moodlet": "kept_custom"},
+  {"id": "rite_of_passage", "kind": "rite", "practice": ["rite", "oath"], "values": {"tradition": 0.15, "honor": 0.1}},
+  {"id": "fasting_days", "kind": "rite", "practice": ["fasted"], "values": {"piety": 0.15}, "moodlet": "kept_custom"},
+  {"id": "hospitality", "kind": "custom", "practice": ["gave_food", "was_given_food", "helped"], "goals": {"share_food": 0.1, "help_neighbours": 0.06}, "values": {"hospitality": 0.3}, "moodlet": "kept_custom"},
+  {"id": "festive_gatherings", "kind": "festival", "practice": ["danced", "sang_together", "played_game", "won_contest"], "goals": {"have_fun": 0.08, "socialize": 0.05}, "values": {"kinship": 0.1}},
+  {"id": "storytelling", "kind": "custom", "practice": ["told_stories", "gossiped", "good_chat"], "goals": {"share_news": 0.08}, "values": {"learning": 0.1, "tradition": 0.1}},
+  {"id": "oath_keeping", "kind": "law", "practice": ["oath", "sworn_friend"], "values": {"honor": 0.3, "order": 0.1}, "moodlet": "kept_custom"},
+  {"id": "wedding_customs", "kind": "rite", "practice": ["wedding", "proposed"], "values": {"kinship": 0.2}},
+  {"id": "blood_feud", "kind": "law", "practice": ["duel", "brawl", "attacked"], "values": {"martial": 0.3, "honor": 0.15, "order": -0.2}},
+  {"id": "hunt_honour", "kind": "custom", "practice": ["good_hunt"], "goals": {"stock_food": 0.05}, "values": {"martial": 0.1, "nature": 0.15}},
+  {"id": "craft_pride", "kind": "craft", "practice": ["made_tool", "made_clothes", "built_home"], "goals": {"make_axe": 0.05, "make_clothes": 0.05, "build": 0.04}, "values": {"craft": 0.3}, "moodlet": "kept_custom"},
+  {"id": "omen_reading", "kind": "rite", "practice": ["read_omen"], "values": {"piety": 0.1, "nature": 0.1}},
+  {"id": "council_of_elders", "kind": "law", "practice": ["judged", "heir_named"], "values": {"order": 0.25, "tradition": 0.15}},
+  {"id": "raiding", "kind": "custom", "practice": ["raid", "stole"], "values": {"martial": 0.25, "wealth": 0.15, "order": -0.25}}
+ ]
+}

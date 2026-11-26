@@ -1,0 +1,17 @@
+{
+ "id": "moon_mother",
+ "_doc": "LR-155: Мать-Луна — тролли поклоняются ночи, что не обращает их в камень; мёртвые сами становятся камнем.",
+ "kind": "animism",
+ "deities": [{"id": "moon_mother", "domain": "water"}, {"id": "stone_sleep", "domain": "earth"}],
+ "values": {"nature": 0.4, "freedom": 0.4, "kinship": 0.3, "learning": -0.2},
+ "rites": {"prayed": 0.03, "rite": 0.05},
+ "sins": {"slept_rough": 0.0},
+ "holy_days": [{"id": "full_moon", "day": 15}, {"id": "longest_night", "day": 315}],
+ "burial": "entomb",
+ "clergy": "elder",
+ "sacred": ["shrine"],
+ "magic": {"blessed": ["water", "earth"], "forbidden": ["light"]},
+ "zeal": 0.05,
+ "tolerance": 0.7,
+ "goals": {"pray": 0.04}
+}

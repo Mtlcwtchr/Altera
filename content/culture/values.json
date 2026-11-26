@@ -1,0 +1,4 @@
+{
+ "_doc": "LR-155: ценности культур и вер (-1..1). Имена: culture.value.<id>.name / .desc. Порядок = порядок в окне.",
+ "values": ["kinship", "honor", "piety", "hospitality", "martial", "craft", "learning", "wealth", "freedom", "order", "nature", "tradition"]
+}
