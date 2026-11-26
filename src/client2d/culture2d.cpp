@@ -5,6 +5,7 @@
 #include <set>
 
 #include "sim/culture.hpp"
+#include "sim/pantheon.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/species.hpp"
 
@@ -131,8 +132,16 @@ Json faithCard(const World& w, const ViewText& t, const CultureRules& r, const s
     j["kindName"] = t.name("faith.kind", f->kind);
     j["heresy"] = f->heresy;
     Json gods = Json::array();
-    for (const auto& g : f->deities)
+    const PantheonRules& pr = pantheonRules(w.content());
+    for (const auto& g : f->deities) {
+        // LR-169: a lik of the pantheon: its own name, its Power as the domain, its belt
+        if (const LikDef* l = pr.lik(g.id)) {
+            gods.push_back({{"id", g.id}, {"name", textOr(t, "god." + g.id + ".name", g.id)}, {"domain", l->power}, {"domainName", t.name("power", l->power)},
+                            {"belt", l->belt}, {"beltName", t.name("belt", l->belt)}});
+            continue;
+        }
         gods.push_back({{"id", g.id}, {"name", textOr(t, "faith." + id + ".god." + g.id + ".name", g.id)}, {"domain", g.domain}, {"domainName", t.name("aspect", g.domain)}});
+    }
     j["deities"] = gods;
     j["values"] = valuesJson(t, r, f->values);
     auto deeds = [&](const std::map<std::string, double>& m) {

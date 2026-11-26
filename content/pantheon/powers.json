@@ -1,0 +1,323 @@
+{
+ "_doc": "LR-169: Силы — вечные области мира (сеттинг v0.3 §4). aspects: аспекты магии (content/magic/aspects.json); aims: о чём ей можно молиться (цели молитвы rites.hpp); laws: вселенские законы, которые она стережёт (content/laws); values: ценности (content/culture/values.json), которые ей угодны. Имена power.<id>.name/.desc.",
+ "powers": [
+  {
+   "id": "sky_storm",
+   "aspects": [
+    "air",
+    "weather"
+   ],
+   "aims": [
+    "rain",
+    "protect",
+    "victory"
+   ],
+   "laws": [
+    "hospitality",
+    "oath",
+    "suppliant"
+   ],
+   "values": {
+    "order": 0.3,
+    "honor": 0.3,
+    "hospitality": 0.3
+   }
+  },
+  {
+   "id": "sea",
+   "aspects": [
+    "water"
+   ],
+   "aims": [
+    "safe_sea",
+    "rain"
+   ],
+   "laws": [
+    "oath"
+   ],
+   "values": {
+    "freedom": 0.3,
+    "wealth": 0.2
+   }
+  },
+  {
+   "id": "underworld",
+   "aspects": [
+    "death",
+    "earth"
+   ],
+   "aims": [
+    "rest_dead",
+    "revenge"
+   ],
+   "laws": [
+    "rest_dead"
+   ],
+   "values": {
+    "kinship": 0.3,
+    "tradition": 0.4
+   }
+  },
+  {
+   "id": "harvest",
+   "aspects": [
+    "plants",
+    "life"
+   ],
+   "aims": [
+    "harvest",
+    "rain",
+    "child"
+   ],
+   "laws": [
+    "mystery"
+   ],
+   "values": {
+    "nature": 0.3,
+    "kinship": 0.2,
+    "tradition": 0.2
+   }
+  },
+  {
+   "id": "hearth",
+   "aspects": [
+    "fire",
+    "life"
+   ],
+   "aims": [
+    "protect",
+    "child",
+    "forgive"
+   ],
+   "laws": [
+    "hospitality",
+    "suppliant"
+   ],
+   "values": {
+    "kinship": 0.4,
+    "hospitality": 0.4
+   }
+  },
+  {
+   "id": "forge",
+   "aspects": [
+    "fire",
+    "metal"
+   ],
+   "aims": [
+    "victory",
+    "protect"
+   ],
+   "laws": [
+    "oath"
+   ],
+   "values": {
+    "craft": 0.6
+   }
+  },
+  {
+   "id": "knowledge",
+   "aspects": [
+    "mind",
+    "time"
+   ],
+   "aims": [
+    "wisdom"
+   ],
+   "laws": [
+    "mystery",
+    "oath"
+   ],
+   "values": {
+    "learning": 0.6
+   }
+  },
+  {
+   "id": "sun",
+   "aspects": [
+    "light",
+    "life"
+   ],
+   "aims": [
+    "heal",
+    "harvest",
+    "wisdom"
+   ],
+   "laws": [
+    "oath"
+   ],
+   "values": {
+    "order": 0.3,
+    "learning": 0.2
+   }
+  },
+  {
+   "id": "moon_hunt",
+   "aspects": [
+    "beasts",
+    "shadow"
+   ],
+   "aims": [
+    "good_hunt",
+    "child"
+   ],
+   "laws": [
+    "inviolable_will"
+   ],
+   "values": {
+    "nature": 0.4,
+    "freedom": 0.3
+   }
+  },
+  {
+   "id": "road",
+   "aspects": [
+    "space",
+    "mind"
+   ],
+   "aims": [
+    "safe_road",
+    "safe_sea"
+   ],
+   "laws": [
+    "hospitality",
+    "oath"
+   ],
+   "values": {
+    "freedom": 0.3,
+    "wealth": 0.3
+   }
+  },
+  {
+   "id": "wine",
+   "aspects": [
+    "mind",
+    "plants"
+   ],
+   "aims": [
+    "love",
+    "forgive"
+   ],
+   "laws": [
+    "mystery",
+    "inviolable_will"
+   ],
+   "values": {
+    "freedom": 0.4
+   }
+  },
+  {
+   "id": "war",
+   "aspects": [
+    "blood",
+    "fire"
+   ],
+   "aims": [
+    "victory",
+    "revenge"
+   ],
+   "laws": [
+    "oath"
+   ],
+   "values": {
+    "martial": 0.6,
+    "honor": 0.2
+   }
+  },
+  {
+   "id": "love",
+   "aspects": [
+    "mind",
+    "life"
+   ],
+   "aims": [
+    "love",
+    "child"
+   ],
+   "laws": [
+    "inviolable_will"
+   ],
+   "values": {
+    "freedom": 0.2,
+    "kinship": 0.2
+   }
+  },
+  {
+   "id": "fate",
+   "aspects": [
+    "time",
+    "bond"
+   ],
+   "aims": [
+    "wisdom",
+    "forgive"
+   ],
+   "laws": [
+    "oath",
+    "exchange",
+    "kin_blood"
+   ],
+   "values": {
+    "order": 0.4,
+    "tradition": 0.3
+   }
+  },
+  {
+   "id": "wild",
+   "aspects": [
+    "beasts",
+    "plants"
+   ],
+   "aims": [
+    "good_hunt",
+    "harvest"
+   ],
+   "laws": [
+    "hospitality"
+   ],
+   "values": {
+    "nature": 0.6,
+    "freedom": 0.3
+   }
+  },
+  {
+   "id": "healing",
+   "aspects": [
+    "life",
+    "poison"
+   ],
+   "aims": [
+    "heal",
+    "child"
+   ],
+   "laws": [
+    "inviolable_will"
+   ],
+   "values": {
+    "learning": 0.2,
+    "kinship": 0.2
+   }
+  },
+  {
+   "id": "vengeance",
+   "aspects": [
+    "blood",
+    "bond"
+   ],
+   "aims": [
+    "revenge"
+   ],
+   "laws": [
+    "kin_blood",
+    "inviolable_will",
+    "exchange",
+    "hospitality",
+    "suppliant"
+   ],
+   "values": {
+    "honor": 0.3,
+    "kinship": 0.3
+   }
+  }
+ ]
+}

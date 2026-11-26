@@ -1,17 +1,1 @@
-{
- "id": "many_spirits",
- "_doc": "LR-155: Тысяча Духов — гоблинские и огрские шаманы задабривают духов страхом и подношениями; мёртвых съедают духи (и не только).",
- "kind": "spirits",
- "deities": [{"id": "hungry_one", "domain": "blood"}, {"id": "mud_mother", "domain": "earth"}, {"id": "trickster", "domain": "air"}],
- "values": {"wealth": 0.4, "freedom": 0.5, "kinship": 0.2, "order": -0.3, "tradition": 0.2},
- "rites": {"rite": 0.05, "read_omen": 0.04, "prayed": 0.02, "stole": 0.01},
- "sins": {"refused": 0.0, "surrendered": 0.02},
- "holy_days": [{"id": "dark_moon", "day": 45}, {"id": "feast_of_bones", "day": 250}],
- "burial": "devour",
- "clergy": "shaman",
- "sacred": ["shrine"],
- "magic": {"blessed": ["blood", "earth", "death"], "forbidden": []},
- "zeal": 0.2,
- "tolerance": 0.5,
- "goals": {"pray": 0.04}
-}
+{"id": "many_spirits", "_doc": "LR-155: Тысяча Духов — гоблинские и огрские шаманы задабривают духов страхом и подношениями; мёртвых съедают духи (и не только). LR-169: power — главная Сила веры, liks — лики по поясам (пояс культуры верующего; \"*\" — где пояса нет), первый лик — покровитель. deities для окна строятся из liks.", "power": "wild", "liks": {"mediterranean": ["pan", "artemis"], "forest": ["leshy", "bereginya", "vodyanoy", "mokosh"], "steppe": ["yer_sub", "lake_spirit"], "*": ["leshy", "pan"]}, "kind": "spirits", "values": {"wealth": 0.4, "freedom": 0.5, "kinship": 0.2, "order": -0.3, "tradition": 0.2}, "rites": {"rite": 0.05, "read_omen": 0.04, "prayed": 0.02, "stole": 0.01}, "sins": {"refused": 0.0, "surrendered": 0.02}, "holy_days": [{"id": "dark_moon", "day": 45}, {"id": "feast_of_bones", "day": 250}], "burial": "devour", "clergy": "shaman", "sacred": ["shrine"], "magic": {"blessed": ["blood", "earth", "death"], "forbidden": []}, "zeal": 0.2, "tolerance": 0.5, "goals": {"pray": 0.04}}

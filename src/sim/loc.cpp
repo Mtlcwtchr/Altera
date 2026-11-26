@@ -7,6 +7,7 @@
 
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
+#include "sim/pantheon.hpp"
 
 #include <algorithm>
 #include <cctype>
@@ -491,6 +492,7 @@ std::vector<std::string> requiredLocKeys(const Content& c) {
     for (const auto& vk : villageLifeLocKeys()) k.insert(vk); // AL-39
     if (realmLoaded(c))
         for (const auto& rk : realmLocKeys()) k.insert(rk); // AL-85
+    for (const auto& pk : pantheonLocKeys(c)) k.insert(pk); // LR-169
     if (c.craft.loaded)
         for (const auto& ck : craft::craftLocKeys(c.craft)) k.insert(ck);
     return {k.begin(), k.end()};
@@ -627,6 +629,16 @@ Json locArgs(const Loc& loc, const std::string& lang, const World& w, const Json
                 a[k] = ref("faith", s);
             } else if (k == "culture" || k == "from_culture") {
                 a[k] = ref("culture", s);
+            } else if (k == "god" || k == "god2" || k == "god_to") { // LR-169
+                a[k] = ref("god", s);
+            } else if (k == "law") {
+                a[k] = ref("law", s);
+            } else if (k == "aim") {
+                a[k] = ref("pantheon.aim", s);
+            } else if (k == "refusal") {
+                a[k] = ref("pantheon.refuse", s);
+            } else if (k == "penalty") {
+                a[k] = ref("pantheon.penalty", s);
             } else if (k == "trad") {
                 a[k] = ref("culture.trad", s);
             } else if (k == "why" || k == "for") {

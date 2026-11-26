@@ -345,6 +345,7 @@ add_library(lr_sim STATIC
         src/sim/magic.cpp
         src/sim/magic_society.cpp
         src/sim/culture.cpp
+        src/sim/pantheon.cpp
         src/sim/species.cpp
         src/sim/stats.cpp
         src/sim/stamina.cpp
@@ -895,6 +896,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_magic.cpp
             tests/test_lr_sim_magic_society.cpp
             tests/test_lr_sim_culture.cpp
+            tests/test_lr_sim_pantheon.cpp
             tests/test_lr_sim_ecology.cpp
             tests/test_lr_sim_social.cpp
             tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp

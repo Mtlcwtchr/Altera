@@ -1,0 +1,375 @@
+{
+ "_doc": "LR-169: лики Сил пояса nile (сеттинг v0.3 §4.2). Лик — отдельный бог-персонаж: power — его Сила, also — доп. Силы (их области тоже его), character 0..1 (wrath гнев, mercy милость, pride гордость, jealousy ревность, generosity щедрость, cunning хитрость, aloof отстранённость), loves/hates — типы памяти дел смертных (растят/роняют благоволение), wants — любимые приношения (id для обрядов), epithets — эпитеты (god.<lik>.epithet.<id>.name), rivals/allies — соперники и союзники, phase — 1 стартовые, 2 добавочные. Имена god.<id>.name.",
+ "belt": "nile",
+ "liks": [
+  {
+   "id": "ra",
+   "power": "sun",
+   "also": [],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.4,
+    "pride": 0.9,
+    "jealousy": 0.5,
+    "generosity": 0.6,
+    "cunning": 0.3,
+    "aloof": 0.5
+   },
+   "loves": [
+    "prayed",
+    "sang_together",
+    "rite"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "incense",
+    "bread",
+    "beer"
+   ],
+   "epithets": [
+    "horakhty"
+   ],
+   "rivals": [],
+   "allies": [
+    "maat",
+    "thoth"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "thoth",
+   "power": "knowledge",
+   "also": [
+    "road"
+   ],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.6,
+    "pride": 0.5,
+    "jealousy": 0.2,
+    "generosity": 0.5,
+    "cunning": 0.7,
+    "aloof": 0.5
+   },
+   "loves": [
+    "told_stories",
+    "read_omen",
+    "judged"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "ibis",
+    "papyrus"
+   ],
+   "epithets": [
+    "scribe"
+   ],
+   "rivals": [],
+   "allies": [
+    "ra",
+    "maat"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "osiris",
+   "power": "underworld",
+   "also": [
+    "wine",
+    "harvest"
+   ],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.7,
+    "pride": 0.6,
+    "jealousy": 0.3,
+    "generosity": 0.6,
+    "cunning": 0.2,
+    "aloof": 0.5
+   },
+   "loves": [
+    "buried",
+    "rite"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [
+    "grain_figure",
+    "beer"
+   ],
+   "epithets": [
+    "wennefer"
+   ],
+   "rivals": [],
+   "allies": [
+    "isis"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "isis",
+   "power": "harvest",
+   "also": [
+    "healing"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.8,
+    "pride": 0.6,
+    "jealousy": 0.4,
+    "generosity": 0.7,
+    "cunning": 0.7,
+    "aloof": 0.3
+   },
+   "loves": [
+    "prayed",
+    "helped",
+    "rite"
+   ],
+   "hates": [],
+   "wants": [
+    "milk",
+    "sistrum"
+   ],
+   "epithets": [
+    "great_magic"
+   ],
+   "rivals": [],
+   "allies": [
+    "osiris"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "anubis",
+   "power": "underworld",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.5,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.4,
+    "cunning": 0.3,
+    "aloof": 0.6
+   },
+   "loves": [
+    "buried"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [
+    "linen",
+    "resin"
+   ],
+   "epithets": [
+    "embalmer"
+   ],
+   "rivals": [],
+   "allies": [
+    "osiris"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "maat",
+   "power": "fate",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.4,
+    "pride": 0.3,
+    "jealousy": 0.1,
+    "generosity": 0.4,
+    "cunning": 0.2,
+    "aloof": 0.8
+   },
+   "loves": [
+    "oath",
+    "judged"
+   ],
+   "hates": [
+    "lied",
+    "stole"
+   ],
+   "wants": [
+    "feather"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "ra"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "hathor",
+   "power": "love",
+   "also": [
+    "wine"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.7,
+    "pride": 0.5,
+    "jealousy": 0.4,
+    "generosity": 0.8,
+    "cunning": 0.3,
+    "aloof": 0.3
+   },
+   "loves": [
+    "danced",
+    "sang_together",
+    "wedding"
+   ],
+   "hates": [],
+   "wants": [
+    "mirror",
+    "beer"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "ptah",
+   "power": "forge",
+   "also": [],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.5,
+    "pride": 0.5,
+    "jealousy": 0.2,
+    "generosity": 0.5,
+    "cunning": 0.4,
+    "aloof": 0.6
+   },
+   "loves": [
+    "made_tool"
+   ],
+   "hates": [],
+   "wants": [
+    "statue"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "nun",
+   "power": "sea",
+   "also": [],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.3,
+    "pride": 0.3,
+    "jealousy": 0.1,
+    "generosity": 0.3,
+    "cunning": 0.1,
+    "aloof": 0.9
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "water_jar"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "sekhmet",
+   "power": "war",
+   "also": [
+    "healing"
+   ],
+   "character": {
+    "wrath": 0.9,
+    "mercy": 0.3,
+    "pride": 0.6,
+    "jealousy": 0.4,
+    "generosity": 0.3,
+    "cunning": 0.2,
+    "aloof": 0.4
+   },
+   "loves": [
+    "duel",
+    "rite"
+   ],
+   "hates": [
+    "surrendered"
+   ],
+   "wants": [
+    "red_beer"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "ra"
+   ],
+   "phase": 2
+  },
+  {
+   "id": "bastet",
+   "power": "moon_hunt",
+   "also": [
+    "hearth"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.6,
+    "pride": 0.5,
+    "jealousy": 0.5,
+    "generosity": 0.6,
+    "cunning": 0.6,
+    "aloof": 0.5
+   },
+   "loves": [
+    "danced",
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "cat_figure"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "ammit",
+   "power": "vengeance",
+   "also": [],
+   "character": {
+    "wrath": 0.9,
+    "mercy": 0.0,
+    "pride": 0.2,
+    "jealousy": 0.1,
+    "generosity": 0.0,
+    "cunning": 0.1,
+    "aloof": 0.8
+   },
+   "loves": [],
+   "hates": [
+    "lied"
+   ],
+   "wants": [],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  }
+ ]
+}
