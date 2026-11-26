@@ -1,0 +1,149 @@
+{
+ "id": "north_folk",
+ "species": "northman",
+ "belt": "north",
+ "names": {
+  "m": [
+   "Ragnar",
+   "Sigurd",
+   "Bjorn",
+   "Halfdan",
+   "Eirik",
+   "Thorvald",
+   "Ivar",
+   "Gunnar",
+   "Ulf",
+   "Leif",
+   "Harald",
+   "Orm"
+  ],
+  "f": [
+   "Gudrun",
+   "Sigrid",
+   "Astrid",
+   "Ragnhild",
+   "Thora",
+   "Helga",
+   "Freydis",
+   "Ingrid",
+   "Brynhild",
+   "Solveig",
+   "Aslaug",
+   "Gunnhild"
+  ]
+ },
+ "speech": "blunt",
+ "build_style": "norse",
+ "teach_aspects": [
+  "fire",
+  "earth",
+  "air",
+  "water"
+ ],
+ "forbid_aspects": [
+  "life"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "suspect",
+  "oathbreaking": "crime",
+  "raiding": "honored"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "allowed"
+ },
+ "peoples": {
+  "village": {
+   "northman": 0.88,
+   "dwarf": 0.06,
+   "woodfolk": 0.03,
+   "alv": 0.03
+  },
+  "town": {
+   "northman": 0.85,
+   "dwarf": 0.08,
+   "woodfolk": 0.04,
+   "alv": 0.03
+  },
+  "keep": {
+   "northman": 0.95,
+   "dwarf": 0.05
+  },
+  "bandit_camp": {
+   "northman": 0.8,
+   "half_orc": 0.1,
+   "ogre": 0.1
+  },
+  "default": {
+   "northman": 0.9,
+   "dwarf": 0.05,
+   "alv": 0.05
+  }
+ },
+ "welcome": {
+  "human": 0.7,
+  "northman": 1.0,
+  "dwarf": 0.75,
+  "alv": 0.75,
+  "woodfolk": 0.7,
+  "elf": 0.5,
+  "hellene": 0.5,
+  "ogre": 0.15,
+  "troll": 0.05,
+  "dragon": 0.0
+ },
+ "welcome_other": 0.4,
+ "faith": "sky_blood",
+ "values": {
+  "honor": 0.6,
+  "martial": 0.5,
+  "kinship": 0.5,
+  "freedom": 0.4,
+  "tradition": 0.3,
+  "hospitality": 0.3
+ },
+ "traditions": [
+  "thing_assembly",
+  "oath_keeping",
+  "blood_feud",
+  "raiding",
+  "storytelling",
+  "ancestor_rites",
+  "festive_gatherings"
+ ],
+ "rites": {
+  "coming_of_age": "first_raid",
+  "marriage": "oath_binding",
+  "burial": "ship_pyre"
+ },
+ "food": {
+  "likes": [
+   "mead",
+   "ale",
+   "salted_fish",
+   "dried_meat",
+   "smoked_fish",
+   "cheese"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Hladir",
+  "Uppsala",
+  "Birka",
+  "Kaupang",
+  "Hedeby",
+  "Trondheim",
+  "Vik",
+  "Lejre",
+  "Sigtuna"
+ ],
+ "_doc": "LR-166: северяне фьордов: длинные дома, тинг, сага и руны, набеги на кораблях; клятва и кровная месть. Мёртвых провожают в ладье-костре.",
+ "desc": "culture.north_folk.desc"
+}

@@ -1,0 +1,107 @@
+{
+ "id": "alv_hall",
+ "species": "alv",
+ "belt": "north",
+ "names": {
+  "m": [
+   "Volund",
+   "Slagfid",
+   "Egil",
+   "Dain",
+   "Ljosvald",
+   "Glitnir"
+  ],
+  "f": [
+   "Alvhild",
+   "Hervor",
+   "Ljosa",
+   "Sol",
+   "Svanhvit",
+   "Alrun"
+  ]
+ },
+ "speech": "ornate",
+ "build_style": "norse",
+ "teach_aspects": [
+  "light",
+  "air",
+  "fire",
+  "life"
+ ],
+ "forbid_aspects": [
+  "death",
+  "shadow"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "allowed",
+  "oathbreaking": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "alv": 0.9,
+   "northman": 0.07,
+   "half_elf": 0.03
+  }
+ },
+ "welcome": {
+  "alv": 1.0,
+  "elf": 0.9,
+  "northman": 0.6,
+  "human": 0.5,
+  "dwarf": 0.35,
+  "troll": 0.0,
+  "ogre": 0.05
+ },
+ "welcome_other": 0.3,
+ "faith": "hearth_faith",
+ "faith_next": "knowledge_runes",
+ "values": {
+  "learning": 0.7,
+  "nature": 0.4,
+  "tradition": 0.4,
+  "honor": 0.4,
+  "craft": 0.4
+ },
+ "traditions": [
+  "rune_lore",
+  "storytelling",
+  "oath_keeping",
+  "festive_gatherings"
+ ],
+ "rites": {
+  "coming_of_age": "aurora_naming",
+  "marriage": "moon_vow",
+  "burial": "sky"
+ },
+ "food": {
+  "likes": [
+   "mead",
+   "berries",
+   "honey",
+   "smoked_fish"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Alfheim",
+  "Ljosgard",
+  "Gimle",
+  "Breidablik",
+  "Glasir"
+ ],
+ "_doc": "LR-166: альвы северных сияний: светлые залы, руны и песни; тролли и тьма полярной ночи им враги.",
+ "desc": "culture.alv_hall.desc",
+ "rites_forbidden": [
+  "ecstatic"
+ ]
+}

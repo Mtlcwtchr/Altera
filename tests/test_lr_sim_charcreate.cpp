@@ -50,21 +50,21 @@ const Settlement& mapVillage(const World& w) {
 
 TEST(lr_sim_charcreate_culture_peoples) {
     const SpeciesCatalog& s = real().peoples;
-    CHECK_EQ(s.mapCulture, std::string("fantasy_european"));
-    // the map's mix is the culture's village mix: mostly humans, other kinds too
-    const auto vill = culturePeoples(s, "fantasy_european", "village");
+    CHECK_EQ(s.mapCulture, std::string("polis_hellene"));
+    // the map's mix is the culture's village mix: mostly hellenes, other kinds too (LR-166)
+    const auto vill = culturePeoples(s, "polis_hellene", "village");
     CHECK(!vill.empty());
-    CHECK(vill.count("human") && vill.at("human") > 0.4);
+    CHECK(vill.count("hellene") && vill.at("hellene") > 0.4);
     CHECK(vill.size() >= 4);
     CHECK(s.mapMix == vill);
     // a template names a culture; its kind of settlement picks the culture's mix, else the default
-    CHECK_EQ(s.templateCulture.at("dwarf_hold"), std::string("dwarven"));
+    CHECK_EQ(s.templateCulture.at("dwarf_hold"), std::string("dwarf_hold"));
     CHECK(s.templateMix.at("dwarf_hold").at("dwarf") > 0.9);
-    CHECK(s.templateMix.at("town") == culturePeoples(s, "fantasy_european", "town"));
+    CHECK(s.templateMix.at("town") == culturePeoples(s, "polis_hellene", "town"));
     // welcome: own kind 1, others by the file
-    CHECK_EQ(cultureWelcome(s, "fantasy_european", "human"), 1.0);
-    CHECK(cultureWelcome(s, "fantasy_european", "troll") < 0.5);
-    CHECK(cultureWelcome(s, "dwarven", "goblin") < 0.1);
+    CHECK_EQ(cultureWelcome(s, "polis_hellene", "hellene"), 1.0);
+    CHECK(cultureWelcome(s, "polis_hellene", "troll") < 0.5);
+    CHECK(cultureWelcome(s, "dwarf_hold", "goblin") < 0.2);
     // a written-out mix still works, and a culture with an override
     const SpeciesCatalog p = parseSpecies(
         {Json{{"id", "human"}, {"glyph", "h"}}, Json{{"id", "elf"}, {"glyph", "e"}}},
@@ -85,7 +85,7 @@ TEST(lr_sim_charcreate_village_households_one_kind) {
     for (std::uint64_t seed : {3, 7, 11, 19, 23}) {
         World w = realWorld(seed);
         const Settlement& st = mapVillage(w);
-        CHECK_EQ(st.culture, std::string("fantasy_european"));
+        CHECK_EQ(st.culture, std::string("polis_hellene"));
         CHECK(!st.peoples.empty());
         for (EntityId fid : st.families) {
             const Family& f = w.families().at(fid);
@@ -96,13 +96,13 @@ TEST(lr_sim_charcreate_village_households_one_kind) {
                 if (kind == "?") kind = c->race;
                 CHECK_EQ(c->race, kind);
             }
-            if (!kind.empty() && kind != "?") ++nonHuman;
+            if (!kind.empty() && kind != "?" && kind != "hellene") ++nonHuman;
         }
     }
     CHECK(nonHuman > 0);
     // a world may name its own culture
-    World d = realWorld(7, Json{{"culture", "dwarven"}});
-    CHECK_EQ(mapVillage(d).culture, std::string("dwarven"));
+    World d = realWorld(7, Json{{"culture", "dwarf_hold"}});
+    CHECK_EQ(mapVillage(d).culture, std::string("dwarf_hold"));
     int dwarves = 0, all = 0;
     for (const auto& [id, c] : d.characters())
         if (!c.isAnimal() && c.status.settlement == mapVillage(d).id) ++all, dwarves += c.race == "dwarf";
@@ -114,13 +114,13 @@ TEST(lr_sim_charcreate_rules_and_cost) {
     ValidationReport v;
     validateCreation(c, v);
     CHECK(v.errors.empty());
-    const Json R = creationRules(c, "fantasy_european");
+    const Json R = creationRules(c, "polis_hellene");
     CHECK(R["races"].size() >= 8);
     CHECK(R["talents"].size() >= 10);
     CHECK_EQ(R["attrs"]["ids"].size(), std::size_t(16)); // LR-141
     int giftHuman = 0, giftElf = 0;
     for (const auto& r : R["races"]) {
-        if (r["id"] == "human") giftHuman = r["gift_cost"];
+        if (r["id"] == "hellene") giftHuman = r["gift_cost"];
         if (r["id"] == "elf") giftElf = r["gift_cost"];
         CHECK(r["look"]["m"]["skin"].size() >= 1);
         CHECK(r["look"]["f"].contains("hair"));
@@ -130,18 +130,18 @@ TEST(lr_sim_charcreate_rules_and_cost) {
         auto has = [](const Json& a, const char* v) { return std::find(a.begin(), a.end(), v) != a.end(); };
         if (r["id"] == "elf") CHECK(mb == Json::array({"no"}));
         if (r["id"] == "dwarf") CHECK(!has(mb, "no") && has(mb, "braided"));
-        if (r["id"] == "human") CHECK(has(mb, "stubble") && has(r["look"]["f"]["hair"], "ponytail"));
+        if (r["id"] == "woodfolk") CHECK(has(mb, "stubble") && has(r["look"]["f"]["hair"], "braids"));
     }
     CHECK(giftHuman > 0);
     CHECK(giftElf <= giftHuman); // elves are gifted more often: the gift costs them less
     std::string why;
-    CHECK_EQ(creationCost(c, Json{{"race", "human"}, {"sex", "m"}}, &why), 0);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"sex", "m"}}, &why), 0);
     // talents cost, flaws give back, nature is free
-    const int t = creationCost(c, Json{{"race", "human"}, {"traits", {"quick_learner", "lazy", "curious"}}}, &why);
+    const int t = creationCost(c, Json{{"race", "hellene"}, {"traits", {"quick_learner", "lazy", "curious"}}}, &why);
     CHECK_EQ(t, 3 - 2);
     // attributes: two steps up cost two
-    CHECK_EQ(creationCost(c, Json{{"race", "human"}, {"attrs", {{"strength", 0.6}}}}, &why), 2);
-    CHECK_EQ(creationCost(c, Json{{"race", "human"}, {"attrs", {{"strength", 0.4}}}}, &why), -2);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"attrs", {{"strength", 0.6}}}}, &why), 2);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"attrs", {{"strength", 0.4}}}}, &why), -2);
     // the rules
     CHECK_EQ(creationCost(c, Json{{"race", "dragon"}}, &why), -1);
     CHECK_EQ(why, std::string("race_not_playable"));
@@ -193,7 +193,7 @@ TEST(lr_sim_charcreate_makes_the_person) {
     World back(real(), 1);
     back.loadJson(w.toJson());
     CHECK_EQ(back.character(who)->look.at("cloth"), std::string("#4a5a3a"));
-    CHECK_EQ(mapVillage(back).culture, std::string("fantasy_european"));
+    CHECK_EQ(mapVillage(back).culture, std::string("polis_hellene"));
     // a bad choice is refused and nobody is led
     World w2 = realWorld();
     const Command bad = w2.applyNow(create(Json{{"race", "dragon"}}));
@@ -219,7 +219,7 @@ TEST(lr_sim_charcreate_stranger) {
     };
     World a = realWorld();
     const EntityId ida = creationCandidate(a, 'm');
-    CHECK(a.applyNow(create(Json{{"race", "human"}})).result.rfind("rejected", 0) != 0);
+    CHECK(a.applyNow(create(Json{{"race", "hellene"}})).result.rfind("rejected", 0) != 0);
     World b = realWorld();
     const EntityId idb = creationCandidate(b, 'm');
     CHECK(b.applyNow(create(Json{{"race", "troll"}})).result.rfind("rejected", 0) != 0);

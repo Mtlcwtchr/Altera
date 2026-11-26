@@ -12,6 +12,7 @@
 #include "sim/content.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/realm.hpp"
+#include "sim/species.hpp"
 #include "sim/world.hpp"
 
 namespace fs = std::filesystem;
@@ -21,7 +22,7 @@ namespace lr::sim {
 namespace {
 
 struct Pull {
-    std::string culture, institution, tag;
+    std::string culture, institution, tag, belt; // LR-166: belt = every settlement of a culture of that belt
     double h = -1, m = -1, radius = 5, weight = 0.7;
 };
 struct TerrainKind {
@@ -105,6 +106,7 @@ Rules parse(const Json& j) {
         d.culture = p.value("culture", "");
         d.institution = p.value("institution", "");
         d.tag = p.value("tag", "");
+        d.belt = p.value("belt", "");
         d.h = p.value("h", -1.0);
         d.m = p.value("m", -1.0);
         d.radius = p.value("radius_km", d.radius);
@@ -204,11 +206,12 @@ double fbm(std::uint64_t seed, double x, double y, int oct) {
     return s / norm;
 }
 
-bool pullMatches(const Pull& p, const Settlement& s) {
+bool pullMatches(const Pull& p, const Settlement& s, const SpeciesCatalog& sp) {
     if (!p.culture.empty() && s.culture != p.culture) return false;
     if (!p.institution.empty() && s.institution != p.institution) return false;
     if (!p.tag.empty() && !s.tagged(p.tag)) return false;
-    return !(p.culture.empty() && p.institution.empty() && p.tag.empty());
+    if (!p.belt.empty() && cultureBelt(sp, s.culture) != p.belt) return false;
+    return !(p.culture.empty() && p.institution.empty() && p.tag.empty() && p.belt.empty());
 }
 
 bool tagsOn(const Rules& r, const std::vector<std::string>& tags) {
@@ -259,7 +262,7 @@ void layOut(World& w, const Rules& r, WorldMapState& s) {
             for (const auto& [id, p] : w.settlements()) {
                 const double d = dist(km, p.km);
                 for (const Pull& pl : r.pulls) {
-                    if (!pullMatches(pl, p) || d >= pl.radius) continue;
+                    if (!pullMatches(pl, p, w.content().peoples) || d >= pl.radius) continue;
                     const double f = std::pow(1 - d / pl.radius, 2) * pl.weight;
                     if (pl.h >= 0) h += (pl.h - h) * f;
                     if (pl.m >= 0) m += (pl.m - m) * f;
@@ -271,7 +274,7 @@ void layOut(World& w, const Rules& r, WorldMapState& s) {
                 const double d = dist(km, p.km);
                 if (d >= r.landR) continue;
                 bool pulledH = false;
-                for (const Pull& pl : r.pulls) pulledH = pulledH || (pl.h >= 0 && pullMatches(pl, p));
+                for (const Pull& pl : r.pulls) pulledH = pulledH || (pl.h >= 0 && pullMatches(pl, p, w.content().peoples));
                 const double f = smooth(1 - d / r.landR);
                 const double want = pulledH ? std::max(h, r.landMin) : std::clamp(h, r.landMin, r.landMax);
                 h += (want - h) * f;

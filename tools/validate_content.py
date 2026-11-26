@@ -444,6 +444,55 @@ CHECKS["elements"] = check_elements  # AL-115
 CHECKS["pawns"] = check_pawns  # LR-139
 
 
+def check_peoples(L):
+    """LR-166: народы по поясам, культуры, пояса; правило §1.1 (близость только у взрослых)."""
+    r = Report("peoples")
+    root = L["root"]
+    sp, cu_dir = root / "species", root / "species" / "cultures"
+    if not sp.is_dir():
+        r.warn("нет species, пропуск"); return r
+    races = {}
+    for f in sorted(sp.glob("*.json")):
+        if f.name in ("settle.json", "migrate.json"): continue
+        d = jload(f)
+        if isinstance(d, dict) and d.get("id"): races[d["id"]] = d
+    bp = root / "world" / "belts.json"
+    belts = (jload(bp) or {}).get("belts", {}) if bp.exists() else {}
+    cultures = {}
+    for f in sorted(cu_dir.glob("*.json")) if cu_dir.is_dir() else []:
+        d = jload(f)
+        if isinstance(d, dict) and d.get("id"): cultures[d["id"]] = d
+    for id, d in races.items():
+        if d.get("base") and d["base"] not in races: r.err(f"species/{id}: base {d['base']} неизвестен")
+        for b in d.get("region", []):
+            if belts and b not in belts: r.err(f"species/{id}: region {b} нет в world/belts.json")
+        life = d.get("life", {})
+        if life.get("sexes") and life.get("other_sex") and life["other_sex"] not in races:
+            r.err(f"species/{id}: other_sex {life['other_sex']} неизвестен")
+    for id, c in cultures.items():
+        if belts and c.get("belt") not in belts: r.err(f"cultures/{id}: belt {c.get('belt')} нет в world/belts.json")
+        if c.get("species") not in races: r.err(f"cultures/{id}: species {c.get('species')} неизвестен")
+        for kind, mix in (c.get("peoples") or {}).items():
+            for k in (mix if isinstance(mix, dict) else {}):
+                if k not in races: r.err(f"cultures/{id} peoples.{kind}: {k} неизвестен")
+                elif races[k].get("settles") is False: r.err(f"cultures/{id} peoples.{kind}: {k} — только база (settles: false)")
+        inti = c.get("intimacy")
+        if inti is not None and (not inti.get("adults_only") or inti.get("min_age_years", 0) < 14):
+            r.err(f"cultures/{id}: intimacy только для взрослых (adults_only: true, min_age_years ≥ 14) — §1.1")
+        dump = json.dumps(c, ensure_ascii=False)
+        for banned in ("pederast", "harem", "child_bride", "child_marriage", "concubine_girl"):
+            if banned in dump: r.err(f"cultures/{id}: {banned} исключено из сеттинга (§1.1)")
+    for bid, b in belts.items():
+        if b.get("map_culture") and b["map_culture"] not in cultures: r.err(f"belts.{bid}: map_culture {b['map_culture']} неизвестна")
+        for e in b.get("layout", []):
+            if e.get("culture", b.get("map_culture")) not in cultures: r.err(f"belts.{bid}: layout culture {e.get('culture')} неизвестна")
+    r.info = f"народов {len(races)}, культур {len(cultures)}, поясов {len(belts)}"
+    return r
+
+
+CHECKS["peoples"] = check_peoples  # LR-166
+
+
 # ---------------------------------------------------------------- LR-142: formulas, templates, mods
 FORMULA_PREFIXES = ("attr.", "skill.", "trait.", "need.", "rep.", "rel.", "t.", "arg.", "cfg.", "f.", "age",
                     "attr_base.", "moodlet.", "body.")   # LR-141/LR-152: the stats and the body (sim/char_expr)

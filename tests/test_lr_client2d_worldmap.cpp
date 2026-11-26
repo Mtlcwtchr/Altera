@@ -68,8 +68,8 @@ TEST(lr_worldmap_land) {
             const std::string k = s.kindAt(p.km);
             CHECK(!k.empty());
             CHECK(k != "sea" && k != "lake");   // nobody lives in the water
-            if (p.culture == "dwarven") CHECK(k == "mountains" || k == "hills");
-            if (p.culture == "sylvan") CHECK(k == "forest" || k == "marsh");
+            if (p.culture == "dwarf_hold") CHECK(k == "mountains" || k == "hills");
+            if (p.culture == "forest_elf") CHECK(k == "forest" || k == "marsh");
         }
         // places of interest: on their land, away from the settlements and each other
         CHECK(s.pois.size() >= 8);

@@ -49,7 +49,7 @@ TEST(lr_sim_species_load) {
     CHECK(!c.raceOf("human")->sunSleep.on);
     CHECK(c.raceOf("dragon")->might > 0.0);
     CHECK(c.raceOf("dragon")->innateSpells.is_array() && !c.raceOf("dragon")->innateSpells.empty());
-    for (const char* cu : {"fantasy_european", "sylvan", "dwarven", "orcish", "goblin", "ogre", "troll", "draconic"})
+    for (const char* cu : {"polis_hellene", "forest_elf", "dwarf_hold", "steppe_rider", "port_kobal", "jotun_hold", "troll_fell", "draconic"})
         CHECK(c.peoples.cultures.count(cu) == 1);
     ValidationReport r;
     validateSpecies(c, r);

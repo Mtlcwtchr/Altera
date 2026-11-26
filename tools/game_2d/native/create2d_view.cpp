@@ -199,6 +199,7 @@ void drawRace(Ctx& c, Win& w, const ui::Rect& area) {
         const bool on = jstr(r, "id") == jstr(w.data, "race");
         if (g.selectable(wid("cc.race", i), box, on) && !on) {
             w.data["race"] = jstr(r, "id");
+            if (jstr(r, "sexes").size() == 1) w.data["sex"] = jstr(r, "sexes"); // LR-166: nymphs, satyrs
             fixLook(w);
         }
         c.fill(box.x, box.y, box.w, box.h, on ? pal::leather : pal::leatherD.withAlpha(0.85f));
@@ -410,6 +411,9 @@ void openCreateWin(Ctx& c, Screens& s, const std::string& back) {
         const float hw = (fw - 6 * U) / 2;
         for (int k = 0; k < 2; ++k) {
             const std::string sx = k ? "f" : "m";
+            const Json* rr = raceRule(w);
+            const std::string only = rr ? jstr(*rr, "sexes") : std::string();
+            if (only.size() == 1 && only != sx) continue; // LR-166: a one-sex kind
             if (g.toggle(wid("cc.sex", k), {x + k * (hw + 6 * U), y, hw, 28 * U}, c.L("ui2d.cc.sex." + sx), jstr(w.data, "sex") == sx) && jstr(w.data, "sex") != sx) {
                 w.data["sex"] = sx;
                 fixLook(w);

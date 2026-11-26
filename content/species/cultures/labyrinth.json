@@ -1,0 +1,101 @@
+{
+ "id": "labyrinth",
+ "species": "minotaur",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Asterion",
+   "Tauros",
+   "Minos",
+   "Keraon",
+   "Bouros",
+   "Pasiphon"
+  ],
+  "f": [
+   "Ariadna",
+   "Phaira",
+   "Taurina",
+   "Kerasia",
+   "Pasiphae",
+   "Bouleia"
+  ]
+ },
+ "speech": "blunt",
+ "build_style": "labyrinth",
+ "teach_aspects": [
+  "earth",
+  "blood"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "allowed",
+  "trespass": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "minotaur": 0.92,
+   "hellene": 0.08
+  }
+ },
+ "welcome": {
+  "minotaur": 1.0,
+  "hellene": 0.25,
+  "human": 0.2,
+  "cyclops": 0.4
+ },
+ "welcome_other": 0.15,
+ "faith": "hearth_faith",
+ "faith_next": "sea_lord",
+ "values": {
+  "martial": 0.5,
+  "tradition": 0.5,
+  "order": 0.4,
+  "kinship": 0.35,
+  "hospitality": -0.3,
+  "freedom": -0.1
+ },
+ "traditions": [
+  "bull_leaping",
+  "blood_feud",
+  "craft_pride",
+  "ancestor_rites",
+  "council_of_elders"
+ ],
+ "rites": {
+  "coming_of_age": "maze_walk",
+  "marriage": "oath_binding",
+  "burial": "entomb"
+ },
+ "food": {
+  "likes": [
+   "meat",
+   "cheese",
+   "milk"
+  ],
+  "avoids": [
+   "fish"
+  ]
+ },
+ "place_names": [
+  "Knossos",
+  "Phaistos",
+  "Gortyn",
+  "Labyrinthos",
+  "Amnisos"
+ ],
+ "_doc": "LR-166: минотавры острова Лабиринта: город-лабиринт из модульных стен, бычьи прыжки, кровная месть. Пришельцу трудно войти и ещё труднее выйти.",
+ "desc": "culture.labyrinth.desc",
+ "rites_forbidden": [
+  "ecstatic"
+ ]
+}

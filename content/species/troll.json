@@ -82,14 +82,15 @@
  "weak": {
   "fire": 2.0
  },
- "culture_default": "troll",
+ "culture_default": "troll_fell",
  "relations_bias": {
   "human": -0.35,
   "dwarf": -0.4,
   "elf": -0.4,
   "orc": -0.05,
   "ogre": 0.05,
-  "goblin": -0.1
+  "goblin": -0.1,
+  "northman": -0.45
  },
  "regen": {
   "health_per_day": 0.25,
@@ -106,5 +107,8 @@
  },
  "gifted_chance": 0.02,
  "settlement_tag": "troll",
- "_doc": "Тролли: огромные, регенерируют раны (не увечья), огонь гасит регенерацию; на солнце каменеют и засыпают."
+ "_doc": "Тролли: огромные, регенерируют раны (не увечья), огонь гасит регенерацию; на солнце каменеют и засыпают.",
+ "region": [
+  "north"
+ ]
 }

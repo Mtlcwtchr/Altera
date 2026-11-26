@@ -1,43 +1,44 @@
 {
- "_doc": "Какие виды живут где на старте мира (AL-114, AL-136). Состав задаёт культура: map и realm_templates ссылаются на культуру {culture, kind?, peoples?} — берётся cultures/<id>.json peoples[kind] (иначе peoples.default, иначе её вид), peoples здесь перекрывает доли. Можно и прямо {вид: доля}. map: деревня карты (kind village; мир может дать свой culture). Один вид на двор; новые жители и дети потом наследуют вид родителей (полукровки по interbreed). Как культура принимает чужаков — welcome в её файле.",
+ "_doc": "Какие виды живут где на старте мира (AL-114, AL-136). Состав задаёт культура: map и realm_templates ссылаются на культуру {culture, kind?, peoples?} — берётся cultures/<id>.json peoples[kind] (иначе peoples.default, иначе её вид), peoples здесь перекрывает доли. Можно и прямо {вид: доля}. map: деревня карты (kind village; мир может дать свой culture). Один вид на двор; новые жители и дети потом наследуют вид родителей (полукровки по interbreed). Как культура принимает чужаков — welcome в её файле. LR-166: пояса и их поселения — content/world/belts.json (если он есть, realm раскладывается по поясам; realm_templates здесь — запасной состав шаблона без культуры). default_race human — только база людских народов (settles: false). kin_child: чей народ у ребёнка двух людских народов (father | mother).",
  "default_race": "human",
  "map": {
-  "culture": "fantasy_european",
+  "culture": "polis_hellene",
   "kind": "village"
  },
  "realm_templates": {
   "village": {
-   "culture": "fantasy_european"
+   "culture": "polis_hellene"
   },
   "town": {
-   "culture": "fantasy_european"
+   "culture": "polis_hellene"
   },
   "keep": {
-   "culture": "fantasy_european"
+   "culture": "polis_hellene"
   },
   "monastery": {
-   "culture": "fantasy_european"
+   "culture": "polis_hellene"
   },
   "bandit_camp": {
-   "culture": "fantasy_european"
+   "culture": "polis_hellene"
   },
   "dwarf_hold": {
-   "culture": "dwarven"
+   "culture": "dwarf_hold"
   },
   "elf_grove": {
-   "culture": "sylvan"
+   "culture": "forest_elf"
   },
   "orc_hold": {
-   "culture": "orcish"
+   "culture": "steppe_rider"
   },
   "goblin_warren": {
-   "culture": "goblin"
+   "culture": "port_kobal"
   },
   "troll_den": {
-   "culture": "troll"
+   "culture": "troll_fell"
   },
   "dragon_lair": {
    "culture": "draconic"
   }
- }
+ },
+ "kin_child": "father"
 }

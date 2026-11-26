@@ -1,4 +1,5 @@
 #include "sim/world.hpp"
+#include "sim/species.hpp"
 #include "sim/relief.hpp"
 #include "sim/stats.hpp"
 #include "sim/need_tiers.hpp"
@@ -627,6 +628,7 @@ void World::loadJson(const Json& j) {
         for (auto it = j["modules"].begin(); it != j["modules"].end(); ++it) modules_[it.key()] = *it;
     fields_ = WorldFields{}; // AL-115
     if (j.contains("fields")) fields_.fromJson(j["fields"]);
+    migratePeoples(*this); // LR-166: an old save's kinds and cultures to today's ids
 }
 
 Fact& World::addFact(Fact f) {

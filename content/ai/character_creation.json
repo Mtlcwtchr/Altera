@@ -1,13 +1,25 @@
 {
- "_doc": "AL-136: создание персонажа при новой игре (src/sim/charcreate.cpp, 2D-окно menu2d_view.cpp). Поверх предыстории: раса (races, только эти можно выбрать), пол, возраст в человеческой мере (age; настоящие годы считает вид), имя, таланты и изъяны по очкам (points; talents/flaws — черта → цена, изъяны возвращают очки; nature — бесплатные черты характера до max.nature), редкий дар (gift: цена base, по шансу вида gifted_chance масштабируется sqrt(base_chance/шанс), в пределах min..max), характеристики по шагам от base (cost за шаг выше base, ниже base шаг возвращает refund), внешность (look). Черты always предыстории даются сверх выбора. Двор игрока принимает его вид. Пришлый вид, которого культура деревни принимает хуже welcome_below (cultures/*.json welcome), начинает чужаком: outsider.relations, умноженные на (welcome_below − welcome)/welcome_below. Тексты: ui2d.cc.* (ui2d_create.json), species.<id>.name/.desc, trait.<id>.name/.desc, attr.<id>.name/.desc.",
+ "_doc": "AL-136: создание персонажа при новой игре (src/sim/charcreate.cpp, 2D-окно menu2d_view.cpp). Поверх предыстории: раса (races, только эти можно выбрать), пол, возраст в человеческой мере (age; настоящие годы считает вид), имя, таланты и изъяны по очкам (points; talents/flaws — черта → цена, изъяны возвращают очки; nature — бесплатные черты характера до max.nature), редкий дар (gift: цена base, по шансу вида gifted_chance масштабируется sqrt(base_chance/шанс), в пределах min..max), характеристики по шагам от base (cost за шаг выше base, ниже base шаг возвращает refund), внешность (look). Черты always предыстории даются сверх выбора. Двор игрока принимает его вид. Пришлый вид, которого культура деревни принимает хуже welcome_below (cultures/*.json welcome), начинает чужаком: outsider.relations, умноженные на (welcome_below − welcome)/welcome_below. Тексты: ui2d.cc.* (ui2d_create.json), species.<id>.name/.desc, trait.<id>.name/.desc, attr.<id>.name/.desc. LR-166: races — региональные народы (люди по поясам, вилы/нимфы только женские, сатиры только мужские: sexes в правилах народа, окно не даёт выбрать другой пол).",
  "races": [
-  "human",
+  "hellene",
+  "northman",
+  "woodfolk",
+  "steppe_folk",
+  "nilote",
   "elf",
-  "dwarf",
+  "alv",
   "half_elf",
-  "half_orc",
+  "dwarf",
   "orc",
+  "half_orc",
   "goblin",
+  "centaur",
+  "steppe_centaur",
+  "satyr",
+  "nymph",
+  "vila",
+  "minotaur",
+  "cyclops",
   "ogre",
   "troll"
  ],
@@ -177,6 +189,41 @@
     "#a86a44",
     "#8a5a3a",
     "#6a4028"
+   ],
+   "hellene": [
+    "#e8c098",
+    "#d8a878",
+    "#c89060",
+    "#b07a4c",
+    "#9a6640"
+   ],
+   "northman": [
+    "#f6dcc8",
+    "#f0ccb0",
+    "#e8bc98",
+    "#dcac88",
+    "#cc9c7a"
+   ],
+   "woodfolk": [
+    "#f2d0b0",
+    "#eab890",
+    "#dca880",
+    "#cc9468",
+    "#b88058"
+   ],
+   "steppe_folk": [
+    "#e8c8a0",
+    "#dab488",
+    "#c89c70",
+    "#b0845a",
+    "#946c48"
+   ],
+   "nilote": [
+    "#c08858",
+    "#a87448",
+    "#90603a",
+    "#7a4e2e",
+    "#643e24"
    ]
   },
   "skin_shades": [

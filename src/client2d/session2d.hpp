@@ -28,8 +28,9 @@ struct NewGame {
     std::uint64_t seed = 7;
     std::string size = "medium";   // small | medium | large (worldSizes())
     std::string season;            // spring | summer | autumn | winter; empty: the world file's
+    std::string belt;              // LR-166: the belt the village starts in (content/world/belts.json); empty: home
     static NewGame fromJson(const sim::Json& j, std::uint64_t fallbackSeed);
-    sim::Json toJson() const { return {{"seed", seed}, {"size", size}, {"season", season}}; }
+    sim::Json toJson() const { return {{"seed", seed}, {"size", size}, {"season", season}, {"belt", belt}}; }
 };
 
 // The sizes the new-game screen offers: [{id, size_m, families, people: [lo, hi]}].

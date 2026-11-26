@@ -1,0 +1,99 @@
+{
+ "id": "port_kobal",
+ "species": "goblin",
+ "belt": "mediterranean",
+ "names": {
+  "m": [
+   "Kobalos",
+   "Kerkops",
+   "Skiros",
+   "Phrix",
+   "Glaux",
+   "Tettix"
+  ],
+  "f": [
+   "Mormo",
+   "Kerkis",
+   "Phrixa",
+   "Glauka",
+   "Tettiga"
+  ]
+ },
+ "speech": "squeaky",
+ "build_style": "hellenic",
+ "teach_aspects": [
+  "shadow",
+  "poison",
+  "fire",
+  "air"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "allowed",
+  "theft": "clever"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 16,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "goblin": 0.75,
+   "hellene": 0.2,
+   "satyr": 0.05
+  }
+ },
+ "welcome": {
+  "goblin": 1.0,
+  "hellene": 0.7,
+  "human": 0.65,
+  "satyr": 0.8,
+  "nilote": 0.7,
+  "orc": 0.5
+ },
+ "welcome_other": 0.6,
+ "faith": "many_spirits",
+ "faith_next": "road_trickster",
+ "values": {
+  "wealth": 0.6,
+  "freedom": 0.5,
+  "kinship": 0.3,
+  "honor": -0.3,
+  "order": -0.3
+ },
+ "traditions": [
+  "haggling",
+  "storytelling",
+  "festive_gatherings",
+  "raiding"
+ ],
+ "rites": {
+  "coming_of_age": "first_theft",
+  "marriage": "none",
+  "burial": "sea_burial"
+ },
+ "food": {
+  "likes": [
+   "fish",
+   "smoked_fish",
+   "figs",
+   "mushrooms",
+   "wine"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Pheres",
+  "Kerkopia",
+  "Skiron",
+  "Mormolyke"
+ ],
+ "_doc": "LR-166: кобалы портов юга: торгаши, проказники и воришки причалов; живут и среди эллинов. Покровитель — Сила Дороги-хитреца.",
+ "desc": "culture.port_kobal.desc"
+}

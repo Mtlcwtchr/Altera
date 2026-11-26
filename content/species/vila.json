@@ -1,0 +1,80 @@
+{
+ "id": "vila",
+ "base": "nymph",
+ "glyph": "v",
+ "region": [
+  "forest"
+ ],
+ "culture_default": "vila_glade",
+ "body": {
+  "skin": "#f4e8dc",
+  "pawn": {
+   "build": "slim",
+   "ears": "pointed",
+   "hair_f": "long long long braids",
+   "beard": "never",
+   "figure": "vila"
+  }
+ },
+ "life": {
+  "elder_years": 300,
+  "lifespan_years": 600,
+  "sexes": "f",
+  "other_sex": "woodfolk",
+  "interbreed": {
+   "human": "vila",
+   "elf": "vila"
+  }
+ },
+ "stats": {
+  "appearance": 0.14,
+  "agility": 0.08,
+  "attunement": 0.12,
+  "voice": 0.1,
+  "strength": -0.04
+ },
+ "aptitudes": {
+  "archery": {
+   "learn": 1.25,
+   "cap": 1.1
+  },
+  "hunting": {
+   "learn": 1.15,
+   "cap": 1.05
+  },
+  "swim": {
+   "learn": 1.2,
+   "cap": 1.1
+  }
+ },
+ "affinity": {
+  "air": 1.6,
+  "water": 1.2,
+  "life": 1.4,
+  "fire": 0.7
+ },
+ "traits_pool": {
+  "proud": 1.4,
+  "hot_tempered": 1.3,
+  "fickle": 1.3,
+  "romantic": 1.3
+ },
+ "anchor": {
+  "objects": [
+   "spring",
+   "tree",
+   "pond"
+  ],
+  "km": 2.5,
+  "away_moodlet": "far_from_anchor"
+ },
+ "relations_bias": {
+  "human": 0.0,
+  "woodfolk": 0.05,
+  "elf": 0.2,
+  "goblin": -0.15
+ },
+ "settlement_tag": "vila",
+ "_doc": "LR-166: вилы Средних лесов: девы-воительницы ветра, рек и облаков, только женские. Сын вилы рождается народом отца (по умолчанию человек лесов).",
+ "desc": "species.vila.desc"
+}
