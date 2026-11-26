@@ -7,6 +7,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/captivity.hpp"
+#include "sim/culture.hpp"
 #include "sim/gear.hpp"
 #include "sim/trade.hpp"
 
@@ -137,6 +138,11 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
               {"backstory", c.backstory.empty() ? "" : t.name("backstory", c.backstory)},
               {"pl", c.controller.isPlayer()},
               {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
+    if (!c.isAnimal()) {   // LR-155: the person's culture and faith (the window: /api/culture)
+        const std::string cu = cultureOf(w, c), fa = faithOf(w, c);
+        d["belief"] = {{"culture", cu}, {"cultureName", t.name("culture", cu)}, {"bond", r2(cultureBondOf(w, c))},
+                       {"faith", fa}, {"faithName", t.name("faith", fa)}, {"piety", r2(pietyOf(w, c))}};
+    }
 
     // --- overview -----------------------------------------------------------------
     Json ov;

@@ -58,6 +58,7 @@ using socket_t = int;
 #include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
+#include "client2d/culture2d.hpp"
 #include "client2d/sky2d.hpp"
 #include "client2d/talk2d.hpp"
 #include "client2d/session2d.hpp"
@@ -519,6 +520,16 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
         } else if (path.rfind("/api/dynasty", 0) == 0) {
             // LR-145: the dynasty window (src/client2d/sheet2d dynastyJson)
             respond(s, 200, "application/json", c2::dynastyJson(*a.world, a.text, controlled(*a.world)).dump());
+        } else if (path.rfind("/api/culture", 0) == 0) {
+            // LR-155: the culture and faith window (src/client2d/culture2d)
+            respond(s, 200, "application/json",
+                    c2::cultureJson(*a.world, a.text, controlled(*a.world), EntityId(std::max(0, intParam(path, "id", 0))),
+                                    queryParam(path, "faith"), queryParam(path, "culture"))
+                        .dump());
+        } else if (path.rfind("/api/inspect", 0) == 0) {
+            // LR-155: "inspect" - what the led person and the dynasty know of someone
+            respond(s, 200, "application/json",
+                    c2::inspectJson(*a.world, a.text, controlled(*a.world), EntityId(std::max(0, intParam(path, "id", 0)))).dump());
         } else if (path.rfind("/api/sheet", 0) == 0) {
             // AL-100: the character sheet (src/client2d/sheet2d)
             respond(s, 200, "application/json", c2::sheetJson(*a.world, a.text, EntityId(std::max(0, intParam(path, "id", 0)))).dump());

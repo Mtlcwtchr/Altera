@@ -37,5 +37,28 @@
   "dragon": 1.0
  },
  "welcome_other": 0.0,
+ "faith": "hoard_flame",
+ "values": {
+  "wealth": 0.8,
+  "freedom": 0.7,
+  "honor": 0.2,
+  "hospitality": -0.4,
+  "kinship": -0.2
+ },
+ "traditions": [
+  "oath_keeping"
+ ],
+ "rites": {
+  "coming_of_age": "first_flight",
+  "marriage": "none",
+  "burial": "burn"
+ },
+ "food": {
+  "likes": [
+   "meat"
+  ],
+  "avoids": []
+ },
+ "desc": "culture.draconic.desc",
  "_doc": "Драконы: высокомерная величавая речь, дань им положена."
 }

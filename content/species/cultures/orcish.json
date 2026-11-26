@@ -54,5 +54,33 @@
   "dwarf": 0.1
  },
  "welcome_other": 0.3,
+ "faith": "sky_blood",
+ "values": {
+  "martial": 0.7,
+  "honor": 0.4,
+  "freedom": 0.4,
+  "kinship": 0.3,
+  "order": -0.1,
+  "learning": -0.2
+ },
+ "traditions": [
+  "blood_feud",
+  "hunt_honour",
+  "festive_gatherings",
+  "rite_of_passage",
+  "raiding"
+ ],
+ "rites": {
+  "coming_of_age": "first_blood",
+  "marriage": "bride_price",
+  "burial": "burn"
+ },
+ "food": {
+  "likes": [
+   "meat"
+  ],
+  "avoids": []
+ },
+ "desc": "culture.orcish.desc",
  "_doc": "Орки: становища, грубая речь, набег почётен."
 }

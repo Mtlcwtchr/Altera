@@ -338,6 +338,11 @@ struct Character {
     // AL-136: how the person looks, as chosen at the character's creation (body, skin, hair,
     // hair_colour, beard, cloth; character_creation.json look). Empty = the client's own pick.
     std::map<std::string, std::string> look;
+    // LR-155 (sim/culture.hpp): the person's culture (content/species/cultures) and the bond
+    // to it 0..1, the faith (content/culture/religions) and the piety 0..1. Empty / < 0:
+    // not given yet (cultureOf/faithOf derive it; the daily pass stores it).
+    std::string culture, faith;
+    double cultureBond = -1.0, piety = -1.0;
     // AL-75 (sim/trade.hpp): the trade role (trader | tavernkeeper, "" = none) and the
     // deal state: {intent: the offer the next trade act makes, counter: the counter
     // this person made and waits an answer to, rounds: partner -> ticks of recent offers}.

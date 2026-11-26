@@ -39,5 +39,30 @@
   "goblin": 0.6
  },
  "welcome_other": 0.15,
+ "faith": "many_spirits",
+ "values": {
+  "martial": 0.4,
+  "wealth": 0.3,
+  "freedom": 0.4,
+  "kinship": 0.3,
+  "learning": -0.4
+ },
+ "traditions": [
+  "blood_feud",
+  "festive_gatherings",
+  "hunt_honour"
+ ],
+ "rites": {
+  "coming_of_age": "first_blood",
+  "marriage": "bride_price",
+  "burial": "devour"
+ },
+ "food": {
+  "likes": [
+   "meat"
+  ],
+  "avoids": []
+ },
+ "desc": "culture.ogre.desc",
  "_doc": "Огры: медленная простая речь, ценят еду и силу."
 }

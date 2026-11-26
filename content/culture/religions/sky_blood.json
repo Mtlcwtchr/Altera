@@ -1,0 +1,17 @@
+{
+ "id": "sky_blood",
+ "_doc": "LR-155: Небо и Кровь — орочья вера в Небесного Отца и духов павших; сила и честный бой угодны, мёртвых сжигают.",
+ "kind": "spirits",
+ "deities": [{"id": "sky_father", "domain": "air"}, {"id": "blood_mother", "domain": "blood"}, {"id": "fallen", "domain": "death"}],
+ "values": {"martial": 0.7, "honor": 0.4, "freedom": 0.4, "kinship": 0.3, "order": -0.1},
+ "rites": {"duel": 0.04, "good_hunt": 0.03, "rite": 0.05, "buried": 0.04, "prayed": 0.02, "won_contest": 0.02},
+ "sins": {"surrendered": 0.06, "disobeyed": 0.02, "necromancy": 0.1},
+ "holy_days": [{"id": "great_hunt", "day": 100}, {"id": "pyre_night", "day": 280}],
+ "burial": "burn",
+ "clergy": "shaman",
+ "sacred": ["shrine"],
+ "magic": {"blessed": ["fire", "blood", "air"], "forbidden": []},
+ "zeal": 0.3,
+ "tolerance": 0.3,
+ "goals": {"pray": 0.05, "stock_food": 0.04}
+}
