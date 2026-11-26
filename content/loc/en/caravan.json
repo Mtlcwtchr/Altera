@@ -1,0 +1,21 @@
+{
+ "_doc": "LR-154: caravans, peddlers and supply trains (src/sim/caravan.cpp).",
+ "chronicle.caravan.robbed": "Robbers of {pol2} fell on {who} of {pol} on the road and took goods worth {n} coins",
+ "chronicle.caravan.fought_off": "The guards of {who} of {pol} fought off the robbers of {pol2}",
+ "chronicle.caravan.turned_back": "{who} turned back: {pol} and {pol2} are at war",
+ "chronicle.caravan.leaves_village": "{who} and their people left the village, going on down the road",
+ "chronicle.caravan.peddler.arrives_village": "A peddler comes to the village: {who} of {pol}, with wares",
+ "chronicle.caravan.caravan.arrives_village": "A caravan comes to the village: {who} of {pol}, {n} people with goods",
+ "chronicle.caravan.supply_train.arrives_village": "A supply train of {who} of {pol} comes to the village with grain",
+ "caravan.kind.peddler.name": "peddler",
+ "caravan.kind.caravan.name": "caravan",
+ "caravan.kind.supply_train.name": "supply train",
+ "trade.role.caravan_guard": "caravan guard",
+ "trade.role.caravan_hand": "drover",
+ "ui2d.sheet.occ.caravan_guard": "caravan guard",
+ "ui2d.sheet.occ.caravan_hand": "drover",
+ "news.trade.caravan_guard.m": "caravan guard",
+ "news.trade.caravan_guard.f": "caravan guard",
+ "news.trade.caravan_hand.m": "drover",
+ "news.trade.caravan_hand.f": "drover"
+}

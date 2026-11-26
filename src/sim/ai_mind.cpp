@@ -19,6 +19,7 @@
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
 #include "sim/worldmap.hpp"
+#include "sim/caravan.hpp"
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/culture.hpp"
@@ -738,6 +739,7 @@ void installAi(World& w) {
     installTrade(w);
     installRealm(w);
     installWorldMap(w);   // LR-153: the world map (fealty at the start, battlefields)
+    installCaravans(w); // LR-154: caravans, peddlers, supply trains
     installFields(w);
     installMagic(w);
     installMagicSociety(w);

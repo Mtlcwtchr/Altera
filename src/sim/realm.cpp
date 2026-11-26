@@ -1,5 +1,7 @@
 // The realm (AL-85, AL-92): see realm.hpp and gdd/realm/REALM_v0.2_unified.md.
 #include "sim/realm.hpp"
+
+#include "sim/caravan.hpp"
 #include "sim/data_fs.hpp"
 
 #include <algorithm>
@@ -1545,6 +1547,7 @@ void economyDaily(Ctx& x) {
 
 // Grain trade: once a month the hungry buy from the full, if they have the coin and are not at war.
 void grainTrade(Ctx& x) {
+    if (caravansOn(x.w)) return; // LR-154: grain goes by supply trains (sim/caravan.cpp)
     const double buyBelow = num(x.r.eco, "buy_below_days", 60), sellAbove = num(x.r.eco, "sell_above_days", 150);
     const double price = num(x.r.eco, "grain_price", 0.05), share = num(x.r.eco, "trade_share", 0.25);
     for (Settlement& b : polities(x)) {

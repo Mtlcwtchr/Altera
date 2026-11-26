@@ -1,0 +1,21 @@
+{
+ "_doc": "LR-154: караваны, бродячие торговцы и обозы (src/sim/caravan.cpp).",
+ "chronicle.caravan.robbed": "Разбойники из {pol2:gen} ограбили торговца {who} из {pol:gen} на дороге: взяли добра на {n} монет",
+ "chronicle.caravan.fought_off": "Охрана торговца {who} из {pol:gen} отбилась от разбойников {pol2:gen}",
+ "chronicle.caravan.turned_back": "Торговец {who} повернул назад: между {pol:ins} и {pol2:ins} война",
+ "chronicle.caravan.leaves_village": "{who} со своими людьми уш{who:g|ёл|ла} из деревни дальше по дороге",
+ "chronicle.caravan.peddler.arrives_village": "В деревню приш{who:g|ёл|ла} коробейни{who:g|к|ца} {who} из {pol:gen} с товаром",
+ "chronicle.caravan.caravan.arrives_village": "В деревню пришёл караван {who} из {pol:gen}: {n} человек с товаром",
+ "chronicle.caravan.supply_train.arrives_village": "В деревню пришёл обоз {who} из {pol:gen} с хлебом",
+ "caravan.kind.peddler.name": "коробейник",
+ "caravan.kind.caravan.name": "караван",
+ "caravan.kind.supply_train.name": "обоз",
+ "trade.role.caravan_guard": "охранник каравана",
+ "trade.role.caravan_hand": "погонщик",
+ "ui2d.sheet.occ.caravan_guard": "охранник каравана",
+ "ui2d.sheet.occ.caravan_hand": "погонщик",
+ "news.trade.caravan_guard.m": "охранник каравана",
+ "news.trade.caravan_guard.f": "охранница каравана",
+ "news.trade.caravan_hand.m": "погонщик",
+ "news.trade.caravan_hand.f": "погонщица"
+}

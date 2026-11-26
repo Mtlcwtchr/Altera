@@ -28,6 +28,7 @@
 #include "sim/loc.hpp"
 #include "sim/loc_gen.hpp"
 #include "sim/realm.hpp"
+#include "sim/caravan.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace lr::sim;
@@ -230,6 +231,7 @@ int main(int argc, char** argv) {
         World world = makeTestWorld(content, loadJsonFile(worldFile), seed);
         if (realmOnly) {
             installRealm(world);
+            installCaravans(world); // LR-154
             for (int d = 0; d < days; ++d) {
                 for (auto& [id, c] : world.characters())
                     if (!c.isAnimal() && c.body.alive) c.needs["hunger"] = 1.0, c.needs["thirst"] = 1.0;
