@@ -100,7 +100,7 @@
   "cold": 0.85
  },
  "weak": {},
- "culture_default": "orcish",
+ "culture_default": "steppe_rider",
  "relations_bias": {
   "human": -0.2,
   "elf": -0.5,
@@ -108,9 +108,15 @@
   "goblin": 0.1,
   "ogre": 0.15,
   "half_orc": 0.15,
-  "dragon": -0.3
+  "dragon": -0.3,
+  "steppe_centaur": 0.15,
+  "steppe_folk": -0.05,
+  "centaur": -0.1
  },
  "gifted_chance": 0.04,
  "settlement_tag": "orcish",
- "_doc": "Орки: крупнее людей, быстро взрослеют, плодовиты, короткая жизнь. Культура набегов частая, но не обязательная: решает сим."
+ "_doc": "Орки: крупнее людей, быстро взрослеют, плодовиты, короткая жизнь. Культура набегов частая, но не обязательная: решает сим.",
+ "region": [
+  "steppe"
+ ]
 }

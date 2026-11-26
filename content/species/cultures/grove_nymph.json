@@ -1,0 +1,116 @@
+{
+ "id": "grove_nymph",
+ "species": "nymph",
+ "belt": "mediterranean",
+ "names": {
+  "f": [
+   "Kalypso",
+   "Daphne",
+   "Eurydike",
+   "Syrinx",
+   "Arethusa",
+   "Klymene",
+   "Oreithyia",
+   "Pitys",
+   "Lotis",
+   "Kyane",
+   "Aigle",
+   "Meliai"
+  ],
+  "m": [
+   "Pan",
+   "Silen",
+   "Marsyas",
+   "Krotos",
+   "Komos",
+   "Phauns"
+  ]
+ },
+ "speech": "lilting",
+ "build_style": "grove",
+ "teach_aspects": [
+  "water",
+  "life",
+  "air",
+  "light"
+ ],
+ "forbid_aspects": [
+  "death",
+  "blood",
+  "fire"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "allowed",
+  "woodcutting": "crime",
+  "fouling_water": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "free_union",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "allowed",
+  "divorce": "allowed"
+ },
+ "peoples": {
+  "default": {
+   "nymph": 0.75,
+   "satyr": 0.25
+  }
+ },
+ "welcome": {
+  "nymph": 1.0,
+  "satyr": 1.0,
+  "vila": 1.0,
+  "hellene": 0.6,
+  "human": 0.55,
+  "centaur": 0.75,
+  "elf": 0.8,
+  "cyclops": 0.05,
+  "minotaur": 0.1
+ },
+ "welcome_other": 0.35,
+ "faith": "many_spirits",
+ "values": {
+  "nature": 0.8,
+  "freedom": 0.5,
+  "piety": 0.3,
+  "hospitality": 0.2,
+  "wealth": -0.4,
+  "order": -0.3
+ },
+ "traditions": [
+  "spring_offerings",
+  "festive_gatherings",
+  "storytelling",
+  "omen_reading"
+ ],
+ "rites": {
+  "coming_of_age": "naming_at_spring",
+  "marriage": "moon_vow",
+  "burial": "return_to_spring"
+ },
+ "food": {
+  "likes": [
+   "berries",
+   "honey",
+   "figs",
+   "grapes"
+  ],
+  "avoids": [
+   "meat"
+  ]
+ },
+ "place_names": [
+  "Arethusa",
+  "Kastalia",
+  "Hippokrene",
+  "Dirke",
+  "Peirene",
+  "Kyane"
+ ],
+ "_doc": "LR-166: нимфы рощ и родников, с ними сатиры. Каждая держится своего места (anchor). Рубить их рощи и мутить их воду — преступление. Взрослые союзы вольные, по согласию.",
+ "desc": "culture.grove_nymph.desc"
+}

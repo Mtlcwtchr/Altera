@@ -84,6 +84,7 @@ TEST(lr_stats_practice_passes_one_ever_slower) {
     World w = realWorld();
     Character& c = *people(w).front();
     c.body.ageDays = 30 * kDaysPerYear;
+    c.race.clear(); // LR-166: the plain human measure (a hellene learns eloquence faster)
     auto stepsToGain = [&](double from, double gain) {
         c.skills["eloquence"] = from;
         int n = 0;

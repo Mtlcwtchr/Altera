@@ -1,0 +1,115 @@
+{
+ "id": "dwarf_hold",
+ "species": "dwarf",
+ "belt": "north",
+ "names": {
+  "m": [
+   "Durin",
+   "Dvalin",
+   "Brokk",
+   "Eitri",
+   "Alfrigg",
+   "Berling",
+   "Nyi",
+   "Nordri",
+   "Fjalar",
+   "Galar",
+   "Andvari"
+  ],
+  "f": [
+   "Dis",
+   "Hlif",
+   "Mjoll",
+   "Thrud",
+   "Bera",
+   "Grima",
+   "Hrund",
+   "Svala"
+  ]
+ },
+ "speech": "blunt",
+ "build_style": "dwarven",
+ "teach_aspects": [
+  "earth",
+  "fire",
+  "metal"
+ ],
+ "forbid_aspects": [
+  "death"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "suspect",
+  "oathbreaking": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "dwarf": 0.95,
+   "northman": 0.05
+  }
+ },
+ "welcome": {
+  "dwarf": 1.0,
+  "northman": 0.6,
+  "human": 0.5,
+  "cyclops": 0.6,
+  "alv": 0.35,
+  "elf": 0.25,
+  "goblin": 0.1,
+  "troll": 0.0
+ },
+ "welcome_other": 0.3,
+ "faith": "stone_ancestors",
+ "values": {
+  "craft": 0.8,
+  "tradition": 0.6,
+  "kinship": 0.5,
+  "honor": 0.5,
+  "wealth": 0.4,
+  "order": 0.4,
+  "nature": -0.2
+ },
+ "traditions": [
+  "craft_pride",
+  "forge_vigil",
+  "oath_keeping",
+  "ancestor_rites",
+  "council_of_elders"
+ ],
+ "rites": {
+  "coming_of_age": "first_forging",
+  "marriage": "oath_binding",
+  "burial": "entomb"
+ },
+ "food": {
+  "likes": [
+   "ale",
+   "meat",
+   "bread",
+   "mushrooms"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Nidavellir",
+  "Svartalfheim",
+  "Kaldheim",
+  "Grjotgard",
+  "Jarnvid",
+  "Sindri-haugr"
+ ],
+ "_doc": "LR-166: подгорные дома гномов Севера: кузни, где куют сокровища богов (молот, кольца, цепи), клятвы на камне, память предков.",
+ "desc": "culture.dwarf_hold.desc",
+ "rites_forbidden": [
+  "ecstatic"
+ ]
+}

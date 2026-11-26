@@ -1,0 +1,118 @@
+{
+ "id": "forest_elf",
+ "species": "elf",
+ "belt": "forest",
+ "names": {
+  "m": [
+   "Aengus",
+   "Fionn",
+   "Midir",
+   "Lugh",
+   "Diancecht",
+   "Bodb",
+   "Elatha",
+   "Nuada"
+  ],
+  "f": [
+   "Etain",
+   "Niamh",
+   "Fand",
+   "Aine",
+   "Cliodhna",
+   "Brigid",
+   "Danu",
+   "Boann"
+  ]
+ },
+ "speech": "ornate",
+ "build_style": "sylvan",
+ "teach_aspects": [
+  "life",
+  "light",
+  "air",
+  "water"
+ ],
+ "forbid_aspects": [
+  "death",
+  "blood"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "allowed",
+  "woodcutting": "frowned",
+  "iron_in_grove": "frowned"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "monogamy",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "elf": 0.85,
+   "half_elf": 0.1,
+   "vila": 0.05
+  }
+ },
+ "welcome": {
+  "elf": 1.0,
+  "half_elf": 0.95,
+  "vila": 0.95,
+  "alv": 0.85,
+  "nymph": 0.9,
+  "woodfolk": 0.6,
+  "human": 0.5,
+  "dwarf": 0.35,
+  "goblin": 0.2,
+  "orc": 0.1,
+  "troll": 0.05
+ },
+ "welcome_other": 0.3,
+ "faith": "moon_mother",
+ "values": {
+  "nature": 0.7,
+  "tradition": 0.5,
+  "learning": 0.4,
+  "honor": 0.3,
+  "craft": 0.3,
+  "wealth": -0.2
+ },
+ "traditions": [
+  "daily_prayer",
+  "storytelling",
+  "hunt_honour",
+  "festive_gatherings",
+  "omen_reading",
+  "wedding_customs"
+ ],
+ "rites": {
+  "coming_of_age": "naming_under_tree",
+  "marriage": "moon_vow",
+  "burial": "expose"
+ },
+ "food": {
+  "likes": [
+   "berries",
+   "vegetables",
+   "honey",
+   "mead"
+  ],
+  "avoids": [
+   "meat"
+  ]
+ },
+ "place_names": [
+  "Sid Bri Leith",
+  "Brug na Boinne",
+  "Emain Ablach",
+  "Tir na nOg",
+  "Sid Femen",
+  "Cnoc Aine"
+ ],
+ "_doc": "LR-166: сиды холмов Средних лесов: долгоживущие, близкие к магии жизни и света, не любят железа в рощах. Холмы — их врата в Подземье.",
+ "desc": "culture.forest_elf.desc"
+}

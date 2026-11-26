@@ -897,7 +897,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_caravan.cpp
             tests/test_lr_sim_magic.cpp
             tests/test_lr_sim_magic_society.cpp
-            tests/test_lr_sim_culture.cpp
+            tests/test_lr_sim_culture.cpp tests/test_lr_sim_peoples.cpp
             tests/test_lr_sim_rites.cpp
             tests/test_lr_sim_pantheon.cpp
             tests/test_lr_sim_ecology.cpp

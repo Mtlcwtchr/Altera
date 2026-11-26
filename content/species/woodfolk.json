@@ -1,0 +1,82 @@
+{
+ "id": "woodfolk",
+ "base": "human",
+ "kin": "human",
+ "tags": [
+  "folk",
+  "human"
+ ],
+ "sapience": 1.0,
+ "glyph": "h",
+ "region": [
+  "forest"
+ ],
+ "culture_default": "slav_village",
+ "body": {
+  "height_m": 1.72,
+  "mass_kg": 72,
+  "pawn": {
+   "hair_m": "short short cropped long ponytail",
+   "hair_f": "braids braids long long bun",
+   "beards": "full full long stubble moustache"
+  }
+ },
+ "stats": {
+  "perception": 0.04,
+  "wisdom": 0.03,
+  "vitality": 0.03,
+  "charisma": -0.02,
+  "intellect": -0.02
+ },
+ "aptitudes": {
+  "herbalism": {
+   "learn": 1.25,
+   "cap": 1.1
+  },
+  "foraging": {
+   "learn": 1.3,
+   "cap": 1.1
+  },
+  "hunting": {
+   "learn": 1.2,
+   "cap": 1.05
+  },
+  "trapping": {
+   "learn": 1.2,
+   "cap": 1.05
+  },
+  "carpentry": {
+   "learn": 1.25,
+   "cap": 1.1
+  },
+  "beekeeping": {
+   "learn": 1.3,
+   "cap": 1.1
+  },
+  "weaving": {
+   "learn": 1.15,
+   "cap": 1.05
+  },
+  "literacy": {
+   "learn": 0.9,
+   "cap": 0.95
+  }
+ },
+ "traits_pool": {
+  "family_minded": 1.4,
+  "pious": 1.2,
+  "superstitious": 1.6,
+  "patient": 1.3,
+  "generous": 1.2
+ },
+ "needs": {},
+ "relations_bias": {
+  "elf": 0.05,
+  "vila": 0.05,
+  "hellene": -0.05,
+  "goblin": -0.1
+ },
+ "_doc": "LR-166: люди Средних лесов, славяне и кельты в одном народе (различаются культурой: slav_village, celtic_grove). Лес и болото знают лучше всех, суеверны.",
+ "settlement_tag": "human",
+ "desc": "species.woodfolk.desc"
+}

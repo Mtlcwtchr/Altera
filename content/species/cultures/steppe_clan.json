@@ -1,0 +1,138 @@
+{
+ "id": "steppe_clan",
+ "species": "steppe_folk",
+ "belt": "steppe",
+ "names": {
+  "m": [
+   "Skilur",
+   "Ariant",
+   "Idanthyrs",
+   "Anacharsis",
+   "Kolaksai",
+   "Targitai",
+   "Arpoksai",
+   "Bek",
+   "Tugor",
+   "Kulan"
+  ],
+  "f": [
+   "Tomyris",
+   "Zarina",
+   "Opia",
+   "Aiya",
+   "Saule",
+   "Altyn",
+   "Kunduz",
+   "Ainur"
+  ]
+ },
+ "speech": "plain",
+ "build_style": "steppe",
+ "teach_aspects": [
+  "air",
+  "fire",
+  "earth"
+ ],
+ "forbid_aspects": [
+  "water"
+ ],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "allowed",
+  "horse_theft": "crime",
+  "inhospitality": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned",
+  "bride_price": true
+ },
+ "peoples": {
+  "village": {
+   "steppe_folk": 0.85,
+   "steppe_centaur": 0.08,
+   "half_orc": 0.05,
+   "hellene": 0.02
+  },
+  "town": {
+   "steppe_folk": 0.8,
+   "hellene": 0.08,
+   "half_orc": 0.06,
+   "nilote": 0.03,
+   "woodfolk": 0.03
+  },
+  "bandit_camp": {
+   "steppe_folk": 0.6,
+   "orc": 0.25,
+   "half_orc": 0.15
+  },
+  "default": {
+   "steppe_folk": 0.88,
+   "steppe_centaur": 0.07,
+   "half_orc": 0.05
+  }
+ },
+ "welcome": {
+  "human": 0.7,
+  "steppe_folk": 1.0,
+  "steppe_centaur": 0.85,
+  "half_orc": 0.65,
+  "orc": 0.45,
+  "hellene": 0.55,
+  "woodfolk": 0.55,
+  "centaur": 0.6
+ },
+ "welcome_other": 0.45,
+ "faith": "stone_ancestors",
+ "values": {
+  "freedom": 0.6,
+  "hospitality": 0.6,
+  "kinship": 0.5,
+  "martial": 0.4,
+  "tradition": 0.4,
+  "honor": 0.3,
+  "order": -0.1
+ },
+ "traditions": [
+  "kurultai",
+  "hospitality",
+  "ancestor_rites",
+  "hunt_honour",
+  "agon_games",
+  "storytelling",
+  "blood_feud"
+ ],
+ "rites": {
+  "coming_of_age": "first_horse",
+  "marriage": "bride_price",
+  "burial": "kurgan"
+ },
+ "food": {
+  "likes": [
+   "kumis",
+   "milk",
+   "dried_meat",
+   "cheese",
+   "meat"
+  ],
+  "avoids": [
+   "fish"
+  ]
+ },
+ "place_names": [
+  "Gerros",
+  "Kara-Tobe",
+  "Ak-Su",
+  "Ulug-Khem",
+  "Tanais",
+  "Kul-Oba",
+  "Solokha"
+ ],
+ "_doc": "LR-166: люди степи (скифы и тюрки): кочевья и юрты, курганы предков, курултай родов; гость в юрте свят, конокрадство — худшее преступление.",
+ "desc": "culture.steppe_clan.desc"
+}

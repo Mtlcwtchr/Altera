@@ -1,0 +1,109 @@
+{
+ "id": "steppe_rider",
+ "species": "orc",
+ "belt": "steppe",
+ "names": {
+  "m": [
+   "Gorbag",
+   "Ugluk",
+   "Bolg",
+   "Azog",
+   "Shagrat",
+   "Muzgash",
+   "Grishnak",
+   "Lugdush"
+  ],
+  "f": [
+   "Ghora",
+   "Sharku",
+   "Bolga",
+   "Urza",
+   "Mogra",
+   "Gashna"
+  ]
+ },
+ "speech": "rough",
+ "build_style": "steppe",
+ "teach_aspects": [
+  "fire",
+  "blood",
+  "earth",
+  "air"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "allowed",
+  "raiding": "honored",
+  "horse_theft": "crime"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "allowed",
+  "adultery": "crime",
+  "divorce": "frowned",
+  "bride_price": true
+ },
+ "peoples": {
+  "default": {
+   "orc": 0.72,
+   "steppe_centaur": 0.18,
+   "half_orc": 0.1
+  }
+ },
+ "welcome": {
+  "orc": 1.0,
+  "steppe_centaur": 1.0,
+  "half_orc": 0.9,
+  "goblin": 0.6,
+  "steppe_folk": 0.4,
+  "ogre": 0.5,
+  "human": 0.25,
+  "elf": 0.05,
+  "dwarf": 0.05
+ },
+ "welcome_other": 0.25,
+ "faith": "sky_blood",
+ "values": {
+  "martial": 0.7,
+  "freedom": 0.6,
+  "honor": 0.4,
+  "kinship": 0.4,
+  "order": -0.2,
+  "learning": -0.2
+ },
+ "traditions": [
+  "raiding",
+  "kurultai",
+  "blood_feud",
+  "hunt_honour",
+  "agon_games",
+  "rite_of_passage"
+ ],
+ "rites": {
+  "coming_of_age": "first_blood",
+  "marriage": "bride_price",
+  "burial": "kurgan"
+ },
+ "food": {
+  "likes": [
+   "kumis",
+   "meat",
+   "dried_meat",
+   "milk"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Kara-Orda",
+  "Boz-Tura",
+  "Kyzyl-Kurgan",
+  "Ulu-Orda",
+  "Ak-Orda"
+ ],
+ "_doc": "LR-166: орки-всадники Восточной степи в союзе со степными кентаврами: орда, курултай, набег под небом Тенгри.",
+ "desc": "culture.steppe_rider.desc"
+}

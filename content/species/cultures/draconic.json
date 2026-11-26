@@ -1,23 +1,8 @@
 {
  "id": "draconic",
  "species": "dragon",
- "names": {
-  "m": [
-   "Vyrmax",
-   "Kaelthrax",
-   "Ignarion",
-   "Morvathar",
-   "Szarnoth"
-  ],
-  "f": [
-   "Aurvyra",
-   "Nyxaleth",
-   "Sarthyss",
-   "Vexmira",
-   "Ysolvane"
-  ],
-  "family": []
- },
+ "belt": "north",
+ "names": {},
  "speech": "grand",
  "build_style": "lair",
  "teach_aspects": [
@@ -27,6 +12,15 @@
  "forbid_aspects": [],
  "norms": {
   "tribute": "owed"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "none",
+  "courtship": "free",
+  "premarital": "allowed",
+  "adultery": "allowed",
+  "divorce": "frowned"
  },
  "peoples": {
   "default": {
@@ -39,14 +33,13 @@
  "welcome_other": 0.0,
  "faith": "hoard_flame",
  "values": {
-  "wealth": 0.8,
-  "freedom": 0.7,
-  "honor": 0.2,
-  "hospitality": -0.4,
-  "kinship": -0.2
+  "wealth": 0.9,
+  "freedom": 0.6,
+  "order": -0.3,
+  "hospitality": -0.6
  },
  "traditions": [
-  "oath_keeping"
+  "raiding"
  ],
  "rites": {
   "coming_of_age": "first_flight",
@@ -59,6 +52,12 @@
   ],
   "avoids": []
  },
- "desc": "culture.draconic.desc",
- "_doc": "Драконы: высокомерная величавая речь, дань им положена."
+ "place_names": [
+  "Gnitaheid",
+  "Fafnir-haugr",
+  "Kolkhis",
+  "Zmeinaya gora"
+ ],
+ "_doc": "LR-166: драконы вершин Севера и змеи степи (подвиды — данные вида): логово, клад и дань.",
+ "desc": "culture.draconic.desc"
 }

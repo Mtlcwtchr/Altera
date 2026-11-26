@@ -1,4 +1,10 @@
 {
+ "species.nereid.name": "nereid",
+ "worldmap.poi.nereid_grotto.name": "nereids' grotto",
+ "worldmap.poi.nereid_grotto.n1": "Nereids' Grotto",
+ "worldmap.poi.nereid_grotto.n2": "Foam Cave",
+ "worldmap.poi.nereid_grotto.n3": "Pearl Grotto",
+ "worldmap.poi.nereid_grotto.n4": "Doris Rock",
  "_doc": "LR-170: мифические существа по поясам (content/creatures, sim/bestiary.hpp)",
  "chronicle.lair_raid.albasty": "The albasty rode the horses of {place} to death",
  "chronicle.lair_raid.aydahar": "The aydahar crushed the horses of {place}",

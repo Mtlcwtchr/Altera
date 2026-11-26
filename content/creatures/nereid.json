@@ -1,0 +1,53 @@
+{
+ "id": "nereid",
+ "habitat": "land",
+ "biomes": [
+  "coast",
+  "cliffs"
+ ],
+ "per_km2": 0.003,
+ "group": [
+  1,
+  3
+ ],
+ "max_group": 4,
+ "speed_m_per_tick": 90,
+ "notice_m": 160,
+ "flee_m": 120,
+ "diet": "graze",
+ "aggression": 0.0,
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 0,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.7,
+ "tags": [
+  "spirit",
+  "female",
+  "water"
+ ],
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "lair": {
+   "poi": "nereid_grotto",
+   "coast": true,
+   "terrain": [
+    "hills",
+    "plains",
+    "mountains",
+    "forest"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 30
+  }
+ },
+ "_doc": "LR-170: нереиды Срединного моря, морские девы с рыбьим хвостом. Мирные, людей не трогают и уходят в воду, если к ним лезть. Грот на карте без набегов. Сирена при этом остаётся полуптицей."
+}

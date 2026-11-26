@@ -1,0 +1,95 @@
+{
+ "id": "jotun_hold",
+ "species": "ogre",
+ "belt": "north",
+ "names": {
+  "m": [
+   "Thrym",
+   "Hrungnir",
+   "Ymir",
+   "Suttung",
+   "Hymir",
+   "Geirrod",
+   "Thjazi"
+  ],
+  "f": [
+   "Skadi",
+   "Gerd",
+   "Angrboda",
+   "Hyrrokkin",
+   "Gjalp",
+   "Greip"
+  ]
+ },
+ "speech": "slow",
+ "build_style": "norse",
+ "teach_aspects": [
+  "earth",
+  "water",
+  "fire"
+ ],
+ "forbid_aspects": [],
+ "norms": {
+  "necromancy": "frowned",
+  "witchcraft": "allowed",
+  "raiding": "honored"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "allowed",
+  "adultery": "frowned",
+  "divorce": "frowned"
+ },
+ "peoples": {
+  "default": {
+   "ogre": 0.9,
+   "troll": 0.1
+  }
+ },
+ "welcome": {
+  "ogre": 1.0,
+  "troll": 0.6,
+  "northman": 0.2,
+  "human": 0.15,
+  "dwarf": 0.1
+ },
+ "welcome_other": 0.2,
+ "faith": "hoard_flame",
+ "values": {
+  "martial": 0.6,
+  "kinship": 0.4,
+  "wealth": 0.4,
+  "order": -0.2,
+  "learning": -0.2
+ },
+ "traditions": [
+  "raiding",
+  "blood_feud",
+  "hunt_honour",
+  "festive_gatherings"
+ ],
+ "rites": {
+  "coming_of_age": "first_blood",
+  "marriage": "bride_price",
+  "burial": "burn"
+ },
+ "food": {
+  "likes": [
+   "meat",
+   "mead",
+   "dried_meat"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Jotunheim",
+  "Utgard",
+  "Thrymheim",
+  "Glasisvellir"
+ ],
+ "_doc": "LR-166: йотуны (огры) ледяных гор: великаны-соперники богов, набеги и пиры; сила и хитрость против рун и молота.",
+ "desc": "culture.jotun_hold.desc"
+}

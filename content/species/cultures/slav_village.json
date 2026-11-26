@@ -1,0 +1,159 @@
+{
+ "id": "slav_village",
+ "species": "woodfolk",
+ "belt": "forest",
+ "names": {
+  "m": [
+   "Dobrynya",
+   "Mikula",
+   "Svyatoslav",
+   "Yaroslav",
+   "Bogdan",
+   "Radomir",
+   "Ratibor",
+   "Velimir",
+   "Mstislav",
+   "Zhdan"
+  ],
+  "f": [
+   "Vasilisa",
+   "Marya",
+   "Lyubava",
+   "Zabava",
+   "Milava",
+   "Dobrava",
+   "Snezhana",
+   "Yaroslava",
+   "Zlata",
+   "Lada"
+  ]
+ },
+ "speech": "plain",
+ "build_style": "slavic",
+ "teach_aspects": [
+  "fire",
+  "water",
+  "earth",
+  "air",
+  "life"
+ ],
+ "forbid_aspects": [
+  "blood",
+  "death"
+ ],
+ "norms": {
+  "necromancy": "crime",
+  "witchcraft": "suspect",
+  "insulting_domovoi": "frowned"
+ },
+ "intimacy": {
+  "adults_only": true,
+  "min_age_years": 18,
+  "marriage": "monogamy",
+  "courtship": "families",
+  "premarital": "frowned",
+  "adultery": "crime",
+  "divorce": "frowned",
+  "matchmaking": true
+ },
+ "peoples": {
+  "village": {
+   "woodfolk": 0.88,
+   "goblin": 0.04,
+   "half_elf": 0.03,
+   "vila": 0.02,
+   "northman": 0.03
+  },
+  "town": {
+   "woodfolk": 0.82,
+   "northman": 0.08,
+   "steppe_folk": 0.04,
+   "hellene": 0.03,
+   "goblin": 0.03
+  },
+  "keep": {
+   "woodfolk": 0.9,
+   "northman": 0.1
+  },
+  "monastery": {
+   "woodfolk": 0.95,
+   "half_elf": 0.05
+  },
+  "bandit_camp": {
+   "woodfolk": 0.7,
+   "half_orc": 0.15,
+   "steppe_folk": 0.1,
+   "goblin": 0.05
+  },
+  "default": {
+   "woodfolk": 0.9,
+   "goblin": 0.05,
+   "northman": 0.05
+  }
+ },
+ "welcome": {
+  "human": 0.8,
+  "woodfolk": 1.0,
+  "northman": 0.75,
+  "half_elf": 0.75,
+  "vila": 0.7,
+  "elf": 0.6,
+  "dwarf": 0.6,
+  "steppe_folk": 0.5,
+  "goblin": 0.4,
+  "half_orc": 0.45,
+  "orc": 0.2,
+  "troll": 0.1,
+  "dragon": 0.0
+ },
+ "welcome_other": 0.4,
+ "faith": "hearth_faith",
+ "values": {
+  "kinship": 0.5,
+  "hospitality": 0.5,
+  "piety": 0.4,
+  "tradition": 0.4,
+  "nature": 0.3,
+  "order": 0.3,
+  "freedom": 0.1
+ },
+ "traditions": [
+  "hospitality",
+  "kupala_night",
+  "festive_gatherings",
+  "wedding_customs",
+  "ancestor_rites",
+  "storytelling",
+  "council_of_elders"
+ ],
+ "rites": {
+  "coming_of_age": "first_furrow",
+  "marriage": "matchmaking_wedding",
+  "burial": "burn"
+ },
+ "food": {
+  "likes": [
+   "bread",
+   "kvass",
+   "mead",
+   "sauerkraut",
+   "berries",
+   "honey",
+   "mushrooms"
+  ],
+  "avoids": []
+ },
+ "place_names": [
+  "Berestye",
+  "Gorodets",
+  "Dubrava",
+  "Lyubech",
+  "Ryazan",
+  "Belozersk",
+  "Kitezh",
+  "Snovsk",
+  "Turov"
+ ],
+ "_doc": "LR-166: славянские сёла Средних лесов: изба с домовым, вече старейшин, сваты и купальская ночь, леший за околицей. Мёртвых сжигают и насыпают курган.",
+ "desc": "culture.slav_village.desc"
+}
