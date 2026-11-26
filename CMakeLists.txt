@@ -331,6 +331,7 @@ add_library(lr_sim STATIC
         src/sim/rumor_noise.cpp
         src/sim/dialogue_say.cpp
         src/sim/news.cpp
+        src/sim/memory_talk.cpp
         src/sim/speech_feed.cpp
         src/sim/justice.cpp
         src/sim/facts.cpp
@@ -871,7 +872,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_dialogue_rules.cpp
             tests/test_lr_sim_rumor_noise.cpp tests/test_lr_sim_rumor_spread.cpp tests/test_lr_sim_dialogue_say.cpp
             tests/test_lr_sim_justice.cpp tests/test_lr_sim_facts.cpp
-            tests/test_lr_sim_speech_feed.cpp tests/test_lr_sim_news.cpp
+            tests/test_lr_sim_speech_feed.cpp tests/test_lr_sim_news.cpp tests/test_lr_sim_memory_talk.cpp
             tests/test_lr_sim_village_life.cpp tests/test_lr_sim_memory_budget.cpp
             tests/test_lr_sim_realm.cpp
             tests/test_lr_sim_magic.cpp

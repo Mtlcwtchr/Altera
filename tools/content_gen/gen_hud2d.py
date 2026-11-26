@@ -70,6 +70,16 @@ ICONS = {
     "scroll": [".mmmmmmm.", "mpppppppm", ".pkkkkkp.", ".ppppppp.", ".pkkkkp..", ".ppppppp.", ".pkkkkkp.", "mpppppppm", ".mmmmmmm."],
     "anvil": [".........", ".........", "SSSSSSS..", ".SSSSSSSS", "...SSS...", "...SSS...", "..SSSSS..", ".SSSSSSS.", "........."],
     "hammer": [".........", ".SSSSS...", ".SSSSS...", "...m.....", "...m.....", "...m.....", "...m.....", "...m.....", "........."],
+    # LR-161: thoughts without a picture yet, and the screens apart from the needs/attributes
+    "potion": ["...sss...", "....m....", "...sss...", "..srrrs..", ".srrrrrs.", ".srrrrRs.", ".srrrRRs.", "..sssss..", "........."],
+    "spark": ["....v....", "....v....", "..v.v.v..", "...vvv...", "vvvvsvvvv", "...vvv...", "..v.v.v..", "....v....", "....v...."],
+    "shield": [".SSSSSSS.", ".SuuuuuS.", ".SuuyuuS.", ".SuyyyuS.", ".SuuyuuS.", "..SuuuS..", "..SuuuS..", "...SuS...", "....S...."],
+    "pipe": ["......s..", ".....s...", "......s..", ".....mm..", ".....mm..", "mmmmmmm..", ".mmmmm...", ".........", "........."],
+    "baby": [".........", "...ggg...", "..gsssg..", "..sssss..", ".ppppppp.", ".ppppppp.", "..ppppp..", "...ppp...", "........."],
+    "meh": ["..ggggg..", ".g.....g.", "g..g.g..g", "g.......g", "g.......g", "g.ggggg.g", ".g.....g.", "..ggggg..", "........."],
+    "person": ["...ggg...", "..ggggg..", "..ggggg..", "...ggg...", "..ggggg..", ".ggggggg.", ".ggggggg.", ".ggggggg.", "........."],
+    "banner": [".m.......", ".mrrrrrr.", ".mrryrrr.", ".mryyyrr.", ".mrryrrr.", ".mrrrrrr.", ".mrr..rr.", ".m.......", ".m......."],
+    "village": ["..m...m..", ".mmm.mmm.", "mmmmmmmmm", ".sss.sss.", ".sSs.sSs.", ".sSs.sSs.", ".sss.sss.", "GGGGGGGGG", "........."],
 }
 
 
@@ -106,9 +116,13 @@ def main():
         # (0 under, 1 clothes, 2 armour, 3 over); a slot without such layers is a carry slot
         "layer_cols": {"under": 0, "padding": 1, "cap": 1, "shoes": 1, "gloves": 1, "armour": 2, "helm": 2, "over": 3},
         # LR-145: the column's screen buttons (Screens::columnScreens ids) -> icon
-        "screens": {"sheet": "hud_book", "dynasty": "hud_crown", "colony": "hud_house", "build": "hud_hammer",
+        "screens": {"sheet": "hud_person", "dynasty": "hud_banner", "colony": "hud_village", "build": "hud_hammer",
                     "map": "hud_map", "workshop": "hud_anvil", "chronicle": "hud_scroll"},
         "moodlets": [
+            # LR-161: potions, magic, babies, the pipe (before the broad rules below)
+            ["potion_poison", "hud_skull"], ["potion|draught", "hud_potion"], ["healed_by_magic|spellbound|enchant", "hud_spark"],
+            ["warded|ward", "hud_shield"], ["pregnant|new_parent|newborn", "hud_baby"], ["pipe|smoke", "hud_pipe"],
+            ["bored", "hud_meh"], ["hope", "hud_sun"], ["obsess", "hud_heartbreak"], ["cosy|light", "hud_flame"],
             ["ate|meal|bread|feast|food|catch", "hud_bread"], ["hungry|starving|fasted", "hud_bread"],
             ["thirst|drink|tipsy|hungover|merry", "hud_cup"], ["rest|slept|sleep|exhaust|refresh", "hud_moon"],
             ["warm|cozy", "hud_flame"], ["cold|freez", "hud_snow"], ["clean|tidy", "hud_soap"],

@@ -2882,7 +2882,7 @@ private:
             d.mood = c->mood(w.now());
             d.fatigue = c->body.fatigue;
             d.blood = c->body.blood;
-            d.freeWill = c->controller.freeWill;
+            d.freeWill = c->controller.autonomy;
             for (const auto& [k, v] : c->inventory)
                 if (v > 0) d.inventory.push_back({k, name("item", k), v});
             gearSnap(w, *c, d.gear);

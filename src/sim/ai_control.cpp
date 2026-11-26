@@ -7,7 +7,9 @@
 // becomes an ordinary Utility goal with a hold bonus for a while, player hints
 // become decaying weights); the newly taken character's autonomous plan is
 // paused, not deleted, and resumes when the AI gets it back - or, with free
-// will on, when the player leaves it without orders.
+// will on, when the player leaves it without orders. LR-157: free will is off
+// unless the player turns it on: the led person lives by itself only once the
+// player lets go of it ("release_control", the Release button).
 
 #include <algorithm>
 #include <stdexcept>
@@ -221,7 +223,7 @@ void playerThink(World& w, Character& c) {
         gs.score = q.priority;
         if (adoptGoal(w, c, gs, "queued")) return;
     }
-    if (!c.controller.freeWill) return;
+    if (!c.controller.autonomy) return;
     if (w.now() - c.controller.idleSince < cfg.playerIdleResumeTicks) return;
     // Free will: left without orders, the character goes back to its own life.
     if (ai.suspended) {
@@ -399,10 +401,10 @@ bool handle(World& w, Command& cmd) {
     if (t == "set_free_will") {
         Character* c = w.character(cmd.args.at("id").get<EntityId>());
         if (!c) throw std::runtime_error("no such character");
-        c->controller.freeWill = cmd.args.at("on").get<bool>();
+        c->controller.autonomy = cmd.args.at("on").get<bool>();
         // `now`: the player has been idle long enough already (the game counts
         // its own seconds): free will takes over at the next think.
-        if (c->controller.freeWill && cmd.args.value("now", false)) {
+        if (c->controller.autonomy && cmd.args.value("now", false)) {
             c->controller.idleSince = w.now() - cfg.playerIdleResumeTicks;
             c->ai.nextThink = w.now();
         }

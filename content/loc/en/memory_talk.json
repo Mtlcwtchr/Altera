@@ -1,0 +1,358 @@
+{
+ "_doc": "LR-158: talking over remembered moments (src/sim/memory_talk.hpp). memory.moment.<type> - the moment in the first person ({moment}), memory.shared.<type> - 'we' ({moment_we}), memory.when.<bucket> ({when}).",
+ "memory.moment.starved": "I went hungry",
+ "memory.shared.starved": "we went hungry",
+ "memory.moment.froze": "I nearly froze",
+ "memory.shared.froze": "we froze",
+ "memory.moment.food_spoiled": "my stores rotted",
+ "memory.shared.food_spoiled": "our stores rotted",
+ "memory.moment.ate_seed_corn": "I had to eat the seed corn",
+ "memory.shared.ate_seed_corn": "we ate the seed corn",
+ "memory.moment.was_comforted": "someone comforted me in a hard hour",
+ "memory.moment.was_given_food": "someone fed me when there was nothing to eat",
+ "memory.moment.was_given_gift": "I was given a gift",
+ "memory.moment.was_robbed": "I was robbed",
+ "memory.moment.built_home": "I raised my own house",
+ "memory.shared.built_home": "we raised the house",
+ "memory.moment.learned_skill": "I learned a new craft",
+ "memory.moment.breakthrough": "I made a breakthrough in my work",
+ "memory.moment.adopted": "we took in a foundling",
+ "memory.shared.adopted": "we took in a foundling",
+ "memory.moment.attacked": "I was attacked",
+ "memory.shared.attacked": "we were attacked",
+ "memory.moment.brawl": "I got into a brawl",
+ "memory.shared.brawl": "we started that brawl",
+ "memory.moment.buried": "I buried one of my own",
+ "memory.shared.buried": "we buried our own",
+ "memory.moment.coup": "the power changed hands",
+ "memory.shared.coup": "the power changed hands",
+ "memory.moment.divorce": "my marriage broke apart",
+ "memory.moment.duel": "I fought a duel",
+ "memory.shared.duel": "there was that duel",
+ "memory.moment.heir_named": "an heir was named",
+ "memory.shared.heir_named": "the heir was named",
+ "memory.moment.judged": "I stood trial",
+ "memory.moment.migrated": "I left my old home and came here",
+ "memory.shared.migrated": "we left our old home",
+ "memory.moment.oath": "I swore an oath",
+ "memory.shared.oath": "we swore the oath",
+ "memory.moment.proposed": "I asked for a hand in marriage",
+ "memory.moment.raid": "I was in a raid",
+ "memory.shared.raid": "we went raiding",
+ "memory.moment.raided": "raiders fell on us",
+ "memory.shared.raided": "raiders fell on the village",
+ "memory.moment.rite": "I stood at the rite",
+ "memory.shared.rite": "we held the rite",
+ "memory.moment.sworn_friend": "I swore brotherhood with a friend",
+ "memory.shared.sworn_friend": "we swore brotherhood",
+ "memory.moment.used_magic": "I worked magic",
+ "memory.moment.war_declared": "war was declared",
+ "memory.shared.war_declared": "war was declared",
+ "memory.moment.wedding": "I was wed",
+ "memory.shared.wedding": "we feasted at the wedding",
+ "memory.moment.was_insulted": "I was insulted before everyone",
+ "memory.moment.saw_punishment": "I saw a punishment carried out",
+ "memory.shared.saw_punishment": "we watched the punishment",
+ "memory.moment.saw_attack": "I saw a man beaten before my eyes",
+ "memory.shared.saw_attack": "we saw a man beaten",
+ "memory.moment.saw_execution": "I saw an execution",
+ "memory.shared.saw_execution": "we saw the execution",
+ "memory.moment.attacked_by_beast": "a beast went for me",
+ "memory.shared.attacked_by_beast": "a beast went for us",
+ "memory.moment.attacked_by_undead": "a dead thing came for me",
+ "memory.shared.attacked_by_undead": "the dead came for us",
+ "memory.moment.saw_beast": "I saw a beast right by the village",
+ "memory.shared.saw_beast": "we saw a beast by the village",
+ "memory.moment.saw_magic": "I saw magic with my own eyes",
+ "memory.shared.saw_magic": "we saw magic worked",
+ "memory.moment.saw_dark_magic": "I saw dark magic",
+ "memory.shared.saw_dark_magic": "we saw dark magic",
+ "memory.moment.saw_necromancy": "I saw the dead raised",
+ "memory.shared.saw_necromancy": "we saw the dead raised",
+ "memory.moment.good_hunt": "I came back from the hunt with rich game",
+ "memory.shared.good_hunt": "we came back with rich game",
+ "memory.moment.won_fight": "I won a fight",
+ "memory.shared.won_fight": "we won that fight",
+ "memory.moment.lost_fight": "I lost a fight",
+ "memory.moment.fled_fight": "I fled a fight",
+ "memory.moment.was_treated": "someone tended my wounds",
+ "memory.moment.maimed": "I was maimed",
+ "memory.moment.was_spared": "I was spared in a fight",
+ "memory.moment.spared_foe": "I spared a foe",
+ "memory.moment.killed_foe": "I killed a man",
+ "memory.moment.was_bound": "I was taken captive",
+ "memory.moment.rescued": "I was rescued from captivity",
+ "memory.moment.rescued_someone": "I pulled someone out of trouble",
+ "memory.moment.was_released": "I was let go from captivity",
+ "memory.moment.paid_ransom": "I paid a ransom",
+ "memory.moment.was_sentenced": "I was sentenced",
+ "memory.moment.escaped": "I escaped captivity",
+ "memory.moment.exiled": "I was driven out of my home",
+ "memory.moment.was_punished": "I was punished before everyone",
+ "memory.moment.paid_tribute": "we paid tribute",
+ "memory.shared.paid_tribute": "we paid tribute",
+ "memory.moment.won_contest": "I won a contest",
+ "memory.moment.danced": "I danced at the feast",
+ "memory.shared.danced": "we danced at the feast",
+ "memory.moment.sang_together": "we sang till morning",
+ "memory.shared.sang_together": "we sang till morning",
+ "memory.moment.read_omen": "I saw an omen",
+ "memory.moment.gave_food": "I fed the hungry",
+ "memory.moment.made_tool": "I made myself a new tool",
+ "memory.moment.with_child": "we're expecting a child in the family",
+ "memory.shared.with_child": "we're expecting a child",
+ "memory.moment.stranger_arrived": "a stranger came to stay with us",
+ "memory.shared.stranger_arrived": "a stranger came to us",
+ "memory.moment.fasted": "I kept a fast",
+ "memory.moment.any": "something happened to me",
+ "memory.shared.any": "we lived through it together",
+ "memory.somebody": "someone",
+ "memory.when.recent": "the other day",
+ "memory.when.days": "not long ago",
+ "memory.when.weeks": "a month or so ago",
+ "memory.when.season": "some months back",
+ "memory.when.year": "a year or so ago",
+ "memory.when.long": "long ago",
+ "dialogue.menu.ask_memory": "what they remember best",
+ "hud.talk.act.ask_memory": "ask",
+ "say.memory.ask_memory": [
+  "What do you remember best, {listener}?",
+  "Tell me, {listener}, what has stayed with you?"
+ ],
+ "say.memory.no_moment": [
+  "Nothing comes to mind.",
+  "A life like any other, nothing much to tell."
+ ],
+ "say.memory.recall": [
+  "I remember, {when} {moment}.",
+  "You know, {listener}, {when} {moment}. I still remember it."
+ ],
+ "say.memory.recall.sad": [
+  "It's hard to remember, {listener}, but {when} {moment}.",
+  "I can't get it out of my head: {when} {moment}."
+ ],
+ "say.memory.recall.glad": [
+  "I had a joy of my own: {when} {moment}!",
+  "It's good to remember: {when} {moment}."
+ ],
+ "say.memory.recall.alarm": [
+  "I had such a fright: {when} {moment}!",
+  "Would you believe it, {when} {moment}. Barely came out alive."
+ ],
+ "say.memory.recall.proud": [
+  "Let me boast, {listener}: {when} {moment}.",
+  "And {when} {moment}, so there."
+ ],
+ "say.memory.recall.eerie": [
+  "It was dreadful, {listener}: {when} {moment}.",
+  "It still gives me chills: {when} {moment}."
+ ],
+ "say.memory.recall.shame": [
+  "No sense hiding it, {when} {moment}.",
+  "I'm ashamed to say it, but {when} {moment}."
+ ],
+ "say.memory.recall.spicy": [
+  "Listen to this: {when} {moment}!",
+  "You won't believe it: {when} {moment}!"
+ ],
+ "say.memory.recall.type.attacked_by_beast": [
+  "{when_up} a beast leapt at me out of the thicket. I thought that was the end.",
+  "See this, {listener}? A beast clawed me {when}. Barely fought it off."
+ ],
+ "say.memory.recall.type.attacked_by_undead": [
+  "{when_up} a dead thing came for me. Cold, with empty eyes... not a thing to speak of at night.",
+  "The dead don't always lie still, {listener}. I learned that myself {when}."
+ ],
+ "say.memory.recall.type.starved": [
+  "{when_up} I was so hungry I'd have gnawed bark.",
+  "Do you know what hunger is, {listener}? I learned it {when}."
+ ],
+ "say.memory.recall.type.wedding": [
+  "{when_up} I was wed. The best day, what more is there to say.",
+  "I keep thinking of my wedding, {listener}. What a feast that was!"
+ ],
+ "say.memory.recall.type.built_home": [
+  "I raised my house {when}. Every log with my own hands.",
+  "A roof of your own, {listener}, is no small thing. I raised my house {when}."
+ ],
+ "say.memory.recall.type.raided": [
+  "{when_up} raiders fell on us. Smoke, screams... I won't forget.",
+  "I remember that raid, {listener}. They carried off our goods and beat our people."
+ ],
+ "say.memory.recall.type.won_fight": [
+  "{when_up} I won a fight. My hand never wavered!",
+  "I held my ground in a fight {when}, {listener}, and won."
+ ],
+ "say.memory.recall.type.maimed": [
+  "See, {listener}? I was maimed {when}. That's how I've been since.",
+  "I'm not as strong as I was. I was maimed {when}."
+ ],
+ "say.memory.recall.type.buried": [
+  "{when_up} I laid one of my own in the ground. It's empty without them.",
+  "It weighs on me, {listener}. I buried one of my own {when}."
+ ],
+ "say.memory.recall.type.rescued": [
+  "I was rescued from captivity {when}. I'll be grateful all my life.",
+  "I thought I'd never be free again, but I was rescued {when}."
+ ],
+ "say.memory.recall.type.escaped": [
+  "{when_up} I escaped captivity. At night, through the woods, barefoot.",
+  "They couldn't hold me, {listener}! I escaped {when}."
+ ],
+ "say.memory.recall.type.exiled": [
+  "I was driven from my home {when}. I've wandered ever since.",
+  "I have no home any more, {listener}. I was exiled {when}."
+ ],
+ "say.memory.recall.type.saw_necromancy": [
+  "{when_up} I saw the dead raised. Gods spare me from seeing it again.",
+  "Some things are better not seen, {listener}. {when_up} I saw a corpse raised."
+ ],
+ "say.memory.recall.type.good_hunt": [
+  "{when_up} I brought such game back from the hunt that the whole family ate for a week!",
+  "That was a fine hunt {when}, {listener}. The beast walked right up to me."
+ ],
+ "say.memory.recall.type.breakthrough": [
+  "{when_up} it all came together in my work — I finally understood how!",
+  "I struggled with it a long time, {listener}. And {when} it suddenly worked."
+ ],
+ "say.memory.recall.with.fight": [
+  "{when_up} {with} and I came to blows. {moment_up}, that's how it was.",
+  "It happened, {listener}: {when} I clashed with {with}."
+ ],
+ "say.memory.recall.with.wedding": [
+  "{when_up} {with} and I were wed. The best day, what more to say.",
+  "I keep thinking of my wedding with {with}. What a feast!"
+ ],
+ "say.memory.recall.with.kindness": [
+  "{with} helped me out {when}. I won't forget it.",
+  "There are good people, {listener}. {when_up} {with} helped me."
+ ],
+ "say.memory.recall.with_dead": [
+  "I remember, {when} {moment}. And {with} is in the ground now, gods rest them.",
+  "{when_up} {moment}... {with} was still alive then."
+ ],
+ "say.memory.recall.with_us.kindness": [
+  "I haven't forgotten, {listener}: you helped me out {when}.",
+  "Thank you again, {listener}. I remember how you helped me {when}."
+ ],
+ "say.memory.recall.with_us.shame": [
+  "I remember, {listener}, how you shamed me {when}.",
+  "I haven't forgotten what happened {when}, {listener}. You know what I mean."
+ ],
+ "say.memory.reminisce": [
+  "Do you remember, {listener}, how {when} {moment_we}?",
+  "Remember when {moment_we}? That was something."
+ ],
+ "say.memory.reminisce.sad": [
+  "Remember when {moment_we}? Hard times.",
+  "Do you remember, {listener}, how {when} {moment_we}? Gods keep it from happening again."
+ ],
+ "say.memory.reminisce.glad": [
+  "Remember when {moment_we}? That was grand!",
+  "Do you remember, {listener}, how {when} {moment_we}? Good days!"
+ ],
+ "say.memory.reminisce.alarm": [
+  "Remember when {moment_we}? We barely made it.",
+  "Do you remember, {listener}, how {when} {moment_we}? My hands still shake."
+ ],
+ "say.memory.reminisce.proud": [
+  "Remember when {moment_we}? Something to be proud of.",
+  "{when_up} {moment_we}, {listener}! We did well."
+ ],
+ "say.memory.reminisce.eerie": [
+  "Remember when {moment_we}? Brr, it still unsettles me.",
+  "Do you remember, {listener}, how {when} {moment_we}? Not a thing to speak of at night."
+ ],
+ "say.memory.reminisce.spicy": [
+  "Remember when {moment_we}? What a racket!",
+  "Do you remember, {listener}, how {when} {moment_we}? The whole village talked of it."
+ ],
+ "say.memory.reminisce.type.wedding": [
+  "Do you remember our wedding, {listener}? What a feast!",
+  "Remember the wedding {when}? There was no better day."
+ ],
+ "say.memory.reminisce.type.built_home": [
+  "Remember, {listener}, how we raised the house? Our backs ached for days.",
+  "There it stands, our house. Remember hauling the logs {when}?"
+ ],
+ "say.memory.react": [
+  "Is that so.",
+  "Well, well."
+ ],
+ "say.memory.react.sad": [
+  "Oh, I'm sorry.",
+  "That was hard on you, {listener}."
+ ],
+ "say.memory.react.glad": [
+  "Good for you!",
+  "I'm glad for you, {listener}."
+ ],
+ "say.memory.react.alarm": [
+  "How dreadful! Good thing you're whole.",
+  "Oh my! Take care from now on."
+ ],
+ "say.memory.react.proud": [
+  "Look at you! Well done.",
+  "Now that's something, {listener}!"
+ ],
+ "say.memory.react.eerie": [
+  "Spit over your shoulder — not a thing for the night.",
+  "Brr... don't tell such things at night."
+ ],
+ "say.memory.react.shame": [
+  "Well, it happens to everyone.",
+  "Let it go, {listener}, it's in the past."
+ ],
+ "say.memory.react.spicy": [
+  "Well I never!",
+  "Ha! That's a story."
+ ],
+ "say.memory.react.same": [
+  "The same happened to me, {listener}. I know what it's like.",
+  "I went through it myself, I understand you."
+ ],
+ "say.memory.react.cold": [
+  "And what of it?",
+  "What's that to me?"
+ ],
+ "say.memory.react.with_us.kindness": [
+  "Oh, it was nothing, we look after our own.",
+  "Think nothing of it, {listener}. You'd have done the same."
+ ],
+ "say.memory.react.with_us.shame": [
+  "What's done is done. You brought it on yourself.",
+  "You keep raking up the past, {listener}."
+ ],
+ "say.memory.react_reminisce": [
+  "Of course I remember.",
+  "How could I forget."
+ ],
+ "say.memory.react_reminisce.sad": [
+  "How could I forget. It was hard.",
+  "I remember... I'd rather forget."
+ ],
+ "say.memory.react_reminisce.glad": [
+  "Of course! Those were good times.",
+  "I remember! It was good, {listener}."
+ ],
+ "say.memory.react_reminisce.alarm": [
+  "I remember. Frightening to think of.",
+  "We barely got away then."
+ ],
+ "say.memory.react_reminisce.proud": [
+  "I remember! We did well then.",
+  "Indeed! Something to tell the grandchildren."
+ ],
+ "say.memory.react_reminisce.eerie": [
+  "Don't remind me, it still unsettles me.",
+  "Hush, not at night."
+ ],
+ "say.memory.react_reminisce.spicy": [
+  "Ha! Remember it well.",
+  "Oh, it makes me laugh to think of it."
+ ],
+ "say.memory.react_reminisce.with_dead": [
+  "I remember... a pity {with} didn't live to see today.",
+  "I remember. {with} was with us then, gods rest them."
+ ]
+}

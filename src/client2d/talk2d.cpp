@@ -177,6 +177,8 @@ Json talkJson(World& w, const ViewText& t, ActCatalog& acts, TalkCatalog& cat, E
                     {"name", t.name("interaction", l.chain)},
                     {"tone", l.tone.empty() ? "" : t.name("tone", l.tone)},
                     {"left", std::max<Tick>(0, l.until - w.now())}};
+    // LR-157: a talk they opened and the player took up: the player leads it from here
+    j["led"] = ledTalkWith(*me) == them->id;
     j["trade"] = tradeRules(w.content()) != nullptr;
     return j;
 }
@@ -283,6 +285,7 @@ std::string sayTopic(World& w, EntityId meId, EntityId targetId, int index) {
     for (auto& tp : dialogueTopics(w, *me, *them)) topics.push_back(std::move(tp));
     if (index < 0 || index >= int(topics.size())) return "no_topic";
     const MenuTopic& tp = topics[std::size_t(index)];
+    if (ledTalkWith(*me) == them->id) keepLedTalk(w, *me); // LR-157: the talk goes on
     if (tp.act.rfind("ask_", 0) == 0) { // AL-111: they answer from what they know
         askAndAnswer(w, *me, *them, tp);
         return "";

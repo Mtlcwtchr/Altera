@@ -269,6 +269,7 @@ struct Window::Impl : Ctx {
     bool follow = false, glyphs = false, altDown = false, fullscreen = false;
     std::string roofMode = "auto";
     double lastFrame = 0, lastPoll = -1e9, lastBar = -1e9;
+    long long lastInvite = 0;   // LR-157: the NPC's ask the talk window was opened for
     std::uint64_t dataGen = 0;   // LR-142: the data generation the sprites and the map rules were read at
     bool selectedMe = false;
 
@@ -1137,6 +1138,19 @@ struct Window::Impl : Ctx {
         selCard = s.contains("sel") ? s["sel"] : Json();
         meCard = s.contains("me_card") ? s["me_card"] : Json();
         if (screens) screens->polled();
+        // LR-157: an NPC asks the player's person (to talk, or an act of theirs): the talk window
+        // opens with them, to say yes or no; the world waits meanwhile (the app pauses it)
+        if (screens && s.contains("invite") && s["invite"].is_object()) {
+            const Json& inv = s["invite"];
+            const long long who = jid(inv, "who");
+            const long long key = who * 1000003LL + (long long)jnum(inv, "since", 0) + 1;
+            if (who >= 0 && key != lastInvite) {
+                lastInvite = key;
+                screens->open("talk", Json(who));
+                if (Win* t = screens->top(); t && t->id == "talk") t->data["invite"] = true;
+                else cmd({{"op", "cmd"}, {"type", "answer_social"}, {"args", {{"id", me}, {"accept", false}}}});   // no window: a no
+            }
+        }
         if (selId >= 0 && !byId.count(selId)) selId = -1;
         if (me != barFor) {
             barFor = me;
@@ -2700,7 +2714,15 @@ struct Window::Impl : Ctx {
             const float mins = float(num(a, "minutes"));
             const std::string tm = mins >= 60 ? L("ui2d.hours", {{"n", std::to_string(int(std::lround(mins / 60)))}})
                                               : L("ui2d.minutes", {{"n", std::to_string(int(mins))}});
-            text(r.x + 6 * U, r.y + 3 * U, ui.fit(str(a, "name"), r.w - 90 * U, fs(14 * U)), can ? kText : kDim, 14 * U);
+            // LR-161: the act's picture (map2d.json acts, as over the head and on the quick bar)
+            float tx = r.x + 6 * U;
+            for (const auto& [re, sp] : actsRe)
+                if (std::regex_search(str(a, "id"), re)) {
+                    blit(sprite(sp), r.x + 4 * U, r.y + (rowH - 32 * U) / 2, 32 * U, 32 * U, can ? 1.0f : 0.45f);
+                    tx = r.x + 40 * U;
+                    break;
+                }
+            text(tx, r.y + 3 * U, ui.fit(str(a, "name"), r.right() - 84 * U - tx, fs(14 * U)), can ? kText : kDim, 14 * U);
             text(r.right() - textW(tm, 12 * U) - 30 * U, r.y + 4 * U, tm, kDim, 12 * U);
             // pin to the quick bar
             const ui::Rect pin{r.right() - 24 * U, r.y + 2 * U, 22 * U, 18 * U};
@@ -2710,7 +2732,7 @@ struct Window::Impl : Ctx {
             for (const auto& g : a.value("to_target", Json::array())) sub += (sub.empty() ? "→ " : ", → ") + g.get<std::string>();
             if (!can && !str(a, "why").empty()) sub = str(a, "why");
             for (const auto& g : a.value("legal", Json::array())) sub += (sub.empty() ? "" : " · ") + g.get<std::string>();
-            text(r.x + 6 * U, r.y + 21 * U, ui.fit(sub, r.w - 12 * U, fs(11 * U)), !can ? kBad : kDim, 11 * U);
+            text(tx, r.y + 21 * U, ui.fit(sub, r.right() - 6 * U - tx, fs(11 * U)), !can ? kBad : kDim, 11 * U);
             if (hit) {
                 if (pin.contains(in.mouseX, in.mouseY)) pinToBar(Slot{"act", str(a, "id"), menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty()});
                 else if (can) chosen = str(a, "id");

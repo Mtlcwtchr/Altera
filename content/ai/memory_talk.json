@@ -1,0 +1,487 @@
+{
+ "_doc": "LR-158: о чём из пережитого люди рассказывают друг другу (src/sim/memory_talk.hpp). Момент = своя память (source seen) типа из types: kind и mood идут в факты строк moment.kind / moment.mood (content/ai/dialogue_rules/memory.json), interest 0 = не рассказывают, shareable — можно пережить вместе («а помнишь, как мы…»): с тем, кто в памяти (who), или с роднёй, у кого та же память в тот же день; shared_by day — с любым, у кого та же память в тот же день (набег на деревню). Вес = interest x salience памяти x свежесть (half_life_days) x shared_mult для общего. Рассказанное тому же слушателю не повторяется, пока его помнит SaidMemory (сезон). talks: группы реплик разговора (social_chains.json talk.groups), где вспоминают; first_every N — на каждом N-м ходе воспоминание раньше новостей (1 = всегда первым, 0 = только когда новостей нет), only_shared — только общие воспоминания. after: сдвиг отношений слушателя к рассказчику (told) и обоих (shared). when: до скольких дней какая корзина memory.when.<…>.",
+ "max_age_days": 720,
+ "half_life_days": 90,
+ "min_weight": 0.05,
+ "shared_mult": 1.5,
+ "shared_window_days": 1,
+ "max_moments": 6,
+ "when": [
+  [
+   2,
+   "recent"
+  ],
+  [
+   10,
+   "days"
+  ],
+  [
+   45,
+   "weeks"
+  ],
+  [
+   200,
+   "season"
+  ],
+  [
+   420,
+   "year"
+  ]
+ ],
+ "when_beyond": "long",
+ "after": {
+  "told": {
+   "familiarity": 0.02,
+   "affinity": 0.01
+  },
+  "shared": {
+   "affinity": 0.02,
+   "trust": 0.01
+  }
+ },
+ "talks": {
+  "plain": {
+   "first_every": 0
+  },
+  "chat": {
+   "first_every": 2
+  },
+  "gossip": {
+   "first_every": 3
+  },
+  "story": {
+   "first_every": 1
+  },
+  "kind": {
+   "first_every": 0
+  },
+  "tender": {
+   "first_every": 1,
+   "only_shared": true
+  },
+  "joke": {
+   "first_every": 0
+  }
+ },
+ "types": {
+  "starved": {
+   "kind": "hunger",
+   "mood": "sad",
+   "interest": 0.7,
+   "shareable": true
+  },
+  "froze": {
+   "kind": "cold",
+   "mood": "sad",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "food_spoiled": {
+   "kind": "hunger",
+   "mood": "sad",
+   "interest": 0.3,
+   "shareable": true
+  },
+  "ate_seed_corn": {
+   "kind": "hunger",
+   "mood": "sad",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "was_comforted": {
+   "kind": "kindness",
+   "mood": "glad",
+   "interest": 0.4,
+   "shareable": false
+  },
+  "was_given_food": {
+   "kind": "kindness",
+   "mood": "glad",
+   "interest": 0.4,
+   "shareable": false
+  },
+  "was_given_gift": {
+   "kind": "kindness",
+   "mood": "glad",
+   "interest": 0.45,
+   "shareable": false
+  },
+  "was_robbed": {
+   "kind": "theft",
+   "mood": "sad",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "built_home": {
+   "kind": "home",
+   "mood": "proud",
+   "interest": 0.8,
+   "shareable": true
+  },
+  "learned_skill": {
+   "kind": "craft",
+   "mood": "proud",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "breakthrough": {
+   "kind": "craft",
+   "mood": "proud",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "adopted": {
+   "kind": "family",
+   "mood": "glad",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "attacked": {
+   "kind": "fight",
+   "mood": "alarm",
+   "interest": 0.7,
+   "shareable": true
+  },
+  "brawl": {
+   "kind": "fight",
+   "mood": "spicy",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "buried": {
+   "kind": "grief",
+   "mood": "sad",
+   "interest": 0.7,
+   "shareable": true
+  },
+  "coup": {
+   "kind": "power",
+   "mood": "alarm",
+   "interest": 0.8,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "divorce": {
+   "kind": "family",
+   "mood": "sad",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "duel": {
+   "kind": "fight",
+   "mood": "proud",
+   "interest": 0.7,
+   "shareable": true
+  },
+  "heir_named": {
+   "kind": "power",
+   "mood": "proud",
+   "interest": 0.6,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "judged": {
+   "kind": "court",
+   "mood": "shame",
+   "interest": 0.4,
+   "shareable": false
+  },
+  "migrated": {
+   "kind": "road",
+   "mood": "neutral",
+   "interest": 0.6,
+   "shareable": true
+  },
+  "oath": {
+   "kind": "oath",
+   "mood": "proud",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "proposed": {
+   "kind": "love",
+   "mood": "spicy",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "raid": {
+   "kind": "war",
+   "mood": "alarm",
+   "interest": 0.85,
+   "shareable": true
+  },
+  "raided": {
+   "kind": "war",
+   "mood": "alarm",
+   "interest": 0.85,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "rite": {
+   "kind": "faith",
+   "mood": "glad",
+   "interest": 0.4,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "sworn_friend": {
+   "kind": "friendship",
+   "mood": "glad",
+   "interest": 0.6,
+   "shareable": true
+  },
+  "used_magic": {
+   "kind": "magic",
+   "mood": "eerie",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "war_declared": {
+   "kind": "war",
+   "mood": "alarm",
+   "interest": 0.7,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "wedding": {
+   "kind": "wedding",
+   "mood": "glad",
+   "interest": 0.9,
+   "shareable": true
+  },
+  "was_insulted": {
+   "kind": "insult",
+   "mood": "shame",
+   "interest": 0.35,
+   "shareable": false
+  },
+  "saw_punishment": {
+   "kind": "court",
+   "mood": "alarm",
+   "interest": 0.4,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "saw_attack": {
+   "kind": "fight",
+   "mood": "alarm",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "saw_execution": {
+   "kind": "court",
+   "mood": "eerie",
+   "interest": 0.7,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "attacked_by_beast": {
+   "kind": "beast",
+   "mood": "alarm",
+   "interest": 0.85,
+   "shareable": true
+  },
+  "attacked_by_undead": {
+   "kind": "undead",
+   "mood": "eerie",
+   "interest": 0.9,
+   "shareable": true
+  },
+  "saw_beast": {
+   "kind": "beast",
+   "mood": "alarm",
+   "interest": 0.4,
+   "shareable": true
+  },
+  "saw_magic": {
+   "kind": "magic",
+   "mood": "eerie",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "saw_dark_magic": {
+   "kind": "dark_magic",
+   "mood": "eerie",
+   "interest": 0.7,
+   "shareable": true
+  },
+  "saw_necromancy": {
+   "kind": "undead",
+   "mood": "eerie",
+   "interest": 0.8,
+   "shareable": true
+  },
+  "good_hunt": {
+   "kind": "hunt",
+   "mood": "proud",
+   "interest": 0.5,
+   "shareable": true
+  },
+  "won_fight": {
+   "kind": "fight",
+   "mood": "proud",
+   "interest": 0.6,
+   "shareable": true
+  },
+  "lost_fight": {
+   "kind": "fight",
+   "mood": "shame",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "fled_fight": {
+   "kind": "fight",
+   "mood": "shame",
+   "interest": 0.45,
+   "shareable": false
+  },
+  "was_treated": {
+   "kind": "wound",
+   "mood": "glad",
+   "interest": 0.4,
+   "shareable": false
+  },
+  "maimed": {
+   "kind": "wound",
+   "mood": "sad",
+   "interest": 0.8,
+   "shareable": false
+  },
+  "was_spared": {
+   "kind": "fight",
+   "mood": "alarm",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "spared_foe": {
+   "kind": "fight",
+   "mood": "proud",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "killed_foe": {
+   "kind": "fight",
+   "mood": "eerie",
+   "interest": 0.7,
+   "shareable": false
+  },
+  "was_bound": {
+   "kind": "captivity",
+   "mood": "alarm",
+   "interest": 0.7,
+   "shareable": false
+  },
+  "rescued": {
+   "kind": "captivity",
+   "mood": "glad",
+   "interest": 0.8,
+   "shareable": false
+  },
+  "rescued_someone": {
+   "kind": "rescue",
+   "mood": "proud",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "was_released": {
+   "kind": "captivity",
+   "mood": "glad",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "paid_ransom": {
+   "kind": "captivity",
+   "mood": "sad",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "was_sentenced": {
+   "kind": "court",
+   "mood": "shame",
+   "interest": 0.6,
+   "shareable": false
+  },
+  "escaped": {
+   "kind": "captivity",
+   "mood": "proud",
+   "interest": 0.7,
+   "shareable": false
+  },
+  "exiled": {
+   "kind": "road",
+   "mood": "sad",
+   "interest": 0.8,
+   "shareable": false
+  },
+  "was_punished": {
+   "kind": "court",
+   "mood": "shame",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "paid_tribute": {
+   "kind": "power",
+   "mood": "sad",
+   "interest": 0.3,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "won_contest": {
+   "kind": "contest",
+   "mood": "proud",
+   "interest": 0.5,
+   "shareable": false
+  },
+  "danced": {
+   "kind": "feast",
+   "mood": "glad",
+   "interest": 0.35,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "sang_together": {
+   "kind": "feast",
+   "mood": "glad",
+   "interest": 0.35,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "read_omen": {
+   "kind": "omen",
+   "mood": "eerie",
+   "interest": 0.4,
+   "shareable": false
+  },
+  "gave_food": {
+   "kind": "kindness_given",
+   "mood": "proud",
+   "interest": 0.3,
+   "shareable": false
+  },
+  "made_tool": {
+   "kind": "craft",
+   "mood": "proud",
+   "interest": 0.2,
+   "shareable": false
+  },
+  "with_child": {
+   "kind": "family",
+   "mood": "glad",
+   "interest": 0.6,
+   "shareable": true
+  },
+  "stranger_arrived": {
+   "kind": "stranger",
+   "mood": "neutral",
+   "interest": 0.3,
+   "shareable": true,
+   "shared_by": "day"
+  },
+  "fasted": {
+   "kind": "faith",
+   "mood": "neutral",
+   "interest": 0.25,
+   "shareable": false
+  }
+ }
+}
