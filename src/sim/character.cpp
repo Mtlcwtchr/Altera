@@ -74,7 +74,7 @@ bool Status::hasPairAny(const std::string& id) const {
     return false;
 }
 NLOHMANN_JSON_SERIALIZE_ENUM(Controller::Kind, {{Controller::Kind::Ai, "ai"}, {Controller::Kind::Player, "player"}})
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, freeWill, since, idleSince,
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Controller, kind, playerId, autonomy, since, idleSince,
                                                 combatFinish, tone)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Captivity, captor, since, decideAt, nextTry, stage, verdict, tries)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(GoalInstance, id, source, score, started, task, target)

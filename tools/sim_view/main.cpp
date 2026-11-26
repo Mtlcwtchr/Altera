@@ -143,7 +143,7 @@ Json characterDetail(const App& a, const Character& c) {
     d["mood"] = c.mood(w.now());
     d["stage"] = c.body.stage();
     d["role"] = c.status.role;
-    d["free_will"] = c.controller.freeWill;
+    d["free_will"] = c.controller.autonomy;
     Json needs = Json::array();
     for (const auto& [k, v] : c.needs) needs.push_back({{"id", k}, {"name", nameOf(a, "need", k)}, {"v", v}});
     d["needs"] = needs;

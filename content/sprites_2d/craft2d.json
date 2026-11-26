@@ -942,7 +942,9 @@
   "mortar": "st_mortar",
   "tanning_pit": "st_pit",
   "quern": "st_quern",
-  "table": "ob_table"
+  "table": "ob_table",
+  "alembic": "it_flask",
+  "crucible": "it_pot"
  },
  "station_glyphs": {
   "campfire": "♨",
@@ -1217,134 +1219,889 @@
   },
   "stone": {
    "glyph": "●",
-   "colour": "W"
+   "colour": "W",
+   "sprite": "ob_rock"
   },
   "clay": {
    "glyph": "●",
-   "colour": "z"
+   "colour": "z",
+   "sprite": "it_ore",
+   "recolour": {
+    "W": "z",
+    "m": "z",
+    "M": "Z",
+    "o": "Z"
+   }
   },
   "hide": {
    "glyph": "▧",
-   "colour": "e"
+   "colour": "e",
+   "sprite": "it_pelt",
+   "recolour": {
+    "W": "e",
+    "g": "E",
+    "M": "E"
+   }
   },
   "meat": {
    "glyph": "%",
-   "colour": "r"
+   "colour": "r",
+   "sprite": "it_meat"
   },
   "fish": {
    "glyph": "α",
-   "colour": "U"
+   "colour": "U",
+   "sprite": "it_fish"
   },
   "fiber_raw": {
    "glyph": "≀",
-   "colour": "t"
+   "colour": "t",
+   "sprite": "it_hay",
+   "recolour": {
+    "t": "l",
+    "T": "G"
+   }
   },
   "bast_fiber": {
    "glyph": "≀",
-   "colour": "o"
+   "colour": "o",
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "o"
+   }
   },
   "branch": {
    "glyph": "⌇",
-   "colour": "n"
+   "colour": "n",
+   "sprite": "it_stick"
   },
   "honey": {
    "glyph": "♦",
-   "colour": "y"
+   "colour": "y",
+   "sprite": "it_honey"
   },
   "milk": {
    "glyph": "!",
-   "colour": "w"
+   "colour": "w",
+   "sprite": "it_jug",
+   "recolour": {
+    "z": "w",
+    "Z": "g"
+   }
   },
   "eggs": {
    "glyph": "o",
-   "colour": "w"
+   "colour": "w",
+   "sprite": "it_egg"
   },
   "berries": {
    "glyph": "∴",
-   "colour": "v"
+   "colour": "v",
+   "sprite": "it_berries"
   },
   "vegetables": {
    "glyph": "♠",
-   "colour": "l"
+   "colour": "l",
+   "sprite": "it_root"
   },
   "cheese": {
    "glyph": "▲",
-   "colour": "y"
+   "colour": "y",
+   "sprite": "it_cheese"
   },
   "bone": {
    "glyph": "⌐",
-   "colour": "w"
+   "colour": "w",
+   "sprite": "it_bone"
   },
   "water": {
    "glyph": "≈",
-   "colour": "U"
+   "colour": "U",
+   "sprite": "ic_bucket"
   },
   "wool": {
    "glyph": "≀",
-   "colour": "w"
+   "colour": "w",
+   "sprite": "it_pelt",
+   "recolour": {
+    "W": "w",
+    "g": "g",
+    "M": "g"
+   }
   },
   "flax": {
    "glyph": "≀",
-   "colour": "l"
+   "colour": "l",
+   "sprite": "it_wheat",
+   "recolour": {
+    "y": "l",
+    "T": "G"
+   }
   },
   "firewood": {
    "sprite": "ob_log"
   },
   "charcoal": {
    "glyph": "●",
-   "colour": "x"
+   "colour": "x",
+   "sprite": "it_ore",
+   "recolour": {
+    "W": "x",
+    "m": "M",
+    "M": "x",
+    "o": "x",
+    "z": "x"
+   }
   },
   "salt": {
    "glyph": "∴",
-   "colour": "w"
+   "colour": "w",
+   "sprite": "it_flour"
   },
   "mushrooms": {
    "glyph": "♠",
-   "colour": "t"
+   "colour": "t",
+   "sprite": "it_mushroom"
   },
   "roots": {
    "glyph": "√",
-   "colour": "e"
+   "colour": "e",
+   "sprite": "it_root"
   },
   "hazelnuts": {
    "glyph": "∴",
-   "colour": "n"
+   "colour": "n",
+   "sprite": "it_nut"
   },
   "wild_greens": {
    "glyph": "♣",
-   "colour": "l"
+   "colour": "l",
+   "sprite": "it_herb"
   },
   "sinew": {
    "glyph": "~",
-   "colour": "s"
+   "colour": "s",
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "w",
+    "T": "g"
+   }
   },
   "antler": {
    "glyph": "Ψ",
-   "colour": "t"
+   "colour": "t",
+   "sprite": "it_horn",
+   "recolour": {
+    "t": "w",
+    "T": "g"
+   }
   },
   "feathers": {
    "glyph": "⌠",
-   "colour": "w"
+   "colour": "w",
+   "sprite": "it_feather"
   },
   "fat": {
    "glyph": "●",
-   "colour": "t"
+   "colour": "t",
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "w"
+   }
   },
   "tallow": {
    "glyph": "●",
-   "colour": "t"
+   "colour": "t",
+   "sprite": "it_candle"
   },
   "reeds": {
    "glyph": "‖",
-   "colour": "l"
+   "colour": "l",
+   "sprite": "it_wheat",
+   "recolour": {
+    "y": "T",
+    "T": "D"
+   }
   },
   "straw": {
    "glyph": "‖",
-   "colour": "y"
+   "colour": "y",
+   "sprite": "it_hay"
   },
   "sand": {
    "glyph": "∴",
-   "colour": "t"
+   "colour": "t",
+   "sprite": "it_flour",
+   "recolour": {
+    "w": "t",
+    "g": "T"
+   }
+  },
+  "apple_pie": {
+   "sprite": "it_pie",
+   "recolour": {
+    "r": "y"
+   }
+  },
+  "berry_tart": {
+   "sprite": "it_pie",
+   "recolour": {
+    "r": "v"
+   }
+  },
+  "cheese_pie": {
+   "sprite": "it_pie",
+   "recolour": {
+    "r": "F"
+   }
+  },
+  "fish_pie": {
+   "sprite": "it_pie",
+   "recolour": {
+    "r": "m"
+   }
+  },
+  "meat_pie": {
+   "sprite": "it_pie",
+   "recolour": {
+    "r": "R"
+   }
+  },
+  "loaf": {
+   "sprite": "it_bread"
+  },
+  "nut_bread": {
+   "sprite": "it_bread",
+   "recolour": {
+    "y": "o"
+   }
+  },
+  "wake_loaf": {
+   "sprite": "it_bread",
+   "recolour": {
+    "y": "t"
+   }
+  },
+  "honey_cake": {
+   "sprite": "it_bread",
+   "recolour": {
+    "y": "F",
+    "o": "y"
+   }
+  },
+  "baked_apples": {
+   "sprite": "it_apple",
+   "recolour": {
+    "w": "y"
+   }
+  },
+  "dried_berries": {
+   "sprite": "it_berries",
+   "recolour": {
+    "v": "V",
+    "w": "v"
+   }
+  },
+  "acorns": {
+   "sprite": "it_nut"
+  },
+  "baked_roots": {
+   "sprite": "it_root",
+   "recolour": {
+    "o": "z"
+   }
+  },
+  "egg": {
+   "sprite": "it_egg"
+  },
+  "eggs_greens": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "w",
+    "y": "l"
+   }
+  },
+  "fish_soup": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "m",
+    "y": "U"
+   }
+  },
+  "garden_soup": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "G",
+    "y": "l"
+   }
+  },
+  "mushroom_stew": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "e",
+    "y": "t"
+   }
+  },
+  "milk_porridge": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "g",
+    "y": "w"
+   }
+  },
+  "honey_porridge": {
+   "sprite": "it_bowl_food"
+  },
+  "meal": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "z",
+    "y": "o"
+   }
+  },
+  "sweet_curd": {
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "w",
+    "y": "F"
+   }
+  },
+  "herb_roast": {
+   "sprite": "it_meat",
+   "recolour": {
+    "w": "l"
+   }
+  },
+  "blood_sausage": {
+   "sprite": "it_sausage",
+   "recolour": {
+    "r": "R",
+    "R": "P"
+   }
+  },
+  "dried_meat": {
+   "sprite": "it_meat",
+   "recolour": {
+    "r": "Z",
+    "R": "P",
+    "w": "t"
+   }
+  },
+  "smoked_fish": {
+   "sprite": "it_fish",
+   "recolour": {
+    "m": "o",
+    "M": "Z"
+   }
+  },
+  "roast_fish": {
+   "sprite": "it_fish",
+   "recolour": {
+    "m": "t",
+    "M": "o"
+   }
+  },
+  "honey_milk": {
+   "sprite": "it_cup",
+   "recolour": {
+    "u": "w"
+   }
+  },
+  "herb_tea": {
+   "sprite": "it_cup",
+   "recolour": {
+    "u": "G"
+   }
+  },
+  "mulled_wine": {
+   "sprite": "it_cup",
+   "recolour": {
+    "u": "R"
+   }
+  },
+  "cider": {
+   "sprite": "it_ale",
+   "recolour": {
+    "y": "F"
+   }
+  },
+  "mead": {
+   "sprite": "it_ale",
+   "recolour": {
+    "y": "o"
+   }
+  },
+  "wine": {
+   "sprite": "it_bottle",
+   "recolour": {
+    "D": "R",
+    "l": "r",
+    "K": "R",
+    "r": "y"
+   }
+  },
+  "berry_wine": {
+   "sprite": "it_bottle",
+   "recolour": {
+    "D": "V",
+    "l": "v",
+    "K": "V",
+    "r": "w"
+   }
+  },
+  "flour": {
+   "sprite": "it_flour"
+  },
+  "seeds": {
+   "sprite": "it_seeds"
+  },
+  "seed_grain": {
+   "sprite": "it_seeds",
+   "recolour": {
+    "y": "T"
+   }
+  },
+  "seed_veg": {
+   "sprite": "it_seeds",
+   "recolour": {
+    "y": "l",
+    "T": "G"
+   }
+  },
+  "sheaf": {
+   "sprite": "it_wheat"
+  },
+  "yeast": {
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "w"
+   }
+  },
+  "hay": {
+   "sprite": "it_hay"
+  },
+  "thatch": {
+   "sprite": "it_hay",
+   "recolour": {
+    "n": "t"
+   }
+  },
+  "axe": {
+   "sprite": "it_axe"
+  },
+  "hoe": {
+   "sprite": "it_hoe"
+  },
+  "pitchfork": {
+   "sprite": "it_fork"
+  },
+  "sickle": {
+   "sprite": "it_sickle"
+  },
+  "spear": {
+   "sprite": "it_spear"
+  },
+  "digging_stick": {
+   "sprite": "it_stick"
+  },
+  "wooden_spade": {
+   "sprite": "it_spade",
+   "recolour": {
+    "m": "n",
+    "M": "N"
+   }
+  },
+  "needle": {
+   "sprite": "it_needle"
+  },
+  "spindle": {
+   "sprite": "it_spindle"
+  },
+  "stone_blade": {
+   "sprite": "it_knife",
+   "recolour": {
+    "m": "W",
+    "M": "x"
+   }
+  },
+  "snare": {
+   "sprite": "it_snare"
+  },
+  "fishing_line": {
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "w",
+    "T": "g"
+   }
+  },
+  "broom": {
+   "sprite": "it_broom"
+  },
+  "ladle": {
+   "sprite": "it_spoon"
+  },
+  "wooden_spoon": {
+   "sprite": "it_spoon"
+  },
+  "loom": {
+   "sprite": "st_loom"
+  },
+  "cauldron": {
+   "sprite": "it_pot"
+  },
+  "crucible": {
+   "sprite": "it_pot",
+   "recolour": {
+    "m": "z",
+    "M": "Z",
+    "x": "f"
+   }
+  },
+  "alembic": {
+   "sprite": "it_flask",
+   "recolour": {
+    "l": "U",
+    "D": "u"
+   }
+  },
+  "volatile_flask": {
+   "sprite": "it_flask",
+   "recolour": {
+    "l": "f",
+    "D": "r"
+   }
+  },
+  "bowl": {
+   "sprite": "it_bowl"
+  },
+  "trencher": {
+   "sprite": "it_bowl",
+   "recolour": {
+    "n": "t",
+    "N": "T"
+   }
+  },
+  "clay_jug": {
+   "sprite": "it_jug"
+  },
+  "clay_pot": {
+   "sprite": "it_jar"
+  },
+  "pack_basket": {
+   "sprite": "it_basket"
+  },
+  "backpack": {
+   "sprite": "it_bag"
+  },
+  "satchel": {
+   "sprite": "it_bag",
+   "recolour": {
+    "y": "e"
+   }
+  },
+  "belt": {
+   "sprite": "it_belt"
+  },
+  "tankard": {
+   "sprite": "it_ale"
+  },
+  "wooden_cup": {
+   "sprite": "it_cup"
+  },
+  "potion": {
+   "sprite": "it_potion"
+  },
+  "healing_potion": {
+   "sprite": "it_potion"
+  },
+  "fire_draught": {
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "f",
+    "R": "z"
+   }
+  },
+  "shadow_draught": {
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "V",
+    "R": "x"
+   }
+  },
+  "sleeping_draught": {
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "b",
+    "R": "B"
+   }
+  },
+  "quicksilver": {
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "m",
+    "R": "M"
+   }
+  },
+  "dragon_blood": {
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "R",
+    "R": "P"
+   }
+  },
+  "spider_venom": {
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "l",
+    "R": "G"
+   }
+  },
+  "remedy": {
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "G"
+   }
+  },
+  "tunic": {
+   "sprite": "it_tunic",
+   "recolour": {
+    "e": "w",
+    "E": "g"
+   }
+  },
+  "gambeson": {
+   "sprite": "it_tunic",
+   "recolour": {
+    "e": "t",
+    "E": "T"
+   }
+  },
+  "leather_armour": {
+   "sprite": "it_tunic"
+  },
+  "trousers": {
+   "sprite": "it_trousers"
+  },
+  "boots": {
+   "sprite": "it_boots"
+  },
+  "felt_cap": {
+   "sprite": "it_cap"
+  },
+  "cloak": {
+   "sprite": "it_cloak"
+  },
+  "mail_shirt": {
+   "sprite": "it_mail"
+  },
+  "helmet": {
+   "sprite": "it_helmet"
+  },
+  "cloth": {
+   "sprite": "it_cloth"
+  },
+  "cord": {
+   "sprite": "it_rope"
+  },
+  "thread": {
+   "sprite": "it_thread"
+  },
+  "spider_silk": {
+   "sprite": "it_thread",
+   "recolour": {
+    "n": "W"
+   }
+  },
+  "parchment": {
+   "sprite": "it_parchment"
+  },
+  "scroll": {
+   "sprite": "it_scroll"
+  },
+  "candle": {
+   "sprite": "it_candle"
+  },
+  "clay_candlestick": {
+   "sprite": "it_candle",
+   "recolour": {
+    "w": "z",
+    "g": "Z"
+   }
+  },
+  "gold": {
+   "sprite": "it_ingot",
+   "recolour": {
+    "m": "y",
+    "M": "o"
+   }
+  },
+  "silver": {
+   "sprite": "it_ingot"
+  },
+  "mithril": {
+   "sprite": "it_ingot",
+   "recolour": {
+    "m": "U",
+    "M": "u"
+   }
+  },
+  "sulfur": {
+   "sprite": "it_ore",
+   "recolour": {
+    "W": "y",
+    "m": "F",
+    "M": "o",
+    "z": "o"
+   }
+  },
+  "moonstone": {
+   "sprite": "it_gem",
+   "recolour": {
+    "U": "w",
+    "u": "g"
+   }
+  },
+  "dried_herbs": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "T",
+    "l": "t",
+    "D": "n"
+   }
+  },
+  "moon_moss": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "U",
+    "l": "w",
+    "D": "u"
+   }
+  },
+  "night_moss": {
+   "sprite": "it_herb",
+   "recolour": {
+    "G": "v",
+    "l": "U",
+    "D": "V"
+   }
+  },
+  "bandage": {
+   "sprite": "it_bandage"
+  },
+  "carcass": {
+   "sprite": "it_carcass"
+  },
+  "horn": {
+   "sprite": "it_horn"
+  },
+  "bone_charm": {
+   "sprite": "it_charm"
+  },
+  "household_idol": {
+   "sprite": "it_idol"
+  },
+  "artifact": {
+   "sprite": "it_artifact"
+  },
+  "bone_comb": {
+   "sprite": "it_comb"
+  },
+  "bone_dice": {
+   "sprite": "it_dice"
+  },
+  "bone_flute": {
+   "sprite": "it_flute",
+   "recolour": {
+    "t": "w",
+    "x": "g"
+   }
+  },
+  "clay_whistle": {
+   "sprite": "it_flute",
+   "recolour": {
+    "t": "z",
+    "x": "Z"
+   }
+  },
+  "drum": {
+   "sprite": "it_drum"
+  },
+  "clay_pipe": {
+   "sprite": "it_pipe"
+  },
+  "carved_toy": {
+   "sprite": "it_toy"
+  },
+  "rag_doll": {
+   "sprite": "it_doll"
+  },
+  "basilisk_eye": {
+   "sprite": "it_gem",
+   "recolour": {
+    "U": "l",
+    "u": "G",
+    "w": "F"
+   }
+  },
+  "basilisk_scale": {
+   "sprite": "it_scale"
+  },
+  "dragon_scale": {
+   "sprite": "it_scale",
+   "recolour": {
+    "G": "r",
+    "l": "z",
+    "D": "R"
+   }
+  },
+  "dragon_bone": {
+   "sprite": "it_bone",
+   "recolour": {
+    "w": "t",
+    "g": "T"
+   }
+  },
+  "drowner_brain": {
+   "sprite": "it_organ",
+   "recolour": {
+    "r": "l",
+    "R": "G"
+   }
+  },
+  "troll_liver": {
+   "sprite": "it_organ",
+   "recolour": {
+    "r": "e",
+    "R": "E"
+   }
+  },
+  "griffin_feather": {
+   "sprite": "it_feather",
+   "recolour": {
+    "w": "t",
+    "g": "o"
+   }
+  },
+  "harpy_feather": {
+   "sprite": "it_feather",
+   "recolour": {
+    "w": "g",
+    "g": "W"
+   }
+  },
+  "manticore_spine": {
+   "sprite": "it_fang",
+   "recolour": {
+    "w": "r",
+    "g": "R",
+    "t": "x"
+   }
+  },
+  "varg_fang": {
+   "sprite": "it_fang"
+  },
+  "varg_pelt": {
+   "sprite": "it_pelt"
   }
  },
  "forms": {

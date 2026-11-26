@@ -535,7 +535,7 @@ Json colonyJson(const World& w, const ViewText& t, EntityId viewer) {
     // LR-145: the settlement's own measures (sim/realm, read from the map each day)
     j["stats"] = {{"pop", st.pop}, {"food", st.food}, {"wealth", st.wealth}, {"militia", st.militia}, {"morale", st.morale},
                   {"unrest", st.unrest},   {"fort", st.fort},     {"crafts", st.crafts}};
-    j["free_will"] = me ? me->controller.freeWill : false;
+    j["free_will"] = me ? me->controller.autonomy : false;
     return j;
 }
 

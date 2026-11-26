@@ -67,6 +67,7 @@ using socket_t = int;
 #include "sim/data_fs.hpp"
 #include "sim/building.hpp"
 #include "sim/loc.hpp"
+#include "sim/social_chain.hpp"
 #include "sim/speech_feed.hpp"
 #include "sim/worldgen.hpp"
 
@@ -90,6 +91,11 @@ struct App {
     c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
     Json craftUi;               // AL-97: content/ui/craft.json (the helper's wishes)
     EntityId colonyOf = kNone;  // AL-94: colony mode - the person handed to free will; the player plans as them
+    // LR-157: an NPC asks the player's person or talks with them in a talk the player leads:
+    // the world waits (as a dialogue in an RPG) until it is answered or over
+    bool holdTalks = true;      // off with --observe
+    long long talkHeld = 0;     // the ask/talk the world was paused for
+    bool talkPaused = false;    // the pause is the talk's own (lifted when it ends)
     std::chrono::steady_clock::time_point started = std::chrono::steady_clock::now();
     // AL-99: the session (new game, saves)
     const Content* content = nullptr;
@@ -136,6 +142,30 @@ EntityId planner(const App& a) {
     if (me != kNone) return me;
     const Character* c = a.colonyOf != kNone ? a.world->character(a.colonyOf) : nullptr;
     return c && c->body.alive ? a.colonyOf : kNone;
+}
+
+// LR-157: the ask or the led talk of the player's person (0: none), one key for both phases
+long long talkKey(const World& w) {
+    const Character* me = w.character(controlled(w));
+    if (!me) return 0;
+    const EntityId with = lr::sim::pendingInvite(*me) != kNone ? lr::sim::pendingInvite(*me) : lr::sim::ledTalkWith(*me);
+    return with == kNone ? 0 : (long long)(with) * 1000003LL + (long long)me->ai.social.since + 1;
+}
+
+// Pauses the world for a new ask/talk, lifts the pause once it is over; true when it paused now.
+bool holdForTalk(App& a) {
+    if (!a.holdTalks || !a.world) return false;
+    const long long k = talkKey(*a.world);
+    if (k != 0 && k != a.talkHeld) {
+        a.talkHeld = k;
+        if (!a.paused) a.paused = a.talkPaused = true;
+        return a.talkPaused;
+    }
+    if (k == 0 && a.talkHeld != 0) {
+        a.talkHeld = 0;
+        if (a.talkPaused) a.paused = a.talkPaused = false;
+    }
+    return false;
 }
 
 Json speechJson(App& a, const Vec2* near) {
@@ -227,6 +257,14 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
     // LR-137: the hero frame shows the led person even while another one is selected
     if (const EntityId m = controlled(*a.world); m != kNone && m != sel) j["me_card"] = c2::personJson(*a.world, a.text, m);
+    // LR-157: who asks the player's person (the window opens the talk with them), who talks with them
+    if (const Character* mc = a.world->character(controlled(*a.world))) {
+        if (const EntityId who = lr::sim::pendingInvite(*mc); who != kNone) {
+            const lr::sim::SocialLink& l = mc->ai.social;
+            j["invite"] = {{"who", who}, {"act", l.chain}, {"since", l.since}};
+        }
+        if (const EntityId with = lr::sim::ledTalkWith(*mc); with != kNone) j["talk_with"] = with;
+    }
     // AL-115: fire, smoke and magic as point lights / fx for the 2D renderer (src/sim/world_fields.hpp)
     j["world_fx"] = lr::sim::fieldsViewJson(*a.world, near, r);
     return j;
@@ -235,7 +273,7 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
 std::string handleCmd(App& a, const Json& body) {
     const std::string op = body.value("op", std::string());
     World& w = *a.world;
-    if (op == "pause") a.paused = body.value("on", !a.paused);
+    if (op == "pause") a.paused = body.value("on", !a.paused), a.talkPaused = false;
     else if (op == "speed") a.tps = std::clamp(body.value("tps", 2.0), 0.25, 600.0);
     else if (op == "step") {
         const int n = std::clamp(body.value("ticks", 1), 1, int(kTicksPerDay * 30));
@@ -677,7 +715,7 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--paused")) app.paused = true;
         else if (!std::strcmp(argv[i], "--no-browser")) openBrowser = false, web = true;
         else if (!std::strcmp(argv[i], "--web")) web = true;
-        else if (!std::strcmp(argv[i], "--observe")) observe = true;
+        else if (!std::strcmp(argv[i], "--observe")) observe = true, app.holdTalks = false;
         else if (!std::strcmp(argv[i], "--autosave-min")) app.autosaveMin = std::max(0, std::stoi(next()));
         else {
             std::cerr << "unknown argument " << argv[i] << "\n";
@@ -819,6 +857,7 @@ int main(int argc, char** argv) {
             const double dt = std::chrono::duration<double>(now - lastTick).count();
             lastTick = now;
             if (app.autosaveMin > 0 && now - app.lastAutosave > std::chrono::minutes(app.autosaveMin)) autosave(app);
+            holdForTalk(app);   // LR-157
             if (app.paused) {
                 owed = 0.0;
                 return;
@@ -830,6 +869,10 @@ int main(int argc, char** argv) {
                 app.world->step();
                 app.lastStepMs = std::chrono::duration<double, std::milli>(Clock::now() - t0).count();
                 owed -= 1.0;
+                if (holdForTalk(app)) {   // LR-157: an NPC asks the player's person: the world waits
+                    owed = 0.0;
+                    break;
+                }
             }
             if (owed > 1.0 && Clock::now() >= budgetEnd) owed = std::min(owed, 1.0 + app.tps * 0.1);
         };

@@ -137,7 +137,7 @@ struct Controller {
     enum class Kind { Ai, Player };
     Kind kind = Kind::Ai;
     int playerId = 0;
-    bool freeWill = true; // Sims "free will": idle player characters go back to their own plan
+    bool autonomy = false; // LR-157: free will, off unless the player turns it on (set_free_will); a save's old "freeWill" is ignored
     Tick since = 0;
     Tick idleSince = 0; // player: since when no player order is running
     // Player focus for the end of a won fight (COMBAT_DESIGN §4 "взять живым / убить"):

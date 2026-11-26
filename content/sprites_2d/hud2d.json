@@ -495,6 +495,105 @@
    "...n.....",
    "...n.....",
    "........."
+  ],
+  "hud_potion": [
+   "...www...",
+   "....n....",
+   "...www...",
+   "..wrrrw..",
+   ".wrrrrrw.",
+   ".wrrrrRw.",
+   ".wrrrRRw.",
+   "..wwwww..",
+   "........."
+  ],
+  "hud_spark": [
+   "....v....",
+   "....v....",
+   "..v.v.v..",
+   "...vvv...",
+   "vvvvwvvvv",
+   "...vvv...",
+   "..v.v.v..",
+   "....v....",
+   "....v...."
+  ],
+  "hud_shield": [
+   ".WWWWWWW.",
+   ".WuuuuuW.",
+   ".WuuyuuW.",
+   ".WuyyyuW.",
+   ".WuuyuuW.",
+   "..WuuuW..",
+   "..WuuuW..",
+   "...WuW...",
+   "....W...."
+  ],
+  "hud_pipe": [
+   "......w..",
+   ".....w...",
+   "......w..",
+   ".....nn..",
+   ".....nn..",
+   "nnnnnnn..",
+   ".nnnnn...",
+   ".........",
+   "........."
+  ],
+  "hud_baby": [
+   ".........",
+   "...HHH...",
+   "..HwwwH..",
+   "..wwwww..",
+   ".ttttttt.",
+   ".ttttttt.",
+   "..ttttt..",
+   "...ttt...",
+   "........."
+  ],
+  "hud_meh": [
+   "..HHHHH..",
+   ".H.....H.",
+   "H..H.H..H",
+   "H.......H",
+   "H.......H",
+   "H.HHHHH.H",
+   ".H.....H.",
+   "..HHHHH..",
+   "........."
+  ],
+  "hud_person": [
+   "...HHH...",
+   "..HHHHH..",
+   "..HHHHH..",
+   "...HHH...",
+   "..HHHHH..",
+   ".HHHHHHH.",
+   ".HHHHHHH.",
+   ".HHHHHHH.",
+   "........."
+  ],
+  "hud_banner": [
+   ".n.......",
+   ".nrrrrrr.",
+   ".nrryrrr.",
+   ".nryyyrr.",
+   ".nrryrrr.",
+   ".nrrrrrr.",
+   ".nrr..rr.",
+   ".n.......",
+   ".n......."
+  ],
+  "hud_village": [
+   "..n...n..",
+   ".nnn.nnn.",
+   "nnnnnnnnn",
+   ".www.www.",
+   ".wWw.wWw.",
+   ".wWw.wWw.",
+   ".www.www.",
+   "GGGGGGGGG",
+   "........."
   ]
  },
  "vitals": {
@@ -642,15 +741,55 @@
   "over": 3
  },
  "screens": {
-  "sheet": "hud_book",
-  "dynasty": "hud_crown",
-  "colony": "hud_house",
+  "sheet": "hud_person",
+  "dynasty": "hud_banner",
+  "colony": "hud_village",
   "build": "hud_hammer",
   "map": "hud_map",
   "workshop": "hud_anvil",
   "chronicle": "hud_scroll"
  },
  "moodlets": [
+  [
+   "potion_poison",
+   "hud_skull"
+  ],
+  [
+   "potion|draught",
+   "hud_potion"
+  ],
+  [
+   "healed_by_magic|spellbound|enchant",
+   "hud_spark"
+  ],
+  [
+   "warded|ward",
+   "hud_shield"
+  ],
+  [
+   "pregnant|new_parent|newborn",
+   "hud_baby"
+  ],
+  [
+   "pipe|smoke",
+   "hud_pipe"
+  ],
+  [
+   "bored",
+   "hud_meh"
+  ],
+  [
+   "hope",
+   "hud_sun"
+  ],
+  [
+   "obsess",
+   "hud_heartbreak"
+  ],
+  [
+   "cosy|light",
+   "hud_flame"
+  ],
   [
    "ate|meal|bread|feast|food|catch",
    "hud_bread"
