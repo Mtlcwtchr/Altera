@@ -27,5 +27,13 @@
  "ui2d.wmap.no_wars": "Peace",
  "ui2d.wmap.culture": "Culture: {name}",
  "ui2d.wmap.scale": "{n} km",
- "ui2d.wmap.center": "Centre"
+ "ui2d.wmap.center": "Centre",
+ "ui2d.wmap.caravans": "Caravans",
+ "ui2d.wmap.no_caravans": "Nobody is on the roads now.",
+ "ui2d.wmap.route": "{from} → {to}",
+ "ui2d.wmap.crew": "{n} people, {g} guards",
+ "ui2d.wmap.cargo": "Carries: {list}",
+ "ui2d.wmap.at_market": "trading at the market",
+ "ui2d.wmap.on_road": "on the road",
+ "ui2d.wmap.leader": "Led by {name}"
 }
