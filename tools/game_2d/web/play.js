@@ -195,11 +195,48 @@
         if (pin) { pinToBar({ kind: 'act', id: pin, target: target != null && (G.byId.get(target) && !G.byId.get(target).sp) }); ev.stopPropagation(); return; }
         const a = acts.find(x => x.id === b.dataset.id);
         if (!a || !a.can) return;
+        if (a.choices) { chooseAct(a, id => perform(id, target)); return; }   // LR-123: pick the thing first
         closeMenu();
+        if (a.cmd) {   // LR-122: put on / take off
+          G.cmd({ op: 'cmd', type: a.cmd, args: { id: G.me, item: a.item } }).then(r => { toast(r.result ? (r.text || r.result) : a.name); G.poll(); });
+          return;
+        }
         perform(a.id, target);
       };
     });
   }
+  // LR-123: the choices of a parametric act (what to lend, give, trade) in the act menu;
+  // `onPick(id)` gets the bound act's id (lend#item=bread).
+  function chooseAct(a, onPick) {
+    let h = `<h3>${esc(a.name)}</h3>`;
+    for (const c of a.choices)
+      h += `<button class="act${c.can ? '' : ' off'}" data-choice="${esc(c.id)}">${esc(c.name)}` +
+        (c.gains && c.gains.length ? `<span class="g">${esc(c.gains.join(', '))}</span>` : '') +
+        (!c.can && c.why ? `<span class="w">${esc(c.why)}</span>` : '') + `</button>`;
+    menu.innerHTML = h;
+    if (menu.hidden) {
+      const r = G.canvas.getBoundingClientRect();
+      menu.hidden = false;
+      menu.style.left = Math.max(10, (r.width - menu.offsetWidth) / 2) + 'px';
+      menu.style.top = Math.max(10, (r.height - menu.offsetHeight) / 3) + 'px';
+    }
+    for (const b of menu.querySelectorAll('[data-choice]')) b.onclick = ev => {
+      ev.stopPropagation();
+      const c = a.choices.find(x => x.id === b.dataset.choice);
+      if (!c || !c.can) return;
+      closeMenu();
+      onPick(c.id);
+    };
+  }
+  G.chooseAct = chooseAct;
+  // LR-125: how the acts of the led person came out (done with what it got, failed, refused)
+  const shownOutcomes = new Set();
+  let outcomesPrimed = false;
+  G.hooks.poll.push(s => {
+    const list = s.outcomes || [];
+    if (!outcomesPrimed) { for (const o of list) shownOutcomes.add(o.key); outcomesPrimed = true; return; }   // not the old ones at load
+    for (const o of list) if (!shownOutcomes.has(o.key)) { shownOutcomes.add(o.key); toast(o.text); }
+  });
   function perform(id, target) {
     path = null;
     const v = myVis(); if (v) v.driven = false;

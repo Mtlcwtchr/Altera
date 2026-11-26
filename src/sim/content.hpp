@@ -293,6 +293,7 @@ struct BackstoryMade {
 };
 struct BackstoryDef {
     std::string id, icon, start = "home";
+    bool newcomer = false;   // LR-121: a new person comes (household of their own), nobody of the village is taken
     std::vector<std::pair<std::string, double>> skills;   // knowledge id -> level 0..1 (file order)
     std::vector<std::string> traitsAlways, traitPool;
     int traitPick = 0;
@@ -651,6 +652,9 @@ struct Content {
     std::vector<GoalDef> goals; // ordered as in the file
     std::map<std::string, HtnTask> tasks;
     std::map<std::string, InteractionDef> interactions;
+    // LR-123: acts with bound parameters, made on first use from an id "<base>#<param>=<value>[,...]"
+    // (lend#item=bread, trade#give=bread,take=coin); a cache, never saved (the id is).
+    mutable std::map<std::string, InteractionDef> boundInteractions;
     std::map<std::string, FsmStateDef> fsm;
     std::vector<std::string> speechActs;
     // Names world generation gives (names.json, AL-61): ids = the Latin form, keys name.<id> of the loc.

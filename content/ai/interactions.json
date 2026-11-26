@@ -2419,6 +2419,9 @@
    "id": "collect_debt",
    "category": "economy",
    "target": "character",
+   "pre": [
+    "rel:debt>0"
+   ],
    "eff": [
     "rel_back:affinity-0.02"
    ],
@@ -2863,6 +2866,9 @@
    "target": "character",
    "pre": [
     "age:adult",
+    "t.age:adult",
+    "!kin:spouse",
+    "!kin:blood",
     "rel:affinity>0.3"
    ],
    "eff": [
@@ -2895,7 +2901,10 @@
    "category": "family",
    "target": "character",
    "pre": [
-    "age:adult"
+    "age:adult",
+    "t.age:adult",
+    "!kin:spouse",
+    "!kin:blood"
    ],
    "eff": [
     "rel:trust+0.1",

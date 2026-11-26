@@ -133,6 +133,9 @@ bool strangersArrive(World& w, EntityId settlement, bool family);
 // person is taken in by a household; more found their own (the first man heads it,
 // his wife and children with him). False: nowhere to go (nobody moved).
 bool refugeesArrive(World& w, EntityId settlement, const std::vector<EntityId>& who);
+// LR-121: one newcomer comes to `settlement` with a household and a house of their own
+// (no fields yet: a store by the village); the new person's id, kNone when there is no such place.
+EntityId newcomerArrives(World& w, EntityId settlement, char sex, int ageYears);
 // The chance that a woman conceives at one act (fades after age_fade_from_years).
 double conceiveChanceOf(const Character& woman, const VillageLifeRules& r);
 

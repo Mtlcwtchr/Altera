@@ -17,7 +17,7 @@ namespace {
 const std::set<std::string> kCondSubjects = {"has", "at", "need", "knows", "skill", "trait", "age", "body", "time",
                                              "known", "home", "target_stock", "target_owner", "rel", "moodlet",
                                              "reputation", "status_pair", "status_pair_any", "right", "verdict", "farm", "care", "herd", "charity",
-                                             "site", "build"};
+                                             "site", "build", "kin"};
 // t.<subject>: conditions on the target character.
 const std::set<std::string> kTargetCondSubjects = {"need", "skill", "body", "age", "moodlet", "has", "trait",
                                                    "knows", "reputation", "status_pair_any", "right", "verdict"};

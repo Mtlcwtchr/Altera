@@ -1208,6 +1208,8 @@ struct Window::Impl : Ctx {
     }
 
     // --- polling -----------------------------------------------------------------------------
+    std::set<std::string> shownOutcomes;   // LR-125
+    bool outcomesPrimed = false;
     void poll() {
         lastPoll = nowMs();
         const int r = int(std::ceil(std::hypot(mapW(), mapH()) / tilePx())) + 30;
@@ -1246,6 +1248,14 @@ struct Window::Impl : Ctx {
             else ++it;
         selCard = s.contains("sel") ? s["sel"] : Json();
         meCard = s.contains("me_card") ? s["me_card"] : Json();
+        // LR-125: how the acts of the led person came out, each told once
+        for (const auto& o : s.value("outcomes", Json::array())) {
+            const std::string k = str(o, "key");
+            if (k.empty() || shownOutcomes.count(k)) continue;
+            shownOutcomes.insert(k);
+            if (outcomesPrimed) toast(str(o, "text"));
+        }
+        outcomesPrimed = true;
         // LR-152: new fights near the view play as the combat state; the led person's holds the world
         for (const auto& f : s.value("fights", Json::array())) {
             auto nameOf = [&](long long id) {
@@ -2876,6 +2886,8 @@ struct Window::Impl : Ctx {
         }
         int i = 0;
         std::string chosen;
+        Json expand;   // LR-123: a parametric act's choices replace the list
+        Json direct;   // LR-122: a sim command of its own (wear / take_off)
         for (const auto& a : menuActs) {
             const bool can = flag(a, "can");
             const ui::Rect r{c.x, yy, c.w, rowH};
@@ -2904,11 +2916,31 @@ struct Window::Impl : Ctx {
             text(tx, r.y + 21 * U, ui.fit(sub, r.right() - 6 * U - tx, fs(11 * U)), !can ? kBad : kDim, 11 * U);
             if (hit) {
                 if (pin.contains(in.mouseX, in.mouseY)) pinToBar(Slot{"act", str(a, "id"), menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty()});
+                else if (can && a.contains("choices") && a["choices"].is_array()) expand = a;
+                else if (can && !str(a, "cmd").empty()) direct = a;   // LR-122: put on / take off
                 else if (can) chosen = str(a, "id");
             }
             yy += rowH + 2 * U;
         }
         ui.endScroll(yy);
+        if (direct.is_object()) {
+            menuOpen = false;
+            cmdToast({{"op", "cmd"}, {"type", str(direct, "cmd")}, {"args", {{"id", me}, {"item", str(direct, "item")}}}});
+            poll();
+            return;
+        }
+        if (expand.is_object()) {
+            Json list = Json::array();
+            for (Json ch : expand["choices"]) {
+                ch["minutes"] = expand.value("minutes", 0);
+                ch["to_target"] = Json::array();
+                ch["legal"] = Json::array();
+                list.push_back(ch);
+            }
+            menuActs = list;
+            menuTitle = str(expand, "name");
+            return;
+        }
         if (!chosen.empty()) {
             menuOpen = false;
             perform(chosen, menuTarget);

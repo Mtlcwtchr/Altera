@@ -1,9 +1,12 @@
 #include "client2d/acts2d.hpp"
 
 #include <cmath>
+#include <algorithm>
 #include <cstdio>
 
 #include "sim/act_info.hpp"
+#include "sim/gear.hpp"
+#include <set>
 #include "sim/ai.hpp"
 #include "sim/transport.hpp"
 
@@ -34,11 +37,20 @@ std::string opText(Condition::Op op) {
 
 struct Words {
     const ViewText& t;
+    const Character* self = nullptr;   // LR-123: {self} in names (Польщён{self:g||а}) reads as the actor
     std::string text(const std::string& key, const Json& args = Json::object()) const {
-        return t.loc && t.loc->has(t.lang, key) ? t.loc->text(t.lang, key, args) : key;
+        if (!t.loc || !t.loc->has(t.lang, key)) return key;
+        Json a = args;
+        if (self && !a.contains("self")) a["self"] = t.loc->personNoun(t.lang, *self);
+        return t.loc->text(t.lang, key, a);
     }
     std::string name(const std::string& kind, const std::string& id) const {
-        return t.name(kind, id.substr(0, id.find('@')));   // <id>@foreign reads as the act
+        // <id>@foreign and <id>#param=value read as the act
+        const std::string bare = id.substr(0, std::min(id.find('@'), id.find('#')));
+        if (t.loc && self)
+            for (const std::string k : {kind + "." + bare + ".name", kind + "." + bare})
+                if (t.loc->has(t.lang, k)) return text(k);
+        return t.name(kind, bare);
     }
     std::string condition(const Condition& k) const {
         const std::string who = k.onTarget ? text("hud.req.target") + " " : "";
@@ -47,15 +59,27 @@ struct Words {
         if (k.subject == "has") {
             out = text("hud.req.has", {{"item", name("item", k.key)}});
             if (counted && k.value > 1) out += " x" + num(k.value);
-        } else if (k.subject == "knows") out = text("hud.req.knows", {{"skill", name("skill", k.key)}});
+        } else if (k.subject == "knows") out = text("hud.req.knows", {{"skill", name("knowledge", k.key)}});
         else if (k.subject == "skill")
-            out = text("hud.req.skill", {{"skill", name("skill", k.key)}, {"op", opText(k.op)}, {"v", num(k.value * 100)}});
+            out = text("hud.req.skill", {{"skill", name("knowledge", k.key)}, {"op", opText(k.op)}, {"v", num(k.value * 100)}});
         else if (k.subject == "target_stock")
             out = text("hud.req.stock", {{"item", name("item", k.key)}, {"op", opText(k.op)}, {"v", num(k.value)}});
+        else if (k.subject == "age" && k.op == Condition::Op::Truthy)   // LR-123: age:adult is a stage, not a number
+            out = text("hud.req.age_stage", {{"stage", name("life_stage", k.key)}});
         else if (k.subject == "age") out = text("hud.req.age", {{"op", opText(k.op)}, {"v", num(k.value)}});
+        else if (k.subject == "kin") out = text("hud.req.kin." + k.key);
+        else if (k.subject == "status_pair" || k.subject == "status_pair_any")
+            out = text("hud.req." + k.subject + "." + k.key);
+        else if (k.subject == "trait") out = text("hud.req.trait", {{"what", name("trait", k.key)}});
+        else if (k.subject == "moodlet") out = text("hud.req.moodlet", {{"what", name("moodlet", k.key)}});
+        else if (k.subject == "right") out = text("hud.req.right", {{"what", text("hud.right." + k.key)}});
+        else if (k.subject == "verdict") out = text("hud.req.verdict", {{"what", name("interaction", k.key)}});
+        else if (k.subject == "body")
+            out = text("hud.req.body." + k.key, {{"op", opText(k.op)}, {"v", num(k.value * 100)}});
         else if (k.subject == "need")
             out = text("hud.req.need", {{"need", name("need", k.key)}, {"op", opText(k.op)}, {"v", num(k.value * 100)}});
         else if (k.subject == "home") out = text("hud.req.home", {{"what", name("item", k.key)}});
+        else if (k.subject == "rel" && k.key == "debt") out = text("hud.req.owed");   // LR-131
         else if (k.subject == "rel")
             out = text("hud.req.rel", {{"axis", text("hud.axis." + k.key)}, {"op", opText(k.op)}, {"v", num(k.value)}});
         else out = k.text;
@@ -103,7 +127,8 @@ struct Words {
     std::string effect(const Effect& e) const {
         const std::string sign = e.op == '-' ? "-" : "+";
         if (e.subject == "has") return sign + num(e.value) + " " + name("item", e.key);
-        if (e.subject == "skill") return text(e.op == '-' ? "hud.gain.skill_down" : "hud.gain.skill", {{"skill", name("skill", e.key)}});
+        if (e.subject == "skill") return text(e.op == '-' ? "hud.gain.skill_down" : "hud.gain.skill", {{"skill", name("knowledge", e.key)}});
+        if (e.subject == "memory" || e.subject == "status_pair" || e.subject == "commitment") return "";   // LR-123: no raw keys
         if (e.subject == "need") return text(e.op == '-' ? "hud.gain.need_down" : "hud.gain.need", {{"need", name("need", e.key)}});
         if (e.subject == "body" && e.key == "fatigue") return text(e.op == '-' ? "hud.gain.rest" : "hud.gain.tired");
         if (e.subject == "body" && e.key == "health") return text(e.op == '-' ? "hud.gain.hurt" : "hud.gain.heal");
@@ -117,7 +142,70 @@ struct Words {
 };
 
 Json actJson(const World& w, const Words& W, const Character& me, const InteractionDef& d, const WorldObject* obj,
+             const Character* tc);
+
+// LR-123: a parametric act (lend, give, trade, extort, learn...) offers its choices: one bound
+// act per thing the actor (or for t.has:$x, the target) has / knows, each with its own can/why;
+// the act can be done when any choice can. The client performs the choice's id (lend#item=bread).
+Json choicesJson(const World& w, const Words& W, const Character& me, const InteractionDef& d, const Character* tc) {
+    std::vector<std::pair<std::string, std::vector<std::string>>> options;   // param -> values
+    for (const auto& p : d.params) {
+        bool onTarget = false;
+        for (const auto& k : d.pre)
+            if (k.isParam() && k.param() == p.name) onTarget = k.onTarget;
+        const Character* src = onTarget ? tc : &me;
+        std::vector<std::string> vals;
+        auto allowed = [&](const std::string& v) { return p.of.empty() || std::find(p.of.begin(), p.of.end(), v) != p.of.end(); };
+        if (src && p.type == "item") {
+            for (const auto& [item, n] : src->inventory)
+                if (n > 0 && allowed(item)) vals.push_back(item);
+        } else if (src && p.type == "skill") {
+            for (const auto& [sk, v] : src->skills)
+                if (v > 0 && allowed(sk)) vals.push_back(sk);
+        }
+        if (vals.size() > 16) vals.resize(16);
+        options.push_back({p.name, vals});
+    }
+    // a trade of two items: what I give x what I want from the target (bounded)
+    std::vector<std::string> ids = {d.id + "#"};
+    std::vector<std::string> labels = {""};
+    for (const auto& [name, vals] : options) {
+        bool skill = false;
+        for (const auto& p : d.params)
+            if (p.name == name) skill = p.type == "skill";
+        std::vector<std::string> nid, nlab;
+        for (std::size_t i = 0; i < ids.size(); ++i)
+            for (const auto& v : vals) {
+                nid.push_back(ids[i] + (ids[i].back() == '#' ? "" : ",") + name + "=" + v);
+                nlab.push_back(labels[i] + (labels[i].empty() ? "" : " ↔ ") + W.name(skill ? "knowledge" : "item", v));
+            }
+        ids.swap(nid);
+        labels.swap(nlab);
+        if (ids.size() > 24) { ids.resize(24); labels.resize(24); }
+    }
+    Json out = Json::array();
+    for (std::size_t i = 0; i < ids.size(); ++i) {
+        const InteractionDef* b = w.content().interaction(ids[i]);
+        if (!b) continue;
+        Json o = actJson(w, W, me, *b, nullptr, tc);
+        out.push_back({{"id", ids[i]}, {"name", labels[i]}, {"can", o["can"]}, {"why", o["why"]}, {"gains", o["gains"]}});
+    }
+    return out;
+}
+
+Json actJson(const World& w, const Words& W, const Character& me, const InteractionDef& d, const WorldObject* obj,
              const Character* tc) {
+    if (d.parametric()) {
+        Json o = {{"id", d.id}, {"name", W.name("interaction", d.id)}, {"can", false}, {"why", ""}, {"needs", Json::array()},
+                  {"gains", Json::array()}, {"to_target", Json::array()}, {"legal", Json::array()}, {"minutes", int(d.duration) * int(24 * 60 / kTicksPerDay)}};
+        Json ch = choicesJson(w, W, me, d, tc);
+        for (const auto& c : ch)
+            if (c["can"].get<bool>()) o["can"] = true;
+        if (!o["can"].get<bool>())
+            o["why"] = ch.empty() ? W.text("hud.why.no_choice") : ch.front()["why"].get<std::string>();
+        o["choices"] = ch;
+        return o;
+    }
     const ActInfo a = actInfo(w, me, d, obj, tc);
     Json o = {{"id", d.id}, {"name", W.name("interaction", d.id)}, {"can", a.can}};
     std::string why;
@@ -163,7 +251,7 @@ Json actsJson(const World& w, const ViewText& t, ActCatalog& cat, EntityId meId,
     Json out = Json::array();
     const Character* me = w.character(meId);
     if (!me) return out;
-    const Words W{t};
+    const Words W{t, me};
     const WorldObject* obj = w.object(target);
     const Character* tc = obj ? nullptr : w.character(target);
     if (target != kNone && !obj && !tc) return out;
@@ -198,13 +286,32 @@ Json actsJson(const World& w, const ViewText& t, ActCatalog& cat, EntityId meId,
                        {"needs", Json::array()}, {"gains", Json::array()}, {"to_target", Json::array()}, {"minutes", 1},
                        {"legal", Json::array()}});
     }
+    // LR-122: on oneself, putting on what one carries and taking off what one wears
+    // (the sim's wear / take_off commands: "cmd" + "item" instead of an act)
+    if (target == kNone)
+        if (const GearRules* G = gearRules(w.content())) {
+            std::set<std::string> worn;
+            for (const auto& [slot, item] : me->worn) worn.insert(item);
+            for (const auto& [item, n] : me->inventory) {
+                if (n <= 0 || worn.count(item) || G->item(item).slot.empty()) continue;
+                const std::string why = canWear(*G, *me, item);
+                if (!why.empty()) continue;
+                out.push_back({{"id", "wear:" + item}, {"cmd", "wear"}, {"item", item}, {"can", true}, {"why", ""},
+                               {"name", W.text("hud.act.wear", {{"what", W.name("item", item)}})}, {"needs", Json::array()},
+                               {"gains", Json::array()}, {"to_target", Json::array()}, {"legal", Json::array()}, {"minutes", 0}});
+            }
+            for (const auto& item : worn)
+                out.push_back({{"id", "take_off:" + item}, {"cmd", "take_off"}, {"item", item}, {"can", true}, {"why", ""},
+                               {"name", W.text("hud.act.take_off", {{"what", W.name("item", item)}})}, {"needs", Json::array()},
+                               {"gains", Json::array()}, {"to_target", Json::array()}, {"legal", Json::array()}, {"minutes", 0}});
+        }
     return out;
 }
 
 Json barJson(const World& w, const ViewText& t, EntityId meId, EntityId target, const Json& slots) {
     Json out = Json::array();
     const Character* me = w.character(meId);
-    const Words W{t};
+    const Words W{t, me};
     const Character* tc = target != kNone ? w.character(target) : nullptr;
     for (const auto& s : slots) {
         const std::string kind = s.value("kind", std::string()), id = s.value("id", std::string());
@@ -234,6 +341,52 @@ Json barJson(const World& w, const ViewText& t, EntityId meId, EntityId target, 
         }
         out.push_back(std::move(o));
     }
+    return out;
+}
+
+Json outcomesJson(const World& w, const ViewText& t, EntityId meId) {
+    Json out = Json::array();
+    const Character* me = w.character(meId);
+    if (!me) return out;
+    const Words W{t, me};
+    auto items = [&](const Json& m) {
+        std::string s;
+        if (!m.is_object()) return s;
+        for (auto it = m.begin(); it != m.end(); ++it) {
+            if (!it.value().is_number_integer()) continue;
+            s += (s.empty() ? "" : ", ") + std::to_string(it.value().get<int>()) + " " + W.name("item", it.key());
+        }
+        return s;
+    };
+    const Tick from = w.now() > kTicksPerDay ? w.now() - kTicksPerDay : 0;
+    std::map<Tick, int> seen;   // the n-th entry of a tick (keys stay put as the trace scrolls)
+    for (const auto& e : me->ai.trace) {
+        const int n = seen[e.tick]++;
+        if (e.tick < from) continue;
+        std::string text;
+        bool ok = true;
+        const std::string act = e.params.value("action", std::string());
+        if (e.code == "act.result") {
+            ok = e.params.value("success", true);
+            const std::string g = items(e.params.value("gain", Json::object())), l = items(e.params.value("lost", Json::object()));
+            text = W.text(ok ? "hud.outcome.done" : "hud.outcome.failed", {{"act", W.name("interaction", act)}});
+            if (!g.empty()) text += " " + W.text("hud.outcome.got", {{"what", g}});
+            if (!l.empty()) text += " " + W.text("hud.outcome.spent", {{"what", l}});
+        } else if (e.code == "act.outcome" && e.params.value("refused", false)) {
+            ok = false;
+            const Character* by = w.character(e.params.value("by", kNone));
+            text = W.text("hud.outcome.refused", {{"act", W.name("interaction", act)}, {"who", by ? by->name : std::string()}});
+        } else if (e.code == "goal.failed" && e.params.value("source", std::string()) == "player") {
+            ok = false;
+            const std::string task = e.params.value("task", std::string());
+            const InteractionDef* d = w.content().interaction(task);
+            const std::string what = d ? W.name("interaction", task) : W.name("goal", e.params.value("goal", task));
+            std::string why = resultText(t, "rejected:" + e.params.value("why", std::string()));
+            text = W.text("hud.outcome.gave_up", {{"act", what}, {"why", why}});
+        } else continue;
+        out.push_back({{"at", e.tick}, {"key", std::to_string(e.tick) + ":" + e.code + ":" + act + ":" + std::to_string(n)}, {"ok", ok}, {"text", text}});
+    }
+    while (out.size() > 8) out.erase(out.begin());
     return out;
 }
 
