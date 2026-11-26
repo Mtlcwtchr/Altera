@@ -403,3 +403,63 @@ TEST(lr_sim_social_village_lives_with_chains) {
     }
     CHECK_EQ(stale, 0);
 }
+
+// LR-157: an NPC who opens a talk with the player's person asks first (the 2D client
+// opens the talk window); the player's yes makes it a talk the player leads, a no or
+// silence ends it - the person's own mind never answers for the player.
+TEST(lr_sim_social_npc_talk_invites_the_player) {
+    World w = realWorld();
+    auto [a, b] = pair(w);
+    CHECK(a && b);
+    if (!a || !b) return;
+    const EntityId A = a->id, B = b->id;
+    calm(*a);
+    calm(*b);
+    fond(*a, *b, 0.6);
+    fond(*b, *a, 0.6);
+    b->pos = {a->pos.x + 2.0, a->pos.y};
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}})).result, std::string("ok"));
+    const InteractionDef* chat = w.content().interaction("chat");
+    const SocialChainDef* sc = socialChain(w.content(), "chat");
+    CHECK(chat && sc && sc->talkOnly);
+    if (!chat || !sc) return;
+    auto ask = [&] {
+        if (w.character(A)->ai.social.active()) endSocial(w, *w.character(A), "test");
+        w.character(A)->ai.fsm = FsmState{};
+        w.character(B)->ai.fsm = FsmState{};
+        w.character(B)->memory.clear();
+        std::string why;
+        CHECK(beginSocial(w, *w.character(B), *w.character(A), *chat, why));
+        runUntil(w, 3, [&] { return pendingInvite(*w.character(A)) == B; });
+        CHECK_EQ(pendingInvite(*w.character(A)), B);
+    };
+    // 1. Asked: it waits for the player well past the old answer time, nobody answers for them.
+    ask();
+    w.run(socialRules(w.content())->answerTicks + 4);
+    CHECK_EQ(pendingInvite(*w.character(A)), B);
+    // 2. Yes: the talk is the player's to lead; B waits while the player keeps it going.
+    CHECK_EQ(w.applyNow(cmdOf("answer_social", {{"id", A}, {"accept", true}})).result, std::string("ok"));
+    CHECK_EQ(ledTalkWith(*w.character(A)), B);
+    CHECK_EQ(w.character(B)->ai.social.phase, std::string("led"));
+    const Tick talk = socialRules(w.content())->playerTalkTicks;
+    w.run(talk / 2);
+    keepLedTalk(w, *w.character(A));
+    w.run(talk / 2 + 2);
+    CHECK_EQ(ledTalkWith(*w.character(A)), B);   // kept going by the player
+    CHECK(!traced(*w.character(B), "social.stage")); // no talk that plays by itself
+    // The player closes the talk: goodbyes, both free.
+    CHECK_EQ(w.applyNow(cmdOf("end_talk", {{"id", A}})).result, std::string("ok"));
+    runUntil(w, 3, [&] { return !w.character(B)->ai.social.active(); });
+    CHECK(ledTalkWith(*w.character(A)) == kNone);
+    CHECK(traced(*w.character(B), "social.done"));
+    // 3. No: refused.
+    ask();
+    CHECK_EQ(w.applyNow(cmdOf("answer_social", {{"id", A}, {"accept", false}})).result, std::string("ok"));
+    runUntil(w, 4, [&] { return !w.character(B)->ai.social.active(); });
+    CHECK(traced(*w.character(B), "social.refused"));
+    // 4. Silence: the asker gives up, no talk.
+    ask();
+    w.run(socialRules(w.content())->playerAnswerTicks + 2);
+    CHECK(traced(*w.character(B), "social.unanswered"));
+    CHECK(w.character(A)->ai.social.partner != B || !w.character(A)->ai.social.active());
+}

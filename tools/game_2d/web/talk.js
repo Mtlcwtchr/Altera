@@ -168,10 +168,26 @@
       id: 'talk', wide: true, title: () => L('ui2d.talk.title', { who: talk.data && talk.data.ok ? talk.data.them.name_ins : (person(talk.id) || {}).name || '' }),
       render: (body, tab, w) => renderTalk(body, w),
       onPoll: (s, w) => { if (performance.now() - talk.at > 1200) loadTalk(w); },
+      // LR-157: closing a talk the player leads ends it; an ask left unanswered is a no
+      onClose() {
+        const d = talk.data || {};
+        if (d.led) G.cmd({ op: 'cmd', type: 'end_talk', args: { id: G.me } });
+        else if (d.ask) G.cmd({ op: 'cmd', type: 'answer_social', args: { id: G.me, accept: false } });
+      },
     });
     loadTalk(w);
     return w;
   };
+  // LR-157: an NPC asks the player's person: the talk window opens with them (the world waits)
+  let lastInvite = '';
+  G.hooks.poll.push(s => {
+    const inv = s && s.invite;
+    if (!inv) return;
+    const key = inv.who + ':' + inv.since;
+    if (key === lastInvite) return;
+    lastInvite = key;
+    G.screens.talk(inv.who);
+  });
 
   // --- the trade window ---------------------------------------------------------------------
   const trade = { id: null, give: {}, take: {}, data: null, seq: 0, at: 0 };

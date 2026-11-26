@@ -63,6 +63,12 @@ struct SocialChainDef {
 
 struct SocialRules {
     Tick askTicks = 1, refuseTicks = 1, answerTicks = 6, approachMaxTicks = 12, refusedCooldown = 36;
+    // LR-157: an NPC's ask of the player's person waits for the player (no answer by
+    // the person's own mind); unanswered that long, the asker gives up. A talk the
+    // player took up is led by the player (the talk window), the asker waiting by them
+    // while the player keeps it going.
+    Tick playerAnswerTicks = 36, playerTalkTicks = 36;
+    std::vector<std::string> playerInviteSkip; // talk groups only heard, never asked (an insult)
     double placeRadiusM = 1500.0, togetherM = 2.0, followM = 2.5, followLostM = 1500.0, followSpeedMult = 1.2,
            joinRadiusM = 40.0;
     std::string askAnim = "social_ask", listenAnim = "social_listen", refuseAnim = "social_refuse",
@@ -103,11 +109,19 @@ SocialStep tickSocial(World& w, Character& c, std::string& why);
 void endSocial(World& w, Character& c, const std::string& why);
 // A player's answer to an NPC's ask (the "answer_social" command).
 bool answerSocial(World& w, Character& target, bool accept, std::string& why);
+// LR-157: who asks the player's person and waits for the answer (kNone: nobody),
+// who talks with them in a talk the player leads (kNone: none).
+EntityId pendingInvite(const Character& c);
+EntityId ledTalkWith(const Character& c);
+// The player said something in the led talk: it goes on (the asker waits longer).
+void keepLedTalk(World& w, Character& player);
+// The player closes the led talk: goodbyes at the next tick.
+bool endLedTalk(World& w, Character& player);
 // Moves the followers of `leader` after it (the player's steer/WASD).
 void pullFollowers(World& w, const Character& leader);
 std::vector<EntityId> followersOf(const World& w, EntityId leader);
 
-// Commands: answer_social {id, accept}, dismiss_follower {id, follower?}.
+// Commands: answer_social {id, accept}, dismiss_follower {id, follower?}, end_talk {id} (LR-157).
 void installSocial(World& w);
 
 } // namespace lr::sim
