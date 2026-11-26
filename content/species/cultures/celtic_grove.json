@@ -48,7 +48,7 @@
  },
  "intimacy": {
   "adults_only": true,
-  "min_age_years": 16,
+  "min_age_years": 18,
   "marriage": "monogamy",
   "courtship": "free",
   "premarital": "allowed",

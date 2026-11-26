@@ -517,8 +517,8 @@ void validateSpecies(const Content& c, ValidationReport& r) {
             const Json& in = cu.data["intimacy"];
             if (!in.is_object() || !in.value("adults_only", false))
                 r.errors.push_back("culture " + id + ": intimacy must have adults_only: true");
-            else if (in.value("min_age_years", 0.0) < 14.0)
-                r.errors.push_back("culture " + id + ": intimacy.min_age_years must be at least 14 (the human measure of adulthood)");
+            else if (in.value("min_age_years", 0.0) < 18.0)
+                r.errors.push_back("culture " + id + ": intimacy.min_age_years must be at least 18 (adults only)");
         }
         const std::string dump = cu.data.dump();
         for (const char* banned : {"pederast", "harem", "child_bride", "child_marriage", "concubine_girl"})

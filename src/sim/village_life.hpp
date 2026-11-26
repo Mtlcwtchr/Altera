@@ -47,7 +47,7 @@ struct IllnessKind {
 struct VillageLifeRules {
     bool loaded = false;
     // courtship
-    int minAgeYears = 16, maxAgeGapYears = 15;
+    int minAgeYears = 18, maxAgeGapYears = 15;
     bool sameSex = false;
     double courtDaily = 0.6;
     std::vector<std::string> courtActs = {"chat", "compliment", "flirt"};

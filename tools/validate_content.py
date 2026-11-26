@@ -477,8 +477,8 @@ def check_peoples(L):
                 if k not in races: r.err(f"cultures/{id} peoples.{kind}: {k} неизвестен")
                 elif races[k].get("settles") is False: r.err(f"cultures/{id} peoples.{kind}: {k} — только база (settles: false)")
         inti = c.get("intimacy")
-        if inti is not None and (not inti.get("adults_only") or inti.get("min_age_years", 0) < 14):
-            r.err(f"cultures/{id}: intimacy только для взрослых (adults_only: true, min_age_years ≥ 14) — §1.1")
+        if inti is not None and (not inti.get("adults_only") or inti.get("min_age_years", 0) < 18):
+            r.err(f"cultures/{id}: intimacy только для взрослых (adults_only: true, min_age_years ≥ 18) — §1.1")
         dump = json.dumps(c, ensure_ascii=False)
         for banned in ("pederast", "harem", "child_bride", "child_marriage", "concubine_girl"):
             if banned in dump: r.err(f"cultures/{id}: {banned} исключено из сеттинга (§1.1)")
