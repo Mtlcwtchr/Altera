@@ -1,6 +1,7 @@
 // AL-115 M4: reactions of the elements in the world (sim/world_reactions.hpp).
 
 #include "sim/world_reactions.hpp"
+#include "sim/relief.hpp"
 #include "sim/data_fs.hpp"
 
 #include <algorithm>
@@ -182,6 +183,12 @@ double moveFactorAt(const World& w, Vec2 at) {
 }
 
 double stepMoveFactor(const World& w, Vec2 from, Vec2 to, double step) {
+    // LR-156: climbing up or down the relief's levels on top of what lies on the ground
+    const double climb = reliefMoveFactor(w, from, to, step);
+    return climb * groundMoveFactor(w, from, to, step);
+}
+
+double groundMoveFactor(const World& w, Vec2 from, Vec2 to, double step) {
     if (w.fields().chunks.empty()) return 1.0;
     const double d = std::min(step, dist(from, to));
     if (d < 1e-9) return fieldsStoredAt(w, from) ? std::max(0.1, moveFactorAt(w, from)) : 1.0;

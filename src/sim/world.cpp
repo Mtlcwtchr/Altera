@@ -1,4 +1,5 @@
 #include "sim/world.hpp"
+#include "sim/relief.hpp"
 #include "sim/stats.hpp"
 #include "sim/need_tiers.hpp"
 #include "sim/memory_budget.hpp"
@@ -449,7 +450,7 @@ void from_json(const Json& j, Settlement& s) {
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(ChronicleEntry, tick, type, who, code, params)
 NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(Fact, id, tick, pred, roles, place, witnesses, evidence, tags, goods,
                                                 outcome)
-NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MapGrid, sizeM, cellM, w, h, biomeNames, biome, water)
+NLOHMANN_DEFINE_TYPE_NON_INTRUSIVE_WITH_DEFAULT(MapGrid, sizeM, cellM, w, h, biomeNames, biome, water, relief)
 
 void to_json(Json& j, const WorldObject& o) {
     j = Json{{"id", o.id},       {"type", o.type},   {"pos", o.pos},
@@ -571,6 +572,7 @@ void World::loadJson(const Json& j) {
     replayNext_ = 0;
     nextId_ = j.at("next_id").get<EntityId>();
     map_ = j.at("map").get<MapGrid>();
+    buildRelief(map_);   // LR-156: the heights from the saved settings
     chars_.clear();
     Json charsJ = j.at("characters");
     if (j.contains("memory_events")) expandSharedMemory(charsJ, j["memory_events"]);

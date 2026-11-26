@@ -2,6 +2,7 @@
 #include <functional>
 #include "sim/gear.hpp"
 #include "sim/worldgen.hpp"
+#include "sim/relief.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/village_life.hpp"
 #include "sim/ai.hpp"
@@ -945,6 +946,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
                 for (const auto& [oid, o] : w.objects())
                     if (oid > before && dist(o.pos, center) <= knowRadius) ca->knownObjects.insert(oid);
     }
+    makeRelief(w, cfg);   // LR-156: the lie of the land, level round the settlements
     return w;
 }
 
