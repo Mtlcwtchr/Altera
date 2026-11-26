@@ -10,6 +10,7 @@
 #include "sim/ai.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/gear.hpp"
+#include "sim/regional.hpp"
 #include "sim/worldgen.hpp"
 
 using namespace lr::sim;
@@ -210,7 +211,11 @@ TEST(lr_sim_gear_everyone_starts_dressed) {
         ++people;
         dressed += c.worn.count("torso:under") ? 1 : 0;
         if (c.body.stage() == "child") kids += c.worn.count("torso:under") ? 1 : 0;
-        if (c.body.stage() == "adult" && c.body.sex == 'm' && !c.worn.count("legs:under")) CHECK(!"a man without trousers");
+        // LR-168: a man wears what his belt's clothes give (trousers in the woods, a chiton on the Middle Sea)
+        if (c.body.stage() == "adult" && c.body.sex == 'm')
+            if (const auto* set = regionalClothes(w, c, "m"))
+                for (const auto& [item, n] : *set)
+                    if (item == "trousers" && !c.worn.count("legs:under")) CHECK(!"a man without trousers");
     }
     CHECK(people > 0);
     CHECK_EQ(dressed, people);
@@ -227,7 +232,7 @@ TEST(lr_sim_gear_everyone_starts_dressed) {
     baby.inventory.clear();
     baby.body.ageDays = 0;
     giveBaseClothes(w, baby);
-    CHECK_EQ(baby.worn["torso:under"], std::string("tunic"));
+    CHECK(!baby.worn["torso:under"].empty());   // LR-168: the child clothes of the belt (a tunic, a chiton)
     CHECK(!baby.worn.count("legs:under"));
 }
 

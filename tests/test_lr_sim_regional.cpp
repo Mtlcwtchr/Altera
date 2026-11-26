@@ -101,12 +101,18 @@ TEST(lr_sim_regional_shield_goes_into_the_fight) {
 }
 
 TEST(lr_sim_regional_sources_grow_in_their_belt) {
-    World w = regWorld();   // the test world's culture is of the forest belt
-    std::set<std::string> belted;
-    for (const auto& [id, d] : w.content().objects)
-        if (!d.belts.empty()) belted.insert(id);
-    CHECK(belted.count("olive_grove") == 1);
-    for (const auto& [id, o] : w.objects()) CHECK(!belted.count(o.type));
+    World w = regWorld();
+    const std::string belt = regionalBelt(w.content(), w.content().peoples.mapCulture);
+    CHECK(!belt.empty());
+    int placed = 0;
+    for (const auto& [id, o] : w.objects()) {
+        const auto d = w.content().objects.find(o.type);
+        if (d == w.content().objects.end() || d->second.belts.empty()) continue;
+        ++placed;
+        CHECK(std::find(d->second.belts.begin(), d->second.belts.end(), belt) != d->second.belts.end());
+    }
+    // a source of the map's own belt grows there (the test world's culture is of the Middle Sea now, LR-166)
+    if (belt == "mediterranean") CHECK(placed > 0);
 }
 
 TEST(lr_sim_regional_things_are_whole) {
