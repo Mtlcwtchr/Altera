@@ -175,8 +175,11 @@
    "colour": "W"
   },
   "sand": {
-   "sprite": "it_ore",
-   "recolour": {},
+   "sprite": "it_flour",
+   "recolour": {
+    "w": "t",
+    "g": "T"
+   },
    "glyph": "*",
    "colour": "W"
   },
@@ -200,90 +203,88 @@
   },
   "peat": {
    "sprite": "it_ore",
-   "recolour": {},
+   "recolour": {
+    "W": "N",
+    "m": "p",
+    "M": "P",
+    "o": "p",
+    "z": "P"
+   },
    "glyph": "*",
    "colour": "W"
   },
   "resin": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "o"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "birch_bark": {
-   "sprite": "it_herb",
+   "sprite": "ob_log",
    "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
+    "n": "w",
+    "N": "x",
+    "e": "g"
    },
    "glyph": "/",
    "colour": "n"
   },
   "oak_bark": {
-   "sprite": "it_herb",
-   "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
-   },
+   "sprite": "ob_log",
+   "recolour": {},
    "glyph": "/",
    "colour": "n"
   },
   "wood_ash": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_flour",
+   "recolour": {
+    "w": "W",
+    "g": "x"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "ash_stave": {
-   "sprite": "it_herb",
-   "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
-   },
+   "sprite": "it_stick",
+   "recolour": {},
    "glyph": "/",
    "colour": "n"
   },
   "yew_stave": {
-   "sprite": "it_herb",
+   "sprite": "it_stick",
    "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
+    "n": "z"
    },
    "glyph": "/",
    "colour": "n"
   },
   "pine_log": {
-   "sprite": "it_herb",
-   "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
-   },
+   "sprite": "ob_log",
+   "recolour": {},
    "glyph": "/",
    "colour": "n"
   },
   "linden_block": {
-   "sprite": "it_herb",
+   "sprite": "ob_log",
    "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
+    "n": "t",
+    "N": "T"
    },
    "glyph": "/",
    "colour": "n"
   },
   "linden_bast": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "o"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "dagger": {
-   "sprite": "it_sword",
+   "sprite": "it_knife",
    "recolour": {},
    "glyph": "†",
    "colour": "m"
@@ -295,19 +296,23 @@
    "colour": "m"
   },
   "mace": {
-   "sprite": "it_sword",
-   "recolour": {},
+   "sprite": "it_hammer",
+   "recolour": {
+    "n": "N"
+   },
    "glyph": "†",
    "colour": "m"
   },
   "club": {
-   "sprite": "it_sword",
-   "recolour": {},
+   "sprite": "it_stick",
+   "recolour": {
+    "n": "N"
+   },
    "glyph": "†",
    "colour": "m"
   },
   "short_bow": {
-   "sprite": "it_sword",
+   "sprite": "ic_bow",
    "recolour": {},
    "glyph": "†",
    "colour": "m"
@@ -319,166 +324,203 @@
    "colour": "M"
   },
   "tongs": {
-   "sprite": "it_hammer",
-   "recolour": {},
+   "sprite": "it_fork",
+   "recolour": {
+    "m": "M"
+   },
    "glyph": "τ",
    "colour": "M"
   },
   "saw": {
-   "sprite": "it_hammer",
+   "sprite": "it_saw",
    "recolour": {},
    "glyph": "τ",
    "colour": "M"
   },
   "whetstone": {
-   "sprite": "it_hammer",
-   "recolour": {},
+   "sprite": "it_ingot",
+   "recolour": {
+    "m": "W",
+    "M": "M"
+   },
    "glyph": "τ",
    "colour": "M"
   },
   "bucket": {
-   "sprite": "ob_sack",
+   "sprite": "ic_bucket",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "keg": {
-   "sprite": "ob_sack",
+   "sprite": "ob_barrel",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "basket": {
-   "sprite": "ob_sack",
+   "sprite": "it_basket",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "pouch": {
-   "sprite": "ob_sack",
+   "sprite": "it_bag",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "rope": {
-   "sprite": "ob_sack",
+   "sprite": "it_rope",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "fishing_net": {
-   "sprite": "it_hammer",
-   "recolour": {},
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "W",
+    "T": "M"
+   },
    "glyph": "τ",
    "colour": "M"
   },
   "leather": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_pelt",
+   "recolour": {
+    "W": "e",
+    "g": "E",
+    "M": "E"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "plank": {
-   "sprite": "it_herb",
+   "sprite": "ob_log",
    "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
+    "n": "t",
+    "N": "T",
+    "e": "o"
    },
    "glyph": "/",
    "colour": "n"
   },
   "beam": {
-   "sprite": "it_herb",
+   "sprite": "ob_log",
    "recolour": {
-    "G": "n",
-    "l": "o",
-    "D": "N"
+    "n": "o",
+    "N": "n"
    },
    "glyph": "/",
    "colour": "n"
   },
   "brick": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_ingot",
+   "recolour": {
+    "m": "z",
+    "M": "Z"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "roof_tile": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "ob_roof_piece",
+   "recolour": {
+    "t": "z",
+    "T": "Z"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "lime_mortar": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_bowl_food",
+   "recolour": {
+    "o": "w",
+    "y": "g"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "poison": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_potion",
+   "recolour": {
+    "r": "l",
+    "R": "G"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "tincture": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_flask",
+   "recolour": {
+    "l": "o",
+    "D": "Z"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "soap": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_ingot",
+   "recolour": {
+    "m": "w",
+    "M": "g"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "torch": {
-   "sprite": "ob_sack",
+   "sprite": "it_torch",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "animal_fat": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "w"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "sinew": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "w",
+    "T": "g"
+   },
    "glyph": "•",
    "colour": "t"
   },
   "beeswax": {
-   "sprite": "ob_sack",
+   "sprite": "it_cheese",
    "recolour": {},
    "glyph": "•",
    "colour": "y"
   },
   "feathers": {
-   "sprite": "ob_sack",
+   "sprite": "it_feather",
    "recolour": {},
    "glyph": "•",
    "colour": "t"
   },
   "arrows": {
-   "sprite": "it_sword",
+   "sprite": "it_spear",
    "recolour": {},
    "glyph": "†",
    "colour": "m"
   },
   "longbow": {
-   "sprite": "it_sword",
+   "sprite": "ic_bow",
    "recolour": {},
    "glyph": "†",
    "colour": "m"
   },
   "hemp_fiber": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_hay",
+   "recolour": {
+    "t": "l",
+    "T": "G"
+   },
    "glyph": "•",
    "colour": "t"
   },
@@ -519,14 +561,22 @@
    "colour": "G"
   },
   "garlic": {
-   "sprite": "it_herb",
-   "recolour": {},
+   "sprite": "it_root",
+   "recolour": {
+    "o": "w",
+    "N": "g",
+    "G": "l"
+   },
    "glyph": "♣",
    "colour": "l"
   },
   "hops": {
-   "sprite": "it_herb",
-   "recolour": {},
+   "sprite": "it_berries",
+   "recolour": {
+    "v": "l",
+    "V": "G",
+    "w": "F"
+   },
    "glyph": "♣",
    "colour": "l"
   },
@@ -543,8 +593,10 @@
    "colour": "l"
   },
   "brine": {
-   "sprite": "ob_sack",
-   "recolour": {},
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "U"
+   },
    "glyph": "•",
    "colour": "U"
   },
@@ -555,38 +607,48 @@
    "colour": "l"
   },
   "salted_meat": {
-   "sprite": "it_bread",
-   "recolour": {},
+   "sprite": "it_meat",
+   "recolour": {
+    "w": "w"
+   },
    "glyph": "%",
    "colour": "o"
   },
   "salted_fish": {
-   "sprite": "it_bread",
+   "sprite": "it_fish",
    "recolour": {},
    "glyph": "%",
    "colour": "o"
   },
   "sauerkraut": {
-   "sprite": "it_bread",
-   "recolour": {},
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "l"
+   },
    "glyph": "%",
    "colour": "o"
   },
   "salted_mushrooms": {
-   "sprite": "it_bread",
-   "recolour": {},
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "e"
+   },
    "glyph": "%",
    "colour": "o"
   },
   "rusks": {
    "sprite": "it_bread",
-   "recolour": {},
+   "recolour": {
+    "y": "o"
+   },
    "glyph": "%",
    "colour": "o"
   },
   "lard": {
-   "sprite": "it_bread",
-   "recolour": {},
+   "sprite": "it_jar",
+   "recolour": {
+    "y": "w"
+   },
    "glyph": "%",
    "colour": "o"
   }
