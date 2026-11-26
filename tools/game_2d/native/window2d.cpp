@@ -250,6 +250,7 @@ struct Window::Impl : Ctx {
     // --- the game as the routes tell it ---------------------------------------
     Json ST, MAP, RES, LOOK;
     Json CLIFFS = Json::object();   // LR-156: cliffs2d.json (rules + tiles)
+    Json BEASTS = Json::object();   // LR-170: beasts2d.json (the bestiary's 48x64-style beasts)
     std::map<std::string, std::string> UI;
     SpriteSet sprites;
     std::vector<std::pair<std::regex, std::string>> actsRe;
@@ -645,6 +646,25 @@ struct Window::Impl : Ctx {
     static float heightK(const Json& p) {
         const std::uint32_t h = idHash(num(p, "id"), 11);
         return 0.94f + float(h % 13) * 0.01f;
+    }
+    // LR-170: a beast of beasts2d.json, `n` x `n` art pixels with the feet on the last row; empty: none
+    Sprite beastArt(const std::string& sp, char face, int& n) {
+        const Json& all = BEASTS.contains("beasts") && BEASTS["beasts"].is_object() ? BEASTS["beasts"] : BEASTS;
+        if (sp.empty() || !all.contains(sp)) return Sprite{};
+        const std::string k = std::string("ba:") + sp + face;
+        if (const Sprite* s = bigAtlas.find(k); s && beastN.count(k)) {
+            n = beastN[k];
+            return *s;
+        }
+        const Pixels px = beastArtPixels(all[sp], face);
+        n = beastN[k] = px.size;
+        return bigAtlas.put(k, px);
+    }
+    std::map<std::string, int> beastN;
+    // the square a beast of beasts2d.json is drawn into, its feet at (sx, sy + sc), at the people's scale
+    SDL_FRect beastArtRect(int n, float sx, float sy, float sc) const {
+        const float u = sc * float(figureData().value("world_px_per_art_px", 1.0 / 3.0)), w = float(n) * u;
+        return {sx - w / 2, sy + sc - w, w, w};
     }
     Sprite beastSprite(const std::string& sp, char face) {
         const std::string k = std::string("b:") + sp + face;
@@ -1807,6 +1827,12 @@ struct Window::Impl : Ctx {
             // LR-159: a ridden beast is drawn under its rider, a driven vehicle with its driver
             if (p.contains("rider") || (flag(p, "veh") && p.contains("driver"))) return;
             if (drawTr(sp, trFace(p, v), trFrame(v), sx, sy, sc)) return;
+            int n = 0;
+            if (const Sprite b = beastArt(sp, v.face == 'W' ? 'W' : 'E', n)) {   // LR-170
+                const SDL_FRect d = beastArtRect(n, sx, sy, sc);
+                blit(b, d.x, d.y, d.w, d.h, alive ? 1.0f : 0.6f);
+                return;
+            }
             blit(beastSprite(sp, v.face == 'W' ? 'W' : 'E'), sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
             return;
         }
@@ -2061,6 +2087,12 @@ struct Window::Impl : Ctx {
                 img = t;
                 dst = {sx - float(n) / 2 * sc, sy - float(n - 3) * sc, float(n) * sc, float(n) * sc};
                 foot = sy + 3 * sc;
+                return true;
+            }
+            if (const Sprite b = beastArt(sp, v.face == 'W' ? 'W' : 'E', n)) {   // LR-170
+                img = b;
+                dst = beastArtRect(n, sx, sy, sc);
+                foot = sy + 1 * sc;
                 return true;
             }
             img = beastSprite(sp, v.face == 'W' ? 'W' : 'E');
@@ -2367,7 +2399,9 @@ struct Window::Impl : Ctx {
     void portrait(const Json& p, float x, float y, float size) {
         fill(x, y, size, size, kLeatherD);
         if (!str(p, "sp").empty()) {
-            blit(beastSprite(str(p, "sp"), 'E'), x + size * 0.1f, y + size * 0.1f, size * 0.8f, size * 0.8f);
+            int n = 0;
+            if (const Sprite b = beastArt(str(p, "sp"), 'E', n)) blit(b, x + size * 0.05f, y + size * 0.05f, size * 0.9f, size * 0.9f);   // LR-170
+            else blit(beastSprite(str(p, "sp"), 'E'), x + size * 0.1f, y + size * 0.1f, size * 0.8f, size * 0.8f);
             return;
         }
         if (FigureSpec fig; figureSpec(p, fig)) {   // LR-165: the head and shoulders of the figure
@@ -3212,7 +3246,7 @@ struct Window::Impl : Ctx {
 
     // LR-139: pawns2d.json is read at the start and again whenever it changes on disk, so
     // a new cut or a kind's ears show at once, without a rebuild or a restart.
-    std::filesystem::file_time_type partsTime{}, figuresTime{};
+    std::filesystem::file_time_type partsTime{}, figuresTime{}, beastsTime{};
     double partsChecked = 0;
     void loadPawnParts() {
         const auto path = root / "content/sprites_2d/pawns2d.json";
@@ -3223,6 +3257,9 @@ struct Window::Impl : Ctx {
         const auto fp = root / "content/sprites_2d/figures2d.json";
         figuresTime = std::filesystem::last_write_time(fp, ec);
         setFigureData(parseOr(readText(fp), Json::object()));
+        const auto bp = root / "content/sprites_2d/beasts2d.json";   // LR-170: the bestiary's beasts
+        beastsTime = std::filesystem::last_write_time(bp, ec);
+        BEASTS = parseOr(readText(bp), Json::object());
     }
     void watchPawnParts() {
         if (nowMs() - partsChecked < 1000) return;
@@ -3230,7 +3267,9 @@ struct Window::Impl : Ctx {
         std::error_code ec, ec2;
         const auto t = std::filesystem::last_write_time(root / "content/sprites_2d/pawns2d.json", ec);
         const auto tf = std::filesystem::last_write_time(root / "content/sprites_2d/figures2d.json", ec2);
-        if ((ec || t == partsTime) && (ec2 || tf == figuresTime)) return;
+        std::error_code ec3;
+        const auto tb = std::filesystem::last_write_time(root / "content/sprites_2d/beasts2d.json", ec3);
+        if ((ec || t == partsTime) && (ec2 || tf == figuresTime) && (ec3 || tb == beastsTime)) return;
         loadPawnParts();
         atlas.clear();
         bigAtlas.clear();   // every sprite is drawn again on demand
