@@ -609,6 +609,13 @@ void pageSkills(Ctx& c, const Json& d, const ui::Rect& r) {
         line("backstory", jstr(d, "backstory"));
         line("standing_lbl", jstr(d, "standing"));
         line("life_lbl", jstr(d, "life"));
+        // LR-162: the person's culture and faith (the window V tells more)
+        if (const Json& b = d.value("belief", Json::object()); b.is_object() && !b.empty()) {
+            if (!jstr(b, "cultureName").empty()) ls.push_back(c.L("ui2d.insp.culture") + ": " + jstr(b, "cultureName"));
+            if (!jstr(b, "faithName").empty())
+                ls.push_back(c.L("ui2d.insp.faith") + ": " + jstr(b, "faithName") + " · " + c.L("ui2d.cult.piety") + " " +
+                             std::to_string(int(std::lround(jnum(b, "piety") * 100))));
+        }
         if (jnum(s, "renown") != 0) {
             char b[16];
             std::snprintf(b, sizeof b, "%.2f", jnum(s, "renown"));
@@ -676,7 +683,9 @@ void render(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
     std::string sub;
     for (const std::string& part : {jstr(d, "role"), jstr(d, "occ"), jstr(d, "standing"), c.L("ui2d.age", {{"n", jstr(d, "age")}}), jstr(d, "fam")})
         if (!part.empty()) sub += (sub.empty() ? "" : " · ") + part;
-    const float bwAll = 3 * 150 * U;
+    if (const Json& b = d.value("belief", Json::object()); b.is_object() && !jstr(b, "faithName").empty())   // LR-162
+        sub += (sub.empty() ? "" : " · ") + jstr(b, "cultureName") + " · " + jstr(b, "faithName");
+    const float bwAll = 4 * 150 * U;
     c.text(nx, body.y + 36 * U, c.fit(sub, body.w - (nx - body.x) - bwAll, 13 * U), pal::dim, 13 * U);
     const bool alive = jflag(d, "alive");
     std::string state;
@@ -708,6 +717,10 @@ void render(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
     if (alive && c.meId() >= 0 && !mine && btn("cs.talk", S(c, "talk"))) {
         w.closing = true;
         openTalk(c, s, id, false);
+    }
+    if (btn("cs.cult", c.L("ui2d.screen.culture"))) {   // LR-162
+        w.closing = true;
+        s.open("culture", Json(id));
     }
     const ui::Rect page{body.x, body.y + hh + 8 * U, body.w, body.h - hh - 8 * U};
     if (w.tab == "relations") pageRelations(c, s, w, d, page);

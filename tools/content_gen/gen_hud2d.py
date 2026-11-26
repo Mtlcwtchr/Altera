@@ -44,6 +44,7 @@ ICONS = {
     "hand": ["...s.s...", ".s.s.s...", ".s.s.s.s.", ".sssssss.", ".sssssss.", ".ssssss..", "..ssss...", "..ssss...", "........."],
     "crown": [".........", "y...y...y", "yy.yyy.yy", "yyyyyyyyy", "yyyyyyyyy", "yrryyyrry", "yyyyyyyyy", ".........", "........."],
     "tree": ["...GGG...", "..GGGGG..", ".GGGGGGG.", ".GGGGGGG.", "..GGGGG..", "....m....", "....m....", "...mmm...", "........."],
+    "shrine": ["....n....", "...nyn...", "...nyn...", "..sssss..", "...sSs...", "...sSs...", "..sssss..", ".sssssss.", "........."],
     "sun": ["....y....", ".y..y..y.", "..yyyyy..", "..yyyyy..", "yyyyyyyyy", "..yyyyy..", "..yyyyy..", ".y..y..y.", "....y...."],
     "fist": [".........", "..ssss...", ".sSsSss..", ".ssssss..", ".sssssss.", "..sssss..", "..sssss..", ".........", "........."],
     "feather": ["......cc.", ".....ccc.", "....ccc..", "...ccc...", "..ccc....", "..cc.....", ".s.......", "s........", "........."],
@@ -117,9 +118,11 @@ def main():
         "layer_cols": {"under": 0, "padding": 1, "cap": 1, "shoes": 1, "gloves": 1, "armour": 2, "helm": 2, "over": 3},
         # LR-145: the column's screen buttons (Screens::columnScreens ids) -> icon
         "screens": {"sheet": "hud_person", "dynasty": "hud_banner", "colony": "hud_village", "build": "hud_hammer",
-                    "map": "hud_map", "workshop": "hud_anvil", "chronicle": "hud_scroll"},
+                    "map": "hud_map", "workshop": "hud_anvil", "chronicle": "hud_scroll",
+                    "culture": "hud_shrine"},
         "moodlets": [
             # LR-161: potions, magic, babies, the pipe (before the broad rules below)
+            ["holy_day|kept_custom", "hud_shrine"],   # LR-162: faith and customs
             ["potion_poison", "hud_skull"], ["potion|draught", "hud_potion"], ["healed_by_magic|spellbound|enchant", "hud_spark"],
             ["warded|ward", "hud_shield"], ["pregnant|new_parent|newborn", "hud_baby"], ["pipe|smoke", "hud_pipe"],
             ["bored", "hud_meh"], ["hope", "hud_sun"], ["obsess", "hud_heartbreak"], ["cosy|light", "hud_flame"],

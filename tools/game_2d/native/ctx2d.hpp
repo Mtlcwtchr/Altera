@@ -195,6 +195,8 @@ void openWorkshop(Ctx& c, Screens& s);                                          
 void openColony(Ctx& c, Screens& s);                                               // build2d_view.cpp
 void openDynasty(Ctx& c, Screens& s);                                              // dynasty2d_view.cpp (LR-145)
 void openWorldMap(Ctx& c, Screens& s);                                             // worldmap2d_view.cpp (LR-153)
+void openCulture(Ctx& c, Screens& s, long long id);                                // culture2d_view.cpp (LR-162)
+void openInspect(Ctx& c, Screens& s, long long target);                            // culture2d_view.cpp (LR-162)
 void openBuild(Ctx& c, Screens& s);                                                // build2d_view.cpp
 bool buildActive(const Screens& s);
 void buildDrawWorld(Ctx& c, Screens& s);

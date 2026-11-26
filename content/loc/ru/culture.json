@@ -305,5 +305,9 @@
  "ui2d.insp.same_culture": "одна культура",
  "ui2d.insp.same_faith": "одна вера",
  "ui2d.insp.talk": "Поговорить",
- "ui2d.insp.sheet": "Лист"
+ "ui2d.insp.sheet": "Лист",
+ "ui2d.insp.rel.familiarity": "знакомство",
+ "ui2d.insp.rel.trust": "доверие",
+ "ui2d.insp.rel.affinity": "приязнь",
+ "ui2d.insp.rel.respect": "уважение"
 }

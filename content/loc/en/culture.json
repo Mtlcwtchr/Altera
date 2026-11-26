@@ -244,5 +244,9 @@
  "ui2d.insp.same_culture": "same culture",
  "ui2d.insp.same_faith": "same faith",
  "ui2d.insp.talk": "Talk",
- "ui2d.insp.sheet": "Sheet"
+ "ui2d.insp.sheet": "Sheet",
+ "ui2d.insp.rel.familiarity": "familiarity",
+ "ui2d.insp.rel.trust": "trust",
+ "ui2d.insp.rel.affinity": "liking",
+ "ui2d.insp.rel.respect": "respect"
 }
