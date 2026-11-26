@@ -165,7 +165,14 @@
     "mace": "blunt",
     "spear": "polearm",
     "fists": "unarmed",
-    "fangs": "beast"
+    "fangs": "beast",
+    "rending_claws": "beast",
+    "talons": "beast",
+    "great_jaws": "beast",
+    "venom_fangs": "beast",
+    "grave_grip": "beast",
+    "coils": "beast",
+    "branch_lash": "beast"
   },
   "defense": {
     "parry": {

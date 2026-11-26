@@ -1,0 +1,77 @@
+{
+ "id": "mummy",
+ "habitat": "land",
+ "biomes": [
+  "desert",
+  "badlands",
+  "canyon"
+ ],
+ "per_km2": 0.0012,
+ "group": [
+  1,
+  2
+ ],
+ "max_group": 3,
+ "speed_m_per_tick": 40,
+ "notice_m": 90,
+ "flee_m": 0,
+ "diet": "graze",
+ "prey": [],
+ "aggression": 0.0,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.4,
+ "tags": [
+  "monster",
+  "undead",
+  "tomb_guard"
+ ],
+ "loot": {
+  "mummy_linen": 2
+ },
+ "mythic": {
+  "belts": [
+   "nile"
+  ],
+  "undead": true,
+  "attack_min_group": 1,
+  "guard_m": 120,
+  "rise_days": 30,
+  "laid_by": "laid_to_rest",
+  "combat": {
+   "weapon": "grave_grip",
+   "skill": 0.55,
+   "armor": [
+    "grave_wrap"
+   ],
+   "stamina_mult": 1.3
+  },
+  "lair": {
+   "poi": "sealed_tomb",
+   "terrain": [
+    "plains",
+    "hills"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 30
+  }
+ },
+ "_doc": "LR-170: мумия Нила. Сохранённое тело стережёт гробницу, медленное и стойкое (бинты). Разрушенная встаёт снова, пока гробницу не запечатают обрядом."
+}

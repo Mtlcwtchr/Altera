@@ -32,6 +32,8 @@ struct WorldPoi {
     std::string name;   // loc key suffix: worldmap.poi.<kind>.names.<name>; battlefield: ""
     int day = 0;        // when it came to be (battlefields)
     EntityId a = kNone, b = kNone;   // battlefield: the sides
+    std::string creature;            // LR-170: a lair's dweller (content/creatures id), "" otherwise
+    int lastRaid = 0;                // LR-170: the day of its last raid
 };
 
 struct WorldMapState {
@@ -66,6 +68,8 @@ bool worldMapEnsure(World& w);
 void worldMapDaily(World& w);
 struct RealmState;
 void worldMapPass(World& w, const RealmState& realm);   // the same with the realm's state in hand
+// LR-170: the lairs' raids of one day (the daily pass runs them); returns how many struck.
+int worldMapLairRaids(World& w, int day);
 // Registers the daily part with the realm (once).
 void installWorldMap(World& w);
 

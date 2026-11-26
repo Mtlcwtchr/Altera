@@ -348,6 +348,7 @@ add_library(lr_sim STATIC
         src/sim/pantheon.cpp
         src/sim/rites.cpp
         src/sim/species.cpp
+        src/sim/bestiary.cpp
         src/sim/stats.cpp
         src/sim/stamina.cpp
         src/sim/combat_show.cpp
@@ -913,6 +914,7 @@ if(ASR_BUILD_TESTS)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_culture.cpp) # LR-155
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_sim_bestiary.cpp)   # LR-170
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_relief.cpp)  # LR-156

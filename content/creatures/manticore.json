@@ -62,5 +62,19 @@
   "duration": 10,
   "cost": 14
  },
- "_doc": "Мантикора: хищник степи, ядовитые шипы хвоста."
+ "_doc": "Мантикора: хищник степи, ядовитые шипы хвоста.",
+ "mythic": {
+  "belts": [
+   "nile",
+   "steppe"
+  ],
+  "attack_min_group": 1,
+  "combat": {
+   "weapon": "rending_claws",
+   "skill": 0.6,
+   "armor": [
+    "tough_hide"
+   ]
+  }
+ }
 }

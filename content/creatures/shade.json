@@ -1,0 +1,84 @@
+{
+ "id": "shade",
+ "habitat": "land",
+ "biomes": [
+  "meadow",
+  "cliffs",
+  "canyon"
+ ],
+ "per_km2": 0.0015,
+ "group": [
+  2,
+  4
+ ],
+ "max_group": 5,
+ "speed_m_per_tick": 60,
+ "notice_m": 90,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "goats",
+  "hens"
+ ],
+ "aggression": 0.45,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.3,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.6,
+ "tags": [
+  "monster",
+  "undead",
+  "incorporeal"
+ ],
+ "loot": {
+  "grave_dust": 1
+ },
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "undead": true,
+  "active": "night",
+  "attack_min_group": 1,
+  "rise_days": 30,
+  "laid_by": "laid_to_rest",
+  "combat": {
+   "weapon": "grave_grip",
+   "skill": 0.35
+  },
+  "lair": {
+   "poi": "shade_field",
+   "terrain": [
+    "plains",
+    "hills"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 30,
+   "raid": {
+    "per_year": 0.3,
+    "km": 10,
+    "wealth_loss": [
+     0.01,
+     0.03
+    ]
+   }
+  }
+ },
+ "_doc": "LR-170: тени юга. Бесплотные мёртвые у старых полей и могил, выходят ночью, жаждут крови. Не упокоенные (без обряда) встают снова."
+}

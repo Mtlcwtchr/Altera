@@ -1,0 +1,101 @@
+{
+ "id": "draugr",
+ "habitat": "land",
+ "biomes": [
+  "mountain",
+  "meadow",
+  "forest"
+ ],
+ "per_km2": 0.0012,
+ "group": [
+  1,
+  3
+ ],
+ "max_group": 3,
+ "speed_m_per_tick": 55,
+ "notice_m": 110,
+ "flee_m": 0,
+ "diet": "graze",
+ "prey": [],
+ "aggression": 0.5,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.5,
+ "tags": [
+  "monster",
+  "undead",
+  "hoard"
+ ],
+ "loot": {
+  "barrow_gold": 2
+ },
+ "mythic": {
+  "belts": [
+   "north"
+  ],
+  "undead": true,
+  "attack_min_group": 1,
+  "guard_m": 150,
+  "rise_days": 15,
+  "laid_by": "laid_to_rest",
+  "combat": {
+   "weapon": "grave_grip",
+   "skill": 0.6,
+   "armor": [
+    "tough_hide"
+   ],
+   "stamina_mult": 1.4
+  },
+  "lair": {
+   "poi": "draugr_barrow",
+   "terrain": [
+    "hills",
+    "plains",
+    "mountains"
+   ],
+   "n": [
+    1,
+    3
+   ],
+   "near_km": 30,
+   "raid": {
+    "per_year": 0.3,
+    "km": 10,
+    "wealth_loss": [
+     0.01,
+     0.04
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.04,
+   "skill": "fighting",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 14,
+  "cost": 18
+ },
+ "_doc": "LR-170: драугр, телесный мертвец кургана. Стережёт клад, днём не боится солнца, силён. Разрушенный встаёт снова, пока курган не упокоят."
+}

@@ -1,0 +1,102 @@
+{
+ "id": "hydra",
+ "habitat": "land",
+ "biomes": [
+  "marsh"
+ ],
+ "per_km2": 0.0006,
+ "group": [
+  5,
+  7
+ ],
+ "max_group": 9,
+ "speed_m_per_tick": 40,
+ "notice_m": 100,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.6,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.15,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.2,
+ "tags": [
+  "monster",
+  "venomous",
+  "many_heads"
+ ],
+ "loot": {
+  "hydra_venom": 2,
+  "hydra_scale": 3
+ },
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "attack_min_group": 1,
+  "guard_m": 150,
+  "regrow_days": 2,
+  "regrow_blocked_by": [
+   "burned"
+  ],
+  "combat": {
+   "weapon": "great_jaws",
+   "skill": 0.55,
+   "armor": [
+    "scales"
+   ],
+   "stamina_mult": 1.6
+  },
+  "lair": {
+   "poi": "hydra_fen",
+   "terrain": [
+    "marsh"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 40,
+   "raid": {
+    "per_year": 0.5,
+    "km": 14,
+    "wealth_loss": [
+     0.03,
+     0.08
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.03,
+   "skill": "hunting",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 16,
+  "cost": 20
+ },
+ "_doc": "LR-170: гидра в болоте. Группа = головы (5–9): отрубленная отрастает за два дня, если обрубок не прижгли огнём (моодлет burned)."
+}

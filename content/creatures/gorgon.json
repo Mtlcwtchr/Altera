@@ -1,0 +1,122 @@
+{
+ "id": "gorgon",
+ "habitat": "land",
+ "biomes": [
+  "cliffs",
+  "canyon",
+  "mountain"
+ ],
+ "per_km2": 0.0008,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "speed_m_per_tick": 60,
+ "notice_m": 150,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.7,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.6,
+ "tags": [
+  "monster",
+  "gaze",
+  "venomous",
+  "female"
+ ],
+ "loot": {
+  "gorgon_head": 1,
+  "gorgon_blood": 2
+ },
+ "innate_spells": [
+  {
+   "id": "stone_gaze",
+   "aspects": [
+    [
+     "stone",
+     "+"
+    ],
+    [
+     "death",
+     "~"
+    ]
+   ],
+   "form": "bolt",
+   "mods": {
+    "power": 3
+   },
+   "name_key": "spell.innate.stone_gaze",
+   "chance": 0.3
+  }
+ ],
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "attack_min_group": 1,
+  "guard_m": 120,
+  "combat": {
+   "weapon": "venom_fangs",
+   "skill": 0.6,
+   "armor": [
+    "scales"
+   ]
+  },
+  "lair": {
+   "poi": "gorgon_cave",
+   "terrain": [
+    "hills",
+    "mountains"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 40,
+   "raid": {
+    "per_year": 0.3,
+    "km": 12,
+    "wealth_loss": [
+     0.02,
+     0.05
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.03,
+   "skill": "archery",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 14,
+  "cost": 18
+ },
+ "_doc": "LR-170: горгона. Одиночка в пещере среди скал, взгляд каменит, змеи вместо волос. Сторожит логово, бросается на любого рядом."
+}

@@ -30,6 +30,7 @@
 #include "sim/combat_bridge.hpp"
 #include "sim/group_combat.hpp"
 #include "sim/transport.hpp"
+#include "sim/bestiary.hpp"
 
 namespace lr::sim {
 
@@ -113,6 +114,7 @@ void bite(World& w, Character& wolf, Character& victim, const SpeciesDef& s) {
 void fedOnKill(World& w, Character& pack) {
     pack.needs["hunger"] = 1.0;
     const SpeciesDef* s = w.content().speciesOf(pack.species);
+    if (s && s->mythic.growsOnKill && pack.group < s->maxGroup) ++pack.group; // LR-170: the victim joins (upyr)
     if (s && s->attackSatedDays > 0) pack.moodlets.push_back({"sated", 0.0, w.now() + s->attackSatedDays * kTicksPerDay});
 }
 
@@ -457,6 +459,103 @@ void loseHeads(World& w, Character& herd, int n, const std::string& cause) {
     (void)w;
 }
 
+namespace {
+
+// LR-170 (sim/bestiary.hpp): the behaviours of the myth creatures, each a field any creature may have.
+double statOf(const Character& c, const std::string& k) {
+    auto it = c.attrsNow.find(k);
+    if (it != c.attrsNow.end()) return it->second;
+    it = c.attrs.find(k);
+    return it == c.attrs.end() ? 0.5 : it->second;
+}
+
+void strike(World& w, Character& a, Character& victim, const SpeciesDef& s) {
+    if (!packFight(w, a, victim)) bite(w, a, victim, s);
+}
+
+bool waterNear(const World& w, Vec2 p, double r) {
+    if (w.map().waterAt(p)) return true;
+    for (int k = 0; k < 8; ++k) {
+        const double ang = k * kPi / 4.0;
+        if (w.map().waterAt(clampToMap(w, {p.x + std::cos(ang) * r, p.y + std::sin(ang) * r}))) return true;
+    }
+    return false;
+}
+
+void addMoodlet(World& w, Character& c, const std::string& id, Tick ttl, double dflt) {
+    if (c.hasMoodlet(id, w.now())) return;
+    auto md = w.content().moodlets.find(id);
+    if (md != w.content().moodlets.end()) c.moodlets.push_back({id, md->second.value, w.now() + md->second.ttl});
+    else c.moodlets.push_back({id, dflt, w.now() + ttl});
+}
+
+// true = this tick is spent (the rest of the drivers are skipped)
+bool mythicThink(World& w, Character& a, const SpeciesDef& s, const AnimalTick& tick) {
+    const auto& m = s.mythic;
+    const Tick now = w.now();
+    const bool night = w.isNight();
+    const double toDen = dist(a.pos, a.den);
+    // out of its hours: home to the lair; the sun burns the undead caught outside
+    if ((m.active == "night" && !night) || (m.active == "day" && night)) {
+        if (m.sunHarm > 0.0 && !night && toDen > 40.0 &&
+            w.rng(a.id, "sun:" + std::to_string(now)).uniform() < m.sunHarm * 24.0 / static_cast<double>(kTicksPerDay)) {
+            loseHeads(w, a, 1, "sun");
+            if (!a.body.alive) return true;
+        }
+        if (toDen > 5.0) moveToward(w, a, a.den, s.speedMPerTick * 1.2);
+        return true;
+    }
+    const bool alarmed = a.hasMoodlet("alarmed", now);
+    // the lair's guard: anyone who comes near is fallen upon, hungry or not
+    if (m.guardM > 0.0) {
+        const Character* p = nearestPerson(tick, a, std::max(s.noticeM, m.guardM) + toDen);
+        if (p && !alarmed && dist(p->pos, a.den) <= m.guardM) {
+            moveToward(w, a, p->pos, s.speedMPerTick);
+            if (dist(a.pos, p->pos) <= 5.0) strike(w, a, *w.character(p->id), s);
+            return true;
+        }
+        if (toDen > m.guardM * 1.5 + 50.0) {
+            moveToward(w, a, a.den, s.speedMPerTick * 0.7);
+            return true;
+        }
+    }
+    // the song / the call: a lone person walks toward it unless the will holds
+    if (m.lure.radiusM > 0.0 && !alarmed && !a.hasMoodlet("sated", now) && (!m.lure.waterOnly || waterNear(w, a.pos, std::max(30.0, w.map().cellM)))) {
+        const Character* p = nearestPerson(tick, a, m.lure.radiusM);
+        if (p && peopleWithin(tick, p->pos, 40.0) <= 1) {
+            Character& v = *w.character(p->id);
+            if (dist(a.pos, v.pos) <= 5.0) {
+                if (m.lure.strike) {
+                    strike(w, a, v, s);
+                } else {   // led astray: lost in the woods, and it slips away
+                    addMoodlet(w, v, m.lure.lostMoodlet, kTicksPerDay / 2, -0.4);
+                    w.remember(v, MemoryEntry{0, "heard_lure", {a.id}, kNone, -0.4, 0.0, "seen", 1.0});
+                    a.moodlets.push_back({"sated", 0.0, now + 2 * kTicksPerDay});
+                }
+                return true;
+            }
+            Rng r = w.rng(a.id, "lure:" + std::to_string(v.id) + ":" + std::to_string(now));
+            const bool held = v.hasMoodlet(m.lure.moodlet, now);   // already in the trance: it keeps walking
+            if (held || r.uniform() < m.lure.chance) {
+                if (!held && r.uniform() < m.lure.resist * statOf(v, m.lure.resistStat)) {
+                    w.remember(v, MemoryEntry{0, "resisted_lure", {a.id}, kNone, 0.1, 0.0, "seen", 1.0});
+                } else {
+                    const double d = dist(a.pos, v.pos);
+                    const double step = std::min(m.lure.pullM, std::max(0.0, d - 4.0));
+                    v.pos = {v.pos.x + (a.pos.x - v.pos.x) / d * step, v.pos.y + (a.pos.y - v.pos.y) / d * step};
+                    addMoodlet(w, v, m.lure.moodlet, 6, -0.3);
+                    v.body.downUntil = std::max(v.body.downUntil, now + 2);   // spellbound: they drop what they do
+                    w.remember(v, MemoryEntry{0, "heard_lure", {a.id}, kNone, -0.2, 0.0, "seen", 1.0});
+                }
+            }
+            return true;   // it waits, singing
+        }
+    }
+    return false;
+}
+
+} // namespace
+
 void animalThink(World& w, Character& a, const AnimalTick& tick) {
     if (!a.body.alive) return;
     const SpeciesDef* sp = w.content().speciesOf(a.species);
@@ -473,8 +572,11 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     if (Vec2 away; !isElemental(w, a.species) && fieldDanger(w, a.pos, 60.0, &away)) {
         moveToward(w, a, clampToMap(w, away), s.speedMPerTick * 1.4);
         if (!a.hasMoodlet("alarmed", w.now())) a.moodlets.push_back({"alarmed", 0.0, w.now() + 6});
+        // LR-170: fire stops a hydra's heads growing back
+        if (s.mythic.regrowDays > 0) addMoodlet(w, a, "burned", 3 * kTicksPerDay, 0.0);
         return;
     }
+    if (s.mythic.set && mythicThink(w, a, s, tick)) return; // LR-170
 
     const bool alarmed = a.hasMoodlet("alarmed", now);
     // --- threat ---------------------------------------------------------------
@@ -489,7 +591,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     if (person) {
         const bool hungry = hunger < 0.3;
         const bool lone = peopleWithin(tick, person->pos, 60.0) <= 1;
-        const bool attack = s.aggression > 0.0 && hungry && lone && a.group >= 3 && !alarmed &&
+        const bool attack = s.aggression > 0.0 && hungry && lone && a.group >= (s.mythic.set ? s.mythic.attackMinGroup : 3) && !alarmed &&
                             !a.hasMoodlet("sated", now) &&
                             w.rng(a.id, "dare").uniform() < s.aggression;
         if (attack) {
@@ -641,8 +743,9 @@ void wildGrowth(World& w, Character& a, const SpeciesDef& s, double fedEnough, s
 // in across the edge of the map.
 void immigrate(World& w) {
     const MapGrid& m = w.map();
+    const std::string belt = localBelt(w); // LR-170
     for (const auto& [sid, s] : w.content().species) {
-        if (s.domestic || s.immigrateBelow <= 0.0 || s.perKm2 <= 0.0 || s.habitat == "water") continue;
+        if (s.domestic || s.immigrateBelow <= 0.0 || s.perKm2 <= 0.0 || s.habitat == "water" || !creatureInBelt(s, belt)) continue;
         int groups = 0;
         for (const auto& [id, a] : w.characters())
             if (a.body.alive && a.species == sid) ++groups;
@@ -682,13 +785,49 @@ void immigrate(World& w) {
 
 } // namespace
 
+namespace {
+
+// LR-170: a destroyed undead rises again at its lair after rise_days, unless it was laid to rest.
+void mythicRise(World& w, Character& a, const SpeciesDef& s) {
+    const auto& m = s.mythic;
+    if (m.riseDays <= 0 || a.body.causeOfDeath == "laid_to_rest" || (!m.laidBy.empty() && a.body.causeOfDeath == m.laidBy))
+        return;
+    if (++a.needs["dead_days"] < m.riseDays) return;
+    a.needs.erase("dead_days");
+    a.body.alive = true;
+    a.body.causeOfDeath.clear();
+    a.body.health = 1.0;
+    a.group = std::max(1, s.groupLo);
+    a.pos = a.den;
+    a.moodlets.clear();
+    w.chronicle("undead_rose", {a.id}, "chronicle.undead_rose", {{"who", a.id}});
+}
+
+// LR-170: lost heads grow back (the hydra), not while burned.
+void mythicRegrow(World& w, Character& a, const SpeciesDef& s) {
+    const auto& m = s.mythic;
+    if (m.regrowDays <= 0 || a.group >= s.maxGroup) return;
+    for (const auto& b : m.regrowBlockedBy)
+        if (a.hasMoodlet(b, w.now())) return;
+    if (++a.needs["regrow_days"] < m.regrowDays) return;
+    a.needs.erase("regrow_days");
+    ++a.group;
+}
+
+} // namespace
+
 void animalsDaily(World& w) {
     std::vector<Character> born;
     for (auto& [id, a] : w.characters()) {
-        if (a.species.empty() || !a.body.alive) continue;
+        if (a.species.empty()) continue;
         const SpeciesDef* sp = w.content().speciesOf(a.species);
         if (!sp) continue;
         const SpeciesDef& s = *sp;
+        if (!a.body.alive) {
+            mythicRise(w, a, s); // LR-170
+            continue;
+        }
+        mythicRegrow(w, a, s);
         Rng r = w.rng(a.id, "daily");
         // Starvation: a starving group loses heads.
         if (s.hungerPerDay > 0.0 && a.need("hunger") <= 0.05) {
@@ -771,8 +910,9 @@ void spawnAnimals(World& w, std::uint64_t seed) {
     const Content& ct = w.content();
     const MapGrid& m = w.map();
     const double cellKm2 = (m.cellM / 1000.0) * (m.cellM / 1000.0);
+    const std::string belt = localBelt(w); // LR-170: myth creatures only of the land's belt
     for (const auto& [id, s] : ct.species) {
-        if (s.perKm2 <= 0.0) continue;
+        if (s.perKm2 <= 0.0 || !creatureInBelt(s, belt)) continue;
         for (int y = 0; y < m.h; ++y)
             for (int x = 0; x < m.w; ++x) {
                 const Vec2 p{(x + 0.5) * m.cellM, (y + 0.5) * m.cellM};

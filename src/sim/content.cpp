@@ -1,5 +1,6 @@
 #include "sim/act_check.hpp"
 #include "sim/content.hpp"
+#include "sim/bestiary.hpp"
 
 #include "sim/char_expr.hpp"
 #include "sim/data_fs.hpp"
@@ -655,7 +656,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
                         "territory_m", "starve_days", "domestic", "per_family", "per_family_chance",
                         "graze_seasons", "fodder", "fodder_per_head", "products", "breed_season", "brood", "cull",
                         "growth_per_year", "meat_days", "hunt_below", "leave_heads", "refuge_share", "immigrate_below", "_doc",
-                        "sapience", "loot", "tags", "lair", "innate_spells", "hunt", "_source"},
+                        "sapience", "loot", "tags", "lair", "innate_spells", "hunt", "_source", "mythic"},
                     "species", W);
         SpeciesDef s;
         s.id = j.at("id").get<std::string>();
@@ -731,6 +732,7 @@ Content Content::fromJson(const Json& items, const Json& objects, const Json& ne
         if (j.contains("loot") && j["loot"].is_object()) s.loot = j["loot"].get<std::map<std::string, int>>();
         s.tags = strings(j, "tags");
         if (j.contains("innate_spells") && j["innate_spells"].is_array()) s.innateSpells = j["innate_spells"];
+        if (j.contains("mythic") && j["mythic"].is_object()) parseMythic(j["mythic"], s.mythic);
         if (!c.species.emplace(s.id, s).second) err.add("species: duplicate id " + s.id);
     }
     c.householdMust = strings(knowledge, "household_must");

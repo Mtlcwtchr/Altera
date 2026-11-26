@@ -33,7 +33,14 @@
   "spear": {"len": 1.5, "w": 1.0, "blade": "#c8ccd2", "hilt": "#8a6438", "arc": 70, "thrust_only_mult": 1.4},
   "dagger": {"len": 0.35, "w": 1.0, "blade": "#e0e4ea", "hilt": "#4a3420", "arc": 110},
   "fists": {"len": 0.22, "w": 2.0, "blade": "#e0b090", "hilt": "#e0b090", "arc": 60, "fist": true},
-  "fangs": {"len": 0.25, "w": 2.0, "blade": "#f0ead8", "hilt": "#f0ead8", "arc": 50, "fist": true}
+  "fangs": {"len": 0.25, "w": 2.0, "blade": "#f0ead8", "hilt": "#f0ead8", "arc": 50, "fist": true},
+  "rending_claws": {"len": 0.3, "w": 2.0, "blade": "#e8e0c8", "hilt": "#e8e0c8", "arc": 60, "fist": true},
+  "talons": {"len": 0.3, "w": 2.0, "blade": "#d8c890", "hilt": "#d8c890", "arc": 60, "fist": true},
+  "great_jaws": {"len": 0.6, "w": 2.0, "blade": "#f0ead8", "hilt": "#f0ead8", "arc": 60, "fist": true},
+  "venom_fangs": {"len": 0.3, "w": 2.0, "blade": "#c8e0a0", "hilt": "#c8e0a0", "arc": 60, "fist": true},
+  "grave_grip": {"len": 0.3, "w": 2.0, "blade": "#a89a80", "hilt": "#a89a80", "arc": 60, "fist": true},
+  "coils": {"len": 0.6, "w": 2.0, "blade": "#6a8a4a", "hilt": "#6a8a4a", "arc": 60, "fist": true},
+  "branch_lash": {"len": 0.6, "w": 2.0, "blade": "#6a4a2a", "hilt": "#6a4a2a", "arc": 60, "fist": true}
  },
  "directions": {
   "_doc": "откуда и куда идёт клинок: углы в градусах (0 — вперёд на цель, + по часовой на экране); thrust — укол прямо",

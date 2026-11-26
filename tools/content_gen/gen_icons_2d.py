@@ -85,6 +85,15 @@ ITEMS = {
     "drowner_brain": it("it_organ", r="l", R="G"), "troll_liver": it("it_organ", r="e", R="E"),
     "griffin_feather": it("it_feather", w="t", g="o"), "harpy_feather": it("it_feather", w="g", g="W"),
     "manticore_spine": it("it_fang", w="r", g="R", t="x"), "varg_fang": it("it_fang"), "varg_pelt": it("it_pelt"),
+    # LR-170: myth creatures of the belts
+    "siren_feather": it("it_feather", w="t", g="o"), "gorgon_head": it("it_organ", r="G", R="l"),
+    "gorgon_blood": it("it_organ", r="e", R="E"), "hydra_venom": it("it_organ", r="l", R="G"),
+    "hydra_scale": it("it_scale"), "chimera_horn": it("it_fang", w="t", g="T"), "nemean_hide": it("it_pelt", W="t", g="o", M="T"),
+    "grave_dust": it("ob_rock", W="g", m="g"), "leshy_bark": it("it_stick"), "rusalka_hair": it("it_rope", t="l"),
+    "upyr_fang": it("it_fang"), "gorynych_scale": it("it_scale", G="l", l="G"), "kelpie_mane": it("it_rope", t="G"),
+    "barrow_gold": it("it_gem", U="t", u="o", w="T"), "albasty_hair": it("it_rope", t="o"),
+    "serpent_scale": it("it_scale", G="t", l="o"), "mummy_linen": it("it_rope", t="w"),
+    "jackal_pelt": it("it_pelt", W="z", g="Z", M="Z"), "scarab_shell": it("it_scale", G="b", l="B"),
 }
 
 # the base things that had only a glyph (the window drew a letter): the glyph stays for the symbol mode

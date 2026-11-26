@@ -1,0 +1,88 @@
+{
+ "id": "rusalka",
+ "habitat": "land",
+ "biomes": [
+  "river",
+  "marsh"
+ ],
+ "per_km2": 0.003,
+ "group": [
+  1,
+  3
+ ],
+ "max_group": 4,
+ "speed_m_per_tick": 70,
+ "notice_m": 150,
+ "flee_m": 0,
+ "diet": "graze",
+ "prey": [],
+ "aggression": 0.3,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.6,
+ "tags": [
+  "monster",
+  "undead",
+  "female",
+  "water"
+ ],
+ "loot": {
+  "rusalka_hair": 1
+ },
+ "mythic": {
+  "belts": [
+   "forest"
+  ],
+  "undead": true,
+  "active": "night",
+  "attack_min_group": 1,
+  "rise_days": 40,
+  "laid_by": "laid_to_rest",
+  "lure": {
+   "radius_m": 180,
+   "pull_m": 40,
+   "chance": 0.12,
+   "resist": 0.85,
+   "water_only": true
+  },
+  "combat": {
+   "weapon": "grave_grip",
+   "skill": 0.4
+  },
+  "lair": {
+   "poi": "rusalka_pool",
+   "terrain": [
+    "marsh",
+    "forest"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 25,
+   "raid": {
+    "per_year": 0.3,
+    "km": 10,
+    "wealth_loss": [
+     0.01,
+     0.02
+    ]
+   }
+  }
+ },
+ "_doc": "LR-170: русалка, утопленница. Ночью у реки и болота зовёт к воде и топит. Взрослая женская фигура, грудь закрыта волосами."
+}
