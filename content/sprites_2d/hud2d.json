@@ -775,7 +775,7 @@
    "hud_potion"
   ],
   [
-   "healed_by_magic|spellbound|enchant",
+   "healed_by_magic|spellbound|enchant|lured",
    "hud_spark"
   ],
   [
@@ -875,7 +875,7 @@
    "hud_hand"
   ],
   [
-   "guilty|caught|insult|scold|embarrass|irritat|alarm|fright",
+   "guilty|caught|insult|scold|embarrass|irritat|alarm|fright|lost_in",
    "hud_frown"
   ]
  ],
