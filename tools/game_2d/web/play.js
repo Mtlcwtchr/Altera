@@ -117,7 +117,9 @@
       else { dx = (px - v.x) / d; dy = (py - v.y) / d; }
     }
     if (dx || dy) {
-      const len = Math.hypot(dx, dy), sp = (k.has('Shift') ? RUN : WALK) * dt;
+      // LR-159: on a horse or at the reins the step is the sim's (spd)
+      const mp = G.byId.get(G.me), spd = mp && mp.spd ? Math.max(0.05, mp.spd) : 1;
+      const len = Math.hypot(dx, dy), sp = (k.has('Shift') ? RUN : WALK) * dt * spd;
       let s = sp;
       if (path && path.length) s = Math.min(sp, Math.hypot(path[0][0] - v.x, path[0][1] - v.y));
       const nx = v.x + dx / len * s, ny = v.y + dy / len * s;

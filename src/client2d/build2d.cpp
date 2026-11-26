@@ -353,9 +353,9 @@ Json placeJson(World& w, const ViewText& t, const Planner& who, const Stroke& s)
         if (!c.why.empty()) continue;
         if (c.removes != kNone || c.replaces != kNone) {
             Command rm;
-            rm.source = "player:1";
+            rm.source = "player:" + std::to_string(who.player);
             rm.type = "remove_piece";
-            rm.args = {{"id", who.actor}, {"piece", c.removes != kNone ? c.removes : c.replaces}, {"player", 1}};
+            rm.args = {{"id", who.actor}, {"piece", c.removes != kNone ? c.removes : c.replaces}, {"player", who.player}};
             const Command r = w.applyNow(rm);
             if (r.result != "ok" && !r.result.empty()) {
                 c.why = r.result.rfind("rejected:", 0) == 0 ? r.result.substr(9) : r.result;
@@ -372,10 +372,10 @@ Json placeJson(World& w, const ViewText& t, const Planner& who, const Stroke& s)
         double h = 0.0;
         joinHeight(w.content().build, w.pieces(), probe, h);
         Command cmd;
-        cmd.source = "player:1";
+        cmd.source = "player:" + std::to_string(who.player);
         cmd.type = "place_piece";
         cmd.args = {{"id", who.actor}, {"kind", c.sp.kind}, {"x", c.sp.x}, {"y", c.sp.y}, {"z", c.sp.z},
-                    {"rot", c.sp.rot},  {"h", h},           {"player", 1}};
+                    {"rot", c.sp.rot},  {"h", h},           {"player", who.player}};
         if (who.forSettlement) cmd.args["for"] = "settlement";
         const Command r = w.applyNow(cmd);
         if (r.result == "ok" || r.result.empty()) ++placed;

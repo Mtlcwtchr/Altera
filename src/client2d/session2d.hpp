@@ -55,7 +55,7 @@ sim::Json dynastiesJson(const sim::World& w, const ViewText& t);
 // {create: {backstory, race, sex, age, name, lang, traits, attrs, look}} a person made
 // on the creation screen (AL-136, command create_character);
 // {watch: true} leads nobody. "ok" or the sim's "rejected:..." reason.
-std::string beginAs(sim::World& w, const sim::Json& args);
+std::string beginAs(sim::World& w, const sim::Json& args, int player = 1);   // LR-160: for that player
 
 // --- saves -------------------------------------------------------------------
 std::filesystem::path saveDir2d();

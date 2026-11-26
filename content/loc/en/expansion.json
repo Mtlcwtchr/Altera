@@ -54,6 +54,7 @@
  "condition.free.name": "Free",
  "condition.tenant_free.name": "Free tenant",
  "condition.villein.name": "Villein",
+ "culture.fantasy_european.name": "human (European)",
  "estate.burgher.desc": "Merchants and guild masters; town liberties.",
  "estate.burgher.name": "Burghers",
  "estate.clergy.desc": "Priests, monks and nuns; literacy and vows.",
