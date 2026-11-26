@@ -202,7 +202,6 @@ target_link_libraries(asr_content PUBLIC asr_core PRIVATE nlohmann_json asr_warn
 add_library(asr_generation STATIC
         src/game/generation/hybrid_terrain.cpp
         src/game/generation/terrain_foundation.cpp
-        src/game/generation/local_map_gen.cpp
         src/game/generation/world_domain.cpp
         src/game/generation/world_scale_policy.cpp
         src/game/generation/world_macro.cpp
@@ -279,31 +278,8 @@ target_link_libraries(asr_world PUBLIC asr_world_store)
 # game/work is a separate work pipeline; it reads world/ECS state but is not an
 # ECS system and is not part of the actor tick scheduler.
 # ---------------------------------------------------------------------------
-add_library(asr_simulation STATIC
-        src/game/ai/planner.cpp
-        src/game/ecs/render/extraction.cpp
-        src/game/simulation/world.cpp
-        src/game/simulation/farming.cpp
-        src/game/simulation/livestock.cpp
-        src/game/simulation/pathfinder.cpp
-        src/game/simulation/inventory.cpp
-        src/game/simulation/needs.cpp
-        src/game/work/planner.cpp
-        src/game/work/execution.cpp
-        src/game/simulation/population.cpp
-        src/game/simulation/zones.cpp
-        src/game/simulation/report.cpp
-        src/game/simulation/savegame.cpp)
-target_include_directories(asr_simulation PUBLIC src)
-target_link_libraries(asr_simulation PUBLIC asr_core asr_content asr_generation asr_world EnTT::EnTT
-        PRIVATE asr_warnings)
-
-# ---------------------------------------------------------------------------
-# sim_runner - headless scenario runs (GDD 11: the agent must be able to build,
-# run a scenario, check invariants and get a report with no graphical client).
-# ---------------------------------------------------------------------------
-add_executable(sim_runner sim_runner/main.cpp)
-target_link_libraries(sim_runner PRIVATE asr_simulation asr_warnings)
+# The Campfire simulation (asr_simulation) and its sim_runner were removed with the
+# legacy client: the game's simulation is lr_sim below.
 endif() # NOT LR_SIM_ONLY
 
 # ---------------------------------------------------------------------------
@@ -537,9 +513,6 @@ endif()
 add_executable(impostor_bake tools/impostor_bake.cpp)
 target_link_libraries(impostor_bake PRIVATE asr_warnings)
 
-add_executable(content_validator tools/content_validator.cpp)
-target_link_libraries(content_validator PRIVATE asr_content asr_simulation asr_environment asr_world asr_warnings)
-
 # environment_probe - what the procedural environment makes of a world:
 # zones, features, masks, ground moved, and whether it is deterministic.
 add_executable(feature_forms tools/feature_forms.cpp)
@@ -618,14 +591,6 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
 endif()
 
 if(ASR_BUILD_CLIENT)
-    # The editor is its own program: it opens no world and ticks nothing, so it
-    # starts in a second rather than after a continent has been generated.
-    add_executable(lr_editor
-            src/game/editor/main.cpp
-            src/game/ui/editor.cpp)
-    target_link_libraries(lr_editor PRIVATE asr_simulation asr_engine_gui nlohmann_json SDL3::SDL3-static
-            SDL3_image::SDL3_image-static asr_warnings)
-
     # This game's passes. They know what ground is made of and what grass is; the
     # engine does not, which is the whole point of the split.
     add_library(asr_game_render STATIC
@@ -667,32 +632,6 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(asr_game_render PUBLIC asr_engine_render asr_world asr_camera asr_animation asr_virtual_geometry_gpu
             asr_impostors_gpu asr_world_source PRIVATE nlohmann_json asr_warnings)
 
-    add_executable(lr_client
-            src/game/client/main.cpp
-            src/engine/core/profiler_alloc.cpp
-            src/game/client/renderer.cpp
-            src/game/client/selection.cpp
-            src/game/client/controls.cpp
-            src/game/client/newgame_screen.cpp
-            src/game/client/world_dials.cpp
-            src/game/client/explorer.cpp
-            src/game/client/explore_view.cpp
-            src/game/client/explore_bench.cpp
-            src/game/client/client_ui.cpp
-            src/game/client/terrain_panel.cpp
-            src/game/client/asset_browser.cpp
-            src/game/client/client_app.cpp
-            src/game/ui/hud.cpp
-            src/game/ui/editor.cpp
-            src/game/ui/overlay.cpp
-            src/game/ui/info_panel.cpp)
-    target_link_libraries(lr_client PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui nlohmann_json
-            SDL3::SDL3-static SDL3_image::SDL3_image-static
-            SDL3_shadercross::SDL3_shadercross-static nlohmann_json asr_warnings)
-    if(ASR_ENABLE_PROFILING)
-        target_sources(lr_client PRIVATE src/game/client/explore_diagnostics.cpp)
-    endif()
-
     # asr_mesh_lab - UE Nanite's bake against our cluster DAG on the same meshes,
     # rendered on the CPU into PNGs and a table. No window, no GPU. Input comes
     # from tools/ue_nanite_reference.py (headless Unreal).
@@ -729,37 +668,18 @@ if(ASR_BUILD_CLIENT)
     target_link_libraries(lr_terrain_core PUBLIC asr_engine_render asr_world_source lr_terrain_gen PRIVATE nlohmann_json asr_warnings)
 
     # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
-    # lr_game_view - the life-sim drawn into the world view: its people,
-    # beasts and buildings as a scene layer, the HUD, the player's orders
-    # (src/game_view, doc engine_merge/MERGE_PLAN.md stage 4-6 fast path).
-    add_library(lr_game_view STATIC src/game_view/sim_game.cpp src/game_view/loading_screen.cpp
-                                       src/game_view/skinned.cpp src/game_view/statics.cpp src/game_view/hud.cpp
-                                       src/game_view/hud_menu.cpp src/game_view/hud_edge.cpp
-                                       src/game_view/hud_edge_hud.cpp src/game_view/hud_edge_bar.cpp src/game_view/hud_edge_social.cpp
-                                       src/game_view/hud_edge_screens.cpp src/game_view/hud_edge_trade.cpp src/game_view/hud_world.cpp
-                                       src/game_view/saves.cpp)
-    target_include_directories(lr_game_view PUBLIC src)
-    target_link_libraries(lr_game_view PUBLIC lr_terrain_core lr_sim asr_engine_gui asr_world_source PRIVATE asr_warnings)
-
-    add_executable(terrain_lab tools/terrain_lab/main.cpp)
-    target_link_libraries(terrain_lab PRIVATE lr_terrain_core lr_game_view asr_warnings)
+    # The 3D game client (lr_game, src/game_view) is OBSOLETE and out of the build
+    # (src/game_view/OBSOLETE.md); the lab keeps only its loading window from there.
+    add_executable(terrain_lab tools/terrain_lab/main.cpp src/game_view/loading_screen.cpp src/game_view/saves.cpp)
+    target_link_libraries(terrain_lab PRIVATE lr_terrain_core asr_engine_gui nlohmann_json asr_warnings)
     target_compile_definitions(terrain_lab PRIVATE _CRT_SECURE_NO_WARNINGS LR_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
     lr_configure_dlss(lr_terrain_core terrain_lab)
 
-    # lr_game - the game on the lab's world view: the life-sim with the
-    # player's HUD from the start (terrain_lab --game, under its own name).
     # lr_world_gen - a procedural world (AL-69) into its folder, with its
     # picture and checks, without the game: lr_world_gen --spec '{...}' --out DIR
     add_executable(lr_world_gen tools/world_gen_cli.cpp)
     target_link_libraries(lr_world_gen PRIVATE lr_terrain_core asr_warnings)
 
-    add_executable(lr_game tools/terrain_lab/main.cpp)
-    target_link_libraries(lr_game PRIVATE lr_terrain_core lr_game_view asr_warnings)
-    target_compile_definitions(lr_game PRIVATE _CRT_SECURE_NO_WARNINGS LR_GAME_DEFAULT=1
-            LR_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
-    if(ASR_DLSS_AVAILABLE)
-        lr_copy_dlss_runtime(lr_game)
-    endif()
     if(ASR_BUILD_TESTS AND ASR_DLSS_AVAILABLE)
         add_executable(asr_dlss_gpu_check tests/test_dlss_gpu.cpp)
         target_link_libraries(asr_dlss_gpu_check PRIVATE lr_terrain_core asr_warnings)
@@ -797,35 +717,23 @@ if(ASR_BUILD_CLIENT)
 ")
     endif()
 
-    # Public lr_* target names, with backward-compatible asr_* executable
-    # shims for older scripts and local habits.
-    function(lr_binary target legacy)
-        if(UNIX)
+    # Windows has no rpath: the vendored shader compiler's DLLs must sit next to
+    # every exe that compiles shaders. dxil.dll is not linked, DXC loads it at
+    # runtime to sign DXIL. (This used to hang on lr_client alone.)
+    function(lr_copy_shader_runtime target)
+        if(WIN32)
             add_custom_command(TARGET ${target} POST_BUILD
-                    COMMAND "${CMAKE_COMMAND}" -E rm -f "$<TARGET_FILE_DIR:${target}>/${legacy}"
-                    COMMAND "${CMAKE_COMMAND}" -E create_symlink "$<TARGET_FILE_NAME:${target}>"
-                            "$<TARGET_FILE_DIR:${target}>/${legacy}"
-                    VERBATIM)
-        else()
-            add_custom_command(TARGET ${target} POST_BUILD
-                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different "$<TARGET_FILE:${target}>"
-                            "$<TARGET_FILE_DIR:${target}>/${legacy}${CMAKE_EXECUTABLE_SUFFIX}"
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                            $<TARGET_RUNTIME_DLLS:${target}> "$<TARGET_FILE_DIR:${target}>"
+                    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+                            "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:${target}>"
+                    COMMAND_EXPAND_LISTS
                     VERBATIM)
         endif()
     endfunction()
-    lr_binary(lr_client asr_client)
-    lr_binary(lr_editor asr_editor)
-
-    # Windows has no rpath: the vendored shader compiler's DLLs must sit next to
-    # the exe. dxil.dll is not linked, DXC loads it at runtime to sign DXIL.
-    if(WIN32)
-        add_custom_command(TARGET lr_client POST_BUILD
-                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                        $<TARGET_RUNTIME_DLLS:lr_client> "$<TARGET_FILE_DIR:lr_client>"
-                COMMAND "${CMAKE_COMMAND}" -E copy_if_different
-                        "$<TARGET_FILE_DIR:dxcompiler>/dxil.dll" "$<TARGET_FILE_DIR:lr_client>"
-                COMMAND_EXPAND_LISTS
-                VERBATIM)
+    lr_copy_shader_runtime(terrain_lab)
+    if(TARGET realsim_editor)
+        lr_copy_shader_runtime(realsim_editor)
     endif()
 
     option(ASR_PREPARE_SCENE_MODELS "Prepare instanced nature models and impostors offline" ON)
@@ -870,7 +778,6 @@ if(ASR_BUILD_CLIENT)
                 COMMENT "Building per-model geometry DAGs and instance canopy sidecars"
                 VERBATIM)
         add_custom_target(asr_scene_geometry DEPENDS "${SCENE_CLUSTER_STAMP}")
-        add_dependencies(lr_client asr_scene_geometry)
     endif()
 endif()
 endif() # NOT LR_SIM_ONLY
@@ -905,7 +812,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_social.cpp
             tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp
             tests/test_lr_sim_trade.cpp tests/test_lr_sim_species.cpp
-            tests/test_lr_cutaway.cpp tests/test_lr_ui_theme.cpp tests/test_lr_locomotion.cpp tests/test_lr_hotbar.cpp
+            tests/test_lr_ui_theme.cpp
             tests/test_lr_sim_dialogue_corpus.cpp tests/test_lr_client2d.cpp
             tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp tests/test_lr_client2d_net.cpp
             tests/test_lr_client2d_craft.cpp
@@ -1020,34 +927,19 @@ if(ASR_BUILD_TESTS)
     target_link_libraries(asr_scene_view_tests PRIVATE asr_world asr_camera asr_warnings)
     add_test(NAME scene_view COMMAND asr_scene_view_tests)
     set_tests_properties(scene_view PROPERTIES TIMEOUT 30)
-    # The inspector lives in the client, so its tests only exist when the client
-    # is built. The simulation tests never depend on it.
     if(ASR_BUILD_CLIENT)
-        add_library(asr_inspector STATIC src/game/client/selection.cpp src/game/ui/info_panel.cpp)
-        target_include_directories(asr_inspector PUBLIC src)
-        target_link_libraries(asr_inspector PUBLIC asr_simulation SDL3::SDL3-static PRIVATE asr_warnings)
-        set(ASR_INSPECTOR_TESTS tests/test_inspector.cpp)
-        set(ASR_INSPECTOR_LIBS asr_inspector)
-        # Streaming integration without a window/GPU. Use the same Explorer
-        # and worker implementation as the client, not a test-only scheduler.
+        # The old world view's menus without a window (the Campfire client and its
+        # Explorer are gone; these read only the menus and the instance arena).
         add_executable(asr_ring_tests
                 tests/main.cpp
                 tests/test_instance_arena.cpp
-                tests/test_ring_stream.cpp
                 tests/test_environment_menu.cpp
                 tests/test_draw_distance.cpp
-                tests/test_environment_workers.cpp
-                tests/test_weather.cpp
                 tests/test_water_bodies.cpp
-                src/game/client/explore_menu.cpp src/game/client/graphics_panel.cpp
-            src/game/client/world_editor.cpp src/game/client/world_editor_biomes.cpp
-                src/game/client/world_dials.cpp
-                src/game/client/explorer.cpp
-                src/game/client/renderer.cpp
-                src/game/client/controls.cpp
-                src/game/client/selection.cpp)
-        target_link_libraries(asr_ring_tests PRIVATE asr_simulation asr_world asr_game_render asr_engine_gui
+                src/game/client/world_dials.cpp)
+        target_link_libraries(asr_ring_tests PRIVATE asr_world asr_game_render asr_engine_gui
                 nlohmann_json SDL3::SDL3-static SDL3_image::SDL3_image-static asr_warnings)
+        lr_copy_shader_runtime(asr_ring_tests)
         add_test(NAME ring_stream COMMAND asr_ring_tests)
 
         # Explicit GPU readback check, not a dependency of headless CI runs.
@@ -1071,14 +963,8 @@ if(ASR_BUILD_TESTS)
             tests/test_camera.cpp
             tests/test_camera_matrix.cpp
             tests/test_fixed.cpp
-            tests/test_determinism.cpp
-            tests/test_content.cpp
-            tests/test_pathfinding.cpp
             tests/test_worldgen.cpp
             tests/test_hybrid_terrain.cpp
-            tests/test_medicine.cpp
-            tests/test_simulation.cpp
-            tests/test_savegame.cpp
             tests/test_world_mesh.cpp
             tests/test_environment.cpp
             tests/test_water_queries.cpp
@@ -1093,11 +979,8 @@ if(ASR_BUILD_TESTS)
             tests/test_terrain_lod.cpp
             tests/test_terrain_height_pages.cpp
             tests/test_tile_mesh.cpp
-            tests/test_engine_clock.cpp
-            tests/test_ecs.cpp
-            ${ASR_INSPECTOR_TESTS})
-    target_link_libraries(asr_tests PRIVATE asr_simulation asr_world asr_camera nlohmann_json asr_warnings
-            ${ASR_INSPECTOR_LIBS})
+            tests/test_engine_clock.cpp)
+    target_link_libraries(asr_tests PRIVATE asr_generation asr_world asr_camera nlohmann_json asr_warnings)
     target_sources(asr_tests PRIVATE tests/test_terrain_config.cpp)
     target_sources(asr_tests PRIVATE tests/test_world_layout.cpp tests/test_world_layers.cpp tests/test_world_compose.cpp
             tests/test_world_stages.cpp tests/test_world_import.cpp tests/test_world_procedural.cpp)
@@ -1144,15 +1027,6 @@ if(ASR_BUILD_TESTS)
     endif()
     add_test(NAME terrain_unit COMMAND asr_terrain_tests)
     set_tests_properties(terrain_unit PROPERTIES TIMEOUT 120)
-
-    # Focused ECS suite. It deliberately excludes optional environment/render
-    # tests so simulation component and scheduler changes can be validated while
-    # those independent targets are being developed in parallel.
-    add_executable(asr_ecs_tests
-            tests/main.cpp
-            tests/test_ecs.cpp)
-    target_link_libraries(asr_ecs_tests PRIVATE asr_simulation asr_world nlohmann_json asr_warnings)
-    add_test(NAME ecs_unit COMMAND asr_ecs_tests)
 
     # CPU render systems, on their own so they stay fast and windowless.
     add_executable(asr_render_system_tests
