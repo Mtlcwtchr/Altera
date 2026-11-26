@@ -1,0 +1,80 @@
+{
+ "id": "albasty",
+ "habitat": "land",
+ "biomes": [
+  "steppe",
+  "river"
+ ],
+ "per_km2": 0.0015,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "speed_m_per_tick": 120,
+ "notice_m": 160,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.5,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.7,
+ "tags": [
+  "monster",
+  "spirit",
+  "female"
+ ],
+ "loot": {
+  "albasty_hair": 1
+ },
+ "mythic": {
+  "belts": [
+   "steppe"
+  ],
+  "active": "night",
+  "attack_min_group": 1,
+  "combat": {
+   "weapon": "rending_claws",
+   "skill": 0.45
+  },
+  "lair": {
+   "poi": "albasty_ravine",
+   "terrain": [
+    "plains",
+    "hills"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 30,
+   "raid": {
+    "per_year": 0.5,
+    "km": 14,
+    "wealth_loss": [
+     0.02,
+     0.05
+    ]
+   }
+  }
+ },
+ "_doc": "LR-170: албасты, степная демоница. Ночью нападает на одиноких у реки и в степи, душит спящих, загоняет коней."
+}

@@ -61,5 +61,35 @@
   "duration": 8,
   "cost": 9
  },
- "_doc": "Гарпии: стаи на скалах, таскают кур и коз."
+ "_doc": "Гарпии: стаи на скалах, таскают кур и коз.",
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "attack_min_group": 3,
+  "combat": {
+   "weapon": "talons",
+   "skill": 0.4
+  },
+  "lair": {
+   "poi": "harpy_crags",
+   "terrain": [
+    "mountains",
+    "hills"
+   ],
+   "n": [
+    1,
+    1
+   ],
+   "near_km": 35,
+   "raid": {
+    "per_year": 0.8,
+    "km": 14,
+    "wealth_loss": [
+     0.01,
+     0.04
+    ]
+   }
+  }
+ }
 }

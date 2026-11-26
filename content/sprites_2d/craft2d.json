@@ -2102,6 +2102,126 @@
   },
   "varg_pelt": {
    "sprite": "it_pelt"
+  },
+  "siren_feather": {
+   "sprite": "it_feather",
+   "recolour": {
+    "w": "t",
+    "g": "o"
+   }
+  },
+  "gorgon_head": {
+   "sprite": "it_organ",
+   "recolour": {
+    "r": "G",
+    "R": "l"
+   }
+  },
+  "gorgon_blood": {
+   "sprite": "it_organ",
+   "recolour": {
+    "r": "e",
+    "R": "E"
+   }
+  },
+  "hydra_venom": {
+   "sprite": "it_organ",
+   "recolour": {
+    "r": "l",
+    "R": "G"
+   }
+  },
+  "hydra_scale": {
+   "sprite": "it_scale"
+  },
+  "chimera_horn": {
+   "sprite": "it_fang",
+   "recolour": {
+    "w": "t",
+    "g": "T"
+   }
+  },
+  "nemean_hide": {
+   "sprite": "it_pelt",
+   "recolour": {
+    "W": "t",
+    "g": "o",
+    "M": "T"
+   }
+  },
+  "grave_dust": {
+   "sprite": "ob_rock",
+   "recolour": {
+    "W": "g",
+    "m": "g"
+   }
+  },
+  "leshy_bark": {
+   "sprite": "it_stick"
+  },
+  "rusalka_hair": {
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "l"
+   }
+  },
+  "upyr_fang": {
+   "sprite": "it_fang"
+  },
+  "gorynych_scale": {
+   "sprite": "it_scale",
+   "recolour": {
+    "G": "l",
+    "l": "G"
+   }
+  },
+  "kelpie_mane": {
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "G"
+   }
+  },
+  "barrow_gold": {
+   "sprite": "it_gem",
+   "recolour": {
+    "U": "t",
+    "u": "o",
+    "w": "T"
+   }
+  },
+  "albasty_hair": {
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "o"
+   }
+  },
+  "serpent_scale": {
+   "sprite": "it_scale",
+   "recolour": {
+    "G": "t",
+    "l": "o"
+   }
+  },
+  "mummy_linen": {
+   "sprite": "it_rope",
+   "recolour": {
+    "t": "w"
+   }
+  },
+  "jackal_pelt": {
+   "sprite": "it_pelt",
+   "recolour": {
+    "W": "z",
+    "g": "Z",
+    "M": "Z"
+   }
+  },
+  "scarab_shell": {
+   "sprite": "it_scale",
+   "recolour": {
+    "G": "b",
+    "l": "B"
+   }
   }
  },
  "forms": {

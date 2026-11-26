@@ -1798,7 +1798,7 @@
   "steppe_clan": "steppe_folk",
   "steppe_rider": "orc"
  },
- "outfit_by_worn": [{"has": ["mail", "helmet"], "slot": "war"}, {"has": ["cloak"], "slot": "warm"}, {"has": ["shirt", "robe", "tabard"], "slot": "daily"}],
+ "outfit_by_worn": [{"has": ["mail", "helmet"], "slot": "war"}, {"has": ["cloak"], "slot": "warm"}, {"has": ["shirt", "robe", "tabard"], "slot": "daily"}, {"has": ["pants"], "slot": "daily"}],
  "festive_one_in": 4,
  "rite_acts": ["pray", "rite", "sacrifice", "bless", "offering"],
  "kit_tools": ["spear", "sword", "bow", "axe", "staff"]

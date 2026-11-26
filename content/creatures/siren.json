@@ -1,0 +1,104 @@
+{
+ "id": "siren",
+ "habitat": "land",
+ "biomes": [
+  "coast",
+  "cliffs"
+ ],
+ "per_km2": 0.004,
+ "group": [
+  2,
+  4
+ ],
+ "max_group": 5,
+ "speed_m_per_tick": 140,
+ "notice_m": 220,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.6,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.2,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.5,
+ "tags": [
+  "monster",
+  "flying",
+  "female"
+ ],
+ "loot": {
+  "siren_feather": 2
+ },
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "attack_min_group": 1,
+  "lure": {
+   "radius_m": 260,
+   "pull_m": 50,
+   "chance": 0.18,
+   "resist": 0.9,
+   "water_only": true
+  },
+  "combat": {
+   "weapon": "talons",
+   "skill": 0.45
+  },
+  "lair": {
+   "poi": "siren_rocks",
+   "coast": true,
+   "terrain": [
+    "hills",
+    "plains",
+    "mountains",
+    "forest"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 30,
+   "raid": {
+    "per_year": 0.4,
+    "km": 16,
+    "wealth_loss": [
+     0.02,
+     0.06
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.06,
+   "skill": "archery",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 10,
+  "cost": 12
+ },
+ "_doc": "LR-170: сирены Срединного моря. Сидят на скалах у воды стаей, песней тянут одинокого к берегу и рвут когтями."
+}

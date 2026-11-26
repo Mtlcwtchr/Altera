@@ -1,0 +1,116 @@
+{
+ "id": "chimera",
+ "habitat": "land",
+ "biomes": [
+  "badlands",
+  "canyon",
+  "cliffs"
+ ],
+ "per_km2": 0.0006,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "speed_m_per_tick": 110,
+ "notice_m": 160,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.55,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.3,
+ "tags": [
+  "monster",
+  "fire"
+ ],
+ "loot": {
+  "chimera_horn": 1
+ },
+ "innate_spells": [
+  {
+   "id": "fire_breath",
+   "aspects": [
+    [
+     "fire",
+     "+"
+    ]
+   ],
+   "form": "wave",
+   "mods": {
+    "power": 3,
+    "radius": 4
+   },
+   "name_key": "spell.innate.fire_breath",
+   "chance": 0.35
+  }
+ ],
+ "mythic": {
+  "belts": [
+   "mediterranean"
+  ],
+  "attack_min_group": 1,
+  "combat": {
+   "weapon": "rending_claws",
+   "skill": 0.6,
+   "armor": [
+    "tough_hide"
+   ],
+   "stamina_mult": 1.3
+  },
+  "lair": {
+   "poi": "chimera_den",
+   "terrain": [
+    "hills",
+    "mountains"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 40,
+   "raid": {
+    "per_year": 0.6,
+    "km": 15,
+    "wealth_loss": [
+     0.03,
+     0.08
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.04,
+   "skill": "archery",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 12,
+  "cost": 16
+ },
+ "_doc": "LR-170: химера: лев, коза и змей в одном теле, дышит огнём. Одиночка сухих холмов."
+}

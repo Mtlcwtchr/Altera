@@ -37,6 +37,14 @@ struct CombatBridge {
     std::set<std::string> wearable;
     std::string animalWeapon = "fangs", animalSkillKey = "fighting";
     double animalDefaultSkill = 0.4;
+    // LR-170: a creature's own body in the fight (its mythic.combat block): natural weapon, skill, hide
+    struct AnimalBody {
+        std::string weapon;
+        double skill = -1.0;
+        std::vector<std::string> armor;
+        double staminaMult = 1.0;
+    };
+    std::map<std::string, AnimalBody> animalBodies; // species id ->
     std::map<std::string, std::string> memory;            // outcome -> memory type
     std::map<std::string, double> memoryValence;
     std::string chronicle = "chronicle.combat";

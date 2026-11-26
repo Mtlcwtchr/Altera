@@ -1,0 +1,72 @@
+{
+ "id": "scarab_swarm",
+ "habitat": "land",
+ "biomes": [
+  "desert"
+ ],
+ "per_km2": 0.003,
+ "group": [
+  6,
+  12
+ ],
+ "max_group": 20,
+ "speed_m_per_tick": 30,
+ "notice_m": 40,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.3,
+ "attack": {
+  "damage": [
+   0.05,
+   0.15
+  ],
+  "chance": 0.6,
+  "sated_days_after_kill": 10
+ },
+ "hunger_per_day": 0.3,
+ "breed_every_days": 0,
+ "growth_per_year": 0.6,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.05,
+ "tags": [
+  "monster",
+  "swarm"
+ ],
+ "loot": {
+  "scarab_shell": 4
+ },
+ "mythic": {
+  "belts": [
+   "nile"
+  ],
+  "attack_min_group": 10,
+  "combat": {
+   "weapon": "venom_fangs",
+   "skill": 0.3
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.2,
+   "skill": "hunting",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 6,
+  "cost": 6
+ },
+ "_doc": "LR-170: скарабеи-падальщики. Рой (группа = сотни жуков, считаем десятками), объедает падаль, на живых идёт только большим роем."
+}

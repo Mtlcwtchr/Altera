@@ -62,5 +62,37 @@
   "duration": 10,
   "cost": 12
  },
- "_doc": "Грифон: гнездо на скалах, приручается редко; перо — для зачарования."
+ "_doc": "Грифон: гнездо на скалах, приручается редко; перо — для зачарования.",
+ "mythic": {
+  "belts": [
+   "steppe",
+   "mediterranean"
+  ],
+  "combat": {
+   "weapon": "talons",
+   "skill": 0.55,
+   "armor": [
+    "tough_hide"
+   ]
+  },
+  "lair": {
+   "poi": "griffin_eyrie",
+   "terrain": [
+    "mountains"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 45,
+   "raid": {
+    "per_year": 0.4,
+    "km": 18,
+    "wealth_loss": [
+     0.02,
+     0.05
+    ]
+   }
+  }
+ }
 }

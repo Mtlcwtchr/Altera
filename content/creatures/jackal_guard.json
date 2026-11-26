@@ -1,0 +1,95 @@
+{
+ "id": "jackal_guard",
+ "habitat": "land",
+ "biomes": [
+  "desert",
+  "badlands"
+ ],
+ "per_km2": 0.0015,
+ "group": [
+  3,
+  6
+ ],
+ "max_group": 8,
+ "speed_m_per_tick": 130,
+ "notice_m": 150,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.5,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.3,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.3,
+ "tags": [
+  "monster",
+  "tomb_guard"
+ ],
+ "loot": {
+  "jackal_pelt": 1
+ },
+ "mythic": {
+  "belts": [
+   "nile"
+  ],
+  "active": "night",
+  "attack_min_group": 3,
+  "guard_m": 160,
+  "combat": {
+   "weapon": "venom_fangs",
+   "skill": 0.45
+  },
+  "lair": {
+   "poi": "jackal_shrine",
+   "terrain": [
+    "plains",
+    "hills"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 30,
+   "raid": {
+    "per_year": 0.4,
+    "km": 10,
+    "wealth_loss": [
+     0.01,
+     0.03
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.12,
+   "skill": "archery",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 8,
+  "cost": 10
+ },
+ "_doc": "LR-170: шакальи стражи гробниц: стая, ночью кидается на всякого у святилища."
+}

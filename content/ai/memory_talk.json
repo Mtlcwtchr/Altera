@@ -287,6 +287,13 @@
    "interest": 0.9,
    "shareable": true
   },
+  "heard_lure": {
+   "kind": "beast",
+   "mood": "eerie",
+   "interest": 0.8,
+   "shareable": true,
+   "_doc": "LR-170: зов сирены, русалки, лешего"
+  },
   "saw_beast": {
    "kind": "beast",
    "mood": "alarm",

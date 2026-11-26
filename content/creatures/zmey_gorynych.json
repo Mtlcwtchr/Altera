@@ -1,0 +1,122 @@
+{
+ "id": "zmey_gorynych",
+ "habitat": "land",
+ "biomes": [
+  "mountain",
+  "cliffs"
+ ],
+ "per_km2": 0.0003,
+ "group": [
+  3,
+  3
+ ],
+ "max_group": 3,
+ "speed_m_per_tick": 180,
+ "notice_m": 260,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.6,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 30,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.7,
+ "tags": [
+  "monster",
+  "flying",
+  "fire",
+  "many_heads"
+ ],
+ "loot": {
+  "gorynych_scale": 3
+ },
+ "innate_spells": [
+  {
+   "id": "fire_breath",
+   "aspects": [
+    [
+     "fire",
+     "+"
+    ]
+   ],
+   "form": "wave",
+   "mods": {
+    "power": 3,
+    "radius": 4
+   },
+   "name_key": "spell.innate.fire_breath",
+   "chance": 0.35
+  }
+ ],
+ "mythic": {
+  "belts": [
+   "forest"
+  ],
+  "attack_min_group": 1,
+  "guard_m": 200,
+  "regrow_days": 3,
+  "regrow_blocked_by": [
+   "burned"
+  ],
+  "combat": {
+   "weapon": "great_jaws",
+   "skill": 0.75,
+   "armor": [
+    "scales"
+   ],
+   "stamina_mult": 2.0
+  },
+  "lair": {
+   "poi": "gorynych_mountain",
+   "terrain": [
+    "mountains",
+    "hills"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 50,
+   "raid": {
+    "per_year": 1.0,
+    "km": 25,
+    "wealth_loss": [
+     0.06,
+     0.15
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.01,
+   "skill": "hunting",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 20,
+  "cost": 30
+ },
+ "_doc": "LR-170: Змей Горыныч, трёхглавый. Три головы = группа 3: срубленная отрастает, если не прижечь. Дышит огнём, стережёт гору, налетает на сёла."
+}
