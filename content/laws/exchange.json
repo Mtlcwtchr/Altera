@@ -1,0 +1,12 @@
+{
+ "_doc": "LR-169: вселенский закон (сеттинг v0.3 §6.4): обязателен для всех, включая богов. watchers — Силы, что за ним бдят (их лики гневаются); facts — нарушения из World::facts (pred = юридический тег дела, when — условия: guest_or_host, victim_kin, at_sacred, near_grave, initiate); memories — типы памяти нарушителя; weight — вес нарушения; binds_gods — бог тоже под ним. Кары и сроки — content/pantheon/rules.json laws. Имя law.<id>.name/.desc.",
+ "id": "exchange",
+ "watchers": [
+  "fate",
+  "vengeance"
+ ],
+ "weight": 0.8,
+ "binds_gods": true,
+ "facts": [],
+ "memories": []
+}

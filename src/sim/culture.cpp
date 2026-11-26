@@ -100,6 +100,15 @@ std::unique_ptr<CultureRules> loadRules(const fs::path& dir) {
             d.heresy = fj.value("heresy", false);
             for (const Json& g : fj.value("deities", Json::array()))
                 if (g.is_object()) d.deities.push_back({g.value("id", std::string()), g.value("domain", std::string())});
+            // LR-169: the pantheon's liks per belt; the window's gods are all of them, once each
+            d.power = fj.value("power", std::string());
+            if (fj.contains("liks") && fj["liks"].is_object())
+                for (auto it = fj["liks"].begin(); it != fj["liks"].end(); ++it) {
+                    d.liks[it.key()] = strs(fj["liks"], it.key().c_str());
+                    for (const auto& l : d.liks[it.key()])
+                        if (std::none_of(d.deities.begin(), d.deities.end(), [&](const FaithDef::Deity& x) { return x.id == l; }))
+                            d.deities.push_back({l, d.power});
+                }
             d.values = dmap(fj, "values");
             d.rites = dmap(fj, "rites");
             d.sins = dmap(fj, "sins");

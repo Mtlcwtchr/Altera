@@ -53,7 +53,9 @@ struct FaithDef {
     struct Deity {
         std::string id, domain;
     };
-    std::vector<Deity> deities;
+    std::vector<Deity> deities; // LR-169: built from "liks" (every belt, once each; domain = the lik's Power)
+    std::string power;                                    // LR-169: the faith's main Power (content/pantheon)
+    std::map<std::string, std::vector<std::string>> liks; // LR-169: belt ("*" = any) -> liks, patron first
     std::map<std::string, double> values, rites, sins, goals, drawnBy;
     struct HolyDay {
         std::string id;

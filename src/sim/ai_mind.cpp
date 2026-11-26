@@ -24,6 +24,7 @@
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/culture.hpp"
+#include "sim/pantheon.hpp"
 #include "sim/wounds.hpp"
 #include "sim/firefight.hpp"
 #include "sim/world_fields.hpp"
@@ -710,6 +711,7 @@ void installAi(World& w) {
             magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
             societyDaily(world); // AL-118: laws and witch trials, guilds, magic at work
             cultureDaily(world); // LR-155: bonds to culture, piety and conversion, the settlements' traditions
+            pantheonDaily(world); // LR-169: the gods' standing and favour, prayers due, the world laws, identification
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
@@ -748,6 +750,7 @@ void installAi(World& w) {
     installMagic(w);
     installMagicSociety(w);
     installCulture(w);
+    installPantheon(w); // LR-169
 }
 
 } // namespace lr::sim
