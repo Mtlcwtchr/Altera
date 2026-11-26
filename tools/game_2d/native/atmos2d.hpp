@@ -8,7 +8,7 @@
 //    laid over the ground at the sun's strength, so overlaps don't darken twice;
 //  - light: a half-size light map cleared to the hour's light, fires, windows and
 //    torches added as soft discs (ADD), multiplied over the map (MOD);
-//  - weather: wet and snowy ground, fog banks and cloud shadows drifting with the
+//  - weather: wet and snowy ground, fog banks drifting with the
 //    wind, smoke bent downwind, rain / sleet / snow particles anchored to the
 //    world, splashes, lightning flashes.
 // The window (window2d.cpp) says what casts and what shines; this draws it.
@@ -66,7 +66,7 @@ public:
     void snowOn(float x, float y, float w, float h);   // snow on a roof (screen rect)
     // kind: 0 smoke, 1 steam (white, quick), 2 a fire's thick smoke
     void addSmoke(double wx, double wy, std::uint64_t key, double strength, int kind = 0);
-    void drawAir();                      // smoke, fog, cloud shadows
+    void drawAir();                      // smoke, fog
 
     // --- light ---------------------------------------------------------------------
     void addLight(double wx, double wy, double radiusM, const double rgb[3], double intensity, double flicker, std::uint64_t key);
