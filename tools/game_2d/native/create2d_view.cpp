@@ -133,6 +133,7 @@ Json previewPerson(const Win& w) {
         if (!jstr(*r, "skin").empty()) p["rskin"] = jstr(*r, "skin");
     if (const Json* r = raceRule(w))
         if (r->contains("pawn")) p["rlook"] = (*r)["pawn"];   // LR-139: the kind's ears, head, tusks...
+    if (!jstr(w.data, "race").empty()) p["race"] = jstr(w.data, "race");   // LR-165: the people's 48x64 figure
     return p;
 }
 

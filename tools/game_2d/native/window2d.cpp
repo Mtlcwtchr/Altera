@@ -45,6 +45,7 @@
 #include "native/atmos2d.hpp"
 #include "native/ctx2d.hpp"
 #include "native/fight2d.hpp"
+#include "native/figure2d.hpp"
 #include "native/pixels2d.hpp"
 #include "sim/data_fs.hpp"
 
@@ -145,6 +146,7 @@ struct Sprite {
 
 class Atlas {
 public:
+    explicit Atlas(int cell = kCell) : cell_(cell) {}
     void attach(SDL_Renderer* r) { ren_ = r; }
     void clear() {
         for (SDL_Texture* t : pages_) SDL_DestroyTexture(t);
@@ -158,11 +160,11 @@ public:
     }
     Sprite put(const std::string& key, const Pixels& p) {
         Sprite s;
-        if (p.size <= 0 || p.size > kCell - 2) {
+        if (p.size <= 0 || p.size > cell_ - 2) {
             map_[key] = s;
             return s;
         }
-        const int perRow = kPage / kCell, perPage = perRow * perRow;
+        const int perRow = kPage / cell_, perPage = perRow * perRow;
         if (pages_.empty() || next_ >= perPage) {
             SDL_Texture* t = SDL_CreateTexture(ren_, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, kPage, kPage);
             if (!t) return s;
@@ -173,7 +175,7 @@ public:
             pages_.push_back(t);
             next_ = 0;
         }
-        const int cx = (next_ % perRow) * kCell + 1, cy = (next_ / perRow) * kCell + 1;
+        const int cx = (next_ % perRow) * cell_ + 1, cy = (next_ / perRow) * cell_ + 1;
         ++next_;
         const SDL_Rect r{cx, cy, p.size, p.size};
         SDL_UpdateTexture(pages_.back(), &r, p.px.data(), p.size * 4);
@@ -184,6 +186,7 @@ public:
     }
 
 private:
+    int cell_ = kCell;
     SDL_Renderer* ren_ = nullptr;
     std::vector<SDL_Texture*> pages_;
     std::unordered_map<std::string, Sprite> map_;
@@ -237,6 +240,7 @@ struct Window::Impl : Ctx {
     std::shared_ptr<ui::FontFace> fontFace, fontBold;
     bool pixelFont = false;
     Atlas atlas;
+    Atlas bigAtlas{102};   // LR-165: the 96x96 figures
     Atmos atmos;             // AL-110: light, shadows, weather
     Host* host = nullptr;
     float U = 1.0f;          // the interface's scale (the display's)
@@ -363,6 +367,10 @@ struct Window::Impl : Ctx {
         return true;
     }
     void pawn(const Json& p, char side, float x, float y, float size) override {   // AL-136
+        if (FigureSpec fig; figureSpec(p, fig)) {   // LR-165: the whole figure in the square
+            blit(figureSprite(fig, side, PawnPose{}), x, y, size, size);
+            return;
+        }
         blit(pawnSprite(pawnSpec(p), side, 0), x, y, size, size);
     }
     void face(long long id, const std::string& name, float x, float y, float size) override {
@@ -812,6 +820,102 @@ struct Window::Impl : Ctx {
                 }
         return spec;
     }
+    // --- LR-165: people as 48x64 figures (content/sprites_2d/figures2d.json) -------------------
+    // The people by the race (a regional people: hellene, northman...), else by the culture; the
+    // dress by the culture and what the sim says is worn (mail: war, a cloak: warm, a torso
+    // thing: daily, now and then festive, at a rite: rite); nothing on the torso: bare.
+    bool figureSpec(const Json& p, FigureSpec& f) const {
+        if (!figuresOn() || !str(p, "sp").empty()) return false;
+        const Json& F = figureData();
+        const Json& peoples = F["peoples"];
+        auto table = [&](const char* k) -> const Json& { static const Json none = Json::object(); return F.contains(k) && F[k].is_object() ? F[k] : none; };
+        std::string cul = str(p, "cul");
+        if (table("cultures_legacy").contains(cul)) cul = table("cultures_legacy")[cul].get<std::string>();
+        const std::string race = str(p, "race");
+        std::string people;
+        if (table("races").contains(race)) people = table("races")[race].get<std::string>();
+        else if (!race.empty() && peoples.contains(race)) people = race;
+        else if (table("cultures_people").contains(cul)) people = table("cultures_people")[cul].get<std::string>();
+        else people = F.value("default_people", std::string("woodfolk"));
+        if (!peoples.contains(people)) return false;
+        const Json& P = peoples[people];
+        if (cul.empty() || !table("cultures").contains(cul)) cul = P.value("culture", std::string());
+        f = FigureSpec{};
+        f.people = people;
+        f.culture = cul;
+        const long long id = ident(p, "id");
+        const double age = num(p, "age", 30);
+        f.fem = str(p, "sex") == "f";
+        f.child = age < F.value("child_age", 13.0);
+        f.v = int(idHash(double(std::max(0LL, id)), 21) % 1000);
+        f.hide = F.value("hide_nudity", false) || hideNudity;
+        if (age >= F.value("grey_age", 55.0)) f.hairColour = F.value("grey", std::string("#b0b0a8"));
+        if (flag(p, "stone")) f.skin = F.value("stone", std::string("#8c8c86"));
+        if (p.contains("look") && p["look"].is_object()) {   // AL-136: the look chosen at creation
+            const Json& lk = p["look"];
+            if (!str(lk, "skin").empty() && !flag(p, "stone")) f.skin = str(lk, "skin");
+            if (!str(lk, "hair").empty()) f.hair = str(lk, "hair");
+            if (!str(lk, "hair_colour").empty()) f.hairColour = str(lk, "hair_colour");
+            if (!str(lk, "beard").empty()) f.beard = str(lk, "beard");
+        }
+        // what is worn: the layers of map2d.json wear
+        std::set<std::string> layers;
+        std::string torsoItem;
+        const Json& W = MAP.contains("wear") ? MAP["wear"] : Json::object();
+        if (p.contains("worn") && p["worn"].is_array())
+            for (const auto& it : p["worn"]) {
+                if (!it.is_string() || !W.contains(it.get<std::string>())) continue;
+                const std::string layer = str(W[it.get<std::string>()], "layer");
+                layers.insert(layer);
+                if (torsoItem.empty() && (layer == "shirt" || layer == "robe" || layer == "mail" || layer == "tabard")) torsoItem = it.get<std::string>();
+            }
+        std::string slotName;
+        for (const auto& rule : F.value("outfit_by_worn", Json::array())) {
+            for (const auto& h : rule.value("has", Json::array()))
+                if (h.is_string() && layers.count(h.get<std::string>())) slotName = rule.value("slot", std::string());
+            if (!slotName.empty()) break;
+        }
+        if (!slotName.empty()) {
+            const std::string ia = str(p, "ia");
+            for (const auto& a : F.value("rite_acts", Json::array()))
+                if (a.is_string() && !ia.empty() && ia.find(a.get<std::string>()) != std::string::npos) slotName = "rite";
+            if (slotName == "daily" && (idHash(double(std::max(0LL, id)), 23) % std::max(1, F.value("festive_one_in", 4))) == 0) slotName = "festive";
+            const Json& cu = table("cultures").contains(cul) ? table("cultures")[cul] : Json::object();
+            f.outfit = cu.value(slotName, cu.value("daily", std::string()));
+        }
+        if (!torsoItem.empty() && p.contains("dye") && p["dye"].is_object() && p["dye"].contains(torsoItem) && MAP.contains("dyes"))
+            f.dye = MAP["dyes"].value(p["dye"][torsoItem].get<std::string>(), std::string());
+        // the tool in hand (map2d.json tools); a weapon shows the outfit's kit too (shield, spear)
+        const std::string held = str(p, "held");
+        if (MAP.contains("tools") && !held.empty())
+            for (const auto& pt : MAP["tools"])
+                if (held.find(pt[0].get<std::string>()) != std::string::npos) {
+                    f.tool = pt[1].get<std::string>();
+                    break;
+                }
+        for (const auto& k : F.value("kit_tools", Json::array()))
+            if (k.is_string() && k.get<std::string>() == f.tool) f.kit = true;
+        return true;
+    }
+    bool hideNudity = false;   // LR-165: the player's "hide nudity" (LR_2D_HIDE_NUDITY=1, or figures2d.json hide_nudity)
+    Sprite figureSprite(const FigureSpec& f, char side, const PawnPose& pose) {
+        const std::string k = "f:" + f.key() + side + pose.key();
+        if (const Sprite* s = bigAtlas.find(k)) return *s;
+        return bigAtlas.put(k, figurePixels(f, side, pose));
+    }
+    // The square a figure is drawn into with its feet at (sx, sy): art pixels of `sc` screen
+    // pixels per world pixel times figures2d.json world_px_per_art_px, the people's scale, one's height.
+    SDL_FRect figureRect(const FigureSpec& f, const Json& p, char side, float sx, float sy, float sc) const {
+        const Json& F = figureData();
+        const Json& P = F["peoples"].contains(f.people) ? F["peoples"][f.people] : Json::object();
+        const Json& cv = F.value(P.value("cen", false) ? "canvas_cen" : "canvas", Json::object());
+        const float n = float(std::max(cv.value("w", 96), cv.value("h", 96)));
+        float ax = n / 2, ay = n - 6;
+        if (cv.contains("anchor") && cv["anchor"].is_array() && cv["anchor"].size() >= 2) ax = cv["anchor"][0].get<float>(), ay = cv["anchor"][1].get<float>();
+        if (side == 'W') ax = float(cv.value("w", 96)) - 1 - ax;
+        const float u = sc * float(F.value("world_px_per_art_px", 1.0 / 3.0)) * float(P.value("scale", 1.0)) * heightK(p);
+        return {sx - (ax + 0.5f) * u, sy - (ay + 0.5f) * u, n * u, n * u};
+    }
     std::string actIcon(const Json& p) const {
         if (!flag(p, "alive")) return "";
         if (str(p, "st") == "Sleep") return "ic_sleep";
@@ -850,6 +954,7 @@ struct Window::Impl : Ctx {
         SDL_SetRenderVSync(ren, 1);
         std::cout << "renderer: " << SDL_GetRendererName(ren) << std::endl;
         atlas.attach(ren);
+        bigAtlas.attach(ren);
         atmos.attach(ren);
         ui.init(ren);
         // LR-137: a pixel font (Tiny5, OFL, full Cyrillic) to go with the pixel frames; Kurale when it is missing.
@@ -979,6 +1084,7 @@ struct Window::Impl : Ctx {
         camY = cy;
         slots = keepSlots;
         atlas.clear();
+        bigAtlas.clear();
         for (auto& [k, c] : chunks) c.painted = false;
         std::cout << "window: data reloaded" << std::endl;
     }
@@ -1721,6 +1827,25 @@ struct Window::Impl : Ctx {
         const bool inFight = fights.pose(id, nowMs(), fp);
         const bool fallen = inFight ? fp.lie > 0 : lying;
         if (inFight) side = v.face;
+        FigureSpec fig;
+        if (figureSpec(p, fig)) {   // LR-165: the 48x64 figure, its feet at (sx, sy)
+            const bool down = fallen && (!inFight || fp.lie >= 1);
+            const Sprite img = figureSprite(fig, down ? 'S' : side, down || inFight ? PawnPose{} : poseOf(p, v));
+            SDL_FRect r = figureRect(fig, p, down ? 'S' : side, sx, sy - lift * sc + float(fp.kneel * 4) * sc, sc);
+            if (inFight && fp.lie > 0 && fp.lie < 1) blit(img, r.x, r.y + float(fp.lie * 8) * sc, r.w, r.h, 1.0f, -90.0 * fp.lie);
+            else if (fallen) {
+                const SDL_FRect c = figureRect(fig, p, 'S', sx, sy, sc);
+                blit(img, c.x, c.y - c.h * 0.25f, c.w, c.h, alive ? 1.0f : 0.6f, -90);
+            } else blit(img, r.x, r.y, r.w, r.h);
+            if (inFight && fp.flash > 0 && img) {
+                SDL_SetTextureColorModFloat(img.tex, fp.flashColour.r, fp.flashColour.g, fp.flashColour.b);
+                SDL_SetTextureBlendMode(img.tex, SDL_BLENDMODE_ADD);
+                blit(img, r.x, r.y, r.w, r.h, float(fp.flash) * 0.8f);
+                SDL_SetTextureBlendMode(img.tex, SDL_BLENDMODE_BLEND);
+                SDL_SetTextureColorModFloat(img.tex, 1, 1, 1);
+            }
+            return;
+        }
         const Sprite img = fallen && (!inFight || fp.lie >= 1) ? pawnSprite(pawnSpec(p), 'S', 0)
                                                                : pawnSprite(pawnSpec(p), side, inFight ? PawnPose{} : poseOf(p, v));
         // AL-114: a kind's size (a goblin 16, an ogre or a troll 32 px against the 20 of a man); LR-139: and one's own
@@ -1942,6 +2067,12 @@ struct Window::Impl : Ctx {
             dst = {sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc};
             foot = sy + 4 * sc;
         } else {
+            if (FigureSpec fig; figureSpec(p, fig)) {   // LR-165
+                img = figureSprite(fig, v.face, poseOf(p, v));
+                dst = figureRect(fig, p, v.face, sx, sy, sc);
+                foot = sy + 1 * sc;
+                return bool(img);
+            }
             img = pawnSprite(pawnSpec(p), v.face, poseOf(p, v));
             const float k = (num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f) * heightK(p);
             dst = {sx - 10 * sc * k, sy - 18 * sc * k, kPawn * sc * k, kPawn * sc * k};
@@ -2237,6 +2368,22 @@ struct Window::Impl : Ctx {
         fill(x, y, size, size, kLeatherD);
         if (!str(p, "sp").empty()) {
             blit(beastSprite(str(p, "sp"), 'E'), x + size * 0.1f, y + size * 0.1f, size * 0.8f, size * 0.8f);
+            return;
+        }
+        if (FigureSpec fig; figureSpec(p, fig)) {   // LR-165: the head and shoulders of the figure
+            Sprite img = figureSprite(fig, 'S', PawnPose{});
+            if (img) {
+                const Json& F = figureData();
+                const Json& P = F["peoples"].contains(fig.people) ? F["peoples"][fig.people] : Json::object();
+                const Json& cv = F.value(P.value("cen", false) ? "canvas_cen" : "canvas", Json::object());
+                const float sy = float(P.value("t", Json::object()).value("sy", 1.0)) * (fig.child ? 0.62f : 1.0f);
+                const float headTop = float(cv.value("oy", 24)) + 66.0f - 44.0f * sy - 22.0f - 6.0f;
+                const float side = 44.0f;
+                img.src.x += float(cv.value("ox", 24)) + 24.0f - side / 2;
+                img.src.y += std::max(0.0f, headTop);
+                img.src.w = img.src.h = side;
+                blit(img, x, y, size, size);
+            }
             return;
         }
         blit(pawnSprite(pawnSpec(p), 'S', 0), x, y, size, size);
@@ -3065,22 +3212,28 @@ struct Window::Impl : Ctx {
 
     // LR-139: pawns2d.json is read at the start and again whenever it changes on disk, so
     // a new cut or a kind's ears show at once, without a rebuild or a restart.
-    std::filesystem::file_time_type partsTime{};
+    std::filesystem::file_time_type partsTime{}, figuresTime{};
     double partsChecked = 0;
     void loadPawnParts() {
         const auto path = root / "content/sprites_2d/pawns2d.json";
         std::error_code ec;
         partsTime = std::filesystem::last_write_time(path, ec);
         setPawnParts(parseOr(readText(path), Json::object()));
+        // LR-165: the 48x64 figures (figures2d.json): when there, people are drawn by them
+        const auto fp = root / "content/sprites_2d/figures2d.json";
+        figuresTime = std::filesystem::last_write_time(fp, ec);
+        setFigureData(parseOr(readText(fp), Json::object()));
     }
     void watchPawnParts() {
         if (nowMs() - partsChecked < 1000) return;
         partsChecked = nowMs();
-        std::error_code ec;
+        std::error_code ec, ec2;
         const auto t = std::filesystem::last_write_time(root / "content/sprites_2d/pawns2d.json", ec);
-        if (ec || t == partsTime) return;
+        const auto tf = std::filesystem::last_write_time(root / "content/sprites_2d/figures2d.json", ec2);
+        if ((ec || t == partsTime) && (ec2 || tf == figuresTime)) return;
         loadPawnParts();
-        atlas.clear();   // every sprite is drawn again on demand
+        atlas.clear();
+        bigAtlas.clear();   // every sprite is drawn again on demand
     }
 
     // --- one frame -------------------------------------------------------------------------
@@ -3101,6 +3254,7 @@ struct Window::Impl : Ctx {
                 if (e.type == SDL_EVENT_RENDER_DEVICE_RESET) {
                     for (auto& [k, c] : chunks) c.tex = nullptr;
                     atlas.clear();
+                    bigAtlas.clear();
                     atmos.release();
                     ui.shutdown();
                     ui.init(ren);
@@ -3290,6 +3444,7 @@ struct Window::Impl : Ctx {
         loadStatic();
         dataGen = lr::sim::data::generation();
         if (const char* s = SDL_getenv("LR_2D_SHOT")) shotPath = s;
+        if (const char* s = SDL_getenv("LR_2D_HIDE_NUDITY")) hideNudity = *s == '1';   // LR-165
         if (const char* s = SDL_getenv("LR_2D_SHOT_AFTER")) shotAfter = std::atof(s);
         if (const char* s = SDL_getenv("LR_2D_SELECT")) selectIndex = std::atoi(s);
         if (const char* s = SDL_getenv("LR_2D_ZOOM")) zoom = std::clamp(std::atoi(s), 1, 3);
@@ -3363,6 +3518,7 @@ struct Window::Impl : Ctx {
         for (auto& [k, c] : chunks)
             if (c.tex) SDL_DestroyTexture(c.tex);
         atlas.clear();
+        bigAtlas.clear();
         atmos.release();
         ui.shutdown();
         if (ren) SDL_DestroyRenderer(ren);

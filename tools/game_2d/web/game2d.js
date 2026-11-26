@@ -436,6 +436,62 @@
       ctx.drawImage(sp, sx - 8 * sc, sy - 15 * sc, 16 * sc, 16 * sc);
     } else ctx.drawImage(sp, sx - 8 * sc, sy - 8 * sc, 16 * sc, 16 * sc);
   }
+  // LR-165: the person as a 48x64 figure (figures2d.json), as window2d.cpp's figureSpec
+  function figureSpec(p) {
+    const F = typeof Figures !== 'undefined' && Figures.data();
+    if (!F || F.enabled === false || p.sp) return null;
+    let cul = p.cul || '';
+    if ((F.cultures_legacy || {})[cul]) cul = F.cultures_legacy[cul];
+    const race = p.race || '';
+    let people = (F.races || {})[race] || (race && F.peoples[race] ? race : '') || (F.cultures_people || {})[cul] || F.default_people || 'woodfolk';
+    const P = F.peoples[people];
+    if (!P) return null;
+    if (!cul || !(F.cultures || {})[cul]) cul = P.culture || '';
+    const id = Math.max(0, p.id || 0), age = p.age == null ? 30 : p.age;
+    const f = { people, culture: cul, outfit: null, fem: p.sex === 'f', child: age < (F.child_age || 13), v: hash(id, 21) % 1000,
+      hide: !!F.hide_nudity || !!window.LR_HIDE_NUDITY, kit: false };
+    if (age >= (F.grey_age || 55)) f.hairColour = F.grey || '#b0b0a8';
+    if (p.stone) f.skin = F.stone || '#8c8c86';
+    const lk = p.look || {};
+    if (lk.skin && !p.stone) f.skin = lk.skin;
+    if (lk.hair) f.hair = lk.hair;
+    if (lk.hair_colour) f.hairColour = lk.hair_colour;
+    if (lk.beard) f.beard = lk.beard;
+    const layers = new Set(); let torso = '';
+    for (const it of p.worn || []) {
+      const w = (MAP.wear || {})[it];
+      if (!w) continue;
+      layers.add(w.layer);
+      if (!torso && ['shirt', 'robe', 'mail', 'tabard'].includes(w.layer)) torso = it;
+    }
+    let slot = '';
+    for (const r of F.outfit_by_worn || []) { if ((r.has || []).some(h => layers.has(h))) { slot = r.slot; break; } }
+    if (slot) {
+      for (const a of F.rite_acts || []) if (p.ia && p.ia.indexOf(a) >= 0) slot = 'rite';
+      if (slot === 'daily' && hash(id, 23) % Math.max(1, F.festive_one_in || 4) === 0) slot = 'festive';
+      const cu = (F.cultures || {})[cul] || {};
+      f.outfit = cu[slot] || cu.daily || null;
+    }
+    if (torso && p.dye && p.dye[torso] && MAP.dyes) f.dye = MAP.dyes[p.dye[torso]];
+    for (const [k, t] of MAP.tools || []) if (p.held && p.held.indexOf(k) >= 0) { f.tool = t; break; }
+    f.kit = (F.kit_tools || []).includes(f.tool);
+    return f;
+  }
+  function drawFigure(p, v, sc, sx, sy, lying, side, lift) {
+    const f = figureSpec(p);
+    if (!f) return false;
+    const F = Figures.data(), P = F.peoples[f.people], cv = P.cen ? F.canvas_cen : F.canvas;
+    const pose = lying ? {} : Figures.pose(v.moving, v.walked || 0, p.st === 'Work', performance.now(), p.id);
+    const sd = lying ? 'S' : side, img = Figures.sprite(f, sd, pose);
+    const n = Math.max(cv.w, cv.h), u = sc * (F.world_px_per_art_px || 1 / 3) * (P.scale || 1) * (0.94 + (hash(p.id || 0, 11) % 13) * 0.01);
+    const ax = sd === 'W' ? cv.w - 1 - cv.anchor[0] : cv.anchor[0], ay = cv.anchor[1];
+    if (lying) {
+      ctx.save(); ctx.translate(sx, sy - 3 * sc); ctx.rotate(-Math.PI / 2);
+      if (!p.alive) ctx.globalAlpha = 0.6;
+      ctx.drawImage(img, -n * u / 2, -n * u / 2, n * u, n * u); ctx.restore();
+    } else ctx.drawImage(img, sx - (ax + 0.5) * u, sy - lift * sc - (ay + 0.5) * u, n * u, n * u);
+    return true;
+  }
   function drawPawn(p, v, sc) {
     const [sx, sy] = toScreen(v.x, v.y);
     if (glyphs) {
@@ -460,6 +516,7 @@
     let lift = 0, side = v.face;
     const on = !lying && (p.ride || (p.seat && p.seat.driver ? p.seat : null));
     if (on && drawTr(on.sp, trFace(p, v), trFrame(v), sx, sy, sc)) { lift = on.dy || 0; side = trFace(p, v); }
+    if (drawFigure(p, v, sc, sx, sy, lying, side, lift)) return;   // LR-165
     let spec = p._spec;
     if (!spec || p._specKey !== p._lookKey) { spec = p._spec = pawnSpec(p); p._specKey = p._lookKey; }
     // LR-139: the walk cycle, a blow at work, a breath and a blink standing
@@ -837,7 +894,9 @@
     getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null),
     getJson('/sprites/pawns2d.json').catch(() => null),
     getJson('/sprites/transport2d.json').catch(() => null),
-    getJson('/sprites/cliffs2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport, cliffs]) => {
+    getJson('/sprites/cliffs2d.json').catch(() => null),
+    getJson('/sprites/figures2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport, cliffs, figures]) => {
+    if (typeof Figures !== 'undefined') Figures.setData(figures);   // LR-165: the 48x64 people
     CLIFFS = cliffs || {};
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
     Pawns.setParts(pawnParts);   // LR-139: hair, beards, ears, builds as data
