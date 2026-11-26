@@ -2640,7 +2640,15 @@ struct Window::Impl : Ctx {
             const float mins = float(num(a, "minutes"));
             const std::string tm = mins >= 60 ? L("ui2d.hours", {{"n", std::to_string(int(std::lround(mins / 60)))}})
                                               : L("ui2d.minutes", {{"n", std::to_string(int(mins))}});
-            text(r.x + 6 * U, r.y + 3 * U, ui.fit(str(a, "name"), r.w - 90 * U, fs(14 * U)), can ? kText : kDim, 14 * U);
+            // LR-161: the act's picture (map2d.json acts, as over the head and on the quick bar)
+            float tx = r.x + 6 * U;
+            for (const auto& [re, sp] : actsRe)
+                if (std::regex_search(str(a, "id"), re)) {
+                    blit(sprite(sp), r.x + 4 * U, r.y + (rowH - 32 * U) / 2, 32 * U, 32 * U, can ? 1.0f : 0.45f);
+                    tx = r.x + 40 * U;
+                    break;
+                }
+            text(tx, r.y + 3 * U, ui.fit(str(a, "name"), r.right() - 84 * U - tx, fs(14 * U)), can ? kText : kDim, 14 * U);
             text(r.right() - textW(tm, 12 * U) - 30 * U, r.y + 4 * U, tm, kDim, 12 * U);
             // pin to the quick bar
             const ui::Rect pin{r.right() - 24 * U, r.y + 2 * U, 22 * U, 18 * U};
@@ -2650,7 +2658,7 @@ struct Window::Impl : Ctx {
             for (const auto& g : a.value("to_target", Json::array())) sub += (sub.empty() ? "→ " : ", → ") + g.get<std::string>();
             if (!can && !str(a, "why").empty()) sub = str(a, "why");
             for (const auto& g : a.value("legal", Json::array())) sub += (sub.empty() ? "" : " · ") + g.get<std::string>();
-            text(r.x + 6 * U, r.y + 21 * U, ui.fit(sub, r.w - 12 * U, fs(11 * U)), !can ? kBad : kDim, 11 * U);
+            text(tx, r.y + 21 * U, ui.fit(sub, r.right() - 6 * U - tx, fs(11 * U)), !can ? kBad : kDim, 11 * U);
             if (hit) {
                 if (pin.contains(in.mouseX, in.mouseY)) pinToBar(Slot{"act", str(a, "id"), menuTarget >= 0 && person(menuTarget) && str(*person(menuTarget), "sp").empty()});
                 else if (can) chosen = str(a, "id");

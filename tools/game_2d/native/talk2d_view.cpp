@@ -70,8 +70,20 @@ int slot(Ctx& c, const ui::Rect& r, const Json& g, int n, bool dim, std::uint64_
     c.frame(r.x, r.y, r.w, r.h, taste > 0 ? pal::good : taste < 0 ? pal::bad : pal::bronze.withAlpha(0.7f), taste != 0 ? 2 * U : U);
     const float a = dim ? 0.35f : 1.0f;
     const float ic = r.w * 0.5f;
-    const std::string sp = itemIcon(jstr(g, "item"));
-    if (sp.empty() || !c.spriteAt(sp, Json(), r.x + (r.w - ic) / 2, r.y + 4 * U, ic, a)) {
+    // LR-161: the thing's own picture (craft2d.json / resources.json items, as the sheet and the
+    // workshop draw it), else the coarse one by its name
+    const std::string item = jstr(g, "item");
+    std::string sp;
+    Json rc;
+    for (const Json* look : {&c.craftLook(), &c.resources()})
+        if (sp.empty() && look->is_object() && look->contains("items") && (*look)["items"].contains(item)) {
+            const Json& rec = (*look)["items"][item];
+            if (!rec.is_object()) continue;
+            sp = jstr(rec, "sprite");
+            rc = rec.value("recolour", Json());
+        }
+    if (sp.empty()) sp = itemIcon(item);
+    if (sp.empty() || !c.spriteAt(sp, rc, r.x + (r.w - ic) / 2, r.y + 4 * U, ic, a)) {
         const std::string name = jstr(g, "name").empty() ? jstr(g, "item") : jstr(g, "name");
         std::size_t at = 0;
         ui::nextCodepoint(name, at);

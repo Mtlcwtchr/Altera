@@ -16,6 +16,8 @@
   formulas   ai/formulas/*.json (LR-142): id, ссылки f.<id>, cfg.<константы>, $параметры, префиксы имён
              (attr./skill./trait./need./rel. сверяются с id контента), синтаксис, циклы
   templates  extends / use в списках ai/*.json и ai/templates (LR-142): известные id, нет циклов
+  icons      2D-клиент (LR-161): у каждого предмета, объекта, действия/цели, мысли, нужды, процесса и станции
+             мастерской, экрана есть картинка в sprites_2d, спрайты нарисованы (размер, палитра, перекраска)
   mods       папки модов (--mods, по умолчанию ../mods рядом с content/): JSON парсится, "_merge" ложится
              на существующий файл базы, id новых записей не пустые
 
@@ -618,6 +620,134 @@ def check_mods(L):
 CHECKS["formulas"] = check_formulas  # LR-142
 CHECKS["templates"] = check_templates  # LR-142
 CHECKS["mods"] = check_mods  # LR-142
+
+
+# ---------------------------------------------------------------- LR-161: icons of the 2D client
+SCREENS_2D = ("sheet", "dynasty", "colony", "build", "map", "workshop", "chronicle")
+
+
+def check_icons(L):
+    """LR-161: у каждого id контента (предметы, объекты, действия и цели, мысли, нужды, процессы и станции
+    мастерской, экраны) есть картинка в content/sprites_2d, и каждая картинка нарисована (сетка, палитра)."""
+    r = Report("icons")
+    root, ai = L["root"], L.get("ai")
+    sd = root / "sprites_2d"
+    if not ai or not (sd / "sprites.json").exists():
+        r.warn("нет ai/ или sprites_2d/, пропуск"); return r
+    J = lambda n: jload(sd / n) if (sd / n).exists() else {}
+    spr, craft, hud, mp, res, crops = J("sprites.json"), J("craft2d.json"), J("hud2d.json"), J("map2d.json"), J("resources.json"), J("crops2d.json")
+    pal = set(spr.get("pal", {}))
+    grids = {}
+    for src in (spr, craft, crops, hud):
+        grids.update(src.get("sprites", {}))
+    for name, g in grids.items():
+        size = 9 if name.startswith("hud_") else None
+        if not isinstance(g, list) or not g or len({len(x) for x in g}) != 1:
+            r.err(f"спрайт {name}: строки разной длины"); continue
+        if size and (len(g) != size or len(g[0]) != size):
+            r.err(f"спрайт {name}: не {size}x{size}")
+        if not size and not name.startswith(("tl_", "cr_")) and (len(g) != 16 or len(g[0]) != 16):
+            r.err(f"спрайт {name}: не 16x16 ({len(g[0])}x{len(g)})")
+        bad = {ch for row in g for ch in row if ch != "." and ch not in pal}
+        if bad: r.err(f"спрайт {name}: буквы вне палитры {sorted(bad)}")
+
+    def pic(where, rec):
+        """rec: a sprite name or {sprite, recolour}; True when it draws."""
+        sp = rec if isinstance(rec, str) else (rec.get("sprite") if isinstance(rec, dict) else None)
+        if not sp:
+            return False
+        if sp not in grids:
+            r.err(f"{where}: нет спрайта {sp}"); return True
+        rc = rec.get("recolour", {}) if isinstance(rec, dict) else {}
+        bad = [k for k, v in (rc or {}).items() if k not in pal or v not in pal]
+        if bad: r.err(f"{where}: перекраска вне палитры {bad}")
+        return True
+
+    def ids(pattern, key):
+        out = set()
+        for p in sorted(root.glob(pattern)):
+            try: d = jload(p)
+            except Exception: continue
+            v = d.get(key) if isinstance(d, dict) else None
+            if isinstance(v, list):
+                out |= {e["id"] for e in v if isinstance(e, dict) and isinstance(e.get("id"), str)}
+            elif isinstance(v, dict):
+                out |= {k for k in v if not k.startswith("_")}
+        return out
+    counts = {}
+    # things: sheet, workshop, trade draw craft2d.json items, then resources.json items
+    items = ids("ai/**/items.json", "items") | ids("creatures/_items.json", "items")
+    look = {**res.get("items", {}), **craft.get("items", {})}
+    miss = sorted(i for i in items if not pic(f"предмет {i}", look.get(i)))
+    for i in miss: r.err(f"предмет {i}: нет картинки (craft2d.json items / resources.json items), окно рисует букву")
+    counts["предметов"] = len(items)
+    # workshop forms: the form's own record, else its item's
+    fp = ai / "craft" / "forms.json"
+    if fp.exists():
+        for f in jload(fp).get("forms", []):
+            fid, item = f.get("id"), f.get("item")
+            if not (pic(f"форма {fid}", craft.get("forms", {}).get(fid)) or pic(f"форма {fid}", look.get(item)) or pic(f"форма {fid}", look.get(fid))):
+                r.err(f"форма {fid}: нет картинки ни у формы, ни у предмета {item}")
+    # objects on the map: map2d.json objects win over resources.json; hidden ones are not drawn
+    objs = ids("ai/**/objects.json", "objects")
+    olook = {**res.get("objects", {}), **mp.get("objects", {})}
+    hidden = set(mp.get("hidden", []))
+    for o in sorted(objs - hidden):
+        if not pic(f"объект {o}", olook.get(o)):
+            r.err(f"объект {o}: нет картинки (map2d.json objects), окно рисует запасную ({olook.get('_default', {}).get('sprite')})")
+        elif not (olook.get(o) or {}).get("glyph"):
+            r.warn(f"объект {o}: нет символа для символьного режима")
+    counts["объектов"] = len(objs)
+    # acts and goals: the first map2d.json acts rule (over the head, quick bar, RMB menu)
+    acts = []
+    for a in mp.get("acts", []):
+        try: acts.append((re.compile(a[0]), a[1]))
+        except Exception as e: r.err(f"acts: плохое выражение {a[0]!r}: {e}")
+        pic(f"acts {a[0]!r}", a[1])
+    inter = ids("ai/**/interactions.json", "interactions") | ids("creatures/_interactions.json", "interactions") | ids("ai/goals.json", "goals")
+    for i in sorted(inter):
+        if not any(rx.search(i) for rx, _ in acts):
+            r.err(f"действие {i}: ни одно правило map2d.json acts не даёт картинку")
+    counts["действий и целей"] = len(inter)
+    # thoughts: hud2d.json moodlets (otherwise a bare plus/minus)
+    mrx = []
+    for m in hud.get("moodlets", []):
+        try: mrx.append(re.compile(m[0]))
+        except Exception as e: r.err(f"moodlets: плохое выражение {m[0]!r}: {e}")
+        pic(f"moodlets {m[0]!r}", m[1])
+    mood = ids("ai/**/needs.json", "moodlets")
+    for m in sorted(mood):
+        if not any(rx.search(m) for rx in mrx):
+            r.err(f"мысль {m}: нет картинки (hud2d.json moodlets), окно рисует плюс/минус")
+    counts["мыслей"] = len(mood)
+    # needs: hud2d.json tiers
+    tier = {n[0]: n[1] for t in hud.get("tiers", []) for n in t.get("needs", []) if isinstance(n, list) and len(n) >= 2}
+    for t, n in tier.items(): pic(f"нужда {t}", n)
+    for n in sorted(ids("ai/**/needs.json", "needs")):
+        if n not in tier: r.err(f"нужда {n}: нет картинки в hud2d.json tiers (общая звезда)")
+    # the HUD's own: vitals, attributes, screens
+    for k, v in hud.get("vitals", {}).items(): pic(f"vitals {k}", v)
+    for a in hud.get("attrs", []): pic(f"attrs {a.get('id')}", a.get("icon"))
+    scr = hud.get("screens", {})
+    for k in SCREENS_2D:
+        if not pic(f"экран {k}", scr.get(k)): r.err(f"экран {k}: нет картинки (hud2d.json screens)")
+    taken = {v for v in tier.values()} | {a.get("icon") for a in hud.get("attrs", [])}
+    for k in SCREENS_2D:
+        if scr.get(k) in taken: r.warn(f"экран {k}: картинка {scr.get(k)} совпадает с нуждой/характеристикой")
+    # workshop: processes, actions, stations
+    for name, key, src in (("процесс", "processes", "process_icons"), ("станция", "stations", "stations")):
+        p = ai / "craft" / f"{key}.json"
+        if not p.exists(): continue
+        d = jload(p).get(key, [])
+        for e in (d if isinstance(d, list) else []):
+            if isinstance(e, dict) and not pic(f"{name} {e.get('id')}", craft.get(src, {}).get(e.get("id"))):
+                r.err(f"{name} {e.get('id')}: нет картинки (craft2d.json {src})")
+    for k, v in craft.get("action_icons", {}).items(): pic(f"action_icons {k}", v)
+    r.info = ", ".join(f"{v} {k}" for k, v in counts.items()) + f", спрайтов {len(grids)}"
+    return r
+
+
+CHECKS["icons"] = check_icons  # LR-161
 
 
 def main():
