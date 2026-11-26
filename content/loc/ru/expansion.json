@@ -54,7 +54,7 @@
  "condition.free.name": "Вольный",
  "condition.tenant_free.name": "Вольный держатель",
  "condition.villein.name": "Зависимый (вилан)",
- "culture.fantasy_european.name": "Фэнтези-европейцы (по умолчанию)",
+ "culture.fantasy_european.name": "людская (европейская)",
  "estate.burgher.desc": "Купцы и мастера цехов; городские вольности.",
  "estate.burgher.name": "Горожане",
  "estate.clergy.desc": "Священники, монахи, монахини; грамота и обет.",

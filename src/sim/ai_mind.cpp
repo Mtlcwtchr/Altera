@@ -18,6 +18,7 @@
 #include "sim/trade.hpp"
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
+#include "sim/worldmap.hpp"
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/wounds.hpp"
@@ -729,6 +730,7 @@ void installAi(World& w) {
     installGear(w);
     installTrade(w);
     installRealm(w);
+    installWorldMap(w);   // LR-153: the world map (fealty at the start, battlefields)
     installFields(w);
     installMagic(w);
     installMagicSociety(w);

@@ -341,6 +341,7 @@ add_library(lr_sim STATIC
         src/sim/stats.cpp
         src/sim/act_check.cpp
         src/sim/realm.cpp
+        src/sim/worldmap.cpp
         src/sim/memory_budget.cpp
         src/sim/dialogue_memory.cpp
         src/sim/dialogue_corpus.cpp
@@ -431,6 +432,7 @@ target_link_libraries(lr_client2d PUBLIC lr_sim PRIVATE asr_warnings)
 target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
+target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
 target_sources(lr_client2d PRIVATE src/client2d/lobby2d.cpp)  # LR-160: the players of a multiplayer game
 add_executable(lr_game_2d tools/game_2d/main.cpp tools/game_2d/net2d.cpp)   # LR-160: net2d - the client side of multiplayer
 target_link_libraries(lr_game_2d PRIVATE lr_client2d asr_warnings)
@@ -573,6 +575,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
     target_sources(lr_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp tools/game_2d/native/dynasty2d_view.cpp
+            tools/game_2d/native/worldmap2d_view.cpp
             tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
             tools/game_2d/native/create2d_view.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
@@ -890,6 +893,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
             tests/test_lr_sim_relief_firefight.cpp)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
     target_sources(lr_sim_tests PRIVATE tests/test_lr_need_tiers.cpp)       # LR-140

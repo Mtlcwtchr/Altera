@@ -52,6 +52,8 @@ UI крафта по выбору пользователя (`gdd/ui/CRAFT_UI_VAR
 
 **Иконки (LR-161):** у каждого предмета, объекта, действия/цели, мысли, нужды, процесса и станции мастерской и экрана есть пиксельная картинка в `content/sprites_2d`. Новые спрайты 16×16 — `tools/content_gen/icons_2d_src.py` (в `sprites.json` их вливает `gen_sprites_2d.py`), какой id чем рисуется — `tools/content_gen/gen_icons_2d.py` (пишет `craft2d.json items`, `map2d.json objects/acts`), ресурсы пака — `SPRITE_OF_ID` в `gen_resources.py` (`--sprites` переписывает только `resources.json`), значки HUD — `gen_hud2d.py`. Торг берёт картинку предмета из тех же данных, ПКМ-меню рисует иконку действия. Проверка: `python3 tools/validate_content.py icons` (новый id без картинки — ошибка).
 
+**Карта мира (LR-153, клавиша M):** окно `native/worldmap2d_view.cpp` по `/api/worldmap` (`src/client2d/worldmap2d`): рельеф области вокруг поселений realm-слоя (сим `src/sim/worldmap`, правила `content/ai/worldmap.json`: шум высоты/влажности, притяжение поселений по культуре и тегам, реки, точки интереса, дороги, вассалитет при закладке → королевства), границы держав, войны, поля битв, «вы здесь». Перетаскивание — сдвиг, колесо — масштаб, клик — сведения справа; вкладки «Державы» и «Места». Вид: `content/sprites_2d/worldmap2d.json` (генератор `python3 tools/content_gen/gen_worldmap2d.py`). Кадр: `LR_2D_OPEN=map`, `LR_2D_TAB=places|near`. Тест: `lr_sim_tests worldmap` (`LR_WORLDMAP_DUMP=файл` пишет JSON карты).
+
 ## Сетевая игра, кроссплей (LR-160)
 
 Игра — сервер: мир шагает сам, есть в нём игроки или нет. Запуск `lr_game_2d` открывает своё окно (игрок 1, хозяин) и поднимает сервер на `0.0.0.0:<--port>` (по умолчанию 8766), так что к игре заходят с других компьютеров сети:
