@@ -40,6 +40,10 @@ double read(const Character& c, const Character* other, const std::string& n, bo
     }
     if (n == "body.health") return c.body.health;
     if (n == "body.fatigue") return c.body.fatigue;
+    // LR-152: blood 0..1 (combat units over 100), open wounds, the stamina's share of its cap
+    if (n == "body.blood") return c.body.blood / 100.0;
+    if (n == "body.wounds") return static_cast<double>(c.wounds.size());
+    if (n == "body.stamina") return c.body.staminaMax > 0 ? std::max(0.0, c.body.stamina) / c.body.staminaMax : 1.0;
     known = false;
     return 0.0;
 }
@@ -113,7 +117,8 @@ bool charExprNameKnown(const Content& c, const std::string& name0, std::string* 
         if (c.expansion.attributes.empty() || has(c.expansion.attributes, id)) return true;
         return bad("attribute '" + id + "'");
     }
-    if (n == "body.health" || n == "body.fatigue") return true;
+    if (n == "body.health" || n == "body.fatigue" || n == "body.blood" || n == "body.wounds" || n == "body.stamina")
+        return true;
     if (n.rfind("body.", 0) == 0) return bad("body value");
     if (n.rfind("rep.", 0) == 0 || n == "age" || n.rfind("arg.", 0) == 0) return true;
     if (why) why->clear();

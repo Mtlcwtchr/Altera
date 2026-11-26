@@ -71,6 +71,10 @@ struct CombatResolution {
     double actorWeaponWear = 0.0, targetWeaponWear = 0.0;
     bool actorWeaponBroke = false, targetWeaponBroke = false;
     std::string mode = "full"; // full (round loop) | stat (LOD)
+    // LR-152: the stamina each side has left (combat units = Body::stamina), and the
+    // round events (combat::eventLine) when a client records fights (World::client)
+    double actorStamina = -1.0, targetStamina = -1.0;
+    std::vector<std::string> eventLines;
 };
 
 combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const std::string& skillKey);

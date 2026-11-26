@@ -94,6 +94,8 @@ struct CultureDef {
     // kind -> 0..1 (1 = as one of their own, 0 = a stranger; absent = `welcomeOther`).
     std::map<std::string, double> welcome;
     double welcomeOther = 0.5;
+    // LR-155: the whole file (faith, values, traditions, rites, food, desc: sim/culture.hpp reads them)
+    Json data = Json::object();
 };
 
 struct SpeciesCatalog {

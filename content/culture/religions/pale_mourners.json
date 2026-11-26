@@ -1,0 +1,19 @@
+{
+ "id": "pale_mourners",
+ "_doc": "LR-155: Бледные Скорбящие — тайный культ тех, кто не отпустил умерших (путь из горя, magic/coping.json). Не культура по умолчанию: зовёт тех, кто взялся за запретное (drawn_by). Другие веры считают его ересью (heresy).",
+ "kind": "cult",
+ "heresy": true,
+ "deities": [{"id": "pale_lady", "domain": "death"}, {"id": "unlit_door", "domain": "death"}],
+ "values": {"kinship": 0.6, "freedom": 0.2, "order": -0.4, "tradition": -0.3},
+ "rites": {"necromancy": 0.08, "rite": 0.04, "prayed": 0.02, "buried": 0.03},
+ "sins": {"executed": 0.02},
+ "holy_days": [{"id": "night_of_names", "day": 330}],
+ "burial": "entomb",
+ "clergy": "mourner",
+ "sacred": [],
+ "magic": {"blessed": ["death", "blood"], "forbidden": []},
+ "zeal": 0.25,
+ "tolerance": 0.2,
+ "goals": {"pray": 0.05},
+ "drawn_by": {"necromancy": 0.35}
+}

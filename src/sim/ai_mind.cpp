@@ -14,13 +14,16 @@
 #include "sim/captivity.hpp"
 #include "sim/consequences.hpp"
 #include "sim/gear.hpp"
+#include "sim/stamina.hpp"
 #include "sim/social_chain.hpp"
 #include "sim/trade.hpp"
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
 #include "sim/worldmap.hpp"
+#include "sim/caravan.hpp"
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
+#include "sim/culture.hpp"
 #include "sim/wounds.hpp"
 #include "sim/firefight.hpp"
 #include "sim/world_fields.hpp"
@@ -267,6 +270,8 @@ bool tickFsm(World& w, Character& c) {
             f.dest = creature->pos;
         }
     }
+    // LR-152: a body spent to the bottom stands and catches its breath (staminaTick)
+    if (c.body.stalledAt == w.now() && !d->continuous) return false;
     --f.timer;
     if (d->continuous) {
         applyEffects(w, c, *d, target, creature);
@@ -704,6 +709,7 @@ void installAi(World& w) {
             realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
             magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
             societyDaily(world); // AL-118: laws and witch trials, guilds, magic at work
+            cultureDaily(world); // LR-155: bonds to culture, piety and conversion, the settlements' traditions
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
@@ -713,6 +719,7 @@ void installAi(World& w) {
         undeadTick(world);    // AL-118: mindless undead follow their master, the unbound go for the living
         tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
         dressTick(world);     // AL-109: people put on what they carry and can wear
+        staminaTick(world);   // LR-152: every act spends stamina, it comes back fast; the cap falls with fatigue
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
             if (!c.body.alive) continue;
@@ -736,9 +743,11 @@ void installAi(World& w) {
     installTrade(w);
     installRealm(w);
     installWorldMap(w);   // LR-153: the world map (fealty at the start, battlefields)
+    installCaravans(w); // LR-154: caravans, peddlers, supply trains
     installFields(w);
     installMagic(w);
     installMagicSociety(w);
+    installCulture(w);
 }
 
 } // namespace lr::sim

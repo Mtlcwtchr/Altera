@@ -221,6 +221,7 @@ SpeciesCatalog parseSpecies(const std::vector<Json>& races, const std::vector<Js
         }
         d.welcome = dmap(j, "welcome");
         d.welcomeOther = num(j, "welcome_other", d.welcomeOther);
+        d.data = j;
         if (!d.id.empty()) c.cultures[d.id] = d;
     }
     c.defaultRace = settle.value("default_race", c.defaultRace);

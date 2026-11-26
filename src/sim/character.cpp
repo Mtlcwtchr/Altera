@@ -133,6 +133,10 @@ void to_json(Json& j, const Character& c) {
     if (!c.skillDay.empty()) j["skill_day"] = c.skillDay;
     if (!c.backstory.empty()) j["backstory"] = c.backstory;
     if (!c.look.empty()) j["look"] = c.look;
+    if (!c.culture.empty()) j["culture"] = c.culture;
+    if (!c.faith.empty()) j["faith"] = c.faith;
+    if (c.cultureBond >= 0) j["culture_bond"] = c.cultureBond;
+    if (c.piety >= 0) j["piety"] = c.piety;
     if (!c.occupation.empty()) j["occupation"] = c.occupation;
     if (c.deal.is_object() && !c.deal.empty()) j["deal"] = c.deal;
     if (!c.worn.empty()) j["worn"] = c.worn;
@@ -159,6 +163,10 @@ void from_json(const Json& j, Character& c) {
     c.skillDay = j.value("skill_day", std::map<std::string, int>{});
     c.backstory = j.value("backstory", std::string());
     c.look = j.value("look", std::map<std::string, std::string>{});
+    c.culture = j.value("culture", std::string());
+    c.faith = j.value("faith", std::string());
+    c.cultureBond = j.value("culture_bond", -1.0);
+    c.piety = j.value("piety", -1.0);
     c.occupation = j.value("occupation", std::string());
     c.deal = j.value("deal", Json::object());
     c.worn = j.value("worn", std::map<std::string, std::string>{});

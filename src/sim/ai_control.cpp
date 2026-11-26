@@ -14,6 +14,7 @@
 #include <algorithm>
 #include <stdexcept>
 
+#include "sim/stamina.hpp"
 #include "sim/charcreate.hpp"
 #include "sim/backstory.hpp"
 #include "sim/ai.hpp"
@@ -408,12 +409,15 @@ bool handle(World& w, Command& cmd) {
         }
         c->pos = to;
         c->controller.idleSince = w.now();
+        // LR-152: walking costs a little stamina, running much; a spent body cannot run
+        const bool ran = staminaSteer(w, *c, dist(was, c->pos), cmd.args.value("dt", 0.1),
+                                      cmd.args.value("run", false));
         pullFollowers(w, *c); // AL-43: whoever was invited along keeps a step behind
         // Walking tires, running more, uphill and under a load more still (gear.json).
         if (const GearRules* R = gearRules(w.content())) {
             const double km = std::min(dist(was, c->pos), 60.0) / 1000.0;
             const double climb = std::max(0.0, cmd.args.value("climb", 0.0));
-            const double tire = (km * (cmd.args.value("run", false) ? R->runPerKm : R->walkPerKm) +
+            const double tire = (km * (cmd.args.value("run", false) && ran ? R->runPerKm : R->walkPerKm) +
                                  std::min(climb, 30.0) / 100.0 * R->climbPer100m) *
                                 loadFatigueMult(*R, *c) * transportTireMult(w, *c); // LR-159: the beast does the walking
             c->body.fatigue = std::clamp(c->body.fatigue + tire, 0.0, 1.0);

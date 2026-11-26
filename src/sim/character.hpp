@@ -26,6 +26,14 @@ struct Body {
     // AL-114: the kind's life (sim/species.hpp setRace): when it grows up and old.
     int adultYears = 14, elderYears = 60;
     bool petrified = false; // a troll asleep as stone in the sun (species.cpp)
+    // LR-152 (sim/stamina.hpp): the strength for actions right now, spent by every act,
+    // by running and by blows, and back within seconds; the cap falls with fatigue,
+    // lack of sleep, hunger, thirst, wounds. Combat units (combat_config stamina.max).
+    // Not saved: a loaded body starts rested (stamina < 0 = full at the next tick).
+    double stamina = -1.0, staminaMax = 0.0;
+    bool winded = false; // spent to the bottom: no run until back above stamina.json move.run_min_share
+    Tick stalledAt = -1; // the tick a spent body's act stood still while it caught its breath
+    Tick steeredAt = -1; // the last tick the player walked this body by hand (its stamina runs in real seconds then)
     std::string stage() const {
         const int years = ageDays / kDaysPerYear;
         return years < adultYears ? "child" : (years >= elderYears ? "elder" : "adult");
@@ -338,6 +346,11 @@ struct Character {
     // AL-136: how the person looks, as chosen at the character's creation (body, skin, hair,
     // hair_colour, beard, cloth; character_creation.json look). Empty = the client's own pick.
     std::map<std::string, std::string> look;
+    // LR-155 (sim/culture.hpp): the person's culture (content/species/cultures) and the bond
+    // to it 0..1, the faith (content/culture/religions) and the piety 0..1. Empty / < 0:
+    // not given yet (cultureOf/faithOf derive it; the daily pass stores it).
+    std::string culture, faith;
+    double cultureBond = -1.0, piety = -1.0;
     // AL-75 (sim/trade.hpp): the trade role (trader | tavernkeeper, "" = none) and the
     // deal state: {intent: the offer the next trade act makes, counter: the counter
     // this person made and waits an answer to, rounds: partner -> ticks of recent offers}.

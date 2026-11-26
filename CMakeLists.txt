@@ -338,8 +338,11 @@ add_library(lr_sim STATIC
         src/sim/village_life.cpp
         src/sim/magic.cpp
         src/sim/magic_society.cpp
+        src/sim/culture.cpp
         src/sim/species.cpp
         src/sim/stats.cpp
+        src/sim/stamina.cpp
+        src/sim/combat_show.cpp
         src/sim/act_check.cpp
         src/sim/realm.cpp
         src/sim/worldmap.cpp
@@ -388,7 +391,8 @@ add_library(lr_sim STATIC
         src/sim/craft_sim.cpp
         src/sim/alchemy.cpp
         src/sim/building.cpp
-        src/sim/need_tiers.cpp)
+        src/sim/need_tiers.cpp
+        src/sim/caravan.cpp)
 target_include_directories(lr_sim PUBLIC src)
 target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat PRIVATE asr_warnings)
 
@@ -431,6 +435,7 @@ add_library(lr_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp s
 target_include_directories(lr_client2d PUBLIC src)
 target_link_libraries(lr_client2d PUBLIC lr_sim PRIVATE asr_warnings)
 target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
+target_sources(lr_client2d PRIVATE src/client2d/culture2d.cpp) # LR-155: culture and faith, inspect
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
@@ -578,7 +583,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp tools/game_2d/native/dynasty2d_view.cpp
             tools/game_2d/native/worldmap2d_view.cpp
             tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
-            tools/game_2d/native/create2d_view.cpp
+            tools/game_2d/native/create2d_view.cpp tools/game_2d/native/fight2d.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
     target_include_directories(lr_game_2d PRIVATE tools/game_2d src ${CMAKE_SOURCE_DIR}/third_party)
     target_link_libraries(lr_game_2d PRIVATE SDL3::SDL3-static SDL3_image::SDL3_image-static)
@@ -869,7 +874,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_loc.cpp tests/test_lr_sim_loc_gen.cpp tests/test_lr_sim_content.cpp
             tests/test_lr_sim_farming.cpp tests/test_lr_sim_crafts.cpp
             tests/test_lr_sim_combat.cpp tests/test_lr_sim_captivity.cpp
-            tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_stats.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
+            tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_stats.cpp tests/test_lr_sim_stamina.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
             tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_qa_al120.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
             tests/test_lr_sim_gear.cpp tests/test_lr_sim_transport.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
@@ -880,8 +885,10 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_speech_feed.cpp tests/test_lr_sim_news.cpp tests/test_lr_sim_memory_talk.cpp
             tests/test_lr_sim_village_life.cpp tests/test_lr_sim_memory_budget.cpp
             tests/test_lr_sim_realm.cpp
+            tests/test_lr_sim_caravan.cpp
             tests/test_lr_sim_magic.cpp
             tests/test_lr_sim_magic_society.cpp
+            tests/test_lr_sim_culture.cpp
             tests/test_lr_sim_ecology.cpp
             tests/test_lr_sim_social.cpp
             tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp
@@ -894,6 +901,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
             tests/test_lr_sim_relief_firefight.cpp)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_culture.cpp) # LR-155
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
