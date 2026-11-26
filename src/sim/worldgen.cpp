@@ -412,7 +412,7 @@ World makeTestWorld(const Content& content, const Json& cfg, std::uint64_t seedO
             }
     };
     // LR-168: a source of some belts only (olive groves, date palms) grows where the map's culture lives
-    const std::string mapBelt = beltOfCulture(content, mapCulture);
+    const std::string mapBelt = regionalBelt(content, mapCulture);
     auto beltOk = [&](const ObjectDef& def) {
         return def.belts.empty() || std::find(def.belts.begin(), def.belts.end(), mapBelt) != def.belts.end();
     };

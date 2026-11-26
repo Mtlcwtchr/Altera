@@ -48,10 +48,10 @@ Character fresh(World& w, const std::string& culture, char sex, const std::strin
 
 TEST(lr_sim_regional_belt_of_culture) {
     const Content& c = regContent();
-    CHECK_EQ(beltOfCulture(c, "polis_hellene"), std::string("mediterranean"));
-    CHECK_EQ(beltOfCulture(c, "north_folk"), std::string("north"));
-    CHECK_EQ(beltOfCulture(c, "steppe_rider"), std::string("steppe"));
-    CHECK_EQ(beltOfCulture(c, "no_such_culture"), std::string());
+    CHECK_EQ(regionalBelt(c, "polis_hellene"), std::string("mediterranean"));
+    CHECK_EQ(regionalBelt(c, "north_folk"), std::string("north"));
+    CHECK_EQ(regionalBelt(c, "steppe_rider"), std::string("steppe"));
+    CHECK_EQ(regionalBelt(c, "no_such_culture"), std::string());
 }
 
 TEST(lr_sim_regional_clothes_and_crafts_of_the_belt) {

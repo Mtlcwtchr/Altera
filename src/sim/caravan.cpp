@@ -171,7 +171,7 @@ struct PolCtx : ExprCtx {
     const Rules& r;
     double deposit = 0.0;
     std::string belt;   // LR-168: the belt of the settlement's culture (regional.hpp)
-    PolCtx(const Content& c, const Settlement& p_, const Rules& r_) : p(p_), r(r_), belt(beltOfCulture(c, p_.culture)) {}
+    PolCtx(const Content& c, const Settlement& p_, const Rules& r_) : p(p_), r(r_), belt(regionalBelt(c, p_.culture)) {}
     double var(const std::string& n) const override {
         const double heads = std::max(1.0, p.pop);
         if (n == "pop") return p.pop;

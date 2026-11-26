@@ -38,7 +38,7 @@ struct RegionalRules {
 const RegionalRules& regionalRules(const Content& c);
 
 // The belt of a culture id: the culture file's `belt`, else regions.json cultures.<id>.belt, else "".
-std::string beltOfCulture(const Content& c, const std::string& culture);
+std::string regionalBelt(const Content& c, const std::string& culture);
 
 // The plain clothes of this person (`who` = m, f or child): the culture's own, else its belt's;
 // nullptr = none named (gear.json base_clothes apply).

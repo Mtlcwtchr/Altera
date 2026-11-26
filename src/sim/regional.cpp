@@ -60,7 +60,7 @@ const RegionalRules& regionalRules(const Content& c) {
     return *cache.emplace(key, std::move(r)).first->second;
 }
 
-std::string beltOfCulture(const Content& c, const std::string& culture) {
+std::string regionalBelt(const Content& c, const std::string& culture) {
     if (culture.empty()) return {};
     if (auto it = c.peoples.cultures.find(culture); it != c.peoples.cultures.end()) {
         const Json& d = it->second.data;
@@ -83,7 +83,7 @@ const std::map<std::string, int>* regionalClothes(const World& w, const Characte
         return s == it->second.clothes.end() ? nullptr : &s->second;
     };
     if (const auto* s = pick(r.cultures, culture)) return s;
-    return pick(r.belts, beltOfCulture(w.content(), culture));
+    return pick(r.belts, regionalBelt(w.content(), culture));
 }
 
 bool regionalSkipsSlot(const Content& c, const Character& ch, const std::string& slot) {
@@ -96,7 +96,7 @@ void giveRegionalKnowledge(const World& w, Character& c) {
     const RegionalRules& r = regionalRules(w.content());
     if (!r.loaded) return;
     const std::string culture = c.culture.empty() ? cultureOf(w, c) : c.culture;
-    if (auto it = r.belts.find(beltOfCulture(w.content(), culture)); it != r.belts.end())
+    if (auto it = r.belts.find(regionalBelt(w.content(), culture)); it != r.belts.end())
         for (const auto& k : it->second.knowledge) c.knowledge.insert(k);
     if (auto it = r.cultures.find(culture); it != r.cultures.end())
         for (const auto& k : it->second.knowledge) c.knowledge.insert(k);
