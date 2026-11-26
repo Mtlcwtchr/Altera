@@ -322,6 +322,7 @@ add_library(lr_sim STATIC
         src/sim/backstory.cpp
         src/sim/charcreate.cpp
         src/sim/trade.cpp
+        src/sim/transport.cpp
         src/sim/collide.cpp
         src/sim/act_info.cpp
         src/sim/consequences.cpp
@@ -865,7 +866,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_stats.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
             tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
-            tests/test_lr_sim_gear.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
+            tests/test_lr_sim_gear.cpp tests/test_lr_sim_transport.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
             tests/test_lr_sim_consequences.cpp tests/test_lr_sim_dialogue_gen.cpp
             tests/test_lr_sim_dialogue_rules.cpp
             tests/test_lr_sim_rumor_noise.cpp tests/test_lr_sim_rumor_spread.cpp tests/test_lr_sim_dialogue_say.cpp

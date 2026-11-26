@@ -76,7 +76,7 @@
   "reed_bed": {"sprite": "it_wheat", "recolour": {"y": "T", "T": "D"}, "glyph": "|", "colour": "T"},
   "_default": {"sprite": "it_herb", "glyph": "?", "colour": "w"}
  },
- "hidden": ["house", "water", "field", "garden", "game_trail", "fish_pool", "riverbank", "dye_meadow", "build_site"],
+ "hidden": ["house", "water", "field", "garden", "game_trail", "fish_pool", "riverbank", "dye_meadow", "build_site", "handcart", "cart", "wagon", "coach", "sled"],
  "thin": {"tree": 1, "deadwood": 3, "wild_grass": 2, "wild_greens_patch": 2},
  "wear": {
   "tunic": {"layer": "shirt", "layer_f": "robe", "colour": "family"},

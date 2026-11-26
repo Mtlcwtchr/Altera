@@ -29,6 +29,7 @@
 #include "sim/elementals.hpp"
 #include "sim/combat_bridge.hpp"
 #include "sim/group_combat.hpp"
+#include "sim/transport.hpp"
 
 namespace lr::sim {
 
@@ -466,6 +467,7 @@ void animalThink(World& w, Character& a, const AnimalTick& tick) {
     double& hunger = a.needs["hunger"];
     hunger = clamp01(hunger - s.hungerPerDay / static_cast<double>(kTicksPerDay));
     if (s.speedMPerTick <= 0.0) return; // fish: no movement drivers
+    if (s.domestic && harnessed(w, a.id)) return; // LR-159: ridden or in a team, it goes where it is led
     if (s.domestic) return livestockThink(w, a, s);
     // AL-115: beasts run from fire, heat and poison in the cells' fields
     if (Vec2 away; !isElemental(w, a.species) && fieldDanger(w, a.pos, 60.0, &away)) {

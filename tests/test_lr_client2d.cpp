@@ -12,6 +12,7 @@
 #include "sim/ai.hpp"
 #include "sim/building.hpp"
 #include "sim/worldgen.hpp"
+#include "sim/transport.hpp"
 
 using namespace lr::sim;
 namespace c2 = lr::client2d;
@@ -162,7 +163,9 @@ TEST(lr_client2d_json) {
     for (char ch : j["ground"].get<std::string>()) CHECK(ch >= 'a' && ch < char('a' + int(c2::Ground::count)));
     c2::ViewText t;   // no loc: ids for names
     const Json people = c2::peopleJson(w, t);
-    CHECK_EQ(people.size(), w.characters().size());
+    std::size_t vehicles = 0;   // LR-159: vehicles go in the list as beasts do (veh: true)
+    for (const auto& [id, o] : w.objects()) vehicles += lr::sim::isVehicle(w, o) ? 1 : 0;
+    CHECK_EQ(people.size(), w.characters().size() + vehicles);
     int humans = 0;
     for (const auto& p : people) {
         CHECK(p.contains("x") && p.contains("y") && p.contains("ia"));
