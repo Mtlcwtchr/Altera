@@ -123,7 +123,7 @@ def main():
         "moodlets": [
             # LR-161: potions, magic, babies, the pipe (before the broad rules below)
             ["holy_day|kept_custom", "hud_shrine"],   # LR-162: faith and customs
-            ["potion_poison", "hud_skull"], ["potion|draught", "hud_potion"], ["healed_by_magic|spellbound|enchant", "hud_spark"],
+            ["potion_poison", "hud_skull"], ["potion|draught", "hud_potion"], ["healed_by_magic|spellbound|enchant|lured", "hud_spark"],
             ["warded|ward", "hud_shield"], ["pregnant|new_parent|newborn", "hud_baby"], ["pipe|smoke", "hud_pipe"],
             ["bored", "hud_meh"], ["hope", "hud_sun"], ["obsess", "hud_heartbreak"], ["cosy|light", "hud_flame"],
             ["ate|meal|bread|feast|food|catch", "hud_bread"], ["hungry|starving|fasted", "hud_bread"],
@@ -133,7 +133,7 @@ def main():
             ["kiss|love|wedding|flatter", "hud_kiss"], ["reject|grief|griev|heart", "hud_heartbreak"],
             ["injur|maul|stung|sick|ill_|fever|wound|sore", "hud_wound"], ["dead|cursed|dread|dark", "hud_skull"],
             ["sang|danc|fun|amus|game|contest|star|amazed|moved", "hud_note"], ["made|work|new_clothes|proud", "hud_hammer"],
-            ["home", "hud_house"], ["help|begged|refused", "hud_hand"], ["guilty|caught|insult|scold|embarrass|irritat|alarm|fright", "hud_frown"],
+            ["home", "hud_house"], ["help|begged|refused", "hud_hand"], ["guilty|caught|insult|scold|embarrass|irritat|alarm|fright|lost_in", "hud_frown"],
         ],
         "moodlet_good": "hud_plus",
         "moodlet_bad": "hud_minus",

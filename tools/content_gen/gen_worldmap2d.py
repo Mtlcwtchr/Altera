@@ -388,7 +388,7 @@ out = {
  "poi_icons": {
   "ruins": "wm_ruins", "watchtower": "wm_tower", "cave": "wm_cave", "mine": "wm_mine", "barrow": "wm_barrow",
   "standing_stones": "wm_stones", "shrine": "wm_shrine", "beast_lair": "wm_beast", "witch_hut": "wm_witch",
-  "old_battlefield": "wm_oldbattle", "spring": "wm_spring", "battlefield": "wm_battle"
+  "old_battlefield": "wm_oldbattle", "spring": "wm_spring", "battlefield": "wm_battle", "siren_rocks": "wm_cave", "gorgon_cave": "wm_cave", "hydra_fen": "wm_beast", "chimera_den": "wm_beast", "lion_den": "wm_beast", "shade_field": "wm_oldbattle", "leshy_thicket": "wm_witch", "rusalka_pool": "wm_spring", "upyr_graveyard": "wm_barrow", "gorynych_mountain": "wm_beast", "kelpie_loch": "wm_spring", "draugr_barrow": "wm_barrow", "albasty_ravine": "wm_beast", "ancestor_kurgan": "wm_barrow", "aydahar_hollow": "wm_beast", "sealed_tomb": "wm_barrow", "jackal_shrine": "wm_shrine", "harpy_crags": "wm_beast", "griffin_eyrie": "wm_beast"
  },
  "caravan_icons": {"peddler": "wm_peddler", "caravan": "wm_caravan", "supply_train": "wm_train"},
  "caravan_route": "#e0c890",

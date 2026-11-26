@@ -1,0 +1,73 @@
+{
+ "id": "kurgan_spirit",
+ "habitat": "land",
+ "biomes": [
+  "steppe",
+  "meadow"
+ ],
+ "per_km2": 0.001,
+ "group": [
+  1,
+  2
+ ],
+ "max_group": 2,
+ "speed_m_per_tick": 60,
+ "notice_m": 100,
+ "flee_m": 0,
+ "diet": "graze",
+ "prey": [],
+ "aggression": 0.0,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.7,
+ "tags": [
+  "monster",
+  "undead",
+  "ancestor"
+ ],
+ "loot": {
+  "barrow_gold": 1
+ },
+ "mythic": {
+  "belts": [
+   "steppe"
+  ],
+  "undead": true,
+  "active": "night",
+  "attack_min_group": 1,
+  "guard_m": 100,
+  "rise_days": 10,
+  "laid_by": "laid_to_rest",
+  "combat": {
+   "weapon": "grave_grip",
+   "skill": 0.5
+  },
+  "lair": {
+   "poi": "ancestor_kurgan",
+   "terrain": [
+    "plains",
+    "hills"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 30
+  }
+ },
+ "_doc": "LR-170: дух кургана, предок-хранитель степи. Не уходит от могилы, ночью бьёт того, кто подошёл к кургану. Сам не охотится."
+}

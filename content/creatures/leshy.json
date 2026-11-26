@@ -1,0 +1,84 @@
+{
+ "id": "leshy",
+ "habitat": "land",
+ "biomes": [
+  "forest"
+ ],
+ "per_km2": 0.002,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "speed_m_per_tick": 90,
+ "notice_m": 200,
+ "flee_m": 200,
+ "diet": "graze",
+ "prey": [],
+ "aggression": 0.05,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.0,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.8,
+ "tags": [
+  "monster",
+  "spirit",
+  "forest_master"
+ ],
+ "loot": {
+  "leshy_bark": 1
+ },
+ "mythic": {
+  "belts": [
+   "forest"
+  ],
+  "attack_min_group": 1,
+  "lure": {
+   "radius_m": 220,
+   "pull_m": 30,
+   "chance": 0.08,
+   "resist": 0.8,
+   "strike": false
+  },
+  "combat": {
+   "weapon": "branch_lash",
+   "skill": 0.55,
+   "armor": [
+    "tough_hide"
+   ]
+  },
+  "lair": {
+   "poi": "leshy_thicket",
+   "terrain": [
+    "forest"
+   ],
+   "n": [
+    1,
+    1
+   ],
+   "near_km": 25,
+   "raid": {
+    "per_year": 0.5,
+    "km": 12,
+    "wealth_loss": [
+     0.01,
+     0.03
+    ]
+   }
+  }
+ },
+ "_doc": "LR-170: леший, хозяин леса. Не убивает: зовом заводит одинокого в чащу (lost_in_woods). Злится, когда рубят его лес (задел)."
+}

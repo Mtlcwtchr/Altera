@@ -8,7 +8,14 @@
     "mace": 0.25,
     "axe": 0.25,
     "sword": 0.3,
-    "fangs": 0.0
+    "fangs": 0.0,
+    "rending_claws": 0.0,
+    "talons": 0.0,
+    "great_jaws": 0.0,
+    "venom_fangs": 0.0,
+    "grave_grip": 0.0,
+    "coils": 0.0,
+    "branch_lash": 0.0
   },
   "down_rounds": 2,
   "armor_weight_factor": 1.5,

@@ -71,6 +71,16 @@ const CombatBridge* combatBridge(const Content& c) {
             if (!c.items.count(item)) err.push_back("sim_bridge.armor_of_item: unknown item '" + item + "'");
         }
         if (!d.hasWeapon(b->animalWeapon)) err.push_back("sim_bridge.animal.weapon: unknown weapon '" + b->animalWeapon + "'");
+        for (const auto& [sid, sp] : c.species) {   // LR-170
+            const auto& m = sp.mythic;
+            if (m.weapon.empty() && m.skill < 0.0 && m.armor.empty() && m.staminaMult == 1.0) continue;
+            CombatBridge::AnimalBody ab{m.weapon, m.skill, m.armor, m.staminaMult};
+            if (!ab.weapon.empty() && !d.hasWeapon(ab.weapon))
+                err.push_back("creature " + sid + ": mythic.combat.weapon: unknown weapon '" + ab.weapon + "'");
+            for (const auto& a : ab.armor)
+                if (!d.armorIx.count(a)) err.push_back("creature " + sid + ": mythic.combat.armor: unknown armor '" + a + "'");
+            b->animalBodies[sid] = ab;
+        }
         for (const char* o : {"win", "lose", "draw", "flee"})
             if (!b->memory.count(o)) err.push_back(std::string("sim_bridge.memory: no type for '") + o + "'");
         if (data::exists(dir / "recovery.json")) {
@@ -115,6 +125,16 @@ combat::FighterSpec fighterOf(const CombatBridge& b, const Character& c, const s
         if (c.body.staminaMax > 0) {   // LR-152
             s.staminaCap = c.body.staminaMax;
             s.stamina = c.body.stamina < 0 ? c.body.staminaMax : c.body.stamina;
+        }
+        if (auto ab = b.animalBodies.find(c.species); ab != b.animalBodies.end()) {   // LR-170
+            if (!ab->second.weapon.empty()) s.weapon = ab->second.weapon;
+            if (ab->second.skill >= 0.0 && it == c.skills.end()) s.skill = b.skillScale * ab->second.skill;
+            s.armor = ab->second.armor;
+            if (ab->second.staminaMult != 1.0) {
+                const double cap = (s.staminaCap > 0 ? s.staminaCap : 100.0) * ab->second.staminaMult;
+                s.stamina = (s.stamina > 0 ? s.stamina : cap / ab->second.staminaMult) * ab->second.staminaMult;
+                s.staminaCap = cap;
+            }
         }
         return s;
     }

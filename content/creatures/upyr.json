@@ -1,0 +1,87 @@
+{
+ "id": "upyr",
+ "habitat": "land",
+ "biomes": [
+  "forest",
+  "marsh",
+  "meadow"
+ ],
+ "per_km2": 0.0015,
+ "group": [
+  1,
+  2
+ ],
+ "max_group": 6,
+ "speed_m_per_tick": 90,
+ "notice_m": 140,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.55,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.25,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 6,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 99999,
+ "sapience": 0.5,
+ "tags": [
+  "monster",
+  "undead",
+  "contagious"
+ ],
+ "loot": {
+  "upyr_fang": 1
+ },
+ "mythic": {
+  "belts": [
+   "forest"
+  ],
+  "undead": true,
+  "active": "night",
+  "sun_harm": 2.0,
+  "attack_min_group": 1,
+  "grows_on_kill": true,
+  "rise_days": 20,
+  "laid_by": "laid_to_rest",
+  "combat": {
+   "weapon": "rending_claws",
+   "skill": 0.45
+  },
+  "lair": {
+   "poi": "upyr_graveyard",
+   "terrain": [
+    "forest",
+    "plains",
+    "marsh"
+   ],
+   "n": [
+    1,
+    2
+   ],
+   "near_km": 25,
+   "raid": {
+    "per_year": 0.5,
+    "km": 12,
+    "wealth_loss": [
+     0.02,
+     0.05
+    ]
+   }
+  }
+ },
+ "_doc": "LR-170: упырь. Ночью встаёт из могилы, пьёт кровь, солнце его жжёт; убитый им сам становится упырём (grows_on_kill). Упокоить: обряд или огонь."
+}

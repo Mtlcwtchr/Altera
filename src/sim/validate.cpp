@@ -4,6 +4,8 @@
 #include <functional>
 #include <set>
 
+#include "sim/bestiary.hpp"
+#include "sim/worldmap.hpp"
 #include "sim/charcreate.hpp"
 #include "sim/content.hpp"
 #include "sim/act_check.hpp"
@@ -308,6 +310,8 @@ ValidationReport validate(const Content& c) {
     ValidationReport r;
     V v{c, r};
     validateSpecies(c, r); // AL-114
+    for (auto& e : checkBestiary(c)) r.errors.push_back(e); // LR-170
+    for (auto& e : checkWorldMap(c)) r.errors.push_back(e);  // LR-153 / LR-170
     validateStats(c, r);   // LR-141
     validateCulture(c, r); // LR-155
     validatePantheon(c, r); // LR-169
