@@ -13,6 +13,7 @@
 #include "sim/dialogue_memory.hpp"
 #include "sim/dialogue_rules.hpp"
 #include "sim/loc.hpp"
+#include "sim/memory_talk.hpp"
 #include "sim/realm.hpp"
 #include "sim/world.hpp"
 
@@ -716,6 +717,7 @@ std::vector<MenuTopic> askTopics(const World& w, const Character& asker, const C
     };
     plain("ask_news");
     plain("ask_self");
+    plain("ask_memory"); // LR-158: what they remember best
     // people: the answerer's spouse, the chief, then whom the asker knows best
     std::vector<EntityId> people;
     auto addPerson = [&](EntityId id) {
@@ -804,6 +806,8 @@ int askAndAnswer(World& w, Character& asker, Character& answerer, const MenuTopi
     } else if (ask.act == "ask_self") {
         n += say(w, answerer, asker, "tell_self", std::nullopt, Epistemic{}, "", ask.act).ok();
         for (const auto& it : lifeStory(w, answerer, 1)) tell(it, "tell_story");
+    } else if (ask.act == "ask_memory") { // LR-158
+        n += answerMemory(w, answerer, asker);
     } else if (ask.act == "ask_person") {
         auto pi = ask.args.find("person");
         if (pi == ask.args.end()) return n;
@@ -864,6 +868,7 @@ void sampleNewsFacts(const std::string& act, const DialogueRuleDef* target, Cont
         f.set("place", 1.0);
         f.set("place.size", "village");
     }
+    sampleMomentFacts(act, target, f); // LR-158
     if (!target) return;
     for (const auto& c : target->when) {
         if (!newsFactKey(c.key)) continue;
@@ -909,6 +914,7 @@ void sampleNewsArgs(const Loc& loc, const std::string& lang, Json& args) {
     args["years"] = 34;
     args["children"] = 3;
     args["spouse"] = other;
+    sampleMomentArgs(loc, lang, args); // LR-158
 }
 
 } // namespace lr::sim
