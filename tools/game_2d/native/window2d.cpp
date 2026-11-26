@@ -269,6 +269,7 @@ struct Window::Impl : Ctx {
     bool follow = false, glyphs = false, altDown = false, fullscreen = false;
     std::string roofMode = "auto";
     double lastFrame = 0, lastPoll = -1e9, lastBar = -1e9;
+    long long lastInvite = 0;   // LR-157: the NPC's ask the talk window was opened for
     std::uint64_t dataGen = 0;   // LR-142: the data generation the sprites and the map rules were read at
     bool selectedMe = false;
 
@@ -1102,6 +1103,19 @@ struct Window::Impl : Ctx {
         selCard = s.contains("sel") ? s["sel"] : Json();
         meCard = s.contains("me_card") ? s["me_card"] : Json();
         if (screens) screens->polled();
+        // LR-157: an NPC asks the player's person (to talk, or an act of theirs): the talk window
+        // opens with them, to say yes or no; the world waits meanwhile (the app pauses it)
+        if (screens && s.contains("invite") && s["invite"].is_object()) {
+            const Json& inv = s["invite"];
+            const long long who = jid(inv, "who");
+            const long long key = who * 1000003LL + (long long)jnum(inv, "since", 0) + 1;
+            if (who >= 0 && key != lastInvite) {
+                lastInvite = key;
+                screens->open("talk", Json(who));
+                if (Win* t = screens->top(); t && t->id == "talk") t->data["invite"] = true;
+                else cmd({{"op", "cmd"}, {"type", "answer_social"}, {"args", {{"id", me}, {"accept", false}}}});   // no window: a no
+            }
+        }
         if (selId >= 0 && !byId.count(selId)) selId = -1;
         if (me != barFor) {
             barFor = me;

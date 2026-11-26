@@ -224,6 +224,7 @@ void renderTalk(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
             if (g.button(ui::widgetId("talk.ans", k), b, c.L(k == 0 ? "ui2d.talk.yes" : "ui2d.talk.no"))) {
                 c.cmdToast({{"op", "cmd"}, {"type", "answer_social"}, {"args", {{"id", c.meId()}, {"accept", k == 0}}}});
                 loadTalk(c, w);
+                if (k == 1 && jflag(w.data, "invite")) s.close("talk");   // LR-157: a refused invitation closes the window
             }
         }
         y += 42 * U;
@@ -627,6 +628,14 @@ void openTalk(Ctx& c, Screens& s, long long target, bool trade) {
         w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) { renderTalk(c, s, w, body); };
         w->onPoll = [](Ctx& c, Win& w) {
             if (now() - jnum(w.data, "at") > 1200) loadTalk(c, w);
+        };
+        // LR-157: the window closed on a talk the player leads ends it (goodbyes), and an ask
+        // left unanswered is a no
+        w->onClose = [](Ctx& c, Win& w) {
+            const Json& d = w.data.value("d", Json::object());
+            if (jflag(d, "led")) c.cmd({{"op", "cmd"}, {"type", "end_talk"}, {"args", {{"id", c.meId()}}}});
+            else if (d.contains("ask") && d["ask"].is_object())
+                c.cmd({{"op", "cmd"}, {"type", "answer_social"}, {"args", {{"id", c.meId()}, {"accept", false}}}});
         };
     } else {
         w->id = "trade";

@@ -282,7 +282,33 @@ void decide(World& w, Character& a, Character& t, const SocialRules& R, const So
         trace(w, a, 'F', "social.approach", {{"action", sc.id}, {"who", t.id}, {"object", p}});
         return;
     }
+    // LR-157: a talk an NPC opened with the player's person, taken up: the player leads
+    // it as one they began (the talk window), not a talk that plays by itself.
+    if (sc.talkOnly && t.controller.isPlayer() && !a.controller.isPlayer()) {
+        al.phase = tl.phase = "led";
+        al.until = tl.until = w.now() + R.playerTalkTicks;
+        if (tl.aside) { // one asked over their work puts it down to talk
+            if (t.ai.fsm.state != "Idle") abortAction(w, t, "social:" + sc.id);
+            releaseReservations(w, t);
+            tl.aside = false;
+        }
+        if (dist(a.pos, t.pos) > R.togetherM) a.pos = shortOf(a.pos, t.pos, R.togetherM * 0.5);
+        show(a, "Talk", sc.id, t.id, "talk", R.playerTalkTicks, w.now());
+        show(t, "Talk", sc.id, a.id, "talk", R.playerTalkTicks, w.now());
+        trace(w, a, 'C', "social.led_by_player", {{"action", sc.id}, {"who", t.id}});
+        return;
+    }
     startStage(w, a, t, R, sc, d, 0);
+}
+
+// LR-157: an NPC's act on the player's person that the player answers: one with a
+// yes or no of its own, and every talk but the groups only heard (an insult).
+bool asksPlayer(const SocialRules& R, const SocialChainDef& sc, const InteractionDef& d, const Character& a,
+                const Character& t) {
+    if (!t.controller.isPlayer() || a.controller.isPlayer()) return false;
+    if (!sc.byDefault || d.consent == "target") return true;
+    if (!sc.talkOnly) return false;
+    return std::find(R.playerInviteSkip.begin(), R.playerInviteSkip.end(), sc.talk) == R.playerInviteSkip.end();
 }
 
 } // namespace
@@ -304,6 +330,9 @@ const SocialRules* socialRules(const Content& c) {
         r->askTicks = cfg.value("ask_ticks", r->askTicks);
         r->refuseTicks = cfg.value("refuse_ticks", r->refuseTicks);
         r->answerTicks = cfg.value("answer_ticks", r->answerTicks);
+        r->playerAnswerTicks = cfg.value("player_answer_ticks", r->playerAnswerTicks);
+        r->playerTalkTicks = cfg.value("player_talk_ticks", r->playerTalkTicks);
+        r->playerInviteSkip = cfg.value("player_invite_skip", r->playerInviteSkip);
         r->approachMaxTicks = cfg.value("approach_max_ticks", r->approachMaxTicks);
         r->refusedCooldown = cfg.value("refused_cooldown_ticks", r->refusedCooldown);
         r->placeRadiusM = cfg.value("place_radius_m", r->placeRadiusM);
@@ -605,12 +634,20 @@ SocialStep tickSocial(World& w, Character& c, std::string& why) {
     const AiConfig& cfg = w.content().config;
     if (l.phase == "ask") {
         if (w.now() < l.until) return SocialStep::Running;
+        if (asksPlayer(*R, *sc, *d, c, *t)) {
+            // LR-157: the player answers (answer_social; the 2D client opens the talk
+            // window); the person's own mind does not answer for them.
+            l.phase = t->ai.social.phase = "answer";
+            l.until = t->ai.social.until = w.now() + R->playerAnswerTicks;
+            trace(w, *t, 'C', "social.await_answer", {{"action", l.chain}, {"who", c.id}});
+            return SocialStep::Running;
+        }
         if (sc->byDefault && d->consent != "target") { // AL-73: heard, nothing to answer yes or no
             decide(w, c, *t, *R, *sc, *d, true);
             return l.phase == "done" || l.phase == "broken" ? tickSocial(w, c, why) : SocialStep::Running;
         }
         if (t->controller.isPlayer()) {
-            // The player answers (answer_social); silence = the character's own mind.
+            // a player's ask of another player's person: that player answers; silence = their mind
             l.phase = t->ai.social.phase = "answer";
             l.until = t->ai.social.until = w.now() + R->answerTicks;
             trace(w, *t, 'C', "social.await_answer", {{"action", l.chain}, {"who", c.id}});
@@ -622,9 +659,33 @@ SocialStep tickSocial(World& w, Character& c, std::string& why) {
     }
     if (l.phase == "answer") {
         if (w.now() < l.until) return SocialStep::Running;
+        if (asksPlayer(*R, *sc, *d, c, *t)) {
+            // LR-157: no answer from the player: the asker gives up (and does not pester again soon)
+            w.remember(c, MemoryEntry{0, "was_refused", {t->id}, kNone, 0.0, 0.0, "seen", 1.0});
+            trace(w, c, 'C', "social.unanswered", {{"action", l.chain}, {"who", t->id}});
+            why = "refused:" + l.chain + ":unanswered";
+            closePair(w, c, t);
+            return SocialStep::Failed;
+        }
         Rng r = agentRng(w.seed(), t->id, w.now(), "social:" + l.chain + ":" + std::to_string(c.id));
         decide(w, c, *t, *R, *sc, *d, r.uniform() < socialAcceptChance(w, c, *t, *d, *sc, l.tone));
         return l.phase == "done" || l.phase == "broken" ? tickSocial(w, c, why) : SocialStep::Running;
+    }
+    if (l.phase == "led") {
+        // LR-157: the player leads the talk; the asker waits by them while it goes on
+        const bool left = !t->controller.isPlayer() || dist(c.pos, t->pos) > R->togetherM * 4;
+        if (w.now() < l.until && !left) {
+            if (dist(c.pos, t->pos) > R->togetherM * 1.5) stepTowards(w, c, shortOf(c.pos, t->pos, R->togetherM * 0.5), cfg.walkMPerTick);
+            c.ai.fsm.dest = c.pos;
+            return SocialStep::Running;
+        }
+        if (!left) {
+            talkLine(w, c, *t, *sc, "farewell", "talk_bye");
+            talkLine(w, *t, c, *sc, "farewell", "talk_bye");
+        }
+        trace(w, c, 'F', "social.done", {{"action", l.chain}, {"who", t->id}, {"led", true}});
+        closePair(w, c, t);
+        return SocialStep::Done;
     }
     if (l.phase == "refused") {
         if (w.now() < l.until) return SocialStep::Running;
@@ -736,6 +797,31 @@ bool answerSocial(World& w, Character& t, bool accept, std::string& why) {
     return true;
 }
 
+EntityId pendingInvite(const Character& c) {
+    const SocialLink& l = c.ai.social;
+    return l.active() && l.role == "target" && l.phase == "answer" ? l.partner : kNone;
+}
+
+EntityId ledTalkWith(const Character& c) {
+    const SocialLink& l = c.ai.social;
+    return l.active() && l.role == "target" && l.phase == "led" ? l.partner : kNone;
+}
+
+void keepLedTalk(World& w, Character& player) {
+    const SocialRules* R = socialRules(w.content());
+    Character* a = ledTalkWith(player) != kNone ? partnerOf(w, player) : nullptr;
+    if (!R || !a || a->ai.social.partner != player.id || a->ai.social.phase != "led") return;
+    player.ai.social.until = a->ai.social.until = std::max(a->ai.social.until, w.now() + R->playerTalkTicks);
+}
+
+bool endLedTalk(World& w, Character& player) {
+    Character* a = ledTalkWith(player) != kNone ? partnerOf(w, player) : nullptr;
+    if (!a || a->ai.social.partner != player.id || a->ai.social.phase != "led") return false;
+    player.ai.social.until = a->ai.social.until = w.now();
+    trace(w, player, 'C', "social.player_ends_talk", {{"action", a->ai.social.chain}, {"who", a->id}});
+    return true;
+}
+
 std::vector<EntityId> followersOf(const World& w, EntityId leader) {
     std::vector<EntityId> out;
     for (const auto& [id, c] : w.characters()) {
@@ -769,7 +855,7 @@ int playerOfCmd(const Command& cmd) {
 
 bool handle(World& w, Command& cmd) {
     const std::string& t = cmd.type;
-    if (t != "answer_social" && t != "dismiss_follower") return false;
+    if (t != "answer_social" && t != "dismiss_follower" && t != "end_talk") return false;
     Character* c = w.character(cmd.args.at("id").get<EntityId>());
     if (!c) throw std::runtime_error("no such character");
     if (!c->controller.isPlayer() || c->controller.playerId != playerOfCmd(cmd))
@@ -777,6 +863,10 @@ bool handle(World& w, Command& cmd) {
     std::string why;
     if (t == "answer_social") {
         if (!answerSocial(w, *c, cmd.args.at("accept").get<bool>(), why)) cmd.result = "rejected:" + why;
+        return true;
+    }
+    if (t == "end_talk") { // LR-157: the player closes a talk they lead
+        if (!endLedTalk(w, *c)) cmd.result = "rejected:no_talk";
         return true;
     }
     // dismiss_follower: the leader lets one (or every) follower go; a
