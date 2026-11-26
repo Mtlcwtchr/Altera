@@ -3,6 +3,7 @@
 // and the command log. Everything here is serializable; a snapshot plus the
 // command log replays to the same state (CORE_SPEC §8).
 
+#include <deque>
 #include <functional>
 #include <map>
 #include <string>
@@ -292,6 +293,14 @@ public:
         std::size_t scanned = 0;
         std::map<EntityId, int> built;
     } needCache;
+    // LR-152: what a game client tells the sim of its own clock, and the fights it
+    // wants to watch (sim/combat_show.hpp). Not saved, not in the state hash.
+    struct ClientLink {
+        double realSecPerTick = 0.0; // > 0: the player's stamina runs in real seconds
+        bool recordFights = false;   // full-mode fights keep their round events for the client
+        std::deque<Json> fights;     // the last fights recorded (combat_show.cpp caps it)
+        std::uint64_t nextFight = 1;
+    } client;
     bool roomsDirty = true;          // set when pieces or the things in rooms change
     std::uint64_t roomsSig = 0;      // what the rooms were read from last
     bool removeObject(EntityId id);

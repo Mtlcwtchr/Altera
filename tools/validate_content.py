@@ -445,7 +445,8 @@ CHECKS["pawns"] = check_pawns  # LR-139
 
 
 # ---------------------------------------------------------------- LR-142: formulas, templates, mods
-FORMULA_PREFIXES = ("attr.", "skill.", "trait.", "need.", "rep.", "rel.", "t.", "arg.", "cfg.", "f.", "age")
+FORMULA_PREFIXES = ("attr.", "skill.", "trait.", "need.", "rep.", "rel.", "t.", "arg.", "cfg.", "f.", "age",
+                    "attr_base.", "moodlet.", "body.")   # LR-141/LR-152: the stats and the body (sim/char_expr)
 FUNCS = {"min", "max", "clamp", "abs", "floor", "ceil", "round", "pow", "sqrt", "exp", "log", "lerp", "sign",
          "step", "noise", "p_over", "has", "count", "mass", "flaw", "state", "tag", "eff", "role"}
 WORDS = {"and", "or", "not", "true", "false"}

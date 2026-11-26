@@ -169,6 +169,11 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
         }
         if (c.ai.fsm.interaction == "goto" || c.ai.fsm.state == "Move")
             p["dest"] = Json::array({r2(c.ai.fsm.dest.x), r2(c.ai.fsm.dest.y)});
+        // LR-152: stamina (share of the cap), spent to the bottom (no run)
+        if (c.body.staminaMax > 0 && c.body.stamina >= 0) {
+            p["sta"] = r2(c.body.stamina / c.body.staminaMax);
+            if (c.body.winded) p["wnd"] = true;
+        }
         // AL-108: where the person looks (the act's target, the walk's way): the pawn's side
         p["fx"] = r2(c.facing.x);
         p["fy"] = r2(c.facing.y);
@@ -225,6 +230,9 @@ Json personJson(const World& w, const ViewText& t, EntityId id) {
               {"goal", goalOf(t, c)},
               {"hp", r2(c.body.health)},
               {"fatigue", r2(c.body.fatigue)},
+              {"stamina", r2(std::max(0.0, c.body.stamina))},   // LR-152
+              {"stamina_max", r2(c.body.staminaMax)},
+              {"winded", c.body.winded},
               {"mood", r2(c.mood(w.now()))},
               {"role", c.status.role},
               {"occ", c.occupation},

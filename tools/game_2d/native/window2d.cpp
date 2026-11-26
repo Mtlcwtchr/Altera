@@ -44,6 +44,7 @@
 #include "engine/ui/ui.hpp"
 #include "native/atmos2d.hpp"
 #include "native/ctx2d.hpp"
+#include "native/fight2d.hpp"
 #include "native/pixels2d.hpp"
 #include "sim/data_fs.hpp"
 
@@ -260,6 +261,9 @@ struct Window::Impl : Ctx {
     Json selCard;
     Json meCard;                       // LR-137: the led person while another is selected
     Json HUD;                          // content/sprites_2d/hud2d.json
+    Json FIGHT;                        // LR-152: content/sprites_2d/combat2d.json
+    Fight2d fights;                    // LR-152: the combat state (fights played back over the map)
+    long long fightSeen = -1;          // the last fight id the state route handed over
     std::set<std::string> folded{"tier.safety", "tier.esteem", "tier.purpose", "tier.spirit", "tier.other"};
     std::string tipText;               // what the pointer is over in the HUD (shown in the bar)
     bool haveHover = false;
@@ -415,6 +419,8 @@ struct Window::Impl : Ctx {
         bubbles.clear();
         lines.clear();
         path.clear();
+        fights.clear();
+        fightSeen = -1;
         selId = me = -1;
         selCard = Json();
         selectedMe = false;
@@ -891,6 +897,8 @@ struct Window::Impl : Ctx {
         sprites.merge(LOOK);
         sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
         HUD = parseOr(readText(dir / "hud2d.json"), Json::object());   // LR-137: the pixel HUD
+        FIGHT = parseOr(readText(dir / "combat2d.json"), Json::object());   // LR-152: the combat state
+        fights.configure(FIGHT);
         sprites.merge(HUD);
         for (const auto& a : MAP.value("acts", Json::array()))
             if (a.is_array() && a.size() >= 2) try {
@@ -1083,6 +1091,7 @@ struct Window::Impl : Ctx {
         std::string q = "/api/state?vx=" + std::to_string(int(std::lround(camX))) + "&vy=" + std::to_string(int(std::lround(camY))) +
                         "&vr=" + std::to_string(r);
         if (selId >= 0) q += "&sel=" + std::to_string(selId);
+        q += "&fs=" + std::to_string(fightSeen);   // LR-152: the fights after the last one seen
         const Json s = get(q);
         if (!s.is_object()) return;
         clock = s;
@@ -1102,6 +1111,17 @@ struct Window::Impl : Ctx {
             else ++it;
         selCard = s.contains("sel") ? s["sel"] : Json();
         meCard = s.contains("me_card") ? s["me_card"] : Json();
+        // LR-152: new fights near the view play as the combat state; the led person's holds the world
+        for (const auto& f : s.value("fights", Json::array())) {
+            auto nameOf = [&](long long id) {
+                const Json* p = person(id);
+                return p ? str(*p, "name") : std::string();
+            };
+            const double hold = fights.add(f, nowMs(), me, nameOf(ident(f, "a")), nameOf(ident(f, "b")));
+            if (hold > 0) cmd({{"op", "hold"}, {"ms", hold}});
+            fightSeen = std::max(fightSeen, ident(f, "id"));
+        }
+        if (fightSeen < 0 && s.contains("fight_last") && s["fight_last"].is_number()) fightSeen = s["fight_last"].get<long long>();
         if (screens) screens->polled();
         // LR-157: an NPC asks the player's person (to talk, or an act of theirs): the talk window
         // opens with them, to say yes or no; the world waits meanwhile (the app pauses it)
@@ -1188,6 +1208,14 @@ struct Window::Impl : Ctx {
             v.moving = true;
             if (int(std::floor(v.x)) + int(std::floor(v.y)) != before) v.bob ^= 1;
             v.face = std::abs(dx) > std::abs(dy) ? (dx > 0 ? 'E' : 'W') : (dy > 0 ? 'S' : 'N');
+        }
+        // LR-152: the fighters of a fight being played stand where the fight puts them
+        const double now = nowMs();
+        fights.tick(now, dt);
+        for (auto& [id, v] : vis) {
+            FightPose fp;
+            if (!fights.pose(id, now, fp)) continue;
+            v.x = fp.x, v.y = fp.y, v.face = fp.face, v.moving = false;
         }
     }
 
@@ -1310,6 +1338,7 @@ struct Window::Impl : Ctx {
         const auto it = vis.find(me);
         if (it == vis.end()) return;
         Vis& v = it->second;
+        if (fights.mineActive(nowMs())) return;   // LR-152: the fight plays itself
         rebuildWalls();
         const bool* k = SDL_GetKeyboardState(nullptr);
         const bool typing = ui.typing();
@@ -1319,7 +1348,10 @@ struct Window::Impl : Ctx {
             dy = (k[SDL_SCANCODE_S] ? 1 : 0) - (k[SDL_SCANCODE_W] ? 1 : 0);
         }
         const double t = nowMs();
-        const bool run = k[SDL_SCANCODE_LSHIFT] || k[SDL_SCANCODE_RSHIFT];
+        // LR-152: a spent body cannot run (stamina back above the data's share first)
+        const Json* mp = person(me);
+        const bool winded = mp && flag(*mp, "wnd");
+        const bool run = (k[SDL_SCANCODE_LSHIFT] || k[SDL_SCANCODE_RSHIFT]) && !winded;
         if (dx || dy) path.clear();
         if (!dx && !dy && !path.empty()) {
             const auto [px, py] = path.front();
@@ -1347,10 +1379,11 @@ struct Window::Impl : Ctx {
             follow = true;
         } else if (v.driven) v.moving = false;
         if (v.driven && t - lastSteer > 120 && (!haveSteer || std::hypot(steerX - v.x, steerY - v.y) > 0.05)) {
+            const double sdt = std::clamp((t - lastSteer) / 1000.0, 0.0, 1.0);   // LR-152: real seconds for the stamina
             lastSteer = t;
             haveSteer = true;
             steerX = v.x, steerY = v.y;
-            const Json r = cmd({{"op", "cmd"}, {"type", "steer"}, {"args", {{"id", me}, {"x", v.x}, {"y", v.y}, {"run", run}}}});
+            const Json r = cmd({{"op", "cmd"}, {"type", "steer"}, {"args", {{"id", me}, {"x", v.x}, {"y", v.y}, {"run", run}, {"dt", sdt}}}});
             const std::string res = str(r, "result");
             if (!res.empty() && res != "ok") toast(str(r, "text").empty() ? res : str(r, "text"));
         }
@@ -1463,6 +1496,8 @@ struct Window::Impl : Ctx {
         for (const Item& it : items)
             if (it.thing) guard("thing", [&] { drawThing(*it.thing, sc); });
             else guard("pawn", [&] { drawPawn(*it.person, vis[ident(*it.person, "id")], sc); });
+        guard("fights", [&] { fights.drawWorld(*this, t, float(sc)); });   // LR-152: weapons, sparks, blood, words
+        guard("stamina", [&] { drawStaminaPawn(sc); });
         guard("drawRoofs", [&] { drawRoofs(tp); });
         guard("atmosLight", [&] { atmosEnd(sc); });
         guard("build", [&] { screens->drawWorld(); });
@@ -1519,13 +1554,27 @@ struct Window::Impl : Ctx {
             blit(beastSprite(sp, v.face == 'W' ? 'W' : 'E'), sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
             return;
         }
-        const Sprite img = lying ? pawnSprite(pawnSpec(p), 'S', 0) : pawnSprite(pawnSpec(p), v.face, poseOf(p, v));
+        // LR-152: in a fight being played the pawn falls, kneels and flashes as the rounds say
+        FightPose fp;
+        const bool inFight = fights.pose(id, nowMs(), fp);
+        const bool fallen = inFight ? fp.lie > 0 : lying;
+        const Sprite img = fallen && (!inFight || fp.lie >= 1) ? pawnSprite(pawnSpec(p), 'S', 0)
+                                                               : pawnSprite(pawnSpec(p), v.face, inFight ? PawnPose{} : poseOf(p, v));
         // AL-114: a kind's size (a goblin 16, an ogre or a troll 32 px against the 20 of a man); LR-139: and one's own
         const float k = (num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f) * heightK(p);
-        if (lying) {
+        if (inFight && fp.lie > 0 && fp.lie < 1) {
+            blit(img, sx - 10 * sc * k, sy - 18 * sc * k + float(fp.lie * 8) * sc, kPawn * sc * k, kPawn * sc * k, 1.0f, -90.0 * fp.lie);
+        } else if (fallen) {
             const float cx = sx, cy = sy - 3 * sc;
             blit(img, cx - 10 * sc * k, cy - 10 * sc * k, kPawn * sc * k, kPawn * sc * k, alive ? 1.0f : 0.6f, -90);
-        } else blit(img, sx - 10 * sc * k, sy - 18 * sc * k, kPawn * sc * k, kPawn * sc * k);
+        } else blit(img, sx - 10 * sc * k, sy - 18 * sc * k + float(fp.kneel * 4) * sc, kPawn * sc * k, kPawn * sc * k);
+        if (inFight && fp.flash > 0 && img) {   // the hit flash: the same pawn once more, tinted, fading
+            SDL_SetTextureColorModFloat(img.tex, fp.flashColour.r, fp.flashColour.g, fp.flashColour.b);
+            SDL_SetTextureBlendMode(img.tex, SDL_BLENDMODE_ADD);
+            blit(img, sx - 10 * sc * k, sy - 18 * sc * k, kPawn * sc * k, kPawn * sc * k, float(fp.flash) * 0.8f);
+            SDL_SetTextureBlendMode(img.tex, SDL_BLENDMODE_BLEND);
+            SDL_SetTextureColorModFloat(img.tex, 1, 1, 1);
+        }
     }
     void drawRoofs(double tp) {
         if (roofMode == "none") return;
@@ -2528,9 +2577,28 @@ struct Window::Impl : Ctx {
         }
         return L("ui2d.hint.keys");
     }
+    // LR-152: the led person's stamina over the pawn while it is not full (as in Kingdom Come)
+    void drawStaminaPawn(double scd) {
+        const Json* p = person(me);
+        if (!p || !p->contains("sta") || !vis.count(me)) return;
+        const Json& S = FIGHT.value("stamina_hud", Json::object());
+        const double share = num(*p, "sta", 1);
+        if (share >= num(S, "show_below", 0.98) || fights.mineActive(nowMs())) return;
+        const Vis& v = vis.at(me);
+        float sx, sy;
+        toScreen(v.x, v.y, sx, sy);
+        const float sc = float(scd), w = float(num(S, "pawn_w", 14)) * sc, h = std::max(1.0f, float(num(S, "pawn_h", 1.2)) * sc);
+        const float x0 = sx - w / 2, y0 = sy - 22 * sc;
+        const std::string back = str(S, "back").empty() ? "#1a120a" : str(S, "back");
+        const std::string col = flag(*p, "wnd") ? (str(S, "winded").empty() ? "#a05030" : str(S, "winded"))
+                                                : (str(S, "colour").empty() ? "#e8c040" : str(S, "colour"));
+        fill(x0 - sc / 2, y0 - sc / 2, w + sc, h + sc, hexc(back.c_str()));
+        fill(x0, y0, float(w * std::clamp(share, 0.0, 1.0)), h, hexc(col.c_str()));
+    }
     void drawOverlay() {
         tipText.clear();
         const double t = nowMs();
+        guard("fightBanner", [&] { fights.drawBanner(*this, t); });   // LR-152
         // toast
         if (t < toastUntil && !toastText.empty()) {
             const float px = 15 * U, w = textW(toastText, px) + 28 * U, h = textH(px) + 12 * U;

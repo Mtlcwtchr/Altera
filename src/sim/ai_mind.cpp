@@ -14,6 +14,7 @@
 #include "sim/captivity.hpp"
 #include "sim/consequences.hpp"
 #include "sim/gear.hpp"
+#include "sim/stamina.hpp"
 #include "sim/social_chain.hpp"
 #include "sim/trade.hpp"
 #include "sim/village_life.hpp"
@@ -263,6 +264,8 @@ bool tickFsm(World& w, Character& c) {
             f.dest = creature->pos;
         }
     }
+    // LR-152: a body spent to the bottom stands and catches its breath (staminaTick)
+    if (c.body.stalledAt == w.now() && !d->continuous) return false;
     --f.timer;
     if (d->continuous) {
         applyEffects(w, c, *d, target, creature);
@@ -709,6 +712,7 @@ void installAi(World& w) {
         undeadTick(world);    // AL-118: mindless undead follow their master, the unbound go for the living
         tradeTick(world);     // AL-75: roles, the tavern's hungry customers, treats among friends
         dressTick(world);     // AL-109: people put on what they carry and can wear
+        staminaTick(world);   // LR-152: every act spends stamina, it comes back fast; the cap falls with fatigue
         AnimalTick tick;
         for (const auto& [id, c] : world.characters()) {
             if (!c.body.alive) continue;
