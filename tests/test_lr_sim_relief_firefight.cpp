@@ -22,7 +22,9 @@ const Content& real() {
 }
 
 World bare() {
-    return makeTestWorld(real(), loadJsonFile(std::string(LR_SIM_SOURCE_DIR) + "/content/sim/test_world.json"));
+    Json cfg = loadJsonFile(std::string(LR_SIM_SOURCE_DIR) + "/content/sim/test_world.json");
+    cfg["relief"] = false;   // LR-156: the fields' own ground, without the world's levels to climb
+    return makeTestWorld(real(), cfg);
 }
 
 EntityId village(const World& w) {

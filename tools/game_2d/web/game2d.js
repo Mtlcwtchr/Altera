@@ -12,7 +12,7 @@
   const $ = id => document.getElementById(id);
 
   // --- state ------------------------------------------------------------------
-  let ST = null, MAP = null, RES = null, PAWN_PARTS = null;   // PAWN_PARTS: pawns2d.json (LR-139)     // /api/static, map2d.json, resources.json
+  let ST = null, MAP = null, RES = null, PAWN_PARTS = null, CLIFFS = {};   // /api/static, map2d.json, resources.json, pawns2d.json (LR-139), cliffs2d.json (LR-156)
   let UI = {};                               // ui2d.* strings
   const chunks = new Map();                  // "cx,cy" -> {json, canvas, glyph, at, str}
   const pending = new Set();
@@ -55,6 +55,25 @@
     const list = (MAP.tiles && MAP.tiles[gname]) || ['tl_grass'];
     return list[v % list.length];
   }
+  // LR-156: the cliff pieces a cell shows, bottom first: its higher neighbours' mask (1 N, 2 E, 4 S,
+  // 8 W, 16 NE, 32 SE, 64 SW, 128 NW), the rock's style, a ramp (a road climbs) and the variant
+  function cliffPieces(m, style, ramp, v) {
+    const p = 'cf_' + style + '_', out = [];
+    const side = (d) => out.push(ramp ? p + 'ramp_' + d : p + d + '_' + v);
+    if (m & 4) side('s');
+    else {
+      if ((m & 32) && !(m & 2)) out.push(p + 'c_se');
+      if ((m & 64) && !(m & 8)) out.push(p + 'c_sw');
+    }
+    if (m & 2) side('e');
+    if (m & 8) side('w');
+    if (m & 1) side('n');
+    else {
+      if ((m & 16) && !(m & 2)) out.push(p + 'c_ne');
+      if ((m & 128) && !(m & 8)) out.push(p + 'c_nw');
+    }
+    return out;
+  }
   const WALL = { log: ['n', 'N'], daub: ['w', 'e'], stone: ['W', 'M'] };
   function wallColours(piece) {
     for (const [m, c] of Object.entries(WALL)) if (piece.includes(m)) return c;
@@ -94,6 +113,34 @@
         }
       }
     }
+    // LR-156: the relief: lower ground a little darker, then the cliffs of higher neighbours
+    if (j.level && !glyphs) {
+      const R = CLIFFS.rules || {}, low = R.shade_low ?? 0.16, per = R.shade_per_level ?? 0.02;
+      g.fillStyle = '#000';
+      for (let y = 0; y < j.h; y++) for (let x = 0; x < j.w; x++) {
+        const a = low - per * (j.level.charCodeAt(y * j.w + x) - 48);
+        if (a > 0.005) { g.globalAlpha = a; g.fillRect(x * T, y * T, T, T); }
+      }
+      g.globalAlpha = 1;
+    }
+    const drawCliffs = () => {
+      if (!j.cliff) return;
+      const R = CLIFFS.rules || {}, nv = R.variants || 1, gl = R.glyph || {};
+      for (let y = 0; y < j.h; y++) for (let x = 0; x < j.w; x++) {
+        const i = y * j.w + x, m = parseInt(j.cliff.substr(i * 2, 2), 16);
+        if (!m) continue;
+        const sc = j.cliff_style.charCodeAt(i), ramp = sc < 97, style = j.cliff_styles[sc - (ramp ? 65 : 97)] || 'stone';
+        if (glyphs) {
+          g.fillStyle = Sprites.colour(gl.colour || 'x'); g.globalAlpha = 0.8;
+          g.font = 'bold 13px monospace'; g.textAlign = 'center'; g.textBaseline = 'middle';
+          g.fillText(ramp ? '≡' : (m & 1 ? gl.n : m & 2 ? gl.e : m & 8 ? gl.w : gl.s) || '#', x * T + 8, y * T + 9);
+          g.globalAlpha = 1;
+          continue;
+        }
+        const v = parseInt(j.var.substr(i * 2, 2), 16) % nv;
+        for (const nm of cliffPieces(m, style, ramp, v)) { const sp = Sprites.get(nm); if (sp) g.drawImage(sp, x * T, y * T); }
+      }
+    };
     // AL-112: fields and gardens over the ground (one char per cell, '.' none)
     if (j.crop && j.crop_tiles) for (let y = 0; y < j.h; y++) for (let x = 0; x < j.w; x++) {
       const ch = j.crop.charCodeAt(y * j.w + x);
@@ -114,6 +161,7 @@
       if (rot) { g.save(); g.translate(x * T + 8, y * T + 8); g.rotate(rot * Math.PI / 2); g.drawImage(sp, -8, -8); g.restore(); }
       else g.drawImage(sp, x * T, y * T);
     }
+    drawCliffs();
     // walls, doors, windows of the ground storey on the cell lines (4 px strips)
     for (const e of j.edges) {
       if (e.z !== 0 || e.kind === 'gable') continue;
@@ -788,13 +836,16 @@
   Promise.all([getJson('/api/static'), getJson('/sprites/sprites.json'), getJson('/sprites/map2d.json'),
     getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null),
     getJson('/sprites/pawns2d.json').catch(() => null),
-    getJson('/sprites/transport2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport]) => {
+    getJson('/sprites/transport2d.json').catch(() => null),
+    getJson('/sprites/cliffs2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport, cliffs]) => {
+    CLIFFS = cliffs || {};
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
     Pawns.setParts(pawnParts);   // LR-139: hair, beards, ears, builds as data
     PAWN_PARTS = pawnParts || {};
     Sprites.load(sprites);
     Sprites.merge(crops);   // AL-112: fields and gardens
     Sprites.merge(transport);   // LR-159: mounts and vehicles
+    Sprites.merge(cliffs);  // LR-156: cliffs of the relief
     MAP.actsRe = (MAP.acts || []).map(([re, sp]) => [new RegExp(re), sp]);
     for (const h of MAP.hidden || []) hidden.add(h);
     document.title = L('ui2d.title');

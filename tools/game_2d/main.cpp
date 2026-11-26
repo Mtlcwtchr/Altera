@@ -58,6 +58,7 @@ using socket_t = int;
 #endif
 #include "client2d/craft2d.hpp"
 #include "client2d/farm2d.hpp"
+#include "client2d/relief2d.hpp"
 #include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
@@ -91,6 +92,7 @@ struct App {
     c2::ViewText text;
     c2::GroundRules ground = c2::GroundRules::defaults();
     c2::CropRules crops;   // AL-112: fields and gardens (content/sprites_2d/crops2d.json)
+    c2::ReliefRules relief;   // LR-156: cliffs (content/sprites_2d/cliffs2d.json)
     bool paused = false;
     double tps = 2.0;   // sim ticks per real second (1 tick = 10 game minutes)
     double lastStepMs = 0.0;
@@ -639,6 +641,7 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             const int w = std::clamp(intParam(path, "w", 64), 1, 256), h = std::clamp(intParam(path, "h", 64), 1, 256);
             c2::Grid2d grid = c2::buildGrid(*a.world, a.ground, x, y, w, h);
             c2::paintCrops(*a.world, a.crops, grid);   // AL-112
+            c2::paintRelief(*a.world, a.relief, grid); // LR-156
             respond(s, 200, "application/json", c2::toJson(grid).dump());
         } else if (path.rfind("/api/fields", 0) == 0) {
             // AL-115: one field of the cells as bytes for an overlay (?f=heat&x=&y=&w=&h=)
@@ -854,6 +857,9 @@ void loadClientData(App& app) {
     bool haveCrops = false;
     const std::string cropsText = readFile(app.spritesDir + "/crops2d.json", &haveCrops);
     app.crops = haveCrops ? c2::CropRules::fromJson(Json::parse(cropsText).value("plots", Json::object())) : c2::CropRules{};
+    bool haveCliffs = false;
+    const std::string cliffsText = readFile(app.spritesDir + "/cliffs2d.json", &haveCliffs);
+    app.relief = haveCliffs ? c2::ReliefRules::fromJson(Json::parse(cliffsText).value("rules", Json::object())) : c2::ReliefRules{};
     bool haveWheel = false;
     const std::string wheel = readFile(app.root + "/content/ui/wheel.json", &haveWheel);
     bool haveCraftUi = false;

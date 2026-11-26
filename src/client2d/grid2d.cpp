@@ -147,6 +147,21 @@ Ground groundAt(const World& w, const GroundRules& r, int x, int y) {
     return it == r.biome.end() ? Ground::grass : it->second;
 }
 
+bool roadAt(const World& w, double x, double y) {
+    const Vec2 p{x, y};
+    for (const auto& [sid, s] : w.settlements()) {
+        if (dist(p, s.center) > 2000.0) continue;
+        if (s.squareR > 0 && dist(p, s.square) <= s.squareR) return true;
+        for (std::size_t i = 0; i < s.roads.size(); ++i) {
+            const auto& line = s.roads[i];
+            const double half = (i < s.roadWidth.size() ? s.roadWidth[i] : 3.0) * 0.5;
+            for (std::size_t k = 1; k < line.size(); ++k)
+                if (segDist(p, line[k - 1], line[k]) <= half) return true;
+        }
+    }
+    return false;
+}
+
 Grid2d buildGrid(const World& w, const GroundRules& rules, int x0, int y0, int wCells, int hCells) {
     Grid2d g;
     const int size = int(std::floor(w.map().sizeM));
@@ -276,6 +291,22 @@ Json toJson(const Grid2d& g) {
                       {"strips", x.strips}, {"tilled", x.tilled}, {"sown", x.sown}, {"ripe", x.ripe},
                       {"grown", x.grown}, {"grow_days", x.growDays}, {"stage", x.stage}});
     j["plots"] = pl;
+    // LR-156: the relief: level '0' + n a cell, the cliff mask as hex pairs, the style
+    // 'a' + k (a ramp 'A' + k) of cliff_styles
+    if (!g.level.empty()) {
+        std::string ls(g.level.size(), '0'), cl(g.cliff.size() * 2, '0'), st(g.cliffStyle.size(), 'a');
+        for (std::size_t i = 0; i < g.level.size(); ++i) ls[i] = char('0' + std::min<int>(g.level[i], 78));
+        for (std::size_t i = 0; i < g.cliff.size(); ++i) {
+            cl[2 * i] = hex[g.cliff[i] >> 4];
+            cl[2 * i + 1] = hex[g.cliff[i] & 15];
+        }
+        for (std::size_t i = 0; i < g.cliffStyle.size(); ++i)
+            st[i] = char(((g.cliffStyle[i] & 0x80) ? 'A' : 'a') + std::min(g.cliffStyle[i] & 0x7f, 25));
+        j["level"] = ls;
+        j["cliff"] = cl;
+        j["cliff_style"] = st;
+        j["cliff_styles"] = g.cliffStyles;
+    }
     return j;
 }
 

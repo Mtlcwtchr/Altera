@@ -311,7 +311,13 @@ endif() # NOT LR_SIM_ONLY
 # characters, 4-layer AI (Utility -> HTN -> GOAP -> FSM), controllers. Headless,
 # deterministic from seed + command log; depends on nothing but the JSON header.
 # ---------------------------------------------------------------------------
+# LR-156: Campfire's terrain steps (geology, droplets, talus): pure functions, no GPU.
+# The sim makes its relief with them; the terrain core links the same library.
+add_library(lr_terrain_gen STATIC src/terrain_core/terrain_gen.cpp)
+target_include_directories(lr_terrain_gen PUBLIC src)
+
 add_library(lr_sim STATIC
+        src/sim/relief.cpp
         src/sim/world_fields.cpp
         src/sim/world_reactions.cpp
         src/sim/elementals.cpp
@@ -394,7 +400,7 @@ add_library(lr_sim STATIC
         src/sim/need_tiers.cpp
         src/sim/caravan.cpp)
 target_include_directories(lr_sim PUBLIC src)
-target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat PRIVATE asr_warnings)
+target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat lr_terrain_gen PRIVATE asr_warnings)
 
 # lr_combat - combat core (gdd/combat/COMBAT_CORE_SPEC_v0.1.md): a port of
 # the combat_sim.py prototype, numbers from content/combat/*.json, deterministic
@@ -439,6 +445,7 @@ target_sources(lr_client2d PRIVATE src/client2d/culture2d.cpp) # LR-155: culture
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
+target_sources(lr_client2d PRIVATE src/client2d/relief2d.cpp) # LR-156: heights and cliffs
 target_sources(lr_client2d PRIVATE src/client2d/lobby2d.cpp)  # LR-160: the players of a multiplayer game
 add_executable(lr_game_2d tools/game_2d/main.cpp tools/game_2d/net2d.cpp)   # LR-160: net2d - the client side of multiplayer
 target_link_libraries(lr_game_2d PRIVATE lr_client2d asr_warnings)
@@ -696,7 +703,6 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/biomes.cpp
             src/terrain_core/erosion.cpp
             src/terrain_core/drainage.cpp
-            src/terrain_core/terrain_gen.cpp
             src/terrain_core/world_gen.cpp
             src/terrain_core/foliage.cpp
             src/terrain_core/far_detail.cpp
@@ -716,7 +722,7 @@ if(ASR_BUILD_CLIENT)
             src/terrain_core/lod_select.cpp
             src/terrain_core/renderer.cpp)
     target_include_directories(lr_terrain_core PUBLIC src)
-    target_link_libraries(lr_terrain_core PUBLIC asr_engine_render asr_world_source PRIVATE nlohmann_json asr_warnings)
+    target_link_libraries(lr_terrain_core PUBLIC asr_engine_render asr_world_source lr_terrain_gen PRIVATE nlohmann_json asr_warnings)
 
     # terrain_lab - the terrain core on an empty scene: fly it, or benchmark it.
     # lr_game_view - the life-sim drawn into the world view: its people,
@@ -905,6 +911,7 @@ if(ASR_BUILD_TESTS)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_relief.cpp)  # LR-156
     target_sources(lr_sim_tests PRIVATE tests/test_lr_need_tiers.cpp)       # LR-140
     target_include_directories(lr_sim_tests PRIVATE src tests)
     target_link_libraries(lr_sim_tests PRIVATE lr_sim lr_client2d asr_warnings)
