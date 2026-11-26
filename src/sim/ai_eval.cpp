@@ -100,7 +100,10 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
     }
     if (s == "trait") return c.hasTrait(k.key) ? 1.0 : 0.0;
     if (s == "age") return c.body.stage() == k.key ? 1.0 : 0.0;
-    if (s == "body") return k.key == "health" ? c.body.health : (k.key == "fatigue" ? c.body.fatigue : 0.0);
+    if (s == "body") {
+        if (k.key == "pregnant") return isPregnant(x.w, c) ? 1.0 : 0.0;
+        return k.key == "health" ? c.body.health : (k.key == "fatigue" ? c.body.fatigue : 0.0);
+    }
     if (s == "time") return (k.key == "night") == x.w.isNight() ? 1.0 : 0.0;
     if (s == "home") {
         const WorldObject* h = homeStorage(x.w, c);
@@ -469,6 +472,32 @@ void spoilFood(World& w) {
         if (c.body.alive && !c.isAnimal()) rot(c.inventory, id, "p:");
 }
 
+// What an act gives must not be too heavy or find no room in the hands and
+// bags; food goes to the mouth, not the bag - only its weight counts.
+// "" when it can be carried, else gear:too_heavy / gear:no_room (LR-130: the
+// menu and the order say it before the act, not a silent nothing after).
+std::string gearRefusal(const World& w, const Character& c, const InteractionDef& d) {
+    const GearRules* R = gearRules(w.content());
+    if (!R) return "";
+    std::map<std::string, int> gains, bagged;
+    for (const auto& e : d.eff)
+        if (!e.onTarget && !e.onWitnesses && e.subject == "has" && e.op == '+' && !e.isParam()) {
+            gains[e.key] += static_cast<int>(e.value);
+            const auto it = w.content().items.find(e.key);
+            if (it == w.content().items.end() || it->second.nutrition <= 0.0) bagged[e.key] += static_cast<int>(e.value);
+        }
+    if (gains.empty()) return "";
+    if (canTake(*R, c, gains) == "too_heavy") return "gear:too_heavy";
+    // AL-73: what does not fit is left where it was (takeWhatFits); only
+    // an act of which not one thing finds room is refused
+    if (!bagged.empty()) {
+        for (const auto& [k, n] : bagged)
+            if (canTake(*R, c, {{k, 1}}).empty()) return "";
+        return "gear:" + canTake(*R, c, bagged);
+    }
+    return "";
+}
+
 bool canPerform(const World& w, const Character& c, const InteractionDef& d, const WorldObject* target,
                 std::string* why, bool checkRange, const Character* targetChar) {
     auto fail = [&](std::string r) {
@@ -503,33 +532,11 @@ bool canPerform(const World& w, const Character& c, const InteractionDef& d, con
     const EvalCtx x{w, c, target, targetChar};
     for (const auto& k : d.pre)
         if (!evalCondition(x, k)) return fail("pre:" + k.text);
-    // The player's person carries as a body can (gear.json): what an act
-    // gives must not be too heavy or find no room in the hands and bags.
-    // Only for the player's own orders (AL-24): the person's own life under
-    // free will lives by the same rules as a neighbour's, and food goes to
-    // the mouth, not the bag - only its weight counts.
+    // The player's person carries as a body can (gear.json). Only for the
+    // player's own orders (AL-24): the person's own life under free will lives
+    // by the same rules as a neighbour's.
     if (c.controller.isPlayer() && c.ai.goal.source == "player")
-        if (const GearRules* R = gearRules(w.content())) {
-            std::map<std::string, int> gains, bagged;
-            for (const auto& e : d.eff)
-                if (!e.onTarget && !e.onWitnesses && e.subject == "has" && e.op == '+' && !e.isParam()) {
-                    gains[e.key] += static_cast<int>(e.value);
-                    const auto it = w.content().items.find(e.key);
-                    if (it == w.content().items.end() || it->second.nutrition <= 0.0) bagged[e.key] += static_cast<int>(e.value);
-                }
-            if (!gains.empty()) {
-                const std::string heavy = canTake(*R, c, gains);
-                if (heavy == "too_heavy") return fail("gear:too_heavy");
-                // AL-73: what does not fit is left where it was (takeWhatFits); only
-                // an act of which not one thing finds room is refused
-                if (!bagged.empty()) {
-                    bool any = false;
-                    for (const auto& [k, n] : bagged)
-                        if (canTake(*R, c, {{k, 1}}).empty()) any = true;
-                    if (!any) return fail("gear:" + canTake(*R, c, bagged));
-                }
-            }
-        }
+        if (std::string g = gearRefusal(w, c, d); !g.empty()) return fail(g);
     return true;
 }
 
@@ -802,6 +809,39 @@ void applyEffectList(World& w, Character& actor, const std::vector<Effect>& list
             if (targetChar) addRel(*targetChar, actor.id, e);
         } else if (s == "death") {
             kill(w, c, e.key);
+        } else if (s == "exile") {
+            // LR-127: t.exile - the target is driven out of the settlement: away past its edge,
+            // no longer of it; the chronicle and the exiled remember it
+            if (c.status.settlement != kNone) {
+                Vec2 at = c.pos;
+                if (auto st = w.settlements().find(c.status.settlement); st != w.settlements().end()) at = st->second.center;
+                Rng r = w.rng(c.id, "exile");
+                const double a = r.range(0.0, 6.28318530718);
+                const double far = std::max(600.0, e.value > 0 ? e.value : 900.0);
+                const double sz = w.map().sizeM;
+                abortAction(w, c, "exiled");
+                c.pos = {std::clamp(at.x + std::cos(a) * far, 5.0, sz - 5.0), std::clamp(at.y + std::sin(a) * far, 5.0, sz - 5.0)};
+                const EntityId from = c.status.settlement;
+                c.status.settlement = kNone;
+                w.remember(c, MemoryEntry{0, "exiled", {actor.id}, kNone, -0.8, 0.0, "seen", 1.0});
+                w.chronicle("exile", {actor.id, c.id}, "chronicle.exiled", {{"a", actor.id}, {"b", c.id}, {"settlement", from}});
+            }
+        } else if (s == "help") {
+            // LR-135: t.help - the one asked comes to help: with the asker's own task when there is
+            // one, else with the asker's household (help_neighbours_task)
+            if (c.id != actor.id) {
+                const Content& ct = w.content();
+                std::string task = actor.ai.goal.valid() && ct.task(actor.ai.goal.task) ? actor.ai.goal.task : "";
+                EntityId at = task.empty() ? actor.id : actor.ai.goal.target;
+                if (task.empty() && ct.task("help_neighbours_task")) task = "help_neighbours_task";
+                auto& q = c.ai.queue;
+                if (!task.empty() && std::none_of(q.begin(), q.end(), [&](const QueuedTask& t) {
+                        return t.task == task && t.reason == "asked_help";
+                    }))
+                    q.push_back(QueuedTask{task, at, 0.75, w.now(), kTicksPerDay, "asked_help",
+                                           "dialogue:" + std::to_string(actor.id)});
+                trace(w, actor, 'S', "help.promised", {{"helper", c.id}, {"task", task}});
+            }
         } else if (s == "site") {
             if (target) siteEffect(w, c, *target, e.key);
         } else if (s == "captivity") {

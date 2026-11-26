@@ -524,6 +524,7 @@ struct AiConfig {
     double switchMargin = 0.1;
     double failPenalty = 0.3;
     int htnMaxDepth = 4;
+    double htnCostPerKm = 0.0;   // LR-132: a method's cost grows with the way to the nearest known thing it needs (config htn_cost_per_km)
     int methodMaxFails = 3;
     Tick methodFailTicks = 72;
     int goapMaxDepth = 10;
@@ -531,6 +532,7 @@ struct AiConfig {
     Tick reserveTicks = 36;
     double walkMPerTick = 800.0;
     double interactionRangeM = 15.0;
+    double talkRangeM = 25.0;   // LR-128: a topic is said only within earshot (config talk_range_m)
     // AL-108: acts are done up close. One walks to contactM of a person or a
     // herd and works only within contactM + contactSlackM of it; an act whose
     // range_m is rangedFromM or more (a spear throw, watching deer) is ranged.

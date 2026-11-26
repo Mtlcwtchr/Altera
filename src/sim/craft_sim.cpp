@@ -743,9 +743,22 @@ bool handleCraft(World& w, Command& cmd) {
     if (t == "craft_attempt") {
         CraftCommand cc;
         cc.process = a.value("process", "");
+        // LR-130: a slot may come as one ref ("inv:herbs") as well as a list; anything else is refused
+        if (a.contains("slots") && !a["slots"].is_object()) {
+            cmd.result = "rejected:bad_slots";
+            return true;
+        }
         if (a.contains("slots"))
-            for (auto it = a["slots"].begin(); it != a["slots"].end(); ++it)
-                cc.slots[it.key()] = it.value().get<std::vector<std::string>>();
+            for (auto it = a["slots"].begin(); it != a["slots"].end(); ++it) {
+                if (it.value().is_string()) cc.slots[it.key()] = {it.value().get<std::string>()};
+                else if (it.value().is_array()) {
+                    for (const auto& r : it.value())
+                        if (r.is_string()) cc.slots[it.key()].push_back(r.get<std::string>());
+                } else {
+                    cmd.result = "rejected:bad_slots";
+                    return true;
+                }
+            }
         cc.target.shape = a.value("shape", "");
         cc.target.len = a.value("len", 0);
         cc.target.mode = a.value("mode", "");

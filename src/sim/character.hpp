@@ -155,6 +155,9 @@ struct Controller {
     // it changes the chance and the effects of the acts this character does to
     // a person; empty = no tone (NPCs), the plain rules.
     std::string tone;
+    // LR-128: how far steer moved the person in the tick `steerTick` (a budget per tick, not per call)
+    Tick steerTick = -1;
+    double steerUsed = 0.0;
     bool isPlayer() const { return kind == Kind::Player; }
 };
 

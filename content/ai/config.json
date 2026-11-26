@@ -12,6 +12,8 @@
  "reserve_ticks": 36,
  "walk_m_per_tick": 800,
  "interaction_range_m": 15,
+ "talk_range_m": 25,
+ "htn_cost_per_km": 2.0,
  "_doc_contact": "AL-108: действие делается вплотную. К человеку/стаду подходят на contact_m и делают действие, только пока цель в contact_m + contact_slack_m (иначе догоняют); к предмету - на его stand_m. Действия с range_m >= ranged_from_m (охота, наблюдение) - дальние, по range_m. Персонаж поворачивается к цели (Character::facing).",
  "contact_m": 1.2,
  "contact_slack_m": 1.3,

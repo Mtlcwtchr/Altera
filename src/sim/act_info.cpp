@@ -1,5 +1,7 @@
 #include "sim/act_info.hpp"
 
+#include <algorithm>
+
 #include "sim/ai.hpp"
 
 namespace lr::sim {
@@ -17,8 +19,14 @@ ActInfo actInfo(const World& w, const Character& c, const InteractionDef& base, 
         foreignVariant(w, c, base, obj ? obj->id : (targetChar && targetChar->isAnimal() ? targetChar->id : kNone));
     const InteractionDef& d = f ? *f : base;
     if (f) a.legal = f->legal;
+    // LR-127: what the act is in law here (lynching without a sentence, tyranny without the right...)
+    for (const LegalTag& t : legalTags(w, c, d, obj, targetChar))
+        if (std::find(a.legal.begin(), a.legal.end(), t.tag) == a.legal.end()) a.legal.push_back(t.tag);
     a.duration = d.duration;
     a.can = canPerform(w, c, d, obj, &a.why, false, targetChar);
+    // LR-130: the menu is the player's order: it says "can't carry" as the order would
+    if (a.can && c.controller.isPlayer())
+        if (std::string g = gearRefusal(w, c, d); !g.empty()) a.can = false, a.why = g;
     const EvalCtx x{w, c, obj, targetChar};
     for (const Condition& k : d.pre) {
         if (k.isParam() || !shownCondition(k)) continue;

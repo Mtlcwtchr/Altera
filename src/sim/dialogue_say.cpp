@@ -192,10 +192,12 @@ bool addressedVy(const World& w, EntityId speaker, EntityId listener) {
 namespace {
 // A person as a loc argument: the name's forms plus id (so the line says "ты/вы" to the
 // listener and "я" for the speaker); toward the nobility reg=vy and the address word.
-Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId id, bool vy) {
+Json personArg(const Loc& loc, const std::string& lang, const World& w, EntityId id, bool vy, bool given = false) {
     const Character* c = w.character(id);
     if (!c) return Json::object();
-    Json n = loc.personNoun(lang, *c);
+    // LR-134: the one spoken to is addressed by the given name ("Слышь, Маттиас"), not the full name
+    const std::string first = c->name.substr(0, c->name.find(' '));
+    Json n = given && c->nameForms.empty() && !first.empty() ? loc.personNoun(lang, first, c->body.sex) : loc.personNoun(lang, *c);
     n["id"] = id;
     if (vy) {
         n["reg"] = "vy";
@@ -219,7 +221,7 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
     Json args = locArgs(loc, lang, w, params, self);
     const bool vy = addressedVy(w, u.speaker, u.listener);
     if (u.speaker != kNone) args["speaker"] = args["self"] = personArg(loc, lang, w, u.speaker, false);
-    if (u.listener != kNone) args["listener"] = personArg(loc, lang, w, u.listener, vy);
+    if (u.listener != kNone) args["listener"] = personArg(loc, lang, w, u.listener, vy, true);
     // the teller of a rumour: {src} of say.json (v0.2), {from} of the v0.1 lines
     if (!u.epi.chain.empty()) args["src"] = personArg(loc, lang, w, u.epi.chain.front(), false);
     // {reason} of the old refuse lines: dialogue.reason.<intent> when there is one

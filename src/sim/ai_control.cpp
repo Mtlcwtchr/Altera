@@ -27,6 +27,7 @@ namespace lr::sim {
 namespace {
 
 constexpr double kSteerMaxStepM = 25.0; // a hard sprint for a few seconds of real time
+constexpr double kSteerTickBudget = 2.0; // LR-128: steps of kSteerMaxStepM a tick may hold in all
 
 int playerOf(const Command& cmd) {
     if (cmd.args.contains("player")) return cmd.args["player"].get<int>();
@@ -320,6 +321,10 @@ bool handle(World& w, Command& cmd) {
                 // forbidden, it is done as what it is (theft, trespass).
                 if (const InteractionDef* f = foreignVariant(w, *c, *d, gs.target)) d = f;
             }
+            if (std::string g = gearRefusal(w, *c, *d); !g.empty()) {   // LR-130: not a silent nothing
+                cmd.result = "rejected:" + g;
+                return true;
+            }
             gs.goal = "player_action";
             gs.task = d->id;
         } else {
@@ -402,11 +407,18 @@ bool handle(World& w, Command& cmd) {
         // AL-25: a step, not a teleport. The client sends steer every few
         // frames; anything farther than a run in that time is cut to it.
         const double step = dist(was, to);
-        const double maxStep = kSteerMaxStepM * std::max(1.0, transportSpeedMult(w, *c)); // LR-159: a horse goes farther
+        const double mult = std::max(1.0, transportSpeedMult(w, *c)); // LR-159: a horse goes farther
+        // LR-128: and no farther in a tick than kSteerTickBudget runs, however many steers come in it
+        if (c->controller.steerTick != w.now()) {
+            c->controller.steerTick = w.now();
+            c->controller.steerUsed = 0.0;
+        }
+        const double maxStep = std::min(kSteerMaxStepM * mult, std::max(0.0, kSteerMaxStepM * kSteerTickBudget * mult - c->controller.steerUsed));
         if (step > maxStep) {
-            to = {was.x + (to.x - was.x) * maxStep / step, was.y + (to.y - was.y) * maxStep / step};
+            to = step > 1e-9 ? Vec2{was.x + (to.x - was.x) * maxStep / step, was.y + (to.y - was.y) * maxStep / step} : was;
             trace(w, *c, 'C', "control.steer_clamped", {{"asked_m", step}});
         }
+        c->controller.steerUsed += dist(was, to);
         c->pos = to;
         c->controller.idleSince = w.now();
         // LR-152: walking costs a little stamina, running much; a spent body cannot run

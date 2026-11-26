@@ -2078,6 +2078,9 @@
    "id": "ask_help",
    "category": "social",
    "target": "character",
+   "eff": [
+    "t.help:task"
+   ],
    "duration": 1,
    "cost": 1,
    "fsm": "Talk",
@@ -2572,6 +2575,9 @@
    "id": "call_council",
    "category": "politics",
    "target": "character",
+   "pre": [
+    "right:appoint"
+   ],
    "duration": 1,
    "cost": 1,
    "fsm": "Talk",
@@ -2614,6 +2620,9 @@
    "id": "propose_law",
    "category": "politics",
    "target": "character",
+   "pre": [
+    "right:appoint"
+   ],
    "duration": 2,
    "cost": 2,
    "fsm": "Talk",
@@ -2732,6 +2741,9 @@
    "id": "appoint_office",
    "category": "politics",
    "target": "character",
+   "pre": [
+    "right:appoint"
+   ],
    "eff": [
     "rel_back:trust+0.05"
    ],
@@ -2757,7 +2769,8 @@
    "category": "politics",
    "target": "character",
    "eff": [
-    "rel_back:affinity-0.4"
+    "rel_back:affinity-0.4",
+    "t.exile:settlement"
    ],
    "duration": 1,
    "cost": 1,
@@ -2816,6 +2829,9 @@
    "id": "declare_war",
    "category": "politics",
    "target": "character",
+   "pre": [
+    "right:appoint"
+   ],
    "eff": [
     "memory:war_declared"
    ],
@@ -3785,7 +3801,8 @@
    "category": "medicine",
    "target": "character",
    "pre": [
-    "has:bandage>=1"
+    "has:bandage>=1",
+    "t.body:health<0.95"
    ],
    "eff": [
     "has:bandage-1",
@@ -3921,7 +3938,8 @@
    "category": "medicine",
    "target": "character",
    "pre": [
-    "has:remedy>=1"
+    "has:remedy>=1",
+    "t.body:health<0.95"
    ],
    "eff": [
     "has:remedy-1",
@@ -3948,6 +3966,9 @@
    "id": "assist_birth",
    "category": "medicine",
    "target": "character",
+   "pre": [
+    "t.body:pregnant"
+   ],
    "eff": [
     "skill:medicine+0.02",
     "rel_back:affinity+0.1"
