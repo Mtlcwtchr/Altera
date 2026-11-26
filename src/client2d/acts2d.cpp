@@ -5,6 +5,7 @@
 
 #include "sim/act_info.hpp"
 #include "sim/ai.hpp"
+#include "sim/transport.hpp"
 
 namespace lr::client2d {
 
@@ -187,6 +188,15 @@ Json actsJson(const World& w, const ViewText& t, ActCatalog& cat, EntityId meId,
         // on oneself: only what can be done now or lacks one thing (the rest is noise)
         if (target == kNone && !o["can"].get<bool>()) continue;
         out.push_back(std::move(o));
+    }
+    // LR-159: mount, hitch, drive, load... (sim/transport): the same perform, interaction "transport.<act>"
+    for (const auto& a : sim::transportActs(w, *me, target)) {
+        const std::string id = a["id"].get<std::string>(), why = a["why"].get<std::string>();
+        const bool can = a["can"].get<bool>();
+        if (target == kNone && !can) continue;
+        out.push_back({{"id", id}, {"name", W.name("interaction", id)}, {"can", can}, {"why", can ? "" : resultText(t, why)},
+                       {"needs", Json::array()}, {"gains", Json::array()}, {"to_target", Json::array()}, {"minutes", 1},
+                       {"legal", Json::array()}});
     }
     return out;
 }

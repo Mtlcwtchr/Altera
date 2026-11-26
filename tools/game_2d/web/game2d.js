@@ -449,20 +449,52 @@
     ctx.beginPath(); ctx.ellipse(sx, sy + 1 * sc, (p.sp ? 4 : 5) * sc, 2 * sc, 0, 0, Math.PI * 2); ctx.fill();
     const lying = !p.alive || p.down || p.st === 'Sleep' || p.st === 'Incapacitated';
     if (p.sp) {
+      // LR-159: a ridden beast is drawn under its rider, a driven vehicle with its driver
+      if (p.rider != null || (p.veh && p.driver != null)) return;
+      if (drawTr(p.sp, trFace(p, v), trFrame(v), sx, sy, sc)) return;
       const b = beastSprite(p.sp, v.face === 'W' ? 'W' : 'E');
       ctx.drawImage(b, sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
       return;
     }
+    // LR-159: on a beast or on the box of a vehicle: it first, the person lifted onto it
+    let lift = 0, side = v.face;
+    const on = !lying && (p.ride || (p.seat && p.seat.driver ? p.seat : null));
+    if (on && drawTr(on.sp, trFace(p, v), trFrame(v), sx, sy, sc)) { lift = on.dy || 0; side = trFace(p, v); }
     let spec = p._spec;
     if (!spec || p._specKey !== p._lookKey) { spec = p._spec = pawnSpec(p); p._specKey = p._lookKey; }
     // LR-139: the walk cycle, a blow at work, a breath and a blink standing
-    const img = Pawns.sprite(spec, lying ? 'S' : v.face, lying ? 0 : Pawns.pose(v.moving, v.walked || 0, p.st === 'Work', performance.now(), p.id));
+    const img = Pawns.sprite(spec, lying ? 'S' : side, lying ? 0 : Pawns.pose(v.moving, v.walked || 0, p.st === 'Work', performance.now(), p.id));
     // the 20x20 canvas sits over the cell: feet on the spot, head into the cell above
     if (lying) {
       ctx.save(); ctx.translate(sx, sy - 3 * sc); ctx.rotate(-Math.PI / 2);
       if (!p.alive) ctx.globalAlpha = 0.6;
       ctx.drawImage(img, -10 * sc, -10 * sc, PAWN * sc, PAWN * sc); ctx.restore();
-    } else ctx.drawImage(img, sx - 10 * sc, sy - 18 * sc, PAWN * sc, PAWN * sc);
+    } else ctx.drawImage(img, sx - 10 * sc, sy - (18 + lift) * sc, PAWN * sc, PAWN * sc);
+  }
+  // LR-159: mounts and vehicles as data (transport2d.json: tr_<kind> facing east, tr_<kind>_1 the other step)
+  const trCache = new Map();
+  function trSprite(sp, face, frame) {
+    let name = 'tr_' + sp + (frame ? '_1' : '');
+    if (!Sprites.has(name)) name = 'tr_' + sp;
+    if (!Sprites.has(name)) return null;
+    const k = name + face;
+    if (trCache.has(k)) return trCache.get(k);
+    let c = Sprites.get(name);
+    if (face === 'W') {
+      const m = document.createElement('canvas'); m.width = c.width; m.height = c.height;
+      const g = m.getContext('2d'); g.translate(c.width, 0); g.scale(-1, 1); g.drawImage(c, 0, 0); c = m;
+    }
+    trCache.set(k, c);
+    return c;
+  }
+  function trFace(p, v) { return v.face === 'E' || v.face === 'W' ? v.face : ((p.fx || 1) < 0 ? 'W' : 'E'); }
+  function trFrame(v) { return v.moving ? (Math.floor((v.walked || 0) * 1.5) & 1) : 0; }
+  function drawTr(sp, face, frame, sx, sy, sc) {
+    const c = trSprite(sp, face, frame);
+    if (!c) return false;
+    const n = c.width;
+    ctx.drawImage(c, sx - n / 2 * sc, sy - (n - 3) * sc, n * sc, n * sc);
+    return true;
   }
   function drawRoofs(sc, tp) {
     if (roofMode === 'none') return;
@@ -804,13 +836,15 @@
   Promise.all([getJson('/api/static'), getJson('/sprites/sprites.json'), getJson('/sprites/map2d.json'),
     getJson('/sprites/resources.json').catch(() => null), getJson('/sprites/crops2d.json').catch(() => null),
     getJson('/sprites/pawns2d.json').catch(() => null),
-    getJson('/sprites/cliffs2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, cliffs]) => {
+    getJson('/sprites/transport2d.json').catch(() => null),
+    getJson('/sprites/cliffs2d.json').catch(() => null)]).then(([st, sprites, map2d, res, crops, pawnParts, transport, cliffs]) => {
     CLIFFS = cliffs || {};
     ST = st; MAP = map2d; RES = res; UI = st.ui || {};
     Pawns.setParts(pawnParts);   // LR-139: hair, beards, ears, builds as data
     PAWN_PARTS = pawnParts || {};
     Sprites.load(sprites);
     Sprites.merge(crops);   // AL-112: fields and gardens
+    Sprites.merge(transport);   // LR-159: mounts and vehicles
     Sprites.merge(cliffs);  // LR-156: cliffs of the relief
     MAP.actsRe = (MAP.acts || []).map(([re, sp]) => [new RegExp(re), sp]);
     for (const h of MAP.hidden || []) hidden.add(h);

@@ -35,5 +35,29 @@
   "goblin": 0.4
  },
  "welcome_other": 0.1,
+ "faith": "moon_mother",
+ "values": {
+  "nature": 0.4,
+  "freedom": 0.5,
+  "kinship": 0.3,
+  "learning": -0.3,
+  "order": -0.2
+ },
+ "traditions": [
+  "hunt_honour",
+  "omen_reading"
+ ],
+ "rites": {
+  "coming_of_age": "none",
+  "marriage": "none",
+  "burial": "entomb"
+ },
+ "food": {
+  "likes": [
+   "meat"
+  ],
+  "avoids": []
+ },
+ "desc": "culture.troll.desc",
  "_doc": "Тролли: пещеры и болота, рычащая речь; до рассвета ищут тень."
 }

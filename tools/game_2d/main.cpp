@@ -45,7 +45,10 @@ using socket_t = int;
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <vector>
+#include <deque>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 
@@ -59,11 +62,14 @@ using socket_t = int;
 #include "client2d/build2d.hpp"
 #include "client2d/grid2d.hpp"
 #include "client2d/sheet2d.hpp"
+#include "client2d/culture2d.hpp"
 #include "client2d/sky2d.hpp"
 #include "client2d/talk2d.hpp"
 #include "client2d/session2d.hpp"
 #include "client2d/view2d.hpp"
 #include "client2d/worldmap2d.hpp"
+#include "client2d/lobby2d.hpp"
+#include "net2d.hpp"
 #include "sim/ai.hpp"
 #include "sim/data_fs.hpp"
 #include "sim/building.hpp"
@@ -77,6 +83,8 @@ namespace c2 = lr::client2d;
 
 namespace {
 
+constexpr int kNetProto = 1;   // LR-160: the routes as clients of another build expect them
+
 struct App {
     std::string root, webDir, spritesDir;
     World* world = nullptr;
@@ -87,12 +95,12 @@ struct App {
     bool paused = false;
     double tps = 2.0;   // sim ticks per real second (1 tick = 10 game minutes)
     double lastStepMs = 0.0;
-    std::string lastResult;
+    std::map<int, std::string> lastResult;   // LR-160: per player
     c2::ActCatalog acts;        // AL-96: the act menu's catalog
-    SpeechFeed speech;          // AL-96: what people said (lines) and mutter (barks)
+    std::map<int, SpeechFeed> speech;   // AL-96: what people said (lines) and mutter (barks); LR-160: a feed per player
     c2::TalkCatalog talk;       // AL-98: the talk window's spheres and chances
     Json craftUi;               // AL-97: content/ui/craft.json (the helper's wishes)
-    EntityId colonyOf = kNone;  // AL-94: colony mode - the person handed to free will; the player plans as them
+    std::map<int, EntityId> colonyOf;   // AL-94: colony mode - the person handed to free will; the player plans as them (LR-160: per player)
     // LR-157: an NPC asks the player's person or talks with them in a talk the player leads:
     // the world waits (as a dialogue in an RPG) until it is answered or over
     bool holdTalks = true;      // off with --observe
@@ -118,37 +126,59 @@ struct App {
     int autosaveMin = 10;       // 0: off
     std::chrono::steady_clock::time_point lastAutosave = std::chrono::steady_clock::now();
     bool quit = false;
+    // LR-160: multiplayer. The world is the server's; every client is a player of the lobby.
+    c2::Lobby lobby;
+    bool loopback = true;      // the request in hand comes from this computer (the window, a local page)
+    bool menuPaused = false;   // the pause is a menu's hold (lifted when the menu closes)
+    bool hasWindow = false;    // the host's own window is player 1
+    int port = 8766;
+    std::string bind = "0.0.0.0";
+    std::deque<Json> events;   // shared acts (pause, speed, new game, load, joins) for the others' toasts
+    long long eventSeq = 0;
+    long long worldGen = 0;    // a new world in play (new game, load): every client starts over on it
+    std::chrono::steady_clock::time_point lastSweep{};
 };
+
+double nowSec(const App& a) { return std::chrono::duration<double>(std::chrono::steady_clock::now() - a.started).count(); }
+
+// LR-160: a shared act of the player in hand (or of the server, player 0), for everyone's toast.
+void shared(App& a, const std::string& what, const Json& extra = Json::object()) {
+    const c2::NetPlayer* p = a.lobby.find(a.text.player);
+    Json e = {{"seq", ++a.eventSeq}, {"by", a.text.player}, {"name", p ? p->name : std::string()}, {"what", what}, {"tps", a.tps}};
+    for (const auto& [k, v] : extra.items()) e[k] = v;
+    a.events.push_back(e);
+    while (a.events.size() > 16) a.events.pop_front();
+}
 
 // AL-99: a new world in play: the act catalog and the talk feed start over.
 void adopt(App& a, std::unique_ptr<World> w) {
     a.owned = std::move(w);
     a.world = a.owned.get();
     a.acts = c2::ActCatalog::make(*a.world, a.wheel);
-    a.speech = SpeechFeed{};
-    a.speech.poll(*a.world, *a.text.loc, a.text.lang);   // old talk stays unshown
+    a.speech.clear();   // a feed's first poll only marks where the talk ends: old talk stays unshown
     a.lastResult.clear();
+    a.colonyOf.clear();
+    a.lobby.worldChanged();
+    a.menuPaused = false;
+    ++a.worldGen;
     a.lastAutosave = std::chrono::steady_clock::now();
 }
 
-// The player's person (player 1), kNone when the player only watches.
-EntityId controlled(const World& w) {
-    for (const auto& [id, c] : w.characters())
-        if (c.controller.isPlayer() && c.controller.playerId == 1) return id;
-    return kNone;
-}
+// The person of the player this request is from (a.text.player), kNone when they only watch.
+EntityId controlled(const App& a) { return c2::controlledBy(*a.world, a.text.player); }
 
 // Who plans and runs the colony: the led person, or in colony mode the one handed to free will.
 EntityId planner(const App& a) {
-    const EntityId me = controlled(*a.world);
+    const EntityId me = controlled(a);
     if (me != kNone) return me;
-    const Character* c = a.colonyOf != kNone ? a.world->character(a.colonyOf) : nullptr;
-    return c && c->body.alive ? a.colonyOf : kNone;
+    const auto it = a.colonyOf.find(a.text.player);
+    const Character* c = it != a.colonyOf.end() ? a.world->character(it->second) : nullptr;
+    return c && c->body.alive ? it->second : kNone;
 }
 
 // LR-157: the ask or the led talk of the player's person (0: none), one key for both phases
-long long talkKey(const World& w) {
-    const Character* me = w.character(controlled(w));
+long long talkKey(const World& w, int player) {
+    const Character* me = w.character(c2::controlledBy(w, player));
     if (!me) return 0;
     const EntityId with = lr::sim::pendingInvite(*me) != kNone ? lr::sim::pendingInvite(*me) : lr::sim::ledTalkWith(*me);
     return with == kNone ? 0 : (long long)(with) * 1000003LL + (long long)me->ai.social.since + 1;
@@ -157,7 +187,17 @@ long long talkKey(const World& w) {
 // Pauses the world for a new ask/talk, lifts the pause once it is over; true when it paused now.
 bool holdForTalk(App& a) {
     if (!a.holdTalks || !a.world) return false;
-    const long long k = talkKey(*a.world);
+    // LR-160: the world waits for a talk only for a player alone in it; with others in, it goes on
+    const double now = nowSec(a);
+    if (a.lobby.onlineCount(now) > 1) {
+        if (a.talkPaused) a.paused = a.talkPaused = false;
+        a.talkHeld = 0;
+        return false;
+    }
+    int solo = 1;
+    for (const auto& p : a.lobby.all())
+        if (a.lobby.online(p, now)) solo = p.id;
+    const long long k = talkKey(*a.world, solo);
     if (k != 0 && k != a.talkHeld) {
         a.talkHeld = k;
         if (!a.paused) a.paused = a.talkPaused = true;
@@ -175,11 +215,11 @@ Json speechJson(App& a, const Vec2* near) {
     auto push = [&](const SpeechEvent& e, bool bark) {
         out.push_back({{"who", e.speaker}, {"to", e.listener}, {"line", e.line}, {"full", e.full}, {"bark", bark}});
     };
-    for (const auto& e : a.speech.poll(*a.world, *a.text.loc, a.text.lang)) push(e, false);
+    for (const auto& e : a.speech[a.text.player].poll(*a.world, *a.text.loc, a.text.lang)) push(e, false);
     if (near) {
         const double sec = std::chrono::duration<double>(std::chrono::steady_clock::now() - a.started).count();
-        for (const auto& e : a.speech.barks(*a.world, *a.text.loc, a.text.lang, near->x, near->y, 60.0, sec,
-                                            controlled(*a.world)))
+        for (const auto& e : a.speech[a.text.player].barks(*a.world, *a.text.loc, a.text.lang, near->x, near->y, 60.0, sec,
+                                            controlled(a)))
             push(e, true);
     }
     return out;
@@ -246,21 +286,22 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     Json j = c2::clockJson(*a.world);
     j["paused"] = a.paused;
     j["tps"] = a.tps;
+    j["world_gen"] = a.worldGen;   // LR-160
     // AL-110: the sky of this tick and the next (the window blends between them)
     static const char* forced = std::getenv("LR_2D_WEATHER");   // frames: clear|cloudy|rain|storm|snow|sleet|fog|snowy
     const std::string wx = forced ? forced : "";
     j["sky"] = c2::skyJson(c2::withWeather(c2::skyAt(*a.world, a.sky, a.world->now()), a.sky, wx));
     j["sky_next"] = c2::skyJson(c2::withWeather(c2::skyAt(*a.world, a.sky, a.world->now() + 1), a.sky, wx));
     j["step_ms"] = a.lastStepMs;
-    j["last_result"] = a.lastResult;
+    j["last_result"] = a.lastResult[a.text.player];
     j["people"] = c2::peopleJson(*a.world, a.text, near, r);
-    j["me"] = controlled(*a.world);
+    j["me"] = controlled(a);
     j["speech"] = speechJson(a, near);
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
     // LR-137: the hero frame shows the led person even while another one is selected
-    if (const EntityId m = controlled(*a.world); m != kNone && m != sel) j["me_card"] = c2::personJson(*a.world, a.text, m);
+    if (const EntityId m = controlled(a); m != kNone && m != sel) j["me_card"] = c2::personJson(*a.world, a.text, m);
     // LR-157: who asks the player's person (the window opens the talk with them), who talks with them
-    if (const Character* mc = a.world->character(controlled(*a.world))) {
+    if (const Character* mc = a.world->character(controlled(a))) {
         if (const EntityId who = lr::sim::pendingInvite(*mc); who != kNone) {
             const lr::sim::SocialLink& l = mc->ai.social;
             j["invite"] = {{"who", who}, {"act", l.chain}, {"since", l.since}};
@@ -269,30 +310,48 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     }
     // AL-115: fire, smoke and magic as point lights / fx for the 2D renderer (src/sim/world_fields.hpp)
     j["world_fx"] = lr::sim::fieldsViewJson(*a.world, near, r);
+    // LR-160: who plays, who you are, what the others did to the shared things
+    j["net"] = {{"you", a.text.player}, {"players", a.lobby.toJson(*a.world, a.text, nowSec(a))}, {"events", Json(a.events)},
+                {"menu_pause", a.menuPaused}};
     return j;
 }
 
 std::string handleCmd(App& a, const Json& body) {
     const std::string op = body.value("op", std::string());
     World& w = *a.world;
-    if (op == "pause") a.paused = body.value("on", !a.paused), a.talkPaused = false;
-    else if (op == "speed") a.tps = std::clamp(body.value("tps", 2.0), 0.25, 600.0);
-    else if (op == "step") {
+    const int pl = a.text.player;
+    if (op == "pause") {
+        // LR-160: the pause is everyone's. A menu's pause (menu: true) holds the world only for a
+        // player alone in it; with others in, opening the menu does not stop their game.
+        const bool on = body.value("on", !a.paused);
+        if (body.value("menu", false)) {
+            if (on && !a.paused && a.lobby.onlineCount(nowSec(a)) <= 1) a.paused = a.menuPaused = true;
+            else if (!on && a.menuPaused) a.paused = a.menuPaused = false;
+        } else {
+            a.paused = on;
+            a.menuPaused = false;
+            a.talkPaused = false;
+        }
+        if (!body.value("menu", false)) shared(a, on ? "pause" : "resume");
+    } else if (op == "speed") {
+        a.tps = std::clamp(body.value("tps", 2.0), 0.25, 600.0);
+        shared(a, "speed");
+    } else if (op == "step") {
         const int n = std::clamp(body.value("ticks", 1), 1, int(kTicksPerDay * 30));
         for (int i = 0; i < n; ++i) w.step();
     } else if (op == "cmd") {
         Command cmd;
-        cmd.source = "player:1";
+        cmd.source = "player:" + std::to_string(pl);
         cmd.type = body.value("type", std::string());
         cmd.args = body.value("args", Json::object());
-        cmd.args["player"] = 1;
+        cmd.args["player"] = pl;   // a client acts only as itself
         const Command r = w.applyNow(cmd);
-        a.lastResult = cmd.type + ": " + (r.result.empty() ? "ok" : r.result);
+        a.lastResult[pl] = cmd.type + ": " + (r.result.empty() ? "ok" : r.result);
         return r.result == "ok" ? std::string() : r.result;
     } else if (op == "say_topic") {
         // AL-98: the player's person brings a topic of the talk window up
-        const std::string why = c2::sayTopic(w, controlled(w), body.value("target", kNone), body.value("index", -1));
-        a.lastResult = "say_topic: " + (why.empty() ? std::string("ok") : why);
+        const std::string why = c2::sayTopic(w, controlled(a), body.value("target", kNone), body.value("index", -1));
+        a.lastResult[pl] = "say_topic: " + (why.empty() ? std::string("ok") : why);
         return why.empty() ? "ok" : "rejected:" + why;
     } else return "unknown op";
     return "ok";
@@ -305,6 +364,7 @@ Json okJson(App& a, const std::string& r) { return {{"result", r}, {"text", r ==
 Json gameJson(App& a, const Json& view) {
     Json g = a.game.toJson();
     g["tps"] = a.tps;
+    g["players"] = a.lobby.save();   // LR-160: who led whom, for after a restart
     if (view.is_object()) g["view"] = view;
     return g;
 }
@@ -312,7 +372,12 @@ Json gameJson(App& a, const Json& view) {
 bool autosave(App& a) {
     std::string why;
     a.lastAutosave = std::chrono::steady_clock::now();
-    if (controlled(*a.world) == kNone) return false;   // a game not begun is not saved
+    // a game not begun (nobody has led anyone yet) is not saved
+    if (!a.world->moduleState("player_house")) {
+        bool any = false;
+        for (const auto& [id, c] : a.world->characters()) any = any || c.controller.isPlayer();
+        if (!any) return false;
+    }
     if (!c2::writeSave2d(a.saveDir, 0, *a.world, gameJson(a, Json()), &why, &a.text)) {
         std::cerr << "autosave: " << why << "\n";
         return false;
@@ -333,8 +398,19 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
     auto route = [&](const char* p) { return path.rfind(p, 0) == 0; };
     auto reply = [&](const Json& j) { respond(s, 200, "application/json", j.dump()); };
     const Json q = method == "POST" ? Json::parse(body.empty() ? "{}" : body) : Json::object();
-    if (route("/api/menu")) {
-        reply({{"me", controlled(*a.world)},
+    if (route("/api/hello")) {
+        // LR-160: a client checks it reached a LivelyRealms game and learns who it is
+        const c2::NetPlayer* p = a.lobby.find(a.text.player);
+        reply({{"game", "LivelyRealms"}, {"proto", kNetProto}, {"player", a.text.player}, {"name", p ? p->name : ""}});
+    } else if (route("/api/net")) {
+        // LR-160: the network window: where others join, who is in
+        Json addrs = Json::array();
+        for (const auto& ip : net2d::localAddresses()) addrs.push_back(ip + ":" + std::to_string(a.port));
+        reply({{"port", a.port}, {"bind", a.bind}, {"addrs", addrs}, {"you", a.text.player}, {"max", a.lobby.maxPlayers},
+               {"players", a.lobby.toJson(*a.world, a.text, nowSec(a))}});
+    } else if (route("/api/menu")) {
+        reply({{"me", controlled(a)},
+               {"players_online", a.lobby.onlineCount(nowSec(a))},
                {"game", a.game.toJson()},
                {"paused", a.paused},
                {"options", c2::newGameOptions(*a.content, a.text, a.game)},
@@ -344,7 +420,7 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
     } else if (route("/api/saves")) {
         reply(c2::listSaves2d(a.saveDir));
     } else if (route("/api/dynasties")) {
-        reply({{"me", controlled(*a.world)}, {"families", c2::dynastiesJson(*a.world, a.text)}});
+        reply({{"me", controlled(a)}, {"families", c2::dynastiesJson(*a.world, a.text)}});
     } else if (method != "POST") {
         return false;
     } else if (route("/api/newgame")) {
@@ -358,9 +434,10 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
         }
         a.game = g;
         a.paused = true;   // the world waits while the player picks whom to be
+        shared(a, "newgame");
         reply({{"result", "ok"}, {"game", g.toJson()}});
     } else if (route("/api/begin")) {
-        const std::string r = c2::beginAs(*a.world, q);
+        const std::string r = c2::beginAs(*a.world, q, a.text.player);
         if (r == "ok") {
             a.paused = false;
             a.lastAutosave = std::chrono::steady_clock::now();
@@ -383,6 +460,8 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
             a.game = c2::NewGame::fromJson(g, a.game.seed);
             a.tps = std::clamp(g.value("tps", a.tps), 0.25, 600.0);
             a.paused = false;
+            a.lobby.load(g.value("players", Json::array()), nowSec(a));   // LR-160: their persons wait for them
+            shared(a, "load", {{"slot", slot}});
             std::cout << "loaded slot " << slot << std::endl;
             reply({{"result", "ok"}, {"view", g.value("view", Json::object())}});
         } catch (const std::exception& e) {
@@ -395,6 +474,13 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
         reply({{"result", slot > 0 && c2::deleteSave2d(a.saveDir, slot) ? "ok" : "rejected:bad slot"},
                {"saves", c2::listSaves2d(a.saveDir)}});
     } else if (route("/api/quit")) {
+        // LR-160: the game is the server's: only this computer ends it; another client only leaves
+        if (!a.loopback || a.text.player != 1) {
+            a.lobby.leave(a.text.player, nowSec(a));
+            std::cout << "player " << a.text.player << " left" << std::endl;
+            reply({{"result", "ok"}, {"left", true}});
+            return true;
+        }
         if (q.value("autosave", true)) autosave(a);
         a.quit = true;
         reply({{"result", "ok"}});
@@ -441,7 +527,48 @@ void serveFile(Reply& s,const std::string& dir, std::string rest) {
 
 void dispatch(App& a, Reply& s, const std::string& method, const std::string& path, const std::string& body);
 
-void serveClient(App& a, socket_t s) {
+// A header's value (name in lower case), "" when absent.
+std::string headerOf(const std::string& head, const std::string& lowerHead, const std::string& name) {
+    const size_t at = lowerHead.find("\r\n" + name + ":");
+    if (at == std::string::npos) return "";
+    const size_t b = at + 2 + name.size() + 1, e = head.find("\r\n", b);
+    std::string v = head.substr(b, e == std::string::npos ? std::string::npos : e - b);
+    while (!v.empty() && (v.front() == ' ' || v.front() == '\t')) v.erase(v.begin());
+    while (!v.empty() && (v.back() == ' ' || v.back() == '\t')) v.pop_back();
+    return v;
+}
+
+// %xx and + of a query value
+std::string urlDecode(const std::string& v) {
+    std::string out;
+    for (size_t i = 0; i < v.size(); ++i) {
+        if (v[i] == '+') out += ' ';
+        else if (v[i] == '%' && i + 2 < v.size()) {
+            out += char(std::strtol(v.substr(i + 1, 2).c_str(), nullptr, 16));
+            i += 2;
+        } else out += v[i];
+    }
+    return out;
+}
+
+// LR-160: who a request is from. The window of this process is player 1 (Host::call); a
+// socket's client names itself by its token (header X-LR-Player or ?lrp=), a new token joins.
+// False when the game is full.
+bool identify(App& a, const std::string& token, const std::string& name, const std::string& kind, bool loopback) {
+    a.loopback = loopback;
+    bool joined = false;
+    const int id = a.lobby.touch("n" + token, name, kind, nowSec(a), &joined);   // "n": a socket's token never names the window
+    if (id <= 0) return false;
+    a.text.player = id;
+    if (joined) {
+        const c2::NetPlayer* p = a.lobby.find(id);
+        std::cout << "player " << id << " (" << (p ? p->name : "") << ", " << kind << ") joined" << std::endl;
+        shared(a, "join");
+    }
+    return true;
+}
+
+void serveClient(App& a, socket_t s, bool loopback) {
     std::string req;
     char buf[8192];
     size_t headerEnd = std::string::npos, contentLen = 0;
@@ -456,19 +583,33 @@ void serveClient(App& a, socket_t s) {
                 std::transform(lower.begin(), lower.end(), lower.begin(),
                                [](unsigned char ch) { return char(std::tolower(ch)); });
                 const size_t cl = lower.find("content-length:");
-                if (cl != std::string::npos) contentLen = std::stoul(lower.substr(cl + 15));
+                if (cl != std::string::npos) contentLen = std::min<size_t>(std::stoul(lower.substr(cl + 15)), 16u << 20);
             }
         }
         if (headerEnd != std::string::npos && req.size() >= headerEnd + 4 + contentLen) break;
+        if (req.size() > (17u << 20)) return;   // no request is this big
     }
     if (headerEnd == std::string::npos) return;
     std::istringstream line(req.substr(0, req.find("\r\n")));
     std::string method, path;
     line >> method >> path;
     const std::string body = req.substr(headerEnd + 4);
+    const std::string head = req.substr(0, headerEnd);
+    std::string lower = head;
+    std::transform(lower.begin(), lower.end(), lower.begin(), [](unsigned char ch) { return char(std::tolower(ch)); });
+    std::string token = headerOf(head, lower, "x-lr-player"), name = urlDecode(headerOf(head, lower, "x-lr-name"));
+    std::string kind = headerOf(head, lower, "x-lr-client");
+    if (token.empty()) token = queryParam(path, "lrp");
+    if (name.empty()) name = urlDecode(queryParam(path, "lrn"));
     Reply rep;
-    dispatch(a, rep, method, path, body);
+    // files of the page are anyone's; the routes are a player's
+    const bool api = path.rfind("/api/", 0) == 0;
+    if (api && !identify(a, token, name, kind.empty() ? "web" : kind, loopback)) {
+        respond(rep, 503, "application/json", Json{{"result", "rejected:full"}, {"max", a.lobby.maxPlayers}}.dump());
+    } else dispatch(a, rep, method, path, body);
     sendReply(s, rep);
+    a.text.player = a.hasWindow ? 1 : a.text.player;
+    a.loopback = true;
 }
 
 // One request of the page or of the native window (tools/game_2d/native): the
@@ -522,10 +663,20 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
                     c2::chronicleJson(*a.world, a.text, std::size_t(std::max(0, intParam(path, "since", 0)))).dump());
         } else if (path.rfind("/api/dynasty", 0) == 0) {
             // LR-145: the dynasty window (src/client2d/sheet2d dynastyJson)
-            respond(s, 200, "application/json", c2::dynastyJson(*a.world, a.text, controlled(*a.world)).dump());
+            respond(s, 200, "application/json", c2::dynastyJson(*a.world, a.text, controlled(a)).dump());
         } else if (path.rfind("/api/worldmap", 0) == 0) {
             // LR-153: the world map window (src/client2d/worldmap2d)
-            respond(s, 200, "application/json", c2::worldMapJson(*a.world, a.text, controlled(*a.world)).dump());
+            respond(s, 200, "application/json", c2::worldMapJson(*a.world, a.text, controlled(a)).dump());
+        } else if (path.rfind("/api/culture", 0) == 0) {
+            // LR-155: the culture and faith window (src/client2d/culture2d)
+            respond(s, 200, "application/json",
+                    c2::cultureJson(*a.world, a.text, controlled(a), EntityId(std::max(0, intParam(path, "id", 0))),
+                                    queryParam(path, "faith"), queryParam(path, "culture"))
+                        .dump());
+        } else if (path.rfind("/api/inspect", 0) == 0) {
+            // LR-155: "inspect" - what the led person and the dynasty know of someone
+            respond(s, 200, "application/json",
+                    c2::inspectJson(*a.world, a.text, controlled(a), EntityId(std::max(0, intParam(path, "id", 0)))).dump());
         } else if (path.rfind("/api/sheet", 0) == 0) {
             // AL-100: the character sheet (src/client2d/sheet2d)
             respond(s, 200, "application/json", c2::sheetJson(*a.world, a.text, EntityId(std::max(0, intParam(path, "id", 0)))).dump());
@@ -537,12 +688,12 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
                     target = EntityId(std::stoull(tq));
                 } catch (...) {
                 }
-            respond(s, 200, "application/json", c2::actsJson(*a.world, a.text, a.acts, controlled(*a.world), target).dump());
+            respond(s, 200, "application/json", c2::actsJson(*a.world, a.text, a.acts, controlled(a), target).dump());
         } else if (path.rfind("/api/bar", 0) == 0 && method == "POST") {
             // AL-96: the quick bar's slots checked for the player's person
             const Json q = Json::parse(body.empty() ? "{}" : body);
             respond(s, 200, "application/json",
-                    c2::barJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone), q.value("slots", Json::array()))
+                    c2::barJson(*a.world, a.text, controlled(a), q.value("target", kNone), q.value("slots", Json::array()))
                         .dump());
         } else if (path.rfind("/api/build/catalog", 0) == 0) {
             // AL-94: the build mode (tools/game_2d/web/build.js): the palette
@@ -554,7 +705,7 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
         } else if ((path.rfind("/api/build/preview", 0) == 0 || path.rfind("/api/build/place", 0) == 0) && method == "POST") {
             // a tool's stroke: checked as the sim checks it; place lays it into the plan
             const c2::Stroke st = c2::Stroke::fromJson(Json::parse(body.empty() ? "{}" : body));
-            const c2::Planner who{planner(a), st.forSettlement};
+            const c2::Planner who{planner(a), st.forSettlement, a.text.player};
             const bool place = path.rfind("/api/build/place", 0) == 0;
             respond(s, 200, "application/json",
                     (place ? c2::placeJson(*a.world, a.text, who, st) : c2::previewJson(*a.world, a.text, who, st)).dump());
@@ -562,23 +713,26 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             // AL-94: the colony window (tools/game_2d/web/colony.js)
             if (path.rfind("/api/colony/mode", 0) == 0 && method == "POST") {
                 // colony mode: one's person lives on their own, the player runs the settlement
-                const bool on = Json::parse(body.empty() ? "{}" : body).value("on", a.colonyOf == kNone);
+                const int pl = a.text.player;
+                const auto it = a.colonyOf.find(pl);
+                const EntityId held = it != a.colonyOf.end() ? it->second : kNone;
+                const bool on = Json::parse(body.empty() ? "{}" : body).value("on", held == kNone);
                 Command c;
-                c.source = "player:1";
-                c.args = {{"player", 1}};
-                if (on && a.colonyOf == kNone && controlled(*a.world) != kNone) {
-                    a.colonyOf = controlled(*a.world);
+                c.source = "player:" + std::to_string(pl);
+                c.args = {{"player", pl}};
+                if (on && held == kNone && controlled(a) != kNone) {
+                    a.colonyOf[pl] = controlled(a);
                     c.type = "release_control";
                     a.world->applyNow(c);
-                } else if (!on && a.colonyOf != kNone) {
+                } else if (!on && held != kNone) {
                     c.type = "take_control";
-                    c.args["id"] = a.colonyOf;
-                    a.colonyOf = kNone;
+                    c.args["id"] = held;
+                    a.colonyOf.erase(pl);
                     a.world->applyNow(c);
                 }
             }
             Json j = c2::colonyJson(*a.world, a.text, planner(a));
-            if (j.is_object()) j["colony_mode"] = a.colonyOf != kNone;
+            if (j.is_object()) j["colony_mode"] = a.colonyOf.count(a.text.player) > 0;
             respond(s, 200, "application/json", j.dump());
         } else if (path.rfind("/api/talk", 0) == 0) {
             // AL-98: the talk window with a person
@@ -588,18 +742,18 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             } catch (...) {
             }
             respond(s, 200, "application/json",
-                    c2::talkJson(*a.world, a.text, a.acts, a.talk, controlled(*a.world), target, queryParam(path, "tone")).dump());
+                    c2::talkJson(*a.world, a.text, a.acts, a.talk, controlled(a), target, queryParam(path, "tone")).dump());
         } else if (path.rfind("/api/trade", 0) == 0 && method == "POST") {
             // AL-98: the trade window, the draft {target, give, take} weighed
             const Json q = Json::parse(body.empty() ? "{}" : body);
             respond(s, 200, "application/json",
-                    c2::tradeJson(*a.world, a.text, controlled(*a.world), q.value("target", kNone),
+                    c2::tradeJson(*a.world, a.text, controlled(a), q.value("target", kNone),
                                   q.value("give", Json::object()), q.value("take", Json::object()))
                         .dump());
         } else if (path.rfind("/api/workshop", 0) == 0 && method == "POST") {
             // AL-97: the workshop of the player's person (or `id`): {draft, wish, kit, texts}
             const Json q = Json::parse(body.empty() ? "{}" : body);
-            EntityId who = q.value("id", controlled(*a.world));
+            EntityId who = q.value("id", controlled(a));
             if (q.value("kit", false))
                 if (Character* c = a.world->character(who)) c2::craftKit(*a.world, *c);
             c2::WorkshopQuery wq;
@@ -619,6 +773,62 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
 }
 
 } // namespace
+
+// --- LR-160: one window, another computer's game ------------------------------------
+// This program again, as a window of the game at `to` (empty: its own game again). The language stays.
+bool relaunch(int argc, char** argv, const std::string& to, const std::string& name) {
+    std::vector<std::string> args;
+    for (int i = 1; i + 1 < argc; ++i)
+        if (!std::strcmp(argv[i], "--lang") || !std::strcmp(argv[i], "--root") || !std::strcmp(argv[i], "--port")) {
+            args.push_back(argv[i]);
+            args.push_back(argv[++i]);
+        }
+    if (!to.empty()) args.insert(args.end(), {"--connect", to});
+    if (!name.empty()) args.insert(args.end(), {"--name", name});
+#ifdef _WIN32
+    auto wide = [](const std::string& u) {
+        const int n = MultiByteToWideChar(CP_UTF8, 0, u.c_str(), -1, nullptr, 0);
+        std::wstring w(size_t(std::max(n, 1)), L'\0');
+        MultiByteToWideChar(CP_UTF8, 0, u.c_str(), -1, w.data(), n);
+        w.resize(size_t(std::max(n - 1, 0)));
+        return w;
+    };
+    wchar_t exe[MAX_PATH] = {};
+    GetModuleFileNameW(nullptr, exe, MAX_PATH);
+    std::wstring cmd = L"\"" + std::wstring(exe) + L"\"";
+    for (const auto& a : args) cmd += L" \"" + wide(a) + L"\"";
+    STARTUPINFOW si{};
+    si.cb = sizeof si;
+    PROCESS_INFORMATION pi{};
+    if (!CreateProcessW(exe, cmd.data(), nullptr, nullptr, FALSE, 0, nullptr, nullptr, &si, &pi)) return false;
+    CloseHandle(pi.hThread);
+    CloseHandle(pi.hProcess);
+    return true;
+#else
+    (void)args;
+    return false;   // no window in the Linux build
+#endif
+}
+
+// The token this computer's window is known by on any server (kept beside the saves).
+std::string windowToken() {
+    const std::filesystem::path f = c2::saveDir2d().parent_path() / "net_token.txt";
+    std::string t;
+    if (std::ifstream in(f); in) std::getline(in, t);
+    t = c2::cleanToken(t);
+    if (t.size() >= 12) return t;
+    t = net2d::newToken();
+    std::error_code ec;
+    std::filesystem::create_directories(f.parent_path(), ec);
+    std::ofstream(f) << t << "\n";
+    return t;
+}
+
+std::string defaultName() {
+    for (const char* k : {"LR_PLAYER_NAME", "USERNAME", "USER"})
+        if (const char* v = std::getenv(k); v && *v) return c2::cleanName(v);
+    return "";
+}
 
 // The 2D client's own JSON (content/sprites_2d, content/ui), at start and on a hot reload.
 void loadClientData(App& app) {
@@ -697,6 +907,9 @@ int main(int argc, char** argv) {
     bool openBrowser = true;
     bool web = false;       // --web: the page in the browser (the debug client); --no-browser: the server alone
     bool observe = false;   // --observe: watch only, nobody is led
+    bool server = false;    // LR-160 --server: the world alone, no window, no browser (others join it)
+    std::string connect;    // LR-160 --connect host[:port]: this window plays the game of another computer
+    std::string playerName; // LR-160 --name: how the others see this player
     for (int i = 1; i < argc; ++i) {
         auto next = [&]() -> std::string {
             if (i + 1 >= argc) {
@@ -717,12 +930,19 @@ int main(int argc, char** argv) {
         else if (!std::strcmp(argv[i], "--loc")) locDir = next();
         else if (!std::strcmp(argv[i], "--lang")) lang = next();
         else if (!std::strcmp(argv[i], "--port")) port = std::stoi(next());
+        else if (!std::strcmp(argv[i], "--probe")) return net2d::probe(next(), std::cout);   // LR-160: a client's view of a server
         else if (!std::strcmp(argv[i], "--run-hours")) runHours = std::stod(next());
         else if (!std::strcmp(argv[i], "--paused")) app.paused = true;
         else if (!std::strcmp(argv[i], "--no-browser")) openBrowser = false, web = true;
         else if (!std::strcmp(argv[i], "--web")) web = true;
         else if (!std::strcmp(argv[i], "--observe")) observe = true, app.holdTalks = false;
         else if (!std::strcmp(argv[i], "--autosave-min")) app.autosaveMin = std::max(0, std::stoi(next()));
+        else if (!std::strcmp(argv[i], "--bind")) app.bind = next();
+        else if (!std::strcmp(argv[i], "--server")) server = true, observe = true, openBrowser = false, web = true;
+        else if (!std::strcmp(argv[i], "--connect")) connect = next();
+        else if (!std::strcmp(argv[i], "--name")) playerName = next();
+        else if (!std::strcmp(argv[i], "--max-players")) app.lobby.maxPlayers = std::clamp(std::stoi(next()), 1, 16);
+        else if (!std::strcmp(argv[i], "--release-sec")) app.lobby.releaseSec = std::max(1.0, std::stod(next()));
         else {
             std::cerr << "unknown argument " << argv[i] << "\n";
             return 2;
@@ -753,6 +973,54 @@ int main(int argc, char** argv) {
 #else
     web = true;
 #endif
+    if (playerName.empty()) playerName = defaultName();
+    if (!connect.empty()) {
+        // LR-160: a window of another computer's game; the world steps there, this only draws and asks
+        net2d::Addr to;
+        if (!net2d::parseAddr(connect, to)) {
+            std::cerr << "--connect: bad address " << connect << "\n";
+            return 2;
+        }
+#ifdef LR_GAME2D_NATIVE
+        if (!window) {
+            std::cerr << "--connect needs the window; a browser joins at http://" << to.host << ":" << to.port << "/\n";
+            return 2;
+        }
+        net2d::Remote remote(to, windowToken(), playerName, "native");
+        std::string why;
+        if (!remote.hello(&why, kNetProto)) {
+            window->fail("LivelyRealms: " + to.host + ":" + std::to_string(to.port) + " - " + why);
+            return 1;
+        }
+        std::cout << "joined " << to.host << ":" << to.port << std::endl;
+        bool quit = false;
+        game2d::Host host;
+        host.remote = to.host + ":" + std::to_string(to.port);
+        host.call = [&](const std::string& method, const std::string& path, const std::string& body, int* code) {
+            const std::string out = remote.call(method, path, body, code);
+            if (path.rfind("/api/quit", 0) == 0) quit = true;   // the server only lets us go; the window closes
+            return out;
+        };
+        host.pump = [](int) {};   // nothing steps here
+        host.quitting = [&] { return quit; };
+        host.connect = [&](const std::string& addr) {
+            if (!relaunch(argc, argv, addr, playerName)) return false;
+            int code = 0;
+            remote.call("POST", "/api/quit", "{}", &code);
+            quit = true;
+            return true;
+        };
+        window->run(host);
+        if (!quit) {
+            int code = 0;
+            remote.call("POST", "/api/quit", "{}", &code);
+        }
+        return 0;
+#else
+        std::cerr << "--connect needs the window build; a browser joins at http://" << to.host << ":" << to.port << "/\n";
+        return 2;
+#endif
+    }
     try {
         std::cout << "loading content..." << std::endl;
         const Content content = Content::load(contentDir);
@@ -781,7 +1049,8 @@ int main(int argc, char** argv) {
             adopt(app, std::move(w));
         }
         World& world0 = *app.world;
-        // AL-96: the player leads the head of the village (the mandate holder), as the 3D game starts
+        // AL-96: the player leads the head of the village (the mandate holder), as the 3D game starts.
+        // LR-160: player 1 - the host's window, else the first client to join; a --server starts with nobody led.
         if (!observe)
             for (const auto& [sid, st] : world0.settlements()) {
                 if (st.mode != "full") continue;
@@ -797,7 +1066,12 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
-        app.speech.poll(world0, loc, app.text.lang);   // old talk stays unshown
+        app.port = port;
+        app.hasWindow = false;
+#ifdef LR_GAME2D_NATIVE
+        app.hasWindow = window != nullptr;
+#endif
+        if (app.hasWindow) app.lobby.addLocal(playerName, nowSec(app));
 
 #ifdef _WIN32
         WSADATA wsa;
@@ -805,61 +1079,85 @@ int main(int argc, char** argv) {
 #else
         std::signal(SIGPIPE, SIG_IGN);
 #endif
-        // the HTTP server: the page (--web) and the shot scripts; beside the window it is only for
-        // debugging, so a port in use is no failure there
+        // the HTTP server: the game's server (LR-160: every client but the host's window joins
+        // through it, on the local network by default - --bind 127.0.0.1 keeps it to this computer).
+        // Beside the window a port in use is no failure: the window plays alone then.
         socket_t ls = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
         sockaddr_in addr{};
         addr.sin_family = AF_INET;
         addr.sin_port = htons(static_cast<unsigned short>(port));
-        inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
+        if (inet_pton(AF_INET, app.bind.c_str(), &addr.sin_addr) != 1) throw std::runtime_error("bad --bind address " + app.bind);
         int yes = 1;
         setsockopt(ls, SOL_SOCKET, SO_REUSEADDR, reinterpret_cast<const char*>(&yes), sizeof yes);
-        if (bind(ls, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || listen(ls, 16) != 0) {
-            if (web) throw std::runtime_error("cannot listen on 127.0.0.1:" + std::to_string(port) + " (already running?)");
+        if (bind(ls, reinterpret_cast<sockaddr*>(&addr), sizeof addr) != 0 || listen(ls, 64) != 0) {
+            if (web) throw std::runtime_error("cannot listen on " + app.bind + ":" + std::to_string(port) + " (already running?)");
             CLOSESOCK(ls);
             ls = INVALID_SOCKET;
         }
         const std::string url = "http://127.0.0.1:" + std::to_string(port) + "/";
         std::cout << "LivelyRealms 2D: " << (ls != INVALID_SOCKET ? url : std::string("no server")) << "  ("
                   << world0.characters().size() << " characters; Ctrl+C to quit)" << std::endl;
+        if (ls != INVALID_SOCKET && app.bind != "127.0.0.1")
+            for (const auto& ip : net2d::localAddresses())
+                std::cout << "  others join: http://" << ip << ":" << port << "/  or  lr_game_2d --connect " << ip << ":" << port
+                          << std::endl;
 #ifdef _WIN32
         if (web && openBrowser) ShellExecuteA(nullptr, "open", url.c_str(), nullptr, nullptr, SW_SHOWNORMAL);
 #else
         (void)openBrowser;
 #endif
+        (void)server;
         using Clock = std::chrono::steady_clock;
         auto lastTick = Clock::now();
         double owed = 0.0;
-        // One round: the requests waiting (up to `waitUs` for the first), then the sim's steps owed,
-        // within `budgetMs` of real time.
+        // One request off the socket, answered (it closes after).
+        auto serveOne = [&](socket_t cs, const sockaddr_in& peer) {
+#ifdef _WIN32
+            DWORD to = 2000;
+            setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&to), sizeof to);
+#else
+            timeval to{2, 0};
+            setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to);
+#endif
+            const bool loop = (ntohl(peer.sin_addr.s_addr) >> 24) == 127;
+            serveClient(app, cs, loop);
+#ifdef _WIN32
+            shutdown(cs, SD_SEND);
+#else
+            shutdown(cs, SHUT_WR);
+#endif
+            CLOSESOCK(cs);
+        };
+        // One round: the requests waiting (up to `waitUs` for the first; LR-160: then all that are
+        // ready, at most 48, so 8 clients polling do not queue behind the window's frames), then the
+        // sim's steps owed, within `budgetMs` of real time.
         auto pump = [&](long waitUs, int budgetMs) {
             if (ls != INVALID_SOCKET) {
-                fd_set rd;
-                FD_ZERO(&rd);
-                FD_SET(ls, &rd);
-                timeval tv{0, waitUs};
-                if (select(int(ls) + 1, &rd, nullptr, nullptr, &tv) > 0) {
-                    socket_t cs = accept(ls, nullptr, nullptr);
-                    if (cs != INVALID_SOCKET) {
+                for (int n = 0; n < 48; ++n) {
+                    fd_set rd;
+                    FD_ZERO(&rd);
+                    FD_SET(ls, &rd);
+                    timeval tv{0, n == 0 ? waitUs : 0};
+                    if (select(int(ls) + 1, &rd, nullptr, nullptr, &tv) <= 0) break;
+                    sockaddr_in peer{};
 #ifdef _WIN32
-                        DWORD to = 2000;
-                        setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, reinterpret_cast<const char*>(&to), sizeof to);
+                    int plen = sizeof peer;
 #else
-                        timeval to{2, 0};
-                        setsockopt(cs, SOL_SOCKET, SO_RCVTIMEO, &to, sizeof to);
+                    socklen_t plen = sizeof peer;
 #endif
-                        serveClient(app, cs);
-#ifdef _WIN32
-                        shutdown(cs, SD_SEND);
-#else
-                        shutdown(cs, SHUT_WR);
-#endif
-                        CLOSESOCK(cs);
-                    }
+                    socket_t cs = accept(ls, reinterpret_cast<sockaddr*>(&peer), &plen);
+                    if (cs == INVALID_SOCKET) break;
+                    serveOne(cs, peer);
                 }
             }
             checkData(app); // LR-142: hot reload of the content
             const auto now = Clock::now();
+            // LR-160: players away too long hand their persons to free will, the ones back take them again
+            if (now - app.lastSweep > std::chrono::seconds(1)) {
+                app.lastSweep = now;
+                if (app.hasWindow) app.lobby.addLocal("", nowSec(app));
+                for (const auto& line : app.lobby.sweep(*app.world, nowSec(app))) std::cout << line << std::endl;
+            }
             const double dt = std::chrono::duration<double>(now - lastTick).count();
             lastTick = now;
             if (app.autosaveMin > 0 && now - app.lastAutosave > std::chrono::minutes(app.autosaveMin)) autosave(app);
@@ -887,12 +1185,21 @@ int main(int argc, char** argv) {
             game2d::Host host;
             host.call = [&](const std::string& method, const std::string& path, const std::string& body, int* code) {
                 Reply r;
+                app.text.player = 1;   // LR-160: the host's own window
+                app.loopback = true;
                 dispatch(app, r, method, path, body);
                 if (code) *code = r.code;
                 return r.body;
             };
             host.pump = [&](int budgetMs) { pump(0, budgetMs); };
             host.quitting = [&] { return app.quit; };
+            host.connect = [&](const std::string& to) {
+                // LR-160: the window goes over to another computer's game: this one saved, the exe again with --connect
+                if (!relaunch(argc, argv, to, playerName)) return false;
+                autosave(app);
+                app.quit = true;
+                return true;
+            };
             window->run(host);
             if (!app.quit) autosave(app);   // the window closed some other way than the menu's Quit
             app.quit = true;

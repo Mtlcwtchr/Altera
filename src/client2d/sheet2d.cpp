@@ -7,6 +7,7 @@
 
 #include "sim/ai.hpp"
 #include "sim/captivity.hpp"
+#include "sim/culture.hpp"
 #include "sim/gear.hpp"
 #include "sim/trade.hpp"
 
@@ -136,7 +137,13 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
               {"occ", c.occupation.empty() ? "" : textOr(t, "ui2d.sheet.occ." + c.occupation, c.occupation)},
               {"backstory", c.backstory.empty() ? "" : t.name("backstory", c.backstory)},
               {"pl", c.controller.isPlayer()},
-              {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
+              {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
+              {"lead", mayLead(w, t.player, c)}}; // LR-138: only one's own kin
+    if (!c.isAnimal()) {   // LR-155: the person's culture and faith (the window: /api/culture)
+        const std::string cu = cultureOf(w, c), fa = faithOf(w, c);
+        d["belief"] = {{"culture", cu}, {"cultureName", t.name("culture", cu)}, {"bond", r2(cultureBondOf(w, c))},
+                       {"faith", fa}, {"faithName", t.name("faith", fa)}, {"piety", r2(pietyOf(w, c))}};
+    }
 
     // --- overview -----------------------------------------------------------------
     Json ov;
@@ -450,6 +457,7 @@ Json dynastyJson(const World& w, const ViewText& t, EntityId viewer) {
                            {"goal", goalName(t, c)},
                            {"hp", r2(c.body.health)},
                            {"pl", c.controller.isPlayer()},
+                           {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
                            {"spouse", c.status.spouse},
                            {"mother", c.status.mother},
                            {"father", c.status.father},

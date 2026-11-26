@@ -19,12 +19,15 @@
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
 #include "sim/worldmap.hpp"
+#include "sim/caravan.hpp"
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
+#include "sim/culture.hpp"
 #include "sim/wounds.hpp"
 #include "sim/firefight.hpp"
 #include "sim/world_fields.hpp"
 #include "sim/world_reactions.hpp"
+#include "sim/transport.hpp"
 
 namespace lr::sim {
 
@@ -228,7 +231,9 @@ bool tickFsm(World& w, Character& c) {
         }
         const double d = dist(c.pos, f.dest);
         // AL-115: mud, ice and steep ground slow the step; the walk takes the ticks it needs
-        const double step = cfg.walkMPerTick * stepMoveFactor(w, c.pos, f.dest, cfg.walkMPerTick);
+        // LR-159: a long walk on one's own beast; riding or driving, the step is the mount's / the team's
+        if (w.now() - f.started <= 1) autoRideStart(w, c, f.dest);
+        const double step = cfg.walkMPerTick * stepMoveFactor(w, c.pos, f.dest, cfg.walkMPerTick) * transportSpeedMult(w, c);
         if (d <= step || (f.timer <= 1 && step >= cfg.walkMPerTick)) {
             c.pos = f.dest;
         } else {
@@ -701,6 +706,7 @@ void installAi(World& w) {
             realmDaily(world);   // AL-85: the region beyond the map: politics, wars, wanderers, quests
             magicDaily(world);   // AL-116: the gift, healers, the undead, paths out of grief
             societyDaily(world); // AL-118: laws and witch trials, guilds, magic at work
+            cultureDaily(world); // LR-155: bonds to culture, piety and conversion, the settlements' traditions
             budgetDaily(world);  // AL-83: each person keeps what his share of the memory budget allows
         }
         fieldsTick(world);  // AL-115: the cells' fields, fire, the integrity of things
@@ -721,8 +727,10 @@ void installAi(World& w) {
             if (c.isAnimal()) animalThink(world, c, tick);
             else thinkCharacter(world, c);
         }
+        transportTick(world); // LR-159: mounts, teams and vehicles go with their rider / driver
         faceAll(world); // AL-108
     });
+    installTransport(w); // LR-159: before control, it takes the transport.* performs
     installControl(w);
     installSocial(w);
     installBuilding(w);
@@ -731,9 +739,11 @@ void installAi(World& w) {
     installTrade(w);
     installRealm(w);
     installWorldMap(w);   // LR-153: the world map (fealty at the start, battlefields)
+    installCaravans(w); // LR-154: caravans, peddlers, supply trains
     installFields(w);
     installMagic(w);
     installMagicSociety(w);
+    installCulture(w);
 }
 
 } // namespace lr::sim

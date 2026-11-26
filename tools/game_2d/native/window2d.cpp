@@ -71,7 +71,7 @@ void attachConsole(bool need) {
 namespace {
 
 constexpr int T = 16, CH = 64;
-constexpr int kPage = 1024, kCell = 22;   // atlas pages, one picture a cell with a gap round it
+constexpr int kPage = 1024, kCell = 34;   // atlas pages, one picture a cell with a gap round it (LR-159: up to 32 px)
 
 double nowMs() { return double(SDL_GetTicks()); }
 
@@ -272,6 +272,8 @@ struct Window::Impl : Ctx {
     std::string roofMode = "auto";
     double lastFrame = 0, lastPoll = -1e9, lastBar = -1e9;
     long long lastInvite = 0;   // LR-157: the NPC's ask the talk window was opened for
+    long long worldGen = -1;     // LR-160: the server's world (a new game or a load changes it)
+    long long eventSeq = -1;     // LR-160: the shared acts seen
     std::uint64_t dataGen = 0;   // LR-142: the data generation the sprites and the map rules were read at
     bool selectedMe = false;
 
@@ -406,6 +408,10 @@ struct Window::Impl : Ctx {
     double camAtY() const override { return camY; }
     int zoomLevel() const override { return zoom; }
     void quitGame() override { post("/api/quit", {{"autosave", true}}); }
+    // LR-160: multiplayer
+    std::string remoteAddr() const override { return host ? host->remote : std::string(); }
+    bool connectTo(const std::string& addr) override { return host && host->connect && host->connect(addr); }
+    void menuPause(bool on) override { cmd({{"op", "pause"}, {"on", on}, {"menu", true}}); }
     // a new world in play: the map, the people, the camera start over
     void worldChanged(const Json& view) override {
         for (auto& [k, c] : chunks)
@@ -630,6 +636,39 @@ struct Window::Impl : Ctx {
         const std::string k = std::string("b:") + sp + face;
         if (const Sprite* s = atlas.find(k)) return *s;
         return atlas.put(k, beastPixels(sp, face));
+    }
+    // LR-159: a mount or a vehicle as data (content/sprites_2d/transport2d.json: tr_<kind>, facing
+    // east, tr_<kind>_1 the other step of the walk), N x N; mirrored for the west. Empty: none.
+    std::map<std::string, int> trSize;
+    Sprite trSprite(const std::string& sp, char face, int frame, int& n) {
+        std::string name = "tr_" + sp + (frame ? "_1" : "");
+        if (!sprites.has(name)) name = "tr_" + sp;
+        if (!sprites.has(name)) return Sprite{};
+        const std::string k = "t:" + name + face;
+        if (const Sprite* s = atlas.find(k); s && trSize.count(name)) {
+            n = trSize[name];
+            return *s;
+        }
+        Pixels px = sprites.get(name);
+        n = trSize[name] = px.size;
+        if (face == 'W')
+            for (int y = 0; y < px.size; ++y)
+                std::reverse(px.px.begin() + std::ptrdiff_t(y * px.size), px.px.begin() + std::ptrdiff_t((y + 1) * px.size));
+        return atlas.put(k, px);
+    }
+    // the side a mount or a vehicle shows: its walk's east or west, else the sim's facing
+    static char trFace(const Json& p, const Vis& v) {
+        if (v.face == 'E' || v.face == 'W') return v.face;
+        return num(p, "fx", 1) < 0 ? 'W' : 'E';
+    }
+    static int trFrame(const Vis& v) { return v.moving ? (int(std::floor(v.walked * 1.5)) & 1) : 0; }
+    // draws the beast or vehicle `sp` with its feet / wheels at (sx, sy); false: no such sprite
+    bool drawTr(const std::string& sp, char face, int frame, float sx, float sy, float sc) {
+        int n = 16;
+        const Sprite t = trSprite(sp, face, frame, n);
+        if (!t) return false;
+        blit(t, sx - float(n) / 2 * sc, sy - float(n - 3) * sc, float(n) * sc, float(n) * sc);
+        return true;
     }
     void blit(const Sprite& s, float x, float y, float w, float h, float alpha = 1.0f, double angle = 0) {
         if (!s) return;
@@ -893,6 +932,8 @@ struct Window::Impl : Ctx {
         atmos.configure(parseOr(readText(dir / "sky2d.json"), Json::object()));
         sprites.merge(LOOK);
         sprites.merge(parseOr(readText(dir / "crops2d.json"), Json::object()));   // AL-112: fields and gardens
+        sprites.merge(parseOr(readText(dir / "transport2d.json"), Json::object()));   // LR-159: mounts and vehicles
+        trSize.clear();
         CLIFFS = parseOr(readText(dir / "cliffs2d.json"), Json::object());   // LR-156: cliffs of the relief
         sprites.merge(CLIFFS);
         HUD = parseOr(readText(dir / "hud2d.json"), Json::object());   // LR-137: the pixel HUD
@@ -1139,6 +1180,25 @@ struct Window::Impl : Ctx {
         }
     }
 
+    // LR-160: what the other players did to the shared things (pause, speed, a new game, a load), and who came in
+    void netEvents(const Json& s) {
+        const Json net = s.value("net", Json::object());
+        const long long you = net.value("you", 0LL);
+        for (const auto& e : net.value("events", Json::array())) {
+            const long long seq = e.value("seq", 0LL);
+            if (seq <= eventSeq) continue;
+            const bool first = eventSeq < 0;
+            if (!first && e.value("by", 0LL) != you) {
+                const std::string what = e.value("what", std::string());
+                std::string speed = std::to_string(e.value("tps", 2.0));
+                speed = speed.substr(0, speed.find('.') + 2);
+                toast(L("ui2d.net.ev." + what, {{"who", e.value("name", std::string())}, {"n", speed}}));
+            }
+        }
+        for (const auto& e : net.value("events", Json::array())) eventSeq = std::max(eventSeq, e.value("seq", 0LL));
+        if (eventSeq < 0) eventSeq = 0;
+    }
+
     // --- polling -----------------------------------------------------------------------------
     void poll() {
         lastPoll = nowMs();
@@ -1148,6 +1208,18 @@ struct Window::Impl : Ctx {
         if (selId >= 0) q += "&sel=" + std::to_string(selId);
         const Json s = get(q);
         if (!s.is_object()) return;
+        // LR-160: another player made a new world or loaded one: this window starts over on it
+        if (const long long gen = s.contains("world_gen") && s["world_gen"].is_number() ? s["world_gen"].get<long long>() : -1;
+            gen >= 0 && gen != worldGen) {
+            const bool first = worldGen < 0;
+            worldGen = gen;
+            if (!first) {
+                worldChanged(Json::object());
+                if (me < 0 && screens && !screens->isOpen("pick")) screens->open("pick");
+                return;
+            }
+        }
+        netEvents(s);
         clock = s;
         paused = flag(s, "paused");
         tps = num(s, "tps", 2);
@@ -1391,7 +1463,9 @@ struct Window::Impl : Ctx {
             else dx = (px - v.x) / d, dy = (py - v.y) / d;
         }
         if (dx || dy) {
-            const double len = std::hypot(dx, dy), sp = (run ? 7.5 : 4.2) * dt;
+            // LR-159: on a horse or at the reins the step is the sim's (spd)
+            const double spd = person(me) ? std::max(0.05, num(*person(me), "spd", 1.0)) : 1.0;
+            const double len = std::hypot(dx, dy), sp = (run ? 7.5 : 4.2) * dt * spd;
             double s = sp;
             if (!path.empty()) s = std::min(sp, std::hypot(path.front().first - v.x, path.front().second - v.y));
             const double nx = v.x + dx / len * s, ny = v.y + dy / len * s;
@@ -1579,16 +1653,31 @@ struct Window::Impl : Ctx {
         const std::string st = str(p, "st");
         const bool lying = !alive || flag(p, "down") || st == "Sleep" || st == "Incapacitated";
         if (!sp.empty()) {
+            // LR-159: a ridden beast is drawn under its rider, a driven vehicle with its driver
+            if (p.contains("rider") || (flag(p, "veh") && p.contains("driver"))) return;
+            if (drawTr(sp, trFace(p, v), trFrame(v), sx, sy, sc)) return;
             blit(beastSprite(sp, v.face == 'W' ? 'W' : 'E'), sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc);
             return;
         }
-        const Sprite img = lying ? pawnSprite(pawnSpec(p), 'S', 0) : pawnSprite(pawnSpec(p), v.face, poseOf(p, v));
+        // LR-159: on a beast or on the box of a vehicle: it first, the person lifted onto it
+        float lift = 0;
+        char side = v.face;
+        if (!lying && p.contains("ride") && p["ride"].is_object()) {
+            const Json& r = p["ride"];
+            const char f = trFace(p, v);
+            if (drawTr(str(r, "sp"), f, trFrame(v), sx, sy, sc)) lift = float(num(r, "dy", 6)), side = f;
+        } else if (!lying && p.contains("seat") && p["seat"].is_object() && flag(p["seat"], "driver")) {
+            const Json& s = p["seat"];
+            const char f = trFace(p, v);
+            if (drawTr(str(s, "sp"), f, trFrame(v), sx, sy, sc)) lift = float(num(s, "dy", 4)), side = f;
+        }
+        const Sprite img = lying ? pawnSprite(pawnSpec(p), 'S', 0) : pawnSprite(pawnSpec(p), side, poseOf(p, v));
         // AL-114: a kind's size (a goblin 16, an ogre or a troll 32 px against the 20 of a man); LR-139: and one's own
         const float k = (num(p, "rpx", 0) > 0 ? float(num(p, "rpx", 20)) / float(kPawn) : 1.0f) * heightK(p);
         if (lying) {
             const float cx = sx, cy = sy - 3 * sc;
             blit(img, cx - 10 * sc * k, cy - 10 * sc * k, kPawn * sc * k, kPawn * sc * k, alive ? 1.0f : 0.6f, -90);
-        } else blit(img, sx - 10 * sc * k, sy - 18 * sc * k, kPawn * sc * k, kPawn * sc * k);
+        } else blit(img, sx - 10 * sc * k, sy - (18 * k + lift) * sc, kPawn * sc * k, kPawn * sc * k);
     }
     void drawRoofs(double tp) {
         if (roofMode == "none") return;
@@ -1781,6 +1870,14 @@ struct Window::Impl : Ctx {
         const std::string sp = str(p, "sp");
         beast = !sp.empty();
         if (beast) {
+            int n = 0;
+            if (p.contains("rider") || (flag(p, "veh") && p.contains("driver"))) return false;   // LR-159: drawn with them
+            if (const Sprite t = trSprite(sp, trFace(p, v), trFrame(v), n)) {
+                img = t;
+                dst = {sx - float(n) / 2 * sc, sy - float(n - 3) * sc, float(n) * sc, float(n) * sc};
+                foot = sy + 3 * sc;
+                return true;
+            }
             img = beastSprite(sp, v.face == 'W' ? 'W' : 'E');
             dst = {sx - 8 * sc, sy - 11 * sc, 16 * sc, 16 * sc};
             foot = sy + 4 * sc;

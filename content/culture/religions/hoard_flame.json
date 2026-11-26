@@ -1,0 +1,17 @@
+{
+ "id": "hoard_flame",
+ "_doc": "LR-155: Пламя Клада — драконы чтят собственное пламя и клад; прочие веры для них забавны.",
+ "kind": "self",
+ "deities": [{"id": "first_flame", "domain": "fire"}],
+ "values": {"wealth": 0.8, "freedom": 0.6, "honor": 0.2, "hospitality": -0.4},
+ "rites": {"rite": 0.04, "claimed": 0.04},
+ "sins": {"stole": 0.0, "surrendered": 0.1},
+ "holy_days": [{"id": "awakening", "day": 180}],
+ "burial": "burn",
+ "clergy": "none",
+ "sacred": [],
+ "magic": {"blessed": ["fire"], "forbidden": []},
+ "zeal": 0.0,
+ "tolerance": 0.8,
+ "goals": {}
+}

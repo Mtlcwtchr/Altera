@@ -328,6 +328,7 @@ add_library(lr_sim STATIC
         src/sim/backstory.cpp
         src/sim/charcreate.cpp
         src/sim/trade.cpp
+        src/sim/transport.cpp
         src/sim/collide.cpp
         src/sim/act_info.cpp
         src/sim/consequences.cpp
@@ -343,6 +344,7 @@ add_library(lr_sim STATIC
         src/sim/village_life.cpp
         src/sim/magic.cpp
         src/sim/magic_society.cpp
+        src/sim/culture.cpp
         src/sim/species.cpp
         src/sim/stats.cpp
         src/sim/act_check.cpp
@@ -393,7 +395,8 @@ add_library(lr_sim STATIC
         src/sim/craft_sim.cpp
         src/sim/alchemy.cpp
         src/sim/building.cpp
-        src/sim/need_tiers.cpp)
+        src/sim/need_tiers.cpp
+        src/sim/caravan.cpp)
 target_include_directories(lr_sim PUBLIC src)
 target_link_libraries(lr_sim PUBLIC nlohmann_json lr_combat lr_terrain_gen PRIVATE asr_warnings)
 
@@ -436,16 +439,19 @@ add_library(lr_client2d STATIC src/client2d/grid2d.cpp src/client2d/view2d.cpp s
 target_include_directories(lr_client2d PUBLIC src)
 target_link_libraries(lr_client2d PUBLIC lr_sim PRIVATE asr_warnings)
 target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
+target_sources(lr_client2d PRIVATE src/client2d/culture2d.cpp) # LR-155: culture and faith, inspect
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
 target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
 target_sources(lr_client2d PRIVATE src/client2d/relief2d.cpp) # LR-156: heights and cliffs
-add_executable(lr_game_2d tools/game_2d/main.cpp)
+target_sources(lr_client2d PRIVATE src/client2d/lobby2d.cpp)  # LR-160: the players of a multiplayer game
+add_executable(lr_game_2d tools/game_2d/main.cpp tools/game_2d/net2d.cpp)   # LR-160: net2d - the client side of multiplayer
 target_link_libraries(lr_game_2d PRIVATE lr_client2d asr_warnings)
 if(WIN32)
     target_link_libraries(lr_game_2d PRIVATE ws2_32)
 endif()
 target_compile_definitions(lr_game_2d PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_include_directories(lr_game_2d PRIVATE tools/game_2d)
 
 if(NOT LR_SIM_ONLY)
 # ---------------------------------------------------------------------------
@@ -875,7 +881,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_stats.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
             tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
-            tests/test_lr_sim_gear.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
+            tests/test_lr_sim_gear.cpp tests/test_lr_sim_transport.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
             tests/test_lr_sim_consequences.cpp tests/test_lr_sim_dialogue_gen.cpp
             tests/test_lr_sim_dialogue_rules.cpp
             tests/test_lr_sim_rumor_noise.cpp tests/test_lr_sim_rumor_spread.cpp tests/test_lr_sim_dialogue_say.cpp
@@ -883,20 +889,23 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_speech_feed.cpp tests/test_lr_sim_news.cpp tests/test_lr_sim_memory_talk.cpp
             tests/test_lr_sim_village_life.cpp tests/test_lr_sim_memory_budget.cpp
             tests/test_lr_sim_realm.cpp
+            tests/test_lr_sim_caravan.cpp
             tests/test_lr_sim_magic.cpp
             tests/test_lr_sim_magic_society.cpp
+            tests/test_lr_sim_culture.cpp
             tests/test_lr_sim_ecology.cpp
             tests/test_lr_sim_social.cpp
             tests/test_lr_sim_dialogue_memory.cpp tests/test_lr_sim_dialogue_lines.cpp
             tests/test_lr_sim_trade.cpp tests/test_lr_sim_species.cpp
             tests/test_lr_cutaway.cpp tests/test_lr_ui_theme.cpp tests/test_lr_locomotion.cpp tests/test_lr_hotbar.cpp
             tests/test_lr_sim_dialogue_corpus.cpp tests/test_lr_client2d.cpp
-            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp
+            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp tests/test_lr_client2d_net.cpp
             tests/test_lr_client2d_craft.cpp
             tests/test_lr_build2d.cpp
             tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
             tests/test_lr_sim_relief_firefight.cpp)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_culture.cpp) # LR-155
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112

@@ -56,6 +56,7 @@ void openMain(Ctx& c, Screens& s);
 void openNew(Ctx& c, Screens& s);
 void openPick(Ctx& c, Screens& s);
 void openSaves(Ctx& c, Screens& s, const std::string& mode);
+void openNet(Ctx& c, Screens& s);
 
 // --- the main menu -------------------------------------------------------------
 void openMain(Ctx& c, Screens& s) {
@@ -86,6 +87,11 @@ void openMain(Ctx& c, Screens& s) {
             return hit;
         };
         if (item("continue", inGame)) w.closing = true;
+        // LR-160: a game others already play in: one comes in as a person of a dynasty nobody leads
+        if (!inGame && jnum(M, "players_online", 0) > 1 && item("join", true)) {
+            w.closing = true;
+            openPick(c, s);
+        }
         if (item("new", true)) {
             w.closing = true;
             openNew(c, s);
@@ -97,6 +103,10 @@ void openMain(Ctx& c, Screens& s) {
         if (item("load", anySave)) {
             w.closing = true;
             openSaves(c, s, "load");
+        }
+        if (item("net", true)) {   // LR-160
+            w.closing = true;
+            openNet(c, s);
         }
         if (item("quit", true)) c.quitGame();
         c.textC(body.x + body.w / 2, y + 10 * U, c.L("ui2d.menu.keys"), pal::dim, 12 * U);   // LR-143: under the buttons, the window hugs them
@@ -428,11 +438,85 @@ void openSaves(Ctx& c, Screens& s, const std::string& mode) {
     s.push(std::move(w));
 }
 
+// --- LR-160: the network game -------------------------------------------------------
+// Where the others join this game (the addresses), who is in, and going over to the game of
+// another computer by its address (the window opens again as a client of it).
+void openNet(Ctx& c, Screens& s) {
+    auto w = std::make_unique<Win>();
+    w->id = "net";
+    w->title = c.L("ui2d.net.title");
+    w->width = 0.46f;
+    w->height = 0.70f;
+    w->data = {{"N", c.get("/api/net")}, {"addr", ""}, {"at", 0}};
+    w->render = [&s](Ctx& c, Win& w, const ui::Rect& body) {
+        const float U = c.u();
+        auto& g = c.gui();
+        const int at = w.data.value("at", 0) + 1;
+        w.data["at"] = at;
+        if (at % 60 == 0) w.data["N"] = c.get("/api/net");   // the list now and then (once a second)
+        const Json N = w.data["N"];
+        const std::string remote = c.remoteAddr();
+        float y = body.y + 6 * U;
+        if (remote.empty()) {
+            c.text(body.x, y, c.L("ui2d.net.host"), pal::gold, 16 * U, true);
+            y += 24 * U;
+            c.text(body.x, y, c.L("ui2d.net.host.hint"), pal::dim, 12 * U);
+            y += 20 * U;
+            const Json& addrs = jarr(N, "addrs");
+            if (addrs.empty()) {
+                c.text(body.x, y, c.L("ui2d.net.noaddr", {{"port", jstr(N, "port")}}), pal::text, 14 * U);
+                y += 22 * U;
+            }
+            for (const auto& a : addrs) {
+                const std::string ad = a.is_string() ? a.get<std::string>() : "";
+                c.text(body.x + 10 * U, y, "http://" + ad + "/   ·   " + ad, pal::text, 15 * U, true);
+                y += 22 * U;
+            }
+        } else {
+            c.text(body.x, y, c.L("ui2d.net.joined", {{"addr", remote}}), pal::gold, 16 * U, true);
+            y += 26 * U;
+        }
+        y += 8 * U;
+        c.text(body.x, y, c.L("ui2d.net.players", {{"n", std::to_string(jarr(N, "players").size())}, {"max", jstr(N, "max")}}), pal::gold, 16 * U, true);
+        y += 24 * U;
+        for (const auto& p : jarr(N, "players")) {
+            std::string line = jstr(p, "name");
+            if (jflag(p, "you")) line += " (" + c.L("ui2d.net.you") + ")";
+            line += "  ·  " + c.L("ui2d.net.kind." + jstr(p, "kind"));
+            const std::string who = jstr(p, "person");
+            line += "  ·  " + (who.empty() ? c.L("ui2d.net.watching") : who);
+            if (!jflag(p, "online")) line += "  ·  " + c.L("ui2d.net.away");
+            c.text(body.x + 10 * U, y, line, jflag(p, "online") ? pal::text : pal::dim, 14 * U);
+            y += 20 * U;
+        }
+        y += 14 * U;
+        c.text(body.x, y, c.L("ui2d.net.connect"), pal::gold, 16 * U, true);
+        y += 24 * U;
+        std::string addr = jstr(w.data, "addr");
+        const float fw = std::min(300 * U, body.w - 190 * U);
+        if (g.textField(ui::widgetId("net.addr"), {body.x, y, fw, 30 * U}, addr, c.L("ui2d.net.addr.ph"), 64)) w.data["addr"] = addr;
+        if (g.button(ui::widgetId("net.go"), {body.x + fw + 8 * U, y, 170 * U, 30 * U}, c.L("ui2d.net.go"), !addr.empty())) {
+            if (!c.connectTo(addr)) c.toast(c.L("ui2d.net.cannot"));
+        }
+        y += 40 * U;
+        if (!remote.empty() && g.button(ui::widgetId("net.back"), {body.x, y, 300 * U, 30 * U}, c.L("ui2d.net.leave"))) {
+            if (!c.connectTo("")) c.toast(c.L("ui2d.net.cannot"));
+        }
+        const float bw = 200 * U, bh = 42 * U;
+        if (big(c, "net.close", 0, {body.x, body.bottom() - bh, bw, bh}, c.L("ui2d.menu.back"))) {
+            w.closing = true;
+            openMain(c, s);
+        }
+    };
+    s.push(std::move(w));
+}
+
 } // namespace
 
 void openMenu(Ctx& c, Screens& s, const std::string& which, const Json& args) {
     if (which == "new") openNew(c, s);
     else if (which == "pick") openPick(c, s);
+    else if (which == "net") openNet(c, s);
     else if (which == "saves") openSaves(c, s, args.is_string() ? args.get<std::string>() : "load");
     else openMain(c, s);
 }

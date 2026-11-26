@@ -58,6 +58,7 @@ std::vector<StrokePiece> roofPieces(const sim::BuildCatalog& cat, int x0, int y0
 struct Planner {
     sim::EntityId actor = sim::kNone;
     bool forSettlement = false;
+    int player = 1;   // LR-160: whose commands
     sim::EntityId owner(const sim::World& w) const;   // the household or the settlement (kNone: neither)
 };
 

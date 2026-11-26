@@ -589,15 +589,20 @@ Pixels SpriteSet::get(const std::string& name, const std::map<char, char>& recol
     Pixels out;
     const auto it = grids_.find(name);
     if (it == grids_.end()) return out;
-    out.size = 16;
-    out.px.assign(256, 0);
-    for (int y = 0; y < 16; ++y) {
+    // 16x16 as a rule; LR-159: a bigger grid (a horse, a wagon: 32x32) keeps its size
+    int n = 16;
+    n = std::max(n, int(it->second.size()));
+    for (const auto& row : it->second) n = std::max(n, int(row.size()));
+    n = std::min(n, 64);
+    out.size = n;
+    out.px.assign(std::size_t(n * n), 0);
+    for (int y = 0; y < n; ++y) {
         const std::string row = y < int(it->second.size()) ? it->second[std::size_t(y)] : std::string();
-        for (int x = 0; x < 16 && x < int(row.size()); ++x) {
+        for (int x = 0; x < n && x < int(row.size()); ++x) {
             char ch = row[std::size_t(x)];
             if (ch == '.' || ch == ' ') continue;
             if (const auto r = recolour.find(ch); r != recolour.end()) ch = r->second;
-            out.px[std::size_t(y * 16 + x)] = colour(ch);
+            out.px[std::size_t(y * n + x)] = colour(ch);
         }
     }
     return out;
