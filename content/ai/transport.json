@@ -1,0 +1,41 @@
+{
+  "_doc": "LR-159: верховые и тягловые животные, повозки. Всё здесь данные: новый зверь = запись в mounts + вид в species.json (domestic, tags mount/draft) + спрайт tr_<вид> в sprites_2d/transport2d.json + ключ species.<вид>.name; новая повозка = запись в vehicles + объект в objects.json + спрайт tr_<тип> + ключ object.<тип>.name. Скорости — множители шага пешком (1 = идти). ride: верхом (0 = не ездят верхом); draft: тяговая сила одной головы; carry_kg: вьюк/сумы на звере; tire_per_km: усталость зверя за км (0..1), rest_per_hour: отдых, когда он свободен; tired_slow: при усталости 1 скорость падает на эту долю; max_rider_px: только всадники не крупнее (sprite_px народа, 0 = любые); races: только эти народы ездят на нём (пусто = все). Повозки: team [мин, макс] голов в упряжке (0 = тянет человек), draft_need: тяга для полного хода (меньше — медленнее, не ниже min_pull), capacity_kg: груз, seats: мест кроме возницы, speed: множитель шага при полной тяге, draft: какие звери годятся (пусто = любые с draft>0), seasons: когда ездит (пусто = всегда), cargo_slow: полная загрузка отнимает эту долю скорости. start: что у дворов в начале мира (chance — доля дворов, races — только дворы этих народов, heads — сколько голов, needs: двор получает повозку, только если у него есть годный тягловый зверь). team_ahead_m / team_row_m / team_side_m: где идёт упряжка перед повозкой (первая пара, следующий ряд, пара в стороны), push_ahead_m: тачка перед тем, кто её катит; seat_dy_px: насколько клиент поднимает возницу (у повозки своё). ИИ: NPC садится на своего зверя, если идти дальше ride_min_m и зверь стоит ближе fetch_m; по приходе спешивается, зверь сам идёт домой пастись.",
+  "ride_min_m": 140,
+  "fetch_m": 20,
+  "rider_tire_mult": 0.3,
+  "driver_tire_mult": 0.15,
+  "min_pull": 0.35,
+  "seat_dy_px": 4,
+  "team_ahead_m": 1.5,
+  "team_row_m": 1.4,
+  "team_side_m": 0.5,
+  "push_ahead_m": 0.9,
+  "mounts": {
+    "horse":    { "ride": 2.6, "draft": 1.0, "carry_kg": 60, "tire_per_km": 0.035, "rest_per_hour": 0.10, "tired_slow": 0.5, "max_rider_px": 24, "rider_dy_px": 7 },
+    "pony":     { "ride": 1.9, "draft": 0.6, "carry_kg": 40, "tire_per_km": 0.040, "rest_per_hour": 0.10, "tired_slow": 0.5, "max_rider_px": 19, "rider_dy_px": 5 },
+    "donkey":   { "ride": 1.5, "draft": 0.55, "carry_kg": 70, "tire_per_km": 0.030, "rest_per_hour": 0.12, "tired_slow": 0.4, "max_rider_px": 21, "rider_dy_px": 5 },
+    "mule":     { "ride": 1.8, "draft": 0.85, "carry_kg": 90, "tire_per_km": 0.025, "rest_per_hour": 0.12, "tired_slow": 0.4, "max_rider_px": 22, "rider_dy_px": 6 },
+    "ox":       { "ride": 0.0, "draft": 1.6, "carry_kg": 0, "tire_per_km": 0.020, "rest_per_hour": 0.08, "tired_slow": 0.3, "max_rider_px": 0, "rider_dy_px": 7 },
+    "war_wolf": { "ride": 2.9, "draft": 0.45, "carry_kg": 25, "tire_per_km": 0.045, "rest_per_hour": 0.14, "tired_slow": 0.6, "max_rider_px": 22, "rider_dy_px": 6, "races": ["orc", "goblin", "half_orc"] },
+    "riding_lizard": { "ride": 2.2, "draft": 0.9, "carry_kg": 80, "tire_per_km": 0.030, "rest_per_hour": 0.10, "tired_slow": 0.4, "max_rider_px": 33, "rider_dy_px": 6 }
+  },
+  "vehicles": {
+    "handcart": { "team": [0, 0], "draft_need": 0.0, "capacity_kg": 120, "seats": 0, "speed": 0.85, "cargo_slow": 0.3 },
+    "cart":     { "team": [1, 1], "draft_need": 0.8, "capacity_kg": 450, "seats": 1, "speed": 1.5, "cargo_slow": 0.35, "draft": ["horse", "pony", "donkey", "mule", "ox", "riding_lizard"] },
+    "wagon":    { "team": [2, 4], "draft_need": 2.2, "capacity_kg": 1400, "seats": 2, "speed": 1.35, "cargo_slow": 0.4, "draft": ["horse", "mule", "ox", "riding_lizard"] },
+    "coach":    { "team": [2, 4], "draft_need": 1.8, "capacity_kg": 220, "seats": 4, "speed": 2.1, "cargo_slow": 0.25, "seat_dy_px": 12, "draft": ["horse"] },
+    "sled":     { "team": [1, 2], "draft_need": 0.6, "capacity_kg": 500, "seats": 1, "speed": 1.6, "cargo_slow": 0.3, "draft": ["horse", "pony", "mule", "war_wolf", "ox"], "seasons": ["winter"] }
+  },
+  "start": [
+    { "mount": "horse", "chance": 0.35, "heads": [1, 2] },
+    { "mount": "ox", "chance": 0.3, "heads": [1, 2] },
+    { "mount": "donkey", "chance": 0.25, "heads": [1, 1] },
+    { "mount": "mule", "chance": 0.1, "heads": [1, 1] },
+    { "mount": "pony", "chance": 0.6, "heads": [1, 2], "races": ["dwarf", "goblin"] },
+    { "mount": "war_wolf", "chance": 0.6, "heads": [1, 2], "races": ["orc", "goblin", "half_orc"] },
+    { "vehicle": "handcart", "chance": 0.4 },
+    { "vehicle": "cart", "chance": 0.8, "needs": "draft" },
+    { "vehicle": "wagon", "chance": 0.25, "needs": "draft2" },
+    { "vehicle": "sled", "chance": 0.3, "needs": "draft" }
+  ]
+}

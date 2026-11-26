@@ -11,6 +11,7 @@
 #include "sim/ai.hpp"
 #include "sim/need_tiers.hpp"
 #include "sim/combat_bridge.hpp"
+#include "sim/transport.hpp"
 
 namespace lr::client2d {
 
@@ -134,6 +135,30 @@ static void raceJson(const World& w, const Character& c, Json& p) {
     if (c.body.petrified) p["stone"] = true;
 }
 
+// LR-159: on a beast / in a vehicle: ride {id, sp, dy} or seat {veh, sp, dy, driver}, spd (walk multiplier);
+// a ridden or harnessed beast says by whom (rider) or to what (team), so the client draws it with them.
+static void transportJson(const World& w, const Character& c, Json& p) {
+    const sim::TransportRules* R = sim::transportRules(w.content());
+    if (!R) return;
+    if (c.isAnimal()) {
+        if (const EntityId r = sim::riderOf(w, c.id); r != kNone) p["rider"] = r;
+        if (const EntityId v = sim::hitchedTo(w, c.id); v != kNone) p["team"] = v;
+        return;
+    }
+    if (const EntityId b = sim::rideOf(w, c.id); b != kNone)
+        if (const Character* a = w.character(b)) {
+            const sim::MountDef* m = R->mount(a->species);
+            p["ride"] = {{"id", b}, {"sp", a->species}, {"dy", m ? m->riderDyPx : 6}};
+        }
+    if (const EntityId v = sim::vehicleOf(w, c.id); v != kNone)
+        if (const WorldObject* o = w.object(v))
+            if (const sim::VehicleDef* d = R->vehicle(o->type); d && d->teamMax > 0)   // a handcart is pushed, not sat on
+                p["seat"] = {{"veh", v}, {"sp", o->type}, {"dy", d->seatDyPx >= 0 ? d->seatDyPx : R->seatDyPx},
+                             {"driver", sim::driverOf(w, v) == c.id}};
+    const double s = sim::transportSpeedMult(w, c);
+    if (std::abs(s - 1.0) > 1e-6) p["spd"] = r2(s);
+}
+
 // AL-136: the look chosen at the character's creation (the pawn's body, skin, hair...)
 static void lookJson(const Character& c, Json& p) {
     if (!c.look.empty()) p["look"] = c.look;
@@ -203,8 +228,35 @@ Json peopleJson(const World& w, const ViewText& t, const Vec2* near, double beas
             raceJson(w, c, p); // AL-114
             lookJson(c, p);    // AL-136
         }
+        transportJson(w, c, p); // LR-159
         out.push_back(std::move(p));
     }
+    // LR-159: vehicles go in the list as beasts do (sp = the vehicle type, veh = true): they move
+    if (const sim::TransportRules* R = sim::transportRules(w.content()))
+        for (const auto& [id, o] : w.objects()) {
+            if (!R->vehicle(o.type)) continue;
+            if (near && dist(o.pos, *near) > beastsR) continue;
+            Json v = {{"id", id}, {"name", t.name("object", o.type)}, {"sp", o.type}, {"veh", true},
+                      {"x", r2(o.pos.x)}, {"y", r2(o.pos.y)}, {"alive", true}, {"famId", o.ownerFamily},
+                      {"st", "Idle"}, {"ia", ""}};
+            const sim::Json* st = w.moduleState("transport");
+            double fx = 1.0, fy = 0.0;
+            if (st && st->contains("veh") && (*st)["veh"].contains(std::to_string(id))) {
+                const sim::Json& vs = (*st)["veh"][std::to_string(id)];
+                fx = vs.value("fx", 1.0), fy = vs.value("fy", 0.0);
+            }
+            v["fx"] = r2(fx);
+            v["fy"] = r2(fy);
+            Json team = Json::array();
+            for (EntityId b : sim::teamOf(w, id)) team.push_back(b);
+            v["team"] = team;
+            if (const EntityId d = sim::driverOf(w, id); d != kNone) {
+                if (R->vehicle(o.type)->teamMax > 0) v["driver"] = d;   // drawn with the driver
+                else v["pusher"] = d;                                  // a handcart draws itself, before the pusher
+            }
+            if (!o.stock.empty()) v["cargo"] = r2(sim::vehicleCargoKg(w, o) / std::max(1.0, sim::vehicleCapacityKg(w, o)));
+            out.push_back(std::move(v));
+        }
     return out;
 }
 
