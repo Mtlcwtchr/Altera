@@ -145,8 +145,10 @@
       const a = sp.acts.find(x => x.id === b.dataset.act);
       if (!a || !a.can) return;
       if (/^trade_/.test(a.id) && d.trade) { G.screens.trade(talk.id); return; }   // the deal is made in the trade window
-      G.cmd({ op: 'cmd', type: 'perform', args: { id: G.me, interaction: a.id, target: talk.id, tone: d.tone } })
+      const go = id => G.cmd({ op: 'cmd', type: 'perform', args: { id: G.me, interaction: id, target: talk.id, tone: d.tone } })
         .then(r => { G.toast(r.result ? (r.text || r.result) : a.name); setTimeout(() => loadTalk(w), 400); });
+      if (a.choices && G.chooseAct) { G.chooseAct(a, go); return; }   // LR-123: what to lend / give / trade
+      go(a.id);
     };
     for (const b of body.querySelectorAll('[data-topic]')) b.onclick = () => {
       const t = d.topics.find(x => x.i === Number(b.dataset.topic));

@@ -276,7 +276,10 @@ void renderTalk(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
             const float bw = c.textW(jstr(sp, "name"), 13 * U) + 22 * U;
             if (x + bw > ar.right()) break;
             if (g.toggle(ui::widgetId("talk.sphere", k++), {x, ay, bw, 28 * U}, jstr(sp, "name"), jstr(sp, "id") == jstr(w.data, "sphere")))
+            {
                 w.data["sphere"] = jstr(sp, "id");
+                w.data.erase("choose");   // LR-123: another sphere drops the pick
+            }
             x += bw + 4 * U;
         }
         ay += 34 * U;
@@ -286,6 +289,8 @@ void renderTalk(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
         Json acts = Json::array();
         for (const auto& sp : jarr(d, "spheres"))
             if (jstr(sp, "id") == jstr(w.data, "sphere")) acts = sp.value("acts", Json::array());
+        // LR-123: a parametric act picked: its choices (what to lend, give, trade) stand in for the acts
+        if (w.data.contains("choose") && w.data["choose"].is_array()) acts = w.data["choose"];
         const ui::Rect gi = g.beginScroll(ui::widgetId("talk.acts"), {ar.x, ay, ar.w, ar.bottom() - ay - bottomH});
         const int cols = std::max(1, int(gi.w / (190 * U)));
         const float bw = (gi.w - (cols - 1) * 6 * U) / cols, bh = 46 * U;
@@ -306,7 +311,9 @@ void renderTalk(Ctx& c, Screens& s, Win& w, const ui::Rect& body) {
             if (hit && can) {
                 const std::string id = jstr(a, "id");
                 if (id.rfind("trade_", 0) == 0 && jflag(d, "trade")) openTalk(c, s, talkId, true);
+                else if (a.contains("choices") && a["choices"].is_array()) w.data["choose"] = a["choices"];
                 else {
+                    w.data.erase("choose");
                     const Json r2 = c.cmd({{"op", "cmd"}, {"type", "perform"},
                                            {"args", {{"id", c.meId()}, {"interaction", id}, {"target", talkId}, {"tone", jstr(w.data, "tone")}}}});
                     const std::string rr = jstr(r2, "result");

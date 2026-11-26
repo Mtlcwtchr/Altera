@@ -276,8 +276,19 @@ bool handle(World& w, Command& cmd) {
             gs.goal = g->id;
             gs.task = g->task;
         } else if (t == "perform") {
-            const std::string x = cmd.args.at("interaction").get<std::string>();
+            std::string x = cmd.args.at("interaction").get<std::string>();
+            // LR-123: {"params": {"item": "bread"}} binds a parametric act (the same as id lend#item=bread)
+            if (cmd.args.contains("params") && cmd.args["params"].is_object() && x.find('#') == std::string::npos) {
+                std::string tail;
+                for (const auto& [k, v] : cmd.args["params"].items())
+                    if (v.is_string()) tail += (tail.empty() ? "" : ",") + k + "=" + v.get<std::string>();
+                if (!tail.empty()) x += "#" + tail;
+            }
             const InteractionDef* d = w.content().interaction(x);
+            if (d && d->parametric()) {
+                cmd.result = "rejected:needs_choice";   // what to lend / give / trade is not said
+                return true;
+            }
             if (!d) throw std::runtime_error("unknown interaction");
             // The tone the act is done in (tones.json); stays until another order names one.
             if (cmd.args.contains("tone")) c->controller.tone = cmd.args["tone"].get<std::string>();

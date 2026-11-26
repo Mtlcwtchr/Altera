@@ -93,7 +93,39 @@ const GoalDef* Content::goal(const std::string& id) const {
 }
 const InteractionDef* Content::interaction(const std::string& id) const {
     auto it = interactions.find(id);
-    return it == interactions.end() ? nullptr : &it->second;
+    if (it != interactions.end()) return &it->second;
+    // LR-123: "<base>#name=value,..." binds the parameters of a parametric act
+    const std::size_t hash = id.find('#');
+    if (hash == std::string::npos) return nullptr;
+    if (auto b = boundInteractions.find(id); b != boundInteractions.end()) return &b->second;
+    auto base = interactions.find(id.substr(0, hash));
+    if (base == interactions.end() || !base->second.parametric()) return nullptr;
+    ParamBinding bind;
+    std::size_t at = hash + 1;
+    while (at <= id.size()) {
+        std::size_t end = id.find(',', at);
+        if (end == std::string::npos) end = id.size();
+        const std::string kv = id.substr(at, end - at);
+        const std::size_t eq = kv.find('=');
+        if (eq == std::string::npos || eq == 0 || eq + 1 == kv.size()) return nullptr;
+        const std::string value = kv.substr(eq + 1);
+        // the value names a thing of the parameter's type
+        for (const auto& p : base->second.params)
+            if (p.name == kv.substr(0, eq)) {
+                if (p.type == "item" && !items.count(value)) return nullptr;
+                if (p.type == "skill" && !knowledge.count(value)) return nullptr;
+            }
+        bind[kv.substr(0, eq)] = value;
+        at = end + 1;
+    }
+    try {
+        InteractionDef r = bindParams(base->second, bind);
+        r.id = id;
+        r.baseId = base->first;
+        return &boundInteractions.emplace(id, std::move(r)).first->second;
+    } catch (const std::exception&) {
+        return nullptr;   // a parameter missing or not allowed
+    }
 }
 const HtnTask* Content::task(const std::string& id) const {
     auto it = tasks.find(id);

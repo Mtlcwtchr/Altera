@@ -28,6 +28,10 @@ sim::Json actsJson(const sim::World& w, const ViewText& t, ActCatalog& cat, sim:
 // Quick bar slots checked for `me`: [{kind: act|goal, id}] -> [{kind, id, name, can, why}].
 // An act on a person is checked against `target` (kNone: none chosen).
 sim::Json barJson(const sim::World& w, const ViewText& t, sim::EntityId me, sim::EntityId target, const sim::Json& slots);
+// LR-125: how the acts of `me` came out, the newest last (at most 8, of the last day):
+// [{at: tick, key, ok, text}] - done with what was got/lost, failed, refused with the reason.
+// The page toasts the ones it has not shown yet (by key).
+sim::Json outcomesJson(const sim::World& w, const ViewText& t, sim::EntityId me);
 // A command's result ("", "rejected:<code>[:<why>]") in the player's words ("" when it went through).
 std::string resultText(const ViewText& t, const std::string& result);
 

@@ -57,10 +57,24 @@ TEST(lr_sim_backstory_content) {
 TEST(lr_sim_backstory_start) {
     for (const BackstoryDef& b : real().backstories) {
         World w = realWorld();
-        const EntityId who = backstoryCandidate(w);
-        CHECK(who != kNone);
+        const EntityId local = backstoryCandidate(w);
+        CHECK(local != kNone);
         const Command done = w.applyNow(start(b.id));
         CHECK(done.result.rfind("rejected", 0) != 0);
+        EntityId who = local;
+        if (b.newcomer) {
+            // LR-121: one from elsewhere is a new person with a household of their own,
+            // the village's head of house stays who they were
+            who = kNone;
+            for (const auto& [id, x] : w.characters())
+                if (x.controller.isPlayer()) who = id;
+            CHECK(who != kNone && who != local);
+            if (who == kNone) continue;
+            CHECK(!w.character(local)->controller.isPlayer());
+            const Family* f = w.familyOf(*w.character(who));
+            CHECK(f && f->members.size() == 1);
+            CHECK_EQ(w.character(who)->status.role, std::string("head"));
+        }
         const Character& c = *w.character(who);
         CHECK(c.controller.isPlayer());
         CHECK_EQ(c.backstory, b.id);

@@ -222,6 +222,7 @@ Json stateJson(App& a, EntityId sel, const Vec2* near, double r) {
     j["last_result"] = a.lastResult;
     j["people"] = c2::peopleJson(*a.world, a.text, near, r);
     j["me"] = controlled(*a.world);
+    j["outcomes"] = c2::outcomesJson(*a.world, a.text, controlled(*a.world));   // LR-125: how the acts came out
     j["speech"] = speechJson(a, near);
     if (sel != kNone) j["sel"] = c2::personJson(*a.world, a.text, sel);
     // LR-137: the hero frame shows the led person even while another one is selected
@@ -287,6 +288,22 @@ struct Reply {
 };
 void respond(Reply& s, int code, const std::string& type, const std::string& body);
 
+// LR-129: a slot from the request; a non-integer slot reads as `bad` (no exception, no 500).
+int slotArg(const Json& q, int dflt, int bad = -1) {
+    if (!q.contains("slot")) return dflt;
+    const Json& v = q["slot"];
+    if (v.is_number_integer()) return v.get<int>();
+    if (v.is_string()) {
+        try {
+            size_t used = 0;
+            const int n = std::stoi(v.get<std::string>(), &used);
+            if (used == v.get<std::string>().size()) return n;
+        } catch (...) {
+        }
+    }
+    return bad;
+}
+
 // True when `path` was one of the session's routes (and is answered).
 bool handleSession(App& a, Reply& s,const std::string& method, const std::string& path, const std::string& body) {
     auto route = [&](const char* p) { return path.rfind(p, 0) == 0; };
@@ -326,7 +343,7 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
         }
         reply(okJson(a, r));
     } else if (route("/api/save")) {
-        const int slot = q.value("slot", 1);
+        const int slot = slotArg(q, 1);
         std::string why;
         if (slot <= 0) why = "bad slot";   // slot 0 is the autosave's
         else if (c2::writeSave2d(a.saveDir, slot, *a.world, gameJson(a, q.value("view", Json())), &why, &a.text)) why.clear();
@@ -334,14 +351,18 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
         if (!why.empty()) std::cerr << "save " << slot << ": " << why << "\n";
         reply({{"result", why.empty() ? "ok" : "rejected:" + why}, {"text", why}, {"saves", c2::listSaves2d(a.saveDir)}});
     } else if (route("/api/load")) {
-        const int slot = q.value("slot", 1);
+        const int slot = slotArg(q, 1);
+        if (slot < 0) {
+            reply({{"result", "rejected:bad slot"}, {"text", "bad slot"}});
+            return true;
+        }
         try {
             const Json save = c2::readSave2d(a.saveDir, slot);
             adopt(a, c2::loadWorld2d(*a.content, save));
             const Json g = save.value("game", Json::object());
             a.game = c2::NewGame::fromJson(g, a.game.seed);
             a.tps = std::clamp(g.value("tps", a.tps), 0.25, 600.0);
-            a.paused = false;
+            // LR-129: loading keeps the pause as it was (a paused game stays paused)
             std::cout << "loaded slot " << slot << std::endl;
             reply({{"result", "ok"}, {"view", g.value("view", Json::object())}});
         } catch (const std::exception& e) {
@@ -350,7 +371,7 @@ bool handleSession(App& a, Reply& s,const std::string& method, const std::string
             reply({{"result", std::string("rejected:") + e.what()}, {"text", e.what()}});
         }
     } else if (route("/api/delete")) {
-        const int slot = q.value("slot", -1);
+        const int slot = slotArg(q, -1);
         reply({{"result", slot > 0 && c2::deleteSave2d(a.saveDir, slot) ? "ok" : "rejected:bad slot"},
                {"saves", c2::listSaves2d(a.saveDir)}});
     } else if (route("/api/quit")) {
@@ -558,7 +579,8 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
             if (q.value("kit", false))
                 if (Character* c = a.world->character(who)) c2::craftKit(*a.world, *c);
             c2::WorkshopQuery wq;
-            wq.draft = q.value("draft", Json::object());
+            // LR-129: a draft that is not an object is ignored, not a 500
+            wq.draft = q.contains("draft") && q["draft"].is_object() ? q["draft"] : Json::object();
             wq.wish = q.value("wish", std::string());
             Json r = {{"ws", c2::workshopJson(*a.world, a.text, a.craftUi, who, wq)}};
             if (q.value("texts", false)) r["texts"] = c2::workshopTexts(a.text);
@@ -568,6 +590,9 @@ void dispatch(App& a, Reply& s, const std::string& method, const std::string& pa
         } else {
             respond(s, 404, "text/plain", "not found");
         }
+    } catch (const Json::exception& e) {
+        // LR-129: a malformed request (bad JSON, a field of the wrong type) is rejected, not a 500
+        respond(s, 400, "application/json", Json{{"result", "rejected:bad request"}, {"text", e.what()}}.dump());
     } catch (const std::exception& e) {
         respond(s, 500, "text/plain", e.what());
     }

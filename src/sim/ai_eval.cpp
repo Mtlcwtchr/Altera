@@ -48,6 +48,34 @@ double skillTalent(const AiConfig& cf, EntityId id, const std::string& skill) {
     return cf.skillTalentMin + (cf.skillTalentMax - cf.skillTalentMin) * u;
 }
 
+// LR-126: blood kin up to two steps (parents, children, siblings, grandparents,
+// grandchildren, half-siblings); spouses are not blood.
+bool bloodKin(const World& w, const Character& a, const Character& b) {
+    if (a.id == b.id) return true;
+    auto parents = [&](const Character& c) {
+        std::vector<EntityId> p;
+        if (c.status.mother != kNone) p.push_back(c.status.mother);
+        if (c.status.father != kNone) p.push_back(c.status.father);
+        return p;
+    };
+    const auto pa = parents(a), pb = parents(b);
+    for (EntityId x : pa)
+        if (x == b.id) return true;
+    for (EntityId x : pb)
+        if (x == a.id) return true;
+    for (EntityId x : pa)
+        for (EntityId y : pb)
+            if (x == y) return true; // siblings
+    auto grand = [&](const std::vector<EntityId>& ps, EntityId who) {
+        for (EntityId p : ps)
+            if (const Character* pc = w.character(p))
+                for (EntityId g : parents(*pc))
+                    if (g == who) return true;
+        return false;
+    };
+    return grand(pa, b.id) || grand(pb, a.id);
+}
+
 } // namespace
 
 bool goapFact(const Condition& k) { return (k.subject == "has" && !k.onTarget) || k.subject == "at"; }
@@ -125,6 +153,15 @@ double evalSubject(const EvalCtx& x, const Condition& k) {
         return x.c.status.hasPair(x.targetChar->id, k.key) ? 1.0 : 0.0;
     }
     if (s == "status_pair_any") return c.status.hasPairAny(k.key) ? 1.0 : 0.0;
+    if (s == "kin") {
+        // LR-126: kin:blood | kin:spouse | kin:household, toward the target character
+        if (!x.targetChar) return 0.0;
+        const Character& o = *x.targetChar;
+        if (k.key == "blood") return bloodKin(x.w, x.c, o) ? 1.0 : 0.0;
+        if (k.key == "spouse") return x.c.status.spouse == o.id || x.c.status.hasPair(o.id, "married") ? 1.0 : 0.0;
+        if (k.key == "household") return x.c.status.family != kNone && x.c.status.family == o.status.family ? 1.0 : 0.0;
+        return 0.0;
+    }
     if (s == "right") return c.status.rights.count(k.key) ? 1.0 : 0.0;
     if (s == "verdict") {
         // A sentence is always read from the target (the one being judged);
@@ -539,7 +576,7 @@ void setPair(World& w, Character& a, Character& b, const std::string& id, bool o
     one(a, b);
     one(b, a);
     w.chronicle(on ? "status_pair" : "status_pair_end", {a.id, b.id},
-                on ? "chronicle.status_pair" : "chronicle.status_pair_end", {{"a", a.id}, {"b", b.id}, {"pair", id}});
+                (on ? "chronicle.status_pair." : "chronicle.status_pair_end.") + id, {{"a", a.id}, {"b", b.id}, {"pair", id}});   // LR-123: a text per pair
 }
 
 void applyWitnessEffect(World& w, Character& actor, const Effect& e, const std::vector<EntityId>& witnesses) {
@@ -871,7 +908,63 @@ std::map<std::string, long>& interactionTally() {
     return tally;
 }
 
+namespace {
+// LR-123/131: the terms of a bound act (lend#item=bread, trade#give=..,take=..) are carried out:
+// what is given passes from the actor to the target, what is taken the other way, never more
+// than the giver holds. A loan (terms.due > 0) is written in the lender's ledger
+// (relations[borrower].debt: how much they owe); anything given to someone one owes pays it off.
+void applyTerms(World& w, Character& c, const InteractionDef& d, Character& t) {
+    auto move = [&](Character& from, Character& to, const std::string& item, int n) {
+        auto it = from.inventory.find(item);
+        const int m = std::min(n, it == from.inventory.end() ? 0 : it->second);
+        if (m <= 0) return 0;
+        if ((it->second -= m) <= 0) from.inventory.erase(it);
+        to.inventory[item] += m;
+        if (!from.worn.empty() || !from.gearPins.empty()) pruneGear(from);
+        return m;
+    };
+    for (const auto& [item, n] : d.terms.give) {
+        if (item.empty() || item[0] == '$') continue;
+        const int m = move(c, t, item, n);
+        if (m <= 0) continue;
+        if (d.terms.due > 0 && d.terms.commitment == "repay_debt") c.relations[t.id].debt += m;
+        else if (auto r = t.relations.find(c.id); r != t.relations.end() && r->second.debt > 0)
+            r->second.debt = std::max(0.0, r->second.debt - m);
+    }
+    for (const auto& [item, n] : d.terms.take)
+        if (!item.empty() && item[0] != '$' && d.terms.due == 0) move(t, c, item, n);
+    (void)w;
+}
+} // namespace
+
+void applyEffectsInner(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar, bool& ok);
+
 void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar) {
+    // LR-125: the player's person reports every act it finishes: done or not, and what it got or lost
+    if (d.continuous || !c.controller.isPlayer()) {
+        bool ok = true;
+        applyEffectsInner(w, c, d, target, targetChar, ok);
+        return;
+    }
+    const std::map<std::string, int> before = c.inventory;
+    bool ok = true;
+    applyEffectsInner(w, c, d, target, targetChar, ok);
+    Json gain = Json::object(), lost = Json::object();
+    for (const auto& [k, n] : c.inventory) {
+        auto b = before.find(k);
+        const int was = b == before.end() ? 0 : b->second;
+        if (n > was) gain[k] = n - was;
+        else if (n < was) lost[k] = was - n;
+    }
+    for (const auto& [k, n] : before)
+        if (!c.inventory.count(k)) lost[k] = n;
+    Json o = {{"action", d.baseId.empty() ? d.id : d.baseId}, {"success", ok}, {"gain", gain}, {"lost", lost}};
+    if (targetChar) o["with"] = targetChar->id;
+    if (target) o["object"] = target->type;
+    trace(w, c, 'S', "act.result", o);
+}
+
+void applyEffectsInner(World& w, Character& c, const InteractionDef& d, WorldObject* target, Character* targetChar, bool& okOut) {
     if (!d.continuous) ++interactionTally()[d.id];
     // chance: one deterministic roll per (actor, tick, interaction); a failed
     // roll applies on_fail instead of eff. Risks roll independently after.
@@ -897,6 +990,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     if (d.craft.empty()) applyEffectList(w, c, success ? takeWhatFits(w, c, d, d.eff) : d.onFail, target, targetChar, &wit);
     // LR-141: the act's check in data (factors -> quality -> each target's outcome)
     if (success && d.check.set) success = resolveActCheck(w, c, d, target, targetChar, &wit);
+    if (success && d.terms.set && !d.parametric() && targetChar && !targetChar->isAnimal()) applyTerms(w, c, d, *targetChar);
     if (!tone.empty() && tr) {
         const ToneDef& td = tr->tones.at(tone);
         applyEffectList(w, c, success ? td.eff : td.onFail, target, targetChar, &wit);
@@ -955,6 +1049,7 @@ void applyEffects(World& w, Character& c, const InteractionDef& d, WorldObject* 
     afterDeed(w, c, d, target, targetChar, success, tags, wit);
     villageAfterAct(w, c, d, targetChar, success); // AL-39: courtship, wedding, conception, quarrels
     magicAfterAct(w, c, d, target, targetChar, success); // AL-118: a work spell is cast at the place
+    okOut = success;
 }
 
 EntityId findTarget(const World& w, const Character& c, const InteractionDef& d, Vec2 from, std::string* why,

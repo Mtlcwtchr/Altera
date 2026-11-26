@@ -1117,6 +1117,43 @@ bool strangersArrive(World& w, EntityId settlement, bool family) {
     return arrive(w, it->second, rng, family, R(w));
 }
 
+EntityId newcomerArrives(World& w, EntityId settlement, char sex, int ageYears) {
+    auto it = w.settlements().find(settlement);
+    if (it == w.settlements().end()) return kNone;
+    Settlement& st = it->second;
+    const VillageLifeRules& r = R(w);
+    Rng rng = w.rng(settlement, "village:newcomer:" + std::to_string(w.now()) + ":" + std::to_string(w.characters().size()));
+    const std::string surname = randomFamilyName(rng, &w.content());
+    // a household of one, of a house of its own (LR-121: the player leads a dynasty of their own)
+    Family fam;
+    fam.id = w.newId();
+    fam.name = surname;
+    fam.settlement = settlement;
+    Dynasty dyn;
+    dyn.id = w.newId();
+    dyn.name = "House " + surname;
+    fam.dynasty = dyn.id;
+    const double ang = rng.range(0.0, 6.283185307179586);
+    WorldObject store;
+    store.type = "storage";
+    store.pos = {st.center.x + std::cos(ang) * r.arriveM * 0.7, st.center.y + std::sin(ang) * r.arriveM * 0.7};
+    store.ownerFamily = fam.id;
+    if (auto def = w.content().objects.find("storage"); def != w.content().objects.end()) store.stock = def->second.stock;
+    fam.storage = w.addObject(store).id;
+    w.families()[fam.id] = fam;
+    w.dynasties()[dyn.id] = dyn;
+    st.families.push_back(fam.id);
+    Character c = makeStranger(w, rng, st, sex == 'f' ? 'f' : 'm', std::max(16, ageYears), surname, r);
+    const EntityId id = w.addCharacter(std::move(c)).id;
+    Character& s = *w.character(id);
+    s.status.dynasty = dyn.id;
+    moveToFamily(w, s, fam.id, "head");
+    w.dynasties()[dyn.id].founder = id;
+    meetVillage(w, s, st);
+    w.chronicle("stranger", {id}, "chronicle.village.newcomer", {{"who", id}});
+    return id;
+}
+
 void installVillageLife(World& w) {
     w.addEventHandler([](World& world, const Event& e) { return onBirth(world, e); });
 }
