@@ -63,8 +63,7 @@
   "ogre": 0.05
  },
  "welcome_other": 0.3,
- "faith": "hearth_faith",
- "faith_next": "knowledge_runes",
+ "faith": "knowledge_runes",
  "values": {
   "learning": 0.7,
   "nature": 0.4,

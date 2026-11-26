@@ -63,8 +63,7 @@
   "steppe_folk": 0.4
  },
  "welcome_other": 0.35,
- "faith": "pale_mourners",
- "faith_next": "sun_oracle",
+ "faith": "sun_oracle",
  "values": {
   "piety": 0.7,
   "order": 0.6,

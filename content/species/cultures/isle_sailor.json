@@ -65,8 +65,7 @@
   "nilote": 0.8
  },
  "welcome_other": 0.5,
- "faith": "hearth_faith",
- "faith_next": "sea_lord",
+ "faith": "sea_lord",
  "values": {
   "hospitality": 0.5,
   "freedom": 0.5,

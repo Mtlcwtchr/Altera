@@ -272,10 +272,14 @@ void layOut(World& w, const Rules& r, WorldMapState& s) {
             // does not swallow the village next to it)
             for (const auto& [id, p] : w.settlements()) {
                 const double d = dist(km, p.km);
-                if (d >= r.landR) continue;
+                // LR-166: the belts widen the map, so the land under a settlement reaches at
+                // least two cells and is whole over its inner half (its own cell is liveable
+                // however coarse the grid)
+                const double landR = std::max(r.landR, 2 * s.cellKm);
+                if (d >= landR) continue;
                 bool pulledH = false;
                 for (const Pull& pl : r.pulls) pulledH = pulledH || (pl.h >= 0 && pullMatches(pl, p, w.content().peoples));
-                const double f = smooth(1 - d / r.landR);
+                const double f = smooth(std::clamp(2 * (1 - d / landR), 0.0, 1.0));
                 const double want = pulledH ? std::max(h, r.landMin) : std::clamp(h, r.landMin, r.landMax);
                 h += (want - h) * f;
             }

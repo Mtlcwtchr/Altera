@@ -93,8 +93,10 @@ TEST(lr_sim_charcreate_village_households_one_kind) {
             for (EntityId m : f.members) {
                 const Character* c = w.character(m);
                 if (!c) continue;
-                if (kind == "?") kind = c->race;
-                CHECK_EQ(c->race, kind);
+                // a one-sex kind's household holds its pair (nymph and satyr)
+                const std::string r = c->race == "satyr" ? std::string("nymph") : c->race;
+                if (kind == "?") kind = r;
+                CHECK_EQ(r, kind);
             }
             if (!kind.empty() && kind != "?" && kind != "hellene") ++nonHuman;
         }
@@ -145,13 +147,13 @@ TEST(lr_sim_charcreate_rules_and_cost) {
     // the rules
     CHECK_EQ(creationCost(c, Json{{"race", "dragon"}}, &why), -1);
     CHECK_EQ(why, std::string("race_not_playable"));
-    CHECK_EQ(creationCost(c, Json{{"traits", {"brawny", "puny"}}}, &why), -1); // exclusive
-    CHECK_EQ(creationCost(c, Json{{"traits", {"undead"}}}, &why), -1);
-    CHECK_EQ(creationCost(c, Json{{"attrs", {{"strength", 0.95}}}}, &why), -1);
-    CHECK_EQ(creationCost(c, Json{{"traits", {"gifted", "quick_learner", "lucky"}}}, &why), -1);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"traits", {"brawny", "puny"}}}, &why), -1); // exclusive
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"traits", {"undead"}}}, &why), -1);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"attrs", {{"strength", 0.95}}}}, &why), -1);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"traits", {"gifted", "quick_learner", "lucky"}}}, &why), -1);
     CHECK_EQ(why, std::string("over_points"));
-    CHECK_EQ(creationCost(c, Json{{"sex", "f"}, {"look", {{"beard", "yes"}}}}, &why), -1);
-    CHECK_EQ(creationCost(c, Json{{"age", 5}}, &why), -1);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"sex", "f"}, {"look", {{"beard", "yes"}}}}, &why), -1);
+    CHECK_EQ(creationCost(c, Json{{"race", "hellene"}, {"age", 5}}, &why), -1);
 }
 
 TEST(lr_sim_charcreate_makes_the_person) {

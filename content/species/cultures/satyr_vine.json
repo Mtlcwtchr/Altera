@@ -62,8 +62,7 @@
   "cyclops": 0.2
  },
  "welcome_other": 0.55,
- "faith": "many_spirits",
- "faith_next": "wine_mysteries",
+ "faith": "wine_mysteries",
  "values": {
   "freedom": 0.7,
   "hospitality": 0.5,
