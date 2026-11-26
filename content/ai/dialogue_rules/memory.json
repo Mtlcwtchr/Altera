@@ -1,0 +1,545 @@
+{
+ "_doc": "LR-158: обсуждение моментов памяти (src/sim/memory_talk.hpp). Факты moment.* (args.moment = память говорящего или собеседника): type, kind, mood, days, shared (оба пережили), with (в моменте был третий человек, {with}), with_us (это был сам собеседник), with_dead, same (у отвечающего есть свой момент того же рода), listeners (реплика о моменте собеседника). Акты: recall_moment (свой момент) -> react_moment; reminisce («а помнишь, как мы…») -> react_reminisce; ask_memory -> no_moment. Строки: content/loc/<lang>/memory_talk.json.",
+ "rules": [
+  {
+   "id": "memory.ask_memory",
+   "when": [
+    "act=ask_memory"
+   ],
+   "say": "say.memory.ask_memory"
+  },
+  {
+   "id": "memory.no_moment",
+   "when": [
+    "act=no_moment"
+   ],
+   "say": "say.memory.no_moment"
+  },
+  {
+   "id": "memory.recall",
+   "when": [
+    "act=recall_moment"
+   ],
+   "say": "say.memory.recall"
+  },
+  {
+   "id": "memory.recall.sad",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=sad"
+   ],
+   "say": "say.memory.recall.sad"
+  },
+  {
+   "id": "memory.recall.glad",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=glad"
+   ],
+   "say": "say.memory.recall.glad"
+  },
+  {
+   "id": "memory.recall.alarm",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=alarm"
+   ],
+   "say": "say.memory.recall.alarm"
+  },
+  {
+   "id": "memory.recall.proud",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=proud"
+   ],
+   "say": "say.memory.recall.proud"
+  },
+  {
+   "id": "memory.recall.eerie",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=eerie"
+   ],
+   "say": "say.memory.recall.eerie"
+  },
+  {
+   "id": "memory.recall.shame",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=shame"
+   ],
+   "say": "say.memory.recall.shame"
+  },
+  {
+   "id": "memory.recall.spicy",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=spicy"
+   ],
+   "say": "say.memory.recall.spicy"
+  },
+  {
+   "id": "memory.recall.type.attacked_by_beast",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=attacked_by_beast"
+   ],
+   "say": "say.memory.recall.type.attacked_by_beast"
+  },
+  {
+   "id": "memory.recall.type.attacked_by_undead",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=attacked_by_undead"
+   ],
+   "say": "say.memory.recall.type.attacked_by_undead"
+  },
+  {
+   "id": "memory.recall.type.starved",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=starved"
+   ],
+   "say": "say.memory.recall.type.starved"
+  },
+  {
+   "id": "memory.recall.type.wedding",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=wedding"
+   ],
+   "say": "say.memory.recall.type.wedding"
+  },
+  {
+   "id": "memory.recall.type.built_home",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=built_home"
+   ],
+   "say": "say.memory.recall.type.built_home"
+  },
+  {
+   "id": "memory.recall.type.raided",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=raided"
+   ],
+   "say": "say.memory.recall.type.raided"
+  },
+  {
+   "id": "memory.recall.type.won_fight",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=won_fight"
+   ],
+   "say": "say.memory.recall.type.won_fight"
+  },
+  {
+   "id": "memory.recall.type.maimed",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=maimed"
+   ],
+   "say": "say.memory.recall.type.maimed"
+  },
+  {
+   "id": "memory.recall.type.buried",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=buried"
+   ],
+   "say": "say.memory.recall.type.buried"
+  },
+  {
+   "id": "memory.recall.type.rescued",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=rescued"
+   ],
+   "say": "say.memory.recall.type.rescued"
+  },
+  {
+   "id": "memory.recall.type.escaped",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=escaped"
+   ],
+   "say": "say.memory.recall.type.escaped"
+  },
+  {
+   "id": "memory.recall.type.exiled",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=exiled"
+   ],
+   "say": "say.memory.recall.type.exiled"
+  },
+  {
+   "id": "memory.recall.type.saw_necromancy",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=saw_necromancy"
+   ],
+   "say": "say.memory.recall.type.saw_necromancy"
+  },
+  {
+   "id": "memory.recall.type.good_hunt",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=good_hunt"
+   ],
+   "say": "say.memory.recall.type.good_hunt"
+  },
+  {
+   "id": "memory.recall.type.breakthrough",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=breakthrough"
+   ],
+   "say": "say.memory.recall.type.breakthrough"
+  },
+  {
+   "id": "memory.recall.with.fight",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.kind=fight",
+    "moment.with"
+   ],
+   "say": "say.memory.recall.with.fight"
+  },
+  {
+   "id": "memory.recall.with.wedding",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.type=wedding",
+    "moment.with"
+   ],
+   "say": "say.memory.recall.with.wedding"
+  },
+  {
+   "id": "memory.recall.with.kindness",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.kind=kindness",
+    "moment.with"
+   ],
+   "say": "say.memory.recall.with.kindness"
+  },
+  {
+   "id": "memory.recall.with_dead",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.with",
+    "moment.with_dead"
+   ],
+   "say": "say.memory.recall.with_dead"
+  },
+  {
+   "id": "memory.recall.with_us.kindness",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.kind=kindness",
+    "moment.with_us"
+   ],
+   "say": "say.memory.recall.with_us.kindness"
+  },
+  {
+   "id": "memory.recall.with_us.shame",
+   "when": [
+    "act=recall_moment",
+    "moment",
+    "moment.mood=shame",
+    "moment.with_us"
+   ],
+   "say": "say.memory.recall.with_us.shame"
+  },
+  {
+   "id": "memory.reminisce",
+   "when": [
+    "act=reminisce"
+   ],
+   "say": "say.memory.reminisce"
+  },
+  {
+   "id": "memory.reminisce.sad",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.mood=sad"
+   ],
+   "say": "say.memory.reminisce.sad"
+  },
+  {
+   "id": "memory.reminisce.glad",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.mood=glad"
+   ],
+   "say": "say.memory.reminisce.glad"
+  },
+  {
+   "id": "memory.reminisce.alarm",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.mood=alarm"
+   ],
+   "say": "say.memory.reminisce.alarm"
+  },
+  {
+   "id": "memory.reminisce.proud",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.mood=proud"
+   ],
+   "say": "say.memory.reminisce.proud"
+  },
+  {
+   "id": "memory.reminisce.eerie",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.mood=eerie"
+   ],
+   "say": "say.memory.reminisce.eerie"
+  },
+  {
+   "id": "memory.reminisce.spicy",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.mood=spicy"
+   ],
+   "say": "say.memory.reminisce.spicy"
+  },
+  {
+   "id": "memory.reminisce.type.wedding",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.type=wedding"
+   ],
+   "say": "say.memory.reminisce.type.wedding"
+  },
+  {
+   "id": "memory.reminisce.type.built_home",
+   "when": [
+    "act=reminisce",
+    "moment",
+    "moment.type=built_home"
+   ],
+   "say": "say.memory.reminisce.type.built_home"
+  },
+  {
+   "id": "memory.react",
+   "when": [
+    "act=react_moment"
+   ],
+   "say": "say.memory.react"
+  },
+  {
+   "id": "memory.react.sad",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=sad"
+   ],
+   "say": "say.memory.react.sad"
+  },
+  {
+   "id": "memory.react.glad",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=glad"
+   ],
+   "say": "say.memory.react.glad"
+  },
+  {
+   "id": "memory.react.alarm",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=alarm"
+   ],
+   "say": "say.memory.react.alarm"
+  },
+  {
+   "id": "memory.react.proud",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=proud"
+   ],
+   "say": "say.memory.react.proud"
+  },
+  {
+   "id": "memory.react.eerie",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=eerie"
+   ],
+   "say": "say.memory.react.eerie"
+  },
+  {
+   "id": "memory.react.shame",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=shame"
+   ],
+   "say": "say.memory.react.shame"
+  },
+  {
+   "id": "memory.react.spicy",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=spicy"
+   ],
+   "say": "say.memory.react.spicy"
+  },
+  {
+   "id": "memory.react.same",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.listeners",
+    "moment.same"
+   ],
+   "say": "say.memory.react.same"
+  },
+  {
+   "id": "memory.react.cold",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.listeners",
+    "!moment.with_us",
+    "rel.affinity<-0.3"
+   ],
+   "say": "say.memory.react.cold"
+  },
+  {
+   "id": "memory.react.with_us.kindness",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.kind=kindness",
+    "moment.with_us"
+   ],
+   "say": "say.memory.react.with_us.kindness"
+  },
+  {
+   "id": "memory.react.with_us.shame",
+   "when": [
+    "act=react_moment",
+    "moment",
+    "moment.mood=shame",
+    "moment.with_us"
+   ],
+   "say": "say.memory.react.with_us.shame"
+  },
+  {
+   "id": "memory.react_reminisce",
+   "when": [
+    "act=react_reminisce"
+   ],
+   "say": "say.memory.react_reminisce"
+  },
+  {
+   "id": "memory.react_reminisce.sad",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.mood=sad"
+   ],
+   "say": "say.memory.react_reminisce.sad"
+  },
+  {
+   "id": "memory.react_reminisce.glad",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.mood=glad"
+   ],
+   "say": "say.memory.react_reminisce.glad"
+  },
+  {
+   "id": "memory.react_reminisce.alarm",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.mood=alarm"
+   ],
+   "say": "say.memory.react_reminisce.alarm"
+  },
+  {
+   "id": "memory.react_reminisce.proud",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.mood=proud"
+   ],
+   "say": "say.memory.react_reminisce.proud"
+  },
+  {
+   "id": "memory.react_reminisce.eerie",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.mood=eerie"
+   ],
+   "say": "say.memory.react_reminisce.eerie"
+  },
+  {
+   "id": "memory.react_reminisce.spicy",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.mood=spicy"
+   ],
+   "say": "say.memory.react_reminisce.spicy"
+  },
+  {
+   "id": "memory.react_reminisce.with_dead",
+   "when": [
+    "act=react_reminisce",
+    "moment",
+    "moment.with",
+    "moment.with_dead"
+   ],
+   "say": "say.memory.react_reminisce.with_dead"
+  }
+ ]
+}

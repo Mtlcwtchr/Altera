@@ -10,6 +10,7 @@
 #include "sim/dialogue_rules.hpp"
 #include "sim/loc.hpp"
 #include "sim/loc_gen.hpp"
+#include "sim/memory_talk.hpp"
 #include "sim/news.hpp"
 #include "sim/world.hpp"
 
@@ -268,6 +269,7 @@ Json utteranceArgs(const Loc& loc, const std::string& lang, const World& w, cons
         args[k] = refNoun(r);
     }
     addNewsArgs(loc, lang, w, u, args); // AL-111: {news}, {person_trade}, {place}...
+    addMomentArgs(loc, lang, w, u, args); // LR-158: {moment}, {moment_we}, {when}, {with}
     // what a v0.1 line may still ask for, from the moment itself, so no "{action}" is left raw
     const Json something = loc.noun(lang, "thing.something", "");
     if (!args.contains("topic")) {

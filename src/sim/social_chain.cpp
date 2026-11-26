@@ -13,6 +13,7 @@
 
 #include "sim/dialogue_say.hpp"
 #include "sim/news.hpp"
+#include "sim/memory_talk.hpp"
 #include "sim/ai.hpp"
 #include "sim/character.hpp"
 #include "sim/content.hpp"
@@ -179,7 +180,15 @@ void talkBeat(World& w, Character& a, Character& t, const SocialChainDef& sc, in
     // AL-111: told news is known now, so the next new thing to tell is the first one left
     if (!topic && !topics.empty() && topics.front().act == "tell_news") topic = &topics.front();
     // AL-111: nothing new to tell: the news both know is talked over, a story is one's own past
-    if (!topic && !hearerBusy && talkOverNews(w, teller, hearer, sc.talk, beat / 2)) return;
+    // LR-158: or a moment one lived through (memory_talk.json talks: which goes first on this turn)
+    // (a busy listener still hears a moment out and answers it over his work)
+    if (!topic) {
+        const int turnNo = beat / 2;
+        const bool momentFirst = momentsFirst(w, sc.talk, turnNo);
+        if (momentFirst && talkOverMoments(w, teller, hearer, sc.talk, turnNo)) return;
+        if (!hearerBusy && talkOverNews(w, teller, hearer, sc.talk, turnNo)) return;
+        if (!momentFirst && talkOverMoments(w, teller, hearer, sc.talk, turnNo)) return;
+    }
     talkLine(w, teller, hearer, sc, "inform", "talk_body", topic);
     if (topic && topic->act == "tell_news" && !hearerBusy) { // AL-111: the other takes the news in
         const auto known = newsKnown(w, hearer, newsIndex(w, topic->args.at("news")).value_or(0));
