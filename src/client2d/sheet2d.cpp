@@ -136,7 +136,8 @@ Json sheetJson(const World& w, const ViewText& t, EntityId id) {
               {"occ", c.occupation.empty() ? "" : textOr(t, "ui2d.sheet.occ." + c.occupation, c.occupation)},
               {"backstory", c.backstory.empty() ? "" : t.name("backstory", c.backstory)},
               {"pl", c.controller.isPlayer()},
-              {"lead", mayLead(w, 1, c)}}; // LR-138: only one's own kin
+              {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
+              {"lead", mayLead(w, t.player, c)}}; // LR-138: only one's own kin
 
     // --- overview -----------------------------------------------------------------
     Json ov;
@@ -450,6 +451,7 @@ Json dynastyJson(const World& w, const ViewText& t, EntityId viewer) {
                            {"goal", goalName(t, c)},
                            {"hp", r2(c.body.health)},
                            {"pl", c.controller.isPlayer()},
+                           {"pid", c.controller.isPlayer() ? c.controller.playerId : 0},   // LR-160: whose person
                            {"spouse", c.status.spouse},
                            {"mother", c.status.mother},
                            {"father", c.status.father},

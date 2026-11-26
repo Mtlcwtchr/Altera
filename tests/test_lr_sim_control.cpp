@@ -179,6 +179,7 @@ TEST(lr_sim_free_will_resumes_paused_plan) {
     const size_t pausedSteps = w.character(A)->ai.plan.steps.size();
     const Tick resume = w.content().config.playerIdleResumeTicks;
     w.applyNow(cmdOf("take_control", {{"id", A}}));
+    w.applyNow(cmdOf("set_free_will", {{"id", A}, {"on", true}})); // LR-157: off by default
     {
         const Character& a = *w.character(A);
         CHECK(a.controller.isPlayer());
@@ -398,6 +399,16 @@ TEST(lr_sim_one_plays_one_dynasty) {
     // the house is the player's own: another player picks their own freely
     CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", S}}, 2)).result, kOk);
     CHECK_EQ(w.applyNow(cmdOf("release_control", Json::object(), 2)).result, kOk);
+    // LR-160: one dynasty per player - S's house is player 2's now, so player 1 may not take S even
+    // with a free choice; when player 2's house is forgotten (they left the game), it is open again
+    {
+        World l(content(), 0);
+        installAi(l);
+        l.loadJson(w.toJson());
+        forgetHouse(l, 1);
+        CHECK_EQ(l.applyNow(cmdOf("take_control", {{"id", S}})).result, std::string("rejected:dynasty_of_other"));
+    }
+    forgetHouse(w, 2);
     // the house is saved with the world
     {
         World l(content(), 0);
@@ -444,4 +455,28 @@ TEST(lr_sim_player_order_starts_at_once) {
         w.step();
         CHECK(dist(was, w.character(A)->pos) > 1e-6 || w.character(A)->ai.fsm.state != "Move");
     }
+}
+
+TEST(lr_sim_no_autonomy_by_default) {
+    // LR-157: a led person left without orders waits for the player (no Sims free
+    // will); only a release hands it back to its own life.
+    World w = aiWorld();
+    w.run(kTicksPerDay / 2);
+    const EntityId A = twoAdults(w).first;
+    for (int i = 0; i < 64 && !w.character(A)->ai.goal.valid(); ++i) w.run(1);
+    CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", A}})).result, kOk);
+    CHECK(!w.character(A)->controller.autonomy);
+    const Tick resume = w.content().config.playerIdleResumeTicks;
+    for (Tick i = 0; i < resume * 3; ++i) {
+        w.run(1);
+        CHECK(!w.character(A)->ai.goal.valid());
+        for (const auto& e : w.character(A)->ai.trace) CHECK(e.code != "control.free_will_resume");
+    }
+    CHECK_EQ(w.applyNow(cmdOf("release_control", {})).result, kOk);
+    bool lives = false;
+    for (int i = 0; i < 8 && !lives; ++i) {
+        w.run(1);
+        lives = w.character(A)->ai.goal.valid();
+    }
+    CHECK(lives);
 }

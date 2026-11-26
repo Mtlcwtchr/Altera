@@ -542,6 +542,11 @@
   {"id": "sack", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a sack of grain or flour; placed by the village generator, read by the room rules (rooms.json)"},
   {"id": "hay", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a bale of hay; placed by the village generator, read by the room rules (rooms.json)"},
   {"id": "firewood", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a woodpile; placed by the village generator, read by the room rules (rooms.json)"},
-  {"id": "chopping_block", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a chopping block; placed by the village generator, read by the room rules (rooms.json)"}
+  {"id": "chopping_block", "settlement": true, "furniture": true, "_doc": "AL-81: furniture: a chopping block; placed by the village generator, read by the room rules (rooms.json)"},
+  {"id": "handcart", "owned": true, "stand_m": 1.5, "_doc": "LR-159: a vehicle (transport.json vehicles): moves with its driver, the cargo in stock"},
+  {"id": "cart", "owned": true, "stand_m": 1.5, "_doc": "LR-159: a vehicle (transport.json vehicles): moves with its driver, the cargo in stock"},
+  {"id": "wagon", "owned": true, "stand_m": 1.5, "_doc": "LR-159: a vehicle (transport.json vehicles): moves with its driver, the cargo in stock"},
+  {"id": "coach", "owned": true, "stand_m": 1.5, "_doc": "LR-159: a vehicle (transport.json vehicles): moves with its driver, the cargo in stock"},
+  {"id": "sled", "owned": true, "stand_m": 1.5, "_doc": "LR-159: a vehicle (transport.json vehicles): moves with its driver, the cargo in stock"}
  ]
 }

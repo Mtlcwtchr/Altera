@@ -19,11 +19,13 @@ const Sprites = (() => {
     const g = GRIDS[name];
     if (!g) { cache.set(k, null); return null; }
     cv = document.createElement('canvas');
-    cv.width = cv.height = 16;
+    // 16x16 as a rule; LR-159: a bigger grid (a horse, a wagon: 32x32) keeps its size
+    const n = Math.min(64, Math.max(16, g.length, ...g.map(r => r.length)));
+    cv.width = cv.height = n;
     const ctx = cv.getContext('2d');
-    for (let y = 0; y < 16; y++) {
+    for (let y = 0; y < n; y++) {
       const row = g[y] || '';
-      for (let x = 0; x < 16; x++) {
+      for (let x = 0; x < n; x++) {
         let ch = row[x];
         if (!ch || ch === '.') continue;
         if (recolour && recolour[ch]) ch = recolour[ch];

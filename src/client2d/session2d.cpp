@@ -242,37 +242,37 @@ Json dynastiesJson(const World& w, const ViewText& t) {
     return out;
 }
 
-std::string beginAs(World& w, const Json& args) {
+std::string beginAs(World& w, const Json& args, int player) {
     Command cmd;
-    cmd.source = "player:1";
+    cmd.source = "player:" + std::to_string(player);
     if (args.value("watch", false)) {
-        // nobody led: release whoever player 1 holds
+        // nobody led: release whoever the player holds
         for (auto& [id, c] : w.characters())
-            if (c.controller.isPlayer() && c.controller.playerId == 1) {
+            if (c.controller.isPlayer() && c.controller.playerId == player) {
                 cmd.type = "release_control";
-                cmd.args = {{"player", 1}};
+                cmd.args = {{"player", player}};
                 const Command r = w.applyNow(cmd);
                 return r.result.empty() ? "ok" : r.result;
             }
         return "ok";
     }
     // LR-138: the start of a game: whom to be is chosen anew, and with it the house
-    forgetHouse(w, 1);
+    forgetHouse(w, player);
     const std::string back = args.value("backstory", std::string());
     if (args.contains("create") && args["create"].is_object()) {
         // AL-136: a character made on the creation screen
         cmd.type = "create_character";
         cmd.args = args["create"];
-        cmd.args["player"] = 1;
+        cmd.args["player"] = player;
     } else if (!back.empty()) {
         cmd.type = "start_backstory";
-        cmd.args = {{"backstory", back}, {"player", 1}};
+        cmd.args = {{"backstory", back}, {"player", player}};
         if (args.value("id", kNone) != kNone) cmd.args["id"] = args["id"];
     } else {
         const EntityId id = args.value("id", kNone);
         if (id == kNone) return "rejected:nobody";
         cmd.type = "take_control";
-        cmd.args = {{"id", id}, {"player", 1}};
+        cmd.args = {{"id", id}, {"player", player}};
     }
     const Command r = w.applyNow(cmd);
     return r.result.empty() ? "ok" : r.result;
@@ -311,6 +311,7 @@ Json listSaves2d(const fs::path& dir) {
 }
 
 bool writeSave2d(const fs::path& dir, int slot, const World& w, const Json& game, std::string* why, const ViewText* t) {
+    const int player = t ? t->player : 1;   // LR-160: the person of the one who saves
     if (!validSlot(slot)) {
         if (why) *why = "bad slot";
         return false;
@@ -328,7 +329,7 @@ bool writeSave2d(const fs::path& dir, int slot, const World& w, const Json& game
     for (const auto& [id, c] : w.characters()) {
         if (c.isAnimal()) continue;
         if (c.body.alive) ++alive;
-        if (c.controller.isPlayer() && c.controller.playerId == 1) {
+        if (c.controller.isPlayer() && c.controller.playerId == player) {
             meta["person"] = t ? personName(*t, c) : c.name;
             meta["backstory"] = c.backstory;
             if (const Family* f = w.familyOf(c)) meta["family"] = f->name;

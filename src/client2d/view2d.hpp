@@ -14,6 +14,8 @@ namespace lr::client2d {
 struct ViewText {
     const sim::Loc* loc = nullptr;
     std::string lang = "ru";
+    // LR-160: the player the answer is for (multiplayer: one per client; 1 alone)
+    int player = 1;
     // kind.id.name when there is one, else the id
     std::string name(const std::string& kind, const std::string& id) const;
 };

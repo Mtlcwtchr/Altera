@@ -101,7 +101,7 @@ TEST(lr_dialogue_lines_render_all) {
             sampleNewsArgs(loc, lang, argsN); // AL-111: news, people, places
             for (std::uint64_t seed = 0; seed < 4; ++seed) {
                 std::vector<std::string> errs;
-                const std::string t = sayLoc(loc, lang, key, key.rfind("say.news.", 0) == 0 ? argsN : args, seed, &errs);
+                const std::string t = sayLoc(loc, lang, key, key.rfind("say.news.", 0) == 0 || key.rfind("say.memory.", 0) == 0 ? argsN : args, seed, &errs);
                 CHECK_MSG(errs.empty(), lang + " " + key + ": " + (errs.empty() ? "" : errs.front()));
                 CHECK_MSG(clean(t), lang + " " + key + ": " + t);
                 if (dump) dump << lang << " " << key << " #" << seed << ": " << t << "\n";

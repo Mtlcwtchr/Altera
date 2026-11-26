@@ -1,0 +1,358 @@
+{
+ "_doc": "LR-158: обсуждение воспоминаний (src/sim/memory_talk.hpp). memory.moment.<тип> — момент от первого лица после «как» ({moment}), memory.shared.<тип> — «мы» ({moment_we}), memory.when.<корзина> — когда ({when}).",
+ "memory.moment.starved": "я голодал{self:g||а}",
+ "memory.shared.starved": "мы голодали",
+ "memory.moment.froze": "я чуть не замёрз{self:g||ла}",
+ "memory.shared.froze": "мы мёрзли",
+ "memory.moment.food_spoiled": "у меня припасы сгнили",
+ "memory.shared.food_spoiled": "у нас припасы сгнили",
+ "memory.moment.ate_seed_corn": "пришлось семенное зерно проесть",
+ "memory.shared.ate_seed_corn": "мы семенное зерно проели",
+ "memory.moment.was_comforted": "меня утешили в тяжкий час",
+ "memory.moment.was_given_food": "меня накормили, когда есть было нечего",
+ "memory.moment.was_given_gift": "мне подарок поднесли",
+ "memory.moment.was_robbed": "меня обокрали",
+ "memory.moment.built_home": "я свой дом поставил{self:g||а}",
+ "memory.shared.built_home": "мы дом ставили",
+ "memory.moment.learned_skill": "я новому ремеслу выучил{self:g|ся|ась}",
+ "memory.moment.breakthrough": "у меня в деле прорыв случился",
+ "memory.moment.adopted": "в семье приёмыш появился",
+ "memory.shared.adopted": "мы приёмыша взяли",
+ "memory.moment.attacked": "на меня напали",
+ "memory.shared.attacked": "на нас напали",
+ "memory.moment.brawl": "я в драку ввязал{self:g|ся|ась}",
+ "memory.shared.brawl": "мы ту драку затеяли",
+ "memory.moment.buried": "я родного человека хоронил{self:g||а}",
+ "memory.shared.buried": "мы хоронили своих",
+ "memory.moment.coup": "власть у нас переменилась",
+ "memory.shared.coup": "власть переменилась",
+ "memory.moment.divorce": "мы с супругом разошлись",
+ "memory.moment.duel": "я на поединок вышел{self:g||ла}",
+ "memory.shared.duel": "был тот поединок",
+ "memory.moment.heir_named": "наследника назвали",
+ "memory.shared.heir_named": "наследника назвали",
+ "memory.moment.judged": "меня судили",
+ "memory.moment.migrated": "я с места снял{self:g|ся|ась} и сюда приш{self:g|ёл|ла}",
+ "memory.shared.migrated": "мы с места снялись",
+ "memory.moment.oath": "я клятву дал{self:g||а}",
+ "memory.shared.oath": "мы клятву давали",
+ "memory.moment.proposed": "я руки просил{self:g||а}",
+ "memory.moment.raid": "я в набеге был{self:g||а}",
+ "memory.shared.raid": "мы в набег ходили",
+ "memory.moment.raided": "на нас набег был",
+ "memory.shared.raided": "на деревню набег был",
+ "memory.moment.rite": "я на обряде стоял{self:g||а}",
+ "memory.shared.rite": "мы обряд справляли",
+ "memory.moment.sworn_friend": "я побратал{self:g|ся|ась}",
+ "memory.shared.sworn_friend": "мы побратались",
+ "memory.moment.used_magic": "я колдовать пробовал{self:g||а}",
+ "memory.moment.war_declared": "войну объявили",
+ "memory.shared.war_declared": "войну объявили",
+ "memory.moment.wedding": "я под венец пош{self:g|ёл|ла}",
+ "memory.shared.wedding": "свадьбу гуляли",
+ "memory.moment.was_insulted": "меня при всех оскорбили",
+ "memory.moment.saw_punishment": "я видел{self:g||а}, как наказывали",
+ "memory.shared.saw_punishment": "мы видели, как наказывали",
+ "memory.moment.saw_attack": "у меня на глазах человека били",
+ "memory.shared.saw_attack": "у нас на глазах человека били",
+ "memory.moment.saw_execution": "я казнь видел{self:g||а}",
+ "memory.shared.saw_execution": "мы казнь видели",
+ "memory.moment.attacked_by_beast": "на меня зверь кинулся",
+ "memory.shared.attacked_by_beast": "на нас зверь кинулся",
+ "memory.moment.attacked_by_undead": "на меня мертвяк полез",
+ "memory.shared.attacked_by_undead": "на нас мертвяки полезли",
+ "memory.moment.saw_beast": "я зверя у самой деревни видел{self:g||а}",
+ "memory.shared.saw_beast": "мы зверя у деревни видели",
+ "memory.moment.saw_magic": "я колдовство своими глазами видел{self:g||а}",
+ "memory.shared.saw_magic": "мы колдовство видели",
+ "memory.moment.saw_dark_magic": "я чёрное колдовство видел{self:g||а}",
+ "memory.shared.saw_dark_magic": "мы чёрное колдовство видели",
+ "memory.moment.saw_necromancy": "я видел{self:g||а}, как мёртвых поднимают",
+ "memory.shared.saw_necromancy": "у нас на глазах мёртвых поднимали",
+ "memory.moment.good_hunt": "я с богатой добычей с охоты вернул{self:g|ся|ась}",
+ "memory.shared.good_hunt": "мы с богатой добычей вернулись",
+ "memory.moment.won_fight": "я в бою верх взял{self:g||а}",
+ "memory.shared.won_fight": "мы верх взяли",
+ "memory.moment.lost_fight": "меня в бою побили",
+ "memory.moment.fled_fight": "я с боя бежал{self:g||а}",
+ "memory.moment.was_treated": "меня от ран выходили",
+ "memory.moment.maimed": "меня покалечили",
+ "memory.moment.was_spared": "меня в бою пощадили",
+ "memory.moment.spared_foe": "я врага пощадил{self:g||а}",
+ "memory.moment.killed_foe": "я человека убил{self:g||а}",
+ "memory.moment.was_bound": "меня в плен взяли",
+ "memory.moment.rescued": "меня из плена вызволили",
+ "memory.moment.rescued_someone": "я человека из беды вытащил{self:g||а}",
+ "memory.moment.was_released": "меня из плена отпустили",
+ "memory.moment.paid_ransom": "я выкуп платил{self:g||а}",
+ "memory.moment.was_sentenced": "мне приговор вынесли",
+ "memory.moment.escaped": "я из плена сбежал{self:g||а}",
+ "memory.moment.exiled": "меня изгнали из родных мест",
+ "memory.moment.was_punished": "меня наказали при всех",
+ "memory.moment.paid_tribute": "с нас дань брали",
+ "memory.shared.paid_tribute": "мы дань платили",
+ "memory.moment.won_contest": "я в состязании победил{self:g||а}",
+ "memory.moment.danced": "я на празднике плясал{self:g||а}",
+ "memory.shared.danced": "мы на празднике плясали",
+ "memory.moment.sang_together": "мы песни пели до утра",
+ "memory.shared.sang_together": "мы песни пели до утра",
+ "memory.moment.read_omen": "мне знамение было",
+ "memory.moment.gave_food": "я голодных накормил{self:g||а}",
+ "memory.moment.made_tool": "я себе новый инструмент справил{self:g||а}",
+ "memory.moment.with_child": "у нас в семье прибавления ждём",
+ "memory.shared.with_child": "мы прибавления ждём",
+ "memory.moment.stranger_arrived": "к нам чужак прибился",
+ "memory.shared.stranger_arrived": "к нам чужак прибился",
+ "memory.moment.fasted": "я пост держал{self:g||а}",
+ "memory.moment.any": "со мной такое было",
+ "memory.shared.any": "мы это вместе пережили",
+ "memory.somebody": "кое-кто",
+ "memory.when.recent": "на днях",
+ "memory.when.days": "недавно",
+ "memory.when.weeks": "с месяц назад",
+ "memory.when.season": "не один месяц тому",
+ "memory.when.year": "с год назад",
+ "memory.when.long": "давно уже",
+ "dialogue.menu.ask_memory": "что {listener:g|ему|ей} больше всего запомнилось",
+ "hud.talk.act.ask_memory": "спросить",
+ "say.memory.ask_memory": [
+  "А что тебе больше всего запомнилось, {listener}?",
+  "Расскажи, {listener}, что тебе в жизни запомнилось?"
+ ],
+ "say.memory.no_moment": [
+  "Да ничего такого не припомню.",
+  "Жизнь как жизнь, рассказать особо нечего."
+ ],
+ "say.memory.recall": [
+  "Помню, {when} {moment}.",
+  "Знаешь, {listener}, {when} {moment}. До сих пор помню."
+ ],
+ "say.memory.recall.sad": [
+  "Тяжко вспоминать, {listener}, но {when} {moment}.",
+  "Не идёт из головы: {when} {moment}."
+ ],
+ "say.memory.recall.glad": [
+  "А у меня радость была: {when} {moment}!",
+  "Хорошо вспомнить: {when} {moment}."
+ ],
+ "say.memory.recall.alarm": [
+  "Страху натерпел{self:g|ся|ась}: {when} {moment}!",
+  "Веришь ли, {when} {moment}. Еле жив{self:g||а} остал{self:g|ся|ась}."
+ ],
+ "say.memory.recall.proud": [
+  "Похвалюсь, {listener}: {when} {moment}.",
+  "А ведь {when} {moment}, вот так-то."
+ ],
+ "say.memory.recall.eerie": [
+  "Жуть такая была, {listener}: {when} {moment}.",
+  "До сих пор мороз по коже: {when} {moment}."
+ ],
+ "say.memory.recall.shame": [
+  "Чего уж скрывать, {when} {moment}.",
+  "Стыдно сказать, но {when} {moment}."
+ ],
+ "say.memory.recall.spicy": [
+  "Слушай, что было: {when} {moment}!",
+  "Ты не поверишь: {when} {moment}!"
+ ],
+ "say.memory.recall.type.attacked_by_beast": [
+  "{when_up} на меня зверь из чащи кинулся. Думал{self:g||а}, всё, конец.",
+  "Видишь, {listener}? Это зверь меня {when} подрал. Еле отбил{self:g|ся|ась}."
+ ],
+ "say.memory.recall.type.attacked_by_undead": [
+  "{when_up} на меня мертвяк полез. Холодный, а глаза пустые… Не к ночи будь помянут.",
+  "Мёртвые, {listener}, не всегда лежат смирно. {when_up} я сам{self:g||а} в том убедил{self:g|ся|ась}."
+ ],
+ "say.memory.recall.type.starved": [
+  "{when_up} я так голодал{self:g||а}, что кору готов{self:g||а} был{self:g||а} грызть.",
+  "Знаешь, что такое голод, {listener}? Я {when} узнал{self:g||а}."
+ ],
+ "say.memory.recall.type.wedding": [
+  "{when_up} я под венец пош{self:g|ёл|ла}. Лучший день, что тут скажешь.",
+  "Свадьбу свою вспоминаю, {listener}. Гуляли на славу!"
+ ],
+ "say.memory.recall.type.built_home": [
+  "Дом-то свой я {when} поставил{self:g||а}. Каждое бревно своими руками.",
+  "Свой угол, {listener}, — это не шутка. {when_up} я дом поставил{self:g||а}."
+ ],
+ "say.memory.recall.type.raided": [
+  "{when_up} на нас налетели. Дым, крики… не забыть.",
+  "Помню тот набег, {listener}. Добро растащили, людей побили."
+ ],
+ "say.memory.recall.type.won_fight": [
+  "{when_up} я в бою верх взял{self:g||а}. Рука не дрогнула!",
+  "А я ведь {when} в схватке выстоял{self:g||а}, {listener}, и победил{self:g||а}."
+ ],
+ "say.memory.recall.type.maimed": [
+  "Видишь, {listener}? {when_up} меня покалечили. Так и хожу теперь.",
+  "Не та уже у меня сила. {when_up} покалечили меня."
+ ],
+ "say.memory.recall.type.buried": [
+  "{when_up} я родного человека в землю положил{self:g||а}. Пусто без него.",
+  "Тяжко мне, {listener}. {when_up} хоронил{self:g||а} своего."
+ ],
+ "say.memory.recall.type.rescued": [
+  "Меня ведь {when} из плена вызволили. Век буду благодарн{self:g|ый|ая}.",
+  "Думал{self:g||а}, не видать мне воли, а {when} вызволили."
+ ],
+ "say.memory.recall.type.escaped": [
+  "{when_up} я из плена сбежал{self:g||а}. Ночью, через лес, босиком.",
+  "Не удержали меня, {listener}! {when_up} сбежал{self:g||а} из плена."
+ ],
+ "say.memory.recall.type.exiled": [
+  "Меня ведь {when} из родных мест прогнали. С тех пор и скитаюсь.",
+  "Нет у меня больше дома, {listener}. {when_up} изгнали."
+ ],
+ "say.memory.recall.type.saw_necromancy": [
+  "{when_up} я видел{self:g||а}, как мёртвых поднимают. Не приведи боги ещё раз.",
+  "Есть вещи, {listener}, которых лучше не видеть. {when_up} при мне мертвеца подняли."
+ ],
+ "say.memory.recall.type.good_hunt": [
+  "{when_up} я с охоты такую добычу принёс{self:g||ла} — вся семья неделю ела!",
+  "Удачная была охота {when}, {listener}. Зверь сам на меня вышел."
+ ],
+ "say.memory.recall.type.breakthrough": [
+  "{when_up} у меня в деле всё сложилось — понял{self:g||а}, как надо!",
+  "Долго я с этим бил{self:g|ся|ась}, {listener}. А {when} вдруг получилось."
+ ],
+ "say.memory.recall.with.fight": [
+  "{when_up} мы с {with:ins} сцепились. {moment_up}, вот как было.",
+  "Было дело, {listener}: {when} с {with:ins} схлестнул{self:g|ся|ась}."
+ ],
+ "say.memory.recall.with.wedding": [
+  "{when_up} мы с {with:ins} под венец пошли. Лучший день, что тут скажешь.",
+  "Свадьбу нашу с {with:ins} вспоминаю. Гуляли на славу!"
+ ],
+ "say.memory.recall.with.kindness": [
+  "{with} меня {when} выручил{with:g||а}. Не забуду.",
+  "Добрые люди есть, {listener}. {when_up} {with} мне помог{with:g||ла}."
+ ],
+ "say.memory.recall.with_dead": [
+  "Помню, {when} {moment}. А {with} уж в земле, упокой боги.",
+  "{when_up} {moment}… {with} тогда ещё жив{with:g||а} был{with:g||а}."
+ ],
+ "say.memory.recall.with_us.kindness": [
+  "Я ведь не забыл{self:g||а}, {listener}: {when} ты меня выручил{listener:g||а}.",
+  "Спасибо тебе ещё раз, {listener}. Помню, как ты {when} мне помог{listener:g||ла}."
+ ],
+ "say.memory.recall.with_us.shame": [
+  "Я помню, {listener}, как ты меня {when} осрамил{listener:g||а}.",
+  "Не забыл{self:g||а} я, {listener}, что {when} было. Ты знаешь, о чём я."
+ ],
+ "say.memory.reminisce": [
+  "А помнишь, {listener}, как {when} {moment_we}?",
+  "Помнишь, как {moment_we}? Вот было дело."
+ ],
+ "say.memory.reminisce.sad": [
+  "Помнишь, как {moment_we}? Тяжёлое было время.",
+  "А помнишь, {listener}, как {when} {moment_we}? Не дай боги снова."
+ ],
+ "say.memory.reminisce.glad": [
+  "А помнишь, как {moment_we}? Вот славно было!",
+  "Помнишь, {listener}, как {when} {moment_we}? Эх, хорошо!"
+ ],
+ "say.memory.reminisce.alarm": [
+  "Помнишь, как {moment_we}? Чудом уцелели.",
+  "А помнишь, {listener}, как {when} {moment_we}? У меня до сих пор руки трясутся."
+ ],
+ "say.memory.reminisce.proud": [
+  "Помнишь, как {moment_we}? Есть чем гордиться.",
+  "А ведь {when} {moment_we}, {listener}! Хорошо мы тогда."
+ ],
+ "say.memory.reminisce.eerie": [
+  "Помнишь, как {moment_we}? Брр, до сих пор не по себе.",
+  "А помнишь, {listener}, как {when} {moment_we}? Не к ночи будь сказано."
+ ],
+ "say.memory.reminisce.spicy": [
+  "Помнишь, как {moment_we}? Ох и шуму было!",
+  "А помнишь, {listener}, как {when} {moment_we}? Вся деревня потом судачила."
+ ],
+ "say.memory.reminisce.type.wedding": [
+  "А помнишь, {listener}, нашу свадьбу? Как гуляли-то!",
+  "Помнишь, как {when} свадьбу гуляли? Лучше дня не было."
+ ],
+ "say.memory.reminisce.type.built_home": [
+  "Помнишь, {listener}, как мы дом ставили? Спины не разгибали.",
+  "Вот он, наш дом. Помнишь, как {when} брёвна таскали?"
+ ],
+ "say.memory.react": [
+  "Вон оно как.",
+  "Надо же."
+ ],
+ "say.memory.react.sad": [
+  "Ох, сочувствую.",
+  "Тяжко тебе пришлось, {listener}."
+ ],
+ "say.memory.react.glad": [
+  "Вот и славно!",
+  "Рад{self:g||а} за тебя, {listener}."
+ ],
+ "say.memory.react.alarm": [
+  "Страсти какие! Хорошо, что цел{listener:g||а}.",
+  "Ох ты ж! Берегись впредь."
+ ],
+ "say.memory.react.proud": [
+  "Ишь ты! Молодец.",
+  "Вот это да, {listener}!"
+ ],
+ "say.memory.react.eerie": [
+  "Тьфу-тьфу, не к ночи будь сказано.",
+  "Бр-р… Не рассказывай такого на ночь."
+ ],
+ "say.memory.react.shame": [
+  "Ну, с кем не бывает.",
+  "Брось, {listener}, дело прошлое."
+ ],
+ "say.memory.react.spicy": [
+  "Ну и ну!",
+  "Ха! Вот это история."
+ ],
+ "say.memory.react.same": [
+  "Со мной тоже такое было, {listener}. Знаю, каково это.",
+  "Сам{self:g||а} через то прош{self:g|ёл|ла}, понимаю тебя."
+ ],
+ "say.memory.react.cold": [
+  "Ну и что с того?",
+  "А мне-то что?"
+ ],
+ "say.memory.react.with_us.kindness": [
+  "Да чего там, свои же люди.",
+  "Пустое, {listener}. И ты бы так сделал{listener:g||а}."
+ ],
+ "say.memory.react.with_us.shame": [
+  "Было и прошло. Сам{listener:g||а} виноват{listener:g||а}.",
+  "Ты всё старое ворошишь, {listener}."
+ ],
+ "say.memory.react_reminisce": [
+  "Помню, как же.",
+  "Как не помнить."
+ ],
+ "say.memory.react_reminisce.sad": [
+  "Как не помнить. Тяжко было.",
+  "Помню… Лучше б забыть."
+ ],
+ "say.memory.react_reminisce.glad": [
+  "Ещё бы! Славное было время.",
+  "Помню! Хорошо было, {listener}."
+ ],
+ "say.memory.react_reminisce.alarm": [
+  "Помню. Страшно вспомнить.",
+  "Еле ноги унесли тогда."
+ ],
+ "say.memory.react_reminisce.proud": [
+  "Помню! Хорошо мы тогда.",
+  "А то! Есть что внукам рассказать."
+ ],
+ "say.memory.react_reminisce.eerie": [
+  "Не напоминай, до сих пор не по себе.",
+  "Тише ты, не к ночи."
+ ],
+ "say.memory.react_reminisce.spicy": [
+  "Ха! Помню, ещё как.",
+  "Ох, и вспоминать смешно."
+ ],
+ "say.memory.react_reminisce.with_dead": [
+  "Помню… Жаль, {with} не дожил{with:g||а}.",
+  "Помню. И {with} тогда с нами был{with:g||а}, упокой боги."
+ ]
+}
