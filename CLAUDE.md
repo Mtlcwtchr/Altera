@@ -1,7 +1,9 @@
 # Lively Realms - working rules for Claude
 
 LivelyRealms: a life-sim (src/sim) on RealSimEngine, its own engine (src/engine) with a terrain
-renderer (src/terrain_core) and the game client/lab (tools/terrain_lab, src/game_view).
+renderer (src/terrain_core), the terrain lab (tools/terrain_lab) and the 2D game client
+(src/client2d, lr_game_2d). The 3D client (src/game_view, lr_game) is OBSOLETE and not built
+(src/game_view/OBSOLETE.md); the Campfire simulation (asr_simulation, sim_runner) is removed.
 Several threads work in one working copy and in worktrees (D:/AlteraGame/altera-wt/*).
 
 ## Check layers (cheapest first; stop at the first one that answers the question)
@@ -14,7 +16,7 @@ Several threads work in one working copy and in worktrees (D:/AlteraGame/altera-
    `--exclude=<substring>` skips tests. `tools\check_fast.bat rerun` reruns only the failed ones.
 4. **Full layer, only on request**: `tools\check_fast.bat full` (sim incl. multi-year worlds,
    label `full`), and `ctest --test-dir cmake-build-windows` for the whole engine.
-5. **Frames/screenshots, only on request**: terrain_lab / lr_game in cmake-build-windows,
+5. **Frames/screenshots, only on request**: terrain_lab in cmake-build-windows,
    shots go to `terrain_lab_out\shots_for_user\`. Don't open/analyse them unless asked.
 
 check_fast prints only the outcome and the first 20 errors; full logs are in
@@ -29,7 +31,7 @@ check_fast prints only the outcome and the first 20 errors; full logs are in
 | Linux/cloud | the same sim-only build | `cmake --preset sim-linux && cmake --build --preset sim-linux && ctest --preset sim-linux-fast` |
 
 - Build only the targets you need (`--target`), never the whole full tree without a reason.
-- **Close terrain_lab.exe / lr_game.exe before building** cmake-build-windows, or the
+- **Close terrain_lab.exe before building** cmake-build-windows, or the
   link fails with permission denied on the exe and DLLs.
 - Outside CLion the shell needs the MSVC env for clang-cl (check_fast.bat calls VsDevCmd
   itself); cmake/ninja/ctest come from `C:\Program Files\JetBrains\CLion*\bin\`.
@@ -46,7 +48,9 @@ check_fast prints only the outcome and the first 20 errors; full logs are in
 | `src/sim`, `content/ai`, `content/*` sim data, `tests/test_lr_*` | sim / AI / crafting threads | headless, deterministic |
 | `src/sim/combat`, `content/combat` | combat | golden: tests/data/combat |
 | `src/terrain_core`, `assets/shaders/terrain_core`, `content/config/terrain_core` | terrain / biomes threads | checked in Terrain lab |
-| `tools/terrain_lab`, `src/game_view` | game client / lab | heavy build |
+| `tools/terrain_lab` | terrain lab | heavy build |
+| `src/client2d`, `tools/game_2d` | 2D game client | built in the sim tree too |
+| `src/game_view` | obsolete 3D client | not built; don't extend |
 | `src/engine`, `src/game` | engine (RealSimEngine) | rarely touched |
 | `CMakeLists.txt`, `CMakePresets.json`, `cmake/`, `tools/check_fast.bat`, `CLAUDE.md` | build setup | keep edits small, own hunks only |
 | `doc/`, `assets/source` | user | don't edit without a request |

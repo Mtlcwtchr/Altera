@@ -10,7 +10,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 CODE = {".cpp", ".hpp", ".h", ".c", ".cc", ".hlsl", ".hlsli", ".py", ".bat", ".sh", ".cmake"}
-DIRS = ["src", "sim_runner", "tests", "tools"]
+DIRS = ["src", "tests", "tools"]
 SKIP = {"third_party", "__pycache__", ".git", "build", "out"}
 SKIP_PREFIX = ("cmake-build",)
 MAXLEN = 110

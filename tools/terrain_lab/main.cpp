@@ -52,9 +52,7 @@
 #include "terrain_core/params.hpp"
 #include "terrain_core/renderer.hpp"
 #include "terrain_core/world_gen.hpp"
-#include "game_view/game_layer.hpp"
 #include "game_view/loading_screen.hpp"
-#include "game_view/saves.hpp"
 
 #include <SDL3/SDL.h>
 #include <nlohmann/json.hpp>
@@ -164,18 +162,13 @@ struct Options {
     int debugLevels = 0;
     double startX = -1, startY = -1;    // fractions of the world; <0: auto (land near centre)
     bool map = false;                   // start in the strategic map view
-    bool game = false;                  // the life-sim and its HUD on this world (lr_game)
-    std::uint64_t gameSeed = 7;         // the sim's world seed
-    std::string gameSeason;             // spring | summer | autumn | winter
     bool levelsGiven = false;
     bool seaGiven = false;
     // AL-69: a procedural world from its spec (terrain_core/world_gen.hpp),
     // made into `worldCache`/<key>/ the first time and opened from there
     WorldSpec worldSpec;
     bool worldSpecGiven = false;
-    bool lore = false;              // --lore: the game on the imported world of LivelyRealms
     fs::path worldCache;            // --world-cache; empty: <out>/worlds
-    std::string begin;              // --begin new | load:N: what the game does once open
 };
 
 bool parse(int argc, char** argv, Options& o) {
@@ -201,8 +194,6 @@ bool parse(int argc, char** argv, Options& o) {
             o.worldSpecGiven = !o.worldSpec.lore();
         }
         else if (a == "--world-cache") o.worldCache = next();
-        else if (a == "--lore") o.lore = true;
-        else if (a == "--begin") o.begin = next();
         else if (a == "--dlss") o.dlss = true;
         else if (a == "--no-dlss") o.dlss = false;
         else if (a == "--dlss-quality") {
@@ -240,9 +231,6 @@ bool parse(int argc, char** argv, Options& o) {
         else if (a == "--debug-levels") o.debugLevels = 1;
         else if (a == "--debug") o.debugLevels = std::atoi(next());
         else if (a == "--map") o.map = true;
-        else if (a == "--game") o.game = true;
-        else if (a == "--sim-seed") o.gameSeed = std::strtoull(next(), nullptr, 10);
-        else if (a == "--season") o.gameSeason = next();
         else if (a == "--no-ground") o.groundMaterials = false;
         else if (a == "--no-surface") o.surfaceMaps = false;
         else if (a == "--no-foliage" || a == "--no-trees") o.foliage = false;
@@ -433,7 +421,6 @@ struct Lab {
     bool enbOn = false;        // decided at open: the frame's format follows it
     bool enbReady = false;
     engine::Targets hdrTargets;   // the scene without an upscaler
-    std::vector<EnbLight> enbLights;   // the game's fires this frame
     void loadEnb(const std::string& preset) {
         std::string why;
         EnbSettings fresh;
@@ -487,7 +474,6 @@ struct Lab {
     double ground = 0;      // last known height under the eye
     bool groundKnown = false;
     bool eroded = false;      // --erode ran; nothing else to do
-    lr::game::GameLayer* game = nullptr;   // --game: the life-sim drawn into this view
     lr::game::LoadingScreen* loading = nullptr;   // a window: what open() is doing, while it does it
     void step(const char* key, float fraction) { if (loading) loading->stage(key, fraction); }
 
@@ -739,10 +725,8 @@ struct Lab {
         }
         std::printf("river graph on the GPU: %.1f MB, %u tiles a side, longest tile list %u\n",
                     double(rivers.gpuBytes()) / (1 << 20), rivers.tilesPerSide(), rivers.longestList());
-        if (!options.game) {   // the game reads the rivers into the sim's map
-            riverSegments.clear();
-            riverSegments.shrink_to_fit();
-        }
+        riverSegments.clear();
+        riverSegments.shrink_to_fit();
         renderer.setRivers(&rivers);
         {
             // The fine relief beside an imported world's heightmap (a marsh
@@ -972,12 +956,6 @@ struct Lab {
         float unjittered[16];
         std::memcpy(unjittered, view.viewProjection, sizeof unjittered);
         const auto selectStart = Clock::now();
-        // The game laid pads on the ground (a building's site, a field): the
-        // relief has them now, and the clipmap is made again over them.
-        if (game && game->terrainChanged()) {
-            renderer.setRelief(&relief);
-            clipmap.invalidate();
-        }
         const auto rects = clipmap.follow(camera.eye);
         const Selection selection = select(p, macro, clipmap, camera.eye, frustumFrom(view.viewProjection));
         if (useDlss) dlss.jitter(view.viewProjection);
@@ -1061,10 +1039,6 @@ struct Lab {
             s.propsTriangles = props.trianglesDrawn();
             s.propsCullMs = props.cullMs();
         }
-        if (game) {
-            const double eye[3] = {camera.eye.x, camera.eye.y, camera.eye.z};
-            game->prepare(commands, eye, view.viewProjection, targets.width(), targets.height());
-        }
         if (shadowsOn) {
             // The sun's shadow atlas: the ground and the trees, three cascades.
             auto* shadowPass = shadows.begin(commands);
@@ -1128,7 +1102,6 @@ struct Lab {
         }
         if (foliageReady && options.foliage) foliage.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
         if (grassReady && options.grass) grass.draw(commands, pass, plants, light, shadows.texture(), shadows.sampler());
-        if (game) game->drawOpaque(commands, pass, light);
         if (waterReady && options.water)
             water.draw(commands, pass, renderer, view, light, shadows.texture(), shadows.sampler(), camera.eye, float(seconds));
         SDL_EndGPURenderPass(pass);
@@ -1153,11 +1126,6 @@ struct Lab {
             ef.seconds = float(seconds);
             ef.dt = float(dt);
             ef.grain = !useDlss;
-            if (game) {
-                const double eyeAt[3] = {camera.eye.x, camera.eye.y, camera.eye.z};
-                game->lights(eyeAt, enbLights);
-                ef.lights = &enbLights;
-            }
             if (ef.out) {
                 enb.apply(commands, ef, enbSettings);
                 graded = ef.out;
@@ -1187,7 +1155,6 @@ struct Lab {
         // Ink lines over the styled picture, under the PSX cut; depth read by uv, so DLSS's smaller one serves too.
         if (outlineReady) outline.apply(commands, targets, sceneTargets.depth(), float(camera.nearPlane), outlineSettings);
         if (psxReady) psx.apply(commands, targets, psxSettings, float(seconds));
-        if (game) game->drawOverlay(commands, targets.resolved(), targets.width(), targets.height());
         ++frames;
         probe.record(commands, renderer.clipmap(), p, camera.eye);
         if (swapchain) {
@@ -1398,56 +1365,7 @@ struct MapCamera {
     }
 };
 
-// The game (--game): the sim's own camera and HUD; the view keeps only its
-// look keys (X PSX, L outline, U light preset, F5 style, F7 shadows, F8 clouds, F12 DLSS).
-int runGame(Lab& lab, SDL_Window* window) {
-    auto last = Clock::now(), titleAt = Clock::now();
-    double frameMs = 0;
-    int frames = 0;
-    for (;;) {
-        SDL_Event e;
-        while (SDL_PollEvent(&e)) {
-            if (!lab.game->event(e)) return 0;
-            if (e.type == SDL_EVENT_KEY_DOWN && !e.key.repeat) {
-                if (e.key.key == SDLK_X) {
-                    const bool on = !lab.psxSettings.enabled;
-                    if (on) lab.loadPsx();
-                    lab.psxSettings.enabled = on;
-                }
-                if (e.key.key == SDLK_L) lab.toggleOutline();
-                if (e.key.key == SDLK_U) lab.cycleEnb();
-                if (e.key.key == SDLK_F5) lab.options.post = (lab.options.post + 1) % Post::kStyles;
-                if (e.key.key == SDLK_F7) lab.options.light.shadows = !lab.options.light.shadows;
-                if (e.key.key == SDLK_F8) lab.options.light.clouds = !lab.options.light.clouds;
-                if (e.key.key == SDLK_F12) {
-                    lab.options.dlss = !lab.options.dlss;
-                    lab.dlss.resetHistory();
-                }
-            }
-        }
-        const double dt = std::min(0.1, std::chrono::duration<double>(Clock::now() - last).count());
-        last = Clock::now();
-        lr::game::CameraRig rig;
-        rig.eye[0] = lab.camera.eye.x; rig.eye[1] = lab.camera.eye.y; rig.eye[2] = lab.camera.eye.z;
-        rig.yaw = lab.camera.yaw; rig.pitch = lab.camera.pitch; rig.fovY = lab.camera.fovY;
-        lab.game->update(dt, rig, lab.options.light.timeOfDay);
-        lab.camera.eye.x = rig.eye[0]; lab.camera.eye.y = rig.eye[1]; lab.camera.eye.z = rig.eye[2];
-        lab.camera.yaw = rig.yaw; lab.camera.pitch = rig.pitch;
-        frameMs += lab.frame(window, -1.0).frameMs;
-        ++frames;
-        if (msSince(titleAt) > 1000) {
-            char title[96];
-            std::snprintf(title, sizeof title, "LivelyRealms | %.0f fps", 1000.0 * frames / std::max(1.0, frameMs));
-            SDL_SetWindowTitle(window, title);
-            frameMs = 0;
-            frames = 0;
-            titleAt = Clock::now();
-        }
-    }
-}
-
 int runInteractive(Lab& lab, SDL_Window* window) {
-    if (lab.game) return runGame(lab, window);
     const Params& p = lab.options.params;
     double sx = lab.options.startX, sy = lab.options.startY;
     if (sx < 0 || sy < 0) lab.findLand(sx, sy);
@@ -1644,57 +1562,12 @@ int runInteractive(Lab& lab, SDL_Window* window) {
 int main(int argc, char** argv) {
     std::setvbuf(stdout, nullptr, _IONBF, 0);
     Options options;
-#ifdef LR_GAME_DEFAULT
-    // lr_game: the game on the imported world unless told otherwise, run
-    // from the repository whatever the working folder.
-    options.game = true;
-    std::vector<char*> args(argv, argv + argc);
-    bool worldGiven = false, lore = false;
-    for (int i = 1; i < argc; ++i) {
-        worldGiven = worldGiven || !std::strcmp(argv[i], "--heightmap") || !std::strcmp(argv[i], "--world-spec") ||
-                     !std::strcmp(argv[i], "--generate");
-        lore = lore || !std::strcmp(argv[i], "--lore");
-    }
-    static const char* kWorld[] = {"--heightmap", "terrain_lab_out/world_final.r16", "--world-km", "131.072",
-                                   "--main-river-area", "80", "--main-lake-area", "2", "--height-range", "6000",
-                                   "--sea", "0.13", "--biomes", "terrain_lab_out/world_biomes.png",
-                                   "--water-rules", "terrain_lab_out/world_water.png",
-                                   "--water-skeleton", "terrain_lab_out/world_water_skeleton.png"};
-    // AL-69: the worlds live beside the saves; with none given the game opens
-    // the one played last (worlds/current.json), the very first time a
-    // procedural one. The imported world of LivelyRealms only when asked (--lore).
-    static std::string worldsDir = (lr::game::saveDir().parent_path() / "worlds").string();
-    static std::string currentSpec = (fs::path(worldsDir) / "current.json").string();
-    static const char* kCache[] = {"--world-cache", worldsDir.c_str()};
-    for (std::size_t i = 0; i < std::size(kCache); ++i)
-        args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kCache[i]));
-    if (!worldGiven && !lore) {
-        WorldSpec current;
-        if (!readWorldSpec(currentSpec, current)) writeWorldSpec(currentSpec, current);
-        if (current.lore()) lore = true;
-        else {
-            static const char* kSpec[] = {"--world-spec", currentSpec.c_str()};
-            for (std::size_t i = 0; i < std::size(kSpec); ++i)
-                args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kSpec[i]));
-        }
-    }
-    if (lore && !worldGiven)
-        for (std::size_t i = 0; i < std::size(kWorld); ++i)
-            args.insert(args.begin() + 1 + std::ptrdiff_t(i), const_cast<char*>(kWorld[i]));
-    std::error_code cwdError;
-    fs::current_path(LR_SOURCE_DIR, cwdError);
-    argc = int(args.size());
-    argv = args.data();
-#endif
     if (!parse(argc, argv, options)) return 2;
     SDL_Window* window = nullptr;
     // The GPU device wants the video subsystem even with no window to draw in.
     if (!SDL_Init(SDL_INIT_VIDEO)) { std::fprintf(stderr, "SDL: %s\n", SDL_GetError()); return 1; }
     if (!options.headless) {
-        // AL-29: the game's window is called by the game's name
-        // the targets follow the window's pixel size every frame, so the game's window may be resized
-        window = SDL_CreateWindow(options.game ? "LivelyRealms" : "terrain_lab", int(options.width), int(options.height),
-                                  options.game ? SDL_WINDOW_RESIZABLE : 0);
+        window = SDL_CreateWindow("terrain_lab", int(options.width), int(options.height), 0);
         if (!window) { std::fprintf(stderr, "window: %s\n", SDL_GetError()); return 1; }
     }
     int code = 0;
@@ -1711,41 +1584,6 @@ int main(int argc, char** argv) {
         }
         if (!lab.open(window)) return 1;
         if (lab.eroded) return 0;
-        std::unique_ptr<lr::game::GameLayer> game;   // released before the lab's device
-        if (options.game && window) {
-            double gx = options.startX, gy = options.startY;
-            if (gx < 0 || gy < 0) lab.findLand(gx, gy);
-            lr::game::GameOptions go;
-            go.seed = options.gameSeed;
-            go.season = options.gameSeason;
-            go.biomes = &lab.biomes;
-            go.rivers = &lab.riverSegments;
-            go.relief = &lab.relief;
-            // AL-69: the world the game is on, where worlds are kept, what to do first
-            go.world = options.worldSpecGiven ? options.worldSpec : WorldSpec{};
-            if (!options.worldSpecGiven) go.world.kind = "lore";
-            go.worldsDir = options.worldCache.empty() ? (options.out / "worlds").string() : options.worldCache.string();
-            go.begin = options.begin;
-            {
-                fs::path exe = fs::path(SDL_GetBasePath()) / fs::path(argv[0]).filename();
-#ifdef _WIN32
-                if (exe.extension().empty()) exe += ".exe";
-#endif
-                go.exe = exe.string();
-            }
-#ifdef LR_SOURCE_DIR
-            go.root = LR_SOURCE_DIR;
-#else
-            go.root = ".";
-#endif
-            std::string why;
-            lab.step("sim", 0.92f);
-            game = lr::game::makeSimGame(lab.device, window, lab.macro, options.params,
-                                             gx * options.params.worldSize, gy * options.params.worldSize, go, &why);
-            if (!game) { std::fprintf(stderr, "game: %s\n", why.c_str()); return 1; }
-            lab.game = game.get();
-            SDL_SetWindowTitle(window, "LivelyRealms");
-        }
         loading.finish();
         lab.loading = nullptr;
         if (!options.shot.empty()) code = runShot(lab, window);
