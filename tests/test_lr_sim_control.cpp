@@ -399,6 +399,16 @@ TEST(lr_sim_one_plays_one_dynasty) {
     // the house is the player's own: another player picks their own freely
     CHECK_EQ(w.applyNow(cmdOf("take_control", {{"id", S}}, 2)).result, kOk);
     CHECK_EQ(w.applyNow(cmdOf("release_control", Json::object(), 2)).result, kOk);
+    // LR-160: one dynasty per player - S's house is player 2's now, so player 1 may not take S even
+    // with a free choice; when player 2's house is forgotten (they left the game), it is open again
+    {
+        World l(content(), 0);
+        installAi(l);
+        l.loadJson(w.toJson());
+        forgetHouse(l, 1);
+        CHECK_EQ(l.applyNow(cmdOf("take_control", {{"id", S}})).result, std::string("rejected:dynasty_of_other"));
+    }
+    forgetHouse(w, 2);
     // the house is saved with the world
     {
         World l(content(), 0);

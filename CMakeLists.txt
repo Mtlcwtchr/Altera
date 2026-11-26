@@ -322,6 +322,7 @@ add_library(lr_sim STATIC
         src/sim/backstory.cpp
         src/sim/charcreate.cpp
         src/sim/trade.cpp
+        src/sim/transport.cpp
         src/sim/collide.cpp
         src/sim/act_info.cpp
         src/sim/consequences.cpp
@@ -343,6 +344,7 @@ add_library(lr_sim STATIC
         src/sim/combat_show.cpp
         src/sim/act_check.cpp
         src/sim/realm.cpp
+        src/sim/worldmap.cpp
         src/sim/memory_budget.cpp
         src/sim/dialogue_memory.cpp
         src/sim/dialogue_corpus.cpp
@@ -433,12 +435,15 @@ target_link_libraries(lr_client2d PUBLIC lr_sim PRIVATE asr_warnings)
 target_sources(lr_client2d PRIVATE src/client2d/sheet2d.cpp)   # AL-100: the character sheet
 target_sources(lr_client2d PRIVATE src/client2d/sky2d.cpp)     # AL-110: light, shadows, weather
 target_sources(lr_client2d PRIVATE src/client2d/farm2d.cpp)   # AL-112: fields and gardens
-add_executable(lr_game_2d tools/game_2d/main.cpp)
+target_sources(lr_client2d PRIVATE src/client2d/worldmap2d.cpp)   # LR-153: the world map
+target_sources(lr_client2d PRIVATE src/client2d/lobby2d.cpp)  # LR-160: the players of a multiplayer game
+add_executable(lr_game_2d tools/game_2d/main.cpp tools/game_2d/net2d.cpp)   # LR-160: net2d - the client side of multiplayer
 target_link_libraries(lr_game_2d PRIVATE lr_client2d asr_warnings)
 if(WIN32)
     target_link_libraries(lr_game_2d PRIVATE ws2_32)
 endif()
 target_compile_definitions(lr_game_2d PRIVATE LR_SIM_SOURCE_DIR="${CMAKE_SOURCE_DIR}")
+target_include_directories(lr_game_2d PRIVATE tools/game_2d)
 
 if(NOT LR_SIM_ONLY)
 # ---------------------------------------------------------------------------
@@ -573,6 +578,7 @@ if(ASR_BUILD_CLIENT OR ASR_BUILD_ENGINE_EDITOR)
     # and the engine's interface; --web keeps the page. The sim-only tree builds the server alone.
     target_sources(lr_game_2d PRIVATE tools/game_2d/native/window2d.cpp tools/game_2d/native/pixels2d.cpp
             tools/game_2d/native/screens2d.cpp tools/game_2d/native/menu2d_view.cpp tools/game_2d/native/talk2d_view.cpp tools/game_2d/native/sheet2d_view.cpp tools/game_2d/native/dynasty2d_view.cpp
+            tools/game_2d/native/worldmap2d_view.cpp
             tools/game_2d/native/craft2d_view.cpp tools/game_2d/native/build2d_view.cpp tools/game_2d/native/atmos2d.cpp
             tools/game_2d/native/create2d_view.cpp tools/game_2d/native/fight2d.cpp
             src/engine/ui/ui.cpp src/engine/ui/font.cpp)
@@ -868,7 +874,7 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_craft.cpp tests/test_lr_sim_cuisine.cpp tests/test_lr_sim_worth.cpp tests/test_lr_sim_data.cpp tests/test_lr_sim_stats.cpp tests/test_lr_sim_stamina.cpp tests/test_lr_sim_resources.cpp tests/test_lr_sim_alchemy.cpp
             tests/test_lr_sim_build.cpp tests/test_lr_sim_backstory.cpp tests/test_lr_sim_charcreate.cpp
             tests/test_lr_sim_collide.cpp tests/test_lr_sim_actinfo.cpp tests/test_lr_sim_player_acts.cpp tests/test_lr_sim_reach.cpp
-            tests/test_lr_sim_gear.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
+            tests/test_lr_sim_gear.cpp tests/test_lr_sim_transport.cpp tests/test_lr_sim_village.cpp tests/test_lr_sim_structures.cpp tests/test_lr_sim_rooms.cpp
             tests/test_lr_sim_consequences.cpp tests/test_lr_sim_dialogue_gen.cpp
             tests/test_lr_sim_dialogue_rules.cpp
             tests/test_lr_sim_rumor_noise.cpp tests/test_lr_sim_rumor_spread.cpp tests/test_lr_sim_dialogue_say.cpp
@@ -884,12 +890,13 @@ if(ASR_BUILD_TESTS)
             tests/test_lr_sim_trade.cpp tests/test_lr_sim_species.cpp
             tests/test_lr_cutaway.cpp tests/test_lr_ui_theme.cpp tests/test_lr_locomotion.cpp tests/test_lr_hotbar.cpp
             tests/test_lr_sim_dialogue_corpus.cpp tests/test_lr_client2d.cpp
-            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp
+            tests/test_lr_client2d_talk.cpp tests/test_lr_client2d_session.cpp tests/test_lr_client2d_net.cpp
             tests/test_lr_client2d_craft.cpp
             tests/test_lr_build2d.cpp
             tests/test_lr_sim_fields.cpp tests/test_lr_sim_reactions.cpp tests/test_lr_sim_elementals.cpp
             tests/test_lr_sim_relief_firefight.cpp)
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sheet.cpp)   # AL-100
+    target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_worldmap.cpp)   # LR-153
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_sky.cpp)     # AL-110
     target_sources(lr_sim_tests PRIVATE tests/test_lr_client2d_crops.cpp)   # AL-112
     target_sources(lr_sim_tests PRIVATE tests/test_lr_need_tiers.cpp)       # LR-140

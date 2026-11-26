@@ -18,6 +18,10 @@ struct Host {
     std::function<void(int budgetMs)> pump;
     // The game asked to end (the menu's Quit).
     std::function<bool()> quitting;
+    // LR-160: "host:port" of the game this window plays on another computer (empty: its own game).
+    std::string remote;
+    // LR-160: go over to the game at "host:port" (empty: back to one's own). False when it cannot.
+    std::function<bool(const std::string& addr)> connect;
 };
 
 class Window {

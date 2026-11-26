@@ -20,6 +20,7 @@
 #include "sim/ai.hpp"
 #include "sim/gear.hpp"
 #include "sim/social_chain.hpp"
+#include "sim/transport.hpp"
 
 namespace lr::sim {
 
@@ -160,6 +161,16 @@ bool inHouse(const World& w, const Json& h, const Character& c) {
     return (fam != kNone && c.status.family == fam) || (dyn != kNone && c.status.dynasty == dyn);
 }
 
+// LR-160: another player's house holds `c` (each player leads a dynasty of their own).
+bool heldByOtherHouse(const World& w, int player, const Character& c) {
+    const Json* all = w.moduleState(kHouseKey);
+    if (!all || !all->is_object()) return false;
+    const std::string mine = std::to_string(player);
+    for (const auto& [k, h] : all->items())
+        if (k != mine && h.is_object() && !h.value("free", false) && inHouse(w, h, c)) return true;
+    return false;
+}
+
 } // namespace
 
 bool mayLead(const World& w, int player, const Character& c, std::string* why) {
@@ -171,6 +182,7 @@ bool mayLead(const World& w, int player, const Character& c, std::string* why) {
     if (c.isAnimal()) return no("animal"); // AL-25: people only
     if (c.controller.isPlayer() && c.controller.playerId != player) return no("controlled_by_other");
     const Json* h = houseOf(w, player);
+    if (!(h && !h->value("free", false) && inHouse(w, *h, c)) && heldByOtherHouse(w, player, c)) return no("dynasty_of_other");
     if (!h) {
         // a world from before LR-138: the person the player leads is the house
         for (const auto& [id, o] : w.characters())
@@ -379,8 +391,9 @@ bool handle(World& w, Command& cmd) {
         // AL-25: a step, not a teleport. The client sends steer every few
         // frames; anything farther than a run in that time is cut to it.
         const double step = dist(was, to);
-        if (step > kSteerMaxStepM) {
-            to = {was.x + (to.x - was.x) * kSteerMaxStepM / step, was.y + (to.y - was.y) * kSteerMaxStepM / step};
+        const double maxStep = kSteerMaxStepM * std::max(1.0, transportSpeedMult(w, *c)); // LR-159: a horse goes farther
+        if (step > maxStep) {
+            to = {was.x + (to.x - was.x) * maxStep / step, was.y + (to.y - was.y) * maxStep / step};
             trace(w, *c, 'C', "control.steer_clamped", {{"asked_m", step}});
         }
         c->pos = to;
@@ -395,7 +408,7 @@ bool handle(World& w, Command& cmd) {
             const double climb = std::max(0.0, cmd.args.value("climb", 0.0));
             const double tire = (km * (cmd.args.value("run", false) && ran ? R->runPerKm : R->walkPerKm) +
                                  std::min(climb, 30.0) / 100.0 * R->climbPer100m) *
-                                loadFatigueMult(*R, *c);
+                                loadFatigueMult(*R, *c) * transportTireMult(w, *c); // LR-159: the beast does the walking
             c->body.fatigue = std::clamp(c->body.fatigue + tire, 0.0, 1.0);
         }
         return true;

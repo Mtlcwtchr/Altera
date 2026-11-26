@@ -1,0 +1,77 @@
+{
+  "_doc": "LR-153: глобальная карта мира (src/sim/worldmap.hpp). Рельеф области вокруг поселений (шум высоты и влажности + притяжение поселений: гномы в горах, эльфы в лесу), реки, сгенерированные точки интереса, домены (вассалитет), дороги. Всё по сиду мира, сохраняется в moduleState(\"worldmap\"). Рельеф: первое совпадение в terrain.kinds сверху вниз (h — высота 0..1, m — влажность 0..1). Цвета и значки — content/sprites_2d/worldmap2d.json.",
+  "enabled": true,
+  "grid": 96,
+  "margin_km": 14,
+  "min_half_km": 30,
+  "terrain": {
+    "scale_km": 26,
+    "octaves": 4,
+    "moist_scale_km": 18,
+    "edge_sea": 0.3,
+    "kinds": [
+      {"id": "sea", "h_below": 0.2},
+      {"id": "mountains", "h_from": 0.76},
+      {"id": "hills", "h_from": 0.62},
+      {"id": "marsh", "h_below": 0.38, "m_from": 0.58},
+      {"id": "forest", "m_from": 0.56},
+      {"id": "plains"}
+    ],
+    "settle_land": {"h_min": 0.4, "h_max": 0.6, "radius_km": 6},
+    "pulls": [
+      {"culture": "dwarven", "h": 0.86, "radius_km": 9, "weight": 0.9, "_doc": "гномий чертог в горах"},
+      {"institution": "lair", "h": 0.92, "radius_km": 8, "weight": 0.95, "_doc": "логово дракона на пике"},
+      {"culture": "sylvan", "m": 0.85, "radius_km": 8, "weight": 0.85, "_doc": "эльфийская роща в лесу"},
+      {"culture": "orcish", "h": 0.66, "m": 0.3, "radius_km": 7, "weight": 0.6, "_doc": "орки на сухих холмах"},
+      {"culture": "goblin", "h": 0.64, "radius_km": 5, "weight": 0.6},
+      {"culture": "troll", "h": 0.8, "radius_km": 6, "weight": 0.7},
+      {"tag": "cult", "h": 0.58, "radius_km": 3, "weight": 0.5, "_doc": "монастырь на холме"},
+      {"tag": "outlaw", "m": 0.75, "radius_km": 4, "weight": 0.5, "_doc": "разбойники в чаще"}
+    ]
+  },
+  "rivers": {"n": [4, 6], "from_h": 0.68, "max_len": 200, "bend": 6, "meander": 8, "meander_cells": 6, "lake_chance": 0.25, "_doc": "реки текут к морю или краю земли кратчайшим путём, изогнутым высотами (bend: сколько клеток крюка даёт разница высот 1); meander/meander_cells: сила и шаг извилин; lake_chance: шанс озера в низине на пути"},
+  "poi": {
+    "min_km_settlement": 4.5,
+    "min_km_between": 4,
+    "kinds": [
+      {"id": "ruins", "n": [2, 3], "terrain": ["plains", "hills", "forest"]},
+      {"id": "watchtower", "n": [1, 2], "terrain": ["hills"]},
+      {"id": "cave", "n": [2, 3], "terrain": ["hills", "mountains"]},
+      {"id": "mine", "n": [1, 2], "terrain": ["mountains", "hills"], "near_culture": "dwarven", "near_km": 14},
+      {"id": "barrow", "n": [1, 3], "terrain": ["plains", "hills"]},
+      {"id": "standing_stones", "n": [1, 2], "terrain": ["plains", "hills", "marsh"], "tags": ["magic"]},
+      {"id": "shrine", "n": [1, 2], "terrain": ["forest", "hills", "plains"]},
+      {"id": "beast_lair", "n": [1, 2], "terrain": ["forest", "mountains", "marsh"]},
+      {"id": "witch_hut", "n": [0, 1], "terrain": ["marsh", "forest"], "tags": ["magic"]},
+      {"id": "old_battlefield", "n": [0, 1], "terrain": ["plains"]},
+      {"id": "spring", "n": [0, 2], "terrain": ["forest", "hills", "plains"]}
+    ],
+    "battlefields_max": 8,
+    "battlefield_jitter_km": 3
+  },
+  "disabled_tags": [],
+  "roads": {"links": 2, "link_km": 28, "skip_tags": ["outlaw", "ruined"], "skip_institutions": ["lair"]},
+  "fealty": {
+    "_doc": "Вассалитет при закладке области (один раз): поселение присягает ближайшему владетелю своей культуры, который больше его в ratio раз и ближе reach_km. Владетель сам может быть вассалом большего: так складываются королевства.",
+    "enabled": true,
+    "lords": ["lord"],
+    "free_institutions": ["abbot", "ataman", "lair"],
+    "reach_km": 26,
+    "ratio": 1.4,
+    "chance": 0.8,
+    "same_culture": true
+  },
+  "domains": {
+    "_doc": "Название домена по числу членов (вместе с главой) и размеру главы; первое подходящее сверху вниз. Ключи loc worldmap.domain.<title>.",
+    "titles": [
+      {"title": "kingdom", "min_members": 3, "head_sizes": ["town", "city"]},
+      {"title": "kingdom", "min_members": 4},
+      {"title": "lordship", "min_members": 2},
+      {"title": "hold", "institution": "lord"},
+      {"title": "lair", "institution": "lair"},
+      {"title": "band", "tag": "outlaw"},
+      {"title": "abbey", "tag": "cult"},
+      {"title": "free"}
+    ]
+  }
+}

@@ -84,6 +84,7 @@ public:
     virtual const Json& map2d() const = 0;     // content/sprites_2d/map2d.json
     virtual const Json& craftLook() const = 0; // content/sprites_2d/craft2d.json
     virtual const Json& resources() const = 0; // content/sprites_2d/resources.json
+    virtual const Json& worldLook() const = 0; // LR-153: content/sprites_2d/worldmap2d.json
     virtual void walkTo(double x, double y) = 0;   // the led person walks there by the cells
     virtual void refreshMap() = 0;                 // the ground chunks ask again (the plan changed)
     virtual const Json* person(long long id) const = 0;
@@ -102,6 +103,12 @@ public:
     // a new world in play (new game, a load): the map, the people, the camera start over
     virtual void worldChanged(const Json& view) = 0;
     virtual void quitGame() = 0;
+    // LR-160: multiplayer. "host:port" of the game this window plays on another computer ("": its own),
+    // and going over to another game ("": back to one's own) - false when it cannot.
+    virtual std::string remoteAddr() const = 0;
+    virtual bool connectTo(const std::string& addr) = 0;
+    // a menu's pause: holds the world only while one plays alone (the server decides)
+    virtual void menuPause(bool on) = 0;
     // the map in screen pixels
     virtual void toScreen(double wx, double wy, float& sx, float& sy) const = 0;
     virtual void toWorld(double sx, double sy, double& wx, double& wy) const = 0;
@@ -187,6 +194,7 @@ void openSheet(Ctx& c, Screens& s, long long id);                               
 void openWorkshop(Ctx& c, Screens& s);                                             // craft2d_view.cpp
 void openColony(Ctx& c, Screens& s);                                               // build2d_view.cpp
 void openDynasty(Ctx& c, Screens& s);                                              // dynasty2d_view.cpp (LR-145)
+void openWorldMap(Ctx& c, Screens& s);                                             // worldmap2d_view.cpp (LR-153)
 void openBuild(Ctx& c, Screens& s);                                                // build2d_view.cpp
 bool buildActive(const Screens& s);
 void buildDrawWorld(Ctx& c, Screens& s);

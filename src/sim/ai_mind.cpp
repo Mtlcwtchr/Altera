@@ -19,12 +19,14 @@
 #include "sim/trade.hpp"
 #include "sim/village_life.hpp"
 #include "sim/realm.hpp"
+#include "sim/worldmap.hpp"
 #include "sim/magic.hpp"
 #include "sim/magic_society.hpp"
 #include "sim/wounds.hpp"
 #include "sim/firefight.hpp"
 #include "sim/world_fields.hpp"
 #include "sim/world_reactions.hpp"
+#include "sim/transport.hpp"
 
 namespace lr::sim {
 
@@ -228,7 +230,9 @@ bool tickFsm(World& w, Character& c) {
         }
         const double d = dist(c.pos, f.dest);
         // AL-115: mud, ice and steep ground slow the step; the walk takes the ticks it needs
-        const double step = cfg.walkMPerTick * stepMoveFactor(w, c.pos, f.dest, cfg.walkMPerTick);
+        // LR-159: a long walk on one's own beast; riding or driving, the step is the mount's / the team's
+        if (w.now() - f.started <= 1) autoRideStart(w, c, f.dest);
+        const double step = cfg.walkMPerTick * stepMoveFactor(w, c.pos, f.dest, cfg.walkMPerTick) * transportSpeedMult(w, c);
         if (d <= step || (f.timer <= 1 && step >= cfg.walkMPerTick)) {
             c.pos = f.dest;
         } else {
@@ -724,8 +728,10 @@ void installAi(World& w) {
             if (c.isAnimal()) animalThink(world, c, tick);
             else thinkCharacter(world, c);
         }
+        transportTick(world); // LR-159: mounts, teams and vehicles go with their rider / driver
         faceAll(world); // AL-108
     });
+    installTransport(w); // LR-159: before control, it takes the transport.* performs
     installControl(w);
     installSocial(w);
     installBuilding(w);
@@ -733,6 +739,7 @@ void installAi(World& w) {
     installGear(w);
     installTrade(w);
     installRealm(w);
+    installWorldMap(w);   // LR-153: the world map (fealty at the start, battlefields)
     installFields(w);
     installMagic(w);
     installMagicSociety(w);

@@ -63,7 +63,7 @@ void Screens::hold() {
     if (holding_) return;
     holding_ = true;
     heldPause_ = c_.isPaused();
-    if (!heldPause_) c_.setPaused(true);
+    if (!heldPause_) c_.menuPause(true);   // LR-160: not with others in the game
 }
 
 void Screens::releaseIfNone() {
@@ -71,7 +71,7 @@ void Screens::releaseIfNone() {
     for (const auto& w : stack_)
         if (holdsPause(w->id) && !w->closing) return;
     holding_ = false;
-    if (!heldPause_) c_.setPaused(false);
+    if (!heldPause_) c_.menuPause(false);
 }
 
 Win& Screens::push(std::unique_ptr<Win> w) {
@@ -108,13 +108,14 @@ void Screens::closeAll() {
 }
 
 void Screens::open(const std::string& id, const Json& args) {
-    if (id == "menu" || id == "new" || id == "pick" || id == "saves") openMenu(c_, *this, id, args);
+    if (id == "menu" || id == "new" || id == "pick" || id == "saves" || id == "net") openMenu(c_, *this, id, args);
     else if (id == "create") openCreate(c_, *this, args.is_string() ? args.get<std::string>() : std::string());
     else if (id == "chronicle") openChronicle(c_, *this);
     else if (id == "workshop") openWorkshop(c_, *this);
     else if (id == "build") openBuild(c_, *this);
     else if (id == "colony") openColony(c_, *this);
     else if (id == "dynasty") openDynasty(c_, *this);
+    else if (id == "map") openWorldMap(c_, *this);
     else if (id == "sheet") openSheet(c_, *this, args.is_number() ? args.get<long long>() : -1);
     else if (id == "talk" || id == "trade") openTalk(c_, *this, args.is_number() ? args.get<long long>() : c_.selected(), id == "trade");
     else c_.toast(c_.L("ui2d.soon", {{"what", c_.L("ui2d.screen." + id)}}));
