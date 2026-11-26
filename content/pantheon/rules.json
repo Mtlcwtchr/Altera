@@ -1,0 +1,33 @@
+{
+ "_doc": "LR-169: числа пантеона (src/sim/pantheon.hpp). standing — почитание бога (0..1): растёт от набожности верующих (worship_norm — сколько верующих дают полный прирост), обрядов и молитв, тает decay. favor — благоволение лика к смертному (-1..1): дела из loves/hates лика, обряды и грехи веры, приношения (wanted_mult — любимое приношение), тает decay; от moodlet_at — моудлет и знамения. identification — отождествление ликов одной Силы там, где живут вместе люди разных вер (шанс base × терпимость вер × (1 + гостеприимство поселения)), at — порог «одна Сила»; ревнители (набожность ≥ heresy_piety в вере с терпимостью ≤ heresy_tolerance) отвергают это как ересь. prayer — решение бога (полезность: base + weights × черты характера, благоволение, сила просьбы, доля области, расход чудес за день), budget — чудес в день (base + per_standing × почитание), отложенное — через defer_min..max дней, долг: молчание на просьбу по правилам (с приношением/обрядом) и сорванное обещание растят debt, от debt_breach_at — нарушение закона «Обмен с богами». retribution — кара за вселенские законы через delay дней: проклятие (моудлет), набожность, здоровье, благоволение стражей закона, недоверие общины; settlement_breaches нарушений одного закона жителями за окно — проклятие поселения; бог теряет почитание, от bind_at — оковы на bind_days × вес и часть области другому лику той же Силы.",
+ "belts": ["mediterranean", "nile", "north", "forest", "steppe"],
+ "culture_belts": {},
+ "standing": {"start": 0.5, "gain": 0.02, "decay": 0.01, "rite_gain": 0.004, "prayer_gain": 0.002, "floor": 0.02, "worship_norm": 20},
+ "favor": {"start": 0.0, "rite_gain": 0.03, "love_gain": 0.02, "hate_loss": 0.03, "sin_loss": 0.02, "decay": 0.02, "offering_gain": 0.05, "wanted_mult": 2.0,
+           "moodlet_at": 0.35, "wrath_at": -0.35, "omen_chance": 0.03, "ident_share": 0.5, "favor_moodlet": "divine_favor", "wrath_moodlet": "divine_wrath"},
+ "identification": {"base": 0.02, "step": 0.08, "at": 0.6, "hospitality_mult": 1.0, "affinity": 0.05, "heresy_piety": 0.7, "heresy_tolerance": 0.35,
+                    "heresy_chance": 0.3, "heresy_enmity": 0.08, "heresy_step": 0.04, "rivalry_every_days": 60, "heresy_every_days": 30, "heresy_moodlet": "heresy_anger"},
+ "prayer": {
+  "base": {"granted": 0.4, "refused": 0.1, "deferred": 0.15, "silent": -0.2},
+  "weights": {"favor": 0.6, "weight": 0.25, "mercy": 0.3, "generosity": 0.2, "domain": 0.3, "budget": 0.6, "wrath": 0.35, "pride": 0.15, "aloof": 0.35, "cunning": 0.15, "debt": 0.4},
+  "noise": 0.1, "budget_base": 1.0, "budget_per_standing": 6.0, "defer_min_days": 1, "defer_max_days": 5,
+  "debt_silent": 0.25, "debt_overdue": 0.4, "debt_repay": 0.3, "debt_decay": 0.01, "debt_breach_at": 1.0,
+  "strength_base": 0.35, "strength_weight": 0.25, "strength_domain": 0.3, "granted_moodlet": "prayer_granted", "refused_moodlet": "prayer_refused"
+ },
+ "retribution": {
+  "delay_min_days": 1, "delay_max_days": 6, "curse_days": 10, "settlement_window_days": 30, "settlement_breaches": 3,
+  "curse_mood": -0.12, "piety_loss": 0.1, "favor_loss": 0.25, "community_trust": -0.1, "health_loss": 0.03,
+  "witness_mult": 0.1, "witness_cap": 0.5, "sacred_mult": 0.5, "sworn_mult": 0.5,
+  "curse_moodlet": "cursed", "breach_memory": "law_breach", "curse_memory": "cursed", "initiate_memory": "initiated",
+  "sacred_radius": 6.0, "grave_radius": 4.0, "sacred_objects": ["shrine", "altar", "hearth", "temple"], "grave_objects": ["grave", "barrow", "tomb"],
+  "god": {"standing_loss": 0.25, "bind_at": 1.2, "bind_days": 30, "domain_loss": 0.25}
+ },
+ "moodlets": {
+  "divine_favor": {"value": 0.08, "ttl": 144},
+  "divine_wrath": {"value": -0.1, "ttl": 144},
+  "cursed": {"value": -0.12, "ttl": 1440},
+  "prayer_granted": {"value": 0.1, "ttl": 288},
+  "prayer_refused": {"value": -0.06, "ttl": 144},
+  "heresy_anger": {"value": -0.05, "ttl": 288}
+ }
+}

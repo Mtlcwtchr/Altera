@@ -1,0 +1,732 @@
+{
+ "_doc": "LR-169: лики Сил пояса mediterranean (сеттинг v0.3 §4.2). Лик — отдельный бог-персонаж: power — его Сила, also — доп. Силы (их области тоже его), character 0..1 (wrath гнев, mercy милость, pride гордость, jealousy ревность, generosity щедрость, cunning хитрость, aloof отстранённость), loves/hates — типы памяти дел смертных (растят/роняют благоволение), wants — любимые приношения (id для обрядов), epithets — эпитеты (god.<lik>.epithet.<id>.name), rivals/allies — соперники и союзники, phase — 1 стартовые, 2 добавочные. Имена god.<id>.name.",
+ "belt": "mediterranean",
+ "liks": [
+  {
+   "id": "zeus",
+   "power": "sky_storm",
+   "also": [
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.4,
+    "pride": 0.9,
+    "jealousy": 0.7,
+    "generosity": 0.6,
+    "cunning": 0.4,
+    "aloof": 0.2
+   },
+   "loves": [
+    "oath",
+    "rite",
+    "prayed",
+    "gave_food"
+   ],
+   "hates": [
+    "lied",
+    "caught_lying",
+    "refused"
+   ],
+   "wants": [
+    "bull",
+    "oak_crown"
+   ],
+   "epithets": [
+    "xenios",
+    "horkios",
+    "hikesios"
+   ],
+   "rivals": [
+    "poseidon"
+   ],
+   "allies": [
+    "athena",
+    "apollo"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "poseidon",
+   "power": "sea",
+   "also": [],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.2,
+    "pride": 0.8,
+    "jealousy": 0.6,
+    "generosity": 0.4,
+    "cunning": 0.3,
+    "aloof": 0.3
+   },
+   "loves": [
+    "rite",
+    "prayed"
+   ],
+   "hates": [
+    "refused"
+   ],
+   "wants": [
+    "black_bull",
+    "gold_cup",
+    "horse"
+   ],
+   "epithets": [
+    "earthshaker",
+    "hippios"
+   ],
+   "rivals": [
+    "zeus",
+    "athena"
+   ],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "hades",
+   "power": "underworld",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.3,
+    "pride": 0.7,
+    "jealousy": 0.3,
+    "generosity": 0.3,
+    "cunning": 0.2,
+    "aloof": 0.8
+   },
+   "loves": [
+    "buried",
+    "rite"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [
+    "black_ram",
+    "blood_pit"
+   ],
+   "epithets": [
+    "plouton"
+   ],
+   "rivals": [],
+   "allies": [
+    "persephone"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "persephone",
+   "power": "underworld",
+   "also": [
+    "harvest"
+   ],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.6,
+    "pride": 0.5,
+    "jealousy": 0.3,
+    "generosity": 0.5,
+    "cunning": 0.3,
+    "aloof": 0.5
+   },
+   "loves": [
+    "buried",
+    "rite",
+    "fasted"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [
+    "pomegranate",
+    "first_sheaf"
+   ],
+   "epithets": [
+    "kore"
+   ],
+   "rivals": [],
+   "allies": [
+    "hades",
+    "demeter"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "demeter",
+   "power": "harvest",
+   "also": [],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.6,
+    "pride": 0.5,
+    "jealousy": 0.5,
+    "generosity": 0.7,
+    "cunning": 0.2,
+    "aloof": 0.2
+   },
+   "loves": [
+    "rite",
+    "fasted",
+    "gave_food"
+   ],
+   "hates": [
+    "stole_food"
+   ],
+   "wants": [
+    "first_sheaf",
+    "bread",
+    "piglet"
+   ],
+   "epithets": [
+    "thesmophoros"
+   ],
+   "rivals": [],
+   "allies": [
+    "persephone"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "hestia",
+   "power": "hearth",
+   "also": [],
+   "character": {
+    "wrath": 0.1,
+    "mercy": 0.9,
+    "pride": 0.2,
+    "jealousy": 0.1,
+    "generosity": 0.8,
+    "cunning": 0.1,
+    "aloof": 0.2
+   },
+   "loves": [
+    "gave_food",
+    "helped",
+    "prayed"
+   ],
+   "hates": [
+    "insulted_someone"
+   ],
+   "wants": [
+    "first_portion",
+    "oil"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "zeus"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "hephaestus",
+   "power": "forge",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.4,
+    "jealousy": 0.6,
+    "generosity": 0.5,
+    "cunning": 0.5,
+    "aloof": 0.5
+   },
+   "loves": [
+    "made_tool",
+    "rite"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "best_blade",
+    "bronze"
+   ],
+   "epithets": [
+    "polytechnes"
+   ],
+   "rivals": [
+    "ares"
+   ],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "athena",
+   "power": "knowledge",
+   "also": [
+    "war"
+   ],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.5,
+    "pride": 0.7,
+    "jealousy": 0.5,
+    "generosity": 0.5,
+    "cunning": 0.8,
+    "aloof": 0.3
+   },
+   "loves": [
+    "won_contest",
+    "told_stories",
+    "oath"
+   ],
+   "hates": [
+    "lied",
+    "brawl"
+   ],
+   "wants": [
+    "olive_oil",
+    "peplos"
+   ],
+   "epithets": [
+    "polias",
+    "pallas"
+   ],
+   "rivals": [
+    "poseidon",
+    "ares"
+   ],
+   "allies": [
+    "zeus"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "apollo",
+   "power": "sun",
+   "also": [
+    "healing"
+   ],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.5,
+    "pride": 0.8,
+    "jealousy": 0.5,
+    "generosity": 0.5,
+    "cunning": 0.4,
+    "aloof": 0.4
+   },
+   "loves": [
+    "sang_together",
+    "read_omen",
+    "won_contest"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "laurel",
+    "swan",
+    "lyre_song"
+   ],
+   "epithets": [
+    "pythios",
+    "paian"
+   ],
+   "rivals": [],
+   "allies": [
+    "artemis"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "helios",
+   "power": "sun",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.4,
+    "pride": 0.6,
+    "jealousy": 0.3,
+    "generosity": 0.5,
+    "cunning": 0.2,
+    "aloof": 0.7
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "white_horse"
+   ],
+   "epithets": [
+    "panoptes"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "artemis",
+   "power": "moon_hunt",
+   "also": [],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.4,
+    "pride": 0.7,
+    "jealousy": 0.4,
+    "generosity": 0.4,
+    "cunning": 0.4,
+    "aloof": 0.6
+   },
+   "loves": [
+    "good_hunt",
+    "rite"
+   ],
+   "hates": [
+    "attacked_by_beast"
+   ],
+   "wants": [
+    "first_kill",
+    "deer_horns"
+   ],
+   "epithets": [
+    "agrotera",
+    "lochia"
+   ],
+   "rivals": [],
+   "allies": [
+    "apollo"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "selene",
+   "power": "moon_hunt",
+   "also": [],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.6,
+    "pride": 0.3,
+    "jealousy": 0.3,
+    "generosity": 0.5,
+    "cunning": 0.2,
+    "aloof": 0.7
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "honey_cake"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "hermes",
+   "power": "road",
+   "also": [
+    "knowledge"
+   ],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.6,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.6,
+    "cunning": 0.9,
+    "aloof": 0.2
+   },
+   "loves": [
+    "good_chat",
+    "told_stories",
+    "prayed"
+   ],
+   "hates": [
+    "refused"
+   ],
+   "wants": [
+    "wayside_stone",
+    "coin"
+   ],
+   "epithets": [
+    "enodios",
+    "agoraios",
+    "psychopompos"
+   ],
+   "rivals": [],
+   "allies": [
+    "zeus"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "dionysus",
+   "power": "wine",
+   "also": [],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.5,
+    "pride": 0.6,
+    "jealousy": 0.5,
+    "generosity": 0.8,
+    "cunning": 0.5,
+    "aloof": 0.2
+   },
+   "loves": [
+    "danced",
+    "sang_together",
+    "played_game"
+   ],
+   "hates": [
+    "refused"
+   ],
+   "wants": [
+    "wine",
+    "ivy",
+    "goat"
+   ],
+   "epithets": [
+    "bakkhos",
+    "eleutherios"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "ares",
+   "power": "war",
+   "also": [],
+   "character": {
+    "wrath": 0.9,
+    "mercy": 0.1,
+    "pride": 0.7,
+    "jealousy": 0.5,
+    "generosity": 0.3,
+    "cunning": 0.1,
+    "aloof": 0.2
+   },
+   "loves": [
+    "duel",
+    "brawl",
+    "won_contest"
+   ],
+   "hates": [
+    "surrendered"
+   ],
+   "wants": [
+    "war_trophy",
+    "dog"
+   ],
+   "epithets": [
+    "enyalios"
+   ],
+   "rivals": [
+    "athena",
+    "hephaestus"
+   ],
+   "allies": [
+    "aphrodite"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "eris",
+   "power": "war",
+   "also": [],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.1,
+    "pride": 0.5,
+    "jealousy": 0.9,
+    "generosity": 0.2,
+    "cunning": 0.8,
+    "aloof": 0.4
+   },
+   "loves": [
+    "brawl",
+    "gossiped"
+   ],
+   "hates": [],
+   "wants": [
+    "golden_apple"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "aphrodite",
+   "power": "love",
+   "also": [],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.6,
+    "pride": 0.8,
+    "jealousy": 0.8,
+    "generosity": 0.7,
+    "cunning": 0.5,
+    "aloof": 0.2
+   },
+   "loves": [
+    "wedding",
+    "proposed",
+    "danced"
+   ],
+   "hates": [
+    "disowned"
+   ],
+   "wants": [
+    "dove",
+    "myrtle",
+    "perfume"
+   ],
+   "epithets": [
+    "ourania",
+    "pandemos"
+   ],
+   "rivals": [],
+   "allies": [
+    "ares"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "moirai",
+   "power": "fate",
+   "also": [],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.2,
+    "pride": 0.4,
+    "jealousy": 0.1,
+    "generosity": 0.2,
+    "cunning": 0.3,
+    "aloof": 0.9
+   },
+   "loves": [
+    "oath",
+    "read_omen"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "spun_thread"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "pan",
+   "power": "wild",
+   "also": [],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.5,
+    "pride": 0.3,
+    "jealousy": 0.4,
+    "generosity": 0.5,
+    "cunning": 0.5,
+    "aloof": 0.5
+   },
+   "loves": [
+    "sang_together",
+    "good_hunt",
+    "danced"
+   ],
+   "hates": [],
+   "wants": [
+    "milk",
+    "kid"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "asclepius",
+   "power": "healing",
+   "also": [],
+   "character": {
+    "wrath": 0.1,
+    "mercy": 0.9,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.7,
+    "cunning": 0.3,
+    "aloof": 0.3
+   },
+   "loves": [
+    "helped",
+    "prayed",
+    "fasted"
+   ],
+   "hates": [],
+   "wants": [
+    "rooster",
+    "votive"
+   ],
+   "epithets": [
+    "soter"
+   ],
+   "rivals": [],
+   "allies": [
+    "apollo"
+   ],
+   "phase": 2
+  },
+  {
+   "id": "nemesis",
+   "power": "vengeance",
+   "also": [
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.1,
+    "pride": 0.3,
+    "jealousy": 0.2,
+    "generosity": 0.1,
+    "cunning": 0.3,
+    "aloof": 0.7
+   },
+   "loves": [
+    "oath"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "erinyes",
+   "power": "vengeance",
+   "also": [],
+   "character": {
+    "wrath": 0.9,
+    "mercy": 0.0,
+    "pride": 0.3,
+    "jealousy": 0.2,
+    "generosity": 0.0,
+    "cunning": 0.2,
+    "aloof": 0.6
+   },
+   "loves": [],
+   "hates": [
+    "disowned"
+   ],
+   "wants": [],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  }
+ ]
+}

@@ -1,0 +1,336 @@
+{
+ "_doc": "LR-169: лики Сил пояса steppe (сеттинг v0.3 §4.2). Лик — отдельный бог-персонаж: power — его Сила, also — доп. Силы (их области тоже его), character 0..1 (wrath гнев, mercy милость, pride гордость, jealousy ревность, generosity щедрость, cunning хитрость, aloof отстранённость), loves/hates — типы памяти дел смертных (растят/роняют благоволение), wants — любимые приношения (id для обрядов), epithets — эпитеты (god.<lik>.epithet.<id>.name), rivals/allies — соперники и союзники, phase — 1 стартовые, 2 добавочные. Имена god.<id>.name.",
+ "belt": "steppe",
+ "liks": [
+  {
+   "id": "tengri",
+   "power": "sky_storm",
+   "also": [
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.5,
+    "pride": 0.7,
+    "jealousy": 0.3,
+    "generosity": 0.6,
+    "cunning": 0.3,
+    "aloof": 0.7
+   },
+   "loves": [
+    "oath",
+    "rite",
+    "prayed"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "white_horse",
+    "ribbons_on_tree",
+    "kumis"
+   ],
+   "epithets": [
+    "eternal_blue"
+   ],
+   "rivals": [],
+   "allies": [
+    "umay"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "umay",
+   "power": "harvest",
+   "also": [
+    "love",
+    "hearth"
+   ],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.8,
+    "pride": 0.4,
+    "jealousy": 0.3,
+    "generosity": 0.8,
+    "cunning": 0.3,
+    "aloof": 0.4
+   },
+   "loves": [
+    "wedding",
+    "gave_food",
+    "rite"
+   ],
+   "hates": [],
+   "wants": [
+    "milk",
+    "ribbon"
+   ],
+   "epithets": [
+    "mother"
+   ],
+   "rivals": [],
+   "allies": [
+    "tengri"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "erlik",
+   "power": "underworld",
+   "also": [],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.2,
+    "pride": 0.7,
+    "jealousy": 0.6,
+    "generosity": 0.2,
+    "cunning": 0.6,
+    "aloof": 0.5
+   },
+   "loves": [
+    "buried"
+   ],
+   "hates": [],
+   "wants": [
+    "black_goat"
+   ],
+   "epithets": [
+    "lord_below"
+   ],
+   "rivals": [
+    "tengri"
+   ],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "kun",
+   "power": "sun",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.5,
+    "pride": 0.5,
+    "jealousy": 0.2,
+    "generosity": 0.6,
+    "cunning": 0.2,
+    "aloof": 0.7
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "kumis"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "tengri"
+   ],
+   "phase": 2
+  },
+  {
+   "id": "ai_ata",
+   "power": "moon_hunt",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.5,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.5,
+    "cunning": 0.3,
+    "aloof": 0.7
+   },
+   "loves": [
+    "good_hunt"
+   ],
+   "hates": [],
+   "wants": [
+    "white_lamb"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "kizagan",
+   "power": "war",
+   "also": [],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.2,
+    "pride": 0.6,
+    "jealousy": 0.4,
+    "generosity": 0.3,
+    "cunning": 0.3,
+    "aloof": 0.4
+   },
+   "loves": [
+    "duel",
+    "raid",
+    "won_contest"
+   ],
+   "hates": [
+    "surrendered"
+   ],
+   "wants": [
+    "horse",
+    "war_trophy"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "tengri"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "yer_sub",
+   "power": "wild",
+   "also": [
+    "harvest"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.3,
+    "jealousy": 0.3,
+    "generosity": 0.6,
+    "cunning": 0.3,
+    "aloof": 0.6
+   },
+   "loves": [
+    "rite",
+    "gave_food"
+   ],
+   "hates": [],
+   "wants": [
+    "kumis",
+    "ribbon"
+   ],
+   "epithets": [
+    "land_water"
+   ],
+   "rivals": [],
+   "allies": [
+    "umay"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "ot_ana",
+   "power": "hearth",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.7,
+    "pride": 0.3,
+    "jealousy": 0.3,
+    "generosity": 0.7,
+    "cunning": 0.2,
+    "aloof": 0.3
+   },
+   "loves": [
+    "gave_food",
+    "prayed"
+   ],
+   "hates": [
+    "insulted_someone"
+   ],
+   "wants": [
+    "fat_in_fire"
+   ],
+   "epithets": [
+    "fire_mother"
+   ],
+   "rivals": [],
+   "allies": [
+    "umay"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "lake_spirit",
+   "power": "sea",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.4,
+    "pride": 0.3,
+    "jealousy": 0.3,
+    "generosity": 0.4,
+    "cunning": 0.3,
+    "aloof": 0.7
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "coin_in_water"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "albasty",
+   "power": "road",
+   "also": [],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.2,
+    "pride": 0.3,
+    "jealousy": 0.6,
+    "generosity": 0.2,
+    "cunning": 0.8,
+    "aloof": 0.5
+   },
+   "loves": [
+    "lied"
+   ],
+   "hates": [],
+   "wants": [],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "aruakh",
+   "power": "vengeance",
+   "also": [
+    "underworld"
+   ],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.4,
+    "pride": 0.3,
+    "jealousy": 0.2,
+    "generosity": 0.4,
+    "cunning": 0.2,
+    "aloof": 0.6
+   },
+   "loves": [
+    "buried",
+    "rite"
+   ],
+   "hates": [
+    "disowned"
+   ],
+   "wants": [
+    "meal_for_ancestors"
+   ],
+   "epithets": [
+    "ancestors"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  }
+ ]
+}
