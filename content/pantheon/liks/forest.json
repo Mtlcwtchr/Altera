@@ -1,0 +1,685 @@
+{
+ "_doc": "LR-169: лики Сил пояса forest (сеттинг v0.3 §4.2). Лик — отдельный бог-персонаж: power — его Сила, also — доп. Силы (их области тоже его), character 0..1 (wrath гнев, mercy милость, pride гордость, jealousy ревность, generosity щедрость, cunning хитрость, aloof отстранённость), loves/hates — типы памяти дел смертных (растят/роняют благоволение), wants — любимые приношения (id для обрядов), epithets — эпитеты (god.<lik>.epithet.<id>.name), rivals/allies — соперники и союзники, phase — 1 стартовые, 2 добавочные. Имена god.<id>.name.",
+ "belt": "forest",
+ "liks": [
+  {
+   "id": "perun",
+   "power": "sky_storm",
+   "also": [
+    "war"
+   ],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.4,
+    "pride": 0.7,
+    "jealousy": 0.5,
+    "generosity": 0.5,
+    "cunning": 0.2,
+    "aloof": 0.2
+   },
+   "loves": [
+    "oath",
+    "duel",
+    "rite"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "bull",
+    "oak_fire"
+   ],
+   "epithets": [
+    "thunderer"
+   ],
+   "rivals": [
+    "veles",
+    "thor"
+   ],
+   "allies": [
+    "dazhbog"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "veles",
+   "power": "underworld",
+   "also": [
+    "wild",
+    "knowledge",
+    "road"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.5,
+    "jealousy": 0.5,
+    "generosity": 0.5,
+    "cunning": 0.8,
+    "aloof": 0.5
+   },
+   "loves": [
+    "told_stories",
+    "buried",
+    "good_hunt"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [
+    "last_sheaf",
+    "fur"
+   ],
+   "epithets": [
+    "cattle_god"
+   ],
+   "rivals": [
+    "perun"
+   ],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "mokosh",
+   "power": "harvest",
+   "also": [
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.7,
+    "pride": 0.4,
+    "jealousy": 0.4,
+    "generosity": 0.7,
+    "cunning": 0.4,
+    "aloof": 0.3
+   },
+   "loves": [
+    "made_clothes",
+    "gave_food",
+    "rite"
+   ],
+   "hates": [
+    "stole_food"
+   ],
+   "wants": [
+    "spun_thread",
+    "linen",
+    "bread"
+   ],
+   "epithets": [
+    "spinner"
+   ],
+   "rivals": [],
+   "allies": [
+    "perun"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "dazhbog",
+   "power": "sun",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.6,
+    "pride": 0.6,
+    "jealousy": 0.3,
+    "generosity": 0.8,
+    "cunning": 0.2,
+    "aloof": 0.4
+   },
+   "loves": [
+    "prayed",
+    "sang_together",
+    "gave_food"
+   ],
+   "hates": [],
+   "wants": [
+    "bread",
+    "honey"
+   ],
+   "epithets": [
+    "giver"
+   ],
+   "rivals": [],
+   "allies": [
+    "perun"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "domovoi",
+   "power": "hearth",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.6,
+    "pride": 0.3,
+    "jealousy": 0.5,
+    "generosity": 0.6,
+    "cunning": 0.5,
+    "aloof": 0.2
+   },
+   "loves": [
+    "gave_food",
+    "built_home"
+   ],
+   "hates": [
+    "insulted_someone",
+    "slept_rough"
+   ],
+   "wants": [
+    "milk",
+    "bread_crumb"
+   ],
+   "epithets": [
+    "grandfather"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "svarog",
+   "power": "forge",
+   "also": [
+    "sky_storm"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.6,
+    "jealousy": 0.3,
+    "generosity": 0.5,
+    "cunning": 0.3,
+    "aloof": 0.6
+   },
+   "loves": [
+    "made_tool",
+    "wedding"
+   ],
+   "hates": [],
+   "wants": [
+    "iron"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "dazhbog"
+   ],
+   "phase": 2
+  },
+  {
+   "id": "lada",
+   "power": "love",
+   "also": [
+    "harvest"
+   ],
+   "character": {
+    "wrath": 0.2,
+    "mercy": 0.8,
+    "pride": 0.4,
+    "jealousy": 0.5,
+    "generosity": 0.8,
+    "cunning": 0.3,
+    "aloof": 0.2
+   },
+   "loves": [
+    "wedding",
+    "danced",
+    "sang_together"
+   ],
+   "hates": [
+    "disowned"
+   ],
+   "wants": [
+    "wreath",
+    "honey"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "leshy",
+   "power": "wild",
+   "also": [],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.4,
+    "pride": 0.4,
+    "jealousy": 0.5,
+    "generosity": 0.4,
+    "cunning": 0.8,
+    "aloof": 0.5
+   },
+   "loves": [
+    "good_hunt",
+    "slept_rough"
+   ],
+   "hates": [
+    "attacked_by_beast"
+   ],
+   "wants": [
+    "bread_on_stump",
+    "egg"
+   ],
+   "epithets": [
+    "forest_master"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "bereginya",
+   "power": "wild",
+   "also": [
+    "healing"
+   ],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.7,
+    "pride": 0.3,
+    "jealousy": 0.4,
+    "generosity": 0.6,
+    "cunning": 0.4,
+    "aloof": 0.4
+   },
+   "loves": [
+    "sang_together",
+    "helped"
+   ],
+   "hates": [],
+   "wants": [
+    "ribbon"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "vodyanoy",
+   "power": "sea",
+   "also": [],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.2,
+    "pride": 0.4,
+    "jealousy": 0.4,
+    "generosity": 0.3,
+    "cunning": 0.5,
+    "aloof": 0.5
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "horse_skull",
+    "tobacco"
+   ],
+   "epithets": [
+    "water_grandfather"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "divia",
+   "power": "moon_hunt",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.5,
+    "jealousy": 0.3,
+    "generosity": 0.4,
+    "cunning": 0.4,
+    "aloof": 0.6
+   },
+   "loves": [
+    "good_hunt",
+    "danced"
+   ],
+   "hates": [],
+   "wants": [
+    "first_kill"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "sudenitsy",
+   "power": "fate",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.4,
+    "pride": 0.2,
+    "jealousy": 0.1,
+    "generosity": 0.4,
+    "cunning": 0.2,
+    "aloof": 0.8
+   },
+   "loves": [
+    "read_omen"
+   ],
+   "hates": [],
+   "wants": [
+    "bread_salt"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "karna",
+   "power": "vengeance",
+   "also": [
+    "underworld"
+   ],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.2,
+    "pride": 0.2,
+    "jealousy": 0.2,
+    "generosity": 0.2,
+    "cunning": 0.2,
+    "aloof": 0.7
+   },
+   "loves": [
+    "buried"
+   ],
+   "hates": [
+    "disowned"
+   ],
+   "wants": [],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "danu",
+   "power": "harvest",
+   "also": [
+    "wild"
+   ],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.7,
+    "pride": 0.5,
+    "jealousy": 0.3,
+    "generosity": 0.7,
+    "cunning": 0.4,
+    "aloof": 0.5
+   },
+   "loves": [
+    "rite",
+    "told_stories"
+   ],
+   "hates": [],
+   "wants": [
+    "milk",
+    "grain"
+   ],
+   "epithets": [
+    "mother"
+   ],
+   "rivals": [],
+   "allies": [
+    "dagda"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "dagda",
+   "power": "healing",
+   "also": [
+    "harvest"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.6,
+    "pride": 0.4,
+    "jealousy": 0.3,
+    "generosity": 0.9,
+    "cunning": 0.4,
+    "aloof": 0.3
+   },
+   "loves": [
+    "gave_food",
+    "sang_together"
+   ],
+   "hates": [],
+   "wants": [
+    "porridge"
+   ],
+   "epithets": [
+    "good_god"
+   ],
+   "rivals": [],
+   "allies": [
+    "danu"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "lugh",
+   "power": "sun",
+   "also": [
+    "forge",
+    "knowledge"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.6,
+    "jealousy": 0.3,
+    "generosity": 0.6,
+    "cunning": 0.6,
+    "aloof": 0.3
+   },
+   "loves": [
+    "won_contest",
+    "made_tool",
+    "told_stories"
+   ],
+   "hates": [],
+   "wants": [
+    "spear",
+    "first_fruits"
+   ],
+   "epithets": [
+    "many_skilled"
+   ],
+   "rivals": [],
+   "allies": [
+    "dagda"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "cernunnos",
+   "power": "wild",
+   "also": [
+    "moon_hunt"
+   ],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.5,
+    "pride": 0.5,
+    "jealousy": 0.3,
+    "generosity": 0.6,
+    "cunning": 0.4,
+    "aloof": 0.6
+   },
+   "loves": [
+    "good_hunt",
+    "rite"
+   ],
+   "hates": [],
+   "wants": [
+    "torc",
+    "antler"
+   ],
+   "epithets": [
+    "horned"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "ogma",
+   "power": "knowledge",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.5,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.5,
+    "cunning": 0.5,
+    "aloof": 0.5
+   },
+   "loves": [
+    "told_stories",
+    "won_contest"
+   ],
+   "hates": [],
+   "wants": [
+    "ogham_stick"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "morrigan",
+   "power": "war",
+   "also": [
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.2,
+    "pride": 0.6,
+    "jealousy": 0.5,
+    "generosity": 0.2,
+    "cunning": 0.7,
+    "aloof": 0.5
+   },
+   "loves": [
+    "duel",
+    "read_omen"
+   ],
+   "hates": [
+    "surrendered"
+   ],
+   "wants": [
+    "crow_feather",
+    "war_trophy"
+   ],
+   "epithets": [
+    "phantom_queen"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "donn",
+   "power": "underworld",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.4,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.4,
+    "cunning": 0.2,
+    "aloof": 0.9
+   },
+   "loves": [
+    "buried"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [],
+   "epithets": [
+    "dark_one"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "manawydan",
+   "power": "sea",
+   "also": [
+    "road"
+   ],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.6,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.6,
+    "cunning": 0.5,
+    "aloof": 0.5
+   },
+   "loves": [
+    "made_tool",
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "salt"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "puck",
+   "power": "road",
+   "also": [
+    "wild"
+   ],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.5,
+    "pride": 0.3,
+    "jealousy": 0.4,
+    "generosity": 0.5,
+    "cunning": 0.9,
+    "aloof": 0.3
+   },
+   "loves": [
+    "played_game",
+    "lied",
+    "gossiped"
+   ],
+   "hates": [],
+   "wants": [
+    "cream"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  }
+ ]
+}

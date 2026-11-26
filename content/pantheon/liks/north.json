@@ -1,0 +1,528 @@
+{
+ "_doc": "LR-169: лики Сил пояса north (сеттинг v0.3 §4.2). Лик — отдельный бог-персонаж: power — его Сила, also — доп. Силы (их области тоже его), character 0..1 (wrath гнев, mercy милость, pride гордость, jealousy ревность, generosity щедрость, cunning хитрость, aloof отстранённость), loves/hates — типы памяти дел смертных (растят/роняют благоволение), wants — любимые приношения (id для обрядов), epithets — эпитеты (god.<lik>.epithet.<id>.name), rivals/allies — соперники и союзники, phase — 1 стартовые, 2 добавочные. Имена god.<id>.name.",
+ "belt": "north",
+ "liks": [
+  {
+   "id": "thor",
+   "power": "sky_storm",
+   "also": [
+    "war"
+   ],
+   "character": {
+    "wrath": 0.8,
+    "mercy": 0.5,
+    "pride": 0.6,
+    "jealousy": 0.4,
+    "generosity": 0.6,
+    "cunning": 0.1,
+    "aloof": 0.1
+   },
+   "loves": [
+    "duel",
+    "oath",
+    "good_hunt"
+   ],
+   "hates": [
+    "lied",
+    "surrendered"
+   ],
+   "wants": [
+    "goat",
+    "hammer_mark",
+    "mead"
+   ],
+   "epithets": [
+    "veurr"
+   ],
+   "rivals": [
+    "perun"
+   ],
+   "allies": [
+    "odin"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "odin",
+   "power": "knowledge",
+   "also": [
+    "war",
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.3,
+    "pride": 0.7,
+    "jealousy": 0.5,
+    "generosity": 0.4,
+    "cunning": 0.9,
+    "aloof": 0.6
+   },
+   "loves": [
+    "read_omen",
+    "told_stories",
+    "oath"
+   ],
+   "hates": [
+    "surrendered"
+   ],
+   "wants": [
+    "mead",
+    "spear",
+    "raven"
+   ],
+   "epithets": [
+    "allfather",
+    "grimnir"
+   ],
+   "rivals": [],
+   "allies": [
+    "thor",
+    "freyja"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "tyr",
+   "power": "war",
+   "also": [
+    "fate"
+   ],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.4,
+    "pride": 0.5,
+    "jealousy": 0.2,
+    "generosity": 0.5,
+    "cunning": 0.1,
+    "aloof": 0.3
+   },
+   "loves": [
+    "oath",
+    "duel",
+    "judged"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "sword"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "odin"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "freyr",
+   "power": "harvest",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.6,
+    "pride": 0.4,
+    "jealousy": 0.3,
+    "generosity": 0.8,
+    "cunning": 0.2,
+    "aloof": 0.3
+   },
+   "loves": [
+    "gave_food",
+    "rite",
+    "wedding"
+   ],
+   "hates": [],
+   "wants": [
+    "boar",
+    "grain"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [
+    "freyja"
+   ],
+   "phase": 2
+  },
+  {
+   "id": "freyja",
+   "power": "love",
+   "also": [
+    "war",
+    "harvest"
+   ],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.5,
+    "pride": 0.7,
+    "jealousy": 0.6,
+    "generosity": 0.6,
+    "cunning": 0.6,
+    "aloof": 0.3
+   },
+   "loves": [
+    "wedding",
+    "danced",
+    "duel"
+   ],
+   "hates": [],
+   "wants": [
+    "amber",
+    "cat"
+   ],
+   "epithets": [
+    "vanadis"
+   ],
+   "rivals": [],
+   "allies": [
+    "odin"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "aegir",
+   "power": "sea",
+   "also": [],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.5,
+    "pride": 0.4,
+    "jealousy": 0.3,
+    "generosity": 0.7,
+    "cunning": 0.2,
+    "aloof": 0.4
+   },
+   "loves": [
+    "rite",
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "ale",
+    "gold_ring"
+   ],
+   "epithets": [
+    "brewer"
+   ],
+   "rivals": [],
+   "allies": [
+    "ran"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "ran",
+   "power": "sea",
+   "also": [],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.2,
+    "pride": 0.5,
+    "jealousy": 0.4,
+    "generosity": 0.2,
+    "cunning": 0.5,
+    "aloof": 0.5
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "gold_ring"
+   ],
+   "epithets": [
+    "netter"
+   ],
+   "rivals": [],
+   "allies": [
+    "aegir"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "hel",
+   "power": "underworld",
+   "also": [],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.2,
+    "pride": 0.6,
+    "jealousy": 0.3,
+    "generosity": 0.2,
+    "cunning": 0.3,
+    "aloof": 0.8
+   },
+   "loves": [
+    "buried"
+   ],
+   "hates": [
+    "necromancy"
+   ],
+   "wants": [
+    "bread",
+    "shoes_for_the_dead"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "volund",
+   "power": "forge",
+   "also": [],
+   "character": {
+    "wrath": 0.6,
+    "mercy": 0.3,
+    "pride": 0.7,
+    "jealousy": 0.5,
+    "generosity": 0.4,
+    "cunning": 0.6,
+    "aloof": 0.5
+   },
+   "loves": [
+    "made_tool",
+    "oath"
+   ],
+   "hates": [
+    "stole"
+   ],
+   "wants": [
+    "best_blade",
+    "ring"
+   ],
+   "epithets": [
+    "master"
+   ],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "loki",
+   "power": "road",
+   "also": [
+    "wine"
+   ],
+   "character": {
+    "wrath": 0.5,
+    "mercy": 0.4,
+    "pride": 0.6,
+    "jealousy": 0.7,
+    "generosity": 0.4,
+    "cunning": 1.0,
+    "aloof": 0.3
+   },
+   "loves": [
+    "lied",
+    "played_game",
+    "gossiped"
+   ],
+   "hates": [],
+   "wants": [
+    "mischief_gift"
+   ],
+   "epithets": [
+    "sly"
+   ],
+   "rivals": [
+    "thor"
+   ],
+   "allies": [
+    "odin"
+   ],
+   "phase": 1
+  },
+  {
+   "id": "norns",
+   "power": "fate",
+   "also": [],
+   "character": {
+    "wrath": 0.4,
+    "mercy": 0.3,
+    "pride": 0.3,
+    "jealousy": 0.1,
+    "generosity": 0.3,
+    "cunning": 0.3,
+    "aloof": 0.9
+   },
+   "loves": [
+    "oath",
+    "read_omen"
+   ],
+   "hates": [
+    "lied"
+   ],
+   "wants": [
+    "spun_thread",
+    "well_water"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "sol",
+   "power": "sun",
+   "also": [],
+   "character": {
+    "wrath": 0.3,
+    "mercy": 0.5,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.5,
+    "cunning": 0.2,
+    "aloof": 0.6
+   },
+   "loves": [
+    "prayed"
+   ],
+   "hates": [],
+   "wants": [
+    "sun_wheel"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "baldr",
+   "power": "sun",
+   "also": [],
+   "character": {
+    "wrath": 0.1,
+    "mercy": 0.9,
+    "pride": 0.4,
+    "jealousy": 0.2,
+    "generosity": 0.8,
+    "cunning": 0.2,
+    "aloof": 0.3
+   },
+   "loves": [
+    "helped",
+    "gave_food"
+   ],
+   "hates": [],
+   "wants": [
+    "mistletoe_free"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "skadi",
+   "power": "moon_hunt",
+   "also": [
+    "wild"
+   ],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.3,
+    "pride": 0.6,
+    "jealousy": 0.4,
+    "generosity": 0.3,
+    "cunning": 0.3,
+    "aloof": 0.6
+   },
+   "loves": [
+    "good_hunt",
+    "slept_rough"
+   ],
+   "hates": [],
+   "wants": [
+    "first_kill"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 1
+  },
+  {
+   "id": "kvasir",
+   "power": "wine",
+   "also": [
+    "knowledge"
+   ],
+   "character": {
+    "wrath": 0.1,
+    "mercy": 0.7,
+    "pride": 0.3,
+    "jealousy": 0.1,
+    "generosity": 0.8,
+    "cunning": 0.5,
+    "aloof": 0.3
+   },
+   "loves": [
+    "told_stories",
+    "good_chat"
+   ],
+   "hates": [],
+   "wants": [
+    "mead"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "eir",
+   "power": "healing",
+   "also": [],
+   "character": {
+    "wrath": 0.1,
+    "mercy": 0.9,
+    "pride": 0.3,
+    "jealousy": 0.1,
+    "generosity": 0.8,
+    "cunning": 0.2,
+    "aloof": 0.4
+   },
+   "loves": [
+    "helped"
+   ],
+   "hates": [],
+   "wants": [
+    "herbs"
+   ],
+   "epithets": [],
+   "rivals": [],
+   "allies": [],
+   "phase": 2
+  },
+  {
+   "id": "vidar",
+   "power": "vengeance",
+   "also": [],
+   "character": {
+    "wrath": 0.7,
+    "mercy": 0.2,
+    "pride": 0.3,
+    "jealousy": 0.1,
+    "generosity": 0.2,
+    "cunning": 0.2,
+    "aloof": 0.8
+   },
+   "loves": [
+    "oath"
+   ],
+   "hates": [
+    "disowned"
+   ],
+   "wants": [],
+   "epithets": [
+    "silent"
+   ],
+   "rivals": [],
+   "allies": [
+    "odin"
+   ],
+   "phase": 2
+  }
+ ]
+}
