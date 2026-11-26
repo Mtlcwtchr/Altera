@@ -1,0 +1,97 @@
+{
+ "id": "aydahar",
+ "habitat": "land",
+ "biomes": [
+  "steppe",
+  "badlands"
+ ],
+ "per_km2": 0.0005,
+ "group": [
+  1,
+  1
+ ],
+ "max_group": 1,
+ "speed_m_per_tick": 70,
+ "notice_m": 120,
+ "flee_m": 0,
+ "diet": "prey",
+ "prey": [
+  "hens",
+  "goats"
+ ],
+ "aggression": 0.45,
+ "attack": {
+  "damage": [
+   0.2,
+   0.5
+  ],
+  "chance": 0.5,
+  "sated_days_after_kill": 20
+ },
+ "hunger_per_day": 0.2,
+ "breed_every_days": 0,
+ "growth_per_year": 0.0,
+ "meat_days": 20,
+ "hunt_below": 0.5,
+ "leave_heads": 0,
+ "territory_m": 3000,
+ "starve_days": 60,
+ "sapience": 0.3,
+ "tags": [
+  "monster",
+  "serpent"
+ ],
+ "loot": {
+  "serpent_scale": 3
+ },
+ "mythic": {
+  "belts": [
+   "steppe"
+  ],
+  "attack_min_group": 1,
+  "combat": {
+   "weapon": "coils",
+   "skill": 0.65,
+   "armor": [
+    "scales"
+   ],
+   "stamina_mult": 1.5
+  },
+  "lair": {
+   "poi": "aydahar_hollow",
+   "terrain": [
+    "plains",
+    "hills"
+   ],
+   "n": [
+    0,
+    1
+   ],
+   "near_km": 35,
+   "raid": {
+    "per_year": 0.6,
+    "km": 15,
+    "wealth_loss": [
+     0.03,
+     0.07
+    ]
+   }
+  }
+ },
+ "hunt": {
+  "pre": [
+   "knows:hunting",
+   "has:spear>=1"
+  ],
+  "chance": {
+   "base": 0.04,
+   "skill": "hunting",
+   "per_skill": 0.4,
+   "min": 0.02,
+   "max": 0.6
+  },
+  "duration": 14,
+  "cost": 18
+ },
+ "_doc": "LR-170: айдахар, огромный степной змей. Душит кольцами, живёт в сухих балках, нападает на табуны."
+}

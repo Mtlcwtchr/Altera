@@ -148,5 +148,12 @@
     },
     "speed": 1.2,
     "durability": 9999
-  }
+  },
+  "rending_claws": {"reach": 1, "weight": 0.0, "stamina": 4, "types": {"slash": [10, 17]}, "dir_type": {"overhead": "slash", "left": "slash", "right": "slash", "under": "slash", "thrust": "slash"}, "speed": 1.1, "durability": 9999, "_doc": "LR-170: когти (лев, химера, упырь)"},
+  "talons": {"reach": 1, "weight": 0.0, "stamina": 3, "types": {"slash": [6, 12], "thrust": [7, 12]}, "dir_type": {"overhead": "slash", "left": "slash", "right": "slash", "under": "slash", "thrust": "thrust"}, "speed": 1.35, "durability": 9999, "_doc": "LR-170: птичьи когти (сирена, гарпия, грифон)"},
+  "great_jaws": {"reach": 2, "weight": 0.0, "stamina": 7, "types": {"thrust": [16, 26], "slash": [12, 20]}, "dir_type": {"overhead": "slash", "left": "slash", "right": "slash", "under": "slash", "thrust": "thrust"}, "speed": 0.8, "durability": 9999, "_doc": "LR-170: пасть крупного зверя (гидра, Горыныч, немейский лев)"},
+  "venom_fangs": {"reach": 1, "weight": 0.0, "stamina": 3, "types": {"thrust": [7, 13]}, "dir_type": {"overhead": "thrust", "left": "thrust", "right": "thrust", "under": "thrust", "thrust": "thrust"}, "speed": 1.3, "durability": 9999, "_doc": "LR-170: ядовитые зубы (змеи горгоны, скарабеи, шакалы)"},
+  "grave_grip": {"reach": 1, "weight": 0.0, "stamina": 5, "types": {"blunt": [10, 18], "slash": [6, 10]}, "dir_type": {"overhead": "blunt", "left": "blunt", "right": "blunt", "under": "slash", "thrust": "blunt"}, "speed": 0.9, "durability": 9999, "_doc": "LR-170: хватка мертвеца (драугр, мумия, тень)"},
+  "coils": {"reach": 2, "weight": 0.0, "stamina": 6, "types": {"blunt": [12, 20]}, "dir_type": {"overhead": "blunt", "left": "blunt", "right": "blunt", "under": "blunt", "thrust": "blunt"}, "speed": 0.7, "durability": 9999, "_doc": "LR-170: кольца змея (айдахар)"},
+  "branch_lash": {"reach": 3, "weight": 0.0, "stamina": 5, "types": {"blunt": [9, 15]}, "dir_type": {"overhead": "blunt", "left": "blunt", "right": "blunt", "under": "blunt", "thrust": "blunt"}, "speed": 0.8, "durability": 9999, "_doc": "LR-170: сучья-руки лешего"}
 }

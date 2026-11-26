@@ -1,6 +1,7 @@
 // LR-153: the world map (sim/worldmap.hpp, content/ai/worldmap.json).
 
 #include "sim/worldmap.hpp"
+#include "sim/bestiary.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -223,6 +224,109 @@ int kindIndex(const WorldMapState& s, const std::string& id) {
     return -1;
 }
 
+// LR-170: each creature with a mythic "lair" gets its places near settlements of its belts
+// (no belts: anywhere its terrain is). lair: {poi, terrain, coast, n, near_km, names, raid}.
+void layLairs(const World& w, const Rules& r, WorldMapState& s, Rng& pr) {
+    const Content& ct = w.content();
+    const int G = s.grid;
+    const int sea = static_cast<int>(std::find(s.kinds.begin(), s.kinds.end(), "sea") - s.kinds.begin());
+    auto kindOf = [&](int c) { return s.ground[static_cast<size_t>(c)] - '0'; };
+    static const int kDi[4] = {1, -1, 0, 0}, kDj[4] = {0, 0, 1, -1};
+    for (const auto& [sid, sp] : ct.species) {
+        const Json& L = sp.mythic.lair;
+        if (!L.is_object() || L.empty()) continue;
+        const std::string poi = L.value("poi", std::string());
+        if (poi.empty()) continue;
+        if (!tagsOn(r, L.value("tags", std::vector<std::string>{}))) continue;
+        std::set<std::string> terrain;
+        for (const auto& t : L.value("terrain", std::vector<std::string>{})) terrain.insert(t);
+        const bool coast = L.value("coast", false);
+        const double nearKm = L.value("near_km", 30.0);
+        const int names = std::max(1, L.value("names", 4));
+        // the settlements of its belts the lair lies near
+        std::vector<Vec2> homes;
+        for (const auto& [id, p] : w.settlements())
+            if (sp.mythic.belts.empty() || creatureInBelt(sp, beltOfCulture(ct, p.culture))) homes.push_back(p.km);
+        if (homes.empty()) continue;   // nobody of its belts here: its lairs lie elsewhere in the world
+        int n0 = 1, n1 = 1;
+        if (L.contains("n") && L["n"].is_array() && L["n"].size() >= 2) n0 = L["n"][0], n1 = L["n"][1];
+        const int want = pr.irange(n0, n1);
+        std::set<int> usedNames;
+        for (int n = 0; n < want; ++n) {
+            for (int tries = 0; tries < 400; ++tries) {
+                const int c = pr.irange(0, G * G - 1);
+                const int ci = c % G, cj = c / G;
+                if (ci < 2 || cj < 2 || ci >= G - 2 || cj >= G - 2) continue;
+                const int g = kindOf(c);
+                const std::string& kind = s.kinds[static_cast<size_t>(g)];
+                if (!terrain.empty() && !terrain.count(kind)) continue;
+                if (s.river[static_cast<size_t>(c)] == '1') continue;
+                if (coast) {
+                    if (g == sea) continue;
+                    bool shore = false;
+                    for (int d = 0; d < 4; ++d) shore |= kindOf((cj + kDj[d]) * G + ci + kDi[d]) == sea;
+                    if (!shore) continue;
+                }
+                const Vec2 km{s.origin.x + (ci + pr.range(0.2, 0.8)) * s.cellKm, s.origin.y + (cj + pr.range(0.2, 0.8)) * s.cellKm};
+                bool ok = true, near = false;
+                for (const auto& [id, p] : w.settlements())
+                    if (dist(km, p.km) < r.poiMinSettle) ok = false;
+                for (const Vec2& h : homes) near |= dist(km, h) < nearKm;
+                if (!ok || (!near && tries < 300)) continue;
+                for (const WorldPoi& o : s.pois)
+                    if (dist(o.km, km) < r.poiMinBetween) ok = false;
+                if (!ok) continue;
+                WorldPoi p;
+                p.id = s.nextId++;
+                p.kind = poi;
+                p.creature = sid;
+                p.km = km;
+                int nm = pr.irange(1, names);
+                for (int q = 0; q < names && usedNames.count(nm); ++q) nm = nm % names + 1;
+                usedNames.insert(nm);
+                p.name = "n" + std::to_string(nm);
+                s.pois.push_back(p);
+                break;
+            }
+        }
+    }
+}
+
+// LR-170: a lair's dweller raids the nearest settlement now and then (lair.raid: per_year,
+// km, wealth_loss [lo, hi]); the chronicle tells of it. Returns whether anything changed.
+bool lairRaids(World& w, WorldMapState& s, int day) {
+    bool dirty = false;
+    const Content& ct = w.content();
+    for (WorldPoi& p : s.pois) {
+        if (p.creature.empty()) continue;
+        const SpeciesDef* sp = ct.speciesOf(p.creature);
+        if (!sp || !sp->mythic.lair.is_object()) continue;
+        const Json raid = sp->mythic.lair.value("raid", Json::object());
+        const double perYear = raid.value("per_year", 0.0);
+        if (perYear <= 0.0 || (day + static_cast<int>(p.id)) % 30 != 0) continue;
+        Rng rng = agentRng(w.seed(), p.id, day, "worldmap:lair_raid");
+        if (!rng.chance(perYear * 30.0 / kDaysPerYear)) continue;
+        const double reach = raid.value("km", 15.0);
+        Settlement* best = nullptr;
+        double bd = reach;
+        for (auto& [id, st] : w.settlements()) {
+            if (st.ruined || st.full()) continue;   // the map's own village meets its beasts on the ground
+            const double d = dist(st.km, p.km);
+            if (d < bd) bd = d, best = &st;
+        }
+        if (!best) continue;
+        double lo = 0.03, hi = 0.1;
+        if (raid.contains("wealth_loss") && raid["wealth_loss"].is_array() && raid["wealth_loss"].size() >= 2)
+            lo = raid["wealth_loss"][0], hi = raid["wealth_loss"][1];
+        const double loss = best->wealth * rng.range(lo, hi);
+        best->wealth -= loss;
+        p.lastRaid = day;
+        dirty = true;
+        w.chronicle("lair_raid", {}, "chronicle.lair_raid." + p.creature, {{"place", best->id}, {"loss", loss}});
+    }
+    return dirty;
+}
+
 void layOut(World& w, const Rules& r, WorldMapState& s) {
     // the bounds: every settlement and a margin, square, centred on their middle
     double x0 = 1e18, y0 = 1e18, x1 = -1e18, y1 = -1e18;
@@ -399,6 +503,7 @@ void layOut(World& w, const Rules& r, WorldMapState& s) {
             }
         }
     }
+    layLairs(w, r, s, pr);   // LR-170: the myth creatures' lairs, by belt
     s.inited = true;
 }
 
@@ -446,6 +551,8 @@ void to_json(Json& j, const WorldMapState& s) {
         if (p.day) e["day"] = p.day;
         if (p.a != kNone) e["a"] = p.a;
         if (p.b != kNone) e["b"] = p.b;
+        if (!p.creature.empty()) e["creature"] = p.creature;
+        if (p.lastRaid) e["raid"] = p.lastRaid;
         pois.push_back(e);
     }
     Json seen = Json::array();
@@ -468,6 +575,8 @@ void from_json(const Json& j, WorldMapState& s) {
         WorldPoi p;
         p.id = e.value("id", kNone);
         p.kind = e.value("kind", "");
+        p.creature = e.value("creature", "");
+        p.lastRaid = e.value("raid", 0);
         if (e.contains("km")) p.km = e["km"].get<Vec2>();
         p.name = e.value("name", "");
         p.day = e.value("day", 0);
@@ -512,6 +621,15 @@ std::vector<std::string> checkWorldMap(const Content& c) {
         for (const auto& t : p.terrain)
             if (!kinds.count(t)) out.push_back("worldmap.json: poi '" + p.id + "' wants unknown terrain '" + t + "'");
     }
+    for (const auto& [sid, sp] : c.species) {   // LR-170: the creatures' lairs
+        const Json& L = sp.mythic.lair;
+        if (!L.is_object() || L.empty()) continue;
+        const std::string poi = L.value("poi", std::string());
+        if (poi.empty() || poi == "battlefield" || !ids.insert(poi).second)
+            out.push_back("creature " + sid + ": lair poi '" + poi + "' is empty or taken");
+        for (const auto& t : L.value("terrain", std::vector<std::string>{}))
+            if (!kinds.count(t)) out.push_back("creature " + sid + ": lair wants unknown terrain '" + t + "'");
+    }
     if (r.titles.empty()) out.push_back("worldmap.json: domains.titles is empty");
     return out;
 }
@@ -529,6 +647,16 @@ bool worldMapEnsure(World& w) {
 
 void worldMapDaily(World& w) { worldMapPass(w, loadRealm(w)); }
 
+int worldMapLairRaids(World& w, int day) {
+    WorldMapState s = loadWorldMap(w);
+    if (!s.inited) return 0;
+    if (!lairRaids(w, s, day)) return 0;
+    saveWorldMap(w, s);
+    int n = 0;
+    for (const auto& p : s.pois) n += !p.creature.empty() && p.lastRaid == day;
+    return n;
+}
+
 void worldMapPass(World& w, const RealmState& realm) {
     const Rules& r = rules(w.content());
     if (!r.loaded || !r.enabled) return;
@@ -544,6 +672,7 @@ void worldMapPass(World& w, const RealmState& realm) {
         layOut(w, r, s);
         dirty = true;
     }
+    dirty |= lairRaids(w, s, w.day());   // LR-170
     // a battle of the realm's wars leaves a field
     for (const RealmWar& war : realm.wars) {
         auto it = std::find_if(s.battlesSeen.begin(), s.battlesSeen.end(), [&](const auto& e) { return e.first == war.id; });

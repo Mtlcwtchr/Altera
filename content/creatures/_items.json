@@ -125,6 +125,210 @@
    "stack": 10,
    "value": 120,
    "_doc": "AL-114: чешуя дракона (с убитого дракона, задание realm)"
+  },
+  {
+   "id": "siren_feather",
+   "material": "feather",
+   "tags": [
+    "monster_part",
+    "craft_raw",
+    "trophy"
+   ],
+   "stack": 10,
+   "value": 8,
+   "_doc": "LR-170: добыча siren"
+  },
+  {
+   "id": "gorgon_head",
+   "tags": [
+    "monster_part",
+    "trophy",
+    "rare",
+    "artifact"
+   ],
+   "stack": 1,
+   "value": 200,
+   "_doc": "LR-170: добыча gorgon"
+  },
+  {
+   "id": "gorgon_blood",
+   "tags": [
+    "monster_part",
+    "rare"
+   ],
+   "stack": 10,
+   "value": 40,
+   "_doc": "LR-170: добыча gorgon"
+  },
+  {
+   "id": "hydra_venom",
+   "tags": [
+    "monster_part",
+    "poison"
+   ],
+   "stack": 10,
+   "value": 35,
+   "_doc": "LR-170: добыча hydra"
+  },
+  {
+   "id": "hydra_scale",
+   "material": "horn",
+   "tags": [
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 12,
+   "_doc": "LR-170: добыча hydra"
+  },
+  {
+   "id": "chimera_horn",
+   "tags": [
+    "monster_part",
+    "trophy"
+   ],
+   "stack": 10,
+   "value": 30,
+   "_doc": "LR-170: добыча chimera"
+  },
+  {
+   "id": "nemean_hide",
+   "tags": [
+    "monster_part",
+    "craft_raw",
+    "rare",
+    "artifact"
+   ],
+   "stack": 1,
+   "value": 250,
+   "_doc": "LR-170: добыча nemean_lion"
+  },
+  {
+   "id": "grave_dust",
+   "tags": [
+    "monster_part",
+    "undead_part"
+   ],
+   "stack": 10,
+   "value": 6,
+   "_doc": "LR-170: добыча shade"
+  },
+  {
+   "id": "leshy_bark",
+   "tags": [
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 15,
+   "_doc": "LR-170: добыча leshy"
+  },
+  {
+   "id": "rusalka_hair",
+   "tags": [
+    "monster_part",
+    "undead_part"
+   ],
+   "stack": 10,
+   "value": 14,
+   "_doc": "LR-170: добыча rusalka"
+  },
+  {
+   "id": "upyr_fang",
+   "material": "bone",
+   "tags": [
+    "monster_part",
+    "undead_part",
+    "trophy"
+   ],
+   "stack": 10,
+   "value": 10,
+   "_doc": "LR-170: добыча upyr"
+  },
+  {
+   "id": "gorynych_scale",
+   "material": "horn",
+   "tags": [
+    "monster_part",
+    "craft_raw",
+    "rare"
+   ],
+   "stack": 10,
+   "value": 90,
+   "_doc": "LR-170: добыча zmey_gorynych"
+  },
+  {
+   "id": "kelpie_mane",
+   "tags": [
+    "monster_part",
+    "fiber"
+   ],
+   "stack": 10,
+   "value": 20,
+   "_doc": "LR-170: добыча kelpie"
+  },
+  {
+   "id": "barrow_gold",
+   "tags": [
+    "treasure",
+    "valuable"
+   ],
+   "stack": 10,
+   "value": 60,
+   "_doc": "LR-170: добыча draugr"
+  },
+  {
+   "id": "albasty_hair",
+   "tags": [
+    "monster_part"
+   ],
+   "stack": 10,
+   "value": 12,
+   "_doc": "LR-170: добыча albasty"
+  },
+  {
+   "id": "serpent_scale",
+   "material": "horn",
+   "tags": [
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 14,
+   "_doc": "LR-170: добыча aydahar"
+  },
+  {
+   "id": "mummy_linen",
+   "tags": [
+    "monster_part",
+    "undead_part",
+    "fiber"
+   ],
+   "stack": 10,
+   "value": 8,
+   "_doc": "LR-170: добыча mummy"
+  },
+  {
+   "id": "jackal_pelt",
+   "material": "hide_raw",
+   "tags": [
+    "animal",
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 5,
+   "_doc": "LR-170: добыча jackal_guard"
+  },
+  {
+   "id": "scarab_shell",
+   "tags": [
+    "monster_part",
+    "craft_raw"
+   ],
+   "stack": 10,
+   "value": 3,
+   "_doc": "LR-170: добыча scarab_swarm"
   }
  ]
 }

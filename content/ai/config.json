@@ -110,6 +110,8 @@
   "saw_dark_magic": 0.5,
   "saw_necromancy": 0.7,
   "saw_beast": 0.3,
+  "heard_lure": 0.6,
+  "resisted_lure": 0.4,
   "good_hunt": 0.3,
   "food_spoiled": 0.2,
   "ate_seed_corn": 0.6,

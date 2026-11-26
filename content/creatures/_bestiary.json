@@ -1,0 +1,15 @@
+{
+ "_doc": "LR-170: общие правила бестиария (sim/bestiary.hpp). Пояса мира (id как в content/world/belts.json, LR-166). Пояс поселения берётся из поля культуры belt; belt_of_culture — запасная карта для культур без этого поля (старые id до LR-166). default_belt — пояс карты, когда ничего не известно. Существо без mythic.belts живёт везде.",
+ "belts": ["mediterranean", "nile", "forest", "north", "steppe"],
+ "default_belt": "forest",
+ "belt_of_culture": {
+  "fantasy_european": "forest",
+  "sylvan": "forest",
+  "goblin": "forest",
+  "dwarven": "north",
+  "ogre": "north",
+  "troll": "north",
+  "draconic": "north",
+  "orcish": "steppe"
+ }
+}

@@ -172,6 +172,35 @@ struct SpeciesDef {
     std::map<std::string, int> loot;
     std::vector<std::string> tags;
     Json innateSpells = Json::array(); // a built-in spell (a basilisk's gaze): species.hpp innateStrike
+    // LR-170: myth creatures by belt (content/creatures, block "mythic"; sim/bestiary.hpp).
+    struct Mythic {
+        bool set = false;
+        std::vector<std::string> belts;   // mediterranean | nile | forest | north | steppe; empty = any land
+        bool undead = false;
+        std::string active = "any";        // any | night | day: out of the lair only then
+        double sunHarm = 0.0;              // heads lost per hour caught in daylight away from the lair
+        int attackMinGroup = 3;            // the fewest heads that dare a lone person (a solo beast: 1)
+        double guardM = 0.0;               // falls on anyone this close to the lair, hungry or not
+        struct Lure {
+            double radiusM = 0.0, pullM = 0.0, chance = 0.0, resist = 0.6;
+            std::string resistStat = "willpower", moodlet = "lured";
+            bool waterOnly = false;        // the lure works only from the water's edge
+            bool strike = true;            // false: it only leads astray (the leshy), the lured one is lost, not slain
+            std::string lostMoodlet = "lost_in_woods";
+        } lure;
+        int regrowDays = 0;                // a lost head grows back after this many days (the hydra)
+        std::vector<std::string> regrowBlockedBy; // moodlets on the group that stop it (burned)
+        bool growsOnKill = false;          // a victim joins the group (the upyr's bite)
+        int riseDays = 0;                  // a destroyed undead rises at its lair after this many days
+        std::string laidBy;                // cause of death that lays it to rest for good (fire, rite)
+        // fighting through the combat core (sim_bridge "animal" when empty)
+        std::string weapon;
+        double skill = -1.0;
+        std::vector<std::string> armor;
+        double staminaMult = 1.0;
+        // the lair on the world map and its raids on the settlements around
+        Json lair = Json::object();
+    } mythic;
 };
 
 struct NeedDef {
