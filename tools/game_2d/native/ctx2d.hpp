@@ -102,6 +102,12 @@ public:
     // a new world in play (new game, a load): the map, the people, the camera start over
     virtual void worldChanged(const Json& view) = 0;
     virtual void quitGame() = 0;
+    // LR-160: multiplayer. "host:port" of the game this window plays on another computer ("": its own),
+    // and going over to another game ("": back to one's own) - false when it cannot.
+    virtual std::string remoteAddr() const = 0;
+    virtual bool connectTo(const std::string& addr) = 0;
+    // a menu's pause: holds the world only while one plays alone (the server decides)
+    virtual void menuPause(bool on) = 0;
     // the map in screen pixels
     virtual void toScreen(double wx, double wy, float& sx, float& sy) const = 0;
     virtual void toWorld(double sx, double sy, double& wx, double& wy) const = 0;

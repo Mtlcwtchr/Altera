@@ -270,6 +270,8 @@ struct Window::Impl : Ctx {
     std::string roofMode = "auto";
     double lastFrame = 0, lastPoll = -1e9, lastBar = -1e9;
     long long lastInvite = 0;   // LR-157: the NPC's ask the talk window was opened for
+    long long worldGen = -1;     // LR-160: the server's world (a new game or a load changes it)
+    long long eventSeq = -1;     // LR-160: the shared acts seen
     std::uint64_t dataGen = 0;   // LR-142: the data generation the sprites and the map rules were read at
     bool selectedMe = false;
 
@@ -403,6 +405,10 @@ struct Window::Impl : Ctx {
     double camAtY() const override { return camY; }
     int zoomLevel() const override { return zoom; }
     void quitGame() override { post("/api/quit", {{"autosave", true}}); }
+    // LR-160: multiplayer
+    std::string remoteAddr() const override { return host ? host->remote : std::string(); }
+    bool connectTo(const std::string& addr) override { return host && host->connect && host->connect(addr); }
+    void menuPause(bool on) override { cmd({{"op", "pause"}, {"on", on}, {"menu", true}}); }
     // a new world in play: the map, the people, the camera start over
     void worldChanged(const Json& view) override {
         for (auto& [k, c] : chunks)
@@ -1076,6 +1082,25 @@ struct Window::Impl : Ctx {
         }
     }
 
+    // LR-160: what the other players did to the shared things (pause, speed, a new game, a load), and who came in
+    void netEvents(const Json& s) {
+        const Json net = s.value("net", Json::object());
+        const long long you = net.value("you", 0LL);
+        for (const auto& e : net.value("events", Json::array())) {
+            const long long seq = e.value("seq", 0LL);
+            if (seq <= eventSeq) continue;
+            const bool first = eventSeq < 0;
+            if (!first && e.value("by", 0LL) != you) {
+                const std::string what = e.value("what", std::string());
+                std::string speed = std::to_string(e.value("tps", 2.0));
+                speed = speed.substr(0, speed.find('.') + 2);
+                toast(L("ui2d.net.ev." + what, {{"who", e.value("name", std::string())}, {"n", speed}}));
+            }
+        }
+        for (const auto& e : net.value("events", Json::array())) eventSeq = std::max(eventSeq, e.value("seq", 0LL));
+        if (eventSeq < 0) eventSeq = 0;
+    }
+
     // --- polling -----------------------------------------------------------------------------
     void poll() {
         lastPoll = nowMs();
@@ -1085,6 +1110,18 @@ struct Window::Impl : Ctx {
         if (selId >= 0) q += "&sel=" + std::to_string(selId);
         const Json s = get(q);
         if (!s.is_object()) return;
+        // LR-160: another player made a new world or loaded one: this window starts over on it
+        if (const long long gen = s.contains("world_gen") && s["world_gen"].is_number() ? s["world_gen"].get<long long>() : -1;
+            gen >= 0 && gen != worldGen) {
+            const bool first = worldGen < 0;
+            worldGen = gen;
+            if (!first) {
+                worldChanged(Json::object());
+                if (me < 0 && screens && !screens->isOpen("pick")) screens->open("pick");
+                return;
+            }
+        }
+        netEvents(s);
         clock = s;
         paused = flag(s, "paused");
         tps = num(s, "tps", 2);
