@@ -751,6 +751,66 @@ def check_icons(L):
 CHECKS["icons"] = check_icons  # LR-161
 
 
+
+def check_figures(L):
+    """LR-165: 48x64-фигуры (sprites_2d/figures2d.json): народы, наряды культур, причёски, бороды, инструменты ссылаются друг на друга;
+    у каждого народа и культуры из species/ есть фигура; грудь и нагота только у взрослых (условие adult или bare: голые дети не рисуются)."""
+    r = Report("figures")
+    root = L["root"]
+    fp = root / "sprites_2d" / "figures2d.json"
+    if not fp.exists():
+        r.warn("нет sprites_2d/figures2d.json, пропуск"); return r
+    F = jload(fp)
+    peoples, outfits, cultures = F.get("peoples", {}), F.get("outfits", {}), F.get("cultures", {})
+    hairs = set(F.get("hairs", {})) | set(F.get("hair_alias", {}))
+    beards = set(F.get("beards", {})) | set(F.get("beard_alias", {}))
+    for cid, c in cultures.items():
+        for slot, o in c.items():
+            if slot != "colours" and o not in outfits: r.err(f"cultures.{cid}.{slot}: нет наряда {o}")
+    for cid, pid in F.get("cultures_people", {}).items():
+        if pid not in peoples: r.err(f"cultures_people.{cid}: нет народа {pid}")
+        if cid not in cultures: r.err(f"cultures_people.{cid}: нет культуры в cultures")
+    for pid, P in peoples.items():
+        if P.get("culture") and P["culture"] not in cultures: r.err(f"peoples.{pid}.culture: нет культуры {P['culture']}")
+        for k in ("hair_m", "hair_f"):
+            for h in P.get(k, []):
+                if h not in hairs: r.err(f"peoples.{pid}.{k}: нет причёски {h}")
+        for b in P.get("beards", []):
+            if b not in beards: r.err(f"peoples.{pid}.beards: нет бороды {b}")
+    for rid, pid in F.get("races", {}).items():
+        if pid not in peoples: r.err(f"races.{rid}: нет народа {pid}")
+    # the sim's tools in hand (map2d.json tools) have a figure tool
+    mp = root / "sprites_2d" / "map2d.json"
+    if mp.exists():
+        for pair in jload(mp).get("tools", []):
+            if pair[1] not in F.get("tools", {}): r.warn(f"map2d.json tools {pair[0]}: нет инструмента фигуры {pair[1]}")
+    # every people (race) and culture of the sim is drawn
+    sp = root / "species"
+    for f in sorted(sp.glob("*.json")) if sp.is_dir() else []:
+        d = jload(f)
+        rid = d.get("id") if isinstance(d, dict) else None
+        if not rid or rid in ("dragon", "human") or "body" not in d: continue
+        if rid not in peoples and rid not in F.get("races", {}): r.warn(f"species/{f.name}: нет фигуры народа {rid}")
+    cd = sp / "cultures"
+    for f in sorted(cd.glob("*.json")) if cd.is_dir() else []:
+        d = jload(f)
+        cid = d.get("id", f.stem) if isinstance(d, dict) else f.stem
+        if cid in ("draconic",): continue
+        if cid not in cultures and cid not in F.get("cultures_legacy", {}): r.warn(f"species/cultures/{f.name}: нет нарядов культуры {cid}")
+    # only adults have a chest drawn: every chest op says adult or bare (a bare child is always clothed by the code)
+    def chest_ops(where, lst):
+        for i, o in enumerate(lst or []):
+            w = str(o.get("when", ""))
+            if "adult" not in w and "bare" not in w and "haschest" not in w: r.err(f"{where}.chest[{i}]: грудь без условия adult/bare")
+    chest_ops("base", F.get("base", {}).get("chest"))
+    for pid, P in peoples.items(): chest_ops(f"peoples.{pid}", (P.get("layers") or {}).get("chest"))
+    for oid, O in outfits.items(): chest_ops(f"outfits.{oid}", (O.get("layers") or {}).get("chest"))
+    r.info = f"народов {len(peoples)}, нарядов {len(outfits)}, культур {len(cultures)}"
+    return r
+
+
+CHECKS["figures"] = check_figures  # LR-165
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("cmds", nargs="*")
